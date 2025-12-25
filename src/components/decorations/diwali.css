@@ -1,4 +1,5 @@
 
+      
 .diwali-container {
     position: fixed;
     top: 0;
@@ -15,68 +16,98 @@
     top: 10px;
     left: 50%;
     transform: translateX(-50%);
+    display: none; /* Hidden by default, shown on larger screens */
 }
+
+@media (min-width: 768px) {
+    .happy-diwali {
+        display: block; /* Show on md screens and up */
+    }
+}
+
 
 .happy-diwali h1 {
     margin: 0;
     padding: 0;
     font-size: 28px;
-    font-family: 'Lobster', cursive; /* A more decorative font */
-    color: #ff9800; /* Deep Orange */
+    font-family: 'Lobster', cursive;
+    color: #ff9800;
     text-shadow: 1px 1px 2px #fff, 0 0 1em #ffc107, 0 0 0.2em #ffc107;
 }
+
+/* Header Lanterns */
+.header-lantern {
+    position: absolute;
+    font-size: 3rem;
+    filter: drop-shadow(0 0 10px #ffeb3b);
+    animation: sway-lantern 5s ease-in-out infinite;
+    display: none; /* Hidden by default */
+}
+
+@media (min-width: 768px) {
+    .header-lantern {
+        display: block; /* Show on md screens and up */
+    }
+    .lantern-1 { top: 5px; left: 190px; }
+    .lantern-2 { top: 5px; left: 50%; transform: translateX(100px); }
+    .lantern-3 { top: 5px; right: 140px; }
+}
+
 
 @keyframes sway-lantern {
   0%, 100% { transform: rotate(-5deg); }
   50% { transform: rotate(5deg); }
 }
 
-.lantern-group {
+/* Sidebar Diyas */
+.sidebar-diya-container {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    display: flex;
+    bottom: 55px;
+    left: 10px;
+    width: 230px; 
+    display: none;
     justify-content: space-around;
-    padding: 0 10%;
 }
 
-.lantern {
-    font-size: 3rem;
-    animation: sway-lantern 5s ease-in-out infinite;
-    filter: drop-shadow(0 0 10px #ffeb3b);
+@media (min-width: 768px) {
+    .sidebar-diya-container {
+        display: flex; /* Show on md screens and up */
+    }
 }
-.lantern-1 { animation-delay: 0s; }
-.lantern-2 { animation-delay: -1.2s; font-size: 2.5rem; }
-.lantern-3 { animation-delay: -2.5s; font-size: 2.8rem; }
-.lantern-4 { animation-delay: -3.8s; }
 
 
-.diya-row {
+/* Chart Diyas */
+.chart-diya-container {
     position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    display: flex;
-    justify-content: space-evenly;
+    bottom: 40px;
+    left: 310px; /* Adjust to align with your chart's starting point */
+    right: 50px;
+    display: none;
+    justify-content: space-between;
+}
+
+@media (min-width: 768px) {
+    .chart-diya-container {
+        display: flex; /* Show on md screens and up */
+    }
 }
 
 .diya {
   position: relative;
-  width: 40px;
-  height: 20px;
+  width: 30px; /* Smaller size */
+  height: 15px;
 }
 
 .flame {
   position: absolute;
-  bottom: 12px;
+  bottom: 9px;
   left: 50%;
-  width: 12px;
-  height: 20px;
+  width: 8px;
+  height: 14px;
   background-color: #ffc107;
   border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
   transform: translateX(-50%);
-  box-shadow: 0 0 15px #ffeb3b, 0 0 20px #ffc107;
+  box-shadow: 0 0 10px #ffeb3b, 0 0 15px #ffc107;
   animation: flicker 1s infinite alternate;
 }
 
@@ -84,11 +115,11 @@
   position: absolute;
   bottom: 0;
   left: 0;
-  width: 40px;
-  height: 15px;
-  background-color: #d2691e; /* SaddleBrown */
-  border-radius: 0 0 20px 20px;
-  border: 2px solid #a0522d;
+  width: 30px;
+  height: 10px;
+  background-color: #d2691e;
+  border-radius: 0 0 15px 15px;
+  border: 1px solid #a0522d;
 }
 
 @keyframes flicker {
@@ -97,51 +128,39 @@
   100% { transform: translateX(-55%) scaleY(1.05) scaleX(0.95); opacity: 1; }
 }
 
-
-@keyframes fireworks {
+/* Enhanced Fireworks */
+@keyframes firework-burst {
   0% { transform: scale(0); opacity: 1; }
-  100% { transform: scale(1); opacity: 0; }
+  80% { transform: scale(1.2); opacity: 0.8; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+@keyframes sparkle {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
 }
 
 .firework {
   position: absolute;
   border-radius: 50%;
-  animation: fireworks 2s ease-out infinite;
+  animation: firework-burst 2.5s ease-out infinite;
+  width: 6px;
+  height: 6px;
 }
 
-.firework:before, .firework:after {
+.firework::before, .firework::after {
   content: '';
   position: absolute;
   display: block;
   border-radius: 50%;
+  animation: sparkle 1s infinite ease-in-out;
 }
 
-.firework:nth-child(1) {
-  top: 20%;
-  left: 30%;
-  width: 5px;
-  height: 5px;
-  background: #ffc107;
-  box-shadow: 0 0 10px #ffeb3b;
-  animation-delay: 0.5s;
-}
+.firework:nth-child(1) { top: 15%; left: 20%; background: #ffc107; box-shadow: 0 0 10px #ffeb3b; animation-delay: 0s; }
+.firework:nth-child(2) { top: 25%; left: 80%; background: #f44336; box-shadow: 0 0 10px #ff5252; animation-delay: -1.2s; }
+.firework:nth-child(3) { top: 50%; left: 10%; background: #4caf50; box-shadow: 0 0 10px #81c784; animation-delay: -0.5s; }
+.firework:nth-child(4) { top: 70%; left: 90%; background: #2196f3; box-shadow: 0 0 10px #64b5f6; animation-delay: -0.8s; }
+.firework:nth-child(5) { top: 80%; left: 40%; background: #9c27b0; box-shadow: 0 0 10px #ba68c8; animation-delay: -1.5s; }
 
-.firework:nth-child(2) {
-  top: 40%;
-  left: 70%;
-  width: 7px;
-  height: 7px;
-  background: #f44336;
-  box-shadow: 0 0 10px #ff5252;
-  animation-delay: 1s;
-}
 
-.firework:nth-child(3) {
-  top: 60%;
-  left: 15%;
-  width: 6px;
-  height: 6px;
-  background: #4caf50;
-  box-shadow: 0 0 10px #81c784;
-  animation-delay: 1.5s;
-}
+    
