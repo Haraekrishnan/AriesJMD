@@ -1,23 +1,17 @@
-
-* {
-  position: relative;
-  box-sizing: border-box;
-}
-
 .diwali-container {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: transparent;
-    overflow: hidden;
-    color: rgba(255, 255, 255, 0.5);
-    font-family: "Russo One", arial, sans-serif;
-    line-height: 1.25;
-    letter-spacing: 0.06em;
-    pointer-events: none;
-    z-index: 9998; /* Below sidebar/header */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: "Russo One", arial, sans-serif;
+  line-height: 1.25;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+  z-index: 9998;
 }
 
 .canvas-container {
@@ -57,58 +51,3 @@
     color: #ff9800;
     text-shadow: 1px 1px 2px #fff, 0 0 1em #ffc107, 0 0 0.2em #ffc107;
 }
-
-.diya-container {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  display: flex;
-  justify-content: space-around;
-  align-items: flex-end;
-  padding: 0 20px;
-  pointer-events: none;
-}
-
-.diya {
-  position: relative;
-  width: 40px;
-  height: 20px;
-  background-color: #d2691e;
-  border-radius: 50% / 100% 100% 0 0;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.4);
-}
-
-.diya::before {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80%;
-  height: 10px;
-  background-color: #8b4513;
-  border-radius: 50%;
-}
-
-.flame {
-  position: absolute;
-  width: 12px;
-  height: 25px;
-  background-color: #FFC107;
-  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
-  top: -20px;
-  left: 50%;
-  transform: translateX(-50%);
-  animation: flicker 1.5s infinite alternate;
-  box-shadow: 0 0 10px #FFC107, 0 0 20px #FFC107, 0 0 30px #FF8F00;
-}
-
-@keyframes flicker {
-  0% { transform: translateX(-50%) scaleY(1) rotate(0deg); opacity: 0.9; }
-  25% { transform: translateX(-45%) scaleY(1.05) rotate(2deg); opacity: 1; }
-  50% { transform: translateX(-55%) scaleY(0.95) rotate(-2deg); opacity: 0.8; }
-  75% { transform: translateX(-50%) scaleY(1.02) rotate(1deg); opacity: 0.95; }
-  100% { transform: translateX(-50%) scaleY(1) rotate(0deg); opacity: 1; }
-}
-
