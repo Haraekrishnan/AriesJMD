@@ -52,8 +52,8 @@
 /* --- Confetti --- */
 .firework {
   position: absolute;
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
   opacity: 0;
   animation: fall 3s linear infinite;
 }
@@ -63,16 +63,16 @@
   100% { transform: translateY(110vh) rotateZ(720deg); opacity: 0; }
 }
 
-.firework:nth-child(1) { left: 10%; animation-delay: 0s; background: #ffc107; }
-.firework:nth-child(2) { left: 20%; animation-delay: -1.2s; background: #f44336; }
-.firework:nth-child(3) { left: 30%; animation-delay: -0.5s; background: #4caf50; }
-.firework:nth-child(4) { left: 40%; animation-delay: -0.8s; background: #2196f3; }
-.firework:nth-child(5) { left: 50%; animation-delay: -1.5s; background: #9c27b0; }
-.firework:nth-child(6) { left: 60%; animation-delay: -2s; background: #e91e63; }
-.firework:nth-child(7) { left: 70%; animation-delay: -1s; background: #00bcd4; }
-.firework:nth-child(8) { left: 80%; animation-delay: -2.5s; background: #ff9800; }
-.firework:nth-child(9) { left: 90%; animation-delay: -0.3s; background: #ffc107; }
-.firework:nth-child(10) { left: 95%; animation-delay: -1.8s; background: #f44336; }
+.firework:nth-child(1) { left: 10%; animation-delay: 0s; background: #FFD700; } /* Gold */
+.firework:nth-child(2) { left: 20%; animation-delay: -1.2s; background: #FF69B4; } /* Hot Pink */
+.firework:nth-child(3) { left: 30%; animation-delay: -0.5s; background: #32CD32; } /* Lime Green */
+.firework:nth-child(4) { left: 40%; animation-delay: -0.8s; background: #1E90FF; } /* Dodger Blue */
+.firework:nth-child(5) { left: 50%; animation-delay: -1.5s; background: #FF4500; } /* Orange Red */
+.firework:nth-child(6) { left: 60%; animation-delay: -2s; background: #9370DB; } /* Medium Purple */
+.firework:nth-child(7) { left: 70%; animation-delay: -1s; background: #00CED1; } /* Dark Turquoise */
+.firework:nth-child(8) { left: 80%; animation-delay: -2.5s; background: #FFD700; } /* Gold */
+.firework:nth-child(9) { left: 90%; animation-delay: -0.3s; background: #FF1493; } /* Deep Pink */
+.firework:nth-child(10) { left: 95%; animation-delay: -1.8s; background: #ADFF2F; } /* Green Yellow */
 
 
 /* --- BALLOONS --- */
