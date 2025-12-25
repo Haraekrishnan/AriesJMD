@@ -9,7 +9,7 @@ export default function NewYearDecoration() {
             <div className="balloon balloon-2"></div>
             <div className="balloon balloon-3"></div>
             
-            {/* --- FIREWORKS (previously confetti) --- */}
+            {/* --- FIREWORKS --- */}
             {Array.from({ length: 25 }).map((_, i) => (
                 <div key={`firework-${i}`} className="firework"></div>
             ))}
@@ -27,26 +27,6 @@ export default function NewYearDecoration() {
 
             <div className="happy-new-year">
                 <h1>Happy New Year 2026</h1>
-            </div>
-
-            {/* --- New Sparkler Elements --- */}
-            <div className="sparkler-container sparkler-1">
-                <div className="sparkler-stick"></div>
-                <div className="spark-wrapper">
-                    {Array.from({ length: 20 }).map((_, i) => <div key={i} className="spark"></div>)}
-                </div>
-            </div>
-             <div className="sparkler-container sparkler-2">
-                <div className="sparkler-stick"></div>
-                <div className="spark-wrapper">
-                    {Array.from({ length: 20 }).map((_, i) => <div key={i} className="spark"></div>)}
-                </div>
-            </div>
-            <div className="sparkler-container sparkler-3">
-                <div className="sparkler-stick"></div>
-                <div className="spark-wrapper">
-                    {Array.from({ length: 20 }).map((_, i) => <div key={i} className="spark"></div>)}
-                </div>
             </div>
 
             {/* --- Illumination Bulbs --- */}
