@@ -1,4 +1,3 @@
-
 'use client';
 import './diwali.css';
 
@@ -13,16 +12,6 @@ export default function DiwaliDecoration() {
             {/* Happy Diwali Text */}
             <div className="happy-diwali">
                 <h1>Happy Diwali</h1>
-            </div>
-
-            {/* Sidebar Diyas */}
-            <div className="sidebar-diya-container">
-                {Array.from({ length: 10 }).map((_, i) => (
-                    <div key={`sidebar-diya-${i}`} className="diya">
-                        <div className="flame"></div>
-                        <div className="pot"></div>
-                    </div>
-                ))}
             </div>
 
             {/* Chart Diyas */}

@@ -58,23 +58,6 @@
   50% { transform: rotate(5deg) translateY(-3px); }
 }
 
-/* Sidebar Diyas */
-.sidebar-diya-container {
-    position: absolute;
-    bottom: 55px; /* Position above user profile section */
-    left: 10px;
-    width: 230px; 
-    display: none;
-    justify-content: space-around;
-}
-
-@media (min-width: 768px) {
-    .sidebar-diya-container {
-        display: flex; /* Show on md screens and up */
-    }
-}
-
-
 /* Chart Diyas */
 .chart-diya-container {
     position: absolute;
