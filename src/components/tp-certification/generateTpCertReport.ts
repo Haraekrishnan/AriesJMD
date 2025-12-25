@@ -55,7 +55,11 @@ const buildCertItems = (items: TpCertListItem[], allItems: FullItem[]): CertItem
       it.ariesId ||
       null;
 
-    const finalSerial = serial;
+    let finalSerial = serial;
+    if (it.materialName.toLowerCase() === 'wire sling') {
+        finalSerial = ariesId || 'N/A';
+    }
+
 
     const materialName =
       it.materialName ||
