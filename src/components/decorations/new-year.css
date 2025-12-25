@@ -81,8 +81,8 @@
 }
 
 @keyframes firework-explode {
-  50% { opacity: 1; transform: translate(-50%, -50%) scale(35); }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(35); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(15); } /* Smaller scale */
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(25); }
 }
 
 .firework:nth-child(1) { top: 80%; left: 20%; animation-delay: 0s; background: #ffc107; }
@@ -98,8 +98,8 @@
 }
 .confetti {
     position: absolute;
-    width: 10px;
-    height: 15px;
+    width: 8px; /* smaller */
+    height: 12px; /* smaller */
     opacity: 0;
     animation: fall-confetti 5s linear infinite;
 }
@@ -107,7 +107,7 @@
 @keyframes fall-confetti {
     0% {
         transform: translate3d(var(--x-start), -10vh, 0) rotateZ(0deg);
-        opacity: 1;
+        opacity: 0.4; /* start more transparent */
     }
     100% {
         transform: translate3d(var(--x-end), 110vh, 0) rotateZ(var(--rotate-end));
@@ -148,6 +148,11 @@
 .confetti:nth-child(18) { --x-start: 95vw; --x-end: 90vw; --rotate-end: 950deg; animation-delay: -0.7s; }
 .confetti:nth-child(19) { --x-start: 5vw; --x-end: 8vw; --rotate-end: 300deg; animation-delay: -2.5s; }
 .confetti:nth-child(20) { --x-start: 98vw; --x-end: 95vw; --rotate-end: 650deg; animation-delay: -1.4s; }
+.confetti:nth-child(21) { --x-start: 8vw; --x-end: 3vw; --rotate-end: 360deg; animation-delay: -1.8s; }
+.confetti:nth-child(22) { --x-start: 18vw; --x-end: 23vw; --rotate-end: 720deg; animation-delay: -2.9s; }
+.confetti:nth-child(23) { --x-start: 28vw; --x-end: 31vw; --rotate-end: 450deg; animation-delay: -0.1s; }
+.confetti:nth-child(24) { --x-start: 38vw; --x-end: 46vw; --rotate-end: 540deg; animation-delay: -3.5s; }
+.confetti:nth-child(25) { --x-start: 48vw; --x-end: 50vw; --rotate-end: 900deg; animation-delay: -1.4s; }
 
 
 /* --- BALLOONS --- */
@@ -156,7 +161,7 @@
   font-size: 2rem;
   bottom: -50px;
   animation: rise 10s ease-in-out infinite;
-  opacity: 0.7;
+  opacity: 0.15; /* Reduced opacity */
 }
 
 @keyframes rise {
