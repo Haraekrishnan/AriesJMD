@@ -126,7 +126,6 @@ export default function DiwaliDecoration() {
     
     const loop = () => {
       if (!ctx) return;
-      // This is the crucial part: clear the canvas completely instead of filling with a semi-opaque black
       ctx.clearRect(0, 0, width, height);
 
       if (Math.random() < 0.05) {
@@ -159,6 +158,13 @@ export default function DiwaliDecoration() {
         </div>
         <div className="canvas-container">
             <canvas ref={canvasRef}></canvas>
+        </div>
+        <div className="diya-container">
+            {Array.from({ length: 15 }).map((_, i) => (
+                <div key={i} className="diya">
+                    <div className="flame"></div>
+                </div>
+            ))}
         </div>
     </div>
   );
