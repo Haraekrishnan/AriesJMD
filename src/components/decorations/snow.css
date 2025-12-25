@@ -89,7 +89,7 @@
 }
 
 .tree-1 {
-    left: 5%;
+    left: 18rem;
 }
 
 .tree-2 {
@@ -99,8 +99,8 @@
 
 .snowman {
     bottom: 10px; /* Adjusted to be fully visible */
-    left: 25%;
-    font-size: 4.5rem;
+    left: 32rem;
+    font-size: 5.5rem;
 }
 
 .gift {
@@ -109,7 +109,7 @@
 }
 
 .gift-1 {
-    left: 12%;
+    left: 23rem;
 }
 
 .gift-2 {
