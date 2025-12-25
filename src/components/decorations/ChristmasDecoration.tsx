@@ -14,6 +14,8 @@ export default function ChristmasDecoration() {
             <div className="decoration tree tree-1">🎄</div>
             <div className="decoration tree tree-2">🎄</div>
             <div className="decoration snowman">⛄</div>
+            <div className="decoration gift gift-1">🎁</div>
+            <div className="decoration gift gift-2">🎁</div>
 
             {/* Lights */}
             <div className="lights">
