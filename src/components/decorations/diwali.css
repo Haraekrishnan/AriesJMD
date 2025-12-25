@@ -217,32 +217,33 @@
 
 @keyframes spark-animation {
     0% {
-        transform: translateY(0) scaleY(1);
+        transform: translateY(0) translateX(0) scaleY(1);
         opacity: 1;
     }
     100% {
-        transform: translateY(-80px) scaleY(0);
+        transform: translateY(-80px) translateX(var(--translateX, 0)) scaleY(0);
         opacity: 0;
     }
 }
 
-.spark:nth-child(1) { transform: rotate(0deg); animation-delay: 0s; }
-.spark:nth-child(2) { transform: rotate(18deg); animation-delay: -0.1s; }
-.spark:nth-child(3) { transform: rotate(36deg); animation-delay: -0.2s; }
-.spark:nth-child(4) { transform: rotate(54deg); animation-delay: -0.3s; }
-.spark:nth-child(5) { transform: rotate(72deg); animation-delay: -0.4s; }
-.spark:nth-child(6) { transform: rotate(90deg); animation-delay: -0.5s; }
-.spark:nth-child(7) { transform: rotate(108deg); animation-delay: -0.6s; }
-.spark:nth-child(8) { transform: rotate(126deg); animation-delay: -0.7s; }
-.spark:nth-child(9) { transform: rotate(144deg); animation-delay: -0.8s; }
-.spark:nth-child(10) { transform: rotate(162deg); animation-delay: -0.9s; }
-.spark:nth-child(11) { transform: rotate(180deg); animation-delay: -1.0s; }
-.spark:nth-child(12) { transform: rotate(198deg); animation-delay: -1.1s; }
-.spark:nth-child(13) { transform: rotate(216deg); animation-delay: -1.2s; }
-.spark:nth-child(14) { transform: rotate(234deg); animation-delay: -1.3s; }
-.spark:nth-child(15) { transform: rotate(252deg); animation-delay: -1.4s; }
-.spark:nth-child(16) { transform: rotate(270deg); animation-delay: -1.5s; }
-.spark:nth-child(17) { transform: rotate(288deg); animation-delay: -1.6s; }
-.spark:nth-child(18) { transform: rotate(306deg); animation-delay: -1.7s; }
-.spark:nth-child(19) { transform: rotate(324deg); animation-delay: -1.8s; }
-.spark:nth-child(20) { transform: rotate(342deg); animation-delay: -1.9s; }
+
+.spark:nth-child(1) { transform: rotate(0deg); animation-delay: 0s; --translateX: 0px; }
+.spark:nth-child(2) { transform: rotate(18deg); animation-delay: -0.1s; --translateX: 10px; }
+.spark:nth-child(3) { transform: rotate(36deg); animation-delay: -0.2s; --translateX: 5px; }
+.spark:nth-child(4) { transform: rotate(54deg); animation-delay: -0.3s; --translateX: 12px; }
+.spark:nth-child(5) { transform: rotate(72deg); animation-delay: -0.4s; --translateX: 3px; }
+.spark:nth-child(6) { transform: rotate(90deg); animation-delay: -0.5s; --translateX: 15px; }
+.spark:nth-child(7) { transform: rotate(108deg); animation-delay: -0.6s; --translateX: -5px; }
+.spark:nth-child(8) { transform: rotate(126deg); animation-delay: -0.7s; --translateX: -10px; }
+.spark:nth-child(9) { transform: rotate(144deg); animation-delay: -0.8s; --translateX: -2px; }
+.spark:nth-child(10) { transform: rotate(162deg); animation-delay: -0.9s; --translateX: -12px; }
+.spark:nth-child(11) { transform: rotate(180deg); animation-delay: -1.0s; --translateX: 0px; }
+.spark:nth-child(12) { transform: rotate(198deg); animation-delay: -1.1s; --translateX: 8px; }
+.spark:nth-child(13) { transform: rotate(216deg); animation-delay: -1.2s; --translateX: 2px; }
+.spark:nth-child(14) { transform: rotate(234deg); animation-delay: -1.3s; --translateX: 10px; }
+.spark:nth-child(15) { transform: rotate(252deg); animation-delay: -1.4s; --translateX: -7px; }
+.spark:nth-child(16) { transform: rotate(270deg); animation-delay: -1.5s; --translateX: -15px; }
+.spark:nth-child(17) { transform: rotate(288deg); animation-delay: -1.6s; --translateX: -3px; }
+.spark:nth-child(18) { transform: rotate(306deg); animation-delay: -1.7s; --translateX: -11px; }
+.spark:nth-child(19) { transform: rotate(324deg); animation-delay: -1.8s; --translateX: 4px; }
+.spark:nth-child(20) { transform: rotate(342deg); animation-delay: -1.9s; --translateX: 13px; }
