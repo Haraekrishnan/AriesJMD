@@ -282,7 +282,7 @@ export default function AccountPage() {
                     <SelectContent>
                         <SelectItem value="none">None</SelectItem>
                         <SelectItem value="christmas">Christmas</SelectItem>
-                        <SelectItem value="diwali">Diwali (Coming Soon)</SelectItem>
+                        <SelectItem value="diwali">Diwali</SelectItem>
                     </SelectContent>
                 </Select>
             </CardContent>

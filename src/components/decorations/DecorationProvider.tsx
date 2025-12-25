@@ -2,7 +2,7 @@
 'use client';
 import { useDecorations } from '@/contexts/decoration-provider';
 import ChristmasDecoration from './ChristmasDecoration';
-// Import other decorations here, e.g., import DiwaliDecoration from './DiwaliDecoration';
+import DiwaliDecoration from './DiwaliDecoration';
 
 export function DecorationProvider() {
     const { activeTheme } = useDecorations();
@@ -14,8 +14,8 @@ export function DecorationProvider() {
     switch (activeTheme) {
         case 'christmas':
             return <ChristmasDecoration />;
-        // case 'diwali':
-        //     return <DiwaliDecoration />;
+        case 'diwali':
+            return <DiwaliDecoration />;
         default:
             return null;
     }

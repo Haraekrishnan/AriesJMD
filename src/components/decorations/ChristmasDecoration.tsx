@@ -1,6 +1,6 @@
 
 'use client';
-import './snow.css';
+import './christmas.css';
 
 export default function ChristmasDecoration() {
     return (
