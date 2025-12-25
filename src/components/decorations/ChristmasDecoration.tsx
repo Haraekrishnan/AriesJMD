@@ -7,7 +7,7 @@ export default function ChristmasDecoration() {
         <div className="snow-container">
             {/* Snowflakes */}
             {Array.from({ length: 40 }).map((_, i) => (
-                <div key={`snow-${i}`} className="snow"></div>
+                <div key={`snow-${i}`} className="snow">❄</div>
             ))}
             
             {/* Decorations */}
