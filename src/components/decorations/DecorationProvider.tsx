@@ -2,6 +2,7 @@
 import { useDecorations } from '@/contexts/decoration-provider';
 import ChristmasDecoration from './ChristmasDecoration';
 import NewYearDecoration from './NewYearDecoration';
+import DiwaliDecoration from './DiwaliDecoration';
 import dynamic from 'next/dynamic';
 
 export function DecorationProvider() {
@@ -16,6 +17,8 @@ export function DecorationProvider() {
             return <ChristmasDecoration />;
         case 'new-year':
             return <NewYearDecoration />;
+        case 'diwali':
+            return <DiwaliDecoration />;
         default:
             return null;
     }
