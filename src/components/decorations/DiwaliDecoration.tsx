@@ -1,3 +1,4 @@
+
 'use client';
 import './diwali.css';
 
@@ -24,7 +25,7 @@ export default function DiwaliDecoration() {
                 ))}
             </div>
 
-            {/* Fireworks and Crackers */}
+            {/* Fireworks */}
             <div className="firework"></div>
             <div className="firework"></div>
             <div className="firework"></div>
@@ -43,18 +44,12 @@ export default function DiwaliDecoration() {
             <div className="firework"></div>
 
 
-            {/* New Sparkler Elements */}
-            <div className="sparkler-container sparkler-1">
-                <div className="sparkler-stick"></div>
-                <div className="spark-wrapper">
-                    {Array.from({ length: 20 }).map((_, i) => <div key={i} className="spark"></div>)}
-                </div>
+            {/* Firecracker Elements */}
+            <div className="firecracker-container firecracker-1">
+                <div className="firecracker"></div>
             </div>
-             <div className="sparkler-container sparkler-2">
-                <div className="sparkler-stick"></div>
-                <div className="spark-wrapper">
-                    {Array.from({ length: 20 }).map((_, i) => <div key={i} className="spark"></div>)}
-                </div>
+             <div className="firecracker-container firecracker-2">
+                <div className="firecracker"></div>
             </div>
 
 
