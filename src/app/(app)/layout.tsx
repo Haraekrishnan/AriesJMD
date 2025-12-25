@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useAuth } from '@/contexts/auth-provider';
+import { useAppContext } from '@/contexts/app-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AppSidebar } from '@/components/shared/app-sidebar';
 import Header from '@/components/shared/header';
@@ -10,31 +10,8 @@ import BroadcastFeed from '@/components/announcements/BroadcastFeed';
 import { DecorationProvider } from '@/components/decorations/DecorationProvider';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-  const pathname = usePathname();
-
-  useEffect(() => {
-    if (loading) {
-      return; 
-    }
-
-    if (!user) {
-      router.replace('/login');
-      return;
-    }
-
-    if (user.status === 'locked') {
-      if (pathname !== '/status') {
-        router.replace('/status');
-      }
-    } else if (user.status === 'active') {
-      if (pathname === '/login' || pathname === '/status') {
-        router.replace('/dashboard');
-      }
-    }
-  }, [user, loading, router, pathname]);
-
+  const { user, loading } = useAppContext();
+  
   if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -47,11 +24,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     );
-  }
-  
-  if (user.status === 'locked') {
-    // For the locked status page, we don't want the main app layout
-    return <>{children}</>;
   }
   
   return (

@@ -1,6 +1,7 @@
 
 'use client';
-import { createContext, useContext, ReactNode, useCallback } from 'react';
+import { createContext, useContext, ReactNode, useCallback, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { AuthProvider, useAuth } from './auth-provider';
 import { GeneralProvider, useGeneral } from './general-provider';
 import { InventoryProvider, useInventory } from './inventory-provider';
@@ -25,6 +26,27 @@ function CombinedProvider({ children }: { children: ReactNode }) {
   const consumable = useConsumable();
   const accommodation = useAccommodation();
   const decorations = useDecorations();
+  
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const { user, loading } = auth;
+
+  useEffect(() => {
+    if (loading) return;
+
+    const isAuthPage = pathname === '/login' || pathname === '/status';
+
+    if (!user && !isAuthPage) {
+      router.replace('/login');
+    } else if (user) {
+      if (user.status === 'locked' && pathname !== '/status') {
+        router.replace('/status');
+      } else if (user.status === 'active' && isAuthPage) {
+        router.replace('/dashboard');
+      }
+    }
+  }, [user, loading, pathname, router]);
 
   const combinedValue = {
     ...auth,
