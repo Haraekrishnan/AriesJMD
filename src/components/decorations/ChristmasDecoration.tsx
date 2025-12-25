@@ -1,3 +1,4 @@
+
 'use client';
 import './snow.css';
 
@@ -15,8 +16,8 @@ export default function ChristmasDecoration() {
             <div className="decoration tree tree-2">🎄</div>
             <div className="decoration snowman">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none" className="w-full h-full">
-                <circle cx="40" cy="58" r="20" fill="white"/>
-                <circle cx="40" cy="30" r="14" fill="white"/>
+                <circle cx="40" cy="58" r="20" fill="white" stroke="#E0E0E0" strokeWidth="1"/>
+                <circle cx="40" cy="30" r="14" fill="white" stroke="#E0E0E0" strokeWidth="1"/>
                 <path d="M26 12L54 12L52 22L28 22L26 12Z" fill="#212121"/>
                 <rect x="23" y="21" width="34" height="2" fill="#212121"/>
                 <circle cx="36" cy="28" r="1.5" fill="#212121"/>
