@@ -209,9 +209,9 @@
 /* Animated SVG Tree */
 .animated-tree-container {
   position: absolute;
-  bottom: 1rem;
-  left: 17rem; /* To the right of the sidebar */
-  height: 25vh;
+  bottom: 2rem;
+  left: 30%;
+  height: 10vh;
   display: flex;
   justify-content: center;
   align-items: center;
