@@ -12,13 +12,6 @@ export default function NewYearDecoration() {
             <div className="firework"></div>
             <div className="firework"></div>
 
-            {/* Confetti */}
-            <div className="confetti-container">
-                {Array.from({ length: 150 }).map((_, i) => (
-                    <div key={`confetti-${i}`} className="confetti"></div>
-                ))}
-            </div>
-            
             <div className="happy-new-year">
                 <h1>Happy New Year 2026</h1>
             </div>

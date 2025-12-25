@@ -81,7 +81,7 @@
 }
 
 @keyframes firework-explode {
-  50% { opacity: 1; transform: translate(-50%, -50%) scale(15); } /* Smaller scale */
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(15); }
   100% { opacity: 0; transform: translate(-50%, -50%) scale(25); }
 }
 
@@ -90,70 +90,6 @@
 .firework:nth-child(3) { top: 85%; left: 10%; animation-delay: -0.5s; background: #4caf50; }
 .firework:nth-child(4) { top: 75%; left: 90%; animation-delay: -0.8s; background: #2196f3; }
 .firework:nth-child(5) { top: 95%; left: 50%; animation-delay: -1.5s; background: #9c27b0; }
-
-
-/* --- CONFETTI --- */
-.confetti-container {
-    perspective: 700px;
-}
-.confetti {
-    position: absolute;
-    width: 8px; /* smaller */
-    height: 12px; /* smaller */
-    opacity: 0;
-    animation: fall-confetti 5s linear infinite;
-}
-
-@keyframes fall-confetti {
-    0% {
-        transform: translate3d(var(--x-start), -10vh, 0) rotateZ(0deg);
-        opacity: 0.4; /* start more transparent */
-    }
-    100% {
-        transform: translate3d(var(--x-end), 110vh, 0) rotateZ(var(--rotate-end));
-        opacity: 0;
-    }
-}
-
-.confetti:nth-child(10n) { background-color: #f44336; }
-.confetti:nth-child(10n + 1) { background-color: #e91e63; }
-.confetti:nth-child(10n + 2) { background-color: #9c27b0; }
-.confetti:nth-child(10n + 3) { background-color: #673ab7; }
-.confetti:nth-child(10n + 4) { background-color: #3f51b5; }
-.confetti:nth-child(10n + 5) { background-color: #2196f3; }
-.confetti:nth-child(10n + 6) { background-color: #03a9f4; }
-.confetti:nth-child(10n + 7) { background-color: #00bcd4; }
-.confetti:nth-child(10n + 8) { background-color: #009688; }
-.confetti:nth-child(10n + 9) { background-color: #4caf50; }
-.confetti:nth-child(odd) { animation-duration: 4s; }
-.confetti:nth-child(even) { animation-duration: 6s; }
-
-.confetti:nth-child(1) { --x-start: 10vw; --x-end: 5vw; --rotate-end: 360deg; animation-delay: -1.2s; }
-.confetti:nth-child(2) { --x-start: 20vw; --x-end: 25vw; --rotate-end: 720deg; animation-delay: -2.3s; }
-.confetti:nth-child(3) { --x-start: 30vw; --x-end: 33vw; --rotate-end: 450deg; animation-delay: -0.5s; }
-.confetti:nth-child(4) { --x-start: 40vw; --x-end: 48vw; --rotate-end: 540deg; animation-delay: -3.1s; }
-.confetti:nth-child(5) { --x-start: 50vw; --x-end: 52vw; --rotate-end: 900deg; animation-delay: -1.8s; }
-.confetti:nth-child(6) { --x-start: 60vw; --x-end: 65vw; --rotate-end: 630deg; animation-delay: -4s; }
-.confetti:nth-child(7) { --x-start: 70vw; --x-end: 71vw; --rotate-end: 810deg; animation-delay: -0.9s; }
-.confetti:nth-child(8) { --x-start: 80vw; --x-end: 88vw; --rotate-end: 1080deg; animation-delay: -2.7s; }
-.confetti:nth-child(9) { --x-start: 90vw; --x-end: 95vw; --rotate-end: 270deg; animation-delay: -1.5s; }
-.confetti:nth-child(10) { --x-start: 15vw; --x-end: 18vw; --rotate-end: 480deg; animation-delay: -3.5s; }
-.confetti:nth-child(11) { --x-start: 25vw; --x-end: 22vw; --rotate-end: 600deg; animation-delay: -0.1s; }
-.confetti:nth-child(12) { --x-start: 35vw; --x-end: 38vw; --rotate-end: 960deg; animation-delay: -1.9s; }
-.confetti:nth-child(13) { --x-start: 45vw; --x-end: 40vw; --rotate-end: 750deg; animation-delay: -2.9s; }
-.confetti:nth-child(14) { --x-start: 55vw; --x-end: 58vw; --rotate-end: 1200deg; animation-delay: -0.4s; }
-.confetti:nth-child(15) { --x-start: 65vw; --x-end: 60vw; --rotate-end: 1000deg; animation-delay: -1.1s; }
-.confetti:nth-child(16) { --x-start: 75vw; --x-end: 79vw; --rotate-end: 850deg; animation-delay: -2.2s; }
-.confetti:nth-child(17) { --x-start: 85vw; --x-end: 80vw; --rotate-end: 1100deg; animation-delay: -3.3s; }
-.confetti:nth-child(18) { --x-start: 95vw; --x-end: 90vw; --rotate-end: 950deg; animation-delay: -0.7s; }
-.confetti:nth-child(19) { --x-start: 5vw; --x-end: 8vw; --rotate-end: 300deg; animation-delay: -2.5s; }
-.confetti:nth-child(20) { --x-start: 98vw; --x-end: 95vw; --rotate-end: 650deg; animation-delay: -1.4s; }
-.confetti:nth-child(21) { --x-start: 8vw; --x-end: 3vw; --rotate-end: 360deg; animation-delay: -1.8s; }
-.confetti:nth-child(22) { --x-start: 18vw; --x-end: 23vw; --rotate-end: 720deg; animation-delay: -2.9s; }
-.confetti:nth-child(23) { --x-start: 28vw; --x-end: 31vw; --rotate-end: 450deg; animation-delay: -0.1s; }
-.confetti:nth-child(24) { --x-start: 38vw; --x-end: 46vw; --rotate-end: 540deg; animation-delay: -3.5s; }
-.confetti:nth-child(25) { --x-start: 48vw; --x-end: 50vw; --rotate-end: 900deg; animation-delay: -1.4s; }
-
 
 /* --- BALLOONS --- */
 .balloon {
