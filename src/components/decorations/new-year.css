@@ -246,11 +246,16 @@
 }
 .sparkler-1 {
     bottom: 1rem;
-    left: 1rem; /* Adjusted for sidebar */
+    left: 1rem;
 }
 .sparkler-2 {
     bottom: 1rem;
     right: 1rem;
+}
+.sparkler-3 {
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
 }
 .sparkler-stick {
     width: 4px;

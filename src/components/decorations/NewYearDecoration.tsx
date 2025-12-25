@@ -42,6 +42,12 @@ export default function NewYearDecoration() {
                     {Array.from({ length: 20 }).map((_, i) => <div key={i} className="spark"></div>)}
                 </div>
             </div>
+            <div className="sparkler-container sparkler-3">
+                <div className="sparkler-stick"></div>
+                <div className="spark-wrapper">
+                    {Array.from({ length: 20 }).map((_, i) => <div key={i} className="spark"></div>)}
+                </div>
+            </div>
 
             {/* --- Illumination Bulbs --- */}
             <div className="lights">
