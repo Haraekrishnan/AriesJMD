@@ -1,4 +1,5 @@
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -1001,3 +1002,18 @@ export type Directive = {
   readBy: { [key: string]: boolean };
 };
 export type DirectiveStatus = 'New' | 'Under Review' | 'Action Taken' | 'Closed';
+
+export type DamageReportStatus = 'Pending' | 'Under Review' | 'Approved' | 'Rejected';
+
+export type DamageReport = {
+    id: string;
+    itemId: string | null;
+    otherItemName?: string | null;
+    reason: string;
+    reporterId: string;
+    reportDate: string; // ISO
+    status: DamageReportStatus;
+    attachmentUrl: string | null;
+};
+
+export type DecorationTheme = 'none' | 'christmas' | 'diwali';

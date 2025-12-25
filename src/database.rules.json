@@ -134,6 +134,10 @@
       ".read": true,
       ".write": true
     },
+    "decorations": {
+      ".read": true,
+      ".write": "auth != null"
+    },
     "jobSchedules": {
       ".read": true,
       ".write": true

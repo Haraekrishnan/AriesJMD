@@ -10,6 +10,7 @@ import { PurchaseProvider, usePurchase } from './purchase-provider';
 import { TaskProvider, useTask } from './task-provider';
 import { ConsumableProvider, useConsumable } from './consumable-provider';
 import { AccommodationProvider, useAccommodation } from './accommodation-provider';
+import { DecorationContextProvider, useDecorations } from './decoration-provider';
 
 const AppContext = createContext({} as any);
 
@@ -23,6 +24,7 @@ function CombinedProvider({ children }: { children: ReactNode }) {
   const task = useTask();
   const consumable = useConsumable();
   const accommodation = useAccommodation();
+  const decorations = useDecorations();
 
   const combinedValue = {
     ...auth,
@@ -34,6 +36,7 @@ function CombinedProvider({ children }: { children: ReactNode }) {
     ...task,
     ...consumable,
     ...accommodation,
+    ...decorations,
   };
 
   return (
@@ -54,9 +57,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     <ConsumableProvider>
                         <InventoryProvider>
                             <AccommodationProvider>
-                                <CombinedProvider>
-                                {children}
-                                </CombinedProvider>
+                                <DecorationContextProvider>
+                                    <CombinedProvider>
+                                    {children}
+                                    </CombinedProvider>
+                                </DecorationContextProvider>
                             </AccommodationProvider>
                         </InventoryProvider>
                     </ConsumableProvider>

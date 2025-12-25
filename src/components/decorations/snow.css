@@ -1,0 +1,152 @@
+
+.snow-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+@keyframes fall {
+  0% {
+    opacity: 0;
+    top: -10%;
+    transform: translateX(20px) rotate(0deg);
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    top: 110%;
+    transform: translateX(-20px) rotate(180deg);
+  }
+}
+
+.snow {
+  position: absolute;
+  top: -150px;
+  width: 10px;
+  height: 10px;
+  background: white;
+  border-radius: 50%;
+  animation-name: fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  opacity: 0;
+}
+
+.snow:nth-child(1) {
+  left: 10%;
+  animation-delay: 0s;
+  animation-duration: 10s;
+}
+.snow:nth-child(2) {
+  left: 20%;
+  animation-delay: 2s;
+  animation-duration: 8s;
+  width: 8px;
+  height: 8px;
+}
+.snow:nth-child(3) {
+  left: 30%;
+  animation-delay: 1s;
+  animation-duration: 12s;
+}
+.snow:nth-child(4) {
+  left: 40%;
+  animation-delay: 4s;
+  animation-duration: 7s;
+  width: 6px;
+  height: 6px;
+}
+.snow:nth-child(5) {
+  left: 50%;
+  animation-delay: 0.5s;
+  animation-duration: 9s;
+}
+.snow:nth-child(6) {
+  left: 60%;
+  animation-delay: 3s;
+  animation-duration: 11s;
+  width: 5px;
+  height: 5px;
+}
+.snow:nth-child(7) {
+  left: 70%;
+  animation-delay: 1.5s;
+  animation-duration: 8.5s;
+}
+.snow:nth-child(8) {
+  left: 80%;
+  animation-delay: 5s;
+  animation-duration: 10.5s;
+  width: 7px;
+  height: 7px;
+}
+.snow:nth-child(9) {
+  left: 90%;
+  animation-delay: 2.5s;
+  animation-duration: 9.5s;
+}
+.snow:nth-child(10) {
+  left: 5%;
+  animation-delay: 3.5s;
+  animation-duration: 7.5s;
+}
+.snow:nth-child(11) {
+  left: 15%;
+  animation-delay: 6s;
+  animation-duration: 11s;
+}
+.snow:nth-child(12) {
+  left: 25%;
+  animation-delay: 4.5s;
+  animation-duration: 13s;
+  width: 4px;
+  height: 4px;
+}
+.snow:nth-child(13) {
+  left: 35%;
+  animation-delay: 7s;
+  animation-duration: 8s;
+}
+.snow:nth-child(14) {
+  left: 45%;
+  animation-delay: 5.5s;
+  animation-duration: 10s;
+}
+.snow:nth-child(15) {
+  left: 55%;
+  animation-delay: 8s;
+  animation-duration: 12s;
+}
+.snow:nth-child(16) {
+  left: 65%;
+  animation-delay: 6.5s;
+  animation-duration: 7.5s;
+  width: 9px;
+  height: 9px;
+}
+.snow:nth-child(17) {
+  left: 75%;
+  animation-delay: 9s;
+  animation-duration: 11.5s;
+}
+.snow:nth-child(18) {
+  left: 85%;
+  animation-delay: 7.5s;
+  animation-duration: 9.5s;
+}
+.snow:nth-child(19) {
+  left: 95%;
+  animation-delay: 10s;
+  animation-duration: 14s;
+}
+.snow:nth-child(20) {
+  left: 2%;
+  animation-delay: 8.5s;
+  animation-duration: 13.5s;
+}

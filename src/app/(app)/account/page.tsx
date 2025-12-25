@@ -9,7 +9,7 @@ import { useMemo, useState, useEffect } from 'react';
 import type { User as UserType } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle, Trash2, Edit, Layers, Lock, Unlock, Eye, EyeOff, DatabaseZap } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, Edit, Layers, Lock, Unlock, Eye, EyeOff, DatabaseZap, PartyPopper } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AddEmployeeDialog from '@/components/account/add-employee-dialog';
 import EditEmployeeDialog from '@/components/account/edit-employee-dialog';
@@ -23,9 +23,11 @@ import FeedbackManagement from '@/components/account/FeedbackManagement';
 import { Badge } from '@/components/ui/badge';
 import UnlockRequests from '@/components/account/UnlockRequests';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
+import { DecorationTheme } from '@/lib/types';
 
 export default function AccountPage() {
-  const { user, users, can, deleteUser, updateProfile, appName, appLogo, updateBranding, loading, getVisibleUsers, lockUser, unlockUser, clearInventoryTransferHistory } = useAppContext();
+  const { user, users, can, deleteUser, updateProfile, appName, appLogo, updateBranding, loading, getVisibleUsers, lockUser, unlockUser, clearInventoryTransferHistory, activeTheme, updateActiveTheme } = useAppContext();
   const { toast } = useToast();
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -39,6 +41,7 @@ export default function AccountPage() {
 
   const [newAppName, setNewAppName] = useState(appName);
   const [newAppLogo, setNewAppLogo] = useState<string | null>(appLogo);
+  const [selectedTheme, setSelectedTheme] = useState<DecorationTheme>(activeTheme || 'none');
   
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -46,7 +49,8 @@ export default function AccountPage() {
   useEffect(() => {
     setNewAppName(appName);
     setNewAppLogo(appLogo);
-  }, [appName, appLogo]);
+    setSelectedTheme(activeTheme || 'none');
+  }, [appName, appLogo, activeTheme]);
   
   useEffect(() => {
     if (user) {
@@ -147,6 +151,11 @@ export default function AccountPage() {
       title: 'Action Complete',
       description: 'Inventory transfer history has been cleared.',
     });
+  };
+  
+  const handleThemeSave = () => {
+    updateActiveTheme(selectedTheme);
+    toast({ title: 'Decorations Updated', description: 'The theme has been applied across the app.' });
   };
 
   return (
@@ -257,6 +266,30 @@ export default function AccountPage() {
           </CardContent>
         </Card>
       )}
+      
+       {(user.role === 'Admin' || user.role === 'Project Coordinator') && (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><PartyPopper/> Decoration Settings</CardTitle>
+                <CardDescription>Activate a global theme for special occasions.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex items-center gap-4">
+                <Select value={selectedTheme} onValueChange={(value) => setSelectedTheme(value as DecorationTheme)}>
+                    <SelectTrigger className="w-[280px]">
+                        <SelectValue placeholder="Select a theme..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="christmas">Christmas</SelectItem>
+                        <SelectItem value="diwali">Diwali (Coming Soon)</SelectItem>
+                    </SelectContent>
+                </Select>
+            </CardContent>
+             <CardFooter>
+                <Button onClick={handleThemeSave}>Save Theme</Button>
+            </CardFooter>
+        </Card>
+       )}
 
       {can.manage_branding && (
         <Card>
