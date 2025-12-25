@@ -126,8 +126,8 @@ export default function DiwaliDecoration() {
     
     const loop = () => {
       if (!ctx) return;
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-      ctx.fillRect(0, 0, width, height);
+      // This is the crucial part: clear the canvas completely instead of filling with a semi-opaque black
+      ctx.clearRect(0, 0, width, height);
 
       if (Math.random() < 0.05) {
         fireworks.push(createFirework());
