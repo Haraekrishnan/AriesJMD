@@ -98,7 +98,7 @@
     bottom: 10px;
     left: 50%;
     transform: translateX(-50%);
-    width: 8rem;
+    width: 4rem;
     height: auto;
 }
 
@@ -177,17 +177,9 @@
 .star2 { top: 20%; left: 80%; animation-delay: 1s; color: #FFFACD; }
 .star3 { top: 50%; left: 10%; animation-delay: 2s; color: #F0E68C; }
 .star4 { top: 80%; left: 90%; animation-delay: 0.5s; color: #FFD700; }
-
-.ball {
-    position: absolute;
-    width: 15px;
-    height: 15px;
-    border-radius: 50%;
-    animation: sway 5s infinite ease-in-out;
-}
-.ball1 { bottom: 20%; left: 30%; background-color: #c00; animation-delay: 0s; }
-.ball2 { bottom: 40%; left: 60%; background-color: #00c; animation-delay: 1.5s; }
-.ball3 { bottom: 10%; left: 70%; background-color: #0c0; animation-delay: 3s; }
+.star5 { bottom: 20%; left: 30%; animation-delay: 0.2s; color: #FFD700; }
+.star6 { bottom: 40%; left: 60%; animation-delay: 1.8s; color: #FFFACD; }
+.star7 { bottom: 10%; left: 70%; animation-delay: 3.2s; color: #F0E68C; }
 
 
 /* Merry Christmas Text */
