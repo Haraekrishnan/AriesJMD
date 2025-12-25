@@ -14,10 +14,10 @@ export default function DiwaliDecoration() {
                 <h1>Happy Diwali</h1>
             </div>
 
-            {/* Chart Diyas */}
-            <div className="chart-diya-container">
+            {/* Bottom Diyas */}
+            <div className="bottom-diya-container">
                  {Array.from({ length: 12 }).map((_, i) => (
-                    <div key={`chart-diya-${i}`} className="diya">
+                    <div key={`bottom-diya-${i}`} className="diya">
                         <div className="flame"></div>
                         <div className="pot"></div>
                     </div>
@@ -31,13 +31,11 @@ export default function DiwaliDecoration() {
             <div className="firework"></div>
             <div className="firework"></div>
             <div className="firework"></div>
-
-            {/* Crackers from image */}
-            <div className="cracker cracker-1"></div>
-            <div className="cracker cracker-2"></div>
-            <div className="cracker cracker-3"></div>
-            <div className="cracker cracker-4"></div>
-            <div className="cracker cracker-5"></div>
+            
+            {/* Lights */}
+            <div className="lights">
+                {Array.from({ length: 15 }).map((_, i) => <div key={`light-${i}`} className="light"></div>)}
+            </div>
         </div>
     );
 }

@@ -1,4 +1,3 @@
-
 .diwali-container {
     position: fixed;
     top: 0;
@@ -15,12 +14,12 @@
     top: 10px;
     left: 50%;
     transform: translateX(-50%);
-    display: none; /* Hidden by default, shown on larger screens */
+    display: none; 
 }
 
 @media (min-width: 768px) {
     .happy-diwali {
-        display: block; /* Show on md screens and up */
+        display: block; 
     }
 }
 
@@ -37,19 +36,19 @@
 /* Header Lanterns */
 .header-lantern {
     position: absolute;
-    font-size: 2.5rem; /* Slightly smaller */
+    font-size: 2.5rem; 
     filter: drop-shadow(0 0 8px #ffeb3b);
     animation: sway-lantern 5s ease-in-out infinite;
-    display: none; /* Hidden by default */
+    display: none;
 }
 
 @media (min-width: 768px) {
     .header-lantern {
-        display: block; /* Show on md screens and up */
+        display: block;
     }
-    .lantern-1 { top: 5px; left: 190px; } /* Over the logo */
-    .lantern-2 { top: -5px; left: calc(50% + 80px); } /* Next to Happy Diwali */
-    .lantern-3 { top: 5px; right: 140px; } /* Between icons */
+    .lantern-1 { top: 5px; left: 190px; } 
+    .lantern-2 { top: -5px; left: calc(50% + 80px); } 
+    .lantern-3 { top: 5px; right: 140px; } 
 }
 
 
@@ -58,19 +57,19 @@
   50% { transform: rotate(5deg) translateY(-3px); }
 }
 
-/* Chart Diyas */
-.chart-diya-container {
+/* Bottom Diyas */
+.bottom-diya-container {
     position: absolute;
-    bottom: 40px;
-    left: 310px; /* Adjust to align with your chart's starting point */
-    right: 50px;
+    bottom: 1rem;
+    left: 280px; 
+    right: 20px;
     display: none;
-    justify-content: space-between;
+    justify-content: space-around;
 }
 
 @media (min-width: 768px) {
-    .chart-diya-container {
-        display: flex; /* Show on md screens and up */
+    .bottom-diya-container {
+        display: flex;
     }
 }
 
@@ -144,27 +143,40 @@
 .firework:nth-child(4) { top: 70%; left: 90%; background: #2196f3; box-shadow: 0 0 10px #64b5f6; animation-delay: -0.8s; }
 .firework:nth-child(5) { top: 80%; left: 40%; background: #9c27b0; box-shadow: 0 0 10px #ba68c8; animation-delay: -1.5s; }
 
-/* Crackers */
-.cracker {
-  position: absolute;
-  width: 150px;
-  height: 150px;
-  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAMAAACahl6sAAAAXVBMVEX/AAD/Kir/RUX/R0f/VVX/WVn/Zmb/b2//d3f/gYH/i4v/nJz/p6f/rq7/urr/xsb/z8//3t7/5ub/7u7/8/P//v7/ERH/FRX/GBj/ICD/LS3/PT3/Q0P/aGjTjscGAAAC+klEQVR4nO3d63aqMBhAYRJJcUSgu9m9//9ucwEUVSoVLt099X5OaGf+y5yEJMcrCIIgCIIgCIIgCIIgCIIgCIIgCIIgCIIgCIJ8HuTzQJ5H3pL3k+R56Y/03Jd/XpL3pH/sO+k/+5z0T/xI+rf+T/qX/iP9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0n/Qv/Sf9S/9J/9J/0r/0//8IgCIIgCIIgCIIgCIIgCIIgCIIgCIIgCIIg3wN/A23gGf3jHwAAAABJRU5ErkJggg==');
-  background-size: contain;
-  background-repeat: no-repeat;
-  animation: cracker-pop 4s ease-out infinite;
-  opacity: 0;
+/* Lights */
+.lights {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
 }
 
-@keyframes cracker-pop {
-  0% { transform: scale(0.5); opacity: 0; }
-  20% { transform: scale(1); opacity: 1; }
-  80% { transform: scale(1.1); opacity: 0.5; }
-  100% { transform: scale(1.2); opacity: 0; }
+@keyframes flash {
+  0%, 100% { background-color: rgba(255,255,255,0.7); box-shadow: 0 0 5px rgba(255,255,255,0.7); }
+  50% { background-color: var(--light-color); box-shadow: 0 0 10px 2px var(--light-color); }
 }
 
-.cracker-1 { top: 10%; left: 5%; animation-delay: 0s; }
-.cracker-2 { top: 40%; right: 10%; animation-delay: 1.5s; width: 200px; height: 200px; }
-.cracker-3 { bottom: 15%; left: 25%; animation-delay: 2.5s; width: 120px; height: 120px; }
-.cracker-4 { top: 60%; left: 55%; animation-delay: 0.5s; transform: rotate(45deg); }
-.cracker-5 { top: 20%; right: 30%; animation-delay: 3s; width: 180px; height: 180px; }
+.light {
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    animation: flash 2s infinite;
+}
+
+.light:nth-child(1) { top: 5%; left: 10%; --light-color: #f00; animation-delay: 0s; }
+.light:nth-child(2) { top: 8%; left: 30%; --light-color: #0f0; animation-delay: 0.2s; }
+.light:nth-child(3) { top: 4%; left: 50%; --light-color: #00f; animation-delay: 0.4s; }
+.light:nth-child(4) { top: 9%; left: 70%; --light-color: #ff0; animation-delay: 0.6s; }
+.light:nth-child(5) { top: 6%; left: 90%; --light-color: #f0f; animation-delay: 0.8s; }
+.light:nth-child(6) { top: 15%; left: 5%; --light-color: #0ff; animation-delay: 1s; }
+.light:nth-child(7) { top: 12%; left: 25%; --light-color: #f00; animation-delay: 1.2s; }
+.light:nth-child(8) { top: 16%; left: 45%; --light-color: #0f0; animation-delay: 1.4s; }
+.light:nth-child(9) { top: 13%; left: 65%; --light-color: #00f; animation-delay: 1.6s; }
+.light:nth-child(10) { top: 17%; left: 85%; --light-color: #ff0; animation-delay: 1.8s; }
+.light:nth-child(11) { top: 80%; left: 15%; --light-color: #f0f; animation-delay: 0.3s; }
+.light:nth-child(12) { top: 90%; left: 35%; --light-color: #0ff; animation-delay: 0.9s; }
+.light:nth-child(13) { top: 85%; left: 55%; --light-color: #f00; animation-delay: 1.3s; }
+.light:nth-child(14) { top: 95%; left: 75%; --light-color: #0f0; animation-delay: 0.7s; }
+.light:nth-child(15) { top: 88%; left: 95%; --light-color: #00f; animation-delay: 1.5s; }
