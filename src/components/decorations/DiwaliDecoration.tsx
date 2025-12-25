@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useEffect, useRef } from 'react';
 import './diwali.css';
@@ -98,15 +99,6 @@ export default function DiwaliDecoration() {
         }
       }
     }
-
-    // Sync fullscreen changes with store. An event listener is necessary because the user can
-    // toggle fullscreen mode directly through the browser, and we want to react to that.
-    fscreen.addEventListener('fullscreenchange', () => {
-      store.setState({ fullscreen: isFullscreen() });
-    });
-
-
-
 
     // Simple state container; the source of truth.
     const store = {
@@ -428,7 +420,7 @@ export default function DiwaliDecoration() {
     }
 
     // Launches a shell from a user pointer event, based on state.config
-    function launchShellFromConfig(event?: {x: number, y: number, onCanvas: boolean}) {
+    function launchShellFromConfig(event: PointerEvent) {
       const shell = new Shell(shellFromConfig(shellSizeSelector()));
       const w = mainStage.width;
       const h = mainStage.height;
@@ -481,14 +473,17 @@ export default function DiwaliDecoration() {
       return seqRandomShell();
     }
 
-
-    mainStage.addEventListener('pointerstart', launchShellFromConfig);
-
+    if (mainStage.canvas) {
+      mainStage.canvas.addEventListener('pointerstart', launchShellFromConfig as EventListener);
+    }
 
     // Account for window resize and custom scale changes.
     function handleResize() {
         const w = window.innerWidth;
         const h = window.innerHeight;
+        // Try to adopt screen size, heeding maximum sizes specified
+        const MAX_WIDTH = 7680;
+        const MAX_HEIGHT = 4320;
         const containerW = Math.min(w, MAX_WIDTH);
         const containerH = w <= 420 ? h : Math.min(h, MAX_HEIGHT);
         
@@ -512,6 +507,7 @@ export default function DiwaliDecoration() {
     let currentFrame = 0;
     let speedBarOpacity = 0;
     let autoLaunchTime = 0;
+    let isUpdatingSpeed = false;
 
     // Extracted function to keep `update()` optimized
     function updateGlobals(timeStep: number, lag: number) {
@@ -538,8 +534,6 @@ export default function DiwaliDecoration() {
     function update(frameTime: number, lag: number) {
       if (!isRunning()) return;
 
-      const width = stageW;
-      const height = stageH;
       const timeStep = frameTime * simSpeed;
       const speed = simSpeed * lag;
 
@@ -647,7 +641,6 @@ export default function DiwaliDecoration() {
       render(speed);
     }
     let lastFrameTime = performance.now();
-    let isUpdatingSpeed = false;
 
     const currentSkyColor = { r: 0, g: 0, b: 0 };
     const targetSkyColor = { r: 0, g: 0, b: 0 };
@@ -1097,6 +1090,9 @@ export default function DiwaliDecoration() {
     mainLoop(performance.now());
     
     return () => {
+      if (mainStage.canvas) {
+        mainStage.canvas.removeEventListener('pointerstart', launchShellFromConfig as EventListener);
+      }
       window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(ticker);
     }
