@@ -28,6 +28,18 @@ export default function NewYearDecoration() {
             <div className="happy-new-year">
                 <h1>Happy New Year 2026</h1>
             </div>
+
+            {/* --- Illumination Bulbs --- */}
+            <div className="lights">
+                {Array.from({ length: 20 }).map((_, i) => (
+                    <div key={`light-${i}`} className="light"></div>
+                ))}
+            </div>
+
+            {/* --- Fire Crackers --- */}
+            <div className="cracker"></div>
+            <div className="cracker"></div>
+            <div className="cracker"></div>
         </div>
     );
 }
