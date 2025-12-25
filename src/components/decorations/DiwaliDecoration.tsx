@@ -1,4 +1,3 @@
-
 'use client';
 import './diwali.css';
 
@@ -66,4 +65,3 @@ export default function DiwaliDecoration() {
         </div>
     );
 }
-
