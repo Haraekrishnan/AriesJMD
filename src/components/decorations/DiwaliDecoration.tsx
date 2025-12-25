@@ -30,6 +30,10 @@ export default function DiwaliDecoration() {
             <div className="firework"></div>
             <div className="firework"></div>
             <div className="firework"></div>
+            <div className="firework"></div>
+            <div className="firework"></div>
+            <div className="firework"></div>
+
 
             {/* New Sparkler Elements */}
             <div className="sparkler-container sparkler-1">
