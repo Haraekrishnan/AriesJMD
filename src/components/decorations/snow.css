@@ -97,15 +97,14 @@
 
 .snowman {
     bottom: 10px;
-    left: calc(32rem + 64px); /* Adjusted for sidebar */
-    width: 8rem; 
+    left: calc(50% + 8rem);
+    transform: translateX(-50%);
+    width: 8rem;
     height: auto;
 }
 
 .sleigh-full {
-    bottom: 10px;
-    left: calc(41rem + 64px); /* Positioned next to snowman */
-    font-size: 8rem;
+    display: none;
 }
 
 .santa-hat {
@@ -200,7 +199,8 @@
 .merry-christmas {
     position: absolute;
     top: 5px;
-    right: 70px; /* Adjusted to not overlap icons */
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .merry-christmas h1 {
@@ -210,5 +210,4 @@
     font-family: 'Mountains of Christmas', cursive;
     color: #c0392b;
     text-shadow: 1px 1px 1px #fff, 2px 2px 3px rgba(0,0,0,0.3);
-    transform: rotate(-10deg);
 }

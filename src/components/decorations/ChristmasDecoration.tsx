@@ -32,7 +32,6 @@ export default function ChristmasDecoration() {
                 <path d="M35 47L35 55L32 53" stroke="#F44336" strokeWidth="2" strokeLinecap="round"/>
               </svg>
             </div>
-            <div className="decoration sleigh-full">🎅</div>
             <div className="decoration gift gift-1">🎁</div>
             <div className="decoration gift gift-2">🎁</div>
             <div className="merry-christmas">
