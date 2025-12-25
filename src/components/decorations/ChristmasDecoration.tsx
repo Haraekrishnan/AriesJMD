@@ -3,6 +3,9 @@
 import './snow.css';
 
 export default function ChristmasDecoration() {
+    const text = "Merry Christmas";
+    const characters = text.split('');
+
     return (
         <div className="snow-container">
             {/* Snowflakes */}
@@ -11,9 +14,10 @@ export default function ChristmasDecoration() {
             ))}
             
             {/* Decorations */}
-            <div className="decoration sleigh">🎅&#129420;</div>
+            <div className="decoration sleigh">🦌🎅</div>
             <div className="decoration tree tree-1">🎄</div>
             <div className="decoration tree tree-2">🎄</div>
+            <div className="decoration santa-hat">🎅</div>
             <div className="decoration snowman">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none" className="w-full h-full">
                 <circle cx="40" cy="58" r="20" fill="white" stroke="#E0E0E0" strokeWidth="1"/>
@@ -31,8 +35,19 @@ export default function ChristmasDecoration() {
                 <path d="M35 47L35 55L32 53" stroke="#F44336" strokeWidth="2" strokeLinecap="round"/>
               </svg>
             </div>
+            <div className="decoration sleigh-full">🎅</div>
             <div className="decoration gift gift-1">🎁</div>
             <div className="decoration gift gift-2">🎁</div>
+            <div className="merry-christmas">
+              <h1>
+                {characters.map((char, i) => (
+                  <span key={i} style={{ transform: `rotate(${i * 10 - 65}deg)` }}>
+                    {char}
+                  </span>
+                ))}
+              </h1>
+            </div>
+
 
             {/* Lights */}
             <div className="lights">

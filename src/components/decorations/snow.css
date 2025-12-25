@@ -81,26 +81,38 @@
 }
 
 .tree {
-    bottom: 10px; /* Adjusted to be fully visible */
+    bottom: 2rem;
     font-size: 4rem;
     opacity: 0.9;
 }
 
 .tree-1 {
-    left: 20%;
+    left: calc(20% + 64px); /* Adjusted for sidebar */
 }
 
 .tree-2 {
-    right: 8%;
+    right: 2rem;
     font-size: 3rem;
 }
 
 .snowman {
-    bottom: 10px; /* Adjusted to be fully visible */
-    left: 32rem;
-    font-size: 8rem; /* Double the previous size */
-    width: 8rem; /* Double the previous size */
-    height: auto; /* Maintain aspect ratio */
+    bottom: 10px;
+    left: calc(32rem + 64px); /* Adjusted for sidebar */
+    width: 8rem; 
+    height: auto;
+}
+
+.sleigh-full {
+    bottom: 10px;
+    left: calc(41rem + 64px); /* Positioned next to snowman */
+    font-size: 8rem;
+}
+
+.santa-hat {
+    top: 1rem;
+    left: calc(1rem + 64px); /* Positioned over logo area */
+    font-size: 2rem;
+    transform: rotate(-15deg);
 }
 
 .gift {
@@ -109,7 +121,7 @@
 }
 
 .gift-1 {
-    left: 23rem;
+    left: calc(23rem + 64px);
 }
 
 .gift-2 {
@@ -182,3 +194,32 @@
 .ball1 { bottom: 20%; left: 30%; background-color: #c00; animation-delay: 0s; }
 .ball2 { bottom: 40%; left: 60%; background-color: #00c; animation-delay: 1.5s; }
 .ball3 { bottom: 10%; left: 70%; background-color: #0c0; animation-delay: 3s; }
+
+
+/* Merry Christmas Text */
+.merry-christmas {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 200px;
+    height: 200px;
+}
+
+.merry-christmas h1 {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-size: 24px;
+    font-family: 'Mountains of Christmas', cursive;
+    color: #c0392b;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+}
+
+.merry-christmas span {
+    position: absolute;
+    left: 50%;
+    transform-origin: 0 100px;
+}
+
