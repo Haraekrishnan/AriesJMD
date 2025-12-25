@@ -30,9 +30,9 @@
   top: -150px;
   width: 8px;
   height: 8px;
-  background: #e0e0e0;
+  background: #bdbdbd;
   border-radius: 50%;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
   animation-name: fall;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
@@ -150,4 +150,48 @@
   left: 2%;
   animation-delay: 8.5s;
   animation-duration: 13.5s;
+}
+
+/* Decorations */
+.decoration {
+    position: absolute;
+    font-size: 2rem;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+@keyframes fly-across {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100vw);
+  }
+}
+
+.sleigh {
+    top: 5%;
+    animation: fly-across 20s linear infinite;
+    animation-delay: 5s;
+    font-size: 2.5rem;
+}
+
+.tree {
+    bottom: -20px;
+    font-size: 4rem;
+    opacity: 0.9;
+}
+
+.tree-1 {
+    left: 5%;
+}
+
+.tree-2 {
+    right: 8%;
+    font-size: 3rem;
+}
+
+.snowman {
+    bottom: 5px;
+    left: 25%;
+    font-size: 3.5rem;
 }
