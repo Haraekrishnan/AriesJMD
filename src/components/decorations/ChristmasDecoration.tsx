@@ -3,9 +3,6 @@
 import './snow.css';
 
 export default function ChristmasDecoration() {
-    const text = "Merry Christmas";
-    const characters = text.split('');
-
     return (
         <div className="snow-container">
             {/* Snowflakes */}
@@ -39,13 +36,7 @@ export default function ChristmasDecoration() {
             <div className="decoration gift gift-1">🎁</div>
             <div className="decoration gift gift-2">🎁</div>
             <div className="merry-christmas">
-              <h1>
-                {characters.map((char, i) => (
-                  <span key={i} style={{ transform: `rotate(${i * 10 - 65}deg)` }}>
-                    {char}
-                  </span>
-                ))}
-              </h1>
+              <h1>Merry Christmas</h1>
             </div>
 
 
