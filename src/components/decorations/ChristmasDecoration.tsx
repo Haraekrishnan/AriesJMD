@@ -14,6 +14,7 @@ export default function ChristmasDecoration() {
             <div className="decoration sleigh">🦌🎅</div>
             <div className="decoration tree tree-1">🎄</div>
             <div className="decoration tree tree-2">🎄</div>
+            <div className="decoration tree tree-3">🎄</div>
             <div className="decoration santa-hat">🎅</div>
             <div className="decoration snowman">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none" className="w-full h-full">
@@ -34,6 +35,7 @@ export default function ChristmasDecoration() {
             </div>
             <div className="decoration gift gift-1">🎁</div>
             <div className="decoration gift gift-2">🎁</div>
+            <div className="decoration gift gift-3">🎁</div>
             <div className="merry-christmas">
               <h1>Merry Christmas</h1>
             </div>
