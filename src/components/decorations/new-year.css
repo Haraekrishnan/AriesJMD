@@ -59,43 +59,47 @@
 }
 
 /* ================================
-   CONFETTI / FIREWORKS
+   FIREWORKS
 ================================ */
+@keyframes firework-burst {
+  0% { transform: scale(0); opacity: 1; }
+  80% { transform: scale(1.5); opacity: 0.8; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
 .firework {
   position: absolute;
-  width: 8px;
-  height: 8px;
-  opacity: 0;
-  animation: fall 5s linear infinite;
   border-radius: 50%;
+  animation: firework-burst 3s ease-out infinite;
+  width: 10px;
+  height: 10px;
 }
 
-@keyframes fall {
-  0% {
-    transform: translateY(-10vh) rotateZ(0deg);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(110vh) rotateZ(720deg);
-    opacity: 0;
-  }
-}
-
-.firework:nth-of-type(1)  { left: 10%; background: #ffeb3b; animation-delay: 0s; }
-.firework:nth-of-type(2)  { left: 20%; background: #64b5f6; animation-delay: -1.2s; }
-.firework:nth-of-type(3)  { left: 30%; background: #f06292; animation-delay: -0.5s; }
-.firework:nth-of-type(4)  { left: 40%; background: #81c784; animation-delay: -0.8s; }
-.firework:nth-of-type(5)  { left: 50%; background: #ba68c8; animation-delay: -1.5s; }
-.firework:nth-of-type(6)  { left: 60%; background: #ffb74d; animation-delay: -2s; }
-.firework:nth-of-type(7)  { left: 70%; background: #64b5f6; animation-delay: -1s; }
-.firework:nth-of-type(8)  { left: 80%; background: #f06292; animation-delay: -2.5s; }
-.firework:nth-of-type(9)  { left: 90%; background: #81c784; animation-delay: -0.3s; }
-.firework:nth-of-type(10) { left: 95%; background: #ffeb3b; animation-delay: -1.8s; }
-.firework:nth-of-type(11) { left: 5%; background: #ba68c8; animation-delay: -2.2s; }
-.firework:nth-of-type(12) { left: 15%; background: #ffb74d; animation-delay: -3s; }
-.firework:nth-of-type(13) { left: 25%; background: #ffeb3b; animation-delay: -1.4s; }
-.firework:nth-of-type(14) { left: 35%; background: #f06292; animation-delay: -3.5s; }
-.firework:nth-of-type(15) { left: 45%; background: #81c784; animation-delay: -2.8s; }
+.firework:nth-child(1) { top: 15%; left: 20%; background: #ffc107; box-shadow: 0 0 15px #ffeb3b; animation-delay: 0s; }
+.firework:nth-child(2) { top: 25%; left: 80%; background: #f44336; box-shadow: 0 0 15px #ff5252; animation-delay: -1.2s; }
+.firework:nth-child(3) { top: 50%; left: 10%; background: #4caf50; box-shadow: 0 0 15px #81c784; animation-delay: -0.5s; }
+.firework:nth-child(4) { top: 70%; left: 90%; background: #2196f3; box-shadow: 0 0 15px #64b5f6; animation-delay: -0.8s; }
+.firework:nth-child(5) { top: 80%; left: 40%; background: #9c27b0; box-shadow: 0 0 15px #ba68c8; animation-delay: -1.5s; }
+.firework:nth-child(6) { top: 30%; left: 55%; background: #e91e63; box-shadow: 0 0 15px #f06292; animation-delay: -2s; }
+.firework:nth-child(7) { top: 60%; left: 25%; background: #00bcd4; box-shadow: 0 0 15px #4dd0e1; animation-delay: -1s; }
+.firework:nth-child(8) { top: 5%; left: 45%; background: #ff9800; box-shadow: 0 0 15px #ffb74d; animation-delay: -2.5s; }
+.firework:nth-child(9) { top: 40%; left: 75%; background: #ffc107; box-shadow: 0 0 15px #ffeb3b; animation-delay: -0.3s; }
+.firework:nth-child(10) { top: 65%; left: 5%; background: #f44336; box-shadow: 0 0 15px #ff5252; animation-delay: -1.8s; }
+.firework:nth-child(11) { top: 90%; left: 60%; background: #4caf50; box-shadow: 0 0 15px #81c784; animation-delay: -0.9s; }
+.firework:nth-child(12) { top: 10%; left: 95%; background: #2196f3; box-shadow: 0 0 15px #64b5f6; animation-delay: -1.4s; }
+.firework:nth-child(13) { top: 55%; left: 30%; background: #9c27b0; box-shadow: 0 0 15px #ba68c8; animation-delay: -2.2s; }
+.firework:nth-child(14) { top: 75%; left: 70%; background: #e91e63; box-shadow: 0 0 15px #f06292; animation-delay: -0.2s; }
+.firework:nth-child(15) { top: 20%; left: 5%; background: #00bcd4; box-shadow: 0 0 15px #4dd0e1; animation-delay: -2.8s; }
+.firework:nth-child(16) { top: 85%; left: 90%; background: #ff9800; box-shadow: 0 0 15px #ffb74d; animation-delay: -0.6s; }
+.firework:nth-child(17) { top: 5%; left: 65%; background: #ffc107; box-shadow: 0 0 15px #ffeb3b; animation-delay: -1.1s; }
+.firework:nth-child(18) { top: 95%; left: 35%; background: #f44336; box-shadow: 0 0 15px #ff5252; animation-delay: -2.3s; }
+.firework:nth-child(19) { top: 45%; left: 95%; background: #4caf50; box-shadow: 0 0 15px #81c784; animation-delay: -1.7s; }
+.firework:nth-child(20) { top: 80%; left: 15%; background: #2196f3; box-shadow: 0 0 15px #64b5f6; animation-delay: -0.1s; }
+.firework:nth-child(21) { top: 35%; left: 5%; background: #9c27b0; box-shadow: 0 0 15px #ba68c8; animation-delay: -2.7s; }
+.firework:nth-child(22) { top: 60%; left: 90%; background: #e91e63; box-shadow: 0 0 15px #f06292; animation-delay: -1.3s; }
+.firework:nth-child(23) { top: 90%; left: 10%; background: #00bcd4; box-shadow: 0 0 15px #4dd0e1; animation-delay: -0.4s; }
+.firework:nth-child(24) { top: 20%; left: 40%; background: #ff9800; box-shadow: 0 0 15px #ffb74d; animation-delay: -2.1s; }
+.firework:nth-child(25) { top: 50%; left: 60%; background: #ffc107; box-shadow: 0 0 15px #ffeb3b; animation-delay: -1.9s; }
 
 /* ================================
    ILLUMINATION BULBS
@@ -141,30 +145,6 @@
 .light:nth-child(18) { left: 90%; --light-color: #f44336; animation-delay: 1.7s; }
 .light:nth-child(19) { left: 95%; --light-color: #4caf50; animation-delay: 1.8s; }
 .light:nth-child(20) { left: 100%; --light-color: #2196f3; animation-delay: 1.9s; }
-
-
-/* ================================
-   FIRE CRACKERS
-================================ */
-.cracker {
-  position: absolute;
-  width: 4px;
-  height: 80px;
-  background: linear-gradient(to top, rgba(255, 215, 0, 0), #ffd700);
-  animation: cracker-up 4s ease-out infinite;
-  opacity: 0;
-}
-
-@keyframes cracker-up {
-  0% { transform: translateY(100vh) scale(1); opacity: 0; }
-  20% { opacity: 1; }
-  100% { transform: translateY(-10vh) scale(0); opacity: 0; }
-}
-
-.cracker:nth-child(1) { left: 15%; animation-delay: 0s; }
-.cracker:nth-child(2) { left: 50%; animation-delay: 1s; }
-.cracker:nth-child(3) { left: 85%; animation-delay: 2.5s; }
-
 
 /* ================================
    BACKGROUND FLOATING Circles
