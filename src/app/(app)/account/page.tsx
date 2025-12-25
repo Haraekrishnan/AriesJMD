@@ -283,6 +283,7 @@ export default function AccountPage() {
                         <SelectItem value="none">None</SelectItem>
                         <SelectItem value="christmas">Christmas</SelectItem>
                         <SelectItem value="diwali">Diwali</SelectItem>
+                        <SelectItem value="new-year">New Year</SelectItem>
                     </SelectContent>
                 </Select>
             </CardContent>
@@ -455,3 +456,5 @@ export default function AccountPage() {
     </div>
   );
 }
+
+    
