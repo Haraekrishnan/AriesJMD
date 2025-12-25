@@ -20,7 +20,7 @@ export default function NewYearDecoration() {
             </div>
             
             <div className="happy-new-year">
-                <h1>Happy New Year</h1>
+                <h1>Happy New Year 2026</h1>
             </div>
 
             {/* Balloons */}

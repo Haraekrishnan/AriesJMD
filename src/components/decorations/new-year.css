@@ -13,32 +13,40 @@
 /* --- HAPPY NEW YEAR TEXT --- */
 .happy-new-year {
   position: absolute;
-  top: 50%;
+  top: 10px;
   left: 50%;
-  transform: translate(-50%, -50%) scale(0);
-  animation: scale-in-out 8s ease-in-out infinite;
+  transform: translateX(-50%);
+  width: 100%;
+  text-align: center;
 }
 
 .happy-new-year h1 {
   margin: 0;
   padding: 0;
-  font-size: 5rem;
+  font-size: 2.5rem;
   font-family: 'Lobster', cursive;
   color: #FFD700; /* Gold */
   text-shadow: 
     0 0 5px #fff,
     0 0 10px #fff,
     0 0 20px #FFD700,
-    0 0 30px #FFD700,
-    0 0 40px #FFD700,
-    0 0 55px #FFD700,
-    0 0 75px #FFD700;
+    0 0 30px #FFD700;
+  animation: flicker-text 3s ease-in-out infinite alternate;
 }
 
-@keyframes scale-in-out {
-  0%, 100% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-  10%, 40% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-  50%, 90% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+@keyframes flicker-text {
+    0%, 100% {
+        opacity: 1;
+        text-shadow: 
+            0 0 5px #fff, 0 0 10px #fff, 0 0 20px #FFD700, 
+            0 0 30px #FFD700, 0 0 40px #FFD700;
+    }
+    50% {
+        opacity: 0.8;
+        text-shadow: 
+            0 0 5px #fff, 0 0 8px #fff, 0 0 15px #FFD700,
+            0 0 25px #FFD700;
+    }
 }
 
 
@@ -68,7 +76,6 @@
   height: 10px;
   background: inherit;
   border-radius: 50%;
-  transform: translate(-50%, -50%);
   opacity: 0;
   animation: firework-explode 3s ease-out infinite;
 }
@@ -149,6 +156,7 @@
   font-size: 2rem;
   bottom: -50px;
   animation: rise 10s ease-in-out infinite;
+  opacity: 0.7;
 }
 
 @keyframes rise {
