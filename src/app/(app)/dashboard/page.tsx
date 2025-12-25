@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -18,6 +17,7 @@ import NewAnnouncementDialog from '@/components/announcements/NewAnnouncementDia
 import RecentPlannerActivity from '@/components/planner/RecentActivity';
 import { startOfMonth, formatDistanceToNow, isSameDay, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { DecorationProvider } from '@/components/decorations/DecorationProvider';
 
 export default function DashboardPage() {
   const { user, getVisibleUsers } = useAuth();
@@ -88,6 +88,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+       <DecorationProvider />
        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
             <h1 className="text-3xl font-bold tracking-tight">Welcome, {user?.name}!</h1>

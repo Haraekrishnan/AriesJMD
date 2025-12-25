@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect } from 'react';
@@ -8,7 +7,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AppSidebar } from '@/components/shared/app-sidebar';
 import Header from '@/components/shared/header';
 import BroadcastFeed from '@/components/announcements/BroadcastFeed';
-import { DecorationProvider } from '@/components/decorations/DecorationProvider';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -51,12 +49,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
   
   if (user.status === 'locked') {
+    // For the locked status page, we don't want the main app layout
     return <>{children}</>;
   }
   
   return (
       <div className="flex min-h-screen w-full bg-background">
-        <DecorationProvider />
         <AppSidebar />
         <div className="flex h-screen w-full flex-col md:pl-64">
             <Header />
