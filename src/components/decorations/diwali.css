@@ -1,5 +1,4 @@
 
-      
 .diwali-container {
     position: fixed;
     top: 0;
@@ -38,8 +37,8 @@
 /* Header Lanterns */
 .header-lantern {
     position: absolute;
-    font-size: 3rem;
-    filter: drop-shadow(0 0 10px #ffeb3b);
+    font-size: 2.5rem; /* Slightly smaller */
+    filter: drop-shadow(0 0 8px #ffeb3b);
     animation: sway-lantern 5s ease-in-out infinite;
     display: none; /* Hidden by default */
 }
@@ -48,21 +47,21 @@
     .header-lantern {
         display: block; /* Show on md screens and up */
     }
-    .lantern-1 { top: 5px; left: 190px; }
-    .lantern-2 { top: 5px; left: 50%; transform: translateX(100px); }
-    .lantern-3 { top: 5px; right: 140px; }
+    .lantern-1 { top: 5px; left: 190px; } /* Over the logo */
+    .lantern-2 { top: -5px; left: calc(50% + 80px); } /* Next to Happy Diwali */
+    .lantern-3 { top: 5px; right: 140px; } /* Between icons */
 }
 
 
 @keyframes sway-lantern {
-  0%, 100% { transform: rotate(-5deg); }
-  50% { transform: rotate(5deg); }
+  0%, 100% { transform: rotate(-5deg) translateY(0px); }
+  50% { transform: rotate(5deg) translateY(-3px); }
 }
 
 /* Sidebar Diyas */
 .sidebar-diya-container {
     position: absolute;
-    bottom: 55px;
+    bottom: 55px; /* Position above user profile section */
     left: 10px;
     width: 230px; 
     display: none;
@@ -94,7 +93,7 @@
 
 .diya {
   position: relative;
-  width: 30px; /* Smaller size */
+  width: 30px;
   height: 15px;
 }
 
@@ -161,6 +160,3 @@
 .firework:nth-child(3) { top: 50%; left: 10%; background: #4caf50; box-shadow: 0 0 10px #81c784; animation-delay: -0.5s; }
 .firework:nth-child(4) { top: 70%; left: 90%; background: #2196f3; box-shadow: 0 0 10px #64b5f6; animation-delay: -0.8s; }
 .firework:nth-child(5) { top: 80%; left: 40%; background: #9c27b0; box-shadow: 0 0 10px #ba68c8; animation-delay: -1.5s; }
-
-
-    
