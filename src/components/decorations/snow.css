@@ -87,7 +87,7 @@
 }
 
 .tree-1 {
-    left: 18rem;
+    left: 20%;
 }
 
 .tree-2 {
@@ -98,8 +98,8 @@
 .snowman {
     bottom: 10px; /* Adjusted to be fully visible */
     left: 32rem;
-    font-size: 4rem; /* Matching tree size */
-    width: 4rem; /* Explicit width */
+    font-size: 8rem; /* Double the previous size */
+    width: 8rem; /* Double the previous size */
     height: auto; /* Maintain aspect ratio */
 }
 
