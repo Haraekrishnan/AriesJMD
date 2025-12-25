@@ -12,18 +12,18 @@ export default function DiwaliDecoration() {
     //
     // Constants
     //
-    const IS_MOBILE = window.innerWidth <= 640;
-    const IS_DESKTOP = window.innerWidth > 800;
+    const IS_MOBILE = typeof window !== 'undefined' && window.innerWidth <= 640;
+    const IS_DESKTOP = typeof window !== 'undefined' && window.innerWidth > 800;
 
     // Detect high end devices. This will be a moving target.
     const IS_HIGH_END_DEVICE = (() => {
-      const hwConcurrency = navigator.hardwareConcurrency;
-      if (!hwConcurrency) {
+      if (typeof navigator === 'undefined' || !navigator.hardwareConcurrency) {
         return false;
       }
+      const hwConcurrency = navigator.hardwareConcurrency;
       // Large screens indicate a full size computer, which often have hyper threading these days.
       // So a quad core desktop machine has 8 cores. We'll place a higher min threshold there.
-      const minCount = window.innerWidth <= 1024 ? 4 : 8;
+      const minCount = typeof window !== 'undefined' && window.innerWidth <= 1024 ? 4 : 8;
       return hwConcurrency >= minCount;
     })();
 
@@ -234,7 +234,7 @@ export default function DiwaliDecoration() {
       isHighQuality = quality === QUALITY_HIGH;
 
       if (skyLightingSelector() === SKY_LIGHT_NONE) {
-        if(appNodes.canvasContainer) appNodes.canvasContainer.style.backgroundColor = '#000';
+        if(appNodes.canvasContainer) appNodes.canvasContainer.style.backgroundColor = 'transparent';
       }
 
       Spark.drawWidth = quality === QUALITY_HIGH ? 0.75 : 1;
@@ -474,7 +474,7 @@ export default function DiwaliDecoration() {
     }
 
     if (mainStage.canvas) {
-      mainStage.canvas.addEventListener('pointerstart', launchShellFromConfig as EventListener);
+        mainStage.canvas.addEventListener('pointerstart', launchShellFromConfig as EventListener);
     }
 
     // Account for window resize and custom scale changes.
@@ -682,7 +682,7 @@ export default function DiwaliDecoration() {
       currentSkyColor.b += (targetSkyColor.b - currentSkyColor.b) / colorChange * speed;
 
       if(appNodes.canvasContainer) {
-        appNodes.canvasContainer.style.backgroundColor = `rgb(${currentSkyColor.r | 0}, ${currentSkyColor.g | 0}, ${currentSkyColor.b | 0})`;
+        appNodes.canvasContainer.style.backgroundColor = `rgba(${currentSkyColor.r | 0}, ${currentSkyColor.g | 0}, ${currentSkyColor.b | 0}, 0)`;
       }
     }
 
@@ -1081,6 +1081,9 @@ export default function DiwaliDecoration() {
 
     let ticker: number;
     function mainLoop(time: number) {
+      if(typeof lastFrameTime === 'undefined') {
+        lastFrameTime = performance.now();
+      }
       const lag = time - lastFrameTime;
       lastFrameTime = time;
       update(time, lag);
