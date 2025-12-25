@@ -1,4 +1,3 @@
-
 .new-year-container {
   position: fixed;
   top: 0;
@@ -52,10 +51,10 @@
 /* --- Confetti --- */
 .firework {
   position: absolute;
-  width: 4px;
-  height: 4px;
+  width: 8px;
+  height: 8px;
   opacity: 0;
-  animation: fall 3s linear infinite;
+  animation: fall 5s linear infinite;
 }
 
 @keyframes fall {
@@ -63,36 +62,62 @@
   100% { transform: translateY(110vh) rotateZ(720deg); opacity: 0; }
 }
 
-.firework:nth-child(1) { left: 10%; animation-delay: 0s; background: #FFD700; } /* Gold */
-.firework:nth-child(2) { left: 20%; animation-delay: -1.2s; background: #FF69B4; } /* Hot Pink */
-.firework:nth-child(3) { left: 30%; animation-delay: -0.5s; background: #32CD32; } /* Lime Green */
-.firework:nth-child(4) { left: 40%; animation-delay: -0.8s; background: #1E90FF; } /* Dodger Blue */
-.firework:nth-child(5) { left: 50%; animation-delay: -1.5s; background: #FF4500; } /* Orange Red */
-.firework:nth-child(6) { left: 60%; animation-delay: -2s; background: #9370DB; } /* Medium Purple */
-.firework:nth-child(7) { left: 70%; animation-delay: -1s; background: #00CED1; } /* Dark Turquoise */
-.firework:nth-child(8) { left: 80%; animation-delay: -2.5s; background: #FFD700; } /* Gold */
-.firework:nth-child(9) { left: 90%; animation-delay: -0.3s; background: #FF1493; } /* Deep Pink */
-.firework:nth-child(10) { left: 95%; animation-delay: -1.8s; background: #ADFF2F; } /* Green Yellow */
+.firework:nth-child(1) { left: 10%; animation-delay: 0s; background: #64b5f6; } /* Light Blue */
+.firework:nth-child(2) { left: 20%; animation-delay: -1.2s; background: #f06292; } /* Pink */
+.firework:nth-child(3) { left: 30%; animation-delay: -0.5s; background: #81c784; } /* Green */
+.firework:nth-child(4) { left: 40%; animation-delay: -0.8s; background: #64b5f6; } /* Light Blue */
+.firework:nth-child(5) { left: 50%; animation-delay: -1.5s; background: #f06292; } /* Pink */
+.firework:nth-child(6) { left: 60%; animation-delay: -2s; background: #81c784; } /* Green */
+.firework:nth-child(7) { left: 70%; animation-delay: -1s; background: #64b5f6; } /* Light Blue */
+.firework:nth-child(8) { left: 80%; animation-delay: -2.5s; background: #f06292; } /* Pink */
+.firework:nth-child(9) { left: 90%; animation-delay: -0.3s; background: #81c784; } /* Green */
+.firework:nth-child(10) { left: 95%; animation-delay: -1.8s; background: #64b5f6; } /* Light Blue */
 
 
-/* --- BALLOONS --- */
+/* --- BALLOONS & BIG CIRCLES --- */
 .balloon {
   position: absolute;
-  font-size: 2rem;
-  bottom: -50px;
-  animation: rise 10s ease-in-out infinite;
-  opacity: 0.15; /* Reduced opacity */
+  border-radius: 50%;
+  opacity: 0.3;
+  animation: float 20s ease-in-out infinite;
 }
 
-@keyframes rise {
-  0% { transform: translateY(0) rotate(0deg); }
-  25% { transform: translateY(-25vh) rotate(10deg); }
-  50% { transform: translateY(-50vh) rotate(-10deg); }
-  75% { transform: translateY(-75vh) rotate(5deg); }
-  100% { transform: translateY(-110vh) rotate(0deg); }
+@keyframes float {
+  0% { transform: translateY(105vh) scale(1); }
+  50% { transform: translateY(-10vh) scale(1.1); }
+  100% { transform: translateY(105vh) scale(1); }
 }
 
-.balloon-1 { left: 15%; animation-duration: 12s; animation-delay: 0s; }
-.balloon-2 { left: 35%; animation-duration: 15s; animation-delay: -2s; font-size: 2.5rem; }
-.balloon-3 { left: 65%; animation-duration: 11s; animation-delay: -4s; }
-.balloon-4 { left: 85%; animation-duration: 14s; animation-delay: -1s; font-size: 2.2rem; }
+.balloon-1 {
+  width: 400px;
+  height: 400px;
+  background: #ffeb3b; /* Yellow */
+  left: 5%;
+  bottom: -400px;
+  animation-duration: 22s;
+  animation-delay: 0s;
+}
+
+.balloon-2 {
+  width: 350px;
+  height: 350px;
+  background: #64b5f6; /* Light Blue */
+  right: 5%;
+  bottom: -350px;
+  animation-duration: 25s;
+  animation-delay: -5s;
+}
+
+.balloon-3 {
+  width: 300px;
+  height: 300px;
+  background: #ba68c8; /* Purple */
+  left: 30%;
+  bottom: -300px;
+  animation-duration: 28s;
+  animation-delay: -10s;
+}
+
+.balloon-4 {
+    display: none; /* remove extra balloon */
+}
