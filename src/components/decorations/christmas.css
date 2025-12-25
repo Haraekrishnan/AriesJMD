@@ -95,6 +95,12 @@
     font-size: 3rem;
 }
 
+.tree-3 {
+    left: calc(16rem + 1rem); /* 16rem sidebar + 1rem margin */
+    font-size: 3.5rem;
+    bottom: 1rem;
+}
+
 .snowman {
     bottom: 10px;
     left: 50%;
