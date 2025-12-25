@@ -1,3 +1,4 @@
+
 'use client';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
@@ -23,7 +24,7 @@ import FeedbackManagement from '@/components/account/FeedbackManagement';
 import { Badge } from '@/components/ui/badge';
 import UnlockRequests from '@/components/account/UnlockRequests';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { DecorationTheme } from '@/lib/types';
 
 export default function AccountPage() {
