@@ -30,12 +30,21 @@ export default function DiwaliDecoration() {
             <div className="firework"></div>
             <div className="firework"></div>
             <div className="firework"></div>
-            
-            <div className="cracker"></div>
-            <div className="cracker"></div>
-            <div className="cracker"></div>
-            <div className="cracker"></div>
-            <div className="cracker"></div>
+
+            {/* New Sparkler Elements */}
+            <div className="sparkler-container sparkler-1">
+                <div className="sparkler-stick"></div>
+                <div className="spark-wrapper">
+                    {Array.from({ length: 20 }).map((_, i) => <div key={i} className="spark"></div>)}
+                </div>
+            </div>
+             <div className="sparkler-container sparkler-2">
+                <div className="sparkler-stick"></div>
+                <div className="spark-wrapper">
+                    {Array.from({ length: 20 }).map((_, i) => <div key={i} className="spark"></div>)}
+                </div>
+            </div>
+
 
             {/* Lights */}
             <div className="lights">
