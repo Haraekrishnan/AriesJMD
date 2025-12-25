@@ -14,7 +14,6 @@ export default function ChristmasDecoration() {
             <div className="decoration sleigh">🦌🎅</div>
             <div className="decoration tree tree-1">🎄</div>
             <div className="decoration tree tree-2">🎄</div>
-            <div className="decoration tree tree-3">🎄</div>
             <div className="decoration santa-hat">🎅</div>
             <div className="decoration snowman">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none" className="w-full h-full">
@@ -54,6 +53,16 @@ export default function ChristmasDecoration() {
             <div className="star star5">✨</div>
             <div className="star star6">⭐</div>
             <div className="star star7">✨</div>
+            
+            {/* Animated SVG Tree */}
+            <div className="animated-tree-container">
+              <svg viewBox="-10 -10 120 120">
+                <path style={{"--no": 0} as React.CSSProperties} d="M50 0L100 100L0 100Z" />
+                <path style={{"--no": 1} as React.CSSProperties} d="M50 10L90 90L10 90Z" />
+                <path style={{"--no": 2} as React.CSSProperties} d="M50 20L80 80L20 80Z" />
+                <path style={{"--no": 3} as React.CSSProperties} d="M50 30L70 70L30 70Z" />
+              </svg>
+            </div>
         </div>
     );
 }

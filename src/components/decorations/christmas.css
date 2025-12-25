@@ -95,12 +95,6 @@
     font-size: 3rem;
 }
 
-.tree-3 {
-    left: calc(16rem + 1rem); /* 16rem sidebar + 1rem margin */
-    font-size: 3.5rem;
-    bottom: 1rem;
-}
-
 .snowman {
     bottom: 10px;
     left: 50%;
@@ -210,4 +204,50 @@
     font-family: 'Mountains of Christmas', cursive;
     color: #c0392b;
     text-shadow: 1px 1px 1px #fff, 2px 2px 3px rgba(0,0,0,0.3);
+}
+
+/* Animated SVG Tree */
+.animated-tree-container {
+  position: absolute;
+  bottom: 1rem;
+  left: 17rem; /* To the right of the sidebar */
+  height: 25vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.animated-tree-container svg {
+  max-height: 100%;
+  overflow:visible;
+}
+
+.animated-tree-container path {
+  fill: #379157;
+  stroke: #379157;
+  stroke-width: .2;
+  transform: scale(0);
+  transform-origin: 50% 50%;
+  animation: star 8s ease-in-out infinite;
+  animation-delay: calc( var(--no) * .025s );
+  transform-box: fill-box;
+}
+
+@keyframes star {
+  0% {
+    transform: scale(0);
+    animation-timing-function: cubic-bezier(.74,1.72,.57,1.01)
+  }
+  10% {
+    transform: scale(1);
+  }
+  65% {
+    transform: translateY(0px) scale(1);
+  }
+  75% {
+    transform: translateY(50px) scale(0);
+  }
+  100% {
+    transform: translateY( 0px ) scale(0);
+  }
 }
