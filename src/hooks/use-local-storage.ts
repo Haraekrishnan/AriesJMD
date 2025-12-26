@@ -15,12 +15,14 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val
     if (isClient) {
       try {
         const item = window.localStorage.getItem(key);
-        setStoredValue(item ? JSON.parse(item) : initialValue);
+        // Only parse if the item is a non-empty string
+        setStoredValue(item && item !== 'undefined' ? JSON.parse(item) : initialValue);
       } catch (error) {
         console.error(`Error reading localStorage key “${key}”:`, error);
         setStoredValue(initialValue);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClient, key, initialValue]);
 
   const setValue = useCallback((value: T | ((val: T) => T)) => {
