@@ -1,15 +1,19 @@
 'use client';
 import './new-year.css';
+import Fireworks from './Fireworks'; // Import the new component
 
 export default function NewYearDecoration() {
     return (
         <div className="new-year-container">
+            {/* --- NEW CANVAS-BASED FIREWORKS --- */}
+            <Fireworks />
+
             {/* --- BIG CIRCLES --- */}
             <div className="balloon balloon-1"></div>
             <div className="balloon balloon-2"></div>
             <div className="balloon balloon-3"></div>
             
-            {/* --- FIREWORKS --- */}
+            {/* --- CSS FIREWORKS --- */}
             {Array.from({ length: 25 }).map((_, i) => (
                 <div key={`firework-${i}`} className="firework"></div>
             ))}
