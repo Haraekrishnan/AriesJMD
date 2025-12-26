@@ -22,7 +22,7 @@ import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 const itemSchema = z.object({
   type: z.enum(['Mobile', 'SIM', 'Mobile with SIM']),
-  allottedToUserId: z.string().min(1, 'Please select a person'),
+  allottedToUserId: z.string().optional(),
   allotmentDate: z.date({ required_error: 'Allotment date is required' }),
   projectId: z.string().min(1, 'Project is required'),
   status: z.enum(['Active', 'Inactive', 'Returned']),
@@ -60,7 +60,7 @@ interface EditMobileSimDialogProps {
 const statusOptions: MobileSimStatus[] = ['Active', 'Inactive', 'Returned'];
 
 export default function EditMobileSimDialog({ isOpen, setIsOpen, item }: EditMobileSimDialogProps) {
-  const { users, projects, updateMobileSim, manpowerProfiles } = useAppContext();
+  const { user, users, updateMobileSim, manpowerProfiles, projects } = useAppContext();
   const { toast } = useToast();
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [allotmentType, setAllotmentType] = useState<'user' | 'manpower'>('user');
@@ -165,7 +165,7 @@ export default function EditMobileSimDialog({ isOpen, setIsOpen, item }: EditMob
             </div>
 
             <div className="space-y-2">
-              <Label>Allotted To</Label>
+              <Label>Allotted To (Optional)</Label>
               <Controller
                 name="allottedToUserId"
                 control={form.control}
