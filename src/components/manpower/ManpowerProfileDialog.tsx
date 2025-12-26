@@ -13,7 +13,7 @@ import { Label } from '../ui/label';
 import { ScrollArea } from '../ui/scroll-area';
 import type { ManpowerProfile, Trade, LeaveRecord, ManpowerDocument, DocumentStatus, Skill, MemoRecord, Role, PpeHistoryRecord, EpNumberRecord } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Trash2, Edit, PlusCircle, FileWarning, Shirt, AlertCircle, Info, Paperclip, ZoomIn, ZoomOut, Download } from 'lucide-react';
+import { Trash2, Edit, PlusCircle, FileWarning, Shirt, AlertCircle, Info, Paperclip, ZoomIn, ZoomOut, Download, ChevronDown, ChevronRight, MessageSquare } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { format, parse, isValid, startOfDay, parseISO, isBefore, isPast } from 'date-fns';
 import { TRADES, MANDATORY_DOCS, RA_TRADES } from '@/lib/mock-data';
@@ -86,7 +86,6 @@ const profileSchema = z.object({
         });
     }
 
-    // This validation should only run when the user is trying to set the status to 'On Leave' for the first time for this profile.
     const history = data.leaveHistory || {};
     const historyArray = Array.isArray(history) ? history : Object.values(history);
     const hasActiveLeave = historyArray.some((l: any) => l && !l.rejoinedDate && !l.leaveEndDate);
@@ -94,7 +93,7 @@ const profileSchema = z.object({
     if (data.status === 'On Leave' && !hasActiveLeave && !data.currentLeave?.leaveStartDate) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Start date is required when setting status to 'On Leave'.",
+        message: "Start date is required when setting status to 'On Leave' for the first time.",
         path: ['currentLeave.leaveStartDate'],
       });
     }
@@ -300,7 +299,8 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             // Preserve existing leave history
             dataToSubmit.leaveHistory = liveProfile?.leaveHistory || {};
 
-            const hasActiveLeave = liveProfile?.leaveHistory ? Object.values(liveProfile.leaveHistory).some((l: any) => l && !l.rejoinedDate && !l.leaveEndDate) : false;
+            const historyArray = liveProfile?.leaveHistory ? (Array.isArray(liveProfile.leaveHistory) ? liveProfile.leaveHistory : Object.values(liveProfile.leaveHistory)) : [];
+            const hasActiveLeave = historyArray.some((l: any) => l && !l.rejoinedDate && !l.leaveEndDate);
 
             if (data.status === 'On Leave' && !hasActiveLeave && data.currentLeave?.leaveStartDate) {
                 const newLeaveRef = push(ref(rtdb, `manpowerProfiles/${profile!.id}/leaveHistory`));
@@ -864,7 +864,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                 >
                     {isPdf ? (
                         <object data={viewingAttachmentUrl} type="application/pdf" width="100%" height="100%">
-                            <p>It appears you don\'t have a PDF plugin for this browser. You can <a href={viewingAttachmentUrl} className="text-blue-600 hover:underline">click here to download the PDF file.</a></p>
+                            <p>It appears you don't have a PDF plugin for this browser. You can <a href={viewingAttachmentUrl} className="text-blue-600 hover:underline">click here to download the PDF file.</a></p>
                         </object>
                     ) : (
                         <img 
@@ -885,3 +885,5 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
+
+    
