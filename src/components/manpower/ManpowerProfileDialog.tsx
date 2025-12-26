@@ -26,7 +26,7 @@ import EditMemoDialog from './EditMemoDialog';
 import EditPpeHistoryDialog from './EditPpeHistoryDialog';
 import AddPpeHistoryDialog from './AddPpeHistoryDialog';
 import { rtdb } from '@/lib/rtdb';
-import { ref, push, set } from 'firebase/database';
+import { ref, push, set, update } from 'firebase/database';
 import { Switch } from '../ui/switch';
 import { Alert } from '../ui/alert';
 import { cn } from '@/lib/utils';
@@ -94,14 +94,23 @@ const profileSchema = z.object({
         });
     }
 
-    const isChangingToOnLeave = data._originalStatus === 'Working' && data.status === 'On Leave';
+    const isBecomingOnLeave = data._originalStatus === 'Working' && data.status === 'On Leave';
 
-    if (isChangingToOnLeave && !data.currentLeave?.leaveStartDate) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Start date is required when setting status to 'On Leave'.",
-        path: ['currentLeave.leaveStartDate'],
-      });
+    if (isBecomingOnLeave) {
+        if (!data.currentLeave?.leaveStartDate) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Start date is required when setting status to 'On Leave'.",
+                path: ['currentLeave.leaveStartDate'],
+            });
+        }
+        if (!data.currentLeave?.remarks?.trim()) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Remarks are required when setting status to 'On Leave'.",
+                path: ['currentLeave.remarks'],
+            });
+        }
     }
 });
 
@@ -282,9 +291,12 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   
     const onSubmit = async (data: ProfileFormValues) => {
         if (!user) return;
+
+        const isBecomingOnLeave = data._originalStatus === 'Working' && data.status === 'On Leave';
+
         try {
             const dataToSubmit: { [key: string]: any } = { ...data };
-
+            
             if (data.trade === 'Others' && data.otherTrade) {
                 dataToSubmit.trade = data.otherTrade.trim();
             }
@@ -298,19 +310,15 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                     epHistory.push({ epNumber: oldEpNumber, date: new Date().toISOString() });
                 }
                 dataToSubmit.epNumber = data.newEpNumber;
-            } else if (!profile && data.epNumber && data.epNumber.trim() !== '') { // Adding for the first time on a new profile
+            } else if (!profile && data.epNumber && data.epNumber.trim() !== '') {
                 dataToSubmit.epNumber = data.epNumber;
             }
             dataToSubmit.epNumberHistory = epHistory;
             delete dataToSubmit.newEpNumber;
 
-            // Preserve existing leave history
             dataToSubmit.leaveHistory = liveProfile?.leaveHistory || {};
 
-            const historyArray = liveProfile?.leaveHistory ? (Array.isArray(liveProfile.leaveHistory) ? liveProfile.leaveHistory : Object.values(liveProfile.leaveHistory)) : [];
-            const hasActiveLeave = historyArray.some((l: any) => l && !l.rejoinedDate && !l.leaveEndDate);
-
-            if (data._originalStatus === 'Working' && data.status === 'On Leave' && !hasActiveLeave && data.currentLeave?.leaveStartDate) {
+            if (isBecomingOnLeave && data.currentLeave?.leaveStartDate) {
                 const newLeaveRef = push(ref(rtdb, `manpowerProfiles/${profile!.id}/leaveHistory`));
                 const leaveRecord: Omit<LeaveRecord, 'id'> = {
                     leaveType: data.currentLeave.leaveType,
@@ -318,8 +326,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                     plannedEndDate: data.currentLeave.plannedEndDate?.toISOString(),
                     remarks: data.currentLeave.remarks,
                 };
-                if (!dataToSubmit.leaveHistory) dataToSubmit.leaveHistory = {};
-                dataToSubmit.leaveHistory[newLeaveRef.key!] = { ...leaveRecord, id: newLeaveRef.key };
+                dataToSubmit.leaveHistory[newLeaveRef.key!] = { ...leaveRecord, id: newLeaveRef.key! };
             }
             
             delete dataToSubmit.currentLeave;
@@ -895,4 +902,3 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   );
 }
 
-    
