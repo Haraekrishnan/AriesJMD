@@ -279,13 +279,14 @@
   transform: translate(-50%, -50%) rotate(170deg) scale(1.15) rotateY(-30deg);
 }
 
-.firework:nth-child(2) {
+/* Firework 2 */
+.firework.second {
   --x: 30vmin;
 }
 
-.firework:nth-child(2),
-.firework:nth-child(2)::before,
-.firework:nth-child(2)::after {
+.firework.second,
+.firework.second::before,
+.firework.second::after {
   --color1: pink;
   --color2: violet;
   --color3: fuchsia;
@@ -298,14 +299,15 @@
   animation-delay: -0.25s;
 }
 
-.firework:nth-child(3) {
+/* Firework 3 */
+.firework.third {
   --x: -30vmin;
   --y: -50vmin;
 }
 
-.firework:nth-child(3),
-.firework:nth-child(3)::before,
-.firework:nth-child(3)::after {
+.firework.third,
+.firework.third::before,
+.firework.third::after {
   --color1: cyan;
   --color2: lightcyan;
   --color3: lightblue;
@@ -316,64 +318,4 @@
   left: 70%;
   top: 60%;
   animation-delay: -0.4s;
-}
-
-.firework:nth-child(4) {
-  --x: -20vmin;
-  --y: -40vmin;
-}
-
-.firework:nth-child(4),
-.firework:nth-child(4)::before,
-.firework:nth-child(4)::after {
-  --color1: #ff7f50; /* coral */
-  --color2: #ff4500; /* orangered */
-  --color3: #ff6347; /* tomato */
-  --color4: #ffa07a; /* lightsalmon */
-  --color5: #ff8c00; /* darkorange */
-  --color6: #ff7f50; /* coral */
-  --finalSize: 38vmin;
-  left: 20%;
-  top: 40%;
-  animation-delay: -0.6s;
-}
-
-.firework:nth-child(5) {
-  --x: 25vmin;
-  --y: -25vmin;
-}
-
-.firework:nth-child(5),
-.firework:nth-child(5)::before,
-.firework:nth-child(5)::after {
-  --color1: #32cd32; /* limegreen */
-  --color2: #98fb98; /* palegreen */
-  --color3: #adff2f; /* greenyellow */
-  --color4: #7fff00; /* chartreuse */
-  --color5: #00fa9a; /* mediumspringgreen */
-  --color6: #32cd32; /* limegreen */
-  --finalSize: 42vmin;
-  left: 80%;
-  top: 30%;
-  animation-delay: -0.8s;
-}
-
-.firework:nth-child(6) {
-  --x: -15vmin;
-  --y: -35vmin;
-}
-
-.firework:nth-child(6),
-.firework:nth-child(6)::before,
-.firework:nth-child(6)::after {
-  --color1: #ff1493; /* deeppink */
-  --color2: #ff69b4; /* hotpink */
-  --color3: #db7093; /* palevioletred */
-  --color4: #c71585; /* mediumvioletred */
-  --color5: #ff00ff; /* fuchsia */
-  --color6: #ff1493; /* deeppink */
-  --finalSize: 36vmin;
-  left: 50%;
-  top: 70%;
-  animation-delay: -1s;
 }
