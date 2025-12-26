@@ -1,22 +1,13 @@
 'use client';
 import './new-year.css';
-import Fireworks from './Fireworks'; // This is for the canvas fireworks
 
 export default function NewYearDecoration() {
     return (
         <div className="new-year-container">
-            {/* --- NEW CANVAS-BASED FIREWORKS --- */}
-            <Fireworks />
-
             {/* --- BIG CIRCLES --- */}
             <div className="balloon balloon-1"></div>
             <div className="balloon balloon-2"></div>
             <div className="balloon balloon-3"></div>
-            
-            {/* --- OLD CSS FIREWORKS --- */}
-            {Array.from({ length: 25 }).map((_, i) => (
-                <div key={`firework-${i}`} className="firework-old"></div>
-            ))}
             
             {/* --- FLYING BALLOONS --- */}
             <div className="flying-balloon" style={{ left: '15%', animationDelay: '0s' }}>🎈</div>
@@ -32,6 +23,10 @@ export default function NewYearDecoration() {
             <div className="firework"></div>
             <div className="firework"></div>
             <div className="firework"></div>
+            <div className="firework"></div>
+            <div className="firework"></div>
+            <div className="firework"></div>
+
 
             <div className="happy-new-year">
                 <h1>Happy New Year 2026</h1>
