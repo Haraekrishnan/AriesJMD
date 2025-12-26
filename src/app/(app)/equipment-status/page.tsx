@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, CheckCircle, X, FileDown, ChevronsUpDown, FilePlus } from 'lucide-react';
+import { PlusCircle, AlertTriangle, CheckCircle, X, FileDown, ChevronsUpDown, FilePlus, Search } from 'lucide-react';
 import UTMachineTable from '@/components/ut-machine/UTMachineTable';
 import AddUTMachineDialog from '@/components/ut-machine/AddUTMachineDialog';
 import type { UTMachine, DftMachine, MobileSim, LaptopDesktop, CertificateRequest, Role, DigitalCamera, Anemometer, OtherEquipment } from '@/lib/types';
@@ -51,6 +51,7 @@ import PendingTransfers from '@/components/requests/PendingTransfers';
 import { useToast } from '@/hooks/use-toast';
 import EquipmentFilters, { type EquipmentFilterValues } from '@/components/equipment/EquipmentFilters';
 import ExpiringCalibrationsReport from '@/components/equipment/ExpiringCalibrationsReport';
+import { Input } from '@/components/ui/input';
 
 
 export default function EquipmentStatusPage() {
@@ -107,6 +108,8 @@ export default function EquipmentStatusPage() {
         projectId: 'all',
         status: 'all',
     });
+    
+    const [mobileSearchTerm, setMobileSearchTerm] = useState('');
 
     const applyFilters = (items: any[]) => {
         return items.filter(item => {
@@ -121,7 +124,19 @@ export default function EquipmentStatusPage() {
     const filteredDftMachines = useMemo(() => applyFilters(dftMachines), [dftMachines, filters]);
     const filteredDigitalCameras = useMemo(() => applyFilters(digitalCameras), [digitalCameras, filters]);
     const filteredAnemometers = useMemo(() => applyFilters(anemometers), [anemometers, filters]);
-    const filteredMobileSims = useMemo(() => applyFilters(mobileSims), [mobileSims, filters]);
+    
+    const filteredMobileSims = useMemo(() => {
+        let items = applyFilters(mobileSims);
+        if (mobileSearchTerm) {
+            const lowercasedTerm = mobileSearchTerm.toLowerCase();
+            items = items.filter(item => 
+                item.number.toLowerCase().includes(lowercasedTerm) ||
+                (item.ariesId && item.ariesId.toLowerCase().includes(lowercasedTerm))
+            );
+        }
+        return items;
+    }, [mobileSims, filters, mobileSearchTerm]);
+
     const filteredLaptopsDesktops = useMemo(() => applyFilters(laptopsDesktops), [laptopsDesktops, filters]);
     const filteredOtherEquipments = useMemo(() => applyFilters(otherEquipments), [otherEquipments, filters]);
 
@@ -628,7 +643,16 @@ export default function EquipmentStatusPage() {
                     </Card>
                 </TabsContent>
                 <TabsContent value="mobile-sim" className="mt-4 space-y-4">
-                     <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
+                     <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2">
+                         <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Search by number or Aries ID..."
+                                className="pl-9"
+                                value={mobileSearchTerm}
+                                onChange={(e) => setMobileSearchTerm(e.target.value)}
+                            />
+                        </div>
                         {canAddEquipment && (
                             <Button onClick={handleAddMobileSim}>
                                 <PlusCircle className="mr-2 h-4 w-4" />

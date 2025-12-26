@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -60,6 +61,7 @@ export default function MobileSimTable({ items, onEdit }: MobileSimTableProps) {
             <TableRow>
               <TableHead>Type</TableHead>
               <TableHead>Number/IMEI</TableHead>
+              <TableHead>Aries ID</TableHead>
               <TableHead>Provider</TableHead>
               <TableHead>Allotted To</TableHead>
               <TableHead>Project</TableHead>
@@ -75,6 +77,7 @@ export default function MobileSimTable({ items, onEdit }: MobileSimTableProps) {
                     <TableRow key={item.id}>
                         <TableCell><Badge variant="outline">{item.type}</Badge></TableCell>
                         <TableCell className="font-medium">{item.number}</TableCell>
+                        <TableCell>{item.ariesId || 'N/A'}</TableCell>
                         <TableCell>{item.provider}</TableCell>
                         <TableCell>
                             {allottedUser ? (
