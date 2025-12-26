@@ -18,6 +18,7 @@ import AddDriverDialog from '@/components/driver/AddDriverDialog';
 import VehicleLogManagerDialog from '@/components/vehicle/VehicleLogManagerDialog';
 import { useSearchParams } from 'next/navigation';
 import StatCard from '@/components/dashboard/stat-card';
+import ExpiringDocumentsReport from '@/components/vehicle/ExpiringDocumentsReport';
 
 export default function VehicleStatusPage() {
     const { can, vehicles, drivers } = useAppContext();
@@ -157,9 +158,12 @@ export default function VehicleStatusPage() {
             
              {expiringItems.length > 0 && (
                 <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive"/>Expiring Documents</CardTitle>
-                        <CardDescription>The following vehicles or drivers have documents expiring within 30 days.</CardDescription>
+                    <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                        <div>
+                            <CardTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive"/>Expiring Documents</CardTitle>
+                            <CardDescription>The following vehicles or drivers have documents expiring within 30 days.</CardDescription>
+                        </div>
+                        <ExpiringDocumentsReport expiringVehicles={expiringVehicles} expiringDrivers={expiringDrivers} />
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-2 max-h-40 overflow-y-auto">

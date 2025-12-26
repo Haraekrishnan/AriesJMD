@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -27,6 +28,7 @@ import LogbookRegisterDialog from '@/components/manpower/LogbookRegisterDialog';
 import LogbookHistoryDialog from '@/components/manpower/LogbookHistoryDialog';
 import LogbookRequests from '@/components/manpower/LogbookRequests';
 import LogbookSummary from '@/components/manpower/LogbookSummary';
+import UpcomingLeaveReport from '@/components/manpower/UpcomingLeaveReport';
 
 
 export default function ManpowerListPage() {
@@ -252,9 +254,12 @@ export default function ManpowerListPage() {
             
             {can.manage_manpower_list && overdueLeaves.length > 0 && (
                 <Card className="border-orange-500">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Clock className="text-orange-500"/>Leave Period Ended</CardTitle>
-                        <CardDescription>The following employees' leave periods have ended. Please update their status.</CardDescription>
+                    <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                        <div>
+                            <CardTitle className="flex items-center gap-2"><Clock className="text-orange-500"/>Leave Period Ended</CardTitle>
+                            <CardDescription>The following employees' leave periods have ended. Please update their status.</CardDescription>
+                        </div>
+                        <UpcomingLeaveReport leaves={overdueLeaves} title="Overdue Leaves" reportType="overdue" />
                     </CardHeader>
                     <CardContent className="space-y-2 max-h-60 overflow-y-auto">
                         {overdueLeaves.map(({ profile, leave }) => (
@@ -284,9 +289,12 @@ export default function ManpowerListPage() {
 
             {can.manage_manpower_list && upcomingLeaves.length > 0 && (
                  <Card className="border-amber-500">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Plane className="text-amber-500"/>Upcoming Leave Within 30 Days</CardTitle>
-                        <CardDescription>The following employees have leaves starting soon.</CardDescription>
+                    <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                        <div>
+                            <CardTitle className="flex items-center gap-2"><Plane className="text-amber-500"/>Upcoming Leave Within 30 Days</CardTitle>
+                            <CardDescription>The following employees have leaves starting soon.</CardDescription>
+                        </div>
+                        <UpcomingLeaveReport leaves={upcomingLeaves} title="Upcoming Leaves" reportType="upcoming" />
                     </CardHeader>
                     <CardContent className="space-y-2 max-h-40 overflow-y-auto">
                         {upcomingLeaves.map(({ profile, leave }) => (

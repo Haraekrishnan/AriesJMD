@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
@@ -25,6 +26,7 @@ import NewInventoryTransferRequestDialog from '@/components/requests/new-invento
 import PendingTransfers from '@/components/requests/PendingTransfers';
 import BulkUpdateInspectionDialog from '@/components/inventory/BulkUpdateInspectionDialog';
 import UpdateItemsDialog from '@/components/inventory/UpdateItemsDialog';
+import ActionRequiredReport from '@/components/inventory/ActionRequiredReport';
 
 
 export default function StoreInventoryPage() {
@@ -240,9 +242,12 @@ export default function StoreInventoryPage() {
 
             {canManageInventory && inventoryNotifications.length > 0 && (
                  <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive"/>Action Required</CardTitle>
-                        <CardDescription>The following items require attention for upcoming or past due dates.</CardDescription>
+                    <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                        <div>
+                            <CardTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive"/>Action Required</CardTitle>
+                            <CardDescription>The following items require attention for upcoming or past due dates.</CardDescription>
+                        </div>
+                        <ActionRequiredReport notifications={inventoryNotifications} />
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-2 max-h-40 overflow-y-auto">

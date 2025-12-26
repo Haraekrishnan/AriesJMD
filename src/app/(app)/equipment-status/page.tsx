@@ -50,6 +50,7 @@ import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
 import PendingTransfers from '@/components/requests/PendingTransfers';
 import { useToast } from '@/hooks/use-toast';
 import EquipmentFilters, { type EquipmentFilterValues } from '@/components/equipment/EquipmentFilters';
+import ExpiringCalibrationsReport from '@/components/equipment/ExpiringCalibrationsReport';
 
 
 export default function EquipmentStatusPage() {
@@ -377,9 +378,12 @@ export default function EquipmentStatusPage() {
             
             {expiringMachines.length > 0 && (
                 <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive"/>Expiring Calibrations</CardTitle>
-                        <CardDescription>The following machines have calibrations expiring within 30 days.</CardDescription>
+                    <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                        <div>
+                            <CardTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive"/>Expiring Calibrations</CardTitle>
+                            <CardDescription>The following machines have calibrations expiring within 30 days.</CardDescription>
+                        </div>
+                        <ExpiringCalibrationsReport expiringMachines={expiringMachines} />
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -661,7 +665,7 @@ export default function EquipmentStatusPage() {
                         )}
                     </div>
                     <Card>
-                        <CardHeader><CardTitle>Other Equipments</CardTitle><CardDescription>List of all other company-provided equipments.</CardDescription></CardHeader>
+                        <CardHeader><CardTitle>Other Equipments</CardTitle><CardDescription>List of all company-provided equipments.</CardDescription></CardHeader>
                         <CardContent><OtherEquipmentTable items={filteredOtherEquipments} onEdit={handleEditOtherEquipment} /></CardContent>
                     </Card>
                 </TabsContent>
