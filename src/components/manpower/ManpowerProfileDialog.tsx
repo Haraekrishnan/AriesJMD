@@ -86,6 +86,7 @@ const profileSchema = z.object({
         });
     }
 
+    // This validation should only run when the user is trying to set the status to 'On Leave' for the first time for this profile.
     const history = data.leaveHistory || {};
     const historyArray = Array.isArray(history) ? history : Object.values(history);
     const hasActiveLeave = historyArray.some((l: any) => l && !l.rejoinedDate && !l.leaveEndDate);
@@ -93,7 +94,7 @@ const profileSchema = z.object({
     if (data.status === 'On Leave' && !hasActiveLeave && !data.currentLeave?.leaveStartDate) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Start date is required when setting status to 'On Leave' for the first time.",
+        message: "Start date is required when setting status to 'On Leave'.",
         path: ['currentLeave.leaveStartDate'],
       });
     }
@@ -282,7 +283,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             }
             delete dataToSubmit.otherTrade;
 
-            let epHistory = Array.isArray(data.epNumberHistory) ? data.epNumberHistory : (data.epNumberHistory ? Object.values(data.epNumberHistory) : []);
+            let epHistory = liveProfile?.epNumberHistory ? (Array.isArray(liveProfile.epNumberHistory) ? [...liveProfile.epNumberHistory] : [...Object.values(liveProfile.epNumberHistory)]) : [];
             
             if (isChangingEp && data.newEpNumber && data.newEpNumber.trim() !== '') {
                 const oldEpNumber = liveProfile?.epNumber;
@@ -456,7 +457,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 py-4">
                   
                   <div className="space-y-4">
-                      <h3 className="text-lg font-semibold border-b pb-2">Personal &amp; Work Details</h3>
+                      <h3 className="text-lg font-semibold border-b pb-2">Personal & Work Details</h3>
                       <div><Label>Full Name</Label><Input {...form.register('name')} />{form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}</div>
                       {similarProfile && (
                           <Alert variant="destructive">
@@ -513,7 +514,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                   </div>
                   
                   <div className="space-y-4">
-                      <h3 className="text-lg font-semibold border-b pb-2">Contract &amp; Policy Details</h3>
+                      <h3 className="text-lg font-semibold border-b pb-2">Contract & Policy Details</h3>
                       <div><Label>Work Order Number</Label><Input {...form.register('workOrderNumber')} /></div>
                       <div><Label>Labour License No</Label><Input {...form.register('labourLicenseNo')} /></div>
                       <div><Label>EIC</Label><Input {...form.register('eic')} /></div>
@@ -759,7 +760,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                   {(Array.isArray(liveProfile?.memoHistory) ? liveProfile.memoHistory : (liveProfile?.memoHistory ? Object.values(liveProfile.memoHistory) : [])).length > 0 && (
                       <div className="space-y-4 md:col-span-3">
                           <Separator />
-                          <h3 className="text-lg font-semibold border-b pb-2">Memo &amp; Warning History</h3>
+                          <h3 className="text-lg font-semibold border-b pb-2">Memo & Warning History</h3>
                            <Table>
                               <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Reason</TableHead><TableHead>Issued By</TableHead>{user?.role === 'Admin' && <TableHead className="text-right">Actions</TableHead>}</TableRow></TableHeader>
                               <TableBody>
@@ -863,7 +864,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                 >
                     {isPdf ? (
                         <object data={viewingAttachmentUrl} type="application/pdf" width="100%" height="100%">
-                            <p>It appears you don't have a PDF plugin for this browser. You can <a href={viewingAttachmentUrl} className="text-blue-600 hover:underline">click here to download the PDF file.</a></p>
+                            <p>It appears you don\'t have a PDF plugin for this browser. You can <a href={viewingAttachmentUrl} className="text-blue-600 hover:underline">click here to download the PDF file.</a></p>
                         </object>
                     ) : (
                         <img 
@@ -884,4 +885,3 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
-
