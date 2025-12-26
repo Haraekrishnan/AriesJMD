@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useState, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -46,6 +45,8 @@ export default function ManpowerListPage() {
     const [selectedProfile, setSelectedProfile] = useState<ManpowerProfile | null>(null);
     const [selectedLeave, setSelectedLeave] = useState<LeaveRecord | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [upcomingLeaveSearch, setUpcomingLeaveSearch] = useState('');
+    const [overdueLeaveSearch, setOverdueLeaveSearch] = useState('');
     const [filters, setFilters] = useState<ManpowerFilterValues>({
         status: 'all',
         trade: 'all',
@@ -68,7 +69,7 @@ export default function ManpowerListPage() {
         const now = new Date();
         const thirtyDaysFromNow = addDays(now, 30);
         
-        return manpowerProfiles.flatMap(p => {
+        let leaves = manpowerProfiles.flatMap(p => {
             const historyArray = Array.isArray(p.leaveHistory) ? p.leaveHistory : Object.values(p.leaveHistory || {});
             return historyArray
                 .filter(l => {
@@ -78,11 +79,17 @@ export default function ManpowerListPage() {
                 })
                 .map(l => ({ profile: p, leave: l }))
         });
-    }, [manpowerProfiles, can.manage_manpower_list]);
+
+        if (upcomingLeaveSearch) {
+            leaves = leaves.filter(item => item.profile.name.toLowerCase().includes(upcomingLeaveSearch.toLowerCase()));
+        }
+
+        return leaves;
+    }, [manpowerProfiles, can.manage_manpower_list, upcomingLeaveSearch]);
 
     const overdueLeaves = useMemo(() => {
         if (!can.manage_manpower_list) return [];
-        return manpowerProfiles.flatMap(p => {
+        let leaves = manpowerProfiles.flatMap(p => {
             const historyArray = Array.isArray(p.leaveHistory) ? p.leaveHistory : Object.values(p.leaveHistory || {});
             return historyArray
                 .filter(l => {
@@ -93,7 +100,13 @@ export default function ManpowerListPage() {
                 })
                 .map(l => ({ profile: p, leave: l }))
         });
-    }, [manpowerProfiles, can.manage_manpower_list]);
+
+        if (overdueLeaveSearch) {
+            leaves = leaves.filter(item => item.profile.name.toLowerCase().includes(overdueLeaveSearch.toLowerCase()));
+        }
+        
+        return leaves;
+    }, [manpowerProfiles, can.manage_manpower_list, overdueLeaveSearch]);
     
     const profilesWithDbIndex = useMemo(() =>
       manpowerProfiles.map((profile, index) => ({
@@ -258,6 +271,15 @@ export default function ManpowerListPage() {
                         <div>
                             <CardTitle className="flex items-center gap-2"><Clock className="text-orange-500"/>Leave Period Ended</CardTitle>
                             <CardDescription>The following employees' leave periods have ended. Please update their status.</CardDescription>
+                             <div className="relative mt-2">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search employees..."
+                                    className="pl-9"
+                                    value={overdueLeaveSearch}
+                                    onChange={(e) => setOverdueLeaveSearch(e.target.value)}
+                                />
+                            </div>
                         </div>
                         <UpcomingLeaveReport leaves={overdueLeaves} title="Overdue Leaves" reportType="overdue" />
                     </CardHeader>
@@ -293,6 +315,15 @@ export default function ManpowerListPage() {
                         <div>
                             <CardTitle className="flex items-center gap-2"><Plane className="text-amber-500"/>Upcoming Leave Within 30 Days</CardTitle>
                             <CardDescription>The following employees have leaves starting soon.</CardDescription>
+                            <div className="relative mt-2">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search employees..."
+                                    className="pl-9"
+                                    value={upcomingLeaveSearch}
+                                    onChange={(e) => setUpcomingLeaveSearch(e.target.value)}
+                                />
+                            </div>
                         </div>
                         <UpcomingLeaveReport leaves={upcomingLeaves} title="Upcoming Leaves" reportType="upcoming" />
                     </CardHeader>
@@ -427,3 +458,4 @@ export default function ManpowerListPage() {
         </div>
     );
 }
+

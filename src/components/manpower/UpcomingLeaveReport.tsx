@@ -8,9 +8,12 @@ import { format, parseISO } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useAppContext } from '@/contexts/app-provider';
+import { useState, useMemo } from 'react';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 
 interface UpcomingLeaveReportProps {
-  leaves: { profile: any; leave: any }[];
+  leaves: any[];
   title: string;
   reportType: 'upcoming' | 'overdue';
 }
