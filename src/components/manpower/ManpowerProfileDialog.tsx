@@ -84,7 +84,7 @@ const profileSchema = z.object({
   ppeHistory: z.array(z.any()).optional(),
   epNumberHistory: z.array(z.any()).optional(),
   logbook: z.any().optional(),
-  _originalStatus: z.string().optional(), // Internal field to track status on form load
+  _originalStatus: z.string().optional(),
 }).superRefine((data, ctx) => {
     if (data.trade === 'Others' && !data.otherTrade) {
         ctx.addIssue({
@@ -94,7 +94,7 @@ const profileSchema = z.object({
         });
     }
 
-    const isBecomingOnLeave = data._originalStatus === 'Working' && data.status === 'On Leave';
+    const isBecomingOnLeave = data.status === 'On Leave' && data._originalStatus !== 'On Leave';
 
     if (isBecomingOnLeave) {
         if (!data.currentLeave?.leaveStartDate) {
@@ -289,84 +289,84 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     }
   }, [watchTrade, form, appendDocument, removeDocument]);
   
-    const onSubmit = async (data: ProfileFormValues) => {
-        if (!user) return;
+  const onSubmit = async (data: ProfileFormValues) => {
+    if (!user) return;
 
-        const isBecomingOnLeave = data._originalStatus === 'Working' && data.status === 'On Leave';
+    const isBecomingOnLeave = data.status === 'On Leave' && (!profile || profile.status !== 'On Leave');
 
-        try {
-            const dataToSubmit: { [key: string]: any } = { ...data };
-            
-            if (data.trade === 'Others' && data.otherTrade) {
-                dataToSubmit.trade = data.otherTrade.trim();
-            }
-            delete dataToSubmit.otherTrade;
-
-            let epHistory = liveProfile?.epNumberHistory ? (Array.isArray(liveProfile.epNumberHistory) ? [...liveProfile.epNumberHistory] : [...Object.values(liveProfile.epNumberHistory)]) : [];
-            
-            if (isChangingEp && data.newEpNumber && data.newEpNumber.trim() !== '') {
-                const oldEpNumber = liveProfile?.epNumber;
-                if (oldEpNumber) {
-                    epHistory.push({ epNumber: oldEpNumber, date: new Date().toISOString() });
-                }
-                dataToSubmit.epNumber = data.newEpNumber;
-            } else if (!profile && data.epNumber && data.epNumber.trim() !== '') {
-                dataToSubmit.epNumber = data.epNumber;
-            }
-            dataToSubmit.epNumberHistory = epHistory;
-            delete dataToSubmit.newEpNumber;
-
-            dataToSubmit.leaveHistory = liveProfile?.leaveHistory || {};
-
-            if (isBecomingOnLeave && data.currentLeave?.leaveStartDate) {
-                const newLeaveRef = push(ref(rtdb, `manpowerProfiles/${profile!.id}/leaveHistory`));
-                const leaveRecord: Omit<LeaveRecord, 'id'> = {
-                    leaveType: data.currentLeave.leaveType,
-                    leaveStartDate: data.currentLeave.leaveStartDate.toISOString(),
-                    plannedEndDate: data.currentLeave.plannedEndDate?.toISOString(),
-                    remarks: data.currentLeave.remarks,
-                };
-                dataToSubmit.leaveHistory[newLeaveRef.key!] = { ...leaveRecord, id: newLeaveRef.key! };
-            }
-            
-            delete dataToSubmit.currentLeave;
-            delete dataToSubmit._originalStatus;
-
-            const dateFields: (keyof ProfileFormValues)[] = [
-                'dob', 'joiningDate', 'passIssueDate', 'workOrderExpiryDate', 'labourLicenseExpiryDate',
-                'wcPolicyExpiryDate', 'medicalExpiryDate', 'safetyExpiryDate', 'irataValidity',
-                'firstAidExpiryDate', 'resignationDate', 'terminationDate'
-            ];
-
-            dateFields.forEach(field => {
-                const dateValue = data[field as keyof typeof data];
-                dataToSubmit[field] = dateValue instanceof Date ? dateValue.toISOString() : null;
-            });
-
-            if (data.skills) {
-                dataToSubmit.skills = data.skills.map(skill => ({
-                    ...skill,
-                    validity: skill.validity instanceof Date ? skill.validity.toISOString() : null,
-                }));
-            }
-
-            const sanitizedData = JSON.parse(JSON.stringify(dataToSubmit, (key, value) => {
-                return value === undefined ? null : value;
-            }));
-
-            if (profile) {
-                await updateManpowerProfile({ ...profile, ...sanitizedData } as ManpowerProfile);
-                toast({ title: 'Profile Updated' });
-            } else {
-                await addManpowerProfile(sanitizedData as Omit<ManpowerProfile, 'id'>);
-                toast({ title: 'Profile Added' });
-            }
-            setIsOpen(false);
-        } catch (err) {
-            console.error("Save failed:", err);
-            toast({ variant: 'destructive', title: 'Failed to save profile', description: (err as Error).message });
+    try {
+        const dataToSubmit: { [key: string]: any } = { ...data };
+        
+        if (data.trade === 'Others' && data.otherTrade) {
+            dataToSubmit.trade = data.otherTrade.trim();
         }
-    };
+        delete dataToSubmit.otherTrade;
+
+        let epHistory = liveProfile?.epNumberHistory ? (Array.isArray(liveProfile.epNumberHistory) ? [...liveProfile.epNumberHistory] : [...Object.values(liveProfile.epNumberHistory)]) : [];
+        
+        if (isChangingEp && data.newEpNumber && data.newEpNumber.trim() !== '') {
+            const oldEpNumber = liveProfile?.epNumber;
+            if (oldEpNumber) {
+                epHistory.push({ epNumber: oldEpNumber, date: new Date().toISOString() });
+            }
+            dataToSubmit.epNumber = data.newEpNumber;
+        } else if (!profile && data.epNumber && data.epNumber.trim() !== '') {
+            dataToSubmit.epNumber = data.epNumber;
+        }
+        dataToSubmit.epNumberHistory = epHistory;
+        delete dataToSubmit.newEpNumber;
+
+        dataToSubmit.leaveHistory = liveProfile?.leaveHistory || {};
+
+        if (isBecomingOnLeave && data.currentLeave?.leaveStartDate) {
+            const newLeaveRef = push(ref(rtdb, `manpowerProfiles/${profile!.id}/leaveHistory`));
+            const leaveRecord: Omit<LeaveRecord, 'id'> = {
+                leaveType: data.currentLeave.leaveType,
+                leaveStartDate: data.currentLeave.leaveStartDate.toISOString(),
+                plannedEndDate: data.currentLeave.plannedEndDate?.toISOString(),
+                remarks: data.currentLeave.remarks,
+            };
+            dataToSubmit.leaveHistory[newLeaveRef.key!] = { ...leaveRecord, id: newLeaveRef.key! };
+        }
+        
+        delete dataToSubmit.currentLeave;
+        delete dataToSubmit._originalStatus;
+
+        const dateFields: (keyof ProfileFormValues)[] = [
+            'dob', 'joiningDate', 'passIssueDate', 'workOrderExpiryDate', 'labourLicenseExpiryDate',
+            'wcPolicyExpiryDate', 'medicalExpiryDate', 'safetyExpiryDate', 'irataValidity',
+            'firstAidExpiryDate', 'resignationDate', 'terminationDate'
+        ];
+
+        dateFields.forEach(field => {
+            const dateValue = data[field as keyof typeof data];
+            dataToSubmit[field] = dateValue instanceof Date ? dateValue.toISOString() : null;
+        });
+
+        if (data.skills) {
+            dataToSubmit.skills = data.skills.map(skill => ({
+                ...skill,
+                validity: skill.validity instanceof Date ? skill.validity.toISOString() : null,
+            }));
+        }
+
+        const sanitizedData = JSON.parse(JSON.stringify(dataToSubmit, (key, value) => {
+            return value === undefined ? null : value;
+        }));
+
+        if (profile) {
+            await updateManpowerProfile({ ...profile, ...sanitizedData } as ManpowerProfile);
+            toast({ title: 'Profile Updated' });
+        } else {
+            await addManpowerProfile(sanitizedData as Omit<ManpowerProfile, 'id'>);
+            toast({ title: 'Profile Added' });
+        }
+        setIsOpen(false);
+    } catch (err) {
+        console.error("Save failed:", err);
+        toast({ variant: 'destructive', title: 'Failed to save profile', description: (err as Error).message });
+    }
+  };
   
   const handleDeleteLeave = (leaveId: string) => {
     if (profile) {
@@ -901,4 +901,3 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
-
