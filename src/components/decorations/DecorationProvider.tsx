@@ -1,9 +1,11 @@
 'use client';
 import { useDecorations } from '@/contexts/decoration-provider';
-import ChristmasDecoration from './ChristmasDecoration';
-import NewYearDecoration from './NewYearDecoration';
-import DiwaliDecoration from './DiwaliDecoration';
 import dynamic from 'next/dynamic';
+
+const ChristmasDecoration = dynamic(() => import('./ChristmasDecoration'), { ssr: false });
+const NewYearDecoration = dynamic(() => import('./NewYearDecoration'), { ssr: false });
+const DiwaliDecoration = dynamic(() => import('./DiwaliDecoration'), { ssr: false });
+
 
 export function DecorationProvider() {
     const { activeTheme } = useDecorations();
