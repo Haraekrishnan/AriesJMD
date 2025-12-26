@@ -94,7 +94,7 @@ const profileSchema = z.object({
         });
     }
 
-    const isBecomingOnLeave = data.status === 'On Leave' && data._originalStatus === 'Working';
+    const isBecomingOnLeave = data.status === 'On Leave' && data._originalStatus !== 'On Leave';
 
     if (isBecomingOnLeave) {
         if (!data.currentLeave?.leaveStartDate) {
@@ -295,7 +295,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   const onSubmit = async (data: ProfileFormValues) => {
     if (!user) return;
     
-    const isBecomingOnLeave = data.status === 'On Leave' && data._originalStatus === 'Working';
+    const isBecomingOnLeave = data.status === 'On Leave' && data._originalStatus !== 'On Leave';
 
     try {
         const dataToSubmit: { [key: string]: any } = { ...data };
@@ -676,7 +676,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                          </div>
                       </div>
                   )}
-                  {watchStatus === 'On Leave' && (
+                  {watchStatus === 'On Leave' && profile?.status !== 'On Leave' && (
                       <div className="space-y-4 md:col-span-2 lg:col-span-3">
                          <Separator />
                          <h3 className="text-lg font-semibold border-b pb-2">Current Leave Details</h3>
@@ -906,3 +906,5 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
+
+    
