@@ -71,12 +71,20 @@ const profileSchema = z.object({
   resignationDate: z.date().optional().nullable(),
   terminationDate: z.date().optional().nullable(),
   feedback: z.string().optional(),
-  currentLeave: z.object({ id: z.string(), leaveType: z.enum(['Annual', 'Emergency']), leaveStartDate: z.date(), plannedEndDate: z.date().optional(), rejoinedDate: z.date().optional(), remarks: z.string().optional() }).optional(),
+  currentLeave: z.object({ 
+      id: z.string(), 
+      leaveType: z.enum(['Annual', 'Emergency']), 
+      leaveStartDate: z.date({ required_error: "Start date is required." }), 
+      plannedEndDate: z.date().optional(), 
+      rejoinedDate: z.date().optional(), 
+      remarks: z.string().optional() 
+  }).optional(),
   leaveHistory: z.any().optional(),
   memoHistory: z.array(z.any()).optional(),
   ppeHistory: z.array(z.any()).optional(),
   epNumberHistory: z.array(z.any()).optional(),
   logbook: z.any().optional(),
+  _originalStatus: z.string().optional(), // Internal field to track status on form load
 }).superRefine((data, ctx) => {
     if (data.trade === 'Others' && !data.otherTrade) {
         ctx.addIssue({
@@ -86,14 +94,12 @@ const profileSchema = z.object({
         });
     }
 
-    const history = data.leaveHistory || {};
-    const historyArray = Array.isArray(history) ? history : Object.values(history);
-    const hasActiveLeave = historyArray.some((l: any) => l && !l.rejoinedDate && !l.leaveEndDate);
+    const isChangingToOnLeave = data._originalStatus === 'Working' && data.status === 'On Leave';
 
-    if (data.status === 'On Leave' && !hasActiveLeave && !data.currentLeave?.leaveStartDate) {
+    if (isChangingToOnLeave && !data.currentLeave?.leaveStartDate) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Start date is required when setting status to 'On Leave' for the first time.",
+        message: "Start date is required when setting status to 'On Leave'.",
         path: ['currentLeave.leaveStartDate'],
       });
     }
@@ -220,6 +226,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
         setIsChangingEp(false);
         const defaultValues = liveProfile ? {
             ...liveProfile,
+            _originalStatus: liveProfile.status,
             dob: parseDate(liveProfile.dob),
             joiningDate: parseDate(liveProfile.joiningDate),
             passIssueDate: parseDate(liveProfile.passIssueDate),
@@ -249,6 +256,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             memoHistory: [],
             ppeHistory: [],
             epNumberHistory: [],
+            _originalStatus: 'Working',
         };
         form.reset(defaultValues as any);
         if (defaultValues.otherTrade) {
@@ -302,7 +310,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             const historyArray = liveProfile?.leaveHistory ? (Array.isArray(liveProfile.leaveHistory) ? liveProfile.leaveHistory : Object.values(liveProfile.leaveHistory)) : [];
             const hasActiveLeave = historyArray.some((l: any) => l && !l.rejoinedDate && !l.leaveEndDate);
 
-            if (data.status === 'On Leave' && !hasActiveLeave && data.currentLeave?.leaveStartDate) {
+            if (data._originalStatus === 'Working' && data.status === 'On Leave' && !hasActiveLeave && data.currentLeave?.leaveStartDate) {
                 const newLeaveRef = push(ref(rtdb, `manpowerProfiles/${profile!.id}/leaveHistory`));
                 const leaveRecord: Omit<LeaveRecord, 'id'> = {
                     leaveType: data.currentLeave.leaveType,
@@ -315,6 +323,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             }
             
             delete dataToSubmit.currentLeave;
+            delete dataToSubmit._originalStatus;
 
             const dateFields: (keyof ProfileFormValues)[] = [
                 'dob', 'joiningDate', 'passIssueDate', 'workOrderExpiryDate', 'labourLicenseExpiryDate',
