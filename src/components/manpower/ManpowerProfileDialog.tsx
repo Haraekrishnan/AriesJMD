@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useEffect, useMemo, useState, useRef, MouseEvent } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -87,15 +86,16 @@ const profileSchema = z.object({
         });
     }
 
-    const hasActiveLeave = data.leaveHistory ? Object.values(data.leaveHistory).some((l: any) => l && !l.rejoinedDate && !l.leaveEndDate) : false;
-    const isNewLeave = data.status === 'On Leave' && !hasActiveLeave;
+    const history = data.leaveHistory || {};
+    const historyArray = Array.isArray(history) ? history : Object.values(history);
+    const hasActiveLeave = historyArray.some((l: any) => l && !l.rejoinedDate && !l.leaveEndDate);
 
-    if (isNewLeave && !data.currentLeave?.leaveStartDate) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Start date is required when setting status to 'On Leave' for the first time.",
-            path: ['currentLeave.leaveStartDate'],
-        });
+    if (data.status === 'On Leave' && !hasActiveLeave && !data.currentLeave?.leaveStartDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Start date is required when setting status to 'On Leave' for the first time.",
+        path: ['currentLeave.leaveStartDate'],
+      });
     }
 });
 
@@ -296,13 +296,10 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             dataToSubmit.epNumberHistory = epHistory;
             delete dataToSubmit.newEpNumber;
 
-            // Preserve existing leave history, especially for users already on leave
-            let currentLeaveHistory = liveProfile?.leaveHistory || {};
-            if (!Array.isArray(currentLeaveHistory)) {
-                currentLeaveHistory = Object.keys(currentLeaveHistory).length > 0 ? currentLeaveHistory : {};
-            }
-            
-            const hasActiveLeave = Object.values(currentLeaveHistory).some((l: any) => l && !l.rejoinedDate && !l.leaveEndDate);
+            // Preserve existing leave history
+            dataToSubmit.leaveHistory = liveProfile?.leaveHistory || {};
+
+            const hasActiveLeave = liveProfile?.leaveHistory ? Object.values(liveProfile.leaveHistory).some((l: any) => l && !l.rejoinedDate && !l.leaveEndDate) : false;
 
             if (data.status === 'On Leave' && !hasActiveLeave && data.currentLeave?.leaveStartDate) {
                 const newLeaveRef = push(ref(rtdb, `manpowerProfiles/${profile!.id}/leaveHistory`));
@@ -312,10 +309,10 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                     plannedEndDate: data.currentLeave.plannedEndDate?.toISOString(),
                     remarks: data.currentLeave.remarks,
                 };
-                (currentLeaveHistory as any)[newLeaveRef.key!] = { ...leaveRecord, id: newLeaveRef.key };
+                if (!dataToSubmit.leaveHistory) dataToSubmit.leaveHistory = {};
+                dataToSubmit.leaveHistory[newLeaveRef.key!] = { ...leaveRecord, id: newLeaveRef.key };
             }
             
-            dataToSubmit.leaveHistory = currentLeaveHistory;
             delete dataToSubmit.currentLeave;
 
             const dateFields: (keyof ProfileFormValues)[] = [
@@ -887,6 +884,4 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
-
-
 
