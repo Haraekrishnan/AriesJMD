@@ -21,15 +21,32 @@ import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 
 const itemSchema = z.object({
-  type: z.enum(['Mobile', 'SIM']),
-  provider: z.string().min(1, 'Provider is required'),
-  number: z.string().min(1, 'Number is required'),
-  ariesId: z.string().optional(),
+  type: z.enum(['Mobile', 'SIM', 'Mobile with SIM']),
   allottedToUserId: z.string().min(1, 'Please select a person'),
   allotmentDate: z.date({ required_error: 'Allotment date is required' }),
   projectId: z.string().min(1, 'Project is required'),
   status: z.enum(['Active', 'Inactive', 'Returned']),
   remarks: z.string().optional(),
+  ariesId: z.string().optional(),
+
+  // Mobile fields
+  make: z.string().optional(),
+  model: z.string().optional(),
+  imei: z.string().optional(),
+  
+  // SIM fields
+  simProvider: z.string().optional(),
+  simNumber: z.string().optional(),
+}).superRefine((data, ctx) => {
+    if (data.type === 'Mobile' || data.type === 'Mobile with SIM') {
+        if (!data.make) ctx.addIssue({ path: ['make'], message: 'Make is required.'});
+        if (!data.model) ctx.addIssue({ path: ['model'], message: 'Model is required.'});
+        if (!data.imei) ctx.addIssue({ path: ['imei'], message: 'IMEI is required.'});
+    }
+    if (data.type === 'SIM' || data.type === 'Mobile with SIM') {
+        if (!data.simProvider) ctx.addIssue({ path: ['simProvider'], message: 'SIM Provider is required.'});
+        if (!data.simNumber) ctx.addIssue({ path: ['simNumber'], message: 'SIM Number is required.'});
+    }
 });
 
 type FormValues = z.infer<typeof itemSchema>;
@@ -49,8 +66,10 @@ export default function AddMobileSimDialog({ isOpen, setIsOpen }: AddMobileSimDi
   
   const form = useForm<FormValues>({
     resolver: zodResolver(itemSchema),
-    defaultValues: { status: 'Active' },
+    defaultValues: { status: 'Active', type: 'Mobile' },
   });
+
+  const watchType = form.watch('type');
 
   const allPersonnelOptions = useMemo(() => {
     if (allotmentType === 'user') {
@@ -74,7 +93,7 @@ export default function AddMobileSimDialog({ isOpen, setIsOpen }: AddMobileSimDi
   
   const handleOpenChange = (open: boolean) => {
       if (!open) {
-          form.reset({ status: 'Active' });
+          form.reset({ status: 'Active', type: 'Mobile' });
           setAllotmentType('user');
       }
       setIsOpen(open);
@@ -93,14 +112,42 @@ export default function AddMobileSimDialog({ isOpen, setIsOpen }: AddMobileSimDi
           <DialogDescription>Fill in the details for the new item.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-                <div><Label>Type</Label><Controller control={form.control} name="type" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="Mobile">Mobile</SelectItem><SelectItem value="SIM">SIM</SelectItem></SelectContent></Select>)}/></div>
-                <div><Label>Provider</Label><Input {...form.register('provider')} />{form.formState.errors.provider && <p className="text-xs text-destructive">{form.formState.errors.provider.message}</p>}</div>
+            <div className="space-y-2">
+                <Label>Type</Label>
+                <Controller control={form.control} name="type" render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger><SelectValue/></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Mobile">Mobile</SelectItem>
+                      <SelectItem value="SIM">SIM</SelectItem>
+                      <SelectItem value="Mobile with SIM">Mobile with SIM</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}/>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-                <div><Label>Number/IMEI</Label><Input {...form.register('number')} />{form.formState.errors.number && <p className="text-xs text-destructive">{form.formState.errors.number.message}</p>}</div>
-                <div><Label>Aries ID</Label><Input {...form.register('ariesId')} /></div>
-            </div>
+            
+            {(watchType === 'Mobile' || watchType === 'Mobile with SIM') && (
+              <fieldset className="border p-4 rounded-md space-y-4">
+                <legend className="text-sm font-medium px-1">Mobile Details</legend>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><Label>Make</Label><Input {...form.register('make')} />{form.formState.errors.make && <p className="text-xs text-destructive">{form.formState.errors.make.message}</p>}</div>
+                  <div><Label>Model</Label><Input {...form.register('model')} />{form.formState.errors.model && <p className="text-xs text-destructive">{form.formState.errors.model.message}</p>}</div>
+                </div>
+                <div><Label>IMEI</Label><Input {...form.register('imei')} />{form.formState.errors.imei && <p className="text-xs text-destructive">{form.formState.errors.imei.message}</p>}</div>
+              </fieldset>
+            )}
+
+            {(watchType === 'SIM' || watchType === 'Mobile with SIM') && (
+              <fieldset className="border p-4 rounded-md space-y-4">
+                <legend className="text-sm font-medium px-1">SIM Details</legend>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><Label>Provider</Label><Input {...form.register('simProvider')} />{form.formState.errors.simProvider && <p className="text-xs text-destructive">{form.formState.errors.simProvider.message}</p>}</div>
+                  <div><Label>Number</Label><Input {...form.register('simNumber')} />{form.formState.errors.simNumber && <p className="text-xs text-destructive">{form.formState.errors.simNumber.message}</p>}</div>
+                </div>
+              </fieldset>
+            )}
+
+            <div><Label>Aries ID</Label><Input {...form.register('ariesId')} /></div>
 
             <div className="space-y-2">
                 <Label>Allotment Type</Label>

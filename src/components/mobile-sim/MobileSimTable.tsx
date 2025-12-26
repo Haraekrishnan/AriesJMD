@@ -60,9 +60,8 @@ export default function MobileSimTable({ items, onEdit }: MobileSimTableProps) {
           <TableHeader>
             <TableRow>
               <TableHead>Type</TableHead>
-              <TableHead>Number/IMEI</TableHead>
+              <TableHead>Details</TableHead>
               <TableHead>Aries ID</TableHead>
-              <TableHead>Provider</TableHead>
               <TableHead>Allotted To</TableHead>
               <TableHead>Project</TableHead>
               <TableHead>Status</TableHead>
@@ -76,9 +75,17 @@ export default function MobileSimTable({ items, onEdit }: MobileSimTableProps) {
                 return (
                     <TableRow key={item.id}>
                         <TableCell><Badge variant="outline">{item.type}</Badge></TableCell>
-                        <TableCell className="font-medium">{item.number}</TableCell>
+                        <TableCell>
+                          {item.type === 'Mobile' && <p><strong>IMEI:</strong> {item.imei}</p>}
+                          {item.type === 'SIM' && <p><strong>Number:</strong> {item.simNumber}</p>}
+                          {item.type === 'Mobile with SIM' && (
+                            <>
+                              <p><strong>IMEI:</strong> {item.imei}</p>
+                              <p><strong>Number:</strong> {item.simNumber}</p>
+                            </>
+                          )}
+                        </TableCell>
                         <TableCell>{item.ariesId || 'N/A'}</TableCell>
-                        <TableCell>{item.provider}</TableCell>
                         <TableCell>
                             {allottedUser ? (
                                 <div className="flex items-center gap-3">

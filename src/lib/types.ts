@@ -7,7 +7,7 @@ export type Broadcast = {
   createdAt: string; // ISO String
   expiryDate: string; // ISO String
   recipientRoles: string[];
-  recipientUserIds: string[];
+  recipientUserIds:string[];
   dismissedBy: string[];
   emailTarget: 'none' | 'roles' | 'individuals';
 };
@@ -695,9 +695,18 @@ export type MobileSimStatus = 'Active' | 'Inactive' | 'Returned';
 
 export type MobileSim = {
   id: string;
-  type: 'Mobile' | 'SIM';
-  provider: string;
-  number: string;
+  type: 'Mobile' | 'SIM' | 'Mobile with SIM';
+  // Mobile fields
+  make?: string;
+  model?: string;
+  imei?: string;
+  // SIM fields
+  simProvider?: string;
+  simNumber?: string;
+  // Common fields for backward compatibility and simpler cases
+  provider?: string;
+  number?: string;
+  
   allottedToUserId: string;
   allotmentDate: string; // ISO string
   projectId: string;
