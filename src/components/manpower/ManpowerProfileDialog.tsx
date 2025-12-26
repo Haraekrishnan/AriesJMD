@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Trash2, Edit, PlusCircle, FileWarning, Shirt, AlertCircle, Info, Paperclip, ZoomIn, ZoomOut, Download, ChevronDown, ChevronRight, MessageSquare } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { format, parse, isValid, startOfDay, parseISO, isBefore, isPast } from 'date-fns';
-import { TRADES, MANDATORY_DOCS, RA_TRADES } from '@/lib/mock-data';
+import { TRADES, RA_TRADES } from '@/lib/mock-data';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Textarea } from '../ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
@@ -94,7 +94,7 @@ const profileSchema = z.object({
         });
     }
 
-    const isBecomingOnLeave = data.status === 'On Leave' && data._originalStatus !== 'On Leave';
+    const isBecomingOnLeave = data.status === 'On Leave' && data._originalStatus === 'Working';
 
     if (isBecomingOnLeave) {
         if (!data.currentLeave?.leaveStartDate) {
@@ -143,16 +143,19 @@ const DatePickerController = ({ name, control, disabled = false }: { name: any, 
 };
 
 const getInitialDocs = (profileData?: ManpowerProfile) => {
-    const baseDocs = [...MANDATORY_DOCS].filter(doc => doc !== 'First Aid Certificate');
-    if (profileData?.trade === 'RA Level 3') {
+    const baseDocs = ['Aadhar Card', 'CV', 'Pan Card', 'Personal Details', 'Form A', 'Induction', 'Signed Contract', 'Medical Report'];
+    if (profileData?.trade && RA_TRADES.includes(profileData.trade)) {
+        baseDocs.push('IRATA Certificate');
+    }
+     if (profileData?.trade === 'RA Level 3') {
         baseDocs.push('First Aid Certificate');
     }
-
-    const profileDocsMap = new Map((Array.isArray(profileData?.documents) ? profileData?.documents : []).map(doc => [doc.name, doc]));
+    
+    const profileDocsMap = new Map((Array.isArray(profileData?.documents) ? profileData.documents : []).map(doc => [doc.name, doc]));
     const initialDocs: ManpowerDocument[] = baseDocs.map(docName => 
       profileDocsMap.get(docName) || { name: docName, status: 'Pending', details: '' }
     );
-    (Array.isArray(profileData?.documents) ? profileData?.documents : []).forEach(doc => {
+    (Array.isArray(profileData?.documents) ? profileData.documents : []).forEach(doc => {
       if (!initialDocs.some(d => d.name === doc.name)) {
         initialDocs.push(doc);
       }
@@ -291,12 +294,12 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   
   const onSubmit = async (data: ProfileFormValues) => {
     if (!user) return;
-
-    const isBecomingOnLeave = data.status === 'On Leave' && (!profile || profile.status !== 'On Leave');
+    
+    const isBecomingOnLeave = data.status === 'On Leave' && data._originalStatus === 'Working';
 
     try {
         const dataToSubmit: { [key: string]: any } = { ...data };
-        
+
         if (data.trade === 'Others' && data.otherTrade) {
             dataToSubmit.trade = data.otherTrade.trim();
         }
@@ -316,9 +319,8 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
         dataToSubmit.epNumberHistory = epHistory;
         delete dataToSubmit.newEpNumber;
 
-        dataToSubmit.leaveHistory = liveProfile?.leaveHistory || {};
-
         if (isBecomingOnLeave && data.currentLeave?.leaveStartDate) {
+            const leaveHistory = liveProfile?.leaveHistory || {};
             const newLeaveRef = push(ref(rtdb, `manpowerProfiles/${profile!.id}/leaveHistory`));
             const leaveRecord: Omit<LeaveRecord, 'id'> = {
                 leaveType: data.currentLeave.leaveType,
@@ -326,9 +328,11 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                 plannedEndDate: data.currentLeave.plannedEndDate?.toISOString(),
                 remarks: data.currentLeave.remarks,
             };
-            dataToSubmit.leaveHistory[newLeaveRef.key!] = { ...leaveRecord, id: newLeaveRef.key! };
+            dataToSubmit.leaveHistory = { ...leaveHistory, [newLeaveRef.key!]: { ...leaveRecord, id: newLeaveRef.key! } };
+        } else {
+             dataToSubmit.leaveHistory = liveProfile?.leaveHistory || {};
         }
-        
+
         delete dataToSubmit.currentLeave;
         delete dataToSubmit._originalStatus;
 
@@ -678,11 +682,12 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                          <h3 className="text-lg font-semibold border-b pb-2">Current Leave Details</h3>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                              <div><Label>Leave Type</Label><Controller name="currentLeave.leaveType" control={form.control} render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="Annual">Annual</SelectItem><SelectItem value="Emergency">Emergency</SelectItem></SelectContent></Select>)}/></div>
-                             <div><Label>Leave Period</Label><Controller name="currentLeave.leaveStartDate" control={form.control} render={({ field }) => (<DatePickerInput value={field.value} onChange={field.onChange}/>)}/></div>
-                             <div><Label>Actual Rejoining Date</Label><DatePickerController name="currentLeave.rejoinedDate" control={form.control}/></div>
+                             <div><Label>Leave Period Start</Label><DatePickerController name="currentLeave.leaveStartDate" control={form.control}/></div>
+                             <div><Label>Planned Rejoining Date</Label><DatePickerController name="currentLeave.plannedEndDate" control={form.control}/></div>
                              <div className="col-span-3"><Label>Remarks</Label><Textarea {...form.register('currentLeave.remarks')}/></div>
                           </div>
                           {form.formState.errors.currentLeave?.leaveStartDate && <p className="text-xs text-destructive">{form.formState.errors.currentLeave.leaveStartDate.message}</p>}
+                           {form.formState.errors.currentLeave?.remarks && <p className="text-xs text-destructive">{form.formState.errors.currentLeave.remarks.message}</p>}
                       </div>
                   )}
                   {profile && (
