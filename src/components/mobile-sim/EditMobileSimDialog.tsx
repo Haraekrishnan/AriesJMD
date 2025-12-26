@@ -1,6 +1,5 @@
-
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,13 +14,16 @@ import { MobileSim, MobileSimStatus } from '@/lib/types';
 import { Textarea } from '../ui/textarea';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { parseISO } from 'date-fns';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { Check, ChevronsUpDown } from 'lucide-react';
 
 const itemSchema = z.object({
   type: z.enum(['Mobile', 'SIM']),
   provider: z.string().min(1, 'Provider is required'),
   number: z.string().min(1, 'Number is required'),
   ariesId: z.string().optional(),
-  allottedToUserId: z.string().min(1, 'Please select a user'),
+  allottedToUserId: z.string().min(1, 'Please select a person'),
   allotmentDate: z.date({ required_error: 'Allotment date is required' }),
   projectId: z.string().min(1, 'Project is required'),
   status: z.enum(['Active', 'Inactive', 'Returned']),
@@ -39,8 +41,9 @@ interface EditMobileSimDialogProps {
 const statusOptions: MobileSimStatus[] = ['Active', 'Inactive', 'Returned'];
 
 export default function EditMobileSimDialog({ isOpen, setIsOpen, item }: EditMobileSimDialogProps) {
-  const { users, projects, updateMobileSim } = useAppContext();
+  const { users, projects, updateMobileSim, manpowerProfiles } = useAppContext();
   const { toast } = useToast();
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(itemSchema),
@@ -54,6 +57,17 @@ export default function EditMobileSimDialog({ isOpen, setIsOpen, item }: EditMob
         });
     }
   }, [item, isOpen, form]);
+
+  const allPersonnel = useMemo(() => {
+    const personnelMap = new Map<string, { id: string, name: string }>();
+    users.forEach(u => personnelMap.set(u.id, u));
+    manpowerProfiles.forEach(p => {
+        if (!personnelMap.has(p.id)) {
+            personnelMap.set(p.id, { id: p.id, name: p.name });
+        }
+    });
+    return Array.from(personnelMap.values());
+  }, [users, manpowerProfiles]);
 
   const onSubmit = (data: FormValues) => {
     updateMobileSim({
@@ -82,7 +96,47 @@ export default function EditMobileSimDialog({ isOpen, setIsOpen, item }: EditMob
                 <div><Label>Aries ID</Label><Input {...form.register('ariesId')} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Allotted To</Label><Controller control={form.control} name="allottedToUserId" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select user..."/></SelectTrigger><SelectContent>{users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent></Select>)}/>{form.formState.errors.allottedToUserId && <p className="text-xs text-destructive">{form.formState.errors.allottedToUserId.message}</p>}</div>
+              <div className="space-y-2">
+                <Label>Allotted To</Label>
+                <Controller
+                  name="allottedToUserId"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" role="combobox" className="w-full justify-between">
+                                {field.value ? allPersonnel.find(p => p.id === field.value)?.name : "Select person..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                            <Command>
+                                <CommandInput placeholder="Search person..."/>
+                                <CommandList>
+                                <CommandEmpty>No person found.</CommandEmpty>
+                                <CommandGroup>
+                                    {allPersonnel.map((p) => (
+                                    <CommandItem
+                                        key={p.id}
+                                        value={p.name}
+                                        onSelect={() => {
+                                            form.setValue('allottedToUserId', p.id)
+                                            setPopoverOpen(false)
+                                        }}
+                                    >
+                                        <Check className={`mr-2 h-4 w-4 ${p.id === field.value ? "opacity-100" : "opacity-0"}`} />
+                                        {p.name}
+                                    </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+                  )}
+                />
+                 {form.formState.errors.allottedToUserId && <p className="text-xs text-destructive">{form.formState.errors.allottedToUserId.message}</p>}
+              </div>
               <div><Label>Allotment Date</Label><Controller control={form.control} name="allotmentDate" render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />{form.formState.errors.allotmentDate && <p className="text-xs text-destructive">{form.formState.errors.allotmentDate.message}</p>}</div>
             </div>
             <div className="grid grid-cols-2 gap-4">

@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -26,8 +25,19 @@ const statusVariant: { [key in MobileSimStatus]: 'secondary' | 'default' | 'dest
 }
 
 export default function MobileSimTable({ items, onEdit }: MobileSimTableProps) {
-  const { can, users, projects, deleteMobileSim } = useAppContext();
+  const { can, users, projects, deleteMobileSim, manpowerProfiles } = useAppContext();
   const { toast } = useToast();
+
+  const allPersonnel = useMemo(() => {
+    const personnelMap = new Map<string, { id: string, name: string, avatar: string }>();
+    users.forEach(u => personnelMap.set(u.id, u));
+    manpowerProfiles.forEach(p => {
+        if (!personnelMap.has(p.id)) {
+            personnelMap.set(p.id, { id: p.id, name: p.name, avatar: p.photo || '' });
+        }
+    });
+    return Array.from(personnelMap.values());
+  }, [users, manpowerProfiles]);
 
   const handleDelete = (itemId: string) => {
     deleteMobileSim(itemId);
@@ -59,7 +69,7 @@ export default function MobileSimTable({ items, onEdit }: MobileSimTableProps) {
           </TableHeader>
           <TableBody>
             {items.map(item => {
-                const allottedUser = users.find(u => u.id === item.allottedToUserId);
+                const allottedUser = allPersonnel.find(u => u.id === item.allottedToUserId);
                 const project = projects.find(p => p.id === item.projectId);
                 return (
                     <TableRow key={item.id}>
@@ -67,13 +77,17 @@ export default function MobileSimTable({ items, onEdit }: MobileSimTableProps) {
                         <TableCell className="font-medium">{item.number}</TableCell>
                         <TableCell>{item.provider}</TableCell>
                         <TableCell>
-                            <div className="flex items-center gap-3">
-                                <Avatar className="h-9 w-9">
-                                    <AvatarImage src={allottedUser?.avatar} alt={allottedUser?.name} />
-                                    <AvatarFallback>{allottedUser?.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <p className="font-medium">{allottedUser?.name}</p>
-                            </div>
+                            {allottedUser ? (
+                                <div className="flex items-center gap-3">
+                                    <Avatar className="h-9 w-9">
+                                        <AvatarImage src={allottedUser?.avatar} alt={allottedUser?.name} />
+                                        <AvatarFallback>{allottedUser?.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <p className="font-medium">{allottedUser?.name}</p>
+                                </div>
+                            ) : (
+                                <p>Unknown User</p>
+                            )}
                         </TableCell>
                         <TableCell>{project?.name}</TableCell>
                         <TableCell><Badge variant={statusVariant[item.status]}>{item.status}</Badge></TableCell>
