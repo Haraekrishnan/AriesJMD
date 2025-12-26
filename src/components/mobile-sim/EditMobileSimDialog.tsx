@@ -17,7 +17,7 @@ import { DatePickerInput } from '../ui/date-picker-input';
 import { parseISO } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, Eye, EyeOff } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 const itemSchema = z.object({
@@ -25,7 +25,7 @@ const itemSchema = z.object({
   allottedToUserId: z.string().optional(),
   allotmentDate: z.date({ required_error: 'Allotment date is required' }),
   projectId: z.string().min(1, 'Project is required'),
-  status: z.enum(['Active', 'Inactive', 'Returned']),
+  status: z.enum(['Active', 'Inactive', 'Returned', 'Standby']),
   remarks: z.string().optional(),
   ariesId: z.string().optional(),
 
@@ -57,7 +57,7 @@ interface EditMobileSimDialogProps {
   item: MobileSim;
 }
 
-const statusOptions: MobileSimStatus[] = ['Active', 'Inactive', 'Returned'];
+const statusOptions: MobileSimStatus[] = ['Active', 'Inactive', 'Returned', 'Standby'];
 
 export default function EditMobileSimDialog({ isOpen, setIsOpen, item }: EditMobileSimDialogProps) {
   const { user, users, updateMobileSim, manpowerProfiles, projects } = useAppContext();
@@ -101,6 +101,7 @@ export default function EditMobileSimDialog({ isOpen, setIsOpen, item }: EditMob
       ...item,
       ...data,
       allotmentDate: data.allotmentDate.toISOString(),
+      allottedToUserId: data.allottedToUserId || null,
     });
     toast({ title: 'Item Updated', description: `${data.type} has been updated.` });
     setIsOpen(false);
@@ -166,43 +167,46 @@ export default function EditMobileSimDialog({ isOpen, setIsOpen, item }: EditMob
 
             <div className="space-y-2">
               <Label>Allotted To (Optional)</Label>
-              <Controller
-                name="allottedToUserId"
-                control={form.control}
-                render={({ field }) => (
-                  <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-                      <PopoverTrigger asChild>
-                          <Button variant="outline" role="combobox" className="w-full justify-between">
-                              {field.value ? allPersonnelOptions.find(p => p.id === field.value)?.name : "Select person..."}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                          <Command>
-                              <CommandInput placeholder="Search person..."/>
-                              <CommandList>
-                              <CommandEmpty>No person found.</CommandEmpty>
-                              <CommandGroup>
-                                  {allPersonnelOptions.map((p) => (
-                                  <CommandItem
-                                      key={p.id}
-                                      value={p.name}
-                                      onSelect={() => {
-                                          form.setValue('allottedToUserId', p.id)
-                                          setPopoverOpen(false)
-                                      }}
-                                  >
-                                      <Check className={`mr-2 h-4 w-4 ${p.id === field.value ? "opacity-100" : "opacity-0"}`} />
-                                      {p.name}
-                                  </CommandItem>
-                                  ))}
-                              </CommandGroup>
-                              </CommandList>
-                          </Command>
-                      </PopoverContent>
-                  </Popover>
-                )}
-              />
+               <div className="flex gap-2">
+                  <Controller
+                    name="allottedToUserId"
+                    control={form.control}
+                    render={({ field }) => (
+                      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                          <PopoverTrigger asChild>
+                              <Button variant="outline" role="combobox" className="w-full justify-between">
+                                  {field.value ? allPersonnelOptions.find(p => p.id === field.value)?.name : "Select person..."}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                              <Command>
+                                  <CommandInput placeholder="Search person..."/>
+                                  <CommandList>
+                                  <CommandEmpty>No person found.</CommandEmpty>
+                                  <CommandGroup>
+                                      {allPersonnelOptions.map((p) => (
+                                      <CommandItem
+                                          key={p.id}
+                                          value={p.name}
+                                          onSelect={() => {
+                                              form.setValue('allottedToUserId', p.id)
+                                              setPopoverOpen(false)
+                                          }}
+                                      >
+                                          <Check className={`mr-2 h-4 w-4 ${p.id === field.value ? "opacity-100" : "opacity-0"}`} />
+                                          {p.name}
+                                      </CommandItem>
+                                      ))}
+                                  </CommandGroup>
+                                  </CommandList>
+                              </Command>
+                          </PopoverContent>
+                      </Popover>
+                    )}
+                  />
+                  <Button type="button" variant="outline" onClick={() => form.setValue('allottedToUserId', '')}>Unassign</Button>
+               </div>
                {form.formState.errors.allottedToUserId && <p className="text-xs text-destructive">{form.formState.errors.allottedToUserId.message}</p>}
             </div>
             

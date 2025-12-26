@@ -19,10 +19,14 @@ interface MobileSimTableProps {
   onEdit: (item: MobileSim) => void;
 }
 
-const statusVariant: { [key in MobileSimStatus]: 'secondary' | 'default' | 'destructive' } = {
-    'Active': 'default',
-    'Inactive': 'secondary',
-    'Returned': 'destructive',
+const getStatusVariant = (status: string): 'secondary' | 'default' | 'destructive' | 'warning' => {
+    switch (status) {
+        case 'Active': return 'default';
+        case 'Inactive': return 'secondary';
+        case 'Returned': return 'destructive';
+        case 'Standby': return 'warning';
+        default: return 'secondary';
+    }
 }
 
 export default function MobileSimTable({ items, onEdit }: MobileSimTableProps) {
@@ -96,11 +100,11 @@ export default function MobileSimTable({ items, onEdit }: MobileSimTableProps) {
                                     <p className="font-medium">{allottedUser?.name}</p>
                                 </div>
                             ) : (
-                                <p>Unknown User</p>
+                                <p className="text-muted-foreground">Unassigned</p>
                             )}
                         </TableCell>
                         <TableCell>{project?.name}</TableCell>
-                        <TableCell><Badge variant={statusVariant[item.status]}>{item.status}</Badge></TableCell>
+                        <TableCell><Badge variant={getStatusVariant(item.status)}>{item.status}</Badge></TableCell>
                         {can.manage_equipment_status && (
                         <TableCell className="text-right">
                             <AlertDialog>

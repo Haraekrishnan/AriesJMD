@@ -78,7 +78,6 @@ export type Vendor = {
   category?: string;
   ownerId?: string;
   totalSpend?: number;
-  last30Days?: number;
   nextPaymentAmount?: number;
   nextPaymentDate?: string; // ISO String
   frequency?: 'Monthly' | 'Rolling' | 'Annual';
@@ -691,7 +690,7 @@ export type Anemometer = {
   ariesId?: string;
 };
 
-export type MobileSimStatus = 'Active' | 'Inactive' | 'Returned';
+export type MobileSimStatus = 'Active' | 'Inactive' | 'Returned' | 'Standby';
 
 export type MobileSim = {
   id: string;
@@ -707,7 +706,7 @@ export type MobileSim = {
   provider?: string;
   number?: string;
   
-  allottedToUserId: string;
+  allottedToUserId: string | null;
   allotmentDate: string; // ISO string
   projectId: string;
   status: MobileSimStatus;
