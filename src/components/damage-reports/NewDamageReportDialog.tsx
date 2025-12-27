@@ -56,7 +56,8 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
   });
   
   const allItems = useMemo(() => {
-    const items = [...inventoryItems, ...utMachines, ...dftMachines];
+    const nonConsumableInventory = inventoryItems.filter(item => item.category === 'General');
+    const items = [...nonConsumableInventory, ...utMachines, ...dftMachines];
     if (!user || !user.projectIds) return items;
     if (user.role === 'Admin') {
       return items;
