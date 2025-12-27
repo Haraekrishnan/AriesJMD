@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import React from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AppSidebar } from '@/components/shared/app-sidebar';
@@ -11,14 +10,7 @@ import { DecorationProvider } from '@/components/decorations/DecorationProvider'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAppContext();
-  const router = useRouter();
 
-  useEffect(() => {
-    if (!loading && user?.status === 'locked') {
-      router.replace('/status');
-    }
-  }, [user, loading, router]);
-  
   if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">

@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronsUpDown, Upload, Link as LinkIcon, AlertCircle } from 'lucide-react';
+import { ChevronsUpDown, Upload, Link as LinkIcon, AlertCircle, Paperclip, X } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { ScrollArea } from '../ui/scroll-area';
 import Link from 'next/link';
@@ -22,7 +22,7 @@ const damageReportSchema = z.object({
   itemId: z.string().optional(),
   otherItemName: z.string().optional(),
   reason: z.string().min(10, 'A detailed reason is required.'),
-  attachmentOriginalUrl: z.string().url({ message: 'Please enter a valid URL.' }).refine(url => url.includes('drive.google.com'), 'Please provide a valid Google Drive link.').optional().or(z.literal('')),
+  attachmentDownloadUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
 }).refine(data => data.itemId || data.otherItemName, {
   message: 'You must either select an inventory item or specify an item name.',
   path: ['itemId'],
@@ -36,7 +36,7 @@ interface NewDamageReportDialogProps {
 }
 
 export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageReportDialogProps) {
-  const { user, inventoryItems, utMachines, dftMachines } = useAppContext();
+  const { user, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments } = useAppContext();
   const { addDamageReport } = useInventory();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,7 +46,6 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
 
   const [selectedItemType, setSelectedItemType] = useState<string | null>(null);
   
-  const SHARED_DRIVE_FOLDER = "https://drive.google.com/drive/folders/1zubHqst5iiZEKRbnWQJWYgs0BvSoRe6f?usp=sharing";
 
   const form = useForm<FormValues>({
     resolver: zodResolver(damageReportSchema),
@@ -56,15 +55,20 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
   });
   
   const allItems = useMemo(() => {
-    const nonConsumableInventory = inventoryItems.filter(item => item.category === 'General');
-    const items = [...nonConsumableInventory, ...utMachines, ...dftMachines];
-    if (!user || !user.projectIds) return items;
-    if (user.role === 'Admin') {
+    const items = [
+        ...inventoryItems.filter(item => item.category === 'General'),
+        ...utMachines,
+        ...dftMachines,
+        ...digitalCameras,
+        ...anemometers,
+        ...otherEquipments,
+    ];
+    if (!user || !user.projectIds || user.role === 'Admin') {
       return items;
     }
     const userProjectIds = new Set(user.projectIds);
     return items.filter(item => item.projectId && userProjectIds.has(item.projectId));
-  }, [inventoryItems, utMachines, dftMachines, user]);
+  }, [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, user]);
 
 
   const selectableItems = useMemo(() => {
@@ -75,7 +79,7 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
   const uniqueItemNames = useMemo(() => {
     const names = new Set<string>();
     selectableItems.forEach(item => {
-        const name = (item as any).name || (item as any).machineName;
+        const name = (item as any).name || (item as any).machineName || (item as any).equipmentName || (item as any).model;
         if (name) names.add(name);
     });
     return Array.from(names).sort();
@@ -84,7 +88,7 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
   const availableItemsOfType = useMemo(() => {
     if (!selectedItemType) return [];
     return selectableItems.filter(item => {
-        const name = (item as any).name || (item as any).machineName;
+        const name = (item as any).name || (item as any).machineName || (item as any).equipmentName || (item as any).model;
         return name === selectedItemType;
     });
   }, [selectableItems, selectedItemType]);
@@ -107,10 +111,44 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
       toast({
         variant: 'destructive',
         title: 'Submission Failed',
-        description: error.message || 'Something went wrong. Please check the link and try again.',
+        description: error.message || 'Something went wrong. Please check your file and try again.',
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsSubmitting(true);
+    toast({ title: 'Uploading...', description: `Uploading ${file.name}. Please wait.` });
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/upload/dropbox", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        form.setValue('attachmentDownloadUrl', data.downloadLink);
+        toast({ title: 'Upload Successful', description: 'File has been attached.' });
+      } else {
+        throw new Error(data.error || 'Upload failed');
+      }
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
+    } finally {
+      setIsSubmitting(false);
+      // Reset file input so the same file can be re-uploaded if needed
+      event.target.value = '';
     }
   };
   
@@ -130,19 +168,7 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
     return item ? `${name} (SN: ${item.serialNumber})` : "Select specific item...";
   }, [selectedItemId, allItems]);
 
-  const attachmentLink = form.watch('attachmentOriginalUrl');
-
-  const handleOpenFilePicker = () => {
-    const width = 1000;
-    const height = 700;
-    const left = (window.screen.width - width) / 2;
-    const top = (window.screen.height - height) / 2;
-    window.open(
-      SHARED_DRIVE_FOLDER,
-      'googleDrivePicker',
-      `width=${width},height=${height},top=${top},left=${left},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`
-    );
-  };
+  const attachmentLink = form.watch('attachmentDownloadUrl');
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -166,26 +192,28 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
                       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                         <Command>
                           <CommandInput placeholder="Search item type..." />
-                          <CommandList>
-                            <CommandEmpty>No item type found.</CommandEmpty>
-                            <CommandGroup>
-                              {uniqueItemNames.map(name => (
-                                <CommandItem key={name} value={name} onSelect={() => { 
-                                  setSelectedItemType(name);
+                          <ScrollArea className="h-48">
+                            <CommandList>
+                              <CommandEmpty>No item type found.</CommandEmpty>
+                              <CommandGroup>
+                                {uniqueItemNames.map(name => (
+                                  <CommandItem key={name} value={name} onSelect={() => { 
+                                    setSelectedItemType(name);
+                                    form.setValue('itemId', '');
+                                    form.setValue('otherItemName', '');
+                                    setIsItemTypePopoverOpen(false); 
+                                  }}>
+                                    {name}
+                                  </CommandItem>
+                                ))}
+                                <CommandItem onSelect={() => { 
+                                  setSelectedItemType('Other');
                                   form.setValue('itemId', '');
-                                  form.setValue('otherItemName', '');
                                   setIsItemTypePopoverOpen(false); 
-                                }}>
-                                  {name}
-                                </CommandItem>
-                              ))}
-                              <CommandItem onSelect={() => { 
-                                setSelectedItemType('Other');
-                                form.setValue('itemId', '');
-                                setIsItemTypePopoverOpen(false); 
-                              }}>Other (Specify below)</CommandItem>
-                            </CommandGroup>
-                          </CommandList>
+                                }}>Other (Specify below)</CommandItem>
+                              </CommandGroup>
+                            </CommandList>
+                          </ScrollArea>
                         </Command>
                       </PopoverContent>
                     </Popover>
@@ -208,16 +236,18 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                           <Command>
                             <CommandInput placeholder="Search by SN or Aries ID..."/>
-                            <CommandList>
-                              <CommandEmpty>No item found.</CommandEmpty>
-                              <CommandGroup>
-                                {availableItemsOfType.map(item => (
-                                  <CommandItem key={item.id} value={`${item.serialNumber} ${item.ariesId}`} onSelect={() => { form.setValue('itemId', item.id); form.setValue('otherItemName', ''); setIsItemPopoverOpen(false); }}>
-                                    {item.serialNumber} (ID: {item.ariesId || 'N/A'})
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
+                             <ScrollArea className="h-48">
+                                <CommandList>
+                                <CommandEmpty>No item found.</CommandEmpty>
+                                <CommandGroup>
+                                    {availableItemsOfType.map(item => (
+                                    <CommandItem key={item.id} value={`${item.serialNumber} ${item.ariesId}`} onSelect={() => { form.setValue('itemId', item.id); form.setValue('otherItemName', ''); setIsItemPopoverOpen(false); }}>
+                                        {item.serialNumber} (ID: {item.ariesId || 'N/A'})
+                                    </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                                </CommandList>
+                            </ScrollArea>
                           </Command>
                         </PopoverContent>
                       </Popover>
@@ -243,21 +273,25 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
 
               <div className="space-y-2">
                 <Label>Attachment</Label>
-                <div className='flex items-center gap-2'>
-                    <Button type="button" variant="outline" size="sm" onClick={handleOpenFilePicker}>
-                      <Upload className="mr-2 h-4 w-4" /> Upload / Select File
+                {attachmentLink ? (
+                  <div className="flex items-center justify-between p-2 rounded-md border text-sm">
+                    <a href={attachmentLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 truncate hover:underline">
+                      <Paperclip className="h-4 w-4"/>
+                      <span className="truncate">File Attached</span>
+                    </a>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => form.setValue('attachmentDownloadUrl', '')}>
+                      <X className="h-4 w-4"/>
                     </Button>
-                </div>
-                <Input {...form.register('attachmentOriginalUrl')} placeholder="Paste Google Drive link here..." />
-                 {attachmentLink && (
-                  <Button asChild variant="link" size="sm" className="p-0 h-auto">
-                    <Link href={attachmentLink} target="_blank" rel="noopener noreferrer">
-                      <LinkIcon className="mr-2 h-3 w-3" /> Open Link
-                    </Link>
-                  </Button>
-                 )}
-                 {form.formState.errors.attachmentOriginalUrl && <p className="text-xs text-destructive">{form.formState.errors.attachmentOriginalUrl.message}</p>}
-                <p className="text-xs text-muted-foreground">Upload the file to the shared Google Drive folder and paste the file link here.</p>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <Button asChild variant="outline" size="sm">
+                      <Label htmlFor="damage-report-file-upload"><Upload className="mr-2 h-4 w-4"/> {isSubmitting ? 'Uploading...' : 'Upload File'}</Label>
+                    </Button>
+                    <Input id="damage-report-file-upload" type="file" onChange={handleFileChange} className="hidden" disabled={isSubmitting} accept=".pdf,.doc,.docx,.jpg,.png" />
+                  </div>
+                )}
+                 {form.formState.errors.attachmentDownloadUrl && <p className="text-xs text-destructive">{form.formState.errors.attachmentDownloadUrl.message}</p>}
               </div>
             </div>
           </ScrollArea>

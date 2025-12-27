@@ -1,23 +1,15 @@
 'use client';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/auth-provider';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { LogOut, ShieldAlert } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAppContext } from '@/contexts/app-provider';
 
 export default function StatusPage() {
-  const { user, loading, logout, requestUnlock } = useAuth();
+  const { user, loading, logout, requestUnlock } = useAppContext();
   const { toast } = useToast();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!loading && user && user.status !== 'locked') {
-      router.replace('/dashboard');
-    }
-  }, [user, loading, router]);
 
   if (loading || !user) {
     return (

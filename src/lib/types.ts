@@ -1,5 +1,6 @@
 
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -796,7 +797,7 @@ export type DailyPlannerComment = {
   day: string; // YYYY-MM-DD
   comments: Comment[];
   lastUpdated: string;
-  viewedBy: { [key: string]: boolean };
+  viewedBy: string[];
 };
 
 export type Bed = {
@@ -1021,7 +1022,6 @@ export type DamageReport = {
   reporterId: string;
   reportDate: string; // ISO
   status: DamageReportStatus;
-  attachmentUrl?: string | null; // Legacy support
   attachmentOriginalUrl?: string | null;
   attachmentDownloadUrl?: string | null;
 };
