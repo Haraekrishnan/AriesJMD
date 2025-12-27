@@ -131,6 +131,18 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
 
   const attachmentLink = form.watch('attachmentOriginalUrl');
 
+  const handleOpenFilePicker = () => {
+    const width = 1000;
+    const height = 700;
+    const left = (window.screen.width - width) / 2;
+    const top = (window.screen.height - height) / 2;
+    window.open(
+      SHARED_DRIVE_FOLDER,
+      'googleDrivePicker',
+      `width=${width},height=${height},top=${top},left=${left},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`
+    );
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
@@ -231,10 +243,8 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
               <div className="space-y-2">
                 <Label>Attachment</Label>
                 <div className='flex items-center gap-2'>
-                    <Button asChild variant="outline" size="sm">
-                      <Link href={SHARED_DRIVE_FOLDER}>
-                        <Upload className="mr-2 h-4 w-4" /> Upload / Select File
-                      </Link>
+                    <Button type="button" variant="outline" size="sm" onClick={handleOpenFilePicker}>
+                      <Upload className="mr-2 h-4 w-4" /> Upload / Select File
                     </Button>
                 </div>
                 <Input {...form.register('attachmentOriginalUrl')} placeholder="Paste Google Drive link here..." />
