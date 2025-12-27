@@ -1011,17 +1011,18 @@ export type Directive = {
 };
 export type DirectiveStatus = 'New' | 'Under Review' | 'Action Taken' | 'Closed';
 
-export type DamageReportStatus = 'Pending' | 'Under Review' | 'Approved' | 'Rejected';
+export type DamageReportStatus = 'Pending' | 'Approved' | 'Rejected' | 'Under Review';
 
 export type DamageReport = {
     id: string;
     itemId: string | null;
-    otherItemName?: string | null;
+    otherItemName: string | null;
     reason: string;
     reporterId: string;
     reportDate: string; // ISO
     status: DamageReportStatus;
-    attachmentUrl: string | null;
+    attachmentOriginalUrl: string | null;
+    attachmentDownloadUrl: string | null;
 };
 
 export type DecorationTheme = 'none' | 'christmas' | 'diwali' | 'new-year';

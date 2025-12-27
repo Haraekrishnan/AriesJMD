@@ -7,8 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO } from 'date-fns';
 import type { DamageReport, DamageReportStatus } from '@/lib/types';
-import { ThumbsUp, ThumbsDown, Paperclip, Send } from 'lucide-react';
-import { ScrollArea } from '../ui/scroll-area';
+import { ThumbsUp, ThumbsDown, Paperclip, Send, Download } from 'lucide-react';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -52,11 +51,6 @@ export default function ViewDamageReportDialog({ isOpen, setIsOpen, report }: Vi
     setIsOpen(false);
   };
 
-  const handleAddComment = () => {
-    // This is a placeholder for a more complete comment system if needed later.
-    // For now, comments are only for approval/rejection.
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-lg">
@@ -78,11 +72,11 @@ export default function ViewDamageReportDialog({ isOpen, setIsOpen, report }: Vi
                 <Label>Reason for Damage</Label>
                 <p className="text-sm p-3 border rounded-md bg-muted min-h-[6rem]">{report.reason}</p>
              </div>
-             {report.attachmentUrl && (
+             {report.attachmentDownloadUrl && (
                 <div className="space-y-1">
                     <Label>Attachment</Label>
-                    <a href={report.attachmentUrl} target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" className="w-full justify-start" disabled={!report.attachmentUrl}><Paperclip className="mr-2 h-4 w-4"/>View Attached Document</Button>
+                    <a href={report.attachmentDownloadUrl} target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" className="w-full justify-start"><Download className="mr-2 h-4 w-4"/>Download Attached Document</Button>
                     </a>
                 </div>
              )}

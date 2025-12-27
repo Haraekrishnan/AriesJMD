@@ -13,15 +13,16 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronsUpDown, Upload, Paperclip, X } from 'lucide-react';
+import { ChevronsUpDown, Upload, Link as LinkIcon, AlertCircle } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { ScrollArea } from '../ui/scroll-area';
+import Link from 'next/link';
 
 const damageReportSchema = z.object({
   itemId: z.string().optional(),
   otherItemName: z.string().optional(),
   reason: z.string().min(10, 'A detailed reason is required.'),
-  attachment: z.instanceof(File).optional(),
+  attachmentOriginalUrl: z.string().url({ message: 'Please enter a valid URL.' }).refine(url => url.includes('drive.google.com'), 'Please provide a valid Google Drive link.').optional().or(z.literal('')),
 }).refine(data => data.itemId || data.otherItemName, {
   message: 'You must either select an inventory item or specify an item name.',
   path: ['itemId'],
@@ -44,6 +45,8 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
   const [isItemPopoverOpen, setIsItemPopoverOpen] = useState(false);
 
   const [selectedItemType, setSelectedItemType] = useState<string | null>(null);
+  
+  const SHARED_DRIVE_FOLDER = "https://drive.google.com/drive/folders/1zubHqst5iiZEKRbnWQJWYgs0BvSoRe6f?usp=sharing";
 
   const form = useForm<FormValues>({
     resolver: zodResolver(damageReportSchema),
@@ -86,12 +89,6 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
   }, [selectableItems, selectedItemType]);
 
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    form.setValue('attachment', file);
-  };
-
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     try {
@@ -109,7 +106,7 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
       toast({
         variant: 'destructive',
         title: 'Submission Failed',
-        description: error.message || 'Something went wrong while submitting your report.',
+        description: error.message || 'Something went wrong. Please check the link and try again.',
       });
     } finally {
       setIsSubmitting(false);
@@ -132,6 +129,7 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
     return item ? `${name} (SN: ${item.serialNumber})` : "Select specific item...";
   }, [selectedItemId, allItems]);
 
+  const attachmentLink = form.watch('attachmentOriginalUrl');
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -230,26 +228,25 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
                 {form.formState.errors.reason && <p className="text-xs text-destructive">{form.formState.errors.reason.message}</p>}
               </div>
 
-               <div className="space-y-2">
-                <Label>Attachment (Optional)</Label>
-                {form.watch('attachment') ? (
-                  <div className="flex items-center justify-between p-2 rounded-md border text-sm">
-                    <div className="flex items-center gap-2 truncate">
-                      <Paperclip className="h-4 w-4" />
-                      <span className="truncate">{form.watch('attachment')?.name}</span>
-                    </div>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => form.setValue('attachment', undefined)}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="relative">
+              <div className="space-y-2">
+                <Label>Attachment</Label>
+                <div className='flex items-center gap-2'>
                     <Button asChild variant="outline" size="sm">
-                      <Label htmlFor="damage-report-file"><Upload className="mr-2 h-4 w-4" /> Upload File</Label>
+                      <Link href={SHARED_DRIVE_FOLDER} target="_blank" rel="noopener noreferrer">
+                        <Upload className="mr-2 h-4 w-4" /> Upload / Select File
+                      </Link>
                     </Button>
-                    <Input id="damage-report-file" type="file" onChange={handleFileChange} className="hidden" />
-                  </div>
-                )}
+                </div>
+                <Input {...form.register('attachmentOriginalUrl')} placeholder="Paste Google Drive link here..." />
+                 {attachmentLink && (
+                  <Button asChild variant="link" size="sm" className="p-0 h-auto">
+                    <Link href={attachmentLink} target="_blank" rel="noopener noreferrer">
+                      <LinkIcon className="mr-2 h-3 w-3" /> Open Link
+                    </Link>
+                  </Button>
+                 )}
+                 {form.formState.errors.attachmentOriginalUrl && <p className="text-xs text-destructive">{form.formState.errors.attachmentOriginalUrl.message}</p>}
+                <p className="text-xs text-muted-foreground">Upload the file to the shared Google Drive folder and paste the file link here.</p>
               </div>
             </div>
           </ScrollArea>
