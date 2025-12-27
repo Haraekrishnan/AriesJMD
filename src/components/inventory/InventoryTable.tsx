@@ -387,7 +387,7 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
                                                         const isExpired = (item.inspectionDueDate && isPast(parseISO(item.inspectionDueDate))) || (item.tpInspectionDueDate && isPast(parseISO(item.tpInspectionDueDate)));
                                                         const displayStatus = isExpired ? 'Expired' : item.status;
                                                         const damageReport = damageReports.find(dr => dr.itemId === item.id);
-                                                        const attachmentUrl = damageReport?.attachmentDownloadUrl || damageReport?.attachmentOriginalUrl || (damageReport as any).attachmentUrl;
+                                                        const attachmentUrl = damageReport?.attachmentDownloadUrl || damageReport?.attachmentOriginalUrl || damageReport?.attachmentUrl;
                                                         
                                                         return (
                                                         <TableRow key={item.id}>
@@ -481,4 +481,3 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
         </TooltipProvider>
     );
 }
-
