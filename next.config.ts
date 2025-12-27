@@ -2,6 +2,7 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -28,6 +29,12 @@ const nextConfig: NextConfig = {
         hostname: 'api.cloudinary.com',
         pathname: '/**',
       },
+    ],
+  },
+  
+  experimental: {
+    allowedDevOrigins: [
+      "https://*.cluster-sumfw3zmzzhzkx4mpvz3ogth4y.cloudworkstations.dev",
     ],
   },
 
