@@ -1,4 +1,3 @@
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -134,20 +133,28 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
         body: formData,
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        console.error("Failed to parse API response:", text);
+        throw new Error("Upload API returned invalid response. Is the API route correct?");
+      }
 
-      if (res.ok && data.success) {
-        form.setValue('attachmentDownloadUrl', data.downloadLink);
-        toast({ title: 'Upload Successful', description: 'File has been attached.' });
-      } else {
+      if (!res.ok) {
+        console.error("Dropbox upload error:", data);
         throw new Error(data.error || 'Upload failed');
       }
+
+      form.setValue('attachmentDownloadUrl', data.downloadLink);
+      toast({ title: 'Upload Successful', description: 'File has been attached.' });
+
     } catch (error: any) {
       console.error("Upload error:", error);
       toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
     } finally {
       setIsSubmitting(false);
-      // Reset file input so the same file can be re-uploaded if needed
       event.target.value = '';
     }
   };
