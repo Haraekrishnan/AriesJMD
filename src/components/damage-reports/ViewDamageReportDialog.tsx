@@ -50,6 +50,8 @@ export default function ViewDamageReportDialog({ isOpen, setIsOpen, report }: Vi
     setIsOpen(false);
   };
 
+  const attachmentUrlToUse = report.attachmentDownloadUrl || report.attachmentOriginalUrl;
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-lg">
@@ -71,10 +73,10 @@ export default function ViewDamageReportDialog({ isOpen, setIsOpen, report }: Vi
                 <Label>Reason for Damage</Label>
                 <p className="text-sm p-3 border rounded-md bg-muted min-h-[6rem]">{report.reason}</p>
              </div>
-             {report.attachmentDownloadUrl && (
+             {attachmentUrlToUse && (
                 <div className="space-y-1">
                     <Label>Attachment</Label>
-                    <a href={report.attachmentDownloadUrl} target="_blank" rel="noopener noreferrer">
+                    <a href={attachmentUrlToUse} target="_blank" rel="noopener noreferrer">
                         <Button variant="outline" className="w-full justify-start"><Download className="mr-2 h-4 w-4"/>Download Attached Document</Button>
                     </a>
                 </div>
