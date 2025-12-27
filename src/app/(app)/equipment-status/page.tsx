@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useInventory } from '@/contexts/inventory-provider';
@@ -52,6 +53,7 @@ import { useToast } from '@/hooks/use-toast';
 import EquipmentFilters, { type EquipmentFilterValues } from '@/components/equipment/EquipmentFilters';
 import ExpiringCalibrationsReport from '@/components/equipment/ExpiringCalibrationsReport';
 import { Input } from '@/components/ui/input';
+import { useAppContext } from '@/contexts/app-provider';
 
 
 export default function EquipmentStatusPage() {
@@ -59,6 +61,7 @@ export default function EquipmentStatusPage() {
     const { projects } = useGeneral();
     const { utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, certificateRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, machineLogs, inventoryItems } = useInventory();
     const { toast } = useToast();
+    const { manpowerProfiles } = useAppContext();
     
     // UT Machine State
     const [isAddUTMachineOpen, setIsAddUTMachineOpen] = useState(false);
@@ -129,17 +132,22 @@ export default function EquipmentStatusPage() {
         let items = applyFilters(mobileSims);
         if (mobileSearchTerm) {
             const lowercasedTerm = mobileSearchTerm.toLowerCase();
+            const allPersonnel = [...users, ...manpowerProfiles];
             items = items.filter(item => {
                 const numberToSearch = (item.simNumber || item.number || '').toLowerCase();
                 const imeiToSearch = (item.imei || '').toLowerCase();
                 const ariesIdToSearch = (item.ariesId || '').toLowerCase();
+                const allottedTo = allPersonnel.find(p => p.id === item.allottedToUserId);
+                const allottedToName = (allottedTo?.name || '').toLowerCase();
+
                 return numberToSearch.includes(lowercasedTerm) || 
                        imeiToSearch.includes(lowercasedTerm) || 
-                       ariesIdToSearch.includes(lowercasedTerm);
+                       ariesIdToSearch.includes(lowercasedTerm) ||
+                       allottedToName.includes(lowercasedTerm);
             });
         }
         return items;
-    }, [mobileSims, filters, mobileSearchTerm]);
+    }, [mobileSims, filters, mobileSearchTerm, users, manpowerProfiles]);
 
     const filteredLaptopsDesktops = useMemo(() => applyFilters(laptopsDesktops), [laptopsDesktops, filters]);
     const filteredOtherEquipments = useMemo(() => applyFilters(otherEquipments), [otherEquipments, filters]);
@@ -651,7 +659,7 @@ export default function EquipmentStatusPage() {
                          <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder="Search by number, IMEI or Aries ID..."
+                                placeholder="Search by number, IMEI, Aries ID, or name..."
                                 className="pl-9"
                                 value={mobileSearchTerm}
                                 onChange={(e) => setMobileSearchTerm(e.target.value)}
@@ -727,4 +735,5 @@ export default function EquipmentStatusPage() {
         </div>
     );
 }
+
 
