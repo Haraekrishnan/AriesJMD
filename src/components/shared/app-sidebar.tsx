@@ -33,6 +33,7 @@ import {
   ClipboardList,
   Download,
   MessageSquare,
+  Hammer,
 } from 'lucide-react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -172,6 +173,7 @@ const plannerNotificationCount =
     { href: '/job-record', icon: ClipboardList, label: 'Job Record', notificationCount: 0, show: true },
     { href: '/purchase-register', icon: ShoppingCart, label: 'Purchase Register', notificationCount: 0, show: true },
     { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: notificationCounts.storeInventory || 0, show: true },
+    { href: '/damage-reports', icon: Hammer, label: 'Damage Reports', notificationCount: 0, show: can.manage_inventory },
     { href: '/consumables', icon: Package, label: 'Consumables', notificationCount: 0, show: false },
     { href: '/igp-ogp', icon: ArrowRightLeft, label: 'IGP/OGP Register', notificationCount: 0, show: false },
     { href: '/ppe-stock', icon: Package, label: 'PPE Stock', notificationCount: 0, show: false },
