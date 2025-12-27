@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -50,7 +51,8 @@ export default function ViewDamageReportDialog({ isOpen, setIsOpen, report }: Vi
     setIsOpen(false);
   };
 
-  const attachmentUrlToUse = report.attachmentDownloadUrl || report.attachmentOriginalUrl;
+  const attachmentUrlToUse = report.attachmentDownloadUrl || report.attachmentOriginalUrl || (report as any).attachmentUrl || null;
+
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
