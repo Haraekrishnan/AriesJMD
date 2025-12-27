@@ -232,7 +232,7 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
                 <Label>Attachment</Label>
                 <div className='flex items-center gap-2'>
                     <Button asChild variant="outline" size="sm">
-                      <Link href={SHARED_DRIVE_FOLDER} target="_blank" rel="noopener noreferrer">
+                      <Link href={SHARED_DRIVE_FOLDER}>
                         <Upload className="mr-2 h-4 w-4" /> Upload / Select File
                       </Link>
                     </Button>
