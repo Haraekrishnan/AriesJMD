@@ -129,10 +129,14 @@ export default function EquipmentStatusPage() {
         let items = applyFilters(mobileSims);
         if (mobileSearchTerm) {
             const lowercasedTerm = mobileSearchTerm.toLowerCase();
-            items = items.filter(item => 
-                item.number.toLowerCase().includes(lowercasedTerm) ||
-                (item.ariesId && item.ariesId.toLowerCase().includes(lowercasedTerm))
-            );
+            items = items.filter(item => {
+                const numberToSearch = (item.simNumber || item.number || '').toLowerCase();
+                const imeiToSearch = (item.imei || '').toLowerCase();
+                const ariesIdToSearch = (item.ariesId || '').toLowerCase();
+                return numberToSearch.includes(lowercasedTerm) || 
+                       imeiToSearch.includes(lowercasedTerm) || 
+                       ariesIdToSearch.includes(lowercasedTerm);
+            });
         }
         return items;
     }, [mobileSims, filters, mobileSearchTerm]);
@@ -647,7 +651,7 @@ export default function EquipmentStatusPage() {
                          <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder="Search by number or Aries ID..."
+                                placeholder="Search by number, IMEI or Aries ID..."
                                 className="pl-9"
                                 value={mobileSearchTerm}
                                 onChange={(e) => setMobileSearchTerm(e.target.value)}
@@ -723,3 +727,4 @@ export default function EquipmentStatusPage() {
         </div>
     );
 }
+
