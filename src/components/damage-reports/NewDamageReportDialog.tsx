@@ -21,7 +21,7 @@ const damageReportSchema = z.object({
   itemId: z.string().optional(),
   otherItemName: z.string().optional(),
   reason: z.string().min(10, 'A detailed reason is required.'),
-  attachmentDownloadUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
+  attachmentOriginalUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
 }).refine(data => data.itemId || data.otherItemName, {
   message: 'You must either select an inventory item or specify an item name.',
   path: ['itemId'],
@@ -44,6 +44,7 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
   const [isItemPopoverOpen, setIsItemPopoverOpen] = useState(false);
 
   const [selectedItemType, setSelectedItemType] = useState<string | null>(null);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   
 
   const form = useForm<FormValues>({
@@ -95,12 +96,41 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
 
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
+    let finalData = { ...data };
+
     try {
-      const result = await addDamageReport(data);
+        if (attachmentFile) {
+            toast({ title: 'Uploading attachment...', description: 'Please wait.' });
+            const formData = new FormData();
+            formData.append("file", attachmentFile);
+            
+            const res = await fetch("/api/upload/dropbox", {
+                method: "POST",
+                body: formData,
+            });
+
+            const text = await res.text();
+            let uploadData;
+            try {
+                uploadData = JSON.parse(text);
+            } catch {
+                throw new Error("Upload API returned invalid response. Check the console for more details.");
+            }
+
+            if (!res.ok || !uploadData.success) {
+                throw new Error(uploadData.error || 'File upload failed.');
+            }
+            
+            // Use the direct download link from Dropbox
+            finalData.attachmentOriginalUrl = uploadData.downloadLink;
+        }
+
+      const result = await addDamageReport(finalData);
       if (result.success) {
         toast({ title: 'Damage Report Submitted', description: 'Your report has been successfully submitted.' });
         form.reset();
         setSelectedItemType(null);
+        setAttachmentFile(null);
         setIsOpen(false);
       } else {
         throw new Error(result.error || 'An unknown error occurred during submission.');
@@ -110,52 +140,17 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
       toast({
         variant: 'destructive',
         title: 'Submission Failed',
-        description: error.message || 'Something went wrong. Please check your file and try again.',
+        description: error.message || 'Something went wrong. Please check your inputs and try again.',
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
-
-    setIsSubmitting(true);
-    toast({ title: 'Uploading...', description: `Uploading ${file.name}. Please wait.` });
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const res = await fetch("/api/upload/dropbox", {
-        method: "POST",
-        body: formData,
-      });
-
-      const text = await res.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        console.error("Failed to parse API response:", text);
-        throw new Error("Upload API returned invalid response. Is the API route correct?");
-      }
-
-      if (!res.ok) {
-        console.error("Dropbox upload error:", data);
-        throw new Error(data.error || 'Upload failed');
-      }
-
-      form.setValue('attachmentDownloadUrl', data.downloadLink);
-      toast({ title: 'Upload Successful', description: 'File has been attached.' });
-
-    } catch (error: any) {
-      console.error("Upload error:", error);
-      toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
-    } finally {
-      setIsSubmitting(false);
-      event.target.value = '';
+    if (file) {
+      setAttachmentFile(file);
     }
   };
   
@@ -163,6 +158,7 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
     if (!open) {
         form.reset();
         setSelectedItemType(null);
+        setAttachmentFile(null);
     }
     setIsOpen(open);
   };
@@ -174,8 +170,6 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
     const name = item?.name || (item as any)?.machineName;
     return item ? `${name} (SN: ${item.serialNumber})` : "Select specific item...";
   }, [selectedItemId, allItems]);
-
-  const attachmentLink = form.watch('attachmentDownloadUrl');
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -280,13 +274,13 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
 
               <div className="space-y-2">
                 <Label>Attachment</Label>
-                {attachmentLink ? (
+                {attachmentFile ? (
                   <div className="flex items-center justify-between p-2 rounded-md border text-sm">
-                    <a href={attachmentLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 truncate hover:underline">
+                    <div className="flex items-center gap-2 truncate">
                       <Paperclip className="h-4 w-4"/>
-                      <span className="truncate">File Attached</span>
-                    </a>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => form.setValue('attachmentDownloadUrl', '')}>
+                      <span className="truncate">{attachmentFile.name}</span>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAttachmentFile(null)}>
                       <X className="h-4 w-4"/>
                     </Button>
                   </div>
@@ -298,7 +292,7 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
                     <Input id="damage-report-file-upload" type="file" onChange={handleFileChange} className="hidden" disabled={isSubmitting} accept=".pdf,.doc,.docx,.jpg,.png" />
                   </div>
                 )}
-                 {form.formState.errors.attachmentDownloadUrl && <p className="text-xs text-destructive">{form.formState.errors.attachmentDownloadUrl.message}</p>}
+                 {form.formState.errors.attachmentOriginalUrl && <p className="text-xs text-destructive">{form.formState.errors.attachmentOriginalUrl.message}</p>}
               </div>
             </div>
           </ScrollArea>
@@ -311,3 +305,4 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
     </Dialog>
   );
 }
+    
