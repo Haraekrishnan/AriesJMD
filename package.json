@@ -1,16 +1,15 @@
-
 {
   "name": "nextn",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-  "dev": "next dev",
-  "build": "next build --webpack",
-  "start": "next start",
-  "lint": "next lint",
-  "typecheck": "tsc --noEmit",
-  "postinstall": "patch-package"
-},
+    "dev": "NODE_OPTIONS='-r dotenv/config' next dev --webpack",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "postinstall": "patch-package"
+  },
   "dependencies": {
     "@genkit-ai/googleai": "^1.13.0",
     "@genkit-ai/next": "^1.13.0",
