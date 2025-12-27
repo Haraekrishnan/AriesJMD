@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -8,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, ShieldQuestion, Pencil, ArrowUpDown, CheckCircle, Link as LinkIcon } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, ShieldQuestion, Pencil, ArrowUpDown, CheckCircle, Link as LinkIcon, Download } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import EditItemDialog from './EditItemDialog';
@@ -146,7 +145,7 @@ const ItemCard = ({ item, onEdit, onRequest, onDelete, onVerify }: { item: Inven
 };
 
 export default function InventoryTable({ items, selectedItems, onSelectionChange }: InventoryTableProps) {
-    const { user, roles, deleteInventoryItem, deleteInventoryItemGroup, projects, updateInventoryItem, can } = useAppContext();
+    const { user, roles, deleteInventoryItem, deleteInventoryItemGroup, projects, updateInventoryItem, can, damageReports } = useAppContext();
     const { toast } = useToast();
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isCertRequestOpen, setIsCertRequestOpen] = useState(false);
@@ -378,6 +377,7 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
                                                         </TableHead>
                                                         <TableHead>TP Cert.</TableHead>
                                                         <TableHead>Insp. Cert.</TableHead>
+                                                        <TableHead>Damage Report</TableHead>
                                                         <TableHead className="text-right">Actions</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
@@ -386,6 +386,8 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
                                                         const now = new Date();
                                                         const isExpired = (item.inspectionDueDate && isPast(parseISO(item.inspectionDueDate))) || (item.tpInspectionDueDate && isPast(parseISO(item.tpInspectionDueDate)));
                                                         const displayStatus = isExpired ? 'Expired' : item.status;
+                                                        const damageReport = damageReports.find(dr => dr.itemId === item.id);
+                                                        const attachmentUrl = damageReport?.attachmentDownloadUrl || damageReport?.attachmentOriginalUrl || (damageReport as any).attachmentUrl;
                                                         
                                                         return (
                                                         <TableRow key={item.id}>
@@ -423,6 +425,18 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
                                                                             </Button>
                                                                         </TooltipTrigger>
                                                                         <TooltipContent>View Inspection Certificate</TooltipContent>
+                                                                    </Tooltip>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {attachmentUrl && (
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Button asChild variant="ghost" size="icon">
+                                                                                <a href={attachmentUrl} target="_blank" rel="noopener noreferrer"><Download className="h-4 w-4 text-red-500"/></a>
+                                                                            </Button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>Download Damage Report</TooltipContent>
                                                                     </Tooltip>
                                                                 )}
                                                             </TableCell>
@@ -467,3 +481,4 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
         </TooltipProvider>
     );
 }
+
