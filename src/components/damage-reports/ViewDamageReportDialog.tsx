@@ -51,7 +51,7 @@ export default function ViewDamageReportDialog({ isOpen, setIsOpen, report }: Vi
     setIsOpen(false);
   };
 
-  const attachmentUrlToUse = report.attachmentDownloadUrl || report.attachmentOriginalUrl || (report as any).attachmentUrl || null;
+  const attachmentUrlToUse = report.attachmentDownloadUrl || report.attachmentOriginalUrl || report.attachmentUrl || null;
 
 
   return (

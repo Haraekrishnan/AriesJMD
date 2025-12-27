@@ -1022,8 +1022,8 @@ export type DamageReport = {
   reportDate: string; // ISO
   status: DamageReportStatus;
   attachmentUrl?: string | null; // Legacy support
-  attachmentOriginalUrl: string | null;
-  attachmentDownloadUrl: string | null;
+  attachmentOriginalUrl?: string | null;
+  attachmentDownloadUrl?: string | null;
 };
 
 export type DecorationTheme = 'none' | 'christmas' | 'diwali' | 'new-year';
