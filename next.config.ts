@@ -3,6 +3,9 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
+  // ✅ REQUIRED: empty object, NOT boolean
+  turbopack: {},
+
   typescript: {
     ignoreBuildErrors: true,
   },
