@@ -4,6 +4,9 @@ export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
+    console.log("DROPBOX TOKEN EXISTS:", !!process.env.DROPBOX_ACCESS_TOKEN);
+    console.log("DROPBOX TOKEN (first 10):", process.env.DROPBOX_ACCESS_TOKEN?.slice(0, 10));
+
     const formData = await req.formData();
     const file = formData.get("file") as File;
 
@@ -32,9 +35,18 @@ export async function POST(req: Request) {
 
     const data = await dropboxRes.json();
 
+    console.log("Dropbox upload status:", dropboxRes.status);
+    console.log("Dropbox upload response:", data);
+
     if (!dropboxRes.ok) {
-      console.error("Dropbox upload error:", data);
-      return NextResponse.json({ error: "Dropbox upload failed.", details: data }, { status: 500 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: data?.error_summary || "Dropbox upload failed",
+          debug: data,
+        },
+        { status: 500 }
+      );
     }
 
     // Create share link
@@ -73,7 +85,6 @@ export async function POST(req: Request) {
         }
         return NextResponse.json({ error: "Could not create shareable link.", details: linkData }, { status: 500 });
     }
-
 
     const downloadLink = linkData.url.replace("?dl=0", "?dl=1");
 
