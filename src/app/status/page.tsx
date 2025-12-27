@@ -1,4 +1,6 @@
 'use client';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -9,6 +11,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function StatusPage() {
   const { user, loading, logout, requestUnlock } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && user && user.status !== 'locked') {
+      router.replace('/dashboard');
+    }
+  }, [user, loading, router]);
 
   if (loading || !user) {
     return (

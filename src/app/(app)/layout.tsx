@@ -11,6 +11,13 @@ import { DecorationProvider } from '@/components/decorations/DecorationProvider'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAppContext();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && user?.status === 'locked') {
+      router.replace('/status');
+    }
+  }, [user, loading, router]);
   
   if (loading || !user) {
     return (

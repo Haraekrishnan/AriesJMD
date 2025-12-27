@@ -1,4 +1,3 @@
-
 'use client';
 import { createContext, useContext, ReactNode, useCallback, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -42,7 +41,9 @@ function CombinedProvider({ children }: { children: ReactNode }) {
     } else if (user) {
       if (user.status === 'locked' && pathname !== '/status') {
         router.replace('/status');
-      } else if (user.status === 'active' && isAuthPage) {
+      } else if (user.status !== 'locked' && pathname === '/status') {
+        router.replace('/dashboard');
+      } else if (user.status === 'active' && pathname === '/login') {
         router.replace('/dashboard');
       }
     }
