@@ -16,6 +16,7 @@ import { useConsumable } from './consumable-provider';
 import { getStorage, ref as storageRef, deleteObject } from "firebase/storage";
 import { v4 as uuidv4 } from 'uuid';
 import { uploadFile } from '@/lib/storage';
+import { normalizeGoogleDriveLink } from '@/lib/utils';
 
 const _addInternalRequestComment = (
     requestId: string,
@@ -192,7 +193,7 @@ type InventoryContextType = {
   addIgpOgpRecord: (record: Omit<IgpOgpRecord, 'id' | 'creatorId'>) => void;
   deleteIgpOgpRecord: (mrnNumber: string) => void;
 
-  addDamageReport: (reportData: Pick<DamageReport, 'itemId' | 'otherItemName' | 'reason'> & { attachment?: File }) => Promise<{ success: boolean; error?: string }>;
+  addDamageReport: (reportData: Omit<DamageReport, 'id' | 'reporterId' | 'reportDate' | 'status' | 'attachmentDownloadUrl'>) => Promise<{ success: boolean; error?: string }>;
   updateDamageReportStatus: (reportId: string, status: DamageReportStatus, comment?: string) => void;
   deleteDamageReport: (reportId: string) => void;
   deleteAllDamageReportsAndFiles: () => void;
@@ -1499,15 +1500,13 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const updateInspectionChecklist = useCallback(() => {}, []);
     const deleteInspectionChecklist = useCallback(() => {}, []);
 
-    const addDamageReport = useCallback(async (reportData: Pick<DamageReport, 'itemId' | 'otherItemName' | 'reason'> & { attachment?: File }): Promise<{ success: boolean; error?: string }> => {
+    const addDamageReport = useCallback(async (reportData: Omit<DamageReport, 'id'|'reporterId'|'reportDate'|'status'|'attachmentDownloadUrl'>): Promise<{ success: boolean; error?: string }> => {
         if (!user) return { success: false, error: "User not authenticated." };
-        
+    
         try {
-            let attachmentUrl: string | null = null;
-            if (reportData.attachment) {
-                const file = reportData.attachment;
-                const fileName = `damage-reports/${uuidv4()}-${file.name}`;
-                attachmentUrl = await uploadFile(file, fileName);
+            const { downloadUrl } = normalizeGoogleDriveLink(reportData.attachmentOriginalUrl || '');
+            if (reportData.attachmentOriginalUrl && !downloadUrl) {
+              return { success: false, error: 'Invalid Google Drive link provided.' };
             }
         
             const newReportRef = push(ref(rtdb, 'damageReports'));
@@ -1518,7 +1517,9 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
               reporterId: user.id,
               reportDate: new Date().toISOString(),
               status: "Pending",
-              attachmentUrl: attachmentUrl,
+              attachmentOriginalUrl: reportData.attachmentOriginalUrl || null,
+              attachmentDownloadUrl: downloadUrl || null,
+              attachmentUrl: null, // Legacy field
             };
         
             await set(newReportRef, finalReport);
