@@ -4,7 +4,7 @@
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
 import { Building, Room, Bed } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
-import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
+import { ref, onValue, set, push, remove, update, get, runTransaction } from 'firebase/database';
 import { useAuth } from './auth-provider';
 import { useManpower } from './manpower-provider';
 
@@ -115,44 +115,68 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
     remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`));
   }, []);
 
-  const assignOccupant = useCallback(async (buildingId: string, roomId: string, bedId: string, occupantId: string) => {
-    const occupantAccRef = ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`);
-    const bedOccupantRef = ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/occupantId`);
-
-    try {
-        const occupantSnap = await get(occupantAccRef);
-        if (occupantSnap.exists()) {
-            throw new Error("Person already assigned to another bed.");
-        }
-
-        const bedSnap = await get(bedOccupantRef);
-        if (bedSnap.exists()) {
-            throw new Error("This bed is already occupied.");
-        }
-
-        const updates: { [key: string]: any } = {};
-        updates[`manpowerProfiles/${occupantId}/accommodation`] = { buildingId, roomId, bedId };
-        updates[`buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/occupantId`] = occupantId;
-
-        await update(ref(rtdb, '/'), updates);
-
-    } catch (error) {
-        console.error("Assignment failed:", error);
-        throw error;
+  const assignOccupant = useCallback(async (
+    buildingId: string,
+    roomId: string,
+    bedId: string,
+    occupantId: string
+  ) => {
+    const bedRef = ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`);
+    const accRef = ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`);
+  
+    // 1. Check if person already assigned
+    const accSnap = await get(accRef);
+    if (accSnap.exists()) {
+      throw new Error('This person is already assigned to another bed.');
     }
+  
+    // 2. Transaction on bed to prevent double assignment
+    await runTransaction(bedRef, (bed) => {
+      if (bed) {
+        if (bed.occupantId) {
+          // Abort transaction by returning undefined
+          return; 
+        }
+        bed.occupantId = occupantId;
+      }
+      return bed;
+    });
+
+    const finalBedState = await get(bedRef);
+    if(finalBedState.val().occupantId !== occupantId) {
+        throw new Error('This bed was assigned to another person simultaneously. Please try again.');
+    }
+  
+    // 3. Save accommodation reference to manpower profile
+    await set(accRef, {
+      buildingId,
+      roomId,
+      bedId
+    });
+  
   }, []);
-
-  const unassignOccupant = useCallback(async (buildingId: string, roomId: string, bedId: string) => {
-    const bedOccupantRef = ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/occupantId`);
-    const snapshot = await get(bedOccupantRef);
-    const occupantId = snapshot.val();
-
-    if (occupantId) {
-        const updates: { [key: string]: null } = {};
-        updates[`buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/occupantId`] = null;
-        updates[`manpowerProfiles/${occupantId}/accommodation`] = null;
-        await update(ref(rtdb), updates);
-    }
+  
+  const unassignOccupant = useCallback(async (
+    buildingId: string,
+    roomId: string,
+    bedId: string
+  ) => {
+    const bedRef = ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`);
+  
+    const snap = await get(bedRef);
+    if (!snap.exists()) return;
+  
+    const bed = snap.val();
+    if (!bed.occupantId) return;
+  
+    const occupantId = bed.occupantId;
+  
+    // 1. Clear bed occupantId
+    await update(bedRef, { occupantId: null });
+  
+    // 2. Clear manpower accommodation
+    await remove(ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`));
+  
   }, []);
 
   useEffect(() => {
