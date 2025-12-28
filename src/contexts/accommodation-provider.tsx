@@ -137,19 +137,14 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
 
   const unassignOccupant = useCallback(async (buildingId: string, roomId: string, bedId: string) => {
     const bedRef = ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`);
-
-    onValue(bedRef, async (snapshot) => {
-      const bed = snapshot.val();
-      if (!bed?.occupantId) return;
-  
-      const occupantId = bed.occupantId;
-  
-      // Remove accommodation from manpower
-      await remove(ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`));
-  
-      // Clear bed occupant
-      await update(bedRef, { occupantId: null });
-    }, { onlyOnce: true });
+    const snapshot = await get(bedRef);
+    const bed = snapshot.val();
+    
+    if (bed?.occupantId) {
+        const occupantId = bed.occupantId;
+        await remove(ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`));
+        await update(bedRef, { occupantId: null });
+    }
   }, []);
 
   useEffect(() => {

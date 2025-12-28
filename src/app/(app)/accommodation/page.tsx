@@ -151,7 +151,7 @@ export default function AccommodationPage() {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                        {searchResult && (
+                        {searchResult && searchTerm && (
                             <div className="mt-2 p-3 rounded-md bg-muted text-sm">
                                 {typeof searchResult === 'string' ? (
                                     <p>No occupant found with that name.</p>
