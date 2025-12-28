@@ -19,8 +19,8 @@ type AccommodationContextType = {
   addBed: (buildingId: string, roomId: string) => void;
   updateBed: (buildingId: string, roomId: string, bed: Bed) => void;
   deleteBed: (buildingId: string, roomId: string, bedId: string) => void;
-  assignOccupant: (buildingId: string, roomId: string, bedId: string, occupantId: string) => void;
-  unassignOccupant: (buildingId: string, roomId: string, bedId: string) => void;
+  assignOccupant: (buildingId: string, roomId: string, bedId: string, occupantId: string) => Promise<void>;
+  unassignOccupant: (buildingId: string, roomId: string, bedId: string) => Promise<void>;
 };
 
 const createDataListener = <T extends {}>(
@@ -116,7 +116,6 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const assignOccupant = useCallback(async (buildingId: string, roomId: string, bedId: string, occupantId: string) => {
-    // Transactionally check and update to prevent race conditions
     const occupantAccRef = ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`);
     const bedOccupantRef = ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/occupantId`);
 
@@ -132,39 +131,27 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
         }
 
         const updates: { [key: string]: any } = {};
-        updates[occupantAccRef.key!] = { buildingId, roomId, bedId };
-        updates[bedOccupantRef.key!] = occupantId;
+        updates[`manpowerProfiles/${occupantId}/accommodation`] = { buildingId, roomId, bedId };
+        updates[`buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/occupantId`] = occupantId;
 
-        // Perform a multi-path update
-        await update(ref(rtdb, '/'), {
-          [`manpowerProfiles/${occupantId}/accommodation`]: { buildingId, roomId, bedId },
-          [`buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/occupantId`]: occupantId,
-        });
+        await update(ref(rtdb, '/'), updates);
 
     } catch (error) {
         console.error("Assignment failed:", error);
-        throw error; // Re-throw to be caught in the component
+        throw error;
     }
   }, []);
 
   const unassignOccupant = useCallback(async (buildingId: string, roomId: string, bedId: string) => {
     const bedOccupantRef = ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/occupantId`);
+    const snapshot = await get(bedOccupantRef);
+    const occupantId = snapshot.val();
 
-    try {
-        const snapshot = await get(bedOccupantRef);
-        const occupantId = snapshot.val();
-
-        if (occupantId) {
-            const updates: { [key: string]: null } = {};
-            updates[`buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/occupantId`] = null;
-            updates[`manpowerProfiles/${occupantId}/accommodation`] = null;
-
-            // Perform a multi-path update to ensure atomicity
-            await update(ref(rtdb), updates);
-        }
-    } catch (error) {
-        console.error("Unassignment failed:", error);
-        throw error; // Re-throw to be caught in the component
+    if (occupantId) {
+        const updates: { [key: string]: null } = {};
+        updates[`buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/occupantId`] = null;
+        updates[`manpowerProfiles/${occupantId}/accommodation`] = null;
+        await update(ref(rtdb), updates);
     }
   }, []);
 
