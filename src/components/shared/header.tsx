@@ -123,7 +123,7 @@ const plannerNotificationCount =
     return {
       myRequests: pendingInternalRequestCount + updatedInternalRequestCount + pendingPpeRequestCount + updatedPpeRequestCount,
       manageTasks: myNewTaskCount + pendingTaskApprovalCount + myPendingTaskRequestCount,
-      storeInventory: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount + pendingDamageReportCount,
+      storeInventory: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount,
       equipment: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length,
       damageReports: pendingDamageReportCount,
       planner: plannerNotificationCount,
@@ -150,7 +150,6 @@ const plannerNotificationCount =
       { href: '/job-record', icon: ClipboardList, label: 'Job Record', notificationCount: 0, show: true },
       { href: '/purchase-register', icon: ShoppingCart, label: 'Purchase Register', notificationCount: 0, show: true },
       { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: notificationCounts.storeInventory || 0, show: true },
-      { href: '/damage-reports', icon: Hammer, label: 'Damage Reports', notificationCount: notificationCounts.damageReports || 0, show: false },
       { href: '/consumables', icon: Package, label: 'Consumables', notificationCount: 0, show: false },
       { href: '/igp-ogp', icon: ArrowRightLeft, label: 'IGP/OGP Register', notificationCount: 0, show: false },
       { href: '/ppe-stock', icon: Package, label: 'PPE Stock', notificationCount: 0, show: false },
@@ -159,7 +158,6 @@ const plannerNotificationCount =
       { href: '/schedule', icon: CalendarDays, label: 'Planner', notificationCount: notificationCounts.planner || 0, show: true },
       { href: '/manpower', icon: Users, label: 'Manpower', notificationCount: notificationCounts.manpower || 0, show: true },
       { href: '/accommodation', icon: Home, label: 'Accommodation', notificationCount: 0, show: true },
-      { href: '/incident-reporting', icon: AlertTriangle, label: 'Incident Reporting', notificationCount: notificationCounts.incidentReporting || 0, show: false },
       { href: '/downloads', icon: Download, label: 'Forms & Documents', notificationCount: 0, show: true },
       { href: '/vendor-management', icon: Briefcase, label: 'Vendor Ledger', notificationCount: notificationCounts.vendorLedger || 0, show: can.manage_vendors },
       { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0, show: true },
@@ -231,6 +229,8 @@ export default function Header() {
   const getPageTitle = () => {
     if (pathname.startsWith('/schedule')) return 'Planner';
     if (pathname.startsWith('/tp-certification')) return 'TP Certification Lists';
+    if (pathname.startsWith('/damage-reports')) return 'Damage Reports';
+    if (pathname.startsWith('/incident-reporting')) return 'Incident Reporting';
     const name = pathname.split('/').pop()?.replace(/-/g, ' ');
     if (!name || name === 'app') return 'Dashboard';
     if (name === 'downloads') return 'Forms & Documents';
