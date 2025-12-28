@@ -206,6 +206,9 @@ export default function StoreInventoryPage() {
                     <Button asChild variant="outline"><Link href="/ppe-stock"><Package className="mr-2 h-4 w-4"/> PPE Stock</Link></Button>
                     <Button asChild variant="outline"><Link href="/igp-ogp"><ArrowRightLeft className="mr-2 h-4 w-4"/> IGP/OGP Register</Link></Button>
                     <Button asChild variant="outline"><Link href="/tp-certification"><FileText className="mr-2 h-4 w-4"/> TP Cert Lists</Link></Button>
+                    {can.manage_inventory && (
+                        <Button asChild variant="outline"><Link href="/damage-reports"><Hammer className="mr-2 h-4 w-4" />Damage Reports</Link></Button>
+                    )}
                     
                     <Button onClick={() => setIsNewDamageReportOpen(true)} variant="outline">
                         <Hammer className="mr-2 h-4 w-4"/> Report Damage
