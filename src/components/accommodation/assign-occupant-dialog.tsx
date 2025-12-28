@@ -49,10 +49,6 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
     return manpowerProfiles.filter(p => {
         const isAssigned = assignedManpowerIds.has(p.id);
         const isWorking = p.status === 'Working';
-        // Temporary fix to bring back "ghost" users
-        if (p.id === '2' || p.id === '16') {
-            return isWorking;
-        }
         return isWorking && !isAssigned;
     });
   }, [manpowerProfiles, assignedManpowerIds]);

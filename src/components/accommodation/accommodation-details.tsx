@@ -112,9 +112,9 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding, onEdit
                         <AccordionContent className="p-4 pt-0">
                             <div className="space-y-4">
                                 {roomsArray && roomsArray.filter(room => room && room.roomNumber).sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true, sensitivity: 'base' })).map(room => {
-                                    const bedsEntries = room.beds ? Object.entries(room.beds).filter(([, bed]) => bed) : [];
-                                    const occupiedCount = bedsEntries.filter(([, bed]) => bed.occupantId).length;
-                                    const totalCount = bedsEntries.length;
+                                    const bedsArray: Bed[] = room.beds ? Object.values(room.beds).filter(Boolean) : [];
+                                    const occupiedCount = bedsArray.filter(bed => bed.occupantId).length;
+                                    const totalCount = bedsArray.length;
                                     const vacantCount = totalCount - occupiedCount;
                                     return (
                                         <div key={room.id} className="p-4 border rounded-md bg-muted/50">
@@ -149,8 +149,7 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding, onEdit
                                                 )}
                                             </div>
                                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mt-2">
-                                                {bedsEntries.map(([bedId, bedData]) => {
-                                                    const bed = { ...bedData, id: bedId };
+                                                {bedsArray.map((bed) => {
                                                     const occupant = bed.occupantId ? manpowerProfiles.find(p => p.id === bed.occupantId) : null;
                                                     const isOccupied = !!occupant;
                                                     return (
