@@ -207,7 +207,7 @@ export default function StoreInventoryPage() {
                     <Button asChild variant="outline"><Link href="/igp-ogp"><ArrowRightLeft className="mr-2 h-4 w-4"/> IGP/OGP Register</Link></Button>
                     <Button asChild variant="outline"><Link href="/tp-certification"><FileText className="mr-2 h-4 w-4"/> TP Cert Lists</Link></Button>
                     
-                    <Button onClick={() => setIsNewDamageReportOpen(true)} variant="outline">
+                    <Button onClick={() => setIsNewDamageReportOpen(true)} variant="destructive">
                         <Hammer className="mr-2 h-4 w-4"/> Report Damage
                     </Button>
 
@@ -372,4 +372,3 @@ export default function StoreInventoryPage() {
         </div>
     );
 }
-
