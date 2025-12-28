@@ -123,7 +123,7 @@ const plannerNotificationCount =
     return {
       myRequests: pendingInternalRequestCount + updatedInternalRequestCount + pendingPpeRequestCount + updatedPpeRequestCount,
       manageTasks: myNewTaskCount + pendingTaskApprovalCount + myPendingTaskRequestCount,
-      storeInventory: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount + pendingDamageReportCount,
+      storeInventory: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount,
       equipment: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length,
       damageReports: pendingDamageReportCount,
       planner: plannerNotificationCount,
@@ -150,7 +150,7 @@ const plannerNotificationCount =
       { href: '/job-record', icon: ClipboardList, label: 'Job Record', notificationCount: 0, show: true },
       { href: '/purchase-register', icon: ShoppingCart, label: 'Purchase Register', notificationCount: 0, show: true },
       { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: notificationCounts.storeInventory || 0, show: true },
-      { href: '/damage-reports', icon: Hammer, label: 'Damage Reports', notificationCount: notificationCounts.damageReports || 0, show: false }, // Changed to false
+      { href: '/damage-reports', icon: Hammer, label: 'Damage Reports', notificationCount: notificationCounts.damageReports || 0, show: can.manage_inventory },
       { href: '/consumables', icon: Package, label: 'Consumables', notificationCount: 0, show: false },
       { href: '/igp-ogp', icon: ArrowRightLeft, label: 'IGP/OGP Register', notificationCount: 0, show: false },
       { href: '/ppe-stock', icon: Package, label: 'PPE Stock', notificationCount: 0, show: false },
@@ -218,10 +218,15 @@ const plannerNotificationCount =
 
 
 export default function Header() {
-  const { user, appName, appLogo, can } = useAppContext();
+  const { user, appName, appLogo, can, damageReports } = useAppContext();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isBroadcastOpen, setIsBroadcastOpen] = useState(false);
+
+  const pendingDamageReportCount = useMemo(() => {
+    if (!can.manage_inventory) return 0;
+    return (damageReports || []).filter(r => r.status === 'Pending').length;
+  }, [damageReports, can.manage_inventory]);
   
   const getPageTitle = () => {
     if (pathname.startsWith('/schedule')) return 'Planner';
@@ -285,6 +290,23 @@ export default function Header() {
         )}
         <NewAnnouncementDialog />
         <TooltipProvider>
+            {can.manage_inventory && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" asChild>
+                    <Link href="/damage-reports" className="relative">
+                      <Hammer />
+                      {pendingDamageReportCount > 0 && (
+                        <Badge variant="destructive" className="absolute -top-1 -right-1 h-4 w-4 justify-center p-0 text-xs">
+                          {pendingDamageReportCount}
+                        </Badge>
+                      )}
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>Damage Reports</p></TooltipContent>
+              </Tooltip>
+            )}
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Button variant="ghost" size="icon" asChild>

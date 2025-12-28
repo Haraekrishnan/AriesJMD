@@ -207,19 +207,6 @@ export default function StoreInventoryPage() {
                     <Button asChild variant="outline"><Link href="/igp-ogp"><ArrowRightLeft className="mr-2 h-4 w-4"/> IGP/OGP Register</Link></Button>
                     <Button asChild variant="outline"><Link href="/tp-certification"><FileText className="mr-2 h-4 w-4"/> TP Cert Lists</Link></Button>
                     
-                    {can.manage_inventory && (
-                        <div className="relative">
-                            <Button asChild variant="outline">
-                                <Link href="/damage-reports">
-                                    <Hammer className="mr-2 h-4 w-4" />Damage Reports
-                                </Link>
-                            </Button>
-                            {pendingDamageReportCount > 0 && (
-                                <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 justify-center p-0">{pendingDamageReportCount}</Badge>
-                            )}
-                        </div>
-                    )}
-                    
                     <Button onClick={() => setIsNewDamageReportOpen(true)} variant="outline">
                         <Hammer className="mr-2 h-4 w-4"/> Report Damage
                     </Button>
