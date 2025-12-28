@@ -2,6 +2,36 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
+async function getAccessToken() {
+  const { DROPBOX_APP_KEY, DROPBOX_APP_SECRET, DROPBOX_REFRESH_TOKEN } = process.env;
+
+  if (!DROPBOX_APP_KEY || !DROPBOX_APP_SECRET || !DROPBOX_REFRESH_TOKEN) {
+    throw new Error("Dropbox environment variables are not configured correctly.");
+  }
+
+  const tokenUrl = "https://api.dropbox.com/oauth2/token";
+  const params = new URLSearchParams();
+  params.append("grant_type", "refresh_token");
+  params.append("refresh_token", DROPBOX_REFRESH_TOKEN);
+  params.append("client_id", DROPBOX_APP_KEY);
+  params.append("client_secret", DROPBOX_APP_SECRET);
+
+  const response = await fetch(tokenUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: params,
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(`Failed to refresh Dropbox token: ${data.error_description || 'Unknown error'}`);
+  }
+
+  return data.access_token;
+}
+
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
@@ -13,13 +43,7 @@ export async function POST(req: Request) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
     
-    // Correctly access environment variable
-    const accessToken = process.env.DROPBOX_ACCESS_TOKEN;
-
-    if (!accessToken) {
-        console.error("Dropbox access token is not configured.");
-        return NextResponse.json({ error: "File upload service is not configured correctly." }, { status: 500 });
-    }
+    const accessToken = await getAccessToken();
 
     const dropboxRes = await fetch(
       "https://content.dropboxapi.com/2/files/upload",
@@ -104,7 +128,7 @@ export async function POST(req: Request) {
   } catch (err: any) {
     console.error("API route error:", err);
     return NextResponse.json(
-      { error: "Upload failed", details: err.message || 'Unknown error' },
+      { error: "Upload failed", details: err.message || 'File upload service is not configured correctly.' },
       { status: 500 }
     );
   }
