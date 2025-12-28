@@ -58,8 +58,12 @@ export default function AccommodationPage() {
             if (profile.name.toLowerCase().includes(lowercasedTerm) && profile.accommodation) {
                 const { buildingId, roomId, bedId } = profile.accommodation;
                 const building = buildings.find(b => b.id === buildingId);
-                const room = building?.rooms?.find(r => r.id === roomId);
-                const bed = room?.beds?.find(b => b.id === bedId);
+                if (!building) continue;
+
+                const room = (building.rooms || []).find(r => r.id === roomId);
+                if (!room) continue;
+
+                const bed = (room.beds || []).find(b => b.id === bedId);
 
                 if (building && room && bed) {
                     return {
@@ -227,10 +231,9 @@ export default function AccommodationPage() {
                                   <CommandItem
                                     key={profile.id}
                                     value={profile.name}
-                                    onSelect={(currentValue) => {
-                                      const profileId = manpowerProfiles.find(p => p.name.toLowerCase() === currentValue)?.id
-                                      setDebugSelectedProfileId(profileId || null)
-                                      setIsInspectorPopoverOpen(false)
+                                    onSelect={() => {
+                                      setDebugSelectedProfileId(profile.id);
+                                      setIsInspectorPopoverOpen(false);
                                     }}
                                   >
                                     <Check
