@@ -31,7 +31,7 @@ import NewDamageReportDialog from '@/components/damage-reports/NewDamageReportDi
 
 
 export default function StoreInventoryPage() {
-    const { user, users, roles, inventoryItems, projects, certificateRequests, acknowledgeFulfilledRequest, markFulfilledRequestsAsViewed, can, pendingInventoryTransferRequestCount } = useAppContext();
+    const { user, users, roles, inventoryItems, projects, certificateRequests, acknowledgeFulfilledRequest, markFulfilledRequestsAsViewed, can, pendingInventoryTransferRequestCount, pendingDamageReportCount } = useAppContext();
     const [isAddItemOpen, setIsAddItemOpen] = useState(false);
     const [isImportOpen, setIsImportOpen] = useState(false);
     const [isUpdateItemsOpen, setIsUpdateItemsOpen] = useState(false);
@@ -207,7 +207,14 @@ export default function StoreInventoryPage() {
                     <Button asChild variant="outline"><Link href="/igp-ogp"><ArrowRightLeft className="mr-2 h-4 w-4"/> IGP/OGP Register</Link></Button>
                     <Button asChild variant="outline"><Link href="/tp-certification"><FileText className="mr-2 h-4 w-4"/> TP Cert Lists</Link></Button>
                     {can.manage_inventory && (
-                        <Button asChild variant="outline"><Link href="/damage-reports"><Hammer className="mr-2 h-4 w-4" />Damage Reports</Link></Button>
+                        <Button asChild variant="outline" className="relative">
+                            <Link href="/damage-reports">
+                                <Hammer className="mr-2 h-4 w-4" />Damage Reports
+                                {pendingDamageReportCount > 0 && (
+                                    <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 justify-center p-0">{pendingDamageReportCount}</Badge>
+                                )}
+                            </Link>
+                        </Button>
                     )}
                     
                     <Button onClick={() => setIsNewDamageReportOpen(true)} variant="outline">
