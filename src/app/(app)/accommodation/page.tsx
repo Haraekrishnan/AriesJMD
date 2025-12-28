@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, PlusCircle, Search, UserCog } from 'lucide-react';
+import { AlertTriangle, PlusCircle, Search, UserCog, Check, ChevronsUpDown } from 'lucide-react';
 import StatCard from '@/components/dashboard/stat-card';
 import { BedDouble, BedSingle, Building } from 'lucide-react';
 import AccommodationDetails from '@/components/accommodation/accommodation-details';
@@ -15,9 +15,11 @@ import EditBuildingDialog from '@/components/accommodation/edit-building-dialog'
 import AccommodationReportDownloads from '@/components/accommodation/AccommodationReportDownloads';
 import { Input } from '@/components/ui/input';
 import EditRoomDialog from '@/components/accommodation/EditRoomDialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 
 export default function AccommodationPage() {
     const { can, user, buildings, manpowerProfiles, forceUnassign } = useAppContext();
@@ -30,6 +32,7 @@ export default function AccommodationPage() {
     const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [debugSelectedProfileId, setDebugSelectedProfileId] = useState<string | null>(null);
+    const [isInspectorPopoverOpen, setIsInspectorPopoverOpen] = useState(false);
     
     const debugSelectedProfile = useMemo(() => {
         if (!debugSelectedProfileId) return null;
@@ -200,12 +203,51 @@ export default function AccommodationPage() {
                         <CardDescription>Select an employee to view and manually clear their accommodation assignment if it is inconsistent.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <Select onValueChange={setDebugSelectedProfileId}>
-                            <SelectTrigger><SelectValue placeholder="Select an employee to inspect..." /></SelectTrigger>
-                            <SelectContent>
-                                {manpowerProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                        <Popover open={isInspectorPopoverOpen} onOpenChange={setIsInspectorPopoverOpen}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={isInspectorPopoverOpen}
+                              className="w-full justify-between"
+                            >
+                              {debugSelectedProfile
+                                ? debugSelectedProfile.name
+                                : "Select an employee to inspect..."}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                            <Command>
+                              <CommandInput placeholder="Search employee..." />
+                              <CommandEmpty>No employee found.</CommandEmpty>
+                              <CommandGroup>
+                                <CommandList>
+                                {manpowerProfiles.map((profile) => (
+                                  <CommandItem
+                                    key={profile.id}
+                                    value={profile.name}
+                                    onSelect={(currentValue) => {
+                                      const profileId = manpowerProfiles.find(p => p.name.toLowerCase() === currentValue)?.id
+                                      setDebugSelectedProfileId(profileId || null)
+                                      setIsInspectorPopoverOpen(false)
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        debugSelectedProfileId === profile.id ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {profile.name}
+                                  </CommandItem>
+                                ))}
+                                </CommandList>
+                              </CommandGroup>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+
                         {debugSelectedProfile && (
                             <div className="p-4 border rounded-md bg-muted space-y-2">
                                 <h4 className="font-semibold">{debugSelectedProfile.name}'s Assignment Data</h4>
