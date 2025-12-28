@@ -35,7 +35,7 @@ interface NewDamageReportDialogProps {
 }
 
 export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageReportDialogProps) {
-  const { user, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments } = useAppContext();
+  const { user, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, damageReports } = useAppContext();
   const { addDamageReport } = useInventory();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,13 +46,21 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
   const [selectedItemType, setSelectedItemType] = useState<string | null>(null);
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   
-
   const form = useForm<FormValues>({
     resolver: zodResolver(damageReportSchema),
     defaultValues: {
       reason: '',
     }
   });
+
+  const pendingReportItemIds = useMemo(() => {
+    return new Set(
+        damageReports
+            .filter(r => r.status === 'Pending' || r.status === 'Under Review')
+            .map(r => r.itemId)
+            .filter(Boolean)
+    );
+  }, [damageReports]);
   
   const allItems = useMemo(() => {
     const items = [
@@ -121,7 +129,6 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
                 throw new Error(uploadData.error || 'File upload failed.');
             }
             
-            // Use the direct download link from Dropbox
             finalData.attachmentOriginalUrl = uploadData.downloadLink;
         }
 
@@ -241,11 +248,26 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
                                 <CommandList>
                                 <CommandEmpty>No item found.</CommandEmpty>
                                 <CommandGroup>
-                                    {availableItemsOfType.map(item => (
-                                    <CommandItem key={item.id} value={`${item.serialNumber} ${item.ariesId}`} onSelect={() => { form.setValue('itemId', item.id); form.setValue('otherItemName', ''); setIsItemPopoverOpen(false); }}>
-                                        {item.serialNumber} (ID: {item.ariesId || 'N/A'})
-                                    </CommandItem>
-                                    ))}
+                                    {availableItemsOfType.map(item => {
+                                        const isPending = pendingReportItemIds.has(item.id);
+                                        return (
+                                          <CommandItem 
+                                            key={item.id} 
+                                            value={`${item.serialNumber} ${item.ariesId}`} 
+                                            onSelect={() => {
+                                                if (isPending) return;
+                                                form.setValue('itemId', item.id);
+                                                form.setValue('otherItemName', '');
+                                                setIsItemPopoverOpen(false);
+                                            }}
+                                            disabled={isPending}
+                                            className={isPending ? "text-muted-foreground opacity-50 cursor-not-allowed" : ""}
+                                          >
+                                            {item.serialNumber} (ID: {item.ariesId || 'N/A'})
+                                            {isPending && <span className="ml-auto text-xs">(Report pending)</span>}
+                                          </CommandItem>
+                                        )
+                                    })}
                                 </CommandGroup>
                                 </CommandList>
                             </ScrollArea>
@@ -305,4 +327,3 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
     </Dialog>
   );
 }
-    

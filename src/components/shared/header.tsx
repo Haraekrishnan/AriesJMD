@@ -27,6 +27,7 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
       ppeRequests, payments, feedback, unlockRequests,
       inventoryTransferRequests, dailyPlannerComments, logbookRequests,
       pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount,
+      damageReports
     } = useAppContext();
     const pathname = usePathname();
 
@@ -122,6 +123,7 @@ const plannerNotificationCount =
       manageTasks: myNewTaskCount + pendingTaskApprovalCount + myPendingTaskRequestCount,
       storeInventory: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount,
       equipment: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length,
+      damageReports: can.manage_inventory ? (damageReports || []).filter(r => r.status === 'Pending').length : 0,
       planner: plannerNotificationCount,
       managementRequests: unreadDirectivesCount,
       incidentReporting: incidentNotificationCount,
@@ -131,7 +133,7 @@ const plannerNotificationCount =
     };
   }, [
     user, can, tasks, certificateRequests, plannerEvents,
-    internalRequests, managementRequests, incidentReports,
+    internalRequests, managementRequests, incidentReports, damageReports,
     ppeRequests, payments, feedback, unlockRequests,
     inventoryTransferRequests, dailyPlannerComments, logbookRequests,
     myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount
@@ -146,7 +148,7 @@ const plannerNotificationCount =
       { href: '/job-record', icon: ClipboardList, label: 'Job Record', notificationCount: 0, show: true },
       { href: '/purchase-register', icon: ShoppingCart, label: 'Purchase Register', notificationCount: 0, show: true },
       { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: notificationCounts.storeInventory || 0, show: true },
-      { href: '/damage-reports', icon: Hammer, label: 'Damage Reports', notificationCount: 0, show: can.manage_inventory },
+      { href: '/damage-reports', icon: Hammer, label: 'Damage Reports', notificationCount: notificationCounts.damageReports || 0, show: can.manage_inventory },
       { href: '/consumables', icon: Package, label: 'Consumables', notificationCount: 0, show: false },
       { href: '/igp-ogp', icon: ArrowRightLeft, label: 'IGP/OGP Register', notificationCount: 0, show: false },
       { href: '/ppe-stock', icon: Package, label: 'PPE Stock', notificationCount: 0, show: false },

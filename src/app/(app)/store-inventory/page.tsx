@@ -27,6 +27,7 @@ import PendingTransfers from '@/components/requests/PendingTransfers';
 import BulkUpdateInspectionDialog from '@/components/inventory/BulkUpdateInspectionDialog';
 import UpdateItemsDialog from '@/components/inventory/UpdateItemsDialog';
 import ActionRequiredReport from '@/components/inventory/ActionRequiredReport';
+import NewDamageReportDialog from '@/components/damage-reports/NewDamageReportDialog';
 
 
 export default function StoreInventoryPage() {
@@ -38,6 +39,7 @@ export default function StoreInventoryPage() {
     const [isBulkInspectionUpdateOpen, setIsBulkInspectionUpdateOpen] = useState(false);
     const [isGenerateCertOpen, setIsGenerateCertOpen] = useState(false);
     const [isTransferRequestOpen, setIsTransferRequestOpen] = useState(false);
+    const [isNewDamageReportOpen, setIsNewDamageReportOpen] = useState(false);
     const [viewingCertRequest, setViewingCertRequest] = useState<CertificateRequest | null>(null);
     const [view, setView] = useState<'list' | 'summary'>('list');
 
@@ -204,7 +206,11 @@ export default function StoreInventoryPage() {
                     <Button asChild variant="outline"><Link href="/ppe-stock"><Package className="mr-2 h-4 w-4"/> PPE Stock</Link></Button>
                     <Button asChild variant="outline"><Link href="/igp-ogp"><ArrowRightLeft className="mr-2 h-4 w-4"/> IGP/OGP Register</Link></Button>
                     <Button asChild variant="outline"><Link href="/tp-certification"><FileText className="mr-2 h-4 w-4"/> TP Cert Lists</Link></Button>
-                    <Button asChild variant="outline"><Link href="/damage-reports"><Hammer className="mr-2 h-4 w-4"/> Damage Reports</Link></Button>
+                    
+                    <Button onClick={() => setIsNewDamageReportOpen(true)} variant="outline">
+                        <Hammer className="mr-2 h-4 w-4"/> Report Damage
+                    </Button>
+
                     <Button onClick={() => setView(v => v === 'list' ? 'summary' : 'list')} variant="outline"><ChevronsUpDown className="mr-2 h-4 w-4" />{view === 'list' ? 'View Summary' : 'View List'}</Button>
                     {selectedItemsForTransfer.length > 0 ? (
                         <Button onClick={() => setIsTransferRequestOpen(true)}>
@@ -361,6 +367,7 @@ export default function StoreInventoryPage() {
             <BulkUpdateInspectionDialog isOpen={isBulkInspectionUpdateOpen} setIsOpen={setIsBulkInspectionUpdateOpen} />
             <GenerateTpCertDialog isOpen={isGenerateCertOpen} setIsOpen={setIsGenerateCertOpen} />
             <NewInventoryTransferRequestDialog isOpen={isTransferRequestOpen} setIsOpen={setIsTransferRequestOpen} preSelectedItems={selectedItemsForTransfer} onClearSelection={() => setSelectedItemsForTransfer([])} />
+            <NewDamageReportDialog isOpen={isNewDamageReportOpen} setIsOpen={setIsNewDamageReportOpen} />
             {viewingCertRequest && ( <ViewCertificateRequestDialog request={viewingCertRequest} isOpen={!!viewingCertRequest} setIsOpen={() => setViewingCertRequest(null)} /> )}
         </div>
     );
