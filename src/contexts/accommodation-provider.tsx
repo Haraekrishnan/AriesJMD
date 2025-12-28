@@ -42,18 +42,16 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
   const [buildingsById, setBuildingsById] = useState<Record<string, Building>>({});
   
   const buildings = useMemo(() => {
-    return Object.entries(buildingsById).map(([id, building]) => ({
-      ...building,
-      id,
-      rooms: building.rooms ? Object.entries(building.rooms).map(([roomId, room]) => ({
-        ...room,
-        id: roomId,
-        beds: room.beds ? Object.entries(room.beds).map(([bedId, bed]) => ({
+    return Object.entries(buildingsById).map(([id, building]) => {
+      const rooms = building.rooms ? Object.entries(building.rooms).map(([roomId, room]) => {
+        const beds = room.beds ? Object.entries(room.beds).map(([bedId, bed]) => ({
           ...bed,
           id: bedId,
-        })) : [],
-      })) : [],
-    }));
+        })) : [];
+        return { ...room, id: roomId, beds };
+      }) : [];
+      return { ...building, id, rooms };
+    });
   }, [buildingsById]);
 
   const addBuilding = useCallback((buildingNumber: string) => {
@@ -130,24 +128,29 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
     // 1. Check if person already assigned
     const accSnap = await get(accRef);
     if (accSnap.exists()) {
-      throw new Error('This person is already assigned to a bed');
+      throw new Error('This person is already assigned to a bed.');
     }
   
-    // 2. Transaction on bed to prevent double assignment
-    await runTransaction(bedRef, (bed) => {
-      if (bed) {
-        if (bed.occupantId) {
-          // Abort transaction by returning undefined
-          return; 
-        }
-        bed.occupantId = occupantId;
-      }
-      return bed;
-    });
+    // 2. Transaction on bed
+    let transactionError: Error | null = null;
+    try {
+        await runTransaction(bedRef, (bed) => {
+            if (bed && bed.occupantId) {
+                // Abort transaction by returning undefined
+                return;
+            }
+            if(bed) {
+              bed.occupantId = occupantId;
+            }
+            return bed;
+        });
+    } catch(e) {
+        throw new Error('This bed was assigned simultaneously. Please refresh and try again.');
+    }
 
     const finalBedSnap = await get(bedRef);
-    if(!finalBedSnap.val() || finalBedSnap.val().occupantId !== occupantId) {
-        throw new Error('This bed was assigned to another person simultaneously. Please try again.');
+    if (!finalBedSnap.val() || finalBedSnap.val().occupantId !== occupantId) {
+      throw new Error("This bed is already occupied.");
     }
   
     // 3. Save accommodation reference to manpower profile
