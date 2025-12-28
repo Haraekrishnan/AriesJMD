@@ -28,24 +28,22 @@ export default function AccommodationPage() {
     
     const searchResult = useMemo(() => {
         if (!searchTerm || !buildings) return null;
-
+    
         const lowercasedTerm = searchTerm.toLowerCase();
-        for (const building of buildings) {
-            const roomsArray: Room[] = building.rooms || [];
-            for (const room of roomsArray) {
-                if (!room) continue;
-                const bedsArray: Bed[] = room.beds || [];
-                for (const bed of bedsArray) {
-                    if (!bed || !bed.occupantId) continue;
-                    const occupant = manpowerProfiles.find(p => p.id === bed.occupantId);
-                    if (occupant && occupant.name.toLowerCase().includes(lowercasedTerm)) {
-                        return {
-                            occupantName: occupant.name,
-                            buildingNumber: building.buildingNumber,
-                            roomNumber: room.roomNumber,
-                            bedNumber: bed.bedNumber,
-                        };
-                    }
+        for (const profile of manpowerProfiles) {
+            if (profile.name.toLowerCase().includes(lowercasedTerm) && profile.accommodation) {
+                const { buildingId, roomId, bedId } = profile.accommodation;
+                const building = buildings.find(b => b.id === buildingId);
+                const room = building?.rooms.find(r => r.id === roomId);
+                const bed = room?.beds.find(b => b.id === bedId);
+
+                if (building && room && bed) {
+                    return {
+                        occupantName: profile.name,
+                        buildingNumber: building.buildingNumber,
+                        roomNumber: room.roomNumber,
+                        bedNumber: bed.bedNumber,
+                    };
                 }
             }
         }

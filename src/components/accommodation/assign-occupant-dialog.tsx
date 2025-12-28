@@ -31,11 +31,7 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const availableManpower = useMemo(() => {
-    return manpowerProfiles.filter(p => {
-        const isWorking = p.status === 'Working';
-        const isAssigned = !!p.accommodation;
-        return isWorking && !isAssigned;
-    });
+    return manpowerProfiles.filter(p => p.status === 'Working' && !p.accommodation);
   }, [manpowerProfiles]);
 
 
@@ -44,11 +40,19 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
   });
 
   const onSubmit = (data: AssignmentFormValues) => {
-    assignOccupant(bedInfo.buildingId, bedInfo.roomId, bedInfo.bedId, data.occupantId);
-    const occupantName = manpowerProfiles.find(p => p.id === data.occupantId)?.name;
-    toast({ title: 'Bed Assigned', description: `${occupantName} has been assigned to the bed.` });
-    setIsOpen(false);
-    form.reset();
+    try {
+        assignOccupant(bedInfo.buildingId, bedInfo.roomId, bedInfo.bedId, data.occupantId);
+        const occupantName = manpowerProfiles.find(p => p.id === data.occupantId)?.name;
+        toast({ title: 'Bed Assigned', description: `${occupantName} has been assigned to the bed.` });
+        setIsOpen(false);
+        form.reset();
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Assignment Failed',
+            description: error.message || 'An unexpected error occurred.',
+        });
+    }
   };
   
   const handleOpenChange = (open: boolean) => {

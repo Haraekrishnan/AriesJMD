@@ -1,10 +1,9 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
 import { Building, Room, Bed } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
-import { ref, onValue, set, push, remove, update } from 'firebase/database';
+import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
 import { useAuth } from './auth-provider';
 import { useManpower } from './manpower-provider';
 
@@ -64,7 +63,11 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
   const updateBuilding = useCallback((building: Building) => {
     const { id, ...data } = building;
     const roomsAsObject = (data.rooms || []).reduce((acc: { [key: string]: any }, room) => {
-      acc[room.id] = room;
+      const bedsAsObject = (room.beds || []).reduce((bedAcc: { [key: string]: any }, bed) => {
+        bedAcc[bed.id] = bed;
+        return bedAcc;
+      }, {});
+      acc[room.id] = { ...room, beds: bedsAsObject };
       return acc;
     }, {});
     update(ref(rtdb, `buildings/${id}`), { ...data, rooms: roomsAsObject });
@@ -111,33 +114,43 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
     remove(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`));
   }, []);
 
-  const assignOccupant = useCallback((buildingId: string, roomId: string, bedId: string, occupantId: string) => {
-    const building = buildings.find(b => b.id === buildingId);
-    const room = building?.rooms.find(r => r.id === roomId);
-    const bed = room?.beds.find(b => b.id === bedId);
+  const assignOccupant = useCallback(async (buildingId: string, roomId: string, bedId: string, occupantId: string) => {
+    const bedRef = ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`);
     
-    if (building && room && bed) {
-        update(ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`), {
-            buildingNumber: building.buildingNumber,
-            roomNumber: room.roomNumber,
-            bedNumber: bed.bedNumber
-        });
+    // Check if person is already assigned
+    const accRef = ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`);
+    const accSnap = await get(accRef);
+    if (accSnap.exists()) {
+      throw new Error("Person already assigned to a bed");
     }
-    update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`), { occupantId });
-  }, [buildings]);
 
-  const unassignOccupant = useCallback((buildingId: string, roomId: string, bedId: string) => {
-    const building = buildingsById[buildingId];
-    const room = building?.rooms?.[roomId];
-    const bed = room?.beds?.[bedId];
+    // Update bed
+    await update(bedRef, { occupantId });
+
+    // Store FULL reference (not labels)
+    await update(ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`), {
+      buildingId,
+      roomId,
+      bedId
+    });
+  }, []);
+
+  const unassignOccupant = useCallback(async (buildingId: string, roomId: string, bedId: string) => {
+    const bedRef = ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`);
+
+    onValue(bedRef, async (snapshot) => {
+      const bed = snapshot.val();
+      if (!bed?.occupantId) return;
   
-    if (bed?.occupantId) {
       const occupantId = bed.occupantId;
-      remove(ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`));
-    }
-    
-    update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`), { occupantId: null });
-  }, [buildingsById]);
+  
+      // Remove accommodation from manpower
+      await remove(ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`));
+  
+      // Clear bed occupant
+      await update(bedRef, { occupantId: null });
+    }, { onlyOnce: true });
+  }, []);
 
   useEffect(() => {
     const unsubscribers = [
