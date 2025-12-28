@@ -6,6 +6,7 @@ import { Building, Room, Bed } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update } from 'firebase/database';
 import { useAuth } from './auth-provider';
+import { useManpower } from './manpower-provider';
 
 type AccommodationContextType = {
   buildings: Building[];
@@ -42,6 +43,7 @@ const AccommodationContext = createContext<AccommodationContextType | undefined>
 
 export function AccommodationProvider({ children }: { children: ReactNode }) {
   const { user, addActivityLog } = useAuth();
+  const { manpowerProfiles } = useManpower();
   const [buildingsById, setBuildingsById] = useState<Record<string, Building>>({});
   const buildings = useMemo(() => Object.values(buildingsById), [buildingsById]);
 
@@ -93,11 +95,33 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
 
   const assignOccupant = useCallback((buildingId: string, roomId: string, bedId: string, occupantId: string) => {
     update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`), { occupantId });
-  }, []);
+    const building = buildings.find(b => b.id === buildingId);
+    const room = building?.rooms.find(r => r.id === roomId);
+    const bed = room?.beds.find(b => b.id === bedId);
+    
+    if (building && room && bed) {
+        update(ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`), {
+            buildingNumber: building.buildingNumber,
+            roomNumber: room.roomNumber,
+            bedNumber: bed.bedNumber
+        });
+    }
+  }, [buildings]);
 
   const unassignOccupant = useCallback((buildingId: string, roomId: string, bedId: string) => {
+    const building = buildings.find(b => b.id === buildingId);
+    const room = building?.rooms.find(r => r.id === roomId);
+    const bed = room?.beds.find(b => b.id === bedId);
+
+    if (bed?.occupantId) {
+      const occupantId = bed.occupantId;
+      // Clear accommodation from manpower profile first
+      update(ref(rtdb, `manpowerProfiles/${occupantId}`), { accommodation: null });
+    }
+    
+    // Then clear occupant from bed
     update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`), { occupantId: null });
-  }, []);
+  }, [buildings]);
 
   useEffect(() => {
     const unsubscribers = [
