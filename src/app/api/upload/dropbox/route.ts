@@ -4,9 +4,6 @@ export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
-    console.log("DROPBOX TOKEN EXISTS:", !!process.env.DROPBOX_ACCESS_TOKEN);
-    console.log("DROPBOX TOKEN (first 10):", process.env.DROPBOX_ACCESS_TOKEN?.slice(0, 10));
-
     const formData = await req.formData();
     const file = formData.get("file") as File;
 
@@ -15,15 +12,23 @@ export async function POST(req: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    
+    // Correctly access environment variable
+    const accessToken = process.env.DROPBOX_ACCESS_TOKEN;
+
+    if (!accessToken) {
+        console.error("Dropbox access token is not configured.");
+        return NextResponse.json({ error: "File upload service is not configured correctly." }, { status: 500 });
+    }
 
     const dropboxRes = await fetch(
       "https://content.dropboxapi.com/2/files/upload",
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${process.env.DROPBOX_ACCESS_TOKEN}`,
+          Authorization: `Bearer ${accessToken}`,
           "Dropbox-API-Arg": JSON.stringify({
-            path: `/documents/${Date.now()}_${file.name}`,
+            path: `/documents/${Date.now()}_${file.name.replace(/\s/g, '_')}`,
             mode: "add",
             autorename: true,
           }),
@@ -34,9 +39,6 @@ export async function POST(req: Request) {
     );
 
     const data = await dropboxRes.json();
-
-    console.log("Dropbox upload status:", dropboxRes.status);
-    console.log("Dropbox upload response:", data);
 
     if (!dropboxRes.ok) {
       return NextResponse.json(
@@ -55,38 +57,44 @@ export async function POST(req: Request) {
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${process.env.DROPBOX_ACCESS_TOKEN}`,
+          Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           path: data.path_lower,
+          settings: {
+              requested_visibility: "public"
+          }
         }),
       }
     );
 
-    const linkData = await linkRes.json();
+    let linkData = await linkRes.json();
+    
     if (!linkRes.ok) {
-        console.error("Dropbox share link error:", linkData);
         // Handle cases where a link might already exist
         if (linkData.error_summary && linkData.error_summary.startsWith('shared_link_already_exists')) {
             const listLinksRes = await fetch("https://api.dropboxapi.com/2/sharing/list_shared_links", {
                 method: "POST",
                 headers: {
-                    Authorization: `Bearer ${process.env.DROPBOX_ACCESS_TOKEN}`,
+                    Authorization: `Bearer ${accessToken}`,
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ path: data.path_lower }),
+                body: JSON.stringify({ path: data.path_lower, direct_only: true }),
             });
             const existingLinksData = await listLinksRes.json();
             if (listLinksRes.ok && existingLinksData.links.length > 0) {
-                 const downloadLink = existingLinksData.links[0].url.replace("?dl=0", "?dl=1");
-                 return NextResponse.json({ success: true, fileName: file.name, downloadLink });
+                 linkData = existingLinksData.links[0];
+            } else {
+                 return NextResponse.json({ error: "Could not retrieve existing shareable link.", details: existingLinksData }, { status: 500 });
             }
+        } else {
+             return NextResponse.json({ error: "Could not create shareable link.", details: linkData }, { status: 500 });
         }
-        return NextResponse.json({ error: "Could not create shareable link.", details: linkData }, { status: 500 });
     }
 
-    const downloadLink = linkData.url.replace("?dl=0", "?dl=1");
+    // Create a direct download link by replacing dl=0 with dl=1
+    const downloadLink = linkData.url.replace("www.dropbox.com", "dl.dropboxusercontent.com").replace("?dl=0", "");
 
     return NextResponse.json({
       success: true,
