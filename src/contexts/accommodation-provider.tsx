@@ -48,11 +48,11 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
   
   const buildings = useMemo(() => {
     return Object.values(buildingsById).map(building => {
-        const roomsArray = building.rooms ? Object.values(building.rooms).map(room => {
-            const bedsArray = room.beds ? Object.values(room.beds) : [];
-            return { ...room, beds: bedsArray };
-        }) : [];
-        return { ...building, rooms: roomsArray };
+      const roomsArray: Room[] = building.rooms ? Object.values(building.rooms).map(room => {
+        const bedsArray = room.beds ? Object.values(room.beds) : [];
+        return { ...room, beds: bedsArray };
+      }) : [];
+      return { ...building, rooms: roomsArray };
     });
   }, [buildingsById]);
 
@@ -112,9 +112,6 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const assignOccupant = useCallback((buildingId: string, roomId: string, bedId: string, occupantId: string) => {
-    update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`), { occupantId });
-
-    // This part now uses the already processed `buildings` array
     const building = buildings.find(b => b.id === buildingId);
     const room = building?.rooms.find(r => r.id === roomId);
     const bed = room?.beds.find(b => b.id === bedId);
@@ -126,22 +123,21 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
             bedNumber: bed.bedNumber
         });
     }
+    update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`), { occupantId });
   }, [buildings]);
 
   const unassignOccupant = useCallback((buildingId: string, roomId: string, bedId: string) => {
-    const building = buildings.find(b => b.id === buildingId);
-    const room = building?.rooms.find(r => r.id === roomId);
-    const bed = room?.beds.find(b => b.id === bedId);
-
+    const building = buildingsById[buildingId];
+    const room = building?.rooms?.[roomId];
+    const bed = room?.beds?.[bedId];
+  
     if (bed?.occupantId) {
       const occupantId = bed.occupantId;
-      // Clear accommodation from manpower profile first
       remove(ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`));
     }
     
-    // Then clear occupant from bed
     update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`), { occupantId: null });
-  }, [buildings]);
+  }, [buildingsById]);
 
   useEffect(() => {
     const unsubscribers = [
