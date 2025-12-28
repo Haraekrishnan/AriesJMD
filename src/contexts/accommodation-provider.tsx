@@ -29,11 +29,8 @@ const createDataListener = <T extends {}>(
     const dbRef = ref(rtdb, path);
     const listener = onValue(dbRef, (snapshot) => {
         const data = snapshot.val() || {};
-        const processedData = Object.keys(data).reduce((acc, key) => {
-            acc[key] = { ...data[key], id: key };
-            return acc;
-        }, {} as Record<string, T>);
-        setData(processedData);
+        // The processing into an array of objects with IDs is handled in useMemo now
+        setData(data);
     });
     return () => listener();
 };
@@ -46,12 +43,12 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
   const [buildingsById, setBuildingsById] = useState<Record<string, Building>>({});
   
   const buildings = useMemo(() => {
-    return Object.values(buildingsById).map(building => {
-        const roomsArray: Room[] = building.rooms ? Object.values(building.rooms).map(room => {
-            const bedsArray = room.beds ? Object.values(room.beds) : [];
-            return { ...room, beds: bedsArray };
-        }) : [];
-        return { ...building, rooms: roomsArray };
+    return Object.entries(buildingsById).map(([id, building]) => {
+      const roomsArray: Room[] = building.rooms ? Object.entries(building.rooms).map(([roomId, room]) => {
+          const bedsArray = room.beds ? Object.entries(room.beds).map(([bedId, bed]) => ({ ...bed, id: bedId })) : [];
+          return { ...room, id: roomId, beds: bedsArray };
+      }) : [];
+      return { ...building, id, rooms: roomsArray };
     });
   }, [buildingsById]);
 
@@ -120,8 +117,9 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
     bedId: string,
     occupantId: string
   ) => {
-    const accRef = ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`);
     const bedRef = ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`);
+    const accRef = ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`);
+    const bedOccupantRef = ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/occupantId`);
 
     const accSnap = await get(accRef);
     if (accSnap.exists()) {
@@ -139,8 +137,8 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
         return bed;
     });
 
-    const finalBedSnap = await get(bedRef);
-    if (finalBedSnap.val().occupantId !== occupantId) {
+    const finalBedSnap = await get(bedOccupantRef);
+    if (finalBedSnap.val() !== occupantId) {
         throw new Error('This bed was assigned to another person simultaneously. Please try again.');
     }
 
