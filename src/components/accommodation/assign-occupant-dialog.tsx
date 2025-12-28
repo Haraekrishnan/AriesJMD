@@ -31,8 +31,19 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const availableManpower = useMemo(() => {
-    return manpowerProfiles.filter(p => !p.accommodation && p.status === 'Working');
-  }, [manpowerProfiles]);
+    const occupiedBedIds = new Set<string>();
+    buildings.forEach(building => {
+      (building.rooms || []).forEach(room => {
+        (room.beds || []).forEach(bed => {
+          if (bed.occupantId) {
+            occupiedBedIds.add(bed.occupantId);
+          }
+        });
+      });
+    });
+
+    return manpowerProfiles.filter(p => !occupiedBedIds.has(p.id) && p.status === 'Working');
+  }, [manpowerProfiles, buildings]);
 
 
   const form = useForm<AssignmentFormValues>({
