@@ -25,14 +25,32 @@ interface AssignOccupantDialogProps {
 }
 
 export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: AssignOccupantDialogProps) {
-  const { assignOccupant, manpowerProfiles } = useAppContext();
+  const { assignOccupant, manpowerProfiles, buildings } = useAppContext();
   const { toast } = useToast();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
-  // This now correctly recalculates based on both buildings and manpower data
+  const assignedOccupantIds = useMemo(() => {
+    const ids = new Set<string>();
+    buildings.forEach(building => {
+      (building.rooms || []).forEach(room => {
+        (room.beds || []).forEach(bed => {
+          if (bed.occupantId) {
+            ids.add(bed.occupantId);
+          }
+        });
+      });
+    });
+    manpowerProfiles.forEach(p => {
+        if (p.accommodation && p.accommodation.bedId && !ids.has(p.id)) {
+            ids.add(p.id);
+        }
+    })
+    return ids;
+  }, [buildings, manpowerProfiles]);
+
   const availableManpower = useMemo(() => {
-    return manpowerProfiles.filter(p => p.status === 'Working' && !p.accommodation);
-  }, [manpowerProfiles]);
+    return manpowerProfiles.filter(p => p.status === 'Working' && !assignedOccupantIds.has(p.id));
+  }, [manpowerProfiles, assignedOccupantIds]);
 
 
   const form = useForm<AssignmentFormValues>({

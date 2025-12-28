@@ -42,14 +42,19 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
   const [buildingsById, setBuildingsById] = useState<Record<string, Building>>({});
   
   const buildings = useMemo(() => {
-    return Object.entries(buildingsById).map(([id, building]) => {
-        const roomsArray = building.rooms ? Object.entries(building.rooms).map(([roomId, room]) => {
-            const bedsArray = room.beds ? Object.entries(room.beds).map(([bedId, bed]) => ({ ...bed, id: bedId })) : [];
-            return { ...room, id: roomId, beds: bedsArray };
-        }) : [];
-        return { ...building, id, rooms: roomsArray };
-    });
-}, [buildingsById]);
+    return Object.entries(buildingsById).map(([id, building]) => ({
+      ...building,
+      id,
+      rooms: building.rooms ? Object.entries(building.rooms).map(([roomId, room]) => ({
+        ...room,
+        id: roomId,
+        beds: room.beds ? Object.entries(room.beds).map(([bedId, bed]) => ({
+          ...bed,
+          id: bedId,
+        })) : [],
+      })) : [],
+    }));
+  }, [buildingsById]);
 
   const addBuilding = useCallback((buildingNumber: string) => {
     const newRef = push(ref(rtdb, 'buildings'));
@@ -60,10 +65,12 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
     const { id, ...data } = building;
     const roomsAsObject = (data.rooms || []).reduce((acc: { [key: string]: any }, room) => {
       const bedsAsObject = (room.beds || []).reduce((bedAcc: { [key: string]: any }, bed) => {
-        bedAcc[bed.id] = bed;
+        const { id: bedId, ...bedData } = bed;
+        bedAcc[bedId] = bedData;
         return bedAcc;
       }, {});
-      acc[room.id] = { ...room, beds: bedsAsObject };
+      const { id: roomId, ...roomData } = room;
+      acc[roomId] = { ...roomData, beds: bedsAsObject };
       return acc;
     }, {});
     update(ref(rtdb, `buildings/${id}`), { ...data, rooms: roomsAsObject });
@@ -75,18 +82,19 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
 
   const addRoom = useCallback((buildingId: string, roomData: { roomNumber: string, numberOfBeds: number }) => {
     const newRoomRef = push(ref(rtdb, `buildings/${buildingId}/rooms`));
-    const bedsObject: { [key: string]: Bed } = {};
+    const bedsObject: { [key: string]: Omit<Bed, 'id'> } = {};
     for (let i = 0; i < roomData.numberOfBeds; i++) {
         const newBedRef = push(ref(rtdb, `buildings/${buildingId}/rooms/${newRoomRef.key}/beds`));
-        bedsObject[newBedRef.key!] = { id: newBedRef.key!, bedNumber: `${i + 1}`, bedType: 'Bunk' };
+        bedsObject[newBedRef.key!] = { bedNumber: `${i + 1}`, bedType: 'Bunk' };
     }
-    set(newRoomRef, { id: newRoomRef.key, roomNumber: roomData.roomNumber, beds: bedsObject });
+    set(newRoomRef, { roomNumber: roomData.roomNumber, beds: bedsObject });
   }, []);
   
   const updateRoom = useCallback((buildingId: string, room: Room) => {
     const { id, ...data } = room;
     const bedsAsObject = (data.beds || []).reduce((acc: { [key: string]: any }, bed) => {
-      acc[bed.id] = bed;
+      const { id: bedId, ...bedData } = bed;
+      acc[bedId] = bedData;
       return acc;
     }, {});
     update(ref(rtdb, `buildings/${buildingId}/rooms/${id}`), { ...data, beds: bedsAsObject });
@@ -98,7 +106,7 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
 
   const addBed = useCallback((buildingId: string, roomId: string) => {
     const newBedRef = push(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds`));
-    set(newBedRef, { id: newBedRef.key, bedNumber: `New`, bedType: 'Bunk' });
+    set(newBedRef, { bedNumber: `New`, bedType: 'Bunk' });
   }, []);
 
   const updateBed = useCallback((buildingId: string, roomId: string, bed: Bed) => {
@@ -138,7 +146,7 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
     });
 
     const finalBedSnap = await get(bedRef);
-    if(finalBedSnap.val().occupantId !== occupantId) {
+    if(!finalBedSnap.val() || finalBedSnap.val().occupantId !== occupantId) {
         throw new Error('This bed was assigned to another person simultaneously. Please try again.');
     }
   

@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -34,8 +33,8 @@ export default function AccommodationPage() {
             if (profile.name.toLowerCase().includes(lowercasedTerm) && profile.accommodation) {
                 const { buildingId, roomId, bedId } = profile.accommodation;
                 const building = buildings.find(b => b.id === buildingId);
-                const room = building?.rooms.find(r => r.id === roomId);
-                const bed = room?.beds.find(b => b.id === bedId);
+                const room = building?.rooms?.find(r => r.id === roomId);
+                const bed = room?.beds?.find(b => b.id === bedId);
 
                 if (building && room && bed) {
                     return {
