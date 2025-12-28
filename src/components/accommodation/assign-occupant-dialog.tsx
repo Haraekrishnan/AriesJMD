@@ -31,7 +31,10 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const availableManpower = useMemo(() => {
-    // A set of all validly occupied manpower IDs
+    // Get all employees who are marked as 'Working'
+    const workingManpower = manpowerProfiles.filter(p => p.status === 'Working');
+
+    // Create a set of all manpower IDs that are currently in a valid bed
     const occupiedManpowerIds = new Set<string>();
     buildings.forEach(building => {
       (building.rooms || []).forEach(room => {
@@ -43,11 +46,9 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
       });
     });
 
-    return manpowerProfiles.filter(p => {
-        // A person is available if they are 'Working' AND their ID is NOT in the set of validly occupied people.
-        // This correctly handles users with "ghost" or incomplete accommodation data.
-        return p.status === 'Working' && !occupiedManpowerIds.has(p.id);
-    });
+    // An employee is available if they are working and their ID is NOT in the set of occupied beds.
+    // This correctly handles "ghost" assignments where a user has an `accommodation` object but isn't actually in a bed.
+    return workingManpower.filter(p => !occupiedManpowerIds.has(p.id));
   }, [manpowerProfiles, buildings]);
 
 
