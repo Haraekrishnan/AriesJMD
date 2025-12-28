@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -30,18 +31,8 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const availableManpower = useMemo(() => {
-    const assignedIds = new Set<string>();
-    buildings.forEach(building => {
-      (building.rooms || []).forEach(room => {
-        (room.beds || []).forEach(bed => {
-          if (bed.occupantId) {
-            assignedIds.add(bed.occupantId);
-          }
-        });
-      });
-    });
-    return manpowerProfiles.filter(p => p.status === 'Working' && !assignedIds.has(p.id));
-  }, [manpowerProfiles, buildings]);
+    return manpowerProfiles.filter(p => !p.accommodation && p.status === 'Working');
+  }, [manpowerProfiles]);
 
 
   const form = useForm<AssignmentFormValues>({
