@@ -4,20 +4,24 @@ import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, PlusCircle, Search } from 'lucide-react';
+import { AlertTriangle, PlusCircle, Search, UserCog } from 'lucide-react';
 import StatCard from '@/components/dashboard/stat-card';
 import { BedDouble, BedSingle, Building } from 'lucide-react';
 import AccommodationDetails from '@/components/accommodation/accommodation-details';
 import AddBuildingDialog from '@/components/accommodation/add-building-dialog';
 import AddRoomDialog from '@/components/accommodation/add-room-dialog';
-import type { Building as BuildingType, Room, Bed } from '@/lib/types';
+import type { Building as BuildingType, Room, Bed, ManpowerProfile } from '@/lib/types';
 import EditBuildingDialog from '@/components/accommodation/edit-building-dialog';
 import AccommodationReportDownloads from '@/components/accommodation/AccommodationReportDownloads';
 import { Input } from '@/components/ui/input';
 import EditRoomDialog from '@/components/accommodation/EditRoomDialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 export default function AccommodationPage() {
-    const { can, buildings, manpowerProfiles } = useAppContext();
+    const { can, user, buildings, manpowerProfiles, forceUnassign } = useAppContext();
+    const { toast } = useToast();
     const [isAddBuildingOpen, setIsAddBuildingOpen] = useState(false);
     const [isEditBuildingOpen, setIsEditBuildingOpen] = useState(false);
     const [isAddRoomOpen, setIsAddRoomOpen] = useState(false);
@@ -25,7 +29,24 @@ export default function AccommodationPage() {
     const [selectedBuilding, setSelectedBuilding] = useState<BuildingType | null>(null);
     const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [debugSelectedProfileId, setDebugSelectedProfileId] = useState<string | null>(null);
     
+    const debugSelectedProfile = useMemo(() => {
+        if (!debugSelectedProfileId) return null;
+        return manpowerProfiles.find(p => p.id === debugSelectedProfileId);
+    }, [debugSelectedProfileId, manpowerProfiles]);
+
+    const handleForceUnassign = () => {
+        if (!debugSelectedProfile) return;
+        forceUnassign(debugSelectedProfile.id);
+        toast({
+            title: 'Assignment Forcefully Cleared',
+            description: `${debugSelectedProfile.name}'s accommodation record has been removed.`,
+            variant: 'destructive',
+        });
+        setDebugSelectedProfileId(null);
+    };
+
     const searchResult = useMemo(() => {
         if (!searchTerm || !buildings) return null;
     
@@ -171,6 +192,54 @@ export default function AccommodationPage() {
                     <AccommodationDetails onAddRoom={handleAddRoomClick} onEditBuilding={handleEditBuildingClick} onEditRoom={handleEditRoomClick} />
                 </CardContent>
             </Card>
+
+            {user?.role === 'Admin' && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><UserCog /> Admin Inspector</CardTitle>
+                        <CardDescription>Select an employee to view and manually clear their accommodation assignment if it is inconsistent.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <Select onValueChange={setDebugSelectedProfileId}>
+                            <SelectTrigger><SelectValue placeholder="Select an employee to inspect..." /></SelectTrigger>
+                            <SelectContent>
+                                {manpowerProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        {debugSelectedProfile && (
+                            <div className="p-4 border rounded-md bg-muted space-y-2">
+                                <h4 className="font-semibold">{debugSelectedProfile.name}'s Assignment Data</h4>
+                                {debugSelectedProfile.accommodation ? (
+                                    <div className="text-sm font-mono">
+                                        <p>Building ID: {debugSelectedProfile.accommodation.buildingId || 'N/A'}</p>
+                                        <p>Room ID: {debugSelectedProfile.accommodation.roomId || 'N/A'}</p>
+                                        <p>Bed ID: {debugSelectedProfile.accommodation.bedId || 'N/A'}</p>
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">No accommodation data found on this profile.</p>
+                                )}
+                                 {debugSelectedProfile.accommodation && (
+                                     <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="destructive" size="sm" className="mt-2">Force Unassign</Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>This will forcefully remove the assignment data from {debugSelectedProfile.name}'s profile. This is a recovery tool and should be used with caution.</AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={handleForceUnassign}>Yes, Force Unassign</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                 )}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
 
             <AddBuildingDialog isOpen={isAddBuildingOpen} setIsOpen={setIsAddBuildingOpen} />
             {selectedBuilding && (

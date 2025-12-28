@@ -21,6 +21,7 @@ type AccommodationContextType = {
   deleteBed: (buildingId: string, roomId: string, bedId: string) => void;
   assignOccupant: (buildingId: string, roomId: string, bedId: string, occupantId: string) => Promise<void>;
   unassignOccupant: (buildingId: string, roomId: string, bedId: string) => Promise<void>;
+  forceUnassign: (manpowerId: string) => void;
 };
 
 const createDataListener = <T extends {}>(
@@ -94,7 +95,7 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
     const bedsAsObject = (data.beds || []).reduce((acc: { [key: string]: any }, bed) => {
       const { id: bedId, ...bedData } = bed;
       acc[bedId] = bedData;
-      return acc;
+      return bedAcc;
     }, {});
     update(ref(rtdb, `buildings/${buildingId}/rooms/${id}`), { ...data, beds: bedsAsObject });
   }, []);
@@ -184,6 +185,27 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
   
   }, []);
 
+  const forceUnassign = useCallback((manpowerId: string) => {
+    if (!manpowerId) return;
+
+    // Find the bed the user is assigned to (if any) and clear it
+    for (const building of buildings) {
+      for (const room of building.rooms) {
+        for (const bed of room.beds) {
+          if (bed.occupantId === manpowerId) {
+            update(ref(rtdb, `buildings/${building.id}/rooms/${room.id}/beds/${bed.id}`), { occupantId: null });
+            break;
+          }
+        }
+      }
+    }
+    
+    // Forcefully remove the accommodation object from the user profile
+    remove(ref(rtdb, `manpowerProfiles/${manpowerId}/accommodation`));
+
+  }, [buildings]);
+
+
   useEffect(() => {
     const unsubscribers = [
       createDataListener('buildings', setBuildingsById),
@@ -197,6 +219,7 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
     addRoom, updateRoom, deleteRoom,
     addBed, updateBed, deleteBed,
     assignOccupant, unassignOccupant,
+    forceUnassign,
   };
 
   return <AccommodationContext.Provider value={contextValue}>{children}</AccommodationContext.Provider>;
