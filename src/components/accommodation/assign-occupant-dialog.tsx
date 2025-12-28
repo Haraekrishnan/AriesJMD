@@ -31,18 +31,23 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const availableManpower = useMemo(() => {
-    const occupiedBedIds = new Set<string>();
+    // A set of all validly occupied manpower IDs
+    const occupiedManpowerIds = new Set<string>();
     buildings.forEach(building => {
       (building.rooms || []).forEach(room => {
         (room.beds || []).forEach(bed => {
           if (bed.occupantId) {
-            occupiedBedIds.add(bed.occupantId);
+            occupiedManpowerIds.add(bed.occupantId);
           }
         });
       });
     });
 
-    return manpowerProfiles.filter(p => !occupiedBedIds.has(p.id) && p.status === 'Working');
+    return manpowerProfiles.filter(p => {
+        // A person is available if they are 'Working' AND their ID is NOT in the set of validly occupied people.
+        // This correctly handles users with "ghost" or incomplete accommodation data.
+        return p.status === 'Working' && !occupiedManpowerIds.has(p.id);
+    });
   }, [manpowerProfiles, buildings]);
 
 
