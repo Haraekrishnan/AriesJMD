@@ -32,12 +32,6 @@ const nextConfig: NextConfig = {
     ],
   },
   
-  experimental: {
-    allowedDevOrigins: [
-      "https://*.cluster-sumfw3zmzzhzkx4mpvz3ogth4y.cloudworkstations.dev",
-    ],
-  },
-
   async headers() {
     return [
       {
