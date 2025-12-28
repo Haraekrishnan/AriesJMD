@@ -53,7 +53,7 @@ export function AppSidebar() {
     internalRequests, managementRequests, incidentReports,
     ppeRequests, payments, feedback, unlockRequests,
     inventoryTransferRequests, dailyPlannerComments, logbookRequests,
-    pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestRequestCount,
+    pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount,
     damageReports,
   } = useAppContext();
   const pathname = usePathname();

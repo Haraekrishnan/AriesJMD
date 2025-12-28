@@ -1,6 +1,8 @@
+
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAppContext } from '@/contexts/app-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AppSidebar } from '@/components/shared/app-sidebar';
@@ -10,6 +12,14 @@ import { DecorationProvider } from '@/components/decorations/DecorationProvider'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAppContext();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && user && user.status === 'locked') {
+      router.replace('/status');
+    }
+  }, [user, loading, router]);
+
 
   if (loading || !user) {
     return (
@@ -17,10 +27,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="flex items-center space-x-4">
             <Skeleton className="h-12 w-12 rounded-full" />
             <div className="space-y-2">
+                <p className="text-muted-foreground">Redirecting...</p>
                 <Skeleton className="h-4 w-[250px]" />
                 <Skeleton className="h-4 w-[200px]" />
             </div>
         </div>
+      </div>
+    );
+  }
+
+  // If user is locked, this component might render briefly before redirect.
+  // We can show a minimal loading state or nothing to prevent flashing the full layout.
+  if (user.status === 'locked') {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+         <p className="text-muted-foreground">Redirecting to status page...</p>
       </div>
     );
   }
