@@ -84,10 +84,10 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding, onEdit
         <>
         <Accordion type="multiple" className="w-full space-y-4">
             {sortedBuildings.map(building => {
-                const roomsArray: Room[] = building.rooms ? Object.values(building.rooms).filter(Boolean) : [];
+                const roomsArray: Room[] = building.rooms || [];
                 
                 const buildingSummary = roomsArray.reduce((acc, room) => {
-                    const bedsArray = room.beds ? Object.values(room.beds).filter(Boolean) : [];
+                    const bedsArray = room.beds || [];
                     acc.totalBeds += bedsArray.length;
                     acc.occupiedBeds += bedsArray.filter(bed => bed && bed.occupantId).length;
                     return acc;
@@ -112,7 +112,7 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding, onEdit
                         <AccordionContent className="p-4 pt-0">
                             <div className="space-y-4">
                                 {roomsArray && roomsArray.filter(room => room && room.roomNumber).sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true, sensitivity: 'base' })).map(room => {
-                                    const bedsArray: Bed[] = room.beds ? Object.values(room.beds).filter(Boolean) : [];
+                                    const bedsArray: Bed[] = room.beds || [];
                                     const occupiedCount = bedsArray.filter(bed => bed.occupantId).length;
                                     const totalCount = bedsArray.length;
                                     const vacantCount = totalCount - occupiedCount;

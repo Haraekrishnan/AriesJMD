@@ -31,10 +31,10 @@ export default function AccommodationPage() {
 
         const lowercasedTerm = searchTerm.toLowerCase();
         for (const building of buildings) {
-            const roomsArray: Room[] = building.rooms ? (Array.isArray(building.rooms) ? building.rooms : Object.values(building.rooms)) : [];
+            const roomsArray: Room[] = building.rooms || [];
             for (const room of roomsArray) {
                 if (!room) continue;
-                const bedsArray: Bed[] = room.beds ? (Array.isArray(room.beds) ? room.beds : Object.values(room.beds)) : [];
+                const bedsArray: Bed[] = room.beds || [];
                 for (const bed of bedsArray) {
                     if (!bed || !bed.occupantId) continue;
                     const occupant = manpowerProfiles.find(p => p.id === bed.occupantId);
@@ -59,10 +59,10 @@ export default function AccommodationPage() {
         let totalBeds = 0;
         let occupiedBeds = 0;
         buildings.forEach(b => {
-            const roomsArray: Room[] = b.rooms ? (Array.isArray(b.rooms) ? b.rooms : Object.values(b.rooms)) : [];
+            const roomsArray: Room[] = b.rooms || [];
             roomsArray.forEach(r => {
                 if (!r) return;
-                const bedsArray = r.beds ? (Array.isArray(r.beds) ? r.beds : Object.values(r.beds)) : [];
+                const bedsArray = r.beds || [];
                 totalBeds += bedsArray.length;
                 occupiedBeds += bedsArray.filter(bed => bed && bed.occupantId).length;
             });

@@ -45,16 +45,29 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
   const { user, addActivityLog } = useAuth();
   const { manpowerProfiles } = useManpower();
   const [buildingsById, setBuildingsById] = useState<Record<string, Building>>({});
-  const buildings = useMemo(() => Object.values(buildingsById), [buildingsById]);
+  
+  const buildings = useMemo(() => {
+    return Object.values(buildingsById).map(building => ({
+      ...building,
+      rooms: building.rooms ? Object.values(building.rooms).map(room => ({
+        ...room,
+        beds: room.beds ? Object.values(room.beds) : []
+      })) : []
+    }));
+  }, [buildingsById]);
 
   const addBuilding = useCallback((buildingNumber: string) => {
     const newRef = push(ref(rtdb, 'buildings'));
-    set(newRef, { buildingNumber, rooms: [] });
+    set(newRef, { buildingNumber, rooms: {} });
   }, []);
 
   const updateBuilding = useCallback((building: Building) => {
     const { id, ...data } = building;
-    update(ref(rtdb, `buildings/${id}`), data);
+    const roomsAsObject = (data.rooms || []).reduce((acc: { [key: string]: any }, room) => {
+      acc[room.id] = room;
+      return acc;
+    }, {});
+    update(ref(rtdb, `buildings/${id}`), { ...data, rooms: roomsAsObject });
   }, []);
 
   const deleteBuilding = useCallback((buildingId: string) => {
@@ -63,16 +76,21 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
 
   const addRoom = useCallback((buildingId: string, roomData: { roomNumber: string, numberOfBeds: number }) => {
     const newRoomRef = push(ref(rtdb, `buildings/${buildingId}/rooms`));
-    const beds: Bed[] = Array.from({ length: roomData.numberOfBeds }, (_, i) => {
+    const bedsObject: { [key: string]: Bed } = {};
+    for (let i = 0; i < roomData.numberOfBeds; i++) {
         const newBedRef = push(ref(rtdb, `buildings/${buildingId}/rooms/${newRoomRef.key}/beds`));
-        return { id: newBedRef.key!, bedNumber: `${i + 1}`, bedType: 'Bunk' };
-    });
-    set(newRoomRef, { id: newRoomRef.key, roomNumber: roomData.roomNumber, beds });
+        bedsObject[newBedRef.key!] = { id: newBedRef.key!, bedNumber: `${i + 1}`, bedType: 'Bunk' };
+    }
+    set(newRoomRef, { id: newRoomRef.key, roomNumber: roomData.roomNumber, beds: bedsObject });
   }, []);
   
   const updateRoom = useCallback((buildingId: string, room: Room) => {
     const { id, ...data } = room;
-    update(ref(rtdb, `buildings/${buildingId}/rooms/${id}`), data);
+    const bedsAsObject = (data.beds || []).reduce((acc: { [key: string]: any }, bed) => {
+      acc[bed.id] = bed;
+      return acc;
+    }, {});
+    update(ref(rtdb, `buildings/${buildingId}/rooms/${id}`), { ...data, beds: bedsAsObject });
   }, []);
 
   const deleteRoom = useCallback((buildingId: string, roomId: string) => {
@@ -96,10 +114,8 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
   const assignOccupant = useCallback((buildingId: string, roomId: string, bedId: string, occupantId: string) => {
     update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`), { occupantId });
     const building = buildings.find(b => b.id === buildingId);
-    const roomsArray = building?.rooms ? (Array.isArray(building.rooms) ? building.rooms : Object.values(building.rooms)) : [];
-    const room = roomsArray.find(r => r && r.id === roomId);
-    const bedsArray = room?.beds ? (Array.isArray(room.beds) ? room.beds : Object.values(room.beds)) : [];
-    const bed = bedsArray.find(b => b && b.id === bedId);
+    const room = building?.rooms.find(r => r.id === roomId);
+    const bed = room?.beds.find(b => b.id === bedId);
     
     if (building && room && bed) {
         update(ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`), {
@@ -112,10 +128,8 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
 
   const unassignOccupant = useCallback((buildingId: string, roomId: string, bedId: string) => {
     const building = buildings.find(b => b.id === buildingId);
-    const roomsArray: Room[] = building?.rooms ? (Array.isArray(building.rooms) ? building.rooms : Object.values(building.rooms)) : [];
-    const room = roomsArray.find(r => r?.id === roomId);
-    const bedsArray: Bed[] = room?.beds ? (Array.isArray(room.beds) ? room.beds : Object.values(room.beds)) : [];
-    const bed = bedsArray.find(b => b?.id === bedId);
+    const room = building?.rooms.find(r => r.id === roomId);
+    const bed = room?.beds.find(b => b.id === bedId);
 
     if (bed?.occupantId) {
       const occupantId = bed.occupantId;

@@ -14,7 +14,7 @@ export default function AccommodationReportDownloads() {
     const handleDownloadExcel = () => {
         if (!buildings) return;
         const dataToExport = buildings.flatMap(building => {
-            const roomsArray: Room[] = building.rooms ? (Array.isArray(building.rooms) ? building.rooms : Object.values(building.rooms)) : [];
+            const roomsArray: Room[] = building.rooms || [];
             if (roomsArray.length === 0) {
                 return [{
                     'Building': building.buildingNumber,
@@ -28,7 +28,7 @@ export default function AccommodationReportDownloads() {
                 }];
             }
             return roomsArray.flatMap(room => {
-                const bedsArray = room.beds ? (Array.isArray(room.beds) ? room.beds : Object.values(room.beds)) : [];
+                const bedsArray = room.beds || [];
                 if (bedsArray.length === 0) {
                      return [{
                         'Building': building.buildingNumber,
