@@ -47,13 +47,13 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
   const [buildingsById, setBuildingsById] = useState<Record<string, Building>>({});
   
   const buildings = useMemo(() => {
-    return Object.values(buildingsById).map(building => ({
-      ...building,
-      rooms: building.rooms ? Object.values(building.rooms).map(room => ({
-        ...room,
-        beds: room.beds ? Object.values(room.beds) : []
-      })) : []
-    }));
+    return Object.values(buildingsById).map(building => {
+        const roomsArray = building.rooms ? Object.values(building.rooms).map(room => {
+            const bedsArray = room.beds ? Object.values(room.beds) : [];
+            return { ...room, beds: bedsArray };
+        }) : [];
+        return { ...building, rooms: roomsArray };
+    });
   }, [buildingsById]);
 
   const addBuilding = useCallback((buildingNumber: string) => {
@@ -113,6 +113,8 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
 
   const assignOccupant = useCallback((buildingId: string, roomId: string, bedId: string, occupantId: string) => {
     update(ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`), { occupantId });
+
+    // This part now uses the already processed `buildings` array
     const building = buildings.find(b => b.id === buildingId);
     const room = building?.rooms.find(r => r.id === roomId);
     const bed = room?.beds.find(b => b.id === bedId);
@@ -134,7 +136,7 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
     if (bed?.occupantId) {
       const occupantId = bed.occupantId;
       // Clear accommodation from manpower profile first
-      update(ref(rtdb, `manpowerProfiles/${occupantId}`), { accommodation: null });
+      remove(ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`));
     }
     
     // Then clear occupant from bed
