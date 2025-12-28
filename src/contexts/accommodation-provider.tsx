@@ -121,39 +121,32 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
     bedId: string,
     occupantId: string
   ) => {
-    const bedRef = ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`);
+    const bedOccupantRef = ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/occupantId`);
     const accRef = ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`);
   
     // 1. Check if person already assigned
     const accSnap = await get(accRef);
     if (accSnap.exists()) {
-      throw new Error('This person is already assigned to another bed.');
+      throw new Error('This person is already assigned to a bed.');
     }
   
     // 2. Transaction on bed to prevent double assignment
-    await runTransaction(bedRef, (bed) => {
-      if (bed) {
-        if (bed.occupantId) {
-          // Abort transaction by returning undefined
-          return; 
-        }
-        bed.occupantId = occupantId;
+    await runTransaction(bedOccupantRef, (currentOccupantId) => {
+      if (currentOccupantId !== null) {
+        // Bed is already occupied, abort transaction
+        return; 
       }
-      return bed;
+      return occupantId; // Set the new occupantId
     });
-
-    const finalBedState = await get(bedRef);
-    if(finalBedState.val().occupantId !== occupantId) {
-        throw new Error('This bed was assigned to another person simultaneously. Please try again.');
+  
+    // 3. Verify transaction was successful before updating profile
+    const finalBedSnap = await get(bedOccupantRef);
+    if (finalBedSnap.val() !== occupantId) {
+      throw new Error('This bed was assigned to another person simultaneously. Please try again.');
     }
   
-    // 3. Save accommodation reference to manpower profile
-    await set(accRef, {
-      buildingId,
-      roomId,
-      bedId
-    });
-  
+    // 4. Save accommodation reference to manpower profile
+    await set(accRef, { buildingId, roomId, bedId });
   }, []);
   
   const unassignOccupant = useCallback(async (
@@ -162,20 +155,28 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
     bedId: string
   ) => {
     const bedRef = ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`);
+    
+    const bedSnapshot = await get(bedRef);
+    if (!bedSnapshot.exists()) {
+      console.error("Bed not found, cannot unassign.");
+      return;
+    }
   
-    const snap = await get(bedRef);
-    if (!snap.exists()) return;
+    const bedData = bedSnapshot.val();
+    const occupantId = bedData.occupantId;
   
-    const bed = snap.val();
-    if (!bed.occupantId) return;
+    if (!occupantId) {
+      // Bed is already empty, nothing to do.
+      return;
+    }
   
-    const occupantId = bed.occupantId;
+    // Create a multi-path update object to perform an atomic operation
+    const updates: { [key: string]: any } = {};
+    updates[`buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/occupantId`] = null;
+    updates[`manpowerProfiles/${occupantId}/accommodation`] = null;
   
-    // 1. Clear bed occupantId
-    await update(bedRef, { occupantId: null });
-  
-    // 2. Clear manpower accommodation
-    await remove(ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`));
+    // Execute the atomic update
+    await update(ref(rtdb), updates);
   
   }, []);
 
