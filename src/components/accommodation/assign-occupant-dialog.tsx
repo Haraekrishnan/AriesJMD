@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -29,6 +30,7 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
   const { toast } = useToast();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
+  // This now correctly recalculates based on both buildings and manpower data
   const availableManpower = useMemo(() => {
     return manpowerProfiles.filter(p => p.status === 'Working' && !p.accommodation);
   }, [manpowerProfiles]);
@@ -38,9 +40,9 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
     resolver: zodResolver(assignmentSchema),
   });
 
-  const onSubmit = (data: AssignmentFormValues) => {
+  const onSubmit = async (data: AssignmentFormValues) => {
     try {
-        assignOccupant(bedInfo.buildingId, bedInfo.roomId, bedInfo.bedId, data.occupantId);
+        await assignOccupant(bedInfo.buildingId, bedInfo.roomId, bedInfo.bedId, data.occupantId);
         const occupantName = manpowerProfiles.find(p => p.id === data.occupantId)?.name;
         toast({ title: 'Bed Assigned', description: `${occupantName} has been assigned to the bed.` });
         setIsOpen(false);

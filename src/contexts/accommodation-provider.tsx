@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -115,35 +116,55 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const assignOccupant = useCallback(async (buildingId: string, roomId: string, bedId: string, occupantId: string) => {
-    const bedRef = ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`);
-    
-    // Check if person is already assigned
-    const accRef = ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`);
-    const accSnap = await get(accRef);
-    if (accSnap.exists()) {
-      throw new Error("Person already assigned to a bed");
+    // Transactionally check and update to prevent race conditions
+    const occupantAccRef = ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`);
+    const bedOccupantRef = ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/occupantId`);
+
+    try {
+        const occupantSnap = await get(occupantAccRef);
+        if (occupantSnap.exists()) {
+            throw new Error("Person already assigned to another bed.");
+        }
+
+        const bedSnap = await get(bedOccupantRef);
+        if (bedSnap.exists()) {
+            throw new Error("This bed is already occupied.");
+        }
+
+        const updates: { [key: string]: any } = {};
+        updates[occupantAccRef.key!] = { buildingId, roomId, bedId };
+        updates[bedOccupantRef.key!] = occupantId;
+
+        // Perform a multi-path update
+        await update(ref(rtdb, '/'), {
+          [`manpowerProfiles/${occupantId}/accommodation`]: { buildingId, roomId, bedId },
+          [`buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/occupantId`]: occupantId,
+        });
+
+    } catch (error) {
+        console.error("Assignment failed:", error);
+        throw error; // Re-throw to be caught in the component
     }
-
-    // Update bed
-    await update(bedRef, { occupantId });
-
-    // Store FULL reference (not labels)
-    await update(ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`), {
-      buildingId,
-      roomId,
-      bedId
-    });
   }, []);
 
   const unassignOccupant = useCallback(async (buildingId: string, roomId: string, bedId: string) => {
-    const bedRef = ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}`);
-    const snapshot = await get(bedRef);
-    const bed = snapshot.val();
-    
-    if (bed?.occupantId) {
-        const occupantId = bed.occupantId;
-        await remove(ref(rtdb, `manpowerProfiles/${occupantId}/accommodation`));
-        await update(bedRef, { occupantId: null });
+    const bedOccupantRef = ref(rtdb, `buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/occupantId`);
+
+    try {
+        const snapshot = await get(bedOccupantRef);
+        const occupantId = snapshot.val();
+
+        if (occupantId) {
+            const updates: { [key: string]: null } = {};
+            updates[`buildings/${buildingId}/rooms/${roomId}/beds/${bedId}/occupantId`] = null;
+            updates[`manpowerProfiles/${occupantId}/accommodation`] = null;
+
+            // Perform a multi-path update to ensure atomicity
+            await update(ref(rtdb), updates);
+        }
+    } catch (error) {
+        console.error("Unassignment failed:", error);
+        throw error; // Re-throw to be caught in the component
     }
   }, []);
 

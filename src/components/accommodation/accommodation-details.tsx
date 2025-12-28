@@ -32,8 +32,13 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding, onEdit
         setIsAssignDialogOpen(true);
     };
     
-    const handleUnassign = (buildingId: string, roomId: string, bedId: string) => {
-        unassignOccupant(buildingId, roomId, bedId);
+    const handleUnassign = async (buildingId: string, roomId: string, bedId: string) => {
+        try {
+            await unassignOccupant(buildingId, roomId, bedId);
+            toast({ title: 'Bed Unassigned', description: 'The occupant has been removed from the bed.' });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Unassignment Failed', description: error.message });
+        }
     };
 
     const handleDeleteBuilding = (buildingId: string) => {
