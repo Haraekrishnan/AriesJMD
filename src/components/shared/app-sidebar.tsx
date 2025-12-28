@@ -53,7 +53,7 @@ export function AppSidebar() {
     internalRequests, managementRequests, incidentReports,
     ppeRequests, payments, feedback, unlockRequests,
     inventoryTransferRequests, dailyPlannerComments, logbookRequests,
-    pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount,
+    pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestRequestCount,
     damageReports,
   } = useAppContext();
   const pathname = usePathname();
@@ -144,13 +144,15 @@ const plannerNotificationCount =
     const pendingInventoryTransferRequestCount = canApproveTransfers ? (inventoryTransferRequests || []).filter(r => r.status === 'Pending' || r.status === 'Disputed').length : 0;
 
     const pendingLogbookRequestCount = can.manage_logbook ? (logbookRequests || []).filter(r => r.status === 'Pending').length : 0;
+    
+    const pendingDamageReportCount = can.manage_inventory ? (damageReports || []).filter(r => r.status === 'Pending').length : 0;
 
     return {
       myRequests: pendingInternalRequestCount + updatedInternalRequestCount + pendingPpeRequestCount + updatedPpeRequestCount,
       manageTasks: myNewTaskCount + pendingTaskApprovalCount + myPendingTaskRequestCount,
-      storeInventory: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount,
+      storeInventory: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount + pendingDamageReportCount,
       equipment: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length,
-      damageReports: can.manage_inventory ? (damageReports || []).filter(r => r.status === 'Pending').length : 0,
+      damageReports: pendingDamageReportCount,
       planner: plannerNotificationCount,
       managementRequests: unreadDirectivesCount,
       incidentReporting: incidentNotificationCount,
