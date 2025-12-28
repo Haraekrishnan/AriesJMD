@@ -32,7 +32,7 @@ export default function DamageReportsPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Damage Reports</h1>
                     <p className="text-muted-foreground">Report and track damaged equipment and items.</p>
                 </div>
-                 <Button onClick={() => setIsNewReportOpen(true)}>
+                 <Button variant="destructive" onClick={() => setIsNewReportOpen(true)}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Report Damage
                 </Button>
             </div>
