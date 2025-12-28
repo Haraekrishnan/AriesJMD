@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
@@ -208,7 +209,7 @@ export default function StoreInventoryPage() {
                     <Button asChild variant="outline"><Link href="/tp-certification"><FileText className="mr-2 h-4 w-4"/> TP Cert Lists</Link></Button>
                     
                     <Button onClick={() => setIsNewDamageReportOpen(true)} variant="destructive">
-                        <Hammer className="mr-2 h-4 w-4"/> Report Damage
+                        <Hammer className="mr-2 h-4 w-4 stroke-black fill-white" /> Report Damage
                     </Button>
 
                     <Button onClick={() => setView(v => v === 'list' ? 'summary' : 'list')} variant="outline"><ChevronsUpDown className="mr-2 h-4 w-4" />{view === 'list' ? 'View Summary' : 'View List'}</Button>
@@ -372,3 +373,4 @@ export default function StoreInventoryPage() {
         </div>
     );
 }
+
