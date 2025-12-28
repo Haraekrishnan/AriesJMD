@@ -2,7 +2,7 @@
 'use client';
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, PlusCircle } from 'lucide-react';
+import { AlertTriangle, Hammer } from 'lucide-react';
 import NewDamageReportDialog from '@/components/damage-reports/NewDamageReportDialog';
 import DamageReportList from '@/components/damage-reports/DamageReportList';
 import { useAppContext } from '@/contexts/app-provider';
@@ -34,7 +34,7 @@ export default function DamageReportsPage() {
                     <p className="text-muted-foreground">Report and track damaged equipment and items.</p>
                 </div>
                  <Button variant="destructive" onClick={() => setIsNewReportOpen(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Report Damage
+                    <Hammer className="mr-2 h-4 w-4" /> Report Damage
                 </Button>
             </div>
 
