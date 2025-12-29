@@ -84,7 +84,7 @@ export default function OtherEquipmentTable({ items, onEdit }: OtherEquipmentTab
                                 </Tooltip>
                             )}
                           </TableCell>
-                        <TableCell>{item.remarks}</TableCell>
+                        <TableCell className="max-w-xs truncate">{item.remarks || 'N/A'}</TableCell>
                         {can.manage_equipment_status && (
                         <TableCell className="text-right">
                             <AlertDialog>

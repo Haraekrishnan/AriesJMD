@@ -69,6 +69,7 @@ export default function MobileSimTable({ items, onEdit }: MobileSimTableProps) {
               <TableHead>Allotted To</TableHead>
               <TableHead>Project</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Remarks</TableHead>
               {can.manage_equipment_status && <TableHead className="text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
@@ -105,6 +106,7 @@ export default function MobileSimTable({ items, onEdit }: MobileSimTableProps) {
                         </TableCell>
                         <TableCell>{project?.name}</TableCell>
                         <TableCell><Badge variant={getStatusVariant(item.status)}>{item.status}</Badge></TableCell>
+                        <TableCell className="max-w-xs truncate">{item.remarks || 'N/A'}</TableCell>
                         {can.manage_equipment_status && (
                         <TableCell className="text-right">
                             <AlertDialog>

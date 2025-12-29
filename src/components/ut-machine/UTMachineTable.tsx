@@ -1,19 +1,19 @@
 
 'use client';
-
-import React, { useMemo, useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Edit, Trash2, FileText, BadgeHelp, Link as LinkIcon } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { useToast } from '@/hooks/use-toast';
 import { format, isPast, parseISO, differenceInDays } from 'date-fns';
-import { UTMachine } from '@/lib/types';
-import NewCertificateRequestDialog from '../inventory/NewCertificateRequestDialog';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { MoreHorizontal, Edit, Trash2, BookMarked, FileText, BadgeHelp, Link as LinkIcon } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import type { UTMachine } from '@/lib/types';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import NewCertificateRequestDialog from '../inventory/NewCertificateRequestDialog';
 
 interface UTMachineTableProps {
   items: UTMachine[];
@@ -58,11 +58,7 @@ export default function UTMachineTable({ items, onEdit, onLogManager }: UTMachin
 
   const handleDelete = (machineId: string) => {
     deleteUTMachine(machineId);
-    toast({
-      variant: 'destructive',
-      title: 'UT Machine Deleted',
-      description: 'The machine has been removed from the system.',
-    });
+    toast({ variant: 'destructive', title: 'Machine Deleted' });
   };
 
   const handleCertRequest = (machine: UTMachine) => {
@@ -93,6 +89,7 @@ export default function UTMachineTable({ items, onEdit, onLogManager }: UTMachin
                   <TableHead>TP Insp. Due</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Certificate</TableHead>
+                  <TableHead>Remarks</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
               </TableRow>
           </TableHeader>
@@ -122,6 +119,7 @@ export default function UTMachineTable({ items, onEdit, onLogManager }: UTMachin
                             </Tooltip>
                           )}
                       </TableCell>
+                      <TableCell className="max-w-xs truncate">{machine.remarks || 'N/A'}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                               <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => onLogManager(machine)}><FileText className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>View/Add Logs</p></TooltipContent></Tooltip>

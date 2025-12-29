@@ -95,7 +95,7 @@ export default function LaptopDesktopTable({ items, onEdit }: LaptopDesktopTable
                                 </div>
                             </div>
                         </TableCell>
-                        <TableCell>{item.remarks}</TableCell>
+                        <TableCell className="max-w-xs truncate">{item.remarks}</TableCell>
                         {can.manage_equipment_status && (
                         <TableCell className="text-right">
                             <AlertDialog>

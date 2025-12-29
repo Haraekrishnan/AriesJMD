@@ -85,6 +85,7 @@ export default function DftMachineTable({ items, onEdit, onLogManager }: DftMach
                       <TableHead>TP Insp. Due</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Certificate</TableHead>
+                      <TableHead>Remarks</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
               </TableHeader>
@@ -114,6 +115,7 @@ export default function DftMachineTable({ items, onEdit, onLogManager }: DftMach
                                 </Tooltip>
                             )}
                           </TableCell>
+                          <TableCell className="max-w-xs truncate">{(machine as any).remarks || 'N/A'}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
                                   <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => onLogManager(machine)}><FileText className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>View/Add Logs</p></TooltipContent></Tooltip>

@@ -68,6 +68,7 @@ export default function AnemometerTable({ items, onEdit }: AnemometerTableProps)
               <TableHead>Project</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Calibration Due</TableHead>
+              <TableHead>Remarks</TableHead>
               {can.manage_equipment_status && <TableHead className="text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
@@ -83,6 +84,7 @@ export default function AnemometerTable({ items, onEdit }: AnemometerTableProps)
                         <TableCell className={cn(getDateStyles(item.calibrationDueDate))}>
                             {item.calibrationDueDate ? format(new Date(item.calibrationDueDate), 'dd-MM-yyyy') : 'N/A'}
                         </TableCell>
+                        <TableCell className="max-w-xs truncate">{item.remarks || 'N/A'}</TableCell>
                         {can.manage_equipment_status && (
                         <TableCell className="text-right">
                             <AlertDialog>
