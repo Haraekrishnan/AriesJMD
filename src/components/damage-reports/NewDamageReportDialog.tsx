@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -185,8 +186,8 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
           <DialogTitle>New Damage Report</DialogTitle>
           <DialogDescription>Submit a report for a damaged item.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
-          <ScrollArea className="flex-1 pr-6 -mr-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
+          <ScrollArea className="flex-grow pr-6 -mr-6">
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Item Type</Label>
@@ -318,7 +319,7 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
               </div>
             </div>
           </ScrollArea>
-          <DialogFooter className="mt-auto pt-4 border-t">
+          <DialogFooter className="mt-4 pt-4 border-t">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Submitting...' : 'Submit Report'}</Button>
           </DialogFooter>
