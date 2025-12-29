@@ -63,6 +63,7 @@ export default function MobileSimTable({ items, onEdit }: MobileSimTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Sl. No.</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Details</TableHead>
               <TableHead>Aries ID</TableHead>
@@ -74,11 +75,12 @@ export default function MobileSimTable({ items, onEdit }: MobileSimTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map(item => {
+            {items.map((item, index) => {
                 const allottedUser = allPersonnel.find(u => u.id === item.allottedToUserId);
                 const project = projects.find(p => p.id === item.projectId);
                 return (
                     <TableRow key={item.id}>
+                        <TableCell>{index + 1}</TableCell>
                         <TableCell><Badge variant="outline">{item.type}</Badge></TableCell>
                         <TableCell>
                           {item.type === 'Mobile' && <p><strong>IMEI:</strong> {item.imei}</p>}

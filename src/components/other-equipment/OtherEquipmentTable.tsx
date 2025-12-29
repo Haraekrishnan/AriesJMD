@@ -50,6 +50,7 @@ export default function OtherEquipmentTable({ items, onEdit }: OtherEquipmentTab
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Sl. No.</TableHead>
               <TableHead>Equipment Name</TableHead>
               <TableHead>Serial Number</TableHead>
               <TableHead>Aries ID</TableHead>
@@ -61,10 +62,11 @@ export default function OtherEquipmentTable({ items, onEdit }: OtherEquipmentTab
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map(item => {
+            {items.map((item, index) => {
                 const project = projects.find(p => p.id === item.projectId);
                 return (
                     <TableRow key={item.id}>
+                        <TableCell>{index + 1}</TableCell>
                         <TableCell><p className="font-medium">{item.equipmentName}</p></TableCell>
                         <TableCell>{item.serialNumber}</TableCell>
                         <TableCell>{item.ariesId || 'N/A'}</TableCell>

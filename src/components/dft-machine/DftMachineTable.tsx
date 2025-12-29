@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import NewCertificateRequestDialog from '../inventory/NewCertificateRequestDialog';
+import { ScrollArea } from '../ui/scroll-area';
 
 interface DftMachineTableProps {
   items: DftMachine[];
@@ -72,75 +73,79 @@ export default function DftMachineTable({ items, onEdit, onLogManager }: DftMach
 
     return (
         <>
-        <div className="overflow-x-auto">
-          <TooltipProvider>
-          <Table>
-              <TableHeader>
-                  <TableRow>
-                      <TableHead>Machine Name</TableHead>
-                      <TableHead>Aries ID</TableHead>
-                      <TableHead>Serial No.</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Calibration Due</TableHead>
-                      <TableHead>TP Insp. Due</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Certificate</TableHead>
-                      <TableHead>Remarks</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-              </TableHeader>
-              <TableBody>
-                  {machinesWithProject.map(machine => (
-                      <TableRow key={machine.id}>
-                          <TableCell className="font-medium">{machine.machineName}</TableCell>
-                          <TableCell>{machine.ariesId || 'N/A'}</TableCell>
-                          <TableCell>{machine.serialNumber}</TableCell>
-                          <TableCell>{machine.projectName}</TableCell>
-                          <TableCell className={cn(getDateStyles(machine.calibrationDueDate))}>
-                              {format(new Date(machine.calibrationDueDate), 'dd-MM-yyyy')}
-                          </TableCell>
-                          <TableCell className={cn(getDateStyles(machine.tpInspectionDueDate))}>
-                            {machine.tpInspectionDueDate ? format(new Date(machine.tpInspectionDueDate), 'dd-MM-yyyy') : 'N/A'}
-                          </TableCell>
-                          <TableCell><Badge variant={getStatusVariant(machine.status)}>{machine.status}</Badge></TableCell>
-                          <TableCell>
-                            {machine.certificateUrl && (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                    <Button asChild variant="ghost" size="icon">
-                                        <a href={machine.certificateUrl} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /></a>
-                                    </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>View Certificate</TooltipContent>
-                                </Tooltip>
-                            )}
-                          </TableCell>
-                          <TableCell className="max-w-xs truncate">{(machine as any).remarks || 'N/A'}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                                  <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => onLogManager(machine)}><FileText className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>View/Add Logs</p></TooltipContent></Tooltip>
-                                  <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleCertRequest(machine)}><BadgeHelp className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Request Certificate</p></TooltipContent></Tooltip>
-                                  {can.manage_equipment_status && (
-                                      <>
-                                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => onEdit(machine)}><Edit className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Edit</p></TooltipContent></Tooltip>
-                                      <AlertDialog>
-                                          <Tooltip><TooltipTrigger asChild><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4"/></Button></AlertDialogTrigger></TooltipTrigger><TooltipContent><p>Delete</p></TooltipContent></Tooltip>
-                                          <AlertDialogContent>
-                                              <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the machine record.</AlertDialogDescription></AlertDialogHeader>
-                                              <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(machine.id)}>Delete</AlertDialogAction></AlertDialogFooter>
-                                          </AlertDialogContent>
-                                      </AlertDialog>
-                                      </>
-                                  )}
-                              </div>
-                          </TableCell>
-                      </TableRow>
-                  ))}
-              </TableBody>
-          </Table>
-          </TooltipProvider>
-        </div>
-         {selectedMachineForCert && <NewCertificateRequestDialog isOpen={isCertRequestOpen} setIsOpen={setIsCertRequestOpen} dftMachine={selectedMachineForCert} />}
+        <ScrollArea className="h-96">
+          <div className="overflow-x-auto">
+            <TooltipProvider>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Sl. No.</TableHead>
+                        <TableHead>Machine Name</TableHead>
+                        <TableHead>Aries ID</TableHead>
+                        <TableHead>Serial No.</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Calibration Due</TableHead>
+                        <TableHead>TP Insp. Due</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Certificate</TableHead>
+                        <TableHead>Remarks</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {machinesWithProject.map((machine, index) => (
+                        <TableRow key={machine.id}>
+                            <TableCell>{index + 1}</TableCell>
+                            <TableCell className="font-medium">{machine.machineName}</TableCell>
+                            <TableCell>{machine.ariesId || 'N/A'}</TableCell>
+                            <TableCell>{machine.serialNumber}</TableCell>
+                            <TableCell>{machine.projectName}</TableCell>
+                            <TableCell className={cn(getDateStyles(machine.calibrationDueDate))}>
+                                {format(new Date(machine.calibrationDueDate), 'dd-MM-yyyy')}
+                            </TableCell>
+                            <TableCell className={cn(getDateStyles(machine.tpInspectionDueDate))}>
+                              {machine.tpInspectionDueDate ? format(new Date(machine.tpInspectionDueDate), 'dd-MM-yyyy') : 'N/A'}
+                            </TableCell>
+                            <TableCell><Badge variant={getStatusVariant(machine.status)}>{machine.status}</Badge></TableCell>
+                            <TableCell>
+                              {machine.certificateUrl && (
+                                  <Tooltip>
+                                      <TooltipTrigger asChild>
+                                      <Button asChild variant="ghost" size="icon">
+                                          <a href={machine.certificateUrl} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /></a>
+                                      </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>View Certificate</TooltipContent>
+                                  </Tooltip>
+                              )}
+                            </TableCell>
+                            <TableCell className="max-w-xs truncate">{(machine as any).remarks || 'N/A'}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => onLogManager(machine)}><FileText className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>View/Add Logs</p></TooltipContent></Tooltip>
+                                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleCertRequest(machine)}><BadgeHelp className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Request Certificate</p></TooltipContent></Tooltip>
+                                    {can.manage_equipment_status && (
+                                        <>
+                                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => onEdit(machine)}><Edit className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Edit</p></TooltipContent></Tooltip>
+                                        <AlertDialog>
+                                            <Tooltip><TooltipTrigger asChild><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4"/></Button></AlertDialogTrigger></TooltipTrigger><TooltipContent><p>Delete</p></TooltipContent></Tooltip>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the machine record.</AlertDialogDescription></AlertDialogHeader>
+                                                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(machine.id)}>Delete</AlertDialogAction></AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                        </>
+                                    )}
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+            </TooltipProvider>
+          </div>
+        </ScrollArea>
+        {selectedMachineForCert && <NewCertificateRequestDialog isOpen={isCertRequestOpen} setIsOpen={setIsCertRequestOpen} dftMachine={selectedMachineForCert} />}
         </>
     );
 }

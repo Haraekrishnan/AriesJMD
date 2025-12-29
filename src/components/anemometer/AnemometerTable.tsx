@@ -63,6 +63,7 @@ export default function AnemometerTable({ items, onEdit }: AnemometerTableProps)
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Sl. No.</TableHead>
               <TableHead>Make & Model</TableHead>
               <TableHead>Serial Number</TableHead>
               <TableHead>Project</TableHead>
@@ -73,10 +74,11 @@ export default function AnemometerTable({ items, onEdit }: AnemometerTableProps)
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map(item => {
+            {items.map((item, index) => {
                 const project = projects.find(p => p.id === item.projectId);
                 return (
                     <TableRow key={item.id}>
+                        <TableCell>{index + 1}</TableCell>
                         <TableCell><p className="font-medium">{item.make}</p><p className="text-xs text-muted-foreground">{item.model}</p></TableCell>
                         <TableCell>{item.serialNumber}</TableCell>
                         <TableCell>{project?.name || 'N/A'}</TableCell>

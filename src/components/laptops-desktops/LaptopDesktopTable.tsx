@@ -54,6 +54,7 @@ export default function LaptopDesktopTable({ items, onEdit }: LaptopDesktopTable
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Sl. No.</TableHead>
               <TableHead>Make</TableHead>
               <TableHead>Model</TableHead>
               <TableHead>Serial Number</TableHead>
@@ -65,11 +66,12 @@ export default function LaptopDesktopTable({ items, onEdit }: LaptopDesktopTable
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map(item => {
+            {items.map((item, index) => {
                 const allottedUser = users.find(u => u.id === item.allottedTo);
                 const isPasswordVisible = shownPasswords[item.id];
                 return (
                     <TableRow key={item.id}>
+                        <TableCell>{index + 1}</TableCell>
                         <TableCell className="font-medium">{item.make}</TableCell>
                         <TableCell>{item.model}</TableCell>
                         <TableCell>{item.serialNumber}</TableCell>
