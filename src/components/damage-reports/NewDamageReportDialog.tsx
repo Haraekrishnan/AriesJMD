@@ -201,7 +201,7 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
                       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                         <Command>
                           <CommandInput placeholder="Search item type..." />
-                          <ScrollArea className="h-48">
+                          <ScrollArea className="h-48 visible-scrollbar">
                             <CommandList>
                               <CommandEmpty>No item type found.</CommandEmpty>
                               <CommandGroup>
@@ -245,7 +245,7 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                           <Command>
                             <CommandInput placeholder="Search by SN or Aries ID..."/>
-                             <ScrollArea className="h-48">
+                             <ScrollArea className="h-48 visible-scrollbar">
                                 <CommandList>
                                 <CommandEmpty>No item found.</CommandEmpty>
                                 <CommandGroup>
