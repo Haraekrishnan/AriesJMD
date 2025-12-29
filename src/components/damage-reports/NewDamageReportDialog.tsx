@@ -187,8 +187,8 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
           <DialogDescription>Submit a report for a damaged item.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
-          <ScrollArea className="flex-grow pr-6 -mr-6">
-            <div className="space-y-4">
+          <div className="flex-grow pr-2 -mr-2 overflow-y-auto visible-scrollbar">
+            <div className="space-y-4 pr-4">
               <div className="space-y-2">
                 <Label>Item Type</Label>
                     <Popover open={isItemTypePopoverOpen} onOpenChange={setIsItemTypePopoverOpen}>
@@ -318,8 +318,8 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
                  {form.formState.errors.attachmentOriginalUrl && <p className="text-xs text-destructive">{form.formState.errors.attachmentOriginalUrl.message}</p>}
               </div>
             </div>
-          </ScrollArea>
-          <DialogFooter className="mt-4 pt-4 border-t">
+          </div>
+          <DialogFooter className="mt-4 pt-4 border-t shrink-0">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Submitting...' : 'Submit Report'}</Button>
           </DialogFooter>
