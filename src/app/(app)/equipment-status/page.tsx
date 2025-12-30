@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, AlertTriangle, CheckCircle, X, FileDown, ChevronsUpDown, FilePlus, Search, FilePen } from 'lucide-react';
 import UTMachineTable from '@/components/ut-machine/UTMachineTable';
 import AddUTMachineDialog from '@/components/ut-machine/AddUTMachineDialog';
-import type { UTMachine, DftMachine, MobileSim, LaptopDesktop, CertificateRequest, Role, DigitalCamera, Anemometer, OtherEquipment } from '@/lib/types';
+import type { UTMachine, DftMachine, MobileSim, LaptopDesktop, CertificateRequest, Role, DigitalCamera, Anemometer, OtherEquipment, PneumaticDrillingMachine, PneumaticAngleGrinder, WiredDrillingMachine, CordlessDrillingMachine, WiredAngleGrinder, CordlessAngleGrinder, CordlessReciprocatingSaw } from '@/lib/types';
 import EditUTMachineDialog from '@/components/ut-machine/EditUTMachineDialog';
 import { addDays, isBefore, format, formatDistanceToNow, eachDayOfInterval, isSameDay, isAfter, parseISO } from 'date-fns';
 import UTMachineLogManagerDialog from '@/components/ut-machine/UTMachineLogManagerDialog';
@@ -56,13 +56,35 @@ import ExpiringCalibrationsReport from '@/components/equipment/ExpiringCalibrati
 import { Input } from '@/components/ui/input';
 import { useAppContext } from '@/contexts/app-provider';
 import UpdateItemsDialog from '@/components/inventory/UpdateItemsDialog';
-
+import AddPneumaticDrillingMachineDialog from '@/components/pneumatic-drilling-machine/AddPneumaticDrillingMachineDialog';
+import EditPneumaticDrillingMachineDialog from '@/components/pneumatic-drilling-machine/EditPneumaticDrillingMachineDialog';
+import PneumaticDrillingMachineTable from '@/components/pneumatic-drilling-machine/PneumaticDrillingMachineTable';
+import AddPneumaticAngleGrinderDialog from '@/components/pneumatic-angle-grinder/AddPneumaticAngleGrinderDialog';
+import EditPneumaticAngleGrinderDialog from '@/components/pneumatic-angle-grinder/EditPneumaticAngleGrinderDialog';
+import PneumaticAngleGrinderTable from '@/components/pneumatic-angle-grinder/PneumaticAngleGrinderTable';
+import AddWiredDrillingMachineDialog from '@/components/wired-drilling-machine/AddWiredDrillingMachineDialog';
+import EditWiredDrillingMachineDialog from '@/components/wired-drilling-machine/EditWiredDrillingMachineDialog';
+import WiredDrillingMachineTable from '@/components/wired-drilling-machine/WiredDrillingMachineTable';
+import AddCordlessDrillingMachineDialog from '@/components/cordless-drilling-machine/AddCordlessDrillingMachineDialog';
+import EditCordlessDrillingMachineDialog from '@/components/cordless-drilling-machine/EditCordlessDrillingMachineDialog';
+import CordlessDrillingMachineTable from '@/components/cordless-drilling-machine/CordlessDrillingMachineTable';
+import AddWiredAngleGrinderDialog from '@/components/wired-angle-grinder/AddWiredAngleGrinderDialog';
+import EditWiredAngleGrinderDialog from '@/components/wired-angle-grinder/EditWiredAngleGrinderDialog';
+import WiredAngleGrinderTable from '@/components/wired-angle-grinder/WiredAngleGrinderTable';
+import AddCordlessAngleGrinderDialog from '@/components/cordless-angle-grinder/AddCordlessAngleGrinderDialog';
+import EditCordlessAngleGrinderDialog from '@/components/cordless-angle-grinder/EditCordlessAngleGrinderDialog';
+import CordlessAngleGrinderTable from '@/components/cordless-angle-grinder/CordlessAngleGrinderTable';
+import AddCordlessReciprocatingSawDialog from '@/components/cordless-reciprocating-saw/AddCordlessReciprocatingSawDialog';
+import EditCordlessReciprocatingSawDialog from '@/components/cordless-reciprocating-saw/EditCordlessReciprocatingSawDialog';
+import CordlessReciprocatingSawTable from '@/components/cordless-reciprocating-saw/CordlessReciprocatingSawTable';
 
 export default function EquipmentStatusPage() {
     const { user, users, can } = useAuth();
     const { projects } = useGeneral();
     const { 
         utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, 
+        pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines,
+        wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws,
         certificateRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, machineLogs, inventoryItems 
     } = useInventory();
     const { toast } = useToast();
@@ -105,6 +127,36 @@ export default function EquipmentStatusPage() {
     const [isAddOtherEquipmentOpen, setIsAddOtherEquipmentOpen] = useState(false);
     const [isEditOtherEquipmentOpen, setIsEditOtherEquipmentOpen] = useState(false);
     const [selectedOtherEquipment, setSelectedOtherEquipment] = useState<OtherEquipment | null>(null);
+
+    // Pneumatic Drilling Machine State
+    const [isAddPneumaticDrillingMachineOpen, setIsAddPneumaticDrillingMachineOpen] = useState(false);
+    const [editingPneumaticDrillingMachine, setEditingPneumaticDrillingMachine] = useState<PneumaticDrillingMachine | null>(null);
+
+    // Pneumatic Angle Grinder State
+    const [isAddPneumaticAngleGrinderOpen, setIsAddPneumaticAngleGrinderOpen] = useState(false);
+    const [editingPneumaticAngleGrinder, setEditingPneumaticAngleGrinder] = useState<PneumaticAngleGrinder | null>(null);
+
+    // Wired Drilling Machine State
+    const [isAddWiredDrillingMachineOpen, setIsAddWiredDrillingMachineOpen] = useState(false);
+    const [editingWiredDrillingMachine, setEditingWiredDrillingMachine] = useState<WiredDrillingMachine | null>(null);
+
+    // Cordless Drilling Machine State
+    const [isAddCordlessDrillingMachineOpen, setIsAddCordlessDrillingMachineOpen] = useState(false);
+    const [editingCordlessDrillingMachine, setEditingCordlessDrillingMachine] = useState<CordlessDrillingMachine | null>(null);
+
+    // Wired Angle Grinder State
+    const [isAddWiredAngleGrinderOpen, setIsAddWiredAngleGrinderOpen] = useState(false);
+    const [editingWiredAngleGrinder, setEditingWiredAngleGrinder] = useState<WiredAngleGrinder | null>(null);
+
+    // Cordless Angle Grinder State
+    const [isAddCordlessAngleGrinderOpen, setIsAddCordlessAngleGrinderOpen] = useState(false);
+    const [editingCordlessAngleGrinder, setEditingCordlessAngleGrinder] = useState<CordlessAngleGrinder | null>(null);
+
+    // Cordless Reciprocating Saw State
+    const [isAddCordlessReciprocatingSawOpen, setIsAddCordlessReciprocatingSawOpen] = useState(false);
+    const [editingCordlessReciprocatingSaw, setEditingCordlessReciprocatingSaw] = useState<CordlessReciprocatingSaw | null>(null);
+
+
     const [isUpdateItemsOpen, setIsUpdateItemsOpen] = useState(false);
 
 
@@ -160,6 +212,14 @@ export default function EquipmentStatusPage() {
     const filteredLaptopsDesktops = useMemo(() => applyFilters(laptopsDesktops), [laptopsDesktops, filters]);
     const filteredOtherEquipments = useMemo(() => applyFilters(otherEquipments), [otherEquipments, filters]);
 
+    const filteredPneumaticDrillingMachines = useMemo(() => applyFilters(pneumaticDrillingMachines), [pneumaticDrillingMachines, filters]);
+    const filteredPneumaticAngleGrinders = useMemo(() => applyFilters(pneumaticAngleGrinders), [pneumaticAngleGrinders, filters]);
+    const filteredWiredDrillingMachines = useMemo(() => applyFilters(wiredDrillingMachines), [wiredDrillingMachines, filters]);
+    const filteredCordlessDrillingMachines = useMemo(() => applyFilters(cordlessDrillingMachines), [cordlessDrillingMachines, filters]);
+    const filteredWiredAngleGrinders = useMemo(() => applyFilters(wiredAngleGrinders), [wiredAngleGrinders, filters]);
+    const filteredCordlessAngleGrinders = useMemo(() => applyFilters(cordlessAngleGrinders), [cordlessAngleGrinders, filters]);
+    const filteredCordlessReciprocatingSaws = useMemo(() => applyFilters(cordlessReciprocatingSaws), [cordlessReciprocatingSaws, filters]);
+
     const allMachines = useMemo(() => [...utMachines, ...dftMachines], [utMachines, dftMachines]);
 
     const canManageStore = useMemo(() => {
@@ -208,35 +268,36 @@ export default function EquipmentStatusPage() {
 
     // UT Handlers
     const handleEditUT = (machine: UTMachine) => { setSelectedUTMachine(machine); setIsEditUTMachineOpen(true); };
-    const handleAddUT = () => { setSelectedUTMachine(null); setIsAddUTMachineOpen(true); };
     const handleLogManagerUT = (machine: UTMachine) => { setSelectedUTMachine(machine); setIsUTLogManagerOpen(true); };
     
     // DFT Handlers
     const handleEditDft = (machine: DftMachine) => { setSelectedDftMachine(machine); setIsEditDftMachineOpen(true); };
-    const handleAddDft = () => { setSelectedDftMachine(null); setIsAddDftMachineOpen(true); };
     const handleLogManagerDft = (machine: DftMachine) => { setSelectedDftMachine(machine); setIsDftLogManagerOpen(true); };
 
     // Mobile/SIM Handlers
     const handleEditMobileSim = (item: MobileSim) => { setSelectedMobileSim(item); setIsEditMobileSimOpen(true); };
-    const handleAddMobileSim = () => { setSelectedMobileSim(null); setIsAddMobileSimOpen(true); };
-
 
     // Laptop/Desktop Handlers
     const handleEditLaptopDesktop = (item: LaptopDesktop) => { setSelectedLaptopDesktop(item); setIsEditLaptopDesktopOpen(true); };
-    const handleAddLaptopDesktop = () => { setSelectedLaptopDesktop(null); setIsAddLaptopDesktopOpen(true); };
 
     // Digital Camera Handlers
     const handleEditDigitalCamera = (item: DigitalCamera) => { setSelectedDigitalCamera(item); setIsEditDigitalCameraOpen(true); };
-    const handleAddDigitalCamera = () => { setSelectedDigitalCamera(null); setIsAddDigitalCameraOpen(true); };
 
     // Anemometer Handlers
     const handleEditAnemometer = (item: Anemometer) => { setSelectedAnemometer(item); setIsEditAnemometerOpen(true); };
-    const handleAddAnemometer = () => { setSelectedAnemometer(null); setIsAddAnemometerOpen(true); };
 
     // Other Equipment Handlers
     const handleEditOtherEquipment = (item: OtherEquipment) => { setSelectedOtherEquipment(item); setIsEditOtherEquipmentOpen(true); };
-    const handleAddOtherEquipment = () => { setSelectedOtherEquipment(null); setIsAddOtherEquipmentOpen(true); };
-    
+
+    // New Equipment handlers
+    const handleEditPneumaticDrillingMachine = (item: PneumaticDrillingMachine) => { setEditingPneumaticDrillingMachine(item) };
+    const handleEditPneumaticAngleGrinder = (item: PneumaticAngleGrinder) => { setEditingPneumaticAngleGrinder(item) };
+    const handleEditWiredDrillingMachine = (item: WiredDrillingMachine) => { setEditingWiredDrillingMachine(item) };
+    const handleEditCordlessDrillingMachine = (item: CordlessDrillingMachine) => { setEditingCordlessDrillingMachine(item) };
+    const handleEditWiredAngleGrinder = (item: WiredAngleGrinder) => { setEditingWiredAngleGrinder(item) };
+    const handleEditCordlessAngleGrinder = (item: CordlessAngleGrinder) => { setEditingCordlessAngleGrinder(item) };
+    const handleEditCordlessReciprocatingSaw = (item: CordlessReciprocatingSaw) => { setEditingCordlessReciprocatingSaw(item) };
+
     const detailedUsageData = useMemo(() => {
         if (!activeDaysDateRange?.from) {
             return { dates: [], machineData: [] };
@@ -523,7 +584,14 @@ export default function EquipmentStatusPage() {
             case 'anemometer': setIsAddAnemometerOpen(true); break;
             case 'mobile-sim': setIsAddMobileSimOpen(true); break;
             case 'laptops-desktops': setIsAddLaptopDesktopOpen(true); break;
-            case 'other-equipments': setIsAddOtherEquipmentOpen(true); break;
+            case 'pneumatic-drilling-machine': setIsAddPneumaticDrillingMachineOpen(true); break;
+            case 'pneumatic-angle-grinder': setIsAddPneumaticAngleGrinderOpen(true); break;
+            case 'wired-drilling-machine': setIsAddWiredDrillingMachineOpen(true); break;
+            case 'cordless-drilling-machine': setIsAddCordlessDrillingMachineOpen(true); break;
+            case 'wired-angle-grinder': setIsAddWiredAngleGrinderOpen(true); break;
+            case 'cordless-angle-grinder': setIsAddCordlessAngleGrinderOpen(true); break;
+            case 'cordless-reciprocating-saw': setIsAddCordlessReciprocatingSawOpen(true); break;
+            case 'general-equipments': setIsAddOtherEquipmentOpen(true); break;
         }
     };
 
@@ -675,84 +743,16 @@ export default function EquipmentStatusPage() {
                             <TabsTrigger value="anemometer">Anemometer</TabsTrigger>
                             <TabsTrigger value="mobile-sim">Mobile &amp; SIM</TabsTrigger>
                             <TabsTrigger value="laptops-desktops">Laptops &amp; Desktops</TabsTrigger>
-                            <TabsTrigger value="other-equipments">General Equipments</TabsTrigger>
+                            <TabsTrigger value="pneumatic-drilling-machine">Pneumatic Drilling</TabsTrigger>
+                            <TabsTrigger value="pneumatic-angle-grinder">Pneumatic Grinder</TabsTrigger>
+                            <TabsTrigger value="wired-drilling-machine">Wired Drilling</TabsTrigger>
+                            <TabsTrigger value="cordless-drilling-machine">Cordless Drilling</TabsTrigger>
+                            <TabsTrigger value="wired-angle-grinder">Wired Grinder</TabsTrigger>
+                            <TabsTrigger value="cordless-angle-grinder">Cordless Grinder</TabsTrigger>
+                            <TabsTrigger value="cordless-reciprocating-saw">Reciprocating Saw</TabsTrigger>
+                            <TabsTrigger value="general-equipments">General Equipments</TabsTrigger>
                         </TabsList>
                         <TabsContent value="ut-machines" className="mt-4 space-y-4">
-                            {canManageStore && pendingCertRequestsForMe.length > 0 && (
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Pending Certificate Requests</CardTitle>
-                                        <CardDescription>Review and action these certificate requests.</CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        {pendingCertRequestsForMe.map(req => {
-                                            const requester = users.find(u => u.id === req.requesterId);
-                                            const machine = utMachines.find(m => m.id === req.utMachineId) || dftMachines.find(m => m.id === req.dftMachineId);
-                                            const subject = machine ? `${machine.machineName} (SN: ${machine.serialNumber})` : 'Unknown';
-
-                                            return (
-                                                <div key={req.id} className="p-4 border rounded-lg flex flex-col sm:flex-row justify-between sm:items-center gap-2">
-                                                    <div><p><span className="font-semibold">{requester?.name}</span> requests a <span className="font-semibold">{req.requestType}</span></p><p className="text-sm text-muted-foreground">For: {subject}</p></div>
-                                                    <Button size="sm" onClick={() => setViewingCertRequest(req)}>Review Request</Button>
-                                                </div>
-                                            )
-                                        })}
-                                    </CardContent>
-                                </Card>
-                            )}
-                            {myEquipmentCertRequests.length > 0 && (
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>My Certificate Requests</CardTitle>
-                                        <CardDescription>Status of your submitted certificate requests for equipment.</CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        {myEquipmentCertRequests.map(req => {
-                                            const machine = utMachines.find(m => m.id === req.utMachineId) || dftMachines.find(m => m.id === req.dftMachineId);
-                                            const subject = machine ? `${machine.machineName} (SN: ${machine.serialNumber})` : 'Unknown';
-                                            const commentsArray = Array.isArray(req.comments) ? req.comments : Object.values(req.comments || {});
-                                            return (
-                                                <div key={req.id} className="p-3 border rounded-lg bg-muted/50">
-                                                    <Accordion type="single" collapsible>
-                                                        <AccordionItem value="item-1" className="border-b-0">
-                                                            <div className="flex justify-between items-start">
-                                                                <AccordionTrigger className="p-0 hover:no-underline flex-1 text-left">
-                                                                    <div>
-                                                                        <p className="font-semibold">{req.requestType} for {subject}</p>
-                                                                        <p className="text-sm text-muted-foreground">Submitted {formatDistanceToNow(new Date(req.requestDate), { addSuffix: true })}</p>
-                                                                    </div>
-                                                                </AccordionTrigger>
-                                                                <div className="flex items-center gap-2 pl-4">
-                                                                <Badge variant={req.status === 'Completed' ? 'default' : req.status === 'Rejected' ? 'destructive' : 'secondary'}>{req.status}</Badge>
-                                                                {req.status === 'Completed' && (
-                                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => acknowledgeFulfilledRequest(req.id)}><X className="h-4 w-4"/></Button>
-                                                                )}
-                                                                </div>
-                                                            </div>
-                                                            <AccordionContent className="pt-2">
-                                                                <div className="space-y-2 mt-2 pt-2 border-t">
-                                                                    {commentsArray.length > 0 ? commentsArray.map((c, i) => {
-                                                                        const commentUser = users.find(u => u.id === c.userId);
-                                                                        return (
-                                                                            <div key={i} className="flex items-start gap-2">
-                                                                                <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
-                                                                                <div className="text-xs bg-background p-2 rounded-md w-full">
-                                                                                    <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
-                                                                                    <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
-                                                                                </div>
-                                                                            </div>
-                                                                        );
-                                                                    }) : <p className="text-xs text-muted-foreground">No comments yet.</p>}
-                                                                </div>
-                                                            </AccordionContent>
-                                                        </AccordionItem>
-                                                    </Accordion>
-                                                </div>
-                                            )
-                                        })}
-                                    </CardContent>
-                                </Card>
-                            )}
                             <Card>
                                 <CardHeader><CardTitle>UT Machine List</CardTitle><CardDescription>A comprehensive list of all UT machines.</CardDescription></CardHeader>
                                 <CardContent><UTMachineTable items={filteredUtMachines} onEdit={handleEditUT} onLogManager={handleLogManagerUT} /></CardContent>
@@ -799,7 +799,49 @@ export default function EquipmentStatusPage() {
                                 <CardContent><LaptopDesktopTable items={filteredLaptopsDesktops} onEdit={handleEditLaptopDesktop} /></CardContent>
                             </Card>
                         </TabsContent>
-                        <TabsContent value="other-equipments" className="mt-4 space-y-4">
+                         <TabsContent value="pneumatic-drilling-machine" className="mt-4">
+                            <Card>
+                                <CardHeader><CardTitle>Pneumatic Drilling Machines</CardTitle></CardHeader>
+                                <CardContent><PneumaticDrillingMachineTable items={filteredPneumaticDrillingMachines} onEdit={handleEditPneumaticDrillingMachine} /></CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="pneumatic-angle-grinder" className="mt-4">
+                            <Card>
+                                <CardHeader><CardTitle>Pneumatic Angle Grinders</CardTitle></CardHeader>
+                                <CardContent><PneumaticAngleGrinderTable items={filteredPneumaticAngleGrinders} onEdit={handleEditPneumaticAngleGrinder} /></CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="wired-drilling-machine" className="mt-4">
+                            <Card>
+                                <CardHeader><CardTitle>Wired Drilling Machines</CardTitle></CardHeader>
+                                <CardContent><WiredDrillingMachineTable items={filteredWiredDrillingMachines} onEdit={handleEditWiredDrillingMachine} /></CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="cordless-drilling-machine" className="mt-4">
+                            <Card>
+                                <CardHeader><CardTitle>Cordless Drilling Machines</CardTitle></CardHeader>
+                                <CardContent><CordlessDrillingMachineTable items={filteredCordlessDrillingMachines} onEdit={handleEditCordlessDrillingMachine} /></CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="wired-angle-grinder" className="mt-4">
+                            <Card>
+                                <CardHeader><CardTitle>Wired Angle Grinders</CardTitle></CardHeader>
+                                <CardContent><WiredAngleGrinderTable items={filteredWiredAngleGrinders} onEdit={handleEditWiredAngleGrinder} /></CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="cordless-angle-grinder" className="mt-4">
+                            <Card>
+                                <CardHeader><CardTitle>Cordless Angle Grinders</CardTitle></CardHeader>
+                                <CardContent><CordlessAngleGrinderTable items={filteredCordlessAngleGrinders} onEdit={handleEditCordlessAngleGrinder} /></CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="cordless-reciprocating-saw" className="mt-4">
+                            <Card>
+                                <CardHeader><CardTitle>Cordless Reciprocating Saws</CardTitle></CardHeader>
+                                <CardContent><CordlessReciprocatingSawTable items={filteredCordlessReciprocatingSaws} onEdit={handleEditCordlessReciprocatingSaw} /></CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="general-equipments" className="mt-4 space-y-4">
                             <Card>
                                 <CardHeader><CardTitle>General Equipments</CardTitle><CardDescription>List of all other company-provided equipments.</CardDescription></CardHeader>
                                 <CardContent><OtherEquipmentTable items={filteredOtherEquipments} onEdit={handleEditOtherEquipment} /></CardContent>
@@ -832,6 +874,27 @@ export default function EquipmentStatusPage() {
             <AddOtherEquipmentDialog isOpen={isAddOtherEquipmentOpen} setIsOpen={setIsAddOtherEquipmentOpen} />
             {selectedOtherEquipment && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && <EditOtherEquipmentDialog isOpen={isEditOtherEquipmentOpen} setIsOpen={setIsEditOtherEquipmentOpen} item={selectedOtherEquipment} />}
             
+            <AddPneumaticDrillingMachineDialog isOpen={isAddPneumaticDrillingMachineOpen} setIsOpen={setIsAddPneumaticDrillingMachineOpen} />
+            {editingPneumaticDrillingMachine && <EditPneumaticDrillingMachineDialog isOpen={!!editingPneumaticDrillingMachine} setIsOpen={() => setEditingPneumaticDrillingMachine(null)} item={editingPneumaticDrillingMachine} />}
+
+            <AddPneumaticAngleGrinderDialog isOpen={isAddPneumaticAngleGrinderOpen} setIsOpen={setIsAddPneumaticAngleGrinderOpen} />
+            {editingPneumaticAngleGrinder && <EditPneumaticAngleGrinderDialog isOpen={!!editingPneumaticAngleGrinder} setIsOpen={() => setEditingPneumaticAngleGrinder(null)} item={editingPneumaticAngleGrinder} />}
+            
+            <AddWiredDrillingMachineDialog isOpen={isAddWiredDrillingMachineOpen} setIsOpen={setIsAddWiredDrillingMachineOpen} />
+            {editingWiredDrillingMachine && <EditWiredDrillingMachineDialog isOpen={!!editingWiredDrillingMachine} setIsOpen={() => setEditingWiredDrillingMachine(null)} item={editingWiredDrillingMachine} />}
+
+            <AddCordlessDrillingMachineDialog isOpen={isAddCordlessDrillingMachineOpen} setIsOpen={setIsAddCordlessDrillingMachineOpen} />
+            {editingCordlessDrillingMachine && <EditCordlessDrillingMachineDialog isOpen={!!editingCordlessDrillingMachine} setIsOpen={() => setEditingCordlessDrillingMachine(null)} item={editingCordlessDrillingMachine} />}
+
+            <AddWiredAngleGrinderDialog isOpen={isAddWiredAngleGrinderOpen} setIsOpen={setIsAddWiredAngleGrinderOpen} />
+            {editingWiredAngleGrinder && <EditWiredAngleGrinderDialog isOpen={!!editingWiredAngleGrinder} setIsOpen={() => setEditingWiredAngleGrinder(null)} item={editingWiredAngleGrinder} />}
+
+            <AddCordlessAngleGrinderDialog isOpen={isAddCordlessAngleGrinderOpen} setIsOpen={setIsAddCordlessAngleGrinderOpen} />
+            {editingCordlessAngleGrinder && <EditCordlessAngleGrinderDialog isOpen={!!editingCordlessAngleGrinder} setIsOpen={() => setEditingCordlessAngleGrinder(null)} item={editingCordlessAngleGrinder} />}
+
+            <AddCordlessReciprocatingSawDialog isOpen={isAddCordlessReciprocatingSawOpen} setIsOpen={setIsAddCordlessReciprocatingSawOpen} />
+            {editingCordlessReciprocatingSaw && <EditCordlessReciprocatingSawDialog isOpen={!!editingCordlessReciprocatingSaw} setIsOpen={() => setEditingCordlessReciprocatingSaw(null)} item={editingCordlessReciprocatingSaw} />}
+
             <UpdateItemsDialog isOpen={isUpdateItemsOpen} setIsOpen={setIsUpdateItemsOpen} />
             <GenerateTpCertDialog isOpen={isGenerateCertOpen} setIsOpen={setIsGenerateCertOpen} />
             {viewingCertRequest && ( <ViewCertificateRequestDialog request={viewingCertRequest} isOpen={!!viewingCertRequest} setIsOpen={() => setViewingCertRequest(null)} /> )}
