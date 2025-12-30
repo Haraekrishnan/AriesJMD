@@ -334,6 +334,7 @@ export default function EquipmentStatusPage() {
 
     const handleExportAllEquipment = async () => {
         const workbook = new ExcelJS.Workbook();
+        const allPersonnel = [...users, ...manpowerProfiles];
         
         const createSheet = (sheetName: string, headers: any[], data: any[]) => {
             const worksheet = workbook.addWorksheet(sheetName);
@@ -416,6 +417,48 @@ export default function EquipmentStatusPage() {
             project: projects.find(p => p.id === item.projectId)?.name || 'N/A',
             status: item.status,
             calibDue: item.calibrationDueDate ? format(parseISO(item.calibrationDueDate), 'dd-MM-yyyy') : 'N/A',
+            remarks: item.remarks || 'N/A',
+        })));
+        
+        // Laptops & Desktops
+        createSheet('Laptops Desktops', [
+            { header: 'Sl. No.', key: 'sl', width: 10 },
+            { header: 'Make & Model', key: 'makeModel', width: 30 },
+            { header: 'Serial No.', key: 'serial', width: 20 },
+            { header: 'Allotted To', key: 'allottedTo', width: 25 },
+            { header: 'Aries ID', key: 'ariesId', width: 20 },
+            { header: 'Remarks', key: 'remarks', width: 40 },
+        ], filteredLaptopsDesktops.map((item, i) => ({
+            sl: i + 1,
+            makeModel: `${item.make} ${item.model}`,
+            serial: item.serialNumber,
+            allottedTo: users.find(u => u.id === item.allottedTo)?.name || 'N/A',
+            ariesId: item.ariesId || 'N/A',
+            remarks: item.remarks || 'N/A',
+        })));
+
+        // Mobile & SIM
+        createSheet('Mobile SIM', [
+            { header: 'Sl. No.', key: 'sl', width: 10 },
+            { header: 'Type', key: 'type', width: 15 },
+            { header: 'Make/Provider', key: 'provider', width: 20 },
+            { header: 'Model/Number', key: 'number', width: 20 },
+            { header: 'IMEI', key: 'imei', width: 20 },
+            { header: 'Allotted To', key: 'allottedTo', width: 25 },
+            { header: 'Project', key: 'project', width: 20 },
+            { header: 'Status', key: 'status', width: 15 },
+            { header: 'Aries ID', key: 'ariesId', width: 20 },
+            { header: 'Remarks', key: 'remarks', width: 40 },
+        ], filteredMobileSims.map((item, i) => ({
+            sl: i + 1,
+            type: item.type,
+            provider: item.make || item.simProvider || 'N/A',
+            number: item.model || item.simNumber || 'N/A',
+            imei: item.imei || 'N/A',
+            allottedTo: allPersonnel.find(p => p.id === item.allottedToUserId)?.name || 'N/A',
+            project: projects.find(p => p.id === item.projectId)?.name || 'N/A',
+            status: item.status,
+            ariesId: item.ariesId || 'N/A',
             remarks: item.remarks || 'N/A',
         })));
 
@@ -787,6 +830,7 @@ export default function EquipmentStatusPage() {
         </div>
     );
 }
+
 
 
 
