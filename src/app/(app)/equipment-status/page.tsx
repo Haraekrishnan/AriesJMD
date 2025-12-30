@@ -61,7 +61,10 @@ import UpdateItemsDialog from '@/components/inventory/UpdateItemsDialog';
 export default function EquipmentStatusPage() {
     const { user, users, can } = useAuth();
     const { projects } = useGeneral();
-    const { utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, certificateRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, machineLogs, inventoryItems } = useInventory();
+    const { 
+        utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, 
+        certificateRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, machineLogs, inventoryItems 
+    } = useInventory();
     const { toast } = useToast();
     const { manpowerProfiles } = useAppContext();
     const [activeTab, setActiveTab] = useState('ut-machines');
@@ -492,6 +495,7 @@ export default function EquipmentStatusPage() {
         createSheet('General Equipments', [
             { header: 'Sl. No.', key: 'sl', width: 10 },
             { header: 'Equipment Name', key: 'name', width: 30 },
+            { header: 'Category', key: 'category', width: 20 },
             { header: 'Serial No.', key: 'serial', width: 20 },
             { header: 'Aries ID', key: 'ariesId', width: 20 },
             { header: 'Project', key: 'project', width: 20 },
@@ -499,6 +503,7 @@ export default function EquipmentStatusPage() {
         ], filteredOtherEquipments.map((item, i) => ({
             sl: i + 1,
             name: item.equipmentName,
+            category: item.category || 'N/A',
             serial: item.serialNumber,
             ariesId: item.ariesId || 'N/A',
             project: projects.find(p => p.id === item.projectId)?.name || 'N/A',

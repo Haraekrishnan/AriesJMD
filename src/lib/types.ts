@@ -737,6 +737,15 @@ export type OtherEquipment = {
     certificateUrl?: string;
 };
 
+export type PneumaticDrillingMachine = Omit<OtherEquipment, 'equipmentName'> & { equipmentName: 'Pneumatic Drilling Machine' };
+export type PneumaticAngleGrinder = Omit<OtherEquipment, 'equipmentName'> & { equipmentName: 'Pneumatic Angle Grinder' };
+export type WiredDrillingMachine = Omit<OtherEquipment, 'equipmentName'> & { equipmentName: 'Wired Drilling Machine' };
+export type CordlessDrillingMachine = Omit<OtherEquipment, 'equipmentName'> & { equipmentName: 'Cordless Drilling Machine' };
+export type WiredAngleGrinder = Omit<OtherEquipment, 'equipmentName'> & { equipmentName: 'Wired Angle Grinder' };
+export type CordlessAngleGrinder = Omit<OtherEquipment, 'equipmentName'> & { equipmentName: 'Cordless Angle Grinder' };
+export type CordlessReciprocatingSaw = Omit<OtherEquipment, 'equipmentName'> & { equipmentName: 'Cordless Reciprocating Saw' };
+
+
 export type MachineLog = {
     id: string;
     machineId: string;
