@@ -1,26 +1,32 @@
+
 'use client';
 import { useEffect, useRef } from 'react';
-import { initFireworks } from '@/lib/fireworks-animation';
+import { initFireworks, stopFireworks } from '@/lib/fireworks-animation';
 
 const Fireworks = () => {
+    // We only want to initialize the fireworks script once.
     const isInitialized = useRef(false);
 
     useEffect(() => {
-        if (!isInitialized.current) {
+        // Ensure this only runs on the client
+        if (typeof window !== 'undefined' && !isInitialized.current) {
             // The initFireworks function will set up everything, including stages and loops.
-            // It's designed to run once.
             initFireworks();
             isInitialized.current = true;
         }
         
-        // No cleanup needed since the animation loop is managed globally by the script
-        // and should persist as long as the component is potentially visible.
+        // Cleanup function to stop the animation loop when the component unmounts.
+        return () => {
+            stopFireworks();
+            isInitialized.current = false; // Allow re-initialization if component remounts
+        };
     }, []);
 
+    // These canvas elements are required by the fireworks simulation script.
     return (
         <div className="canvas-container">
-            <canvas id="trails-canvas" ref={useRef<HTMLCanvasElement>(null)}></canvas>
-            <canvas id="main-canvas" ref={useRef<HTMLCanvasElement>(null)}></canvas>
+            <canvas id="trails-canvas"></canvas>
+            <canvas id="main-canvas"></canvas>
         </div>
     );
 };
