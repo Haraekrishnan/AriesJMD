@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, CheckCircle, X, FileDown, ChevronsUpDown, FilePlus, Search } from 'lucide-react';
+import { PlusCircle, AlertTriangle, CheckCircle, X, FileDown, ChevronsUpDown, FilePlus, Search, FilePen } from 'lucide-react';
 import UTMachineTable from '@/components/ut-machine/UTMachineTable';
 import AddUTMachineDialog from '@/components/ut-machine/AddUTMachineDialog';
 import type { UTMachine, DftMachine, MobileSim, LaptopDesktop, CertificateRequest, Role, DigitalCamera, Anemometer, OtherEquipment } from '@/lib/types';
@@ -55,6 +55,7 @@ import EquipmentFilters, { type EquipmentFilterValues } from '@/components/equip
 import ExpiringCalibrationsReport from '@/components/equipment/ExpiringCalibrationsReport';
 import { Input } from '@/components/ui/input';
 import { useAppContext } from '@/contexts/app-provider';
+import UpdateItemsDialog from '../inventory/UpdateItemsDialog';
 
 
 export default function EquipmentStatusPage() {
@@ -101,6 +102,8 @@ export default function EquipmentStatusPage() {
     const [isAddOtherEquipmentOpen, setIsAddOtherEquipmentOpen] = useState(false);
     const [isEditOtherEquipmentOpen, setIsEditOtherEquipmentOpen] = useState(false);
     const [selectedOtherEquipment, setSelectedOtherEquipment] = useState<OtherEquipment | null>(null);
+    const [isUpdateItemsOpen, setIsUpdateItemsOpen] = useState(false);
+
 
     const [viewingCertRequest, setViewingCertRequest] = useState<CertificateRequest | null>(null);
     const [isGenerateCertOpen, setIsGenerateCertOpen] = useState(false);
@@ -527,12 +530,7 @@ export default function EquipmentStatusPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Equipment</h1>
                     <p className="text-muted-foreground">Manage and track all company equipment and assets.</p>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                    {canAddEquipment && (
-                         <Button onClick={handleAddClick}>
-                            <PlusCircle className="mr-2 h-4 w-4" /> Add Equipment
-                        </Button>
-                    )}
+                 <div className="flex items-center gap-2 flex-wrap">
                     <Button onClick={handleExportAllEquipment} variant="outline">
                         <FileDown className="mr-2 h-4 w-4" /> Export All Equipment
                     </Button>
@@ -650,145 +648,161 @@ export default function EquipmentStatusPage() {
 
             <EquipmentFilters onFiltersChange={setFilters} />
             
-            <Tabs defaultValue="ut-machines" className="w-full" onValueChange={setActiveTab}>
-                <TabsList className="h-auto flex-wrap justify-start">
-                    <TabsTrigger value="ut-machines">UT Machines</TabsTrigger>
-                    <TabsTrigger value="dft-machines">DFT Machines</TabsTrigger>
-                    <TabsTrigger value="digital-camera">Digital Camera</TabsTrigger>
-                    <TabsTrigger value="anemometer">Anemometer</TabsTrigger>
-                    <TabsTrigger value="mobile-sim">Mobile &amp; SIM</TabsTrigger>
-                    <TabsTrigger value="laptops-desktops">Laptops &amp; Desktops</TabsTrigger>
-                    <TabsTrigger value="other-equipments">Other Equipments</TabsTrigger>
-                </TabsList>
-                <TabsContent value="ut-machines" className="mt-4 space-y-4">
-                    {canManageStore && pendingCertRequestsForMe.length > 0 && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Pending Certificate Requests</CardTitle>
-                                <CardDescription>Review and action these certificate requests.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                {pendingCertRequestsForMe.map(req => {
-                                    const requester = users.find(u => u.id === req.requesterId);
-                                    const machine = utMachines.find(m => m.id === req.utMachineId) || dftMachines.find(m => m.id === req.dftMachineId);
-                                    const subject = machine ? `${machine.machineName} (SN: ${machine.serialNumber})` : 'Unknown';
-
-                                    return (
-                                        <div key={req.id} className="p-4 border rounded-lg flex flex-col sm:flex-row justify-between sm:items-center gap-2">
-                                            <div><p><span className="font-semibold">{requester?.name}</span> requests a <span className="font-semibold">{req.requestType}</span></p><p className="text-sm text-muted-foreground">For: {subject}</p></div>
-                                            <Button size="sm" onClick={() => setViewingCertRequest(req)}>Review Request</Button>
-                                        </div>
-                                    )
-                                })}
-                            </CardContent>
-                        </Card>
-                    )}
-                    {myEquipmentCertRequests.length > 0 && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>My Certificate Requests</CardTitle>
-                                <CardDescription>Status of your submitted certificate requests for equipment.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                {myEquipmentCertRequests.map(req => {
-                                    const machine = utMachines.find(m => m.id === req.utMachineId) || dftMachines.find(m => m.id === req.dftMachineId);
-                                    const subject = machine ? `${machine.machineName} (SN: ${machine.serialNumber})` : 'Unknown';
-                                    const commentsArray = Array.isArray(req.comments) ? req.comments : Object.values(req.comments || {});
-                                    return (
-                                        <div key={req.id} className="p-3 border rounded-lg bg-muted/50">
-                                            <Accordion type="single" collapsible>
-                                                <AccordionItem value="item-1" className="border-b-0">
-                                                    <div className="flex justify-between items-start">
-                                                        <AccordionTrigger className="p-0 hover:no-underline flex-1 text-left">
-                                                            <div>
-                                                                <p className="font-semibold">{req.requestType} for {subject}</p>
-                                                                <p className="text-sm text-muted-foreground">Submitted {formatDistanceToNow(new Date(req.requestDate), { addSuffix: true })}</p>
-                                                            </div>
-                                                        </AccordionTrigger>
-                                                        <div className="flex items-center gap-2 pl-4">
-                                                          <Badge variant={req.status === 'Completed' ? 'default' : req.status === 'Rejected' ? 'destructive' : 'secondary'}>{req.status}</Badge>
-                                                          {req.status === 'Completed' && (
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => acknowledgeFulfilledRequest(req.id)}><X className="h-4 w-4"/></Button>
-                                                          )}
-                                                        </div>
-                                                    </div>
-                                                    <AccordionContent className="pt-2">
-                                                        <div className="space-y-2 mt-2 pt-2 border-t">
-                                                            {commentsArray.length > 0 ? commentsArray.map((c, i) => {
-                                                                const commentUser = users.find(u => u.id === c.userId);
-                                                                return (
-                                                                    <div key={i} className="flex items-start gap-2">
-                                                                        <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
-                                                                        <div className="text-xs bg-background p-2 rounded-md w-full">
-                                                                            <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
-                                                                            <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            }) : <p className="text-xs text-muted-foreground">No comments yet.</p>}
-                                                        </div>
-                                                    </AccordionContent>
-                                                </AccordionItem>
-                                            </Accordion>
-                                        </div>
-                                    )
-                                })}
-                            </CardContent>
-                        </Card>
-                    )}
-                    <Card>
-                        <CardHeader><CardTitle>UT Machine List</CardTitle><CardDescription>A comprehensive list of all UT machines.</CardDescription></CardHeader>
-                        <CardContent><UTMachineTable items={filteredUtMachines} onEdit={handleEditUT} onLogManager={handleLogManagerUT} /></CardContent>
-                    </Card>
-                </TabsContent>
-                <TabsContent value="dft-machines" className="mt-4 space-y-4">
-                    <Card>
-                        <CardHeader><CardTitle>DFT Machine List</CardTitle><CardDescription>A comprehensive list of all DFT machines.</CardDescription></CardHeader>
-                        <CardContent><DftMachineTable items={filteredDftMachines} onEdit={handleEditDft} onLogManager={handleLogManagerDft} /></CardContent>
-                    </Card>
-                </TabsContent>
-                <TabsContent value="digital-camera" className="mt-4 space-y-4">
-                    <Card>
-                        <CardHeader><CardTitle>Digital Cameras</CardTitle><CardDescription>List of all company-provided digital cameras.</CardDescription></CardHeader>
-                        <CardContent><DigitalCameraTable items={filteredDigitalCameras} onEdit={handleEditDigitalCamera} /></CardContent>
-                    </Card>
-                </TabsContent>
-                <TabsContent value="anemometer" className="mt-4 space-y-4">
-                    <Card>
-                        <CardHeader><CardTitle>Anemometers</CardTitle><CardDescription>List of all company-provided anemometers.</CardDescription></CardHeader>
-                        <CardContent><AnemometerTable items={filteredAnemometers} onEdit={handleEditAnemometer} /></CardContent>
-                    </Card>
-                </TabsContent>
-                <TabsContent value="mobile-sim" className="mt-4 space-y-4">
-                     <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2">
-                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Search by number, IMEI, Aries ID, or name..."
-                                className="pl-9"
-                                value={mobileSearchTerm}
-                                onChange={(e) => setMobileSearchTerm(e.target.value)}
-                            />
-                        </div>
+            <Card>
+                <CardHeader>
+                    <div className="flex justify-end gap-2">
+                        {canAddEquipment && (
+                            <Button onClick={handleAddClick}>
+                                <PlusCircle className="mr-2 h-4 w-4" /> Add Equipment
+                            </Button>
+                        )}
+                        <Button onClick={() => setIsUpdateItemsOpen(true)} variant="outline">
+                            <FilePen className="mr-2 h-4 w-4"/> Update Items
+                        </Button>
                     </div>
-                    <Card>
-                        <CardHeader><CardTitle>Mobile &amp; SIM Allotment</CardTitle><CardDescription>List of all company-provided mobiles and SIM cards.</CardDescription></CardHeader>
-                        <CardContent><MobileSimTable items={filteredMobileSims} onEdit={handleEditMobileSim} /></CardContent>
-                    </Card>
-                </TabsContent>
-                 <TabsContent value="laptops-desktops" className="mt-4 space-y-4">
-                    <Card>
-                        <CardHeader><CardTitle>Laptops &amp; Desktops</CardTitle><CardDescription>List of all company-provided laptops and desktops.</CardDescription></CardHeader>
-                        <CardContent><LaptopDesktopTable items={filteredLaptopsDesktops} onEdit={handleEditLaptopDesktop} /></CardContent>
-                    </Card>
-                </TabsContent>
-                 <TabsContent value="other-equipments" className="mt-4 space-y-4">
-                    <Card>
-                        <CardHeader><CardTitle>Other Equipments</CardTitle><CardDescription>List of all company-provided equipments.</CardDescription></CardHeader>
-                        <CardContent><OtherEquipmentTable items={filteredOtherEquipments} onEdit={handleEditOtherEquipment} /></CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
+                </CardHeader>
+                <CardContent>
+                    <Tabs defaultValue="ut-machines" className="w-full" onValueChange={setActiveTab}>
+                        <TabsList className="h-auto flex-wrap justify-start">
+                            <TabsTrigger value="ut-machines">UT Machines</TabsTrigger>
+                            <TabsTrigger value="dft-machines">DFT Machines</TabsTrigger>
+                            <TabsTrigger value="digital-camera">Digital Camera</TabsTrigger>
+                            <TabsTrigger value="anemometer">Anemometer</TabsTrigger>
+                            <TabsTrigger value="mobile-sim">Mobile &amp; SIM</TabsTrigger>
+                            <TabsTrigger value="laptops-desktops">Laptops &amp; Desktops</TabsTrigger>
+                            <TabsTrigger value="other-equipments">Other Equipments</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="ut-machines" className="mt-4 space-y-4">
+                            {canManageStore && pendingCertRequestsForMe.length > 0 && (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Pending Certificate Requests</CardTitle>
+                                        <CardDescription>Review and action these certificate requests.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        {pendingCertRequestsForMe.map(req => {
+                                            const requester = users.find(u => u.id === req.requesterId);
+                                            const machine = utMachines.find(m => m.id === req.utMachineId) || dftMachines.find(m => m.id === req.dftMachineId);
+                                            const subject = machine ? `${machine.machineName} (SN: ${machine.serialNumber})` : 'Unknown';
+
+                                            return (
+                                                <div key={req.id} className="p-4 border rounded-lg flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                                                    <div><p><span className="font-semibold">{requester?.name}</span> requests a <span className="font-semibold">{req.requestType}</span></p><p className="text-sm text-muted-foreground">For: {subject}</p></div>
+                                                    <Button size="sm" onClick={() => setViewingCertRequest(req)}>Review Request</Button>
+                                                </div>
+                                            )
+                                        })}
+                                    </CardContent>
+                                </Card>
+                            )}
+                            {myEquipmentCertRequests.length > 0 && (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>My Certificate Requests</CardTitle>
+                                        <CardDescription>Status of your submitted certificate requests for equipment.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        {myEquipmentCertRequests.map(req => {
+                                            const machine = utMachines.find(m => m.id === req.utMachineId) || dftMachines.find(m => m.id === req.dftMachineId);
+                                            const subject = machine ? `${machine.machineName} (SN: ${machine.serialNumber})` : 'Unknown';
+                                            const commentsArray = Array.isArray(req.comments) ? req.comments : Object.values(req.comments || {});
+                                            return (
+                                                <div key={req.id} className="p-3 border rounded-lg bg-muted/50">
+                                                    <Accordion type="single" collapsible>
+                                                        <AccordionItem value="item-1" className="border-b-0">
+                                                            <div className="flex justify-between items-start">
+                                                                <AccordionTrigger className="p-0 hover:no-underline flex-1 text-left">
+                                                                    <div>
+                                                                        <p className="font-semibold">{req.requestType} for {subject}</p>
+                                                                        <p className="text-sm text-muted-foreground">Submitted {formatDistanceToNow(new Date(req.requestDate), { addSuffix: true })}</p>
+                                                                    </div>
+                                                                </AccordionTrigger>
+                                                                <div className="flex items-center gap-2 pl-4">
+                                                                <Badge variant={req.status === 'Completed' ? 'default' : req.status === 'Rejected' ? 'destructive' : 'secondary'}>{req.status}</Badge>
+                                                                {req.status === 'Completed' && (
+                                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => acknowledgeFulfilledRequest(req.id)}><X className="h-4 w-4"/></Button>
+                                                                )}
+                                                                </div>
+                                                            </div>
+                                                            <AccordionContent className="pt-2">
+                                                                <div className="space-y-2 mt-2 pt-2 border-t">
+                                                                    {commentsArray.length > 0 ? commentsArray.map((c, i) => {
+                                                                        const commentUser = users.find(u => u.id === c.userId);
+                                                                        return (
+                                                                            <div key={i} className="flex items-start gap-2">
+                                                                                <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
+                                                                                <div className="text-xs bg-background p-2 rounded-md w-full">
+                                                                                    <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
+                                                                                    <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    }) : <p className="text-xs text-muted-foreground">No comments yet.</p>}
+                                                                </div>
+                                                            </AccordionContent>
+                                                        </AccordionItem>
+                                                    </Accordion>
+                                                </div>
+                                            )
+                                        })}
+                                    </CardContent>
+                                </Card>
+                            )}
+                            <Card>
+                                <CardHeader><CardTitle>UT Machine List</CardTitle><CardDescription>A comprehensive list of all UT machines.</CardDescription></CardHeader>
+                                <CardContent><UTMachineTable items={filteredUtMachines} onEdit={handleEditUT} onLogManager={handleLogManagerUT} /></CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="dft-machines" className="mt-4 space-y-4">
+                            <Card>
+                                <CardHeader><CardTitle>DFT Machine List</CardTitle><CardDescription>A comprehensive list of all DFT machines.</CardDescription></CardHeader>
+                                <CardContent><DftMachineTable items={filteredDftMachines} onEdit={handleEditDft} onLogManager={handleLogManagerDft} /></CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="digital-camera" className="mt-4 space-y-4">
+                            <Card>
+                                <CardHeader><CardTitle>Digital Cameras</CardTitle><CardDescription>List of all company-provided digital cameras.</CardDescription></CardHeader>
+                                <CardContent><DigitalCameraTable items={filteredDigitalCameras} onEdit={handleEditDigitalCamera} /></CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="anemometer" className="mt-4 space-y-4">
+                            <Card>
+                                <CardHeader><CardTitle>Anemometers</CardTitle><CardDescription>List of all company-provided anemometers.</CardDescription></CardHeader>
+                                <CardContent><AnemometerTable items={filteredAnemometers} onEdit={handleEditAnemometer} /></CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="mobile-sim" className="mt-4 space-y-4">
+                            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Search by number, IMEI, Aries ID, or name..."
+                                        className="pl-9"
+                                        value={mobileSearchTerm}
+                                        onChange={(e) => setMobileSearchTerm(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            <Card>
+                                <CardHeader><CardTitle>Mobile &amp; SIM Allotment</CardTitle><CardDescription>List of all company-provided mobiles and SIM cards.</CardDescription></CardHeader>
+                                <CardContent><MobileSimTable items={filteredMobileSims} onEdit={handleEditMobileSim} /></CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="laptops-desktops" className="mt-4 space-y-4">
+                            <Card>
+                                <CardHeader><CardTitle>Laptops &amp; Desktops</CardTitle><CardDescription>List of all company-provided laptops and desktops.</CardDescription></CardHeader>
+                                <CardContent><LaptopDesktopTable items={filteredLaptopsDesktops} onEdit={handleEditLaptopDesktop} /></CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="other-equipments" className="mt-4 space-y-4">
+                            <Card>
+                                <CardHeader><CardTitle>Other Equipments</CardTitle><CardDescription>List of all company-provided equipments.</CardDescription></CardHeader>
+                                <CardContent><OtherEquipmentTable items={filteredOtherEquipments} onEdit={handleEditOtherEquipment} /></CardContent>
+                            </Card>
+                        </TabsContent>
+                    </Tabs>
+                </CardContent>
+            </Card>
 
             <AddUTMachineDialog isOpen={isAddUTMachineOpen} setIsOpen={setIsAddUTMachineOpen} />
             {selectedUTMachine && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && (<EditUTMachineDialog isOpen={isEditUTMachineOpen} setIsOpen={setIsEditUTMachineOpen} machine={selectedUTMachine}/>)}
@@ -812,14 +826,10 @@ export default function EquipmentStatusPage() {
 
             <AddOtherEquipmentDialog isOpen={isAddOtherEquipmentOpen} setIsOpen={setIsAddOtherEquipmentOpen} />
             {selectedOtherEquipment && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && <EditOtherEquipmentDialog isOpen={isEditOtherEquipmentOpen} setIsOpen={setIsEditOtherEquipmentOpen} item={selectedOtherEquipment} />}
-
+            
+            <UpdateItemsDialog isOpen={isUpdateItemsOpen} setIsOpen={setIsUpdateItemsOpen} />
             <GenerateTpCertDialog isOpen={isGenerateCertOpen} setIsOpen={setIsGenerateCertOpen} />
             {viewingCertRequest && ( <ViewCertificateRequestDialog request={viewingCertRequest} isOpen={!!viewingCertRequest} setIsOpen={() => setViewingCertRequest(null)} /> )}
         </div>
     );
 }
-
-
-
-
-

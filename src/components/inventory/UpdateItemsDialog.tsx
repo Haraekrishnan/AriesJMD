@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { FileWarning, Upload } from 'lucide-react';
+import { useInventory } from '@/contexts/inventory-provider';
 
 interface UpdateItemsDialogProps {
   isOpen: boolean;
@@ -16,7 +17,7 @@ interface UpdateItemsDialogProps {
 }
 
 export default function UpdateItemsDialog({ isOpen, setIsOpen }: UpdateItemsDialogProps) {
-    const { updateMultipleInventoryItems } = useAppContext();
+    const { updateMultipleInventoryItems } = useInventory();
     const { toast } = useToast();
     const [file, setFile] = useState<File | null>(null);
 
