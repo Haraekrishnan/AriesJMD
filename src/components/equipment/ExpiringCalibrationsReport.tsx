@@ -18,38 +18,36 @@ export default function ExpiringCalibrationsReport({ expiringMachines }: Expirin
 
   const handleExportExcel = async () => {
     const workbook = new ExcelJS.Workbook();
-    const utSheet = workbook.addWorksheet('UT Machines');
-    const dftSheet = workbook.addWorksheet('DFT Machines');
-    const anemometerSheet = workbook.addWorksheet('Anemometers');
-
-    const headers = [
-      { header: 'Machine Name', key: 'name', width: 30 },
-      { header: 'Serial No.', key: 'serial', width: 20 },
-      { header: 'Project', key: 'project', width: 25 },
-      { header: 'Calibration Due', key: 'dueDate', width: 20 },
-    ];
     
-    utSheet.columns = headers;
-    dftSheet.columns = headers;
-    anemometerSheet.columns = headers;
+    const utMachines = expiringMachines.filter(item => item.machine.cableDetails !== undefined);
+    const dftMachines = expiringMachines.filter(item => item.machine.probeDetails !== undefined && item.machine.cableDetails === undefined);
+    const anemometers = expiringMachines.filter(item => item.machine.probeDetails === undefined);
 
-    expiringMachines.forEach(item => {
-      const machine = item.machine;
-      const projectName = projects.find(p => p.id === machine.projectId)?.name || 'N/A';
-      const row = {
-        name: machine.machineName || machine.make,
-        serial: machine.serialNumber,
-        project: projectName,
-        dueDate: item.calibrationDueDate ? format(item.calibrationDueDate, 'dd-MM-yyyy') : 'N/A',
-      };
+    const createSheet = (sheetName: string, data: any[]) => {
+      if(data.length === 0) return;
+      const worksheet = workbook.addWorksheet(sheetName);
+      worksheet.columns = [
+        { header: 'Machine Name', key: 'name', width: 30 },
+        { header: 'Serial No.', key: 'serial', width: 20 },
+        { header: 'Project', key: 'project', width: 25 },
+        { header: 'Calibration Due', key: 'dueDate', width: 20 },
+      ];
 
-      if (machine.probeDetails !== undefined) { // Likely UT or DFT
-        if (machine.cableDetails !== undefined) utSheet.addRow(row);
-        else dftSheet.addRow(row);
-      } else { // Anemometer
-        anemometerSheet.addRow(row);
-      }
-    });
+      data.forEach(item => {
+        const machine = item.machine;
+        const projectName = projects.find(p => p.id === machine.projectId)?.name || 'N/A';
+        worksheet.addRow({
+          name: machine.machineName || machine.make,
+          serial: machine.serialNumber,
+          project: projectName,
+          dueDate: item.calibrationDueDate ? format(item.calibrationDueDate, 'dd-MM-yyyy') : 'N/A',
+        });
+      });
+    };
+    
+    createSheet('UT Machines', utMachines);
+    createSheet('DFT Machines', dftMachines);
+    createSheet('Anemometers', anemometers);
 
     const buffer = await workbook.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), 'Expiring_Calibrations_Report.xlsx');

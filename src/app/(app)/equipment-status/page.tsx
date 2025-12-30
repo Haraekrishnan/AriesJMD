@@ -31,7 +31,8 @@ import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import type { DateRange } from 'react-day-picker';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
-import * as XLSX from 'xlsx';
+import * as ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -324,65 +325,119 @@ export default function EquipmentStatusPage() {
 
         const detailedWorksheet = XLSX.utils.json_to_sheet(detailedLogData);
     
-        const workbook = XLSX.utils.book_new();
+        const workbook = new ExcelJS.Workbook();
         XLSX.utils.book_append_sheet(workbook, summaryWorksheet, 'Summary Report');
         XLSX.utils.book_append_sheet(workbook, detailedWorksheet, 'Detailed Log Report');
     
         XLSX.writeFile(workbook, 'Machine_Usage_Report.xlsx');
     };
 
-    const handleExportUT = () => {
-        if (utMachines.length === 0) {
-            toast({ title: "No UT Machines to export.", variant: 'destructive' });
-            return;
-        }
-        const dataToExport = utMachines.map(m => ({
-            'Machine Name': m.machineName,
-            'Aries ID': m.ariesId || 'N/A',
-            'Serial No.': m.serialNumber,
-            'Location': projects.find(p => p.id === m.projectId)?.name || 'N/A',
-            'Unit': m.unit,
-            'Calibration Due': m.calibrationDueDate ? format(parseISO(m.calibrationDueDate), 'dd-MM-yyyy') : 'N/A',
-            'TP Insp. Due': m.tpInspectionDueDate ? format(parseISO(m.tpInspectionDueDate), 'dd-MM-yyyy') : 'N/A',
-            'Status': m.status,
-            'Probe Details': m.probeDetails || 'N/A',
-            'Probe Status': m.probeStatus || 'N/A',
-            'Cable Details': m.cableDetails || 'N/A',
-            'Cable Status': m.cableStatus || 'N/A',
-            'Remarks': m.remarks || 'N/A',
-            'Certificate Link': m.certificateUrl || 'N/A',
-        }));
+    const handleExportAllEquipment = async () => {
+        const workbook = new ExcelJS.Workbook();
+        
+        const createSheet = (sheetName: string, headers: any[], data: any[]) => {
+            const worksheet = workbook.addWorksheet(sheetName);
+            worksheet.columns = headers;
+            worksheet.addRows(data);
+        };
+    
+        // UT Machines
+        createSheet('UT Machines', [
+            { header: 'Sl. No.', key: 'sl', width: 10 },
+            { header: 'Machine Name', key: 'name', width: 25 },
+            { header: 'Aries ID', key: 'ariesId', width: 20 },
+            { header: 'Serial No.', key: 'serial', width: 20 },
+            { header: 'Location', key: 'location', width: 20 },
+            { header: 'Calibration Due', key: 'calibDue', width: 20 },
+            { header: 'Status', key: 'status', width: 15 },
+            { header: 'Remarks', key: 'remarks', width: 40 },
+        ], filteredUtMachines.map((m, i) => ({
+            sl: i + 1,
+            name: m.machineName,
+            ariesId: m.ariesId || 'N/A',
+            serial: m.serialNumber,
+            location: projects.find(p => p.id === m.projectId)?.name || 'N/A',
+            calibDue: format(parseISO(m.calibrationDueDate), 'dd-MM-yyyy'),
+            status: m.status,
+            remarks: m.remarks || 'N/A',
+        })));
+    
+        // DFT Machines
+        createSheet('DFT Machines', [
+            { header: 'Sl. No.', key: 'sl', width: 10 },
+            { header: 'Machine Name', key: 'name', width: 25 },
+            { header: 'Aries ID', key: 'ariesId', width: 20 },
+            { header: 'Serial No.', key: 'serial', width: 20 },
+            { header: 'Location', key: 'location', width: 20 },
+            { header: 'Calibration Due', key: 'calibDue', width: 20 },
+            { header: 'Status', key: 'status', width: 15 },
+            { header: 'Remarks', key: 'remarks', width: 40 },
+        ], filteredDftMachines.map((m, i) => ({
+            sl: i + 1,
+            name: m.machineName,
+            ariesId: m.ariesId || 'N/A',
+            serial: m.serialNumber,
+            location: projects.find(p => p.id === m.projectId)?.name || 'N/A',
+            calibDue: format(parseISO(m.calibrationDueDate), 'dd-MM-yyyy'),
+            status: m.status,
+            remarks: (m as any).remarks || 'N/A',
+        })));
 
-        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'UT Machines');
-        XLSX.writeFile(workbook, 'UT_Machines_Report.xlsx');
-    };
+        // Digital Cameras
+        createSheet('Digital Cameras', [
+            { header: 'Sl. No.', key: 'sl', width: 10 },
+            { header: 'Make & Model', key: 'makeModel', width: 30 },
+            { header: 'Serial No.', key: 'serial', width: 20 },
+            { header: 'Project', key: 'project', width: 20 },
+            { header: 'Status', key: 'status', width: 15 },
+            { header: 'Remarks', key: 'remarks', width: 40 },
+        ], filteredDigitalCameras.map((item, i) => ({
+            sl: i + 1,
+            makeModel: `${item.make} ${item.model}`,
+            serial: item.serialNumber,
+            project: projects.find(p => p.id === item.projectId)?.name || 'N/A',
+            status: item.status,
+            remarks: item.remarks || 'N/A',
+        })));
 
-    const handleExportDFT = () => {
-        if (dftMachines.length === 0) {
-            toast({ title: "No DFT Machines to export.", variant: 'destructive' });
-            return;
-        }
-        const dataToExport = dftMachines.map(m => ({
-            'Machine Name': m.machineName,
-            'Aries ID': m.ariesId || 'N/A',
-            'Serial No.': m.serialNumber,
-            'Location': projects.find(p => p.id === m.projectId)?.name || 'N/A',
-            'Unit': m.unit,
-            'Calibration Due': m.calibrationDueDate ? format(parseISO(m.calibrationDueDate), 'dd-MM-yyyy') : 'N/A',
-            'TP Insp. Due': m.tpInspectionDueDate ? format(parseISO(m.tpInspectionDueDate), 'dd-MM-yyyy') : 'N/A',
-            'Status': m.status,
-            'Probe Details': m.probeDetails || 'N/A',
-            'Cable Details': m.cableDetails || 'N/A',
-            'Remarks': (m as any).remarks || 'N/A',
-            'Certificate Link': m.certificateUrl || 'N/A',
-        }));
+        // Anemometers
+        createSheet('Anemometers', [
+            { header: 'Sl. No.', key: 'sl', width: 10 },
+            { header: 'Make & Model', key: 'makeModel', width: 30 },
+            { header: 'Serial No.', key: 'serial', width: 20 },
+            { header: 'Project', key: 'project', width: 20 },
+            { header: 'Status', key: 'status', width: 15 },
+            { header: 'Calibration Due', key: 'calibDue', width: 20 },
+            { header: 'Remarks', key: 'remarks', width: 40 },
+        ], filteredAnemometers.map((item, i) => ({
+            sl: i + 1,
+            makeModel: `${item.make} ${item.model}`,
+            serial: item.serialNumber,
+            project: projects.find(p => p.id === item.projectId)?.name || 'N/A',
+            status: item.status,
+            calibDue: item.calibrationDueDate ? format(parseISO(item.calibrationDueDate), 'dd-MM-yyyy') : 'N/A',
+            remarks: item.remarks || 'N/A',
+        })));
 
-        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'DFT Machines');
-        XLSX.writeFile(workbook, 'DFT_Machines_Report.xlsx');
+        // Other Equipments
+        createSheet('Other Equipments', [
+            { header: 'Sl. No.', key: 'sl', width: 10 },
+            { header: 'Equipment Name', key: 'name', width: 30 },
+            { header: 'Serial No.', key: 'serial', width: 20 },
+            { header: 'Aries ID', key: 'ariesId', width: 20 },
+            { header: 'Project', key: 'project', width: 20 },
+            { header: 'Remarks', key: 'remarks', width: 40 },
+        ], filteredOtherEquipments.map((item, i) => ({
+            sl: i + 1,
+            name: item.equipmentName,
+            serial: item.serialNumber,
+            ariesId: item.ariesId || 'N/A',
+            project: projects.find(p => p.id === item.projectId)?.name || 'N/A',
+            remarks: item.remarks || 'N/A',
+        })));
+    
+        const buffer = await workbook.xlsx.writeBuffer();
+        saveAs(new Blob([buffer]), 'All_Equipment_Report.xlsx');
     };
 
     return (
@@ -393,6 +448,9 @@ export default function EquipmentStatusPage() {
                     <p className="text-muted-foreground">Manage and track all company equipment and assets.</p>
                 </div>
                 <div className="flex items-center gap-2">
+                    <Button onClick={handleExportAllEquipment} variant="outline">
+                        <FileDown className="mr-2 h-4 w-4" /> Export All Equipment
+                    </Button>
                     {canManageStore && (
                         <Button onClick={() => setIsGenerateCertOpen(true)} variant="outline">
                             <FilePlus className="mr-2 h-4 w-4"/> Generate TP Cert List
@@ -519,9 +577,6 @@ export default function EquipmentStatusPage() {
                 </TabsList>
                 <TabsContent value="ut-machines" className="mt-4 space-y-4">
                     <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
-                        <Button onClick={handleExportUT} variant="outline">
-                            <FileDown className="mr-2 h-4 w-4"/> Export Excel
-                        </Button>
                         {canAddEquipment && (
                             <Button onClick={handleAddUT}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -611,9 +666,6 @@ export default function EquipmentStatusPage() {
                 </TabsContent>
                 <TabsContent value="dft-machines" className="mt-4 space-y-4">
                      <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
-                        <Button onClick={handleExportDFT} variant="outline">
-                            <FileDown className="mr-2 h-4 w-4"/> Export Excel
-                        </Button>
                         {canAddEquipment && (
                             <Button onClick={handleAddDft}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -735,5 +787,6 @@ export default function EquipmentStatusPage() {
         </div>
     );
 }
+
 
 
