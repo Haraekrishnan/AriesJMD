@@ -8,14 +8,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Ship } from 'lucide-react';
 import { LoginForm } from '@/components/auth/login-form';
+import { AnimatedLoginForm } from '@/components/auth/animated-login-form';
+import { useDecorations } from '@/contexts/decoration-provider';
 
 export default function LoginPage() {
   const { user, loading, appName, appLogo } = useAppContext();
+  const { activeTheme } = useDecorations();
   const router = useRouter();
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace('/dashboard');
+      if (user.status === 'locked') {
+        router.replace('/status');
+      } else {
+        router.replace('/dashboard');
+      }
     }
   }, [user, loading, router]);
 
@@ -31,6 +38,10 @@ export default function LoginPage() {
         </div>
       </div>
     );
+  }
+
+  if (activeTheme === 'new-year') {
+    return <AnimatedLoginForm />;
   }
 
   return (

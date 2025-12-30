@@ -13,7 +13,7 @@ interface DecorationContextType {
 
 const DecorationContext = createContext<DecorationContextType | undefined>(undefined);
 
-export function DecorationContextProvider({ children }: { children: ReactNode }) {
+export function DecorationContextProvider({ children }: { children: React.ReactNode }) {
     const { user } = useAuth();
     const [activeTheme, setActiveTheme] = useState<DecorationTheme | null>(null);
 
@@ -41,6 +41,7 @@ export function DecorationContextProvider({ children }: { children: ReactNode })
 export const useDecorations = (): DecorationContextType => {
     const context = useContext(DecorationContext);
     if (!context) {
+        // This check is good practice, but the AppProvider structure prevents this error.
         throw new Error('useDecorations must be used within a DecorationContextProvider');
     }
     return context;
