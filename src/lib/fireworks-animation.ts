@@ -1,3 +1,4 @@
+
 // Adapted from a CodePen by Caleb Miller: https://codepen.io/MillerTime/pen/XgpNwb
 // This code has been converted to TypeScript and refactored to work within a React/Next.js environment.
 
@@ -72,7 +73,7 @@ const MyMath = {
 
 // Main class for managing a canvas element
 export class Stage {
-	private canvas: HTMLCanvasElement;
+	public canvas: HTMLCanvasElement;
 	public ctx: CanvasRenderingContext2D;
 	public width: number;
 	public height: number;
@@ -105,8 +106,8 @@ export class Stage {
 
 
 // Simulation constants and configuration
-const IS_MOBILE = window.innerWidth <= 640;
-const IS_DESKTOP = window.innerWidth > 800;
+const IS_MOBILE = typeof window !== 'undefined' && window.innerWidth <= 640;
+const IS_DESKTOP = typeof window !== 'undefined' && window.innerWidth > 800;
 
 const GRAVITY = 0.9; // pixels/second/second
 let simSpeed = 1;
@@ -413,7 +414,10 @@ function crackleEffect(star: StarState) {
     const count = isHighQuality ? 32 : 16;
 	createParticleArc(0, Math.PI * 2, count, 1.8, (angle) => {
 		Spark.add(
-			star.x, star.y, COLOR.Gold, angle,
+			star.x,
+			star.y,
+			COLOR.Gold,
+			angle,
 			Math.pow(Math.random(), 0.45) * 2.4,
 			300 + Math.random() * 200
 		);
@@ -440,7 +444,7 @@ function updateGlobals(timeStep: number) {
         const size = MyMath.random(1, 3);
         const shell = crysanthemumShell(size);
 		shell.launch(Math.random(), Math.random() * 0.7);
-		autoLaunchTime = 900 + Math.random() * 600 + shell.starLife;
+		autoLaunchTime = 900 + Math.random() * 600 + (shell as any).starLife;
 	}
 }
 
@@ -612,18 +616,24 @@ function animationLoop(frameTime: number) {
 }
 
 function handleResize() {
+    if (typeof window === 'undefined') return;
     const w = window.innerWidth;
     const h = window.innerHeight;
     const containerW = Math.min(w, 7680);
     const containerH = w <= 420 ? h : Math.min(h, 4320);
 
-    const trailsStage = new Stage('trails-canvas');
-    const mainStage = new Stage('main-canvas');
-    
-    [trailsStage, mainStage].forEach(stage => stage.resize(containerW, containerH));
+    try {
+        const trailsStage = new Stage('trails-canvas');
+        const mainStage = new Stage('main-canvas');
+        
+        [trailsStage, mainStage].forEach(stage => stage.resize(containerW, containerH));
 
-    stageW = containerW / scaleFactor;
-    stageH = containerH / scaleFactor;
+        stageW = containerW / scaleFactor;
+        stageH = containerH / scaleFactor;
+    } catch (e) {
+        // Canvases might not be in the DOM yet.
+        console.warn("Could not resize canvases, they may not be mounted yet.");
+    }
 }
 
 export function stopFireworks() {
@@ -635,7 +645,7 @@ export function stopFireworks() {
 }
 
 export function initFireworks() {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !document.getElementById('trails-canvas') || !document.getElementById('main-canvas')) return;
 
     // Reset state for re-initialization
     lastTime = 0;
