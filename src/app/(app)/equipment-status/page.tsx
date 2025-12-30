@@ -55,7 +55,7 @@ import EquipmentFilters, { type EquipmentFilterValues } from '@/components/equip
 import ExpiringCalibrationsReport from '@/components/equipment/ExpiringCalibrationsReport';
 import { Input } from '@/components/ui/input';
 import { useAppContext } from '@/contexts/app-provider';
-import UpdateItemsDialog from '../inventory/UpdateItemsDialog';
+import UpdateItemsDialog from '@/components/inventory/UpdateItemsDialog';
 
 
 export default function EquipmentStatusPage() {
