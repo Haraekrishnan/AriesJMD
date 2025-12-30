@@ -52,6 +52,7 @@ export default function OtherEquipmentTable({ items, onEdit }: OtherEquipmentTab
             <TableRow>
               <TableHead>Sl. No.</TableHead>
               <TableHead>Equipment Name</TableHead>
+              <TableHead>Category</TableHead>
               <TableHead>Serial Number</TableHead>
               <TableHead>Aries ID</TableHead>
               <TableHead>Project</TableHead>
@@ -68,6 +69,7 @@ export default function OtherEquipmentTable({ items, onEdit }: OtherEquipmentTab
                     <TableRow key={item.id}>
                         <TableCell>{index + 1}</TableCell>
                         <TableCell><p className="font-medium">{item.equipmentName}</p></TableCell>
+                        <TableCell>{item.category || 'N/A'}</TableCell>
                         <TableCell>{item.serialNumber}</TableCell>
                         <TableCell>{item.ariesId || 'N/A'}</TableCell>
                         <TableCell>{project?.name || 'N/A'}</TableCell>

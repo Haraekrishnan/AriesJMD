@@ -489,7 +489,7 @@ export default function EquipmentStatusPage() {
         })));
 
         // Other Equipments
-        createSheet('Other Equipments', [
+        createSheet('General Equipments', [
             { header: 'Sl. No.', key: 'sl', width: 10 },
             { header: 'Equipment Name', key: 'name', width: 30 },
             { header: 'Serial No.', key: 'serial', width: 20 },
@@ -670,7 +670,7 @@ export default function EquipmentStatusPage() {
                             <TabsTrigger value="anemometer">Anemometer</TabsTrigger>
                             <TabsTrigger value="mobile-sim">Mobile &amp; SIM</TabsTrigger>
                             <TabsTrigger value="laptops-desktops">Laptops &amp; Desktops</TabsTrigger>
-                            <TabsTrigger value="other-equipments">Other Equipments</TabsTrigger>
+                            <TabsTrigger value="other-equipments">General Equipments</TabsTrigger>
                         </TabsList>
                         <TabsContent value="ut-machines" className="mt-4 space-y-4">
                             {canManageStore && pendingCertRequestsForMe.length > 0 && (
@@ -796,7 +796,7 @@ export default function EquipmentStatusPage() {
                         </TabsContent>
                         <TabsContent value="other-equipments" className="mt-4 space-y-4">
                             <Card>
-                                <CardHeader><CardTitle>Other Equipments</CardTitle><CardDescription>List of all company-provided equipments.</CardDescription></CardHeader>
+                                <CardHeader><CardTitle>General Equipments</CardTitle><CardDescription>List of all other company-provided equipments.</CardDescription></CardHeader>
                                 <CardContent><OtherEquipmentTable items={filteredOtherEquipments} onEdit={handleEditOtherEquipment} /></CardContent>
                             </Card>
                         </TabsContent>
@@ -833,4 +833,3 @@ export default function EquipmentStatusPage() {
         </div>
     );
 }
-

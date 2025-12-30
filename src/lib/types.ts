@@ -1,6 +1,5 @@
 
 
-
 export type Broadcast = {
   id: string;
   message: string;
@@ -730,6 +729,7 @@ export type OtherEquipment = {
     id: string;
     equipmentName: string;
     serialNumber: string;
+    category?: string;
     ariesId?: string;
     projectId: string;
     remarks?: string;
