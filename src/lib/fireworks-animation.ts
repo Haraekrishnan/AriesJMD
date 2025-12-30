@@ -1,665 +1,261 @@
-
-// Adapted from a CodePen by Caleb Miller: https://codepen.io/MillerTime/pen/XgpNwb
-// This code has been converted to TypeScript and refactored to work within a React/Next.js environment.
-
-// Type definitions
-type Point = {
-	x: number;
-	y: number;
-};
-
-// Internal state, not part of the original public API but necessary for encapsulation
-interface StarState {
-	visible: boolean;
-	heavy: boolean;
-	x: number;
-	y: number;
-	prevX: number;
-	prevY: number;
-	color: string;
-	speedX: number;
-	speedY: number;
-	life: number;
-	fullLife: number;
-	spinAngle: number;
-	spinSpeed: number;
-	spinRadius: number;
-	sparkFreq: number;
-	sparkSpeed: number;
-	sparkTimer: number;
-	sparkColor: string;
-	sparkLife: number;
-	sparkLifeVariation: number;
-	strobe: boolean;
-	strobeFreq?: number;
-	transitionTime?: number;
-	secondColor?: string | null;
-	colorChanged?: boolean;
-	onDeath?: (star: StarState) => void;
-	updateFrame?: number;
+.new-year-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: 5;
+    pointer-events: none;
 }
 
-interface SparkState {
-	x: number;
-	y: number;
-	prevX: number;
-	prevY: number;
-	color: string;
-	speedX: number;
-	speedY: number;
-	life: number;
+.balloon {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.7;
+    animation: rise 10s infinite ease-in;
 }
 
-interface BurstFlashState {
-    x: number;
-    y: number;
-    radius: number;
+.balloon-1 {
+    width: 100px;
+    height: 100px;
+    background: gold;
+    left: 10%;
+    bottom: -100px;
+    animation-duration: 12s;
 }
 
-
-// Math utilities
-const MyMath = {
-    random: (min: number, max: number): number => Math.random() * (max - min) + min,
-    clamp: (val: number, min: number, max: number): number => Math.max(min, Math.min(val, max)),
-    pointDist: (x1: number, y1: number, x2: number, y2: number): number => {
-        const dx = x2 - x1;
-        const dy = y2 - y1;
-        return Math.sqrt(dx * dx + dy * dy);
-    },
-    pointAngle: (x1: number, y1: number, x2: number, y2: number): number => Math.atan2(y2 - y1, x2 - x1),
-	randomChoice: <T>(arr: T[]): T => arr[Math.random() * arr.length | 0],
-};
-
-
-// Main class for managing a canvas element
-export class Stage {
-	public canvas: HTMLCanvasElement;
-	public ctx: CanvasRenderingContext2D;
-	public width: number;
-	public height: number;
-	public dpr: number;
-
-	constructor(canvasId: string) {
-		const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
-		if (!canvas) {
-			throw new Error(`Canvas with id "${canvasId}" not found.`);
-		}
-		this.canvas = canvas;
-		this.ctx = this.canvas.getContext('2d')!;
-		this.width = this.canvas.width;
-		this.height = this.canvas.height;
-		this.dpr = window.devicePixelRatio || 1;
-		this.resize(window.innerWidth, window.innerHeight);
-	}
-
-	resize(width: number, height: number) {
-		this.width = width;
-		this.height = height;
-		this.dpr = window.devicePixelRatio || 1;
-		this.canvas.width = width * this.dpr;
-		this.canvas.height = height * this.dpr;
-		this.canvas.style.width = `${width}px`;
-		this.canvas.style.height = `${height}px`;
-		this.ctx.scale(this.dpr, this.dpr);
-	}
+.balloon-2 {
+    width: 120px;
+    height: 120px;
+    background: #FFD700;
+    left: 50%;
+    bottom: -120px;
+    animation-duration: 15s;
+    animation-delay: 2s;
 }
 
-
-// Simulation constants and configuration
-const IS_MOBILE = typeof window !== 'undefined' && window.innerWidth <= 640;
-const IS_DESKTOP = typeof window !== 'undefined' && window.innerWidth > 800;
-
-const GRAVITY = 0.9; // pixels/second/second
-let simSpeed = 1;
-
-// Configurable globals, will be managed by the simulation controller
-let quality = IS_DESKTOP ? 2 : 1; // 1=low, 2=normal, 3=high
-let isLowQuality = quality === 1;
-let isHighQuality = quality === 3;
-let skyLighting = 2; // 0=none, 1=dim, 2=normal
-let scaleFactor = IS_MOBILE ? 0.9 : 1;
-let stageW: number, stageH: number;
-
-
-// --- Color Management ---
-const COLOR = {
-	Red: '#ff0043',
-	Green: '#14fc56',
-	Blue: '#1e7fff',
-	Purple: '#e60aff',
-	Gold: '#ffbf36',
-	White: '#ffffff'
-};
-const INVISIBLE = '_INVISIBLE_';
-const COLOR_NAMES = Object.keys(COLOR);
-const COLOR_CODES = Object.values(COLOR);
-const COLOR_CODES_W_INVIS = [...COLOR_CODES, INVISIBLE];
-
-const COLOR_TUPLES: Record<string, { r: number, g: number, b: number }> = {};
-COLOR_CODES.forEach(hex => {
-	COLOR_TUPLES[hex] = {
-		r: parseInt(hex.substr(1, 2), 16),
-		g: parseInt(hex.substr(3, 2), 16),
-		b: parseInt(hex.substr(5, 2), 16),
-	};
-});
-
-function randomColorSimple() {
-	return MyMath.randomChoice(COLOR_CODES);
+.balloon-3 {
+    width: 80px;
+    height: 80px;
+    background: #FFA500;
+    right: 15%;
+    bottom: -80px;
+    animation-duration: 10s;
+    animation-delay: 1s;
 }
 
-let lastColor: string;
-function randomColor(options?: { notSame?: boolean, notColor?: string, limitWhite?: boolean }): string {
-	const notSame = options?.notSame;
-	const notColor = options?.notColor;
-	const limitWhite = options?.limitWhite;
-	let color = randomColorSimple();
-	
-	if (limitWhite && color === COLOR.White && Math.random() < 0.6) {
-		color = randomColorSimple();
-	}
-	
-	if (notSame) {
-		while (color === lastColor) {
-			color = randomColorSimple();
-		}
-	} else if (notColor) {
-		while (color === notColor) {
-			color = randomColorSimple();
-		}
-	}
-	
-	lastColor = color;
-	return color;
-}
-
-function whiteOrGold() {
-	return Math.random() < 0.5 ? COLOR.Gold : COLOR.White;
-}
-
-
-// --- Particle Pools and Collections ---
-function createParticleCollection<T>(): Record<string, T[]> {
-	const collection: Record<string, T[]> = {};
-	COLOR_CODES_W_INVIS.forEach(color => {
-		collection[color] = [];
-	});
-	return collection;
-}
-
-const Star = {
-	drawWidth: 3,
-	airDrag: 0.98,
-	airDragHeavy: 0.992,
-	active: createParticleCollection<StarState>(),
-	_pool: [] as StarState[],
-	
-	_new: (): StarState => ({}) as StarState,
-
-	add(x: number, y: number, color: string, angle: number, speed: number, life: number, speedOffX = 0, speedOffY = 0): StarState {
-		const instance = this._pool.pop() || this._new();
-		
-		instance.visible = true;
-		instance.heavy = false;
-		instance.x = x;
-		instance.y = y;
-		instance.prevX = x;
-		instance.prevY = y;
-		instance.color = color;
-		instance.speedX = Math.sin(angle) * speed + speedOffX;
-		instance.speedY = Math.cos(angle) * speed + speedOffY;
-		instance.life = life;
-		instance.fullLife = life;
-		instance.spinAngle = Math.random() * Math.PI * 2;
-		instance.spinSpeed = 0.8;
-		instance.spinRadius = 0;
-		instance.sparkFreq = 0;
-		instance.sparkSpeed = 1;
-		instance.sparkTimer = 0;
-		instance.sparkColor = color;
-		instance.sparkLife = 750;
-		instance.sparkLifeVariation = 0.25;
-		instance.strobe = false;
-		instance.onDeath = undefined;
-		instance.secondColor = null;
-		instance.transitionTime = 0;
-		instance.colorChanged = false;
-		
-		this.active[color].push(instance);
-		return instance;
-	},
-
-	returnInstance(instance: StarState) {
-		instance.onDeath?.(instance);
-		this._pool.push(instance);
-	}
-};
-
-const Spark = {
-	drawWidth: 1,
-	airDrag: 0.9,
-	active: createParticleCollection<SparkState>(),
-	_pool: [] as SparkState[],
-	
-	_new: (): SparkState => ({}) as SparkState,
-
-	add(x: number, y: number, color: string, angle: number, speed: number, life: number): SparkState {
-		const instance = this._pool.pop() || this._new();
-		
-		instance.x = x;
-		instance.y = y;
-		instance.prevX = x;
-		instance.prevY = y;
-		instance.color = color;
-		instance.speedX = Math.sin(angle) * speed;
-		instance.speedY = Math.cos(angle) * speed;
-		instance.life = life;
-		
-		this.active[color].push(instance);
-		return instance;
-	},
-
-	returnInstance(instance: SparkState) {
-		this._pool.push(instance);
-	}
-};
-
-
-const BurstFlash = {
-	active: [] as BurstFlashState[],
-	_pool: [] as BurstFlashState[],
-	_new: (): BurstFlashState => ({}) as BurstFlashState,
-	add(x: number, y: number, radius: number) {
-		const instance = this._pool.pop() || this._new();
-		instance.x = x;
-		instance.y = y;
-		instance.radius = radius;
-		this.active.push(instance);
-	},
-	returnInstance(instance: BurstFlashState) {
-		this._pool.push(instance);
-	}
-};
-
-
-// --- Shell Logic ---
-class Shell {
-	// Properties are set by the constructor from options
-	[key: string]: any;
-
-	constructor(options: any) {
-		Object.assign(this, options);
-		if (!this.starCount) {
-			const density = options.starDensity || 1;
-			const scaledSize = this.spreadSize / 54;
-			this.starCount = Math.max(6, scaledSize * scaledSize * density);
-		}
-	}
-	
-	launch(position: number, launchHeight: number) {
-		const hpad = 60;
-		const vpad = 50;
-		const minHeightPercent = 0.45;
-		const minHeight = stageH - stageH * minHeightPercent;
-		
-		const launchX = position * (stageW - hpad * 2) + hpad;
-		const launchY = stageH;
-		const burstY = minHeight - (launchHeight * (minHeight - vpad));
-		
-		const launchDistance = launchY - burstY;
-		const launchVelocity = Math.pow(launchDistance * 0.04, 0.64);
-		
-		const comet = this.comet = Star.add(
-			launchX, launchY,
-			typeof this.color === 'string' && this.color !== 'random' ? this.color : COLOR.White,
-			Math.PI, launchVelocity,
-			launchVelocity * (this.horsetail ? 100 : 400)
-		);
-		
-		comet.heavy = true;
-		comet.spinRadius = MyMath.random(0.32, 0.85);
-		comet.sparkFreq = 32 / quality;
-		comet.sparkLife = 320;
-		comet.sparkLifeVariation = 3;
-		if (this.color === INVISIBLE) {
-			comet.sparkColor = COLOR.Gold;
-		}
-		
-		if (Math.random() > 0.4 && !this.horsetail) {
-			comet.secondColor = INVISIBLE;
-			comet.transitionTime = Math.pow(Math.random(), 1.5) * 700 + 500;
-		}
-		
-		comet.onDeath = (c: StarState) => this.burst(c.x, c.y);
-	}
-	
-	burst(x: number, y: number) {
-		const speed = this.spreadSize / 96;
-
-		let color: string | null = null, onDeath: ((star: StarState) => void) | undefined, sparkFreq = 0, sparkSpeed = 0, sparkLife = 0;
-		
-		if (this.crossette) onDeath = crossetteEffect;
-		if (this.crackle) onDeath = crackleEffect;
-		if (this.floral) onDeath = floralEffect;
-		
-		const starFactory = (angle: number, speedMult: number) => {
-			const star = Star.add(
-				x, y,
-				color || randomColor(),
-				angle, speedMult * speed,
-				this.starLife + Math.random() * this.starLife * (this.starLifeVariation || 0.125),
-				this.horsetail ? this.comet.speedX : 0,
-				this.horsetail ? this.comet.speedY : - (this.spreadSize / 1800)
-			);
-
-			if (this.secondColor) {
-				star.transitionTime = this.starLife * (Math.random() * 0.05 + 0.32);
-				star.secondColor = this.secondColor;
-			}
-			if (this.strobe) {
-				star.transitionTime = this.starLife * (Math.random() * 0.08 + 0.46);
-				star.strobe = true;
-				star.strobeFreq = Math.random() * 20 + 40;
-				if (this.strobeColor) {
-					star.secondColor = this.strobeColor;
-				}
-			}
-			star.onDeath = onDeath;
-		};
-
-		if (typeof this.color === 'string') {
-			color = this.color === 'random' ? null : this.color;
-			createBurst(this.starCount, starFactory);
-		} else if (Array.isArray(this.color)) {
-			color = this.color[0];
-			createBurst(this.starCount / 2, starFactory);
-			color = this.color[1];
-			createBurst(this.starCount / 2, starFactory);
-		}
-		
-		BurstFlash.add(x, y, this.spreadSize / 4);
-	}
-}
-
-// Shell factories
-const crysanthemumShell = (size=1) => new Shell({
-	shellSize: size,
-	spreadSize: 300 + size * 100,
-	starLife: 900 + size * 200,
-	starDensity: 1.25,
-	color: randomColor({ limitWhite: true }),
-	pistil: Math.random() < 0.42,
-	pistilColor: makePistilColor(randomColor())
-});
-
-function makePistilColor(shellColor: string) {
-	return (shellColor === COLOR.White || shellColor === COLOR.Gold) ? randomColor({ notColor: shellColor }) : whiteOrGold();
-}
-
-function floralEffect(star: StarState) {
-	const count = 12 + 6 * quality;
-	createBurst(count, (angle, speedMult) => {
-		Star.add(star.x, star.y, star.color, angle, speedMult * 2.4, 1000 + Math.random() * 300, star.speedX, star.speedY);
-	});
-	BurstFlash.add(star.x, star.y, 46);
-}
-
-function crossetteEffect(star: StarState) {
-	createParticleArc(Math.random() * Math.PI / 2, Math.PI * 2, 4, 0.5, (angle) => {
-		Star.add(star.x, star.y, star.color, angle, Math.random() * 0.6 + 0.75, 600);
-	});
-}
-
-function crackleEffect(star: StarState) {
-    const count = isHighQuality ? 32 : 16;
-	createParticleArc(0, Math.PI * 2, count, 1.8, (angle) => {
-		Spark.add(
-			star.x,
-			star.y,
-			COLOR.Gold,
-			angle,
-			Math.pow(Math.random(), 0.45) * 2.4,
-			300 + Math.random() * 200
-		);
-	});
-}
-
-const shellTypes = {
-	'Crysanthemum': crysanthemumShell
-};
-
-
-// --- Simulation Controller ---
-let currentFrame = 0;
-let autoLaunchTime = 0;
-let isPaused = false;
-let animationFrameId: number;
-
-function updateGlobals(timeStep: number) {
-	currentFrame++;
-	if (autoLaunchTime > 0) {
-		autoLaunchTime -= timeStep;
-	}
-	if (autoLaunchTime <= 0) {
-        const size = MyMath.random(1, 3);
-        const shell = crysanthemumShell(size);
-		shell.launch(Math.random(), Math.random() * 0.7);
-		autoLaunchTime = 900 + Math.random() * 600 + (shell as any).starLife;
-	}
-}
-
-function update(frameTime: number, lag: number) {
-    if (isPaused) return;
-
-	const timeStep = frameTime * simSpeed;
-	const speed = simSpeed * lag;
-	
-	updateGlobals(timeStep);
-	
-	const starDrag = 1 - (1 - Star.airDrag) * speed;
-	const starDragHeavy = 1 - (1 - Star.airDragHeavy) * speed;
-	const sparkDrag = 1 - (1 - Spark.airDrag) * speed;
-	const gAcc = timeStep / 1000 * GRAVITY;
-
-	COLOR_CODES_W_INVIS.forEach(color => {
-		const stars = Star.active[color];
-		for (let i = stars.length - 1; i >= 0; i--) {
-			const star = stars[i];
-			if (star.updateFrame === currentFrame) continue;
-			star.updateFrame = currentFrame;
-			
-			star.life -= timeStep;
-			if (star.life <= 0) {
-				stars.splice(i, 1);
-				Star.returnInstance(star);
-			} else {
-				star.prevX = star.x;
-				star.prevY = star.y;
-				star.x += star.speedX * speed;
-				star.y += star.speedY * speed;
-				
-				if (!star.heavy) {
-					star.speedX *= starDrag;
-					star.speedY *= starDrag;
-				} else {
-					star.speedX *= starDragHeavy;
-					star.speedY *= starDragHeavy;
-				}
-				star.speedY += gAcc;
-				
-				if (star.secondColor && star.life < (star.transitionTime || 0)) {
-					star.color = star.secondColor;
-					stars.splice(i, 1);
-					Star.active[star.secondColor].push(star);
-				}
-			}
-		}
-											
-		const sparks = Spark.active[color];
-		for (let i = sparks.length - 1; i >= 0; i--) {
-			const spark = sparks[i];
-			spark.life -= timeStep;
-			if (spark.life <= 0) {
-				sparks.splice(i, 1);
-				Spark.returnInstance(spark);
-			} else {
-				spark.prevX = spark.x;
-				spark.prevY = spark.y;
-				spark.x += spark.speedX * speed;
-				spark.y += spark.speedY * speed;
-				spark.speedX *= sparkDrag;
-				spark.speedY *= sparkDrag;
-				spark.speedY += gAcc;
-			}
-		}
-	});
-	
-	render(speed);
-}
-
-function render(speed: number) {
-	const trailsStage = new Stage('trails-canvas');
-	const mainStage = new Stage('main-canvas');
-	const trailsCtx = trailsStage.ctx;
-	const mainCtx = mainStage.ctx;
-	
-	const dpr = trailsStage.dpr;
-	
-	trailsCtx.scale(dpr * scaleFactor, dpr * scaleFactor);
-	mainCtx.scale(dpr * scaleFactor, dpr * scaleFactor);
-	
-	trailsCtx.globalCompositeOperation = 'source-over';
-	trailsCtx.fillStyle = `rgba(0, 0, 0, 0.175 * ${speed})`;
-	trailsCtx.fillRect(0, 0, stageW, stageH);
-	
-	mainCtx.clearRect(0, 0, stageW, stageH);
-
-	trailsCtx.globalCompositeOperation = 'lighten';
-	
-	trailsCtx.lineWidth = Star.drawWidth;
-	trailsCtx.lineCap = isLowQuality ? 'square' : 'round';
-	
-	COLOR_CODES.forEach(color => {
-		const stars = Star.active[color];
-		trailsCtx.strokeStyle = color;
-		trailsCtx.beginPath();
-		stars.forEach(star => {
-			if (star.visible) {
-				trailsCtx.moveTo(star.x, star.y);
-				trailsCtx.lineTo(star.prevX, star.prevY);
-			}
-		});
-		trailsCtx.stroke();
-	});
-
-	trailsCtx.lineWidth = Spark.drawWidth;
-	trailsCtx.lineCap = 'butt';
-	COLOR_CODES.forEach(color => {
-		const sparks = Spark.active[color];
-		trailsCtx.strokeStyle = color;
-		trailsCtx.beginPath();
-		sparks.forEach(spark => {
-			trailsCtx.moveTo(spark.x, spark.y);
-			trailsCtx.lineTo(spark.prevX, spark.prevY);
-		});
-		trailsCtx.stroke();
-	});
-
-	trailsCtx.setTransform(1, 0, 0, 1, 0, 0);
-	mainCtx.setTransform(1, 0, 0, 1, 0, 0);
-}
-
-
-function createBurst(count: number, particleFactory: (angle: number, speedMult: number) => void, startAngle=0, arcLength=Math.PI * 2) {
-	const R = 0.5 * Math.sqrt(count / Math.PI);
-	const C = 2 * R * Math.PI;
-	const C_HALF = C / 2;
-	
-	for (let i = 0; i <= C_HALF; i++) {
-		const ringAngle = i / C_HALF * Math.PI / 2;
-		const ringSize = Math.cos(ringAngle);
-		const partsPerFullRing = C * ringSize;
-		const partsPerArc = partsPerFullRing * (arcLength / (Math.PI * 2));
-		
-		const angleInc = (Math.PI * 2) / partsPerFullRing;
-		const angleOffset = Math.random() * angleInc + startAngle;
-		const maxRandomAngleOffset = angleInc * 0.33;
-		
-		for (let j = 0; j < partsPerArc; j++) {
-			const randomAngleOffset = Math.random() * maxRandomAngleOffset;
-			let angle = angleInc * j + angleOffset + randomAngleOffset;
-			particleFactory(angle, ringSize);
-		}
-	}
-}
-
-function createParticleArc(start: number, arcLength: number, count: number, randomness: number, particleFactory: (angle: number) => void) {
-	const angleDelta = arcLength / count;
-	const end = start + arcLength - (angleDelta * 0.5);
-	
-	for (let angle = start; angle < end; angle += angleDelta) {
-		particleFactory(angle + Math.random() * angleDelta * randomness);
-	}
-}
-
-let lastTime = 0;
-function animationLoop(frameTime: number) {
-	if (!lastTime) lastTime = frameTime;
-	const M_TO_S = 1000;
-	const dt = (frameTime - lastTime) / M_TO_S;
-	lastTime = frameTime;
-	const lag = dt / (1/60);
-	
-	update(dt * M_TO_S, lag);
-	
-	animationFrameId = requestAnimationFrame(animationLoop);
-}
-
-function handleResize() {
-    if (typeof window === 'undefined') return;
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    const containerW = Math.min(w, 7680);
-    const containerH = w <= 420 ? h : Math.min(h, 4320);
-
-    try {
-        const trailsStage = new Stage('trails-canvas');
-        const mainStage = new Stage('main-canvas');
-        
-        [trailsStage, mainStage].forEach(stage => stage.resize(containerW, containerH));
-
-        stageW = containerW / scaleFactor;
-        stageH = containerH / scaleFactor;
-    } catch (e) {
-        // Canvases might not be in the DOM yet.
-        console.warn("Could not resize canvases, they may not be mounted yet.");
+@keyframes rise {
+    0% {
+        transform: translateY(0);
+        opacity: 0.7;
+    }
+    100% {
+        transform: translateY(-120vh);
+        opacity: 0;
     }
 }
 
-export function stopFireworks() {
-	if (animationFrameId) {
-		cancelAnimationFrame(animationFrameId);
-		isPaused = true;
+
+.flying-balloon {
+    position: absolute;
+    bottom: -50px;
+    font-size: 2rem;
+    animation: fly-up 8s infinite ease-in;
+}
+
+@keyframes fly-up {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.firework {
+	position: absolute;
+}
+.firework, .firework::before, .firework::after {
+	--w: 3px;
+	--h: 20px;
+	--c: goldenrod;
+	content: "";
+	position: absolute;
+	width: var(--w);
+	height: var(--h);
+	border-radius: 50%;
+	background: var(--c);
+	transform-origin: 50% 100%;
+	animation: firework 2s ease-in-out infinite;
+}
+.firework {
+	--c: red;
+	left: 20%;
+	top: 30%;
+	transform: rotate(-15deg);
+	animation-delay: 0.2s;
+}
+.firework.second {
+	--c: lime;
+	left: 70%;
+	top: 20%;
+	transform: rotate(20deg);
+	animation-delay: 0.8s;
+}
+.firework.third {
+	--c: blue;
+	left: 50%;
+	top: 50%;
+	transform: rotate(5deg);
+	animation-delay: 1.2s;
+}
+.firework::before {
+	transform: rotate(30deg);
+}
+.firework::after {
+	transform: rotate(-30deg);
+}
+@keyframes firework {
+	0%, 100% {
+		transform: translateY(20px) rotate(-15deg) scaleY(0);
 	}
-	window.removeEventListener('resize', handleResize);
+	25% {
+		transform: translateY(-10px) rotate(-15deg) scaleY(1.2);
+	}
+	50% {
+		transform: translateY(-30px) rotate(-15deg) scale(1, 0.5);
+		opacity: 1;
+	}
+	70% {
+		transform: translateY(-120px) rotate(-15deg) scale(0);
+		opacity: 0;
+	}
 }
 
-export function initFireworks() {
-    if (typeof window === 'undefined' || !document.getElementById('trails-canvas') || !document.getElementById('main-canvas')) return;
-
-    // Reset state for re-initialization
-    lastTime = 0;
-    isPaused = false;
-    Star.active = createParticleCollection<StarState>();
-    Spark.active = createParticleCollection<SparkState>();
-    BurstFlash.active = [];
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-
-    // Stop any previous loop
-	stopFireworks();
-    
-    // Start new loop
-	animationLoop(0);
+.firecracker-container {
+    position: absolute;
 }
+.firecracker-1 {
+    bottom: 10%;
+    right: 5%;
+}
+.firecracker-2 {
+    bottom: 20%;
+    left: 70%;
+}
+.firecracker {
+    position: relative;
+    width: 6px;
+    height: 40px;
+    background-color: #c0392b;
+    border-radius: 2px;
+    transform-origin: bottom center;
+    animation: firecracker-shake 2.5s infinite ease-in-out;
+}
+
+.firecracker::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    height: 10px;
+    background-color: #2c3e50;
+    animation: burn-fuse 2.5s infinite linear;
+}
+
+.firecracker::after {
+    content: '';
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #f1c40f;
+    transform: translateX(-50%);
+    opacity: 0;
+    animation: fuse-spark 2.5s infinite linear;
+}
+
+@keyframes firecracker-shake {
+    0%, 100% { transform: rotate(0deg); }
+    10%, 30%, 50% { transform: rotate(-3deg); }
+    20%, 40% { transform: rotate(3deg); }
+    60% { opacity: 1; transform: scaleY(1); }
+    80% { opacity: 0; transform: scaleY(0); }
+}
+
+@keyframes burn-fuse {
+    0% { height: 10px; top: -10px; }
+    60% { height: 0px; top: 0; }
+    100% { height: 0px; top: 0; }
+}
+
+@keyframes fuse-spark {
+    0% { opacity: 1; }
+    5%, 15%, 25%, 35%, 45%, 55% { opacity: 0.5; transform: translateX(-50%) scale(1.2); }
+    10%, 20%, 30%, 40%, 50%, 60% { opacity: 1; transform: translateX(-50%) scale(1); }
+    61% { opacity: 0; }
+}
+
+.happy-new-year {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+.happy-new-year h1 {
+    font-family: 'Mountains of Christmas', cursive;
+    font-size: 4rem;
+    color: #ffd700;
+    text-shadow: 0 0 10px #fff, 0 0 20px #ffc107;
+}
+
+.lights {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+@keyframes flash {
+  0%, 100% { background-color: rgba(255,255,255,0.7); box-shadow: 0 0 5px rgba(255,255,255,0.7); }
+  50% { background-color: var(--light-color); box-shadow: 0 0 10px 2px var(--light-color); }
+}
+
+.light {
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    animation: flash 2s infinite;
+}
+
+.light:nth-child(1) { top: 5%; left: 10%; --light-color: #f00; animation-delay: 0s; }
+.light:nth-child(2) { top: 8%; left: 30%; --light-color: #0f0; animation-delay: 0.2s; }
+.light:nth-child(3) { top: 4%; left: 50%; --light-color: #00f; animation-delay: 0.4s; }
+.light:nth-child(4) { top: 9%; left: 70%; --light-color: #ff0; animation-delay: 0.6s; }
+.light:nth-child(5) { top: 6%; left: 90%; --light-color: #f0f; animation-delay: 0.8s; }
+.light:nth-child(6) { top: 15%; left: 5%; --light-color: #0ff; animation-delay: 1s; }
+.light:nth-child(7) { top: 12%; left: 25%; --light-color: #f00; animation-delay: 1.2s; }
+.light:nth-child(8) { top: 16%; left: 45%; --light-color: #0f0; animation-delay: 1.4s; }
+.light:nth-child(9) { top: 13%; left: 65%; --light-color: #00f; animation-delay: 1.6s; }
+.light:nth-child(10) { top: 17%; left: 85%; --light-color: #ff0; animation-delay: 1.8s; }
+.light:nth-child(11) { top: 80%; left: 15%; --light-color: #f0f; animation-delay: 0.3s; }
+.light:nth-child(12) { top: 90%; left: 35%; --light-color: #0ff; animation-delay: 0.9s; }
+.light:nth-child(13) { top: 85%; left: 55%; --light-color: #f00; animation-delay: 1.3s; }
+.light:nth-child(14) { top: 95%; left: 75%; --light-color: #0f0; animation-delay: 0.7s; }
+.light:nth-child(15) { top: 88%; left: 95%; --light-color: #00f; animation-delay: 1.5s; }
+.light:nth-child(16) { top: 55%; left: 80%; --light-color: #f0f; animation-delay: 1.1s; }
+.light:nth-child(17) { top: 65%; left: 95%; --light-color: #0ff; animation-delay: 0.1s; }
+.light:nth-child(18) { top: 75%; left: 20%; --light-color: #f00; animation-delay: 0.5s; }
+.light:nth-child(19) { top: 85%; left: 50%; --light-color: #0f0; animation-delay: 1.7s; }
+.light:nth-child(20) { top: 95%; left: 85%; --light-color: #00f; animation-delay: 0.3s; }
