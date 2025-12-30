@@ -63,6 +63,7 @@ export default function EquipmentStatusPage() {
     const { utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, certificateRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, machineLogs, inventoryItems } = useInventory();
     const { toast } = useToast();
     const { manpowerProfiles } = useAppContext();
+    const [activeTab, setActiveTab] = useState('ut-machines');
     
     // UT Machine State
     const [isAddUTMachineOpen, setIsAddUTMachineOpen] = useState(false);
@@ -284,13 +285,22 @@ export default function EquipmentStatusPage() {
     const handleExportActiveDays = () => {
         if (!detailedUsageData || !activeDaysSummary || activeDaysSummary.length === 0 || !activeDaysDateRange?.from) return;
     
+        const wb = new ExcelJS.Workbook();
+        
         // Summary Sheet
-        const summaryToExport = activeDaysSummary.map(item => ({
-          'Machine Name': item.name,
-          'Serial Number': item.serialNumber,
-          'Total Active Days': item.activeDays,
-        }));
-        const summaryWorksheet = XLSX.utils.json_to_sheet(summaryToExport);
+        const summaryWorksheet = wb.addWorksheet('Summary Report');
+        summaryWorksheet.columns = [
+            { header: 'Machine Name', key: 'name', width: 30 },
+            { header: 'Serial Number', key: 'serial', width: 20 },
+            { header: 'Total Active Days', key: 'activeDays', width: 20 },
+        ];
+        activeDaysSummary.forEach(item => {
+            summaryWorksheet.addRow({
+                name: item.name,
+                serial: item.serialNumber,
+                activeDays: item.activeDays,
+            });
+        });
     
         // Detailed Log Sheet
         const machinesToReport = selectedMachineIds.length > 0
@@ -301,35 +311,48 @@ export default function EquipmentStatusPage() {
         
         const logsInRange = machineLogs.filter(log => {
             const logDate = parseISO(log.date);
-            return machinesToReport.some(m => m.id === log.machineId) && isSameDay(logDate, from) || (isAfter(logDate, from) && isBefore(logDate, to));
+            return machinesToReport.some(m => m.id === log.machineId) && (isSameDay(logDate, from) || (isAfter(logDate, from) && isBefore(logDate, to)));
         });
 
-        const detailedLogData = logsInRange.map(log => {
+        const detailedWorksheet = wb.addWorksheet('Detailed Log Report');
+        detailedWorksheet.columns = [
+            { header: 'Date', key: 'date', width: 15 },
+            { header: 'Machine Name', key: 'machineName', width: 30 },
+            { header: 'Serial Number', key: 'serialNumber', width: 20 },
+            { header: 'Status', key: 'status', width: 15 },
+            { header: 'Time (From-To)', key: 'time', width: 20 },
+            { header: 'Used By', key: 'usedBy', width: 25 },
+            { header: 'Location', key: 'location', width: 25 },
+            { header: 'Job Description', key: 'job', width: 40 },
+            { header: 'Reason for Idle', key: 'reason', width: 40 },
+            { header: 'Probe Details', key: 'probe', width: 20 },
+            { header: 'Cable Details', key: 'cable', width: 20 },
+            { header: 'Calibration Due Date', key: 'calibDue', width: 20 },
+        ];
+        
+        logsInRange.forEach(log => {
             const machine = machinesToReport.find(m => m.id === log.machineId);
             if (!machine) return null;
-            return {
-                'Date': format(new Date(log.date), 'dd-MM-yyyy'),
-                'Machine Name': machine.machineName,
-                'Serial Number': machine.serialNumber,
-                'Status': log.status,
-                'Time (From-To)': `${log.fromTime} - ${log.toTime}`,
-                'Used By': log.userName,
-                'Location': log.location,
-                'Job Description': log.jobDescription,
-                'Reason for Idle': log.status === 'Idle' ? log.reason : 'N/A',
-                'Probe Details': machine.probeDetails,
-                'Cable Details': machine.cableDetails,
-                'Calibration Due Date': format(new Date(machine.calibrationDueDate), 'dd-MM-yyyy')
-            }
-        }).filter(Boolean);
-
-        const detailedWorksheet = XLSX.utils.json_to_sheet(detailedLogData);
+            detailedWorksheet.addRow({
+                date: format(new Date(log.date), 'dd-MM-yyyy'),
+                machineName: machine.machineName,
+                serialNumber: machine.serialNumber,
+                status: log.status,
+                time: `${log.fromTime} - ${log.toTime}`,
+                usedBy: log.userName,
+                location: log.location,
+                job: log.jobDescription,
+                reason: log.status === 'Idle' ? log.reason : 'N/A',
+                probe: (machine as any).probeDetails,
+                cable: (machine as any).cableDetails,
+                calibDue: format(new Date(machine.calibrationDueDate), 'dd-MM-yyyy')
+            });
+        });
     
-        const workbook = new ExcelJS.Workbook();
-        XLSX.utils.book_append_sheet(workbook, summaryWorksheet, 'Summary Report');
-        XLSX.utils.book_append_sheet(workbook, detailedWorksheet, 'Detailed Log Report');
-    
-        XLSX.writeFile(workbook, 'Machine_Usage_Report.xlsx');
+        // Save the workbook
+        wb.xlsx.writeBuffer().then(buffer => {
+            saveAs(new Blob([buffer]), 'Machine_Usage_Report.xlsx');
+        });
     };
 
     const handleExportAllEquipment = async () => {
@@ -483,6 +506,20 @@ export default function EquipmentStatusPage() {
         saveAs(new Blob([buffer]), 'All_Equipment_Report.xlsx');
     };
 
+    const handleAddClick = () => {
+        if (!canAddEquipment) return;
+        switch (activeTab) {
+            case 'ut-machines': setIsAddUTMachineOpen(true); break;
+            case 'dft-machines': setIsAddDftMachineOpen(true); break;
+            case 'digital-camera': setIsAddDigitalCameraOpen(true); break;
+            case 'anemometer': setIsAddAnemometerOpen(true); break;
+            case 'mobile-sim': setIsAddMobileSimOpen(true); break;
+            case 'laptops-desktops': setIsAddLaptopDesktopOpen(true); break;
+            case 'other-equipments': setIsAddOtherEquipmentOpen(true); break;
+        }
+    };
+
+
     return (
         <div className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -490,7 +527,12 @@ export default function EquipmentStatusPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Equipment</h1>
                     <p className="text-muted-foreground">Manage and track all company equipment and assets.</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                    {canAddEquipment && (
+                         <Button onClick={handleAddClick}>
+                            <PlusCircle className="mr-2 h-4 w-4" /> Add Equipment
+                        </Button>
+                    )}
                     <Button onClick={handleExportAllEquipment} variant="outline">
                         <FileDown className="mr-2 h-4 w-4" /> Export All Equipment
                     </Button>
@@ -608,7 +650,7 @@ export default function EquipmentStatusPage() {
 
             <EquipmentFilters onFiltersChange={setFilters} />
             
-            <Tabs defaultValue="ut-machines" className="w-full">
+            <Tabs defaultValue="ut-machines" className="w-full" onValueChange={setActiveTab}>
                 <TabsList className="h-auto flex-wrap justify-start">
                     <TabsTrigger value="ut-machines">UT Machines</TabsTrigger>
                     <TabsTrigger value="dft-machines">DFT Machines</TabsTrigger>
@@ -619,14 +661,6 @@ export default function EquipmentStatusPage() {
                     <TabsTrigger value="other-equipments">Other Equipments</TabsTrigger>
                 </TabsList>
                 <TabsContent value="ut-machines" className="mt-4 space-y-4">
-                    <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
-                        {canAddEquipment && (
-                            <Button onClick={handleAddUT}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Add UT Machine
-                            </Button>
-                        )}
-                    </div>
                     {canManageStore && pendingCertRequestsForMe.length > 0 && (
                         <Card>
                             <CardHeader>
@@ -708,42 +742,18 @@ export default function EquipmentStatusPage() {
                     </Card>
                 </TabsContent>
                 <TabsContent value="dft-machines" className="mt-4 space-y-4">
-                     <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
-                        {canAddEquipment && (
-                            <Button onClick={handleAddDft}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Add DFT Machine
-                            </Button>
-                        )}
-                    </div>
                     <Card>
                         <CardHeader><CardTitle>DFT Machine List</CardTitle><CardDescription>A comprehensive list of all DFT machines.</CardDescription></CardHeader>
                         <CardContent><DftMachineTable items={filteredDftMachines} onEdit={handleEditDft} onLogManager={handleLogManagerDft} /></CardContent>
                     </Card>
                 </TabsContent>
                 <TabsContent value="digital-camera" className="mt-4 space-y-4">
-                     <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
-                        {canAddEquipment && (
-                            <Button onClick={handleAddDigitalCamera}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Add Digital Camera
-                            </Button>
-                        )}
-                    </div>
                     <Card>
                         <CardHeader><CardTitle>Digital Cameras</CardTitle><CardDescription>List of all company-provided digital cameras.</CardDescription></CardHeader>
                         <CardContent><DigitalCameraTable items={filteredDigitalCameras} onEdit={handleEditDigitalCamera} /></CardContent>
                     </Card>
                 </TabsContent>
                 <TabsContent value="anemometer" className="mt-4 space-y-4">
-                     <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
-                        {canAddEquipment && (
-                            <Button onClick={handleAddAnemometer}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Add Anemometer
-                            </Button>
-                        )}
-                    </div>
                     <Card>
                         <CardHeader><CardTitle>Anemometers</CardTitle><CardDescription>List of all company-provided anemometers.</CardDescription></CardHeader>
                         <CardContent><AnemometerTable items={filteredAnemometers} onEdit={handleEditAnemometer} /></CardContent>
@@ -760,12 +770,6 @@ export default function EquipmentStatusPage() {
                                 onChange={(e) => setMobileSearchTerm(e.target.value)}
                             />
                         </div>
-                        {canAddEquipment && (
-                            <Button onClick={handleAddMobileSim}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Add Mobile/SIM
-                            </Button>
-                        )}
                     </div>
                     <Card>
                         <CardHeader><CardTitle>Mobile &amp; SIM Allotment</CardTitle><CardDescription>List of all company-provided mobiles and SIM cards.</CardDescription></CardHeader>
@@ -773,28 +777,12 @@ export default function EquipmentStatusPage() {
                     </Card>
                 </TabsContent>
                  <TabsContent value="laptops-desktops" className="mt-4 space-y-4">
-                     <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
-                        {canAddEquipment && (
-                            <Button onClick={handleAddLaptopDesktop}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Add Laptop/Desktop
-                            </Button>
-                        )}
-                    </div>
                     <Card>
                         <CardHeader><CardTitle>Laptops &amp; Desktops</CardTitle><CardDescription>List of all company-provided laptops and desktops.</CardDescription></CardHeader>
                         <CardContent><LaptopDesktopTable items={filteredLaptopsDesktops} onEdit={handleEditLaptopDesktop} /></CardContent>
                     </Card>
                 </TabsContent>
                  <TabsContent value="other-equipments" className="mt-4 space-y-4">
-                     <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2">
-                        {canAddEquipment && (
-                            <Button onClick={handleAddOtherEquipment}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Add Other Equipment
-                            </Button>
-                        )}
-                    </div>
                     <Card>
                         <CardHeader><CardTitle>Other Equipments</CardTitle><CardDescription>List of all company-provided equipments.</CardDescription></CardHeader>
                         <CardContent><OtherEquipmentTable items={filteredOtherEquipments} onEdit={handleEditOtherEquipment} /></CardContent>
@@ -802,27 +790,27 @@ export default function EquipmentStatusPage() {
                 </TabsContent>
             </Tabs>
 
-            {canAddEquipment && <AddUTMachineDialog isOpen={isAddUTMachineOpen} setIsOpen={setIsAddUTMachineOpen} />}
+            <AddUTMachineDialog isOpen={isAddUTMachineOpen} setIsOpen={setIsAddUTMachineOpen} />
             {selectedUTMachine && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && (<EditUTMachineDialog isOpen={isEditUTMachineOpen} setIsOpen={setIsEditUTMachineOpen} machine={selectedUTMachine}/>)}
             {selectedUTMachine && (<UTMachineLogManagerDialog isOpen={isUTLogManagerOpen} setIsOpen={setIsUTLogManagerOpen} machine={selectedUTMachine}/>)}
 
-            {canAddEquipment && <AddDftMachineDialog isOpen={isAddDftMachineOpen} setIsOpen={setIsAddDftMachineOpen} />}
+            <AddDftMachineDialog isOpen={isAddDftMachineOpen} setIsOpen={setIsAddDftMachineOpen} />
             {selectedDftMachine && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && (<EditDftMachineDialog isOpen={isEditDftMachineOpen} setIsOpen={setIsEditDftMachineOpen} machine={selectedDftMachine} />)}
             {selectedDftMachine && (<DftMachineLogManagerDialog isOpen={isDftLogManagerOpen} setIsOpen={setIsDftLogManagerOpen} machine={selectedDftMachine} />)}
 
-            {canAddEquipment && <AddMobileSimDialog isOpen={isAddMobileSimOpen} setIsOpen={setIsAddMobileSimOpen} />}
+            <AddMobileSimDialog isOpen={isAddMobileSimOpen} setIsOpen={setIsAddMobileSimOpen} />
             {selectedMobileSim && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && (<EditMobileSimDialog isOpen={isEditMobileSimOpen} setIsOpen={setIsEditMobileSimOpen} item={selectedMobileSim} />)}
         
-            {canAddEquipment && <AddLaptopDesktopDialog isOpen={isAddLaptopDesktopOpen} setIsOpen={setIsAddLaptopDesktopOpen} />}
+            <AddLaptopDesktopDialog isOpen={isAddLaptopDesktopOpen} setIsOpen={setIsAddLaptopDesktopOpen} />
             {selectedLaptopDesktop && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && (<EditLaptopDesktopDialog isOpen={isEditLaptopDesktopOpen} setIsOpen={setIsEditLaptopDesktopOpen} item={selectedLaptopDesktop} />)}
             
-            {canAddEquipment && <AddDigitalCameraDialog isOpen={isAddDigitalCameraOpen} setIsOpen={setIsAddDigitalCameraOpen} />}
+            <AddDigitalCameraDialog isOpen={isAddDigitalCameraOpen} setIsOpen={setIsAddDigitalCameraOpen} />
             {selectedDigitalCamera && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && <EditDigitalCameraDialog isOpen={isEditDigitalCameraOpen} setIsOpen={setIsEditDigitalCameraOpen} item={selectedDigitalCamera} />}
 
-            {canAddEquipment && <AddAnemometerDialog isOpen={isAddAnemometerOpen} setIsOpen={setIsAddAnemometerOpen} />}
+            <AddAnemometerDialog isOpen={isAddAnemometerOpen} setIsOpen={setIsAddAnemometerOpen} />
             {selectedAnemometer && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && <EditAnemometerDialog isOpen={isEditAnemometerOpen} setIsOpen={setIsEditAnemometerOpen} item={selectedAnemometer} />}
 
-            {canAddEquipment && <AddOtherEquipmentDialog isOpen={isAddOtherEquipmentOpen} setIsOpen={setIsAddOtherEquipmentOpen} />}
+            <AddOtherEquipmentDialog isOpen={isAddOtherEquipmentOpen} setIsOpen={setIsAddOtherEquipmentOpen} />
             {selectedOtherEquipment && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && <EditOtherEquipmentDialog isOpen={isEditOtherEquipmentOpen} setIsOpen={setIsEditOtherEquipmentOpen} item={selectedOtherEquipment} />}
 
             <GenerateTpCertDialog isOpen={isGenerateCertOpen} setIsOpen={setIsGenerateCertOpen} />
@@ -830,6 +818,7 @@ export default function EquipmentStatusPage() {
         </div>
     );
 }
+
 
 
 
