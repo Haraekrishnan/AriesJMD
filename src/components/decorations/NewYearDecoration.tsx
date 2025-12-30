@@ -1,4 +1,3 @@
-
 'use client';
 import './new-year.css';
 import Fireworks from './Fireworks';
@@ -25,6 +24,14 @@ export default function NewYearDecoration() {
             <div className="firework"></div>
             <div className="firework second"></div>
             <div className="firework third"></div>
+
+            {/* --- FIRECRACKERS --- */}
+            <div className="firecracker-container firecracker-1">
+                <div className="firecracker"></div>
+            </div>
+            <div className="firecracker-container firecracker-2">
+                <div className="firecracker"></div>
+            </div>
 
             <div className="happy-new-year">
                 <h1>Happy New Year 2026</h1>
