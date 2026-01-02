@@ -15,7 +15,7 @@ import { DecorationContextProvider, useDecorations } from './decoration-provider
 
 const AppContext = createContext({} as any);
 
-function CombinedProvider({ children }: { children: React.ReactNode }) {
+function CombinedProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const general = useGeneral();
   const inventory = useInventory();
@@ -42,10 +42,8 @@ function CombinedProvider({ children }: { children: React.ReactNode }) {
     } else if (user) {
       if (user.status === 'locked' && pathname !== '/status') {
         router.replace('/status');
-      } else if (user.status !== 'locked' && pathname === '/login') {
-         router.replace('/dashboard');
-      } else if (user.status !== 'locked' && pathname === '/status') {
-         router.replace('/dashboard');
+      } else if (user.status !== 'locked' && isAuthPage) {
+        router.replace('/dashboard');
       }
     }
   }, [user, loading, pathname, router]);
@@ -70,7 +68,7 @@ function CombinedProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function AppProvider({ children }: { children: React.ReactNode }) {
+export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <AuthProvider>
       <GeneralProvider>
@@ -81,11 +79,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     <ConsumableProvider>
                         <InventoryProvider>
                             <AccommodationProvider>
-                              <DecorationContextProvider>
-                                <CombinedProvider>
-                                {children}
-                                </CombinedProvider>
-                              </DecorationContextProvider>
+                                <DecorationContextProvider>
+                                    <CombinedProvider>
+                                    {children}
+                                    </CombinedProvider>
+                                </DecorationContextProvider>
                             </AccommodationProvider>
                         </InventoryProvider>
                     </ConsumableProvider>

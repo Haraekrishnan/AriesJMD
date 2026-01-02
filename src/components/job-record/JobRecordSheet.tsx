@@ -860,7 +860,7 @@ export default function JobRecordSheet() {
                                 <TooltipContent><p>Toggle Reorder Mode</p></TooltipContent>
                             </Tooltip>
                             )}
-                             {can.manage_job_record && !isCurrentSheetLocked && isCurrentMonth && (
+                             {can.manage_job_record && !isCurrentSheetLocked && (
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild><Button variant="destructive"><Lock className="mr-2 h-4 w-4" /> Lock</Button></AlertDialogTrigger>
                                     <AlertDialogContent>
@@ -1197,6 +1197,7 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
 
 
 
