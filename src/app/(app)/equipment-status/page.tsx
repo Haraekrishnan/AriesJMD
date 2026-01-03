@@ -174,6 +174,7 @@ export default function EquipmentStatusPage() {
     const [mobileSearchTerm, setMobileSearchTerm] = useState('');
 
     const applyFilters = (items: any[]) => {
+        if (!items) return [];
         return items.filter(item => {
             const { projectId, status } = filters;
             const projectMatch = projectId === 'all' || ('projectId' in item && item.projectId === projectId) || ('allottedTo' in item && users.find(u => u.id === item.allottedTo)?.projectIds?.includes(projectId));
