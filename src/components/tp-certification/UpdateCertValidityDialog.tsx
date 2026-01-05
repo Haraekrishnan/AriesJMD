@@ -217,17 +217,19 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
 
               return (
                 <AccordionItem value={materialName} key={materialName} className="border-b">
-                  <AccordionTrigger className="p-4 hover:no-underline bg-muted/50">
-                    <div className="flex items-center gap-4">
-                        <Checkbox 
-                            checked={allInGroupSelected ? true : (someInGroupSelected ? 'indeterminate' : false)}
-                            onCheckedChange={(checked) => handleGroupSelect(groupItems, checked === true)}
-                            onClick={(e) => e.stopPropagation()}
-                        />
-                        <span className="font-semibold">{materialName}</span>
-                        <Badge variant="secondary">{groupItems.length} items</Badge>
-                    </div>
-                  </AccordionTrigger>
+                  <div className="flex items-center p-4 bg-muted/50">
+                    <Checkbox
+                        checked={allInGroupSelected ? true : (someInGroupSelected ? 'indeterminate' : false)}
+                        onCheckedChange={(checked) => handleGroupSelect(groupItems, checked === true)}
+                        className="mr-4"
+                    />
+                    <AccordionTrigger className="p-0 hover:no-underline flex-1">
+                        <div className="flex items-center gap-4">
+                            <span className="font-semibold">{materialName}</span>
+                            <Badge variant="secondary">{groupItems.length} items</Badge>
+                        </div>
+                    </AccordionTrigger>
+                  </div>
                   <AccordionContent className="p-0">
                     <Table>
                       <TableHeader>
