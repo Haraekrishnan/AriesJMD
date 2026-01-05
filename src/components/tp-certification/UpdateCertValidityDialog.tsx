@@ -14,6 +14,7 @@ import { DatePickerInput } from '../ui/date-picker-input';
 import { parseISO, isValid } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
 
 interface EditableItem {
   itemId: string;
@@ -33,7 +34,7 @@ interface UpdateCertValidityDialogProps {
 
 export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }: UpdateCertValidityDialogProps) {
   const { 
-      inventoryItems, utMachines, dftMachines, anemometers, digitalCameras, otherEquipments, laptopsDesktops, mobileSims,
+      inventoryItems, utMachines, dftMachines, anemometers, digitalCameras, otherEquipments, laptopsDesktops, mobileSims, 
       updateInventoryItem, updateUTMachine, updateDftMachine, updateAnemometer, updateDigitalCamera, updateOtherEquipment, updateLaptopDesktop, updateMobileSim
   } = useAppContext();
   const { toast } = useToast();
