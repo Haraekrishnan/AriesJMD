@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -13,6 +13,7 @@ import type { TpCertList, InventoryItem, UTMachine, DftMachine, Anemometer, Digi
 import { DatePickerInput } from '../ui/date-picker-input';
 import { parseISO, isValid } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 interface EditableItem {
   itemId: string;
@@ -21,6 +22,7 @@ interface EditableItem {
   manufacturerSrNo: string;
   tpInspectionDueDate: Date | null;
   certificateUrl: string;
+  originalIndex: number;
 }
 
 interface UpdateCertValidityDialogProps {
@@ -47,7 +49,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
         ...inventoryItems, ...utMachines, ...dftMachines, ...anemometers, ...digitalCameras, ...otherEquipments, ...laptopsDesktops, ...mobileSims
       ];
 
-      const itemsWithData: EditableItem[] = certList.items.map(listItem => {
+      const itemsWithData: EditableItem[] = certList.items.map((listItem, index) => {
         const fullItem = allItems.find(i => i.id === listItem.itemId);
         let dueDate = null;
         if (fullItem?.tpInspectionDueDate) {
@@ -59,7 +61,8 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
         return {
           ...listItem,
           tpInspectionDueDate: dueDate,
-          certificateUrl: fullItem?.certificateUrl || ''
+          certificateUrl: fullItem?.certificateUrl || '',
+          originalIndex: index,
         };
       });
       setItems(itemsWithData);
@@ -68,6 +71,16 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
       setBulkLink('');
     }
   }, [certList, isOpen, inventoryItems, utMachines, dftMachines, anemometers, digitalCameras, otherEquipments, laptopsDesktops, mobileSims]);
+  
+  const groupedItems = useMemo(() => {
+    return items.reduce((acc, item) => {
+        if (!acc[item.materialName]) {
+            acc[item.materialName] = [];
+        }
+        acc[item.materialName].push(item);
+        return acc;
+    }, {} as Record<string, EditableItem[]>);
+  }, [items]);
 
   const handleItemChange = (index: number, field: keyof EditableItem, value: any) => {
     const newItems = [...items];
@@ -76,8 +89,8 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
   };
   
   const handleBulkApply = () => {
-    if (!bulkDate && !bulkLink) {
-        toast({ title: 'No bulk values set', description: 'Please provide a date or a link to apply.', variant: 'destructive' });
+    if ((!bulkDate && !bulkLink) || selectedIndices.size === 0) {
+        toast({ title: 'No values or items selected', description: 'Please provide a date/link and select items.', variant: 'destructive' });
         return;
     }
     const newItems = items.map((item, index) => {
@@ -151,11 +164,15 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
     setIsOpen(false);
   };
   
-  const handleSelectAll = (checked: boolean) => {
-    const newSelected = new Set<number>();
-    if (checked) {
-      items.forEach((_, index) => newSelected.add(index));
-    }
+  const handleGroupSelect = (groupItems: EditableItem[], checked: boolean) => {
+    const newSelected = new Set(selectedIndices);
+    groupItems.forEach(item => {
+        if (checked) {
+            newSelected.add(item.originalIndex);
+        } else {
+            newSelected.delete(item.originalIndex);
+        }
+    });
     setSelectedIndices(newSelected);
   };
 
@@ -168,8 +185,6 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
     }
     setSelectedIndices(newSelected);
   };
-  
-  const isAllSelected = items.length > 0 && selectedIndices.size === items.length;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -193,50 +208,70 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
             </div>
         </div>
 
-        <ScrollArea className="flex-1 mt-4">
-        <Table>
-            <TableHeader>
-            <TableRow>
-                <TableHead className="w-12">
-                    <Checkbox checked={isAllSelected} onCheckedChange={handleSelectAll} />
-                </TableHead>
-                <TableHead>Sr. No</TableHead>
-                <TableHead>Material Name</TableHead>
-                <TableHead>Sr. No</TableHead>
-                <TableHead>TP Insp. Due Date</TableHead>
-                <TableHead>Certificate Link</TableHead>
-            </TableRow>
-            </TableHeader>
-            <TableBody>
-            {items.map((item, index) => (
-                <TableRow key={item.itemId}>
-                    <TableCell>
-                        <Checkbox checked={selectedIndices.has(index)} onCheckedChange={() => handleRowSelect(index)} />
-                    </TableCell>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell>{item.materialName}</TableCell>
-                    <TableCell>{item.manufacturerSrNo}</TableCell>
-                    <TableCell>
-                        <DatePickerInput
-                            value={item.tpInspectionDueDate || undefined}
-                            onChange={(date) => handleItemChange(index, 'tpInspectionDueDate', date)}
+        <ScrollArea className="flex-1 mt-4 border rounded-lg">
+          <Accordion type="multiple" className="w-full">
+            {Object.entries(groupedItems).map(([materialName, groupItems]) => {
+              const allInGroupSelected = groupItems.every(item => selectedIndices.has(item.originalIndex));
+              const someInGroupSelected = groupItems.some(item => selectedIndices.has(item.originalIndex));
+
+              return (
+                <AccordionItem value={materialName} key={materialName} className="border-b">
+                  <AccordionTrigger className="p-4 hover:no-underline bg-muted/50">
+                    <div className="flex items-center gap-4">
+                        <Checkbox 
+                            checked={allInGroupSelected ? true : (someInGroupSelected ? 'indeterminate' : false)}
+                            onCheckedChange={(checked) => handleGroupSelect(groupItems, checked === true)}
+                            onClick={(e) => e.stopPropagation()}
                         />
-                    </TableCell>
-                    <TableCell>
-                         <Input
-                           value={item.certificateUrl || ''}
-                           onChange={e => handleItemChange(index, 'certificateUrl', e.target.value)}
-                           placeholder="https://..."
-                         />
-                    </TableCell>
-                </TableRow>
-            ))}
-            </TableBody>
-        </Table>
+                        <span className="font-semibold">{materialName}</span>
+                        <Badge variant="secondary">{groupItems.length} items</Badge>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12"></TableHead>
+                          <TableHead>Sr. No</TableHead>
+                          <TableHead>Manufacturer Sr. No</TableHead>
+                          <TableHead>TP Insp. Due Date</TableHead>
+                          <TableHead>Certificate Link</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {groupItems.map((item) => (
+                          <TableRow key={item.itemId}>
+                            <TableCell>
+                                <Checkbox checked={selectedIndices.has(item.originalIndex)} onCheckedChange={() => handleRowSelect(item.originalIndex)} />
+                            </TableCell>
+                            <TableCell>{item.originalIndex + 1}</TableCell>
+                            <TableCell>{item.manufacturerSrNo}</TableCell>
+                            <TableCell className="w-48">
+                                <DatePickerInput
+                                    value={item.tpInspectionDueDate || undefined}
+                                    onChange={(date) => handleItemChange(item.originalIndex, 'tpInspectionDueDate', date)}
+                                />
+                            </TableCell>
+                            <TableCell>
+                                <Input
+                                  value={item.certificateUrl || ''}
+                                  onChange={e => handleItemChange(item.originalIndex, 'certificateUrl', e.target.value)}
+                                  placeholder="https://..."
+                                />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
         </ScrollArea>
         <DialogFooter className="pt-4 mt-auto border-t">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>Save Changes to Selected</Button>
+            <Button onClick={handleSave}>Save Changes to Selected ({selectedIndices.size})</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
