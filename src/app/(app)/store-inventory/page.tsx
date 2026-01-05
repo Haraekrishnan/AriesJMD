@@ -261,7 +261,7 @@ export default function StoreInventoryPage() {
                         <div className="space-y-2 max-h-40 overflow-y-auto">
                             {inventoryNotifications.map((n, i) => (
                                 <div key={i} className="text-sm p-2 bg-amber-50 dark:bg-amber-900/20 rounded-md">
-                                    <span className="font-semibold">{n.item.name} (SN: {n.item.serialNumber}{n.item.name === 'Harness' && n.item.chestCrollNo ? `, Croll: ${n.item.chestCrollNo}`: ''})</span>: {n.message}
+                                    <span className="font-semibold">{n.item.name} (SN: {n.item.serialNumber}{n.item.name.toLowerCase() === 'harness' && n.item.chestCrollNo ? `, Croll: ${n.item.chestCrollNo}`: ''})</span>: {n.message}
                                 </div>
                             ))}
                         </div>
@@ -373,4 +373,5 @@ export default function StoreInventoryPage() {
         </div>
     );
 }
+
 

@@ -38,7 +38,7 @@ export default function ActionRequiredReport({ notifications }: ActionRequiredRe
         { header: 'Aries ID', key: 'ariesId', width: 20 },
       ];
 
-      if (itemName === 'Harness') {
+      if (itemName.toLowerCase() === 'harness') {
         columns.push({ header: 'Chest Croll No.', key: 'croll', width: 20 });
       }
 
@@ -56,7 +56,7 @@ export default function ActionRequiredReport({ notifications }: ActionRequiredRe
           location: projects.find(p => p.id === item.projectId)?.name || 'N/A',
           action: message,
         };
-        if (itemName === 'Harness') {
+        if (itemName.toLowerCase() === 'harness') {
           rowData.croll = item.chestCrollNo || 'N/A';
         }
         sheet.addRow(rowData);
@@ -76,7 +76,7 @@ export default function ActionRequiredReport({ notifications }: ActionRequiredRe
         body: notifications.map(({ item, message }) => [
             item.name,
             item.serialNumber,
-            item.name === 'Harness' ? item.chestCrollNo || 'N/A' : 'N/A',
+            item.name.toLowerCase() === 'harness' ? item.chestCrollNo || 'N/A' : 'N/A',
             projects.find(p => p.id === item.projectId)?.name || 'N/A',
             message,
         ]),
