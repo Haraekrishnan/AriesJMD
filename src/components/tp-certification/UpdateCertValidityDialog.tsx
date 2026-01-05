@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { TpCertList, InventoryItem, UTMachine, DftMachine, Anemometer, DigitalCamera, OtherEquipment, LaptopDesktop, MobileSim } from '@/lib/types';
 import { DatePickerInput } from '../ui/date-picker-input';
-import { parseISO, isValid } from 'date-fns';
+import { parseISO, isValid, isAfter } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
@@ -133,6 +133,12 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
         tpInspectionDueDate: itemToUpdate.tpInspectionDueDate ? itemToUpdate.tpInspectionDueDate.toISOString() : null,
         certificateUrl: itemToUpdate.certificateUrl,
       };
+
+      // Check if status needs to be updated from 'Expired'
+      if (baseItem.status === 'Expired' && updateData.tpInspectionDueDate && isAfter(new Date(updateData.tpInspectionDueDate), new Date())) {
+        updateData.status = 'In Store';
+      }
+
 
       try {
         switch(itemToUpdate.itemType) {
