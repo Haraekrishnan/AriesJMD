@@ -1,12 +1,11 @@
 
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Upload, AlertTriangle, ChevronsUpDown, X, FilePen, FilePlus, FileText, ArrowRightLeft, Package, Hammer } from 'lucide-react';
+import { PlusCircle, Upload, AlertTriangle, ChevronsUpDown, X, FilePen, FilePlus, FileText, ArrowRightLeft, Package, Hammer, CheckCircle } from 'lucide-react';
 import InventoryTable from '@/components/inventory/InventoryTable';
 import AddItemDialog from '@/components/inventory/AddItemDialog';
 import ImportItemsDialog from '@/components/inventory/ImportItemsDialog';
@@ -32,7 +31,7 @@ import NewDamageReportDialog from '@/components/damage-reports/NewDamageReportDi
 
 
 export default function StoreInventoryPage() {
-    const { user, users, roles, inventoryItems, projects, certificateRequests, acknowledgeFulfilledRequest, markFulfilledRequestsAsViewed, can, pendingInventoryTransferRequestCount, pendingDamageReportCount } = useAppContext();
+    const { user, users, roles, inventoryItems, projects, certificateRequests, acknowledgeFulfilledRequest, markFulfilledRequestsAsViewed, can, pendingInventoryTransferRequestCount, pendingDamageReportCount, revalidateExpiredItems } = useAppContext();
     const [isAddItemOpen, setIsAddItemOpen] = useState(false);
     const [isImportOpen, setIsImportOpen] = useState(false);
     const [isUpdateItemsOpen, setIsUpdateItemsOpen] = useState(false);
@@ -96,18 +95,16 @@ export default function StoreInventoryPage() {
             const now = new Date();
             const inspectionDueDate = item.inspectionDueDate ? parseISO(item.inspectionDueDate) : null;
             const tpInspectionDueDate = item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : null;
-            const inspectionExpired = inspectionDueDate && isAfter(now, inspectionDueDate);
-            const tpInspectionExpired = tpInspectionDueDate && isAfter(now, tpInspectionDueDate);
-            const isItemExpired = inspectionExpired || tpInspectionExpired;
+            const isItemExpired = inspectionDueDate && isAfter(now, inspectionDueDate) || tpInspectionDueDate && isAfter(now, tpInspectionDueDate);
             const itemEffectiveStatus = isItemExpired ? 'Expired' : item.status;
 
             if (status !== 'all') {
                 if (status === 'Expired') {
                     if (!isItemExpired) return false;
                 } else if (status === 'Inspection Expired') {
-                    if (!inspectionExpired) return false;
+                    if (!inspectionDueDate || !isAfter(now, inspectionDueDate)) return false;
                 } else if (status === 'TP Expired') {
-                    if (!tpInspectionExpired) return false;
+                    if (!tpInspectionDueDate || !isAfter(now, tpInspectionDueDate)) return false;
                 } else if (status === 'Not Verified') {
                     if (!item.lastUpdated) return true; // Show items with no lastUpdated date
                     const fifteenDaysAgo = subDays(now, 15);
@@ -224,6 +221,7 @@ export default function StoreInventoryPage() {
                     )}
                     {canManageInventory && (
                         <>
+                            <Button onClick={revalidateExpiredItems} variant="outline"><CheckCircle className="mr-2 h-4 w-4" />Check Validity</Button>
                             <Button onClick={() => setIsBulkInspectionUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4"/>Bulk Update Insp. Cert</Button>
                             <Button onClick={() => setIsBulkUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4" /> Bulk Update TP Cert</Button>
                             <Button onClick={() => setIsGenerateCertOpen(true)} variant="outline"><FilePlus className="mr-2 h-4 w-4" /> Generate TP Cert List</Button>
@@ -373,5 +371,6 @@ export default function StoreInventoryPage() {
         </div>
     );
 }
+
 
 

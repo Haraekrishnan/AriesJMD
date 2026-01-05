@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { useManpower } from './manpower-provider';
 import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, isAfter } from 'date-fns';
 import { useConsumable } from './consumable-provider';
 import { getStorage, ref as storageRef, deleteObject } from "firebase/storage";
 import { v4 as uuidv4 } from 'uuid';
@@ -104,6 +104,7 @@ type InventoryContextType = {
   deleteInventoryItem: (itemId: string) => void;
   deleteInventoryItemGroup: (itemName: string) => void;
   renameInventoryItemGroup: (oldName: string, newName: string) => void;
+  revalidateExpiredItems: () => void;
   
   addInventoryTransferRequest: (request: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => void;
   deleteInventoryTransferRequest: (requestId: string) => void;
@@ -642,6 +643,33 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         });
         update(ref(rtdb), updates);
     }, [inventoryItems]);
+
+    const revalidateExpiredItems = useCallback(() => {
+        const updates: { [key: string]: any } = {};
+        let revalidatedCount = 0;
+        inventoryItems.forEach(item => {
+            if (item.status === 'Expired' && item.tpInspectionDueDate) {
+                if (isAfter(parseISO(item.tpInspectionDueDate), new Date())) {
+                    updates[`/inventoryItems/${item.id}/status`] = 'In Store';
+                    updates[`/inventoryItems/${item.id}/lastUpdated`] = new Date().toISOString();
+                    revalidatedCount++;
+                }
+            }
+        });
+    
+        if (revalidatedCount > 0) {
+            update(ref(rtdb), updates);
+            toast({
+                title: 'Revalidation Complete',
+                description: `${revalidatedCount} items have been revalidated and set to "In Store".`,
+            });
+        } else {
+            toast({
+                title: 'No Items to Revalidate',
+                description: 'No expired items with a valid future TP Inspection date were found.',
+            });
+        }
+    }, [inventoryItems, toast]);
     
     const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
         if (!user) return;
@@ -1640,7 +1668,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     const contextValue: InventoryContextType = {
         inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory, directives: [], damageReports,
-        addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, updateInventoryItemGroupByProject, updateMultipleInventoryItems, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup,
+        addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, updateInventoryItemGroupByProject, updateMultipleInventoryItems, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
         addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
         addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest,
         addUTMachine, updateUTMachine, deleteUTMachine,
