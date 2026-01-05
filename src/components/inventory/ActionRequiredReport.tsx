@@ -1,4 +1,5 @@
 
+
 'use client';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
@@ -31,19 +32,34 @@ export default function ActionRequiredReport({ notifications }: ActionRequiredRe
 
     for (const itemName in groupedByItemName) {
       const sheet = workbook.addWorksheet(itemName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 31));
-      sheet.columns = [
+      
+      const columns = [
         { header: 'Serial Number', key: 'serial', width: 25 },
         { header: 'Aries ID', key: 'ariesId', width: 20 },
+      ];
+
+      if (itemName === 'Harness') {
+        columns.push({ header: 'Chest Croll No.', key: 'croll', width: 20 });
+      }
+
+      columns.push(
         { header: 'Project Location', key: 'location', width: 30 },
         { header: 'Action Required', key: 'action', width: 50 },
-      ];
+      );
+      
+      sheet.columns = columns;
+
       groupedByItemName[itemName].forEach(({ item, message }) => {
-        sheet.addRow({
+        const rowData: any = {
           serial: item.serialNumber,
           ariesId: item.ariesId || 'N/A',
           location: projects.find(p => p.id === item.projectId)?.name || 'N/A',
           action: message,
-        });
+        };
+        if (itemName === 'Harness') {
+          rowData.croll = item.chestCrollNo || 'N/A';
+        }
+        sheet.addRow(rowData);
       });
     }
 
@@ -56,10 +72,11 @@ export default function ActionRequiredReport({ notifications }: ActionRequiredRe
     doc.text('Inventory - Action Required Report', 14, 15);
     
     (doc as any).autoTable({
-        head: [['Item Name', 'Serial No.', 'Project', 'Action']],
+        head: [['Item Name', 'Serial No.', 'Croll No.', 'Project', 'Action']],
         body: notifications.map(({ item, message }) => [
             item.name,
             item.serialNumber,
+            item.name === 'Harness' ? item.chestCrollNo || 'N/A' : 'N/A',
             projects.find(p => p.id === item.projectId)?.name || 'N/A',
             message,
         ]),
