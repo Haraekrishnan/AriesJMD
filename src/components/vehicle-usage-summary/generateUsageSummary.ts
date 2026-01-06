@@ -1,4 +1,3 @@
-
 'use client';
 
 import ExcelJS from 'exceljs';
@@ -10,10 +9,9 @@ import type { Vehicle, Driver, User } from '@/lib/types';
 
 async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
   try {
-    const absoluteUrl = url.startsWith('/') ? `${process.env.NEXT_PUBLIC_APP_URL}${url}` : url;
-    const response = await fetch(absoluteUrl);
+    const response = await fetch(url);
     if (!response.ok) {
-        console.error(`Failed to fetch image: ${response.statusText} from ${absoluteUrl}`);
+        console.error(`Failed to fetch image: ${response.statusText} from ${url}`);
         return null;
     }
     return await response.arrayBuffer();
@@ -25,10 +23,9 @@ async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
 
 async function fetchImageAsBase64(url: string): Promise<string> {
     try {
-        const absoluteUrl = url.startsWith('/') ? `${process.env.NEXT_PUBLIC_APP_URL}${url}` : url;
-        const response = await fetch(absoluteUrl);
+        const response = await fetch(url);
         if (!response.ok) {
-             console.error(`Failed to fetch image: ${response.statusText} from ${absoluteUrl}`);
+             console.error(`Failed to fetch image: ${response.statusText} from ${url}`);
              return '';
         }
         const blob = await response.blob();
@@ -216,9 +213,10 @@ export async function exportToPdf(
   headerStates: any,
 ) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-  const logo = await fetchImageAsBase64('/images/aries-header.png');
+  const logo = await fetchImageAsBase64('/images/Aries_logo.png');
 
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 30;
 
   if (logo) doc.addImage(logo, 'PNG', margin, 30, 120, 35);
@@ -246,8 +244,7 @@ export async function exportToPdf(
     margin: { left: pageWidth - margin - 220 },
   });
   
-  let mainTableStartY = (doc as any).lastAutoTable.finalY + 15;
-  if(mainTableStartY < 100) mainTableStartY = 100;
+  let mainTableStartY = 95;
   
   let totalKm = 0;
   const body = dayHeaders.map(day => {
@@ -289,34 +286,23 @@ export async function exportToPdf(
   });
 
   let finalY = (doc as any).lastAutoTable.finalY;
-  const footerStartY = finalY + 10;
-  const signaturePath = SIGNATURES[headerStates.verifiedByName];
-  let signatureBase64: string | null = null;
-  if (signaturePath) {
-    try {
-      signatureBase64 = await fetchImageAsBase64(signaturePath);
-    } catch(e) { console.error('Failed to load signature for PDF'); }
-  }
+
+  // Footer
+  const footerStartY = finalY > pageHeight - 70 ? pageHeight - 70 : finalY + 10;
   
-  // Footer with two rows
-  (doc as any).autoTable({
-    startY: footerStartY,
-    body: [
-      [{ content: 'Verified By:', styles: { fontStyle: 'bold' } }, { content: 'Verified By Date:', styles: { fontStyle: 'bold' } }, { content: 'Signature:', styles: { fontStyle: 'bold' } }],
+  const footerData = [
       [
-        { content: headerStates.verifiedByName || '\n', styles: { minCellHeight: 30 } },
-        { content: headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '\n' },
-        { content: '' },
-      ],
-    ],
-    theme: 'grid',
-    styles: { fontSize: 9, valign: 'top' },
-    didDrawCell: (data: any) => {
-      // Add signature image to the correct cell in the second row
-      if (signatureBase64 && data.row.index === 1 && data.column.index === 2) {
-        doc.addImage(signatureBase64, 'JPEG', data.cell.x + 5, data.cell.y + 2, 60, 25);
-      }
-    }
+          { content: `Verified By:\n${headerStates.verifiedByName || ''}`, styles: { halign: 'left' } },
+          { content: `Verified By Date:\n${headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : ''}`, styles: { halign: 'left' } },
+          { content: `Signature:\n`, styles: { halign: 'left' } }
+      ]
+  ];
+  
+  (doc as any).autoTable({
+      startY: footerStartY,
+      body: footerData,
+      theme: 'grid',
+      styles: { fontSize: 9, font: 'helvetica', valign: 'top', cellPadding: 3, minCellHeight: 40 },
   });
 
 
