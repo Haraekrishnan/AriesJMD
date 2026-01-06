@@ -108,6 +108,20 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
         });
     };
     
+    const handleKmBlur = (day: number, field: 'startKm' | 'endKm') => {
+        const startKmValue = Number(cellStates[`${day}-startKm`] || 0);
+        const endKmValue = Number(cellStates[`${day}-endKm`] || 0);
+    
+        if (field === 'endKm' && endKmValue < startKmValue) {
+          toast({
+            variant: 'destructive',
+            title: 'Invalid Kilometers',
+            description: 'End KM cannot be less than Start KM. It has been reset.',
+          });
+          handleInputChange(day, 'endKm', startKmValue);
+        }
+    };
+    
     const handleHeaderChange = (field: keyof typeof headerStates, value: string | number | Date | undefined) => {
         setHeaderStates(prev => ({ ...prev, [field]: value }));
     };
@@ -179,8 +193,8 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
                                     return (
                                         <TableRow key={day} className={cn((isHoliday || isSunday) && 'bg-yellow-100 dark:bg-yellow-900/30')}>
                                             <TableCell className={cn("sticky left-0 font-medium z-10 border-r", (isHoliday || isSunday) ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-card')}>{format(dateForDay, 'dd-MM-yyyy')}</TableCell>
-                                            <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-startKm`] || ''} onChange={(e) => handleInputChange(day, 'startKm', e.target.value)} /></TableCell>
-                                            <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-endKm`] || ''} onChange={(e) => handleInputChange(day, 'endKm', e.target.value)} /></TableCell>
+                                            <TableCell><Input type="number" min="0" className="h-8" value={cellStates[`${day}-startKm`] || ''} onChange={(e) => handleInputChange(day, 'startKm', e.target.value)} onBlur={() => handleKmBlur(day, 'startKm')} /></TableCell>
+                                            <TableCell><Input type="number" min="0" className="h-8" value={cellStates[`${day}-endKm`] || ''} onChange={(e) => handleInputChange(day, 'endKm', e.target.value)} onBlur={() => handleKmBlur(day, 'endKm')} /></TableCell>
                                             <TableCell className="font-medium text-center">{totalKm}</TableCell>
                                             <TableCell><Input className="h-8" value={cellStates[`${day}-overtime`] || ''} onChange={(e) => handleInputChange(day, 'overtime', e.target.value)} /></TableCell>
                                             <TableCell><Input className="h-8" value={cellStates[`${day}-remarks`] || ''} onChange={(e) => handleInputChange(day, 'remarks', e.target.value)} /></TableCell>
