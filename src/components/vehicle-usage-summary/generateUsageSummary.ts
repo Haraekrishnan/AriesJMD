@@ -52,12 +52,12 @@ export async function exportToExcel(
 
   /* ---------------- HEADER RIGHT BLOCK ---------------- */
   const rightHeader = [
-    ['JOB NO:', (headerStates.jobNo || '').toUpperCase()],
-    ['VEHICLE TYPE:', (headerStates.vehicleType || '').toUpperCase()],
-    ['EXTRA KM:', headerStates.extraKm || 0],
-    ['OVER TIME:', headerStates.headerOvertime || ''],
-    ['EXTRA NIGHT:', headerStates.extraNight || 0],
-    ['EXTRA DAYS:', headerStates.extraDays || 0],
+    ['JOB NO', (headerStates.jobNo || '').toUpperCase()],
+    ['VEHICLE TYPE', (headerStates.vehicleType || '').toUpperCase()],
+    ['EXTRA KM', headerStates.extraKm || 0],
+    ['OVER TIME', headerStates.headerOvertime || ''],
+    ['EXTRA NIGHT', headerStates.extraNight || 0],
+    ['EXTRA DAYS', headerStates.extraDays || 0],
   ];
 
   const greyBorder = {
@@ -67,28 +67,33 @@ export async function exportToExcel(
     right: { style: 'thin', color: { argb: 'FFD3D3D3' } }
   };
 
+  const startRow = 1;
+  const startCol = 5;
+
   rightHeader.forEach((r, i) => {
-    const row = sheet.getRow(i + 1);
-    const cellLabel = row.getCell('E');
-    const cellValue = row.getCell('F');
+    const row = sheet.getRow(startRow + i);
+    const cellLabel = row.getCell(startCol);
+    const cellValue = row.getCell(startCol + 1);
     
     cellLabel.value = r[0];
     cellValue.value = r[1];
     cellLabel.font = { name: 'Calibri', size: 11, bold: true };
     cellValue.font = { name: 'Calibri', size: 11 };
-    cellLabel.alignment = { horizontal: 'left', vertical: 'middle' };
-    cellValue.alignment = { horizontal: 'left', vertical: 'middle' };
+    
+    cellLabel.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+    cellValue.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
     
     [cellLabel, cellValue].forEach(cell => {
       cell.border = greyBorder;
     });
   });
-
+  
   // Add a blank row for spacing
   sheet.addRow([]);
 
   /* ---------------- TABLE HEADER ---------------- */
-  const headerRow = sheet.getRow(8);
+  const tableHeaderRowIndex = 8;
+  const headerRow = sheet.getRow(tableHeaderRowIndex);
   headerRow.values = ['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OVER TIME', 'REMARKS'];
   headerRow.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
   headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -105,7 +110,6 @@ export async function exportToExcel(
     const endKm = Number(cellStates[`${day}-endKm`] || 0);
     const total = endKm > startKm ? endKm - startKm : 0;
     totalKm += total;
-    const remark = cellStates[`${day}-remarks`] || '';
 
     const row = sheet.addRow([
       format(date, 'dd-MMM-yyyy'),
@@ -113,7 +117,7 @@ export async function exportToExcel(
       endKm || '',
       total || '',
       cellStates[`${day}-overtime`] || '',
-      remark,
+      cellStates[`${day}-remarks`] || '',
     ]);
 
     row.eachCell(c => {
@@ -124,16 +128,12 @@ export async function exportToExcel(
 
     if (date.getDay() === 0) {
       row.eachCell(c => {
-        c.fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FFFFFF00' },
-        };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
       });
     }
   });
 
-  /* ---------------- FOOTER ---------------- */
+  /* ---------------- TABLE FOOTER (TOTAL KM) ---------------- */
   const totalRow = sheet.addRow(['', '', 'TOTAL KILOMETER:', totalKm, '', '']);
   sheet.mergeCells(`A${totalRow.number}:C${totalRow.number}`);
   totalRow.getCell('A').alignment = { horizontal: 'right', vertical: 'middle' };
@@ -141,12 +141,15 @@ export async function exportToExcel(
   totalRow.font = { bold: true, name: 'Calibri', size: 11 };
   totalRow.eachCell(c => c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } });
   
+  /* ---------------- MAIN FOOTER ---------------- */
   sheet.addRow([]);
   const verifiedByRow = sheet.addRow(['Verified By:']);
-  verifiedByRow.font = { name: 'Calibri', size: 11, bold: true };
-  sheet.addRow(['Name:', headerStates.verifiedByName || '']);
-  sheet.addRow(['Designation:', headerStates.verifiedByDesignation || '']);
-
+  verifiedByRow.font = { name: 'Calibri', size: 9, bold: true };
+  const nameRow = sheet.addRow([`Name: ${headerStates.verifiedByName || ''}`]);
+  nameRow.font = { name: 'Calibri', size: 9 };
+  const designationRow = sheet.addRow([`Designation: ${headerStates.verifiedByDesignation || ''}`]);
+  designationRow.font = { name: 'Calibri', size: 9 };
+  
   sheet.columns = [
     { width: 18 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 30 }
   ];
@@ -157,7 +160,6 @@ export async function exportToExcel(
     `Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.xlsx`
   );
 }
-
 
 export async function exportToPdf(
   vehicle: Vehicle | undefined,
@@ -176,18 +178,19 @@ export async function exportToPdf(
   /* LOGO */
   if (logo) doc.addImage(logo, 'PNG', margin, 30, 120, 35);
 
+  /* VEHICLE NUMBER */
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
   doc.text(vehicle?.vehicleNumber || '', margin, 85);
 
   /* RIGHT HEADER */
   const rightHeaderData = [
-    ['JOB NO:', (headerStates.jobNo || '').toUpperCase()],
-    ['VEHICLE TYPE:', (headerStates.vehicleType || '').toUpperCase()],
-    ['EXTRA KM:', headerStates.extraKm || 0],
-    ['OVER TIME:', headerStates.headerOvertime || ''],
-    ['EXTRA NIGHT:', headerStates.extraNight || 0],
-    ['EXTRA DAYS:', headerStates.extraDays || 0],
+    ['JOB NO', (headerStates.jobNo || '').toUpperCase()],
+    ['VEHICLE TYPE', (headerStates.vehicleType || '').toUpperCase()],
+    ['EXTRA KM', headerStates.extraKm || 0],
+    ['OVER TIME', headerStates.headerOvertime || ''],
+    ['EXTRA NIGHT', headerStates.extraNight || 0],
+    ['EXTRA DAYS', headerStates.extraDays || 0],
   ];
 
   (doc as any).autoTable({
@@ -199,16 +202,18 @@ export async function exportToPdf(
     tableWidth: 220,
     margin: { left: pageWidth - margin - 220 },
   });
-
-  // Add spacing before the main table
-  const mainTableStartY = (doc as any).lastAutoTable.finalY + 20;
-
+  
+  // Add a blank row for spacing
+  const mainTableStartY = (doc as any).lastAutoTable.finalY + 15;
+  
   /* TABLE DATA */
+  let totalKm = 0;
   const body = dayHeaders.map(day => {
     const d = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
     const s = Number(cellStates[`${day}-startKm`] || 0);
     const e = Number(cellStates[`${day}-endKm`] || 0);
     const t = e > s ? e - s : 0;
+    totalKm += t;
     return [
       format(d, 'dd-MMM-yyyy'),
       s || '',
@@ -219,9 +224,6 @@ export async function exportToPdf(
       d.getDay() === 0 ? 'HIGHLIGHT' : '',
     ];
   });
-  
-  let totalKm = 0;
-  body.forEach(row => totalKm += Number(row[3]));
   
   body.push([{ content: 'TOTAL KILOMETER:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' }}, { content: totalKm, styles: { fontStyle: 'bold' } }, '', '']);
 
@@ -245,10 +247,11 @@ export async function exportToPdf(
   let y = (doc as any).lastAutoTable.finalY + 30;
 
   doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
   doc.text('Verified By:', 30, y);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Name: ${headerStates.verifiedByName || ''}`, 30, y + 15);
-  doc.text(`Designation: ${headerStates.verifiedByDesignation || ''}`, 30, y + 30);
+  doc.text(`Name: ${headerStates.verifiedByName || ''}`, 30, y + 12);
+  doc.text(`Designation: ${headerStates.verifiedByDesignation || ''}`, 30, y + 24);
 
   doc.save(`Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`);
 }
