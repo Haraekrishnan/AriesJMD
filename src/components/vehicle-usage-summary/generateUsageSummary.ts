@@ -245,7 +245,7 @@ export async function exportToPdf(
     margin: { left: pageWidth - margin - 220 },
   });
   
-  const mainTableStartY = (doc as any).lastAutoTable.finalY + 15 > 95 ? (doc as any).lastAutoTable.finalY + 15 : 95;
+  const mainTableStartY = 95;
   
   let totalKm = 0;
   const body = dayHeaders.map(day => {
@@ -273,7 +273,7 @@ export async function exportToPdf(
     head: [['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OT', 'REMARKS']],
     body,
     startY: mainTableStartY,
-    styles: { fontSize: 8, halign: 'center', font: 'helvetica' },
+    styles: { fontSize: 8, halign: 'center', font: 'helvetica', cellPadding: 2, minCellHeight: 15 },
     headStyles: { fillColor: [2, 179, 150], textColor: 255, fontStyle: 'bold' },
     theme: 'grid',
     didParseCell: (data: any) => {
@@ -289,21 +289,29 @@ export async function exportToPdf(
   let finalY = (doc as any).lastAutoTable.finalY;
 
   // Footer
-  const footerStartY = finalY > pageHeight - 70 ? pageHeight - 70 : finalY + 10;
+  const footerStartY = pageHeight - 60; // Position footer at a fixed location from bottom
   
-  const footerData = [
-      [
-          { content: `Verified By:\n${headerStates.verifiedByName || ''}`, styles: { fontStyle: 'bold' } },
-          { content: `Verified By Date:\n${headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : ''}`, styles: { fontStyle: 'bold' } },
-          { content: `Signature:\n`, styles: { fontStyle: 'bold' } }
-      ]
+  const footerHeaders = [
+      [{ content: 'Verified By:', styles: { fontStyle: 'bold', halign: 'left' } },
+       { content: 'Verified By Date:', styles: { fontStyle: 'bold', halign: 'left' } },
+       { content: 'Signature:', styles: { fontStyle: 'bold', halign: 'left' } }]
   ];
   
+  const footerBody = [
+      [
+          { content: headerStates.verifiedByName || '', styles: { minCellHeight: 20, valign: 'bottom' } },
+          { content: headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '', styles: { minCellHeight: 20, valign: 'bottom' } },
+          { content: '', styles: { minCellHeight: 20 } }
+      ]
+  ];
+
   (doc as any).autoTable({
       startY: footerStartY,
-      body: footerData,
+      head: footerHeaders,
+      body: footerBody,
       theme: 'grid',
-      styles: { fontSize: 9, font: 'helvetica', valign: 'top', cellPadding: 3, minCellHeight: 40 },
+      styles: { fontSize: 9, font: 'helvetica', valign: 'top', cellPadding: 3 },
+      headStyles: { fillColor: [255, 255, 255], textColor: 0, fontStyle: 'bold' }
   });
 
 
@@ -311,5 +319,3 @@ export async function exportToPdf(
     `Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`
   );
 }
-
-    
