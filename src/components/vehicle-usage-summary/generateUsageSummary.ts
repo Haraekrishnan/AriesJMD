@@ -44,6 +44,11 @@ async function fetchImageAsBase64(url: string): Promise<string> {
     }
 }
 
+const SIGNATURES: Record<string, string> = {
+    'Harirkrishnan P S': '/images/hari_sign.jpg',
+    'MANU M G': '/images/Manu_Sign.jpg',
+};
+
 export async function exportToExcel(
   vehicle: Vehicle | undefined,
   driver: Driver | undefined,
@@ -158,33 +163,36 @@ export async function exportToExcel(
   const verifiedRow = sheet.getRow(footerRowIndex);
   sheet.mergeCells(footerRowIndex, 1, footerRowIndex, 2);
   const verifiedCell = verifiedRow.getCell(1);
-  verifiedCell.value = {
-    richText: [
-      { font: { bold: true }, text: 'Verified By:\n' },
-      { text: headerStates.verifiedByName || '' }
-    ]
-  };
+  verifiedCell.value = `Verified By:\n${headerStates.verifiedByName || ''}`;
   verifiedCell.border = greyBorder;
-  verifiedCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
+  verifiedCell.alignment = { vertical: 'top', horizontal: 'left', indent: 1, wrapText: true };
   
   sheet.mergeCells(footerRowIndex, 3, footerRowIndex, 4);
   const dateCell = verifiedRow.getCell(3);
-  dateCell.value = {
-    richText: [
-      { font: { bold: true }, text: 'Verified By Date:\n' },
-      { text: headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '' }
-    ]
-  };
+  dateCell.value = `Verified By Date:\n${headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : ''}`;
   dateCell.border = greyBorder;
-  dateCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
+  dateCell.alignment = { vertical: 'top', horizontal: 'left', indent: 1, wrapText: true };
   
   sheet.mergeCells(footerRowIndex, 5, footerRowIndex, 6);
   const signCell = verifiedRow.getCell(5);
-  signCell.value = {
-    richText: [{ font: { bold: true }, text: 'Signature:\n' }]
-  };
+  signCell.value = 'Signature:\n';
   signCell.border = greyBorder;
-  signCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
+  signCell.alignment = { vertical: 'top', horizontal: 'left', indent: 1, wrapText: true };
+
+  const signaturePath = SIGNATURES[headerStates.verifiedByName];
+  if (signaturePath) {
+      try {
+        const signatureBuffer = await fetchImageAsBuffer(signaturePath);
+        if (signatureBuffer) {
+          const signatureId = workbook.addImage({ buffer: signatureBuffer, extension: 'jpg' });
+          sheet.addImage(signatureId, {
+            tl: { col: 4.2, row: footerRowIndex - 0.2 },
+            ext: { width: 80, height: 35 }
+          });
+        }
+      } catch (e) { console.error('Signature could not be added to Excel', e); }
+  }
+
 
   verifiedRow.height = 40;
 
@@ -208,7 +216,7 @@ export async function exportToPdf(
   headerStates: any,
 ) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-  const logo = await fetchImageAsBase64('/images/Aries_logo.png');
+  const logo = await fetchImageAsBase64('/images/aries-header.png');
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 30;
@@ -280,21 +288,37 @@ export async function exportToPdf(
     },
   });
 
-  const finalY = (doc as any).lastAutoTable.finalY + 10;
+  let finalY = (doc as any).lastAutoTable.finalY;
+  const footerStartY = finalY + 10;
+  const signaturePath = SIGNATURES[headerStates.verifiedByName];
+  let signatureBase64: string | null = null;
+  if (signaturePath) {
+    try {
+      signatureBase64 = await fetchImageAsBase64(signaturePath);
+    } catch(e) { console.error('Failed to load signature for PDF'); }
+  }
   
-  const verifiedByNameText = `Verified By:\n${headerStates.verifiedByName || ''}`;
-  const verifiedByDateText = `Verified By Date:\n${headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : ''}`;
-  const signatureText = 'Signature:\n\n';
-
+  // Footer with two rows
   (doc as any).autoTable({
-    body: [[verifiedByNameText, verifiedByDateText, signatureText]],
-    startY: finalY,
+    startY: footerStartY,
+    body: [
+      [{ content: 'Verified By:', styles: { fontStyle: 'bold' } }, { content: 'Verified By Date:', styles: { fontStyle: 'bold' } }, { content: 'Signature:', styles: { fontStyle: 'bold' } }],
+      [
+        { content: headerStates.verifiedByName || '\n', styles: { minCellHeight: 30 } },
+        { content: headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '\n' },
+        { content: '' },
+      ],
+    ],
     theme: 'grid',
-    styles: { fontSize: 9, font: 'helvetica', cellPadding: 3, valign: 'top' },
-    didParseCell: (data: any) => {
-        data.cell.styles.fontStyle = 'bold';
-    },
+    styles: { fontSize: 9, valign: 'top' },
+    didDrawCell: (data: any) => {
+      // Add signature image to the correct cell in the second row
+      if (signatureBase64 && data.row.index === 1 && data.column.index === 2) {
+        doc.addImage(signatureBase64, 'JPEG', data.cell.x + 5, data.cell.y + 2, 60, 25);
+      }
+    }
   });
+
 
   doc.save(
     `Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`
