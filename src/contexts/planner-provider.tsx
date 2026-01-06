@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -244,7 +243,11 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     const saveVehicleUsageRecord = useCallback((monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => {
         if (!user) return;
         const path = `vehicleUsageRecords/${monthKey}/records/${vehicleId}`;
-        const updates = { ...data };
+        const updates = { 
+            ...data,
+            lastUpdated: new Date().toISOString(),
+            lastUpdatedById: user.id,
+        };
         update(ref(rtdb, path), updates);
     }, [user]);
     

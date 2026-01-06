@@ -1,6 +1,5 @@
 
 
-
 export type Broadcast = {
   id: string;
   message: string;
@@ -1036,15 +1035,18 @@ export type DamageReport = {
   status: DamageReportStatus;
   attachmentOriginalUrl?: string | null;
   attachmentDownloadUrl?: string | null;
+  attachmentUrl?: string; // Legacy
 };
 
 export type DecorationTheme = 'none' | 'christmas' | 'diwali' | 'new-year';
 
 export type VehicleUsageRecord = {
   id: string; // YYYY-MM
-  isLocked?: boolean;
   records: {
     [vehicleId: string]: {
+      isLocked?: boolean;
+      lastUpdated?: string; // ISO
+      lastUpdatedById?: string;
       days: { 
         [day: number]: {
           startKm?: number;
@@ -1062,7 +1064,7 @@ export type VehicleUsageRecord = {
       extraDays?: number;
       verifiedBy?: {
         name: string;
-        date: string;
+        date: string; // ISO
       };
     };
   };

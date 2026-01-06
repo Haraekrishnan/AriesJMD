@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -6,7 +5,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, Download, Save, Lock, Unlock, Edit } from 'lucide-react';
-import { format, startOfMonth, addMonths, subMonths, isSameMonth, isAfter, isBefore, startOfToday } from 'date-fns';
+import { format, startOfMonth, addMonths, subMonths, isSameMonth, isAfter, isBefore, startOfToday, parseISO } from 'date-fns';
 import { saveAs } from "file-saver";
 import { Accordion } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
@@ -16,13 +15,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ScrollArea } from '../ui/scroll-area';
 import { exportToExcel, exportToPdf } from './generateUsageSummary';
 import EditVehicleUsageDialog from './EditVehicleUsageDialog';
-import type { Vehicle } from '@/lib/types';
+import type { Vehicle, User } from '@/lib/types';
 
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
 
 const VehicleDataRow = ({ vehicle, currentMonth }: { vehicle: any, currentMonth: Date }) => {
-    const { user, can, lockVehicleUsageSheet, unlockVehicleUsageSheet, drivers, vehicleUsageRecords } = useAppContext();
+    const { user, can, lockVehicleUsageSheet, unlockVehicleUsageSheet, drivers, vehicleUsageRecords, users } = useAppContext();
     const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
 
     const monthKey = format(currentMonth, 'yyyy-MM');
@@ -32,6 +31,11 @@ const VehicleDataRow = ({ vehicle, currentMonth }: { vehicle: any, currentMonth:
     const isLocked = vehicleRecord?.isLocked;
     const canEdit = can.manage_vehicle_usage && !isLocked;
     const canLockSheet = can.manage_vehicle_usage;
+
+    const lastUpdatedBy = useMemo(() => {
+        if (!vehicleRecord?.lastUpdatedById) return null;
+        return users.find((u: User) => u.id === vehicleRecord.lastUpdatedById);
+    }, [vehicleRecord, users]);
 
     const handleExport = (formatType: 'excel' | 'pdf') => {
         const dayHeaders = Array.from({ length: new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate() }, (_, i) => i + 1);
@@ -66,13 +70,24 @@ const VehicleDataRow = ({ vehicle, currentMonth }: { vehicle: any, currentMonth:
     return (
         <>
             <div className="flex justify-between items-center p-2 border-b">
-                <div className="flex items-center gap-3 flex-1">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className={cn("h-2.5 w-2.5 rounded-full", vehicle.status.color)}></div>
-                    <div>
-                        <p className="font-semibold">{vehicle.vehicleNumber}</p>
-                        <p className="text-xs text-muted-foreground">{vehicle.status.label}</p>
+                    <div className="flex-1 truncate">
+                        <p className="font-semibold truncate">{vehicle.vehicleNumber}</p>
+                        <p className="text-xs text-muted-foreground truncate">{vehicle.status.label}</p>
                     </div>
                 </div>
+
+                <div className="flex-1 flex justify-center items-center text-xs text-muted-foreground gap-6">
+                    <div>
+                        <span className="font-semibold">Entered By:</span> {lastUpdatedBy?.name || 'N/A'}
+                    </div>
+                    <div>
+                        <span className="font-semibold">Verified By:</span> {vehicleRecord?.verifiedBy?.name || 'N/A'}
+                        {vehicleRecord?.verifiedBy?.date && ` on ${format(parseISO(vehicleRecord.verifiedBy.date), 'dd-MM-yy')}`}
+                    </div>
+                </div>
+
                 <div className="flex items-center gap-2 pr-2">
                     <Button variant="outline" size="sm" onClick={() => handleExport('excel')}><Download className="mr-2 h-4 w-4"/>Excel</Button>
                     <Button variant="outline" size="sm" onClick={() => handleExport('pdf')}><Download className="mr-2 h-4 w-4"/>PDF</Button>
