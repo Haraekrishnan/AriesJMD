@@ -207,21 +207,29 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     
     const carryForwardPlantAssignments = useCallback(async (monthKey: string) => {
         const prevMonthKey = format(startOfDay(new Date(monthKey)).setMonth(new Date(monthKey).getMonth() - 1), 'yyyy-MM');
+        const prevMonthSnapshot = await get(ref(rtdb, `jobRecords/${prevMonthKey}`));
         
-        const prevMonthSnapshot = await get(ref(rtdb, `jobRecords/${prevMonthKey}/records`));
         if (!prevMonthSnapshot.exists()) {
             return;
         }
-
-        const prevMonthRecords = prevMonthSnapshot.val();
-        const updates: { [key: string]: string } = {};
-
-        for (const profileId in prevMonthRecords) {
-            if (prevMonthRecords[profileId]?.plant) {
-                updates[`jobRecords/${monthKey}/records/${profileId}/plant`] = prevMonthRecords[profileId].plant;
+    
+        const prevMonthData = prevMonthSnapshot.val();
+        const updates: { [key: string]: any } = {};
+    
+        // Carry forward plant assignments for each profile
+        if (prevMonthData.records) {
+            for (const profileId in prevMonthData.records) {
+                if (prevMonthData.records[profileId]?.plant) {
+                    updates[`jobRecords/${monthKey}/records/${profileId}/plant`] = prevMonthData.records[profileId].plant;
+                }
             }
         }
-
+    
+        // Carry forward the order of employees within each plant
+        if (prevMonthData.plantsOrder) {
+            updates[`jobRecords/${monthKey}/plantsOrder`] = prevMonthData.plantsOrder;
+        }
+    
         if (Object.keys(updates).length > 0) {
             await update(ref(rtdb), updates);
         }
