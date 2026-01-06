@@ -25,7 +25,6 @@ async function fetchImageAsBase64(url: string): Promise<string> {
     }
 }
 
-
 export async function exportToExcel(
   vehicle: Vehicle | undefined,
   driver: Driver | undefined,
@@ -38,26 +37,30 @@ export async function exportToExcel(
   const sheet = workbook.addWorksheet('Vehicle Log');
   sheet.pageSetup.orientation = 'landscape';
 
-  /* ---------------- LOGO ---------------- */
   try {
     const logoBuffer = await (await fetch('/images/Aries_logo.png')).arrayBuffer();
     const logoId = workbook.addImage({ buffer: logoBuffer, extension: 'png' });
     sheet.addImage(logoId, {
-      tl: { col: 0, row: 0 },
-      ext: { width: 160, height: 50 },
+      tl: { col: 0.2, row: 0.3 },
+      ext: { width: 160, height: 40 },
     });
   } catch {}
   
   sheet.getRow(1).height = 35;
   sheet.getRow(2).height = 25;
-  
-  /* ---------------- HEADER LEFT ---------------- */
+
   sheet.mergeCells('A3:C3');
   sheet.getCell('A3').value = vehicle?.vehicleNumber || '';
-  sheet.getCell('A3').font = { size: 14, bold: true };
+  sheet.getCell('A3').font = { size: 14, bold: true, name: 'Calibri' };
 
-  /* ---------------- HEADER RIGHT (CENTERED) BLOCK ---------------- */
-   const rightHeader = [
+  let totalKm = 0;
+  dayHeaders.forEach(day => {
+    const s = Number(cellStates[`${day}-startKm`] || 0);
+    const e = Number(cellStates[`${day}-endKm`] || 0);
+    totalKm += e > s ? e - s : 0;
+  });
+
+  const rightHeader = [
     ['JOB NO:', (headerStates.jobNo || '').toUpperCase()],
     ['VEHICLE TYPE:', (headerStates.vehicleType || '').toUpperCase()],
     ['EXTRA KM:', headerStates.extraKm || 0],
@@ -65,6 +68,13 @@ export async function exportToExcel(
     ['EXTRA NIGHT:', headerStates.extraNight || 0],
     ['EXTRA DAYS:', headerStates.extraDays || 0],
   ];
+
+  const greyBorder = {
+    top: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+    left: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+    bottom: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+    right: { style: 'thin', color: { argb: 'FFD3D3D3' } }
+  };
 
   rightHeader.forEach((r, i) => {
     const row = sheet.getRow(i + 1);
@@ -74,21 +84,18 @@ export async function exportToExcel(
     cellLabel.value = r[0];
     cellValue.value = r[1];
     cellLabel.font = { name: 'Calibri', size: 11, bold: true };
-    cellValue.font = { name: 'Calibri', size: 11, bold: true };
-    cellLabel.alignment = { horizontal: 'left' };
-    cellValue.alignment = { horizontal: 'left' };
+    cellValue.font = { name: 'Calibri', size: 11 };
+    cellLabel.alignment = { horizontal: 'left', vertical: 'middle' };
+    cellValue.alignment = { horizontal: 'left', vertical: 'middle' };
     
     [cellLabel, cellValue].forEach(cell => {
-      cell.border = {
-        top: { style: 'thin' }, left: { style: 'thin' },
-        bottom: { style: 'thin' }, right: { style: 'thin' }
-      };
+      cell.border = greyBorder;
     });
   });
 
   sheet.addRow([]);
+  sheet.addRow([]);
 
-  /* ---------------- TABLE HEADER ---------------- */
   const headerRow = sheet.getRow(8);
   headerRow.values = ['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OVER TIME', 'REMARKS'];
   headerRow.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
@@ -98,14 +105,11 @@ export async function exportToExcel(
     c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
   });
 
-  /* ---------------- TABLE BODY ---------------- */
-  let totalKm = 0;
   dayHeaders.forEach(day => {
     const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
     const startKm = Number(cellStates[`${day}-startKm`] || 0);
     const endKm = Number(cellStates[`${day}-endKm`] || 0);
     const total = endKm > startKm ? endKm - startKm : 0;
-    totalKm += total;
     const remark = cellStates[`${day}-remarks`] || '';
 
     const row = sheet.addRow([
@@ -125,17 +129,12 @@ export async function exportToExcel(
 
     if (date.getDay() === 0) {
       row.eachCell(c => {
-        c.fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FFFFFF00' }, // Yellow
-        };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
       });
     }
   });
   
-  /* ---------------- FOOTER ---------------- */
-  const totalRow = sheet.addRow(['', '', 'TOTAL KILOMETER:', totalKm]);
+  const totalRow = sheet.addRow(['', '', 'TOTAL KILOMETER:', totalKm, '', '']);
   sheet.mergeCells(`A${totalRow.number}:C${totalRow.number}`);
   totalRow.getCell('A').alignment = { horizontal: 'right' };
   totalRow.getCell('D').alignment = { horizontal: 'center' };
@@ -169,43 +168,33 @@ export async function exportToPdf(
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 30;
 
-  (doc as any).autoTable({
-    body: [],
-    didDrawPage: (data: any) => {
-      /* LOGO */
-      if (logo) doc.addImage(logo, 'PNG', margin, 30, 120, 35);
-      
-      /* HEADER LEFT */
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(14);
-      doc.setTextColor(0, 0, 0);
-      doc.text(vehicle?.vehicleNumber || '', margin, 85);
-      doc.setLineWidth(0.5);
-      doc.line(margin, 90, margin + 120, 90);
-    },
-    margin: { top: 120 } // Start main table below header
-  });
+  let finalY = 0;
 
-  const rightHeaderData = [
-    [{ content: 'JOB NO:', styles: { fontStyle: 'bold' }}, { content: (headerStates.jobNo || '').toUpperCase() }],
-    [{ content: 'VEHICLE TYPE:', styles: { fontStyle: 'bold' }}, { content: (headerStates.vehicleType || '').toUpperCase() }],
-    [{ content: 'EXTRA KM:', styles: { fontStyle: 'bold' }}, { content: headerStates.extraKm || 0 }],
-    [{ content: 'OVER TIME:', styles: { fontStyle: 'bold' }}, { content: headerStates.headerOvertime || '' }],
-    [{ content: 'EXTRA NIGHT:', styles: { fontStyle: 'bold' }}, { content: headerStates.extraNight || 0 }],
-    [{ content: 'EXTRA DAYS:', styles: { fontStyle: 'bold' }}, { content: headerStates.extraDays || 0 }],
+  const headerData = [
+    ['JOB NO:', (headerStates.jobNo || '').toUpperCase()],
+    ['VEHICLE TYPE:', (headerStates.vehicleType || '').toUpperCase()],
+    ['EXTRA KM:', headerStates.extraKm || '0'],
+    ['OVER TIME:', headerStates.headerOvertime || ''],
+    ['EXTRA NIGHT:', headerStates.extraNight || '0'],
+    ['EXTRA DAYS:', headerStates.extraDays || '0'],
   ];
 
   (doc as any).autoTable({
-      body: rightHeaderData,
-      startY: 30,
-      theme: 'grid',
-      styles: { fontSize: 8, font: 'helvetica', cellPadding: 3, lineColor: [0,0,0], lineWidth: 0.5 },
-      tableWidth: 200,
-      margin: { left: pageWidth - margin - 200 },
+    body: headerData,
+    startY: 30,
+    theme: 'grid',
+    styles: { fontSize: 8, font: 'helvetica', cellPadding: 3, lineColor: [200, 200, 200], lineWidth: 0.5 },
+    columnStyles: { 0: { fontStyle: 'bold' } },
+    tableWidth: 200,
+    margin: { left: pageWidth - margin - 200 },
+    didDrawPage: (data: any) => {
+      if (logo) doc.addImage(logo, 'PNG', margin, 30, 120, 35);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text(vehicle?.vehicleNumber || '', margin, 85);
+    },
   });
 
-
-  /* TABLE DATA */
   const body = dayHeaders.map(day => {
     const d = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
     const s = Number(cellStates[`${day}-startKm`] || 0);
@@ -227,37 +216,36 @@ export async function exportToPdf(
   
   body.push([{ content: 'TOTAL KILOMETER:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' }}, { content: totalKm, styles: { fontStyle: 'bold' } }, '', '']);
 
-
   (doc as any).autoTable({
     head: [['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OT', 'REMARKS']],
     body,
-    startY: (doc as any).lastAutoTable.finalY + 10,
+    startY: 120,
     styles: { fontSize: 8, halign: 'center', font: 'helvetica' },
     headStyles: { fillColor: [2, 179, 150], textColor: 255, fontStyle: 'bold' },
     theme: 'grid',
-    willDrawCell: (data: any) => {
-        if (data.row.raw[6] === 'HIGHLIGHT' && data.section === 'body') {
-            doc.setFillColor(255, 255, 153); // Yellow
-            doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
-        }
+    didDrawCell: (data: any) => {
+      if (data.row.raw[6] === 'HIGHLIGHT' && data.section === 'body') {
+        doc.setFillColor(255, 255, 153);
+        doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+      }
     },
     columnStyles: {
-      5: { halign: 'left' },
+      0: { cellWidth: 80 },
+      1: { cellWidth: 70 },
+      2: { cellWidth: 70 },
+      3: { cellWidth: 70 },
+      4: { cellWidth: 50 },
+      5: { cellWidth: 'auto', halign: 'left' },
     },
   });
 
-  let y = (doc as any).lastAutoTable.finalY + 30;
-  if(y > doc.internal.pageSize.getHeight() - 80) {
-      doc.addPage();
-      y = 40;
-  }
+  finalY = (doc as any).lastAutoTable.finalY + 30;
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text('Verified By:', 30, y);
+  doc.text('Verified By:', 30, finalY);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Name: ${headerStates.verifiedByName || ''}`, 30, y + 15);
-  doc.text(`Designation: ${headerStates.verifiedByDesignation || ''}`, 30, y + 30);
+  doc.text(`Name: ${headerStates.verifiedByName || ''}`, 30, finalY + 15);
+  doc.text(`Designation: ${headerStates.verifiedByDesignation || ''}`, 30, finalY + 30);
 
   doc.save(`Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`);
 }
