@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import ExcelJS from 'exceljs';
@@ -6,7 +7,7 @@ import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { format } from 'date-fns';
-import type { Vehicle, Driver } from '@/lib/types';
+import type { Vehicle, Driver, User } from '@/lib/types';
 
 async function fetchImageAsBase64(url: string): Promise<string> {
     try {
@@ -25,30 +26,52 @@ async function fetchImageAsBase64(url: string): Promise<string> {
     }
 }
 
+async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
+        return await response.arrayBuffer();
+    } catch (error) {
+        console.error('Error fetching image for Excel:', error);
+        return null;
+    }
+}
+
+const SIGNATURES: { [key: string]: string } = {
+  'Harirkrishnan P S': '/images/hari_sign.jpg',
+  'Manu M G': '/images/Manu_Sign.jpg',
+};
+
 export async function exportToExcel(
   vehicle: Vehicle | undefined,
   driver: Driver | undefined,
   currentMonth: Date,
   cellStates: any,
   dayHeaders: number[],
-  headerStates: any
+  headerStates: any,
+  verifiedByName: string
 ) {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Vehicle Log');
 
   /* ---------------- LOGO ---------------- */
   try {
-    const logoBuffer = await (await fetch('/images/Aries_logo.png')).arrayBuffer();
-    const logoId = workbook.addImage({ buffer: logoBuffer, extension: 'png' });
-    sheet.addImage(logoId, {
-      tl: { col: 0, row: 0 },
-      ext: { width: 160, height: 50 },
-    });
-  } catch {}
+    const logoBuffer = await fetchImageAsBuffer('/images/Aries_logo.png');
+    if (logoBuffer) {
+      const logoId = workbook.addImage({ buffer: logoBuffer, extension: 'png' });
+      sheet.addImage(logoId, {
+        tl: { col: 0, row: 0 },
+        ext: { width: 160, height: 50 },
+      });
+    }
+  } catch (e) { console.error(e)}
 
-  /* ---------------- HEADER LEFT ---------------- */
-  sheet.getCell('A3').value = vehicle?.vehicleNumber || '';
-  sheet.getCell('A3').font = { size: 14, bold: true, name: 'Calibri' };
+  /* ---------------- VEHICLE NO ---------------- */
+  sheet.mergeCells('A3:D3');
+  const vehicleCell = sheet.getCell('A3');
+  vehicleCell.value = vehicle?.vehicleNumber || '';
+  vehicleCell.font = { size: 14, bold: true, name: 'Calibri' };
+  vehicleCell.alignment = { horizontal: 'left', vertical: 'middle' };
 
   /* ---------------- HEADER RIGHT BLOCK ---------------- */
   const rightHeader = [
@@ -66,10 +89,10 @@ export async function exportToExcel(
     bottom: { style: 'thin', color: { argb: 'FFD3D3D3' } },
     right: { style: 'thin', color: { argb: 'FFD3D3D3' } }
   };
-
+  
   const startRow = 1;
   const startCol = 5;
-
+  
   rightHeader.forEach((r, i) => {
     const row = sheet.getRow(startRow + i);
     const cellLabel = row.getCell(startCol);
@@ -80,15 +103,14 @@ export async function exportToExcel(
     cellLabel.font = { name: 'Calibri', size: 11, bold: true };
     cellValue.font = { name: 'Calibri', size: 11 };
     
-    cellLabel.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
-    cellValue.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
-    
     [cellLabel, cellValue].forEach(cell => {
       cell.border = greyBorder;
+      cell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
     });
   });
-  
-  // Add a blank row for spacing
+
+  // Add blank rows for spacing
+  sheet.addRow([]);
   sheet.addRow([]);
 
   /* ---------------- TABLE HEADER ---------------- */
@@ -142,14 +164,25 @@ export async function exportToExcel(
   totalRow.eachCell(c => c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } });
   
   /* ---------------- MAIN FOOTER ---------------- */
-  sheet.addRow([]);
-  const verifiedByRow = sheet.addRow(['Verified By:']);
-  verifiedByRow.font = { name: 'Calibri', size: 9, bold: true };
-  const nameRow = sheet.addRow([`Name: ${headerStates.verifiedByName || ''}`]);
-  nameRow.font = { name: 'Calibri', size: 9 };
-  const designationRow = sheet.addRow([`Designation: ${headerStates.verifiedByDesignation || ''}`]);
-  designationRow.font = { name: 'Calibri', size: 9 };
+  let footerRowIndex = sheet.lastRow!.number + 2;
+  const verifiedByText = `Verified By: ${verifiedByName}`;
+  sheet.getCell(`A${footerRowIndex}`).value = verifiedByText;
+  sheet.getCell(`A${footerRowIndex}`).font = { name: 'Calibri', size: 9, bold: true };
   
+  const signaturePath = SIGNATURES[verifiedByName];
+  if (signaturePath) {
+    try {
+      const signatureBuffer = await fetchImageAsBuffer(signaturePath);
+      if (signatureBuffer) {
+        const signatureId = workbook.addImage({ buffer: signatureBuffer, extension: 'jpg' });
+        sheet.addImage(signatureId, {
+          tl: { col: 0, row: footerRowIndex - 1 },
+          ext: { width: 80, height: 30 }
+        });
+      }
+    } catch(e) { console.error(e) }
+  }
+
   sheet.columns = [
     { width: 18 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 30 }
   ];
@@ -167,7 +200,9 @@ export async function exportToPdf(
   currentMonth: Date,
   cellStates: any,
   dayHeaders: number[],
-  headerStates: any
+  headerStates: any,
+  verifiedByName: string,
+  verifiedById: string
 ) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const logo = await fetchImageAsBase64('/images/Aries_logo.png');
@@ -246,12 +281,21 @@ export async function exportToPdf(
 
   let y = (doc as any).lastAutoTable.finalY + 30;
 
+  const signaturePath = SIGNATURES[verifiedByName];
+  if (signaturePath) {
+    try {
+        const signatureBase64 = await fetchImageAsBase64(signaturePath);
+        if (signatureBase64) {
+            doc.addImage(signatureBase64, 'JPEG', margin, y - 20, 60, 22.5);
+        }
+    } catch(e) { console.error(e) }
+  }
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  doc.text('Verified By:', 30, y);
+  doc.text('Verified By:', margin, y);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Name: ${headerStates.verifiedByName || ''}`, 30, y + 12);
-  doc.text(`Designation: ${headerStates.verifiedByDesignation || ''}`, 30, y + 24);
-
+  doc.text(verifiedByName, margin, y + 12);
+  
   doc.save(`Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`);
 }

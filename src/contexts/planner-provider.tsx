@@ -1,9 +1,8 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { PlannerEvent, DailyPlannerComment, Comment, JobSchedule, JobScheduleItem, JobRecord, JobRecordPlant, VehicleUsageRecord } from '@/lib/types';
+import { PlannerEvent, DailyPlannerComment, Comment, JobSchedule, JobScheduleItem, JobRecord, JobRecordPlant, VehicleUsageRecord, User } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, update, get, remove } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -31,7 +30,7 @@ type PlannerContextType = {
   addJobRecordPlant: (name: string) => void;
   deleteJobRecordPlant: (id: string) => void;
   carryForwardPlantAssignments: (monthKey: string) => void;
-  saveVehicleUsageRecord: (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => void;
+  saveVehicleUsageRecord: (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>, verifiedBy?: { id: string; name: string }) => void;
   lockVehicleUsageSheet: (monthKey: string) => void;
   unlockVehicleUsageSheet: (monthKey: string) => void;
 };
@@ -216,7 +215,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const prevMonthData = prevMonthSnapshot.val();
         const updates: { [key: string]: any } = {};
     
-        // Carry forward plant assignments
         if (prevMonthData.records) {
             for (const profileId in prevMonthData.records) {
                 const plant = prevMonthData.records[profileId]?.plant;
@@ -227,7 +225,9 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         }
     
         if (prevMonthData.plantsOrder) {
-            updates[`jobRecords/${monthKey}/plantsOrder`] = prevMonthData.plantsOrder;
+            for (const plantName in prevMonthData.plantsOrder) {
+                updates[`jobRecords/${monthKey}/plantsOrder/${plantName}`] = prevMonthData.plantsOrder[plantName];
+            }
         }
     
         if (Object.keys(updates).length > 0) {
@@ -235,17 +235,13 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         }
     }, []);
     
-    const saveVehicleUsageRecord = useCallback((monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => {
+    const saveVehicleUsageRecord = useCallback((monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>, verifiedBy?: { id: string; name: string }) => {
         if (!user) return;
         const path = `vehicleUsageRecords/${monthKey}/records/${vehicleId}`;
-        const updates = { ...data };
+        const updates: Partial<VehicleUsageRecord['records'][string]> = { ...data };
         
-        if (data.verifiedBy?.name && data.verifiedBy?.designation) {
-            updates.verifiedBy = {
-                id: user.id,
-                name: data.verifiedBy.name,
-                designation: data.verifiedBy.designation,
-            };
+        if (verifiedBy) {
+            updates.verifiedById = verifiedBy.id;
         }
         
         update(ref(rtdb, path), updates);

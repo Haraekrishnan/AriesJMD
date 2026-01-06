@@ -107,14 +107,9 @@ export default function VehicleUsageSheet() {
             headerOvertime: headerStates.headerOvertime,
             extraNight: Number(headerStates.extraNight),
             extraDays: Number(headerStates.extraDays),
-            verifiedBy: {
-                id: user.id,
-                name: user.name,
-                designation: user.role,
-            }
         };
 
-        saveVehicleUsageRecord(monthKey, selectedVehicleId, dataToSave);
+        saveVehicleUsageRecord(monthKey, selectedVehicleId, dataToSave, { id: user.id, name: user.name });
         toast({ title: "Record Saved", description: "Vehicle usage data has been saved."});
     };
 
@@ -126,12 +121,14 @@ export default function VehicleUsageSheet() {
     const handleExport = (formatType: 'excel' | 'pdf') => {
         const vehicle = vehicles.find(v => v.id === selectedVehicleId);
         const driver = drivers.find(d => d.id === vehicle?.driverId);
-        const verifier = user ? { name: user.name, designation: user.role } : { name: '', designation: ''};
+        const verifier = vehicleRecord?.verifiedById ? users.find(u => u.id === vehicleRecord.verifiedById) : user;
+        
+        if (!verifier) return;
 
         if (formatType === 'excel') {
-            exportToExcel(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates, verifier);
+            exportToExcel(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates, verifier.name);
         } else {
-            exportToPdf(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates, verifier);
+            exportToPdf(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates, verifier.name, verifier.id);
         }
     };
     
@@ -198,14 +195,14 @@ export default function VehicleUsageSheet() {
                     </div>
                      <div className="space-y-2 col-span-2">
                         <Label>Verified By</Label>
-                        <p className="text-sm p-2 border rounded-md bg-muted">{user?.name} ({user?.role})</p>
+                        <p className="text-sm p-2 border rounded-md bg-muted">{user?.name}</p>
                     </div>
                 </div>
             )}
             <div className="overflow-auto flex-1 relative">
                 {selectedVehicleId ? (
                 <Table className="min-w-full border-collapse">
-                    <TableHeader>
+                    <thead className="sticky top-0 z-10 bg-card">
                         <TableRow>
                             <TableHead className="sticky left-0 bg-card z-10">Day</TableHead>
                             <TableHead>Start KM</TableHead>
@@ -214,7 +211,7 @@ export default function VehicleUsageSheet() {
                             <TableHead>Overtime (Hrs)</TableHead>
                             <TableHead>Remarks</TableHead>
                         </TableRow>
-                    </TableHeader>
+                    </thead>
                     <TableBody>
                         {dayHeaders.map(day => {
                             const dateForDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);

@@ -1,8 +1,4 @@
 
-
-
-
-
 export type Broadcast = {
   id: string;
   message: string;
@@ -1055,11 +1051,7 @@ export type VehicleUsageRecord = {
           remarks?: string;
         }
       };
-      verifiedBy?: {
-        id: string;
-        name: string;
-        designation: string;
-      }
+      verifiedById?: string;
       jobNo?: string;
       vehicleType?: string;
       extraKm?: number;
