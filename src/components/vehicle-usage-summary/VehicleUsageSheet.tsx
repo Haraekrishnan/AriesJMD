@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -37,6 +38,10 @@ export default function VehicleUsageSheet() {
       vehicleType: '',
       verifiedByName: '',
       verifiedByDesignation: '',
+      extraKm: 0,
+      headerOvertime: '',
+      extraNight: 0,
+      extraDays: 0,
     });
     
     useEffect(() => {
@@ -54,10 +59,14 @@ export default function VehicleUsageSheet() {
                 vehicleType: vehicleRecord.vehicleType || '',
                 verifiedByName: vehicleRecord.verifiedBy?.name || '',
                 verifiedByDesignation: vehicleRecord.verifiedBy?.designation || '',
+                extraKm: vehicleRecord.extraKm || 0,
+                headerOvertime: vehicleRecord.headerOvertime || '',
+                extraNight: vehicleRecord.extraNight || 0,
+                extraDays: vehicleRecord.extraDays || 0,
             });
         } else {
             setCellStates({});
-            setHeaderStates({ jobNo: '', vehicleType: '', verifiedByName: '', verifiedByDesignation: '' });
+            setHeaderStates({ jobNo: '', vehicleType: '', verifiedByName: '', verifiedByDesignation: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0 });
         }
     }, [vehicleRecord, selectedVehicleId, currentMonth]);
 
@@ -74,7 +83,7 @@ export default function VehicleUsageSheet() {
         });
     };
 
-    const handleHeaderChange = (field: keyof typeof headerStates, value: string) => {
+    const handleHeaderChange = (field: keyof typeof headerStates, value: string | number) => {
         setHeaderStates(prev => ({
             ...prev,
             [field]: value,
@@ -98,7 +107,11 @@ export default function VehicleUsageSheet() {
             verifiedBy: {
                 name: headerStates.verifiedByName,
                 designation: headerStates.verifiedByDesignation,
-            }
+            },
+            extraKm: Number(headerStates.extraKm),
+            headerOvertime: headerStates.headerOvertime,
+            extraNight: Number(headerStates.extraNight),
+            extraDays: Number(headerStates.extraDays),
         });
         toast({ title: "Record Saved", description: "Vehicle usage data has been saved."});
     };
@@ -153,6 +166,42 @@ export default function VehicleUsageSheet() {
                     </div>
                 </div>
             </div>
+             {selectedVehicleId && (
+                <div className="p-4 border-b grid grid-cols-2 md:grid-cols-4 gap-4">
+                     <div className="space-y-2">
+                        <Label>Job No.</Label>
+                        <Input value={headerStates.jobNo} onChange={e => handleHeaderChange('jobNo', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Vehicle Type</Label>
+                        <Input value={headerStates.vehicleType} onChange={e => handleHeaderChange('vehicleType', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Extra KM</Label>
+                        <Input type="number" value={headerStates.extraKm} onChange={e => handleHeaderChange('extraKm', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Over Time (Header)</Label>
+                        <Input value={headerStates.headerOvertime} onChange={e => handleHeaderChange('headerOvertime', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
+                    </div>
+                     <div className="space-y-2">
+                        <Label>Extra Night</Label>
+                        <Input type="number" value={headerStates.extraNight} onChange={e => handleHeaderChange('extraNight', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Extra Days</Label>
+                        <Input type="number" value={headerStates.extraDays} onChange={e => handleHeaderChange('extraDays', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Verified By - Name</Label>
+                        <Input value={headerStates.verifiedByName} onChange={e => handleHeaderChange('verifiedByName', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Verified By - Designation</Label>
+                        <Input value={headerStates.verifiedByDesignation} onChange={e => handleHeaderChange('verifiedByDesignation', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
+                    </div>
+                </div>
+            )}
             <div className="overflow-auto flex-1 relative">
                 {selectedVehicleId ? (
                 <Table className="min-w-full border-collapse">
@@ -191,26 +240,7 @@ export default function VehicleUsageSheet() {
                     </div>
                 )}
             </div>
-            {selectedVehicleId && (
-                <div className="p-4 border-t grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                        <Label>Job No.</Label>
-                        <Input value={headerStates.jobNo} onChange={e => handleHeaderChange('jobNo', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Vehicle Type</Label>
-                        <Input value={headerStates.vehicleType} onChange={e => handleHeaderChange('vehicleType', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Verified By - Name</Label>
-                        <Input value={headerStates.verifiedByName} onChange={e => handleHeaderChange('verifiedByName', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Verified By - Designation</Label>
-                        <Input value={headerStates.verifiedByDesignation} onChange={e => handleHeaderChange('verifiedByDesignation', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
-                    </div>
-                </div>
-            )}
+           
         </div>
     );
 }

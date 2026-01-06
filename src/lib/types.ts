@@ -1,6 +1,7 @@
 
 
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -1059,8 +1060,9 @@ export type VehicleUsageRecord = {
       jobNo?: string;
       vehicleType?: string;
       extraKm?: number;
+      headerOvertime?: string;
       extraNight?: number;
-      extraDay?: number;
+      extraDays?: number;
     };
   };
 };
