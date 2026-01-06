@@ -224,11 +224,10 @@ export async function exportToPdf(
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 25;
-  
   let currentY = 25;
 
+  // Header Section
   if (logoBase64) doc.addImage(logoBase64, 'PNG', margin, currentY, 130, 32);
-  
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
   doc.text(vehicle?.vehicleNumber || '', margin, currentY + 50);
@@ -246,14 +245,15 @@ export async function exportToPdf(
     body: rightHeaderData,
     startY: currentY,
     theme: 'grid',
-    styles: { fontSize: 9, font: 'helvetica', cellPadding: 4, lineColor: [180, 180, 180], lineWidth: 0.5 },
+    styles: { fontSize: 8, font: 'helvetica', cellPadding: 2, lineColor: [180, 180, 180], lineWidth: 0.5, valign: 'middle' },
     columnStyles: { 0: { fontStyle: 'bold', cellWidth: 70 }, 1: { cellWidth: 80 } },
     tableWidth: 150,
     margin: { left: pageWidth - margin - 150 },
   });
-  
-  currentY = (doc as any).lastAutoTable.finalY + 15;
-  
+
+  currentY = 100; // Fixed start Y for the main table
+
+  // Main Table
   let totalKm = 0;
   const body = dayHeaders.map(day => {
     const d = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
@@ -301,33 +301,28 @@ export async function exportToPdf(
       2: { cellWidth: 48 },
       3: { cellWidth: 48 },
       4: { cellWidth: 40 },
-      5: {
-        cellWidth: 120,
-        halign: 'left',
-      },
+      5: { cellWidth: 162, halign: 'left' },
     },
     margin: { left: margin, right: margin },
-    pageBreak: 'avoid',
-    rowPageBreak: 'avoid',
   });
 
+  // Footer Section
   const footerY = doc.internal.pageSize.getHeight() - 70;
   
-  const footerLabels = [
-      { content: 'Verified By:', styles: { fontStyle: 'bold' } },
-      { content: 'Verified By Date:', styles: { fontStyle: 'bold' } },
-      { content: 'Signature:', styles: { fontStyle: 'bold' } },
-  ];
-
-  const footerValues = [
-    headerStates.verifiedByName || '',
-    headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '',
-    '',
-  ];
-
   (doc as any).autoTable({
     startY: footerY,
-    body: [footerLabels, footerValues],
+    body: [
+      [
+        { content: 'Verified By:', styles: { fontStyle: 'bold' } },
+        { content: 'Verified By Date:', styles: { fontStyle: 'bold' } },
+        { content: 'Signature:', styles: { fontStyle: 'bold' } },
+      ],
+      [
+        headerStates.verifiedByName || '',
+        headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '',
+        '',
+      ],
+    ],
     theme: 'grid',
     styles: { fontSize: 8, font: 'helvetica', cellPadding: 3, minCellHeight: 20, valign: 'top' },
     columnStyles: {
@@ -336,11 +331,6 @@ export async function exportToPdf(
       2: { cellWidth: (pageWidth - margin * 2) / 3 },
     },
     margin: { left: margin, right: margin },
-    didDrawCell: (data: any) => {
-        if (data.row.index === 0) { // Bold labels row
-            data.cell.styles.fontStyle = 'bold';
-        }
-    }
   });
 
   const signaturePath = SIGNATURES[headerStates.verifiedByName];
@@ -352,7 +342,7 @@ export async function exportToPdf(
           signatureBase64,
           'JPEG',
           margin + ((pageWidth - margin * 2) * 2) / 3 + 15,
-          footerY + 22,
+          footerY + 22, // Position inside the second row
           70,
           28
         );
@@ -365,3 +355,5 @@ export async function exportToPdf(
     `Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`
   );
 }
+
+    
