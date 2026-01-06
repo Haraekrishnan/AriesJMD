@@ -214,11 +214,16 @@ export async function exportToPdf(
   dayHeaders: number[],
   headerStates: any,
 ) {
-  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'pt',
+    format: 'a4',
+    compress: true,
+  });
   const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
 
   const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 30;
+  const margin = 25;
   
   let currentY = 25;
 
@@ -274,52 +279,65 @@ export async function exportToPdf(
     head: [['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OT', 'REMARKS']],
     body,
     startY: currentY,
-    styles: { fontSize: 9, halign: 'center', font: 'helvetica', cellPadding: 3, minCellHeight: 18 },
-    headStyles: { fillColor: [2, 179, 150], textColor: 255, fontStyle: 'bold' },
     theme: 'grid',
-    columnStyles: {
-      0: { cellWidth: 70 },
-      1: { cellWidth: 50 },
-      2: { cellWidth: 50 },
-      3: { cellWidth: 50 },
-      4: { cellWidth: 50 },
-      5: { cellWidth: 'auto', halign: 'left' },
+    styles: {
+      font: 'helvetica',
+      fontSize: 8,
+      cellPadding: 2,
+      halign: 'center',
+      valign: 'middle',
+      minCellHeight: 14,
+      overflow: 'linebreak',
     },
+    headStyles: {
+      fillColor: [2, 179, 150],
+      textColor: 255,
+      fontStyle: 'bold',
+      minCellHeight: 16,
+    },
+    columnStyles: {
+      0: { cellWidth: 72 },
+      1: { cellWidth: 48 },
+      2: { cellWidth: 48 },
+      3: { cellWidth: 48 },
+      4: { cellWidth: 40 },
+      5: {
+        cellWidth: 120,
+        halign: 'left',
+      },
+    },
+    margin: { left: margin, right: margin },
+    pageBreak: 'avoid',
+    rowPageBreak: 'avoid',
   });
 
-  let finalY = (doc as any).lastAutoTable.finalY + 20;
-
-  // Ensure footer does not push to a new page
-  if (finalY > doc.internal.pageSize.getHeight() - 60) {
-      finalY = doc.internal.pageSize.getHeight() - 60;
-  }
+  const footerY = doc.internal.pageSize.getHeight() - 70;
   
-  const footerLabels = [
-    { content: 'Verified By:', styles: { fontStyle: 'bold' } },
-    { content: 'Verified By Date:', styles: { fontStyle: 'bold' } },
-    { content: 'Signature:', styles: { fontStyle: 'bold' } },
-  ];
-  
-  const footerValues = [
-    headerStates.verifiedByName || '',
-    headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '',
-    ''
-  ];
-
   (doc as any).autoTable({
-    startY: finalY,
-    body: [footerLabels, footerValues],
+    startY: footerY,
+    body: [
+      ['Verified By:', 'Verified By Date:', 'Signature:'],
+      [
+        headerStates.verifiedByName || '',
+        headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '',
+        '',
+      ],
+    ],
     theme: 'grid',
-    styles: { fontSize: 9, font: 'helvetica', cellPadding: 3, valign: 'top' },
-    bodyStyles: { minCellHeight: 10, cellPadding: { top: 3, bottom: 20 } },
-    columnStyles: {
-        0: { cellWidth: (pageWidth - margin * 2) / 3 },
-        1: { cellWidth: (pageWidth - margin * 2) / 3 },
-        2: { cellWidth: (pageWidth - margin * 2) / 3 },
+    styles: {
+      fontSize: 9,
+      cellPadding: 4,
+      valign: 'top',
     },
+    columnStyles: {
+      0: { cellWidth: (pageWidth - margin * 2) / 3 },
+      1: { cellWidth: (pageWidth - margin * 2) / 3 },
+      2: { cellWidth: (pageWidth - margin * 2) / 3 },
+    },
+    margin: { left: margin, right: margin },
     didParseCell: (data: any) => {
-        if (data.row.section === 'body' && data.row.index === 0) {
-            data.cell.styles.minCellHeight = 10;
+        if (data.row.index === 0) { // Bold labels row
+            data.cell.styles.fontStyle = 'bold';
         }
     }
   });
@@ -329,9 +347,14 @@ export async function exportToPdf(
     try {
       const signatureBase64 = await fetchImageAsBase64(signaturePath);
       if (signatureBase64) {
-        const signY = (doc as any).lastAutoTable.finalY - 30; 
-        const signX = margin + ((pageWidth - margin * 2) / 3) * 2 + 10;
-        doc.addImage(signatureBase64, 'JPEG', signX, signY, 70, 28);
+        doc.addImage(
+          signatureBase64,
+          'JPEG',
+          margin + ((pageWidth - margin * 2) * 2) / 3 + 15,
+          footerY + 22,
+          70,
+          28
+        );
       }
     } catch(e) { console.error(e) }
   }
