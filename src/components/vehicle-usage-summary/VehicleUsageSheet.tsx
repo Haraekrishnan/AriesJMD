@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -7,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Download, Save, Lock, Unlock, Palette, Checkbox as CheckboxIcon, Edit } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Save, Lock, Unlock, Edit } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isSameMonth, getDay, isAfter, isBefore, startOfToday, parseISO, isValid, parse, sub } from 'date-fns';
 import { saveAs } from "file-saver";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -142,7 +141,7 @@ const VehicleDataRow = ({ vehicle, currentMonth }: { vehicle: any, currentMonth:
         else exportToPdf(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates);
     };
 
-    const isLocked = record?.isLocked;
+    const isLocked = vehicleRecord?.isLocked;
     const canEdit = can.manage_vehicle_usage && !isLocked;
     const canLockSheet = can.manage_vehicle_usage;
     
@@ -162,62 +161,68 @@ const VehicleDataRow = ({ vehicle, currentMonth }: { vehicle: any, currentMonth:
                     <Button variant="outline" size="sm" onClick={() => handleExport('excel')}><Download className="mr-2 h-4 w-4"/>Excel</Button>
                     <Button variant="outline" size="sm" onClick={() => handleExport('pdf')}><Download className="mr-2 h-4 w-4"/>PDF</Button>
                     {canEdit && <Button size="sm" onClick={handleSave}><Save className="mr-2 h-4 w-4"/>Save</Button>}
-                    {canEdit && (isEditing ? <Button size="sm" variant="secondary" onClick={() => setIsEditing(false)}>Close</Button> : <Button size="sm" onClick={() => setIsEditing(true)}><Edit className="mr-2 h-4 w-4"/>Edit</Button>)}
+                    {canEdit && <Button size="sm" variant={isEditing ? "secondary" : "default"} onClick={() => setIsEditing(!isEditing)}><Edit className="mr-2 h-4 w-4"/>{isEditing ? "Close" : "Edit"}</Button>}
                     {canLockSheet && (
                         isLocked
-                        ? (user?.role === 'Admin' && <Button variant="secondary" size="sm" onClick={() => unlockVehicleUsageSheet(monthKey)}>Unlock</Button>)
-                        : <Button variant="destructive" size="sm" onClick={() => lockVehicleUsageSheet(monthKey)}>Lock</Button>
+                        ? (user?.role === 'Admin' && <Button variant="secondary" size="sm" onClick={() => unlockVehicleUsageSheet(monthKey, vehicle.id)}>Unlock</Button>)
+                        : <Button variant="destructive" size="sm" onClick={() => lockVehicleUsageSheet(monthKey, vehicle.id)}>Lock</Button>
                     )}
                 </div>
             </div>
            
             <AccordionContent>
                 <div className="p-4 border-t bg-muted/30">
-                    <div className="p-4 border rounded-md mb-4 bg-background grid grid-cols-2 md:grid-cols-5 gap-4">
-                         <div className="space-y-2"><Label>Job No.</Label><Input value={headerStates.jobNo} onChange={e => handleHeaderChange('jobNo', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></div>
-                        <div className="space-y-2"><Label>Vehicle Type</Label><Input value={headerStates.vehicleType} onChange={e => handleHeaderChange('vehicleType', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></div>
-                        <div className="space-y-2"><Label>Over Time (Header)</Label><Input value={headerStates.headerOvertime} readOnly className="font-bold" /></div>
-                         <div className="space-y-2"><Label>Extra Night</Label><Input type="number" value={headerStates.extraNight} onChange={e => handleHeaderChange('extraNight', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></div>
-                        <div className="space-y-2"><Label>Extra Days</Label><Input type="number" value={headerStates.extraDays} onChange={e => handleHeaderChange('extraDays', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></div>
-                         <div className="space-y-2"><Label>Total KM</Label><Input value={monthlyTotalKm} readOnly className="font-bold" /></div>
-                        <div className="space-y-2"><Label>Extra KM</Label><Input type="number" value={headerStates.extraKm} readOnly className="font-bold" /></div>
-                         <div className="space-y-2"><Label>Verified By</Label><Input value={headerStates.verifiedByName} onChange={e => handleHeaderChange('verifiedByName', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></div>
-                        <div className="space-y-2"><Label>Verified Date</Label><DatePickerInput value={headerStates.verifiedByDate} onChange={date => handleHeaderChange('verifiedByDate', date)} disabled={!canEdit} /></div>
-                    </div>
-                     <Table className="min-w-full border-separate border-spacing-0 bg-background">
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="sticky top-0 z-30 bg-card shadow-sm">Day</TableHead>
-                                <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Start KM</TableHead>
-                                <TableHead className="sticky top-0 z-20 bg-card shadow-sm">End KM</TableHead>
-                                <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Total KM</TableHead>
-                                <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Overtime (Hrs)</TableHead>
-                                <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Remarks</TableHead>
-                                <TableHead className="sticky top-0 z-20 bg-card shadow-sm w-[50px]">Holiday</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {dayHeaders.map(day => {
-                                const dateForDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-                                const isSunday = getDay(dateForDay) === 0;
-                                const startKm = Number(cellStates[`${day}-startKm`] || 0);
-                                const endKm = Number(cellStates[`${day}-endKm`] || 0);
-                                const totalKm = endKm > startKm ? endKm - startKm : 0;
-                                const isHoliday = cellStates[`${day}-isHoliday`];
-                                return (
-                                    <TableRow key={day} className={cn((isHoliday || isSunday) && 'bg-yellow-100 dark:bg-yellow-900/30')}>
-                                        <TableCell className={cn("sticky left-0 font-medium z-10 border-r", (isHoliday || isSunday) ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-card')}>{format(dateForDay, 'dd-MM-yyyy')}</TableCell>
-                                        <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-startKm`] || ''} onChange={(e) => handleInputChange(day, 'startKm', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></TableCell>
-                                        <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-endKm`] || ''} onChange={(e) => handleInputChange(day, 'endKm', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></TableCell>
-                                        <TableCell className="font-medium text-center">{totalKm}</TableCell>
-                                        <TableCell><Input className="h-8" value={cellStates[`${day}-overtime`] || ''} onChange={(e) => handleInputChange(day, 'overtime', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></TableCell>
-                                        <TableCell><Input className="h-8" value={cellStates[`${day}-remarks`] || ''} onChange={(e) => handleInputChange(day, 'remarks', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></TableCell>
-                                        <TableCell className="text-center"><Checkbox checked={isHoliday} onCheckedChange={(checked) => { handleInputChange(day, 'isHoliday', !!checked); handleSave(); }} disabled={!canEdit}/></TableCell>
-                                    </TableRow>
-                                )
-                            })}
-                        </TableBody>
-                    </Table>
+                    {isEditing ? (
+                        <>
+                        <div className="p-4 border rounded-md mb-4 bg-background grid grid-cols-2 md:grid-cols-5 gap-4">
+                            <div className="space-y-2"><Label>Job No.</Label><Input value={headerStates.jobNo} onChange={e => handleHeaderChange('jobNo', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></div>
+                            <div className="space-y-2"><Label>Vehicle Type</Label><Input value={headerStates.vehicleType} onChange={e => handleHeaderChange('vehicleType', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></div>
+                            <div className="space-y-2"><Label>Over Time (Header)</Label><Input value={headerStates.headerOvertime} readOnly className="font-bold" /></div>
+                            <div className="space-y-2"><Label>Extra Night</Label><Input type="number" value={headerStates.extraNight} onChange={e => handleHeaderChange('extraNight', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></div>
+                            <div className="space-y-2"><Label>Extra Days</Label><Input type="number" value={headerStates.extraDays} onChange={e => handleHeaderChange('extraDays', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></div>
+                            <div className="space-y-2"><Label>Total KM</Label><Input value={monthlyTotalKm} readOnly className="font-bold" /></div>
+                            <div className="space-y-2"><Label>Extra KM</Label><Input type="number" value={headerStates.extraKm} readOnly className="font-bold" /></div>
+                            <div className="space-y-2"><Label>Verified By</Label><Input value={headerStates.verifiedByName} onChange={e => handleHeaderChange('verifiedByName', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></div>
+                            <div className="space-y-2"><Label>Verified Date</Label><DatePickerInput value={headerStates.verifiedByDate} onChange={date => handleHeaderChange('verifiedByDate', date)} disabled={!canEdit} /></div>
+                        </div>
+                        <Table className="min-w-full border-separate border-spacing-0 bg-background">
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="sticky top-0 z-30 bg-card shadow-sm">Day</TableHead>
+                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Start KM</TableHead>
+                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">End KM</TableHead>
+                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Total KM</TableHead>
+                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Overtime (Hrs)</TableHead>
+                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Remarks</TableHead>
+                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm w-[50px]">Holiday</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {dayHeaders.map(day => {
+                                    const dateForDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                                    const isSunday = getDay(dateForDay) === 0;
+                                    const startKm = Number(cellStates[`${day}-startKm`] || 0);
+                                    const endKm = Number(cellStates[`${day}-endKm`] || 0);
+                                    const totalKm = endKm > startKm ? endKm - startKm : 0;
+                                    const isHoliday = cellStates[`${day}-isHoliday`];
+                                    return (
+                                        <TableRow key={day} className={cn((isHoliday || isSunday) && 'bg-yellow-100 dark:bg-yellow-900/30')}>
+                                            <TableCell className={cn("sticky left-0 font-medium z-10 border-r", (isHoliday || isSunday) ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-card')}>{format(dateForDay, 'dd-MM-yyyy')}</TableCell>
+                                            <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-startKm`] || ''} onChange={(e) => handleInputChange(day, 'startKm', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></TableCell>
+                                            <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-endKm`] || ''} onChange={(e) => handleInputChange(day, 'endKm', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></TableCell>
+                                            <TableCell className="font-medium text-center">{totalKm}</TableCell>
+                                            <TableCell><Input className="h-8" value={cellStates[`${day}-overtime`] || ''} onChange={(e) => handleInputChange(day, 'overtime', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></TableCell>
+                                            <TableCell><Input className="h-8" value={cellStates[`${day}-remarks`] || ''} onChange={(e) => handleInputChange(day, 'remarks', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></TableCell>
+                                            <TableCell className="text-center"><Checkbox checked={isHoliday} onCheckedChange={(checked) => { handleInputChange(day, 'isHoliday', !!checked); handleSave(); }} disabled={!canEdit}/></TableCell>
+                                        </TableRow>
+                                    )
+                                })}
+                            </TableBody>
+                        </Table>
+                        </>
+                    ) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">Click "Edit" to view and modify the log.</p>
+                    )}
                 </div>
             </AccordionContent>
         </AccordionItem>
@@ -231,21 +236,21 @@ export default function VehicleUsageSheet() {
     
     const getVehicleStatus = (vehicleId: string) => {
         const record = vehicleUsageRecords?.[format(currentMonth, 'yyyy-MM')];
-        if (record?.isLocked) {
+        const vehicleRecord = record?.records?.[vehicleId];
+        if (vehicleRecord?.isLocked) {
             return { label: 'Completed', color: 'bg-green-500' };
         }
-        const vRecord = record?.records?.[vehicleId];
-        if (!vRecord) {
-            return { label: 'Not Yet Started', color: 'bg-gray-400' };
-        }
-        const hasData = Object.values(vRecord.days || {}).some(dayData => 
-            dayData.startKm || dayData.endKm || dayData.overtime || dayData.remarks
-        );
-        if (hasData) {
-            return { label: 'On Going', color: 'bg-yellow-500' };
+        if (vehicleRecord) {
+            const hasData = Object.values(vehicleRecord.days || {}).some(dayData => 
+                dayData.startKm || dayData.endKm || dayData.overtime || dayData.remarks
+            );
+            if (hasData) {
+                return { label: 'On Going', color: 'bg-yellow-500' };
+            }
         }
         return { label: 'Not Yet Started', color: 'bg-gray-400' };
     };
+    
 
     const sortedVehicles = useMemo(() => {
         return [...vehicles]
@@ -278,4 +283,3 @@ export default function VehicleUsageSheet() {
         </div>
     );
 }
-
