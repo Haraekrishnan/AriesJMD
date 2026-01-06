@@ -241,7 +241,7 @@ export async function exportToPdf(
     body: rightHeaderData,
     startY: currentY,
     theme: 'grid',
-    styles: { fontSize: 8, font: 'helvetica', cellPadding: 3, lineColor: [180, 180, 180], lineWidth: 0.5 },
+    styles: { fontSize: 9, font: 'helvetica', cellPadding: 4, lineColor: [180, 180, 180], lineWidth: 0.5 },
     columnStyles: { 0: { fontStyle: 'bold', cellWidth: 70 }, 1: { cellWidth: 80 } },
     tableWidth: 150,
     margin: { left: pageWidth - margin - 150 },
@@ -274,7 +274,7 @@ export async function exportToPdf(
     head: [['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OT', 'REMARKS']],
     body,
     startY: currentY,
-    styles: { fontSize: 8, halign: 'center', font: 'helvetica', cellPadding: 3, minCellHeight: 15 },
+    styles: { fontSize: 9, halign: 'center', font: 'helvetica', cellPadding: 3, minCellHeight: 18 },
     headStyles: { fillColor: [2, 179, 150], textColor: 255, fontStyle: 'bold' },
     theme: 'grid',
     columnStyles: {
@@ -287,11 +287,11 @@ export async function exportToPdf(
     },
   });
 
-  let finalY = (doc as any).lastAutoTable.finalY + 15;
+  let finalY = (doc as any).lastAutoTable.finalY + 20;
 
   // Ensure footer does not push to a new page
-  if (finalY > doc.internal.pageSize.getHeight() - 80) {
-      finalY = doc.internal.pageSize.getHeight() - 80;
+  if (finalY > doc.internal.pageSize.getHeight() - 60) {
+      finalY = doc.internal.pageSize.getHeight() - 60;
   }
   
   const footerLabels = [
@@ -310,8 +310,8 @@ export async function exportToPdf(
     startY: finalY,
     body: [footerLabels, footerValues],
     theme: 'grid',
-    styles: { fontSize: 8, font: 'helvetica', cellPadding: 2, minCellHeight: 15, valign: 'top' },
-    bodyStyles: { minCellHeight: 25 },
+    styles: { fontSize: 9, font: 'helvetica', cellPadding: 3, valign: 'top' },
+    bodyStyles: { minCellHeight: 10, cellPadding: { top: 3, bottom: 20 } },
     columnStyles: {
         0: { cellWidth: (pageWidth - margin * 2) / 3 },
         1: { cellWidth: (pageWidth - margin * 2) / 3 },
@@ -329,9 +329,9 @@ export async function exportToPdf(
     try {
       const signatureBase64 = await fetchImageAsBase64(signaturePath);
       if (signatureBase64) {
-        const signY = (doc as any).lastAutoTable.finalY - 28; 
+        const signY = (doc as any).lastAutoTable.finalY - 30; 
         const signX = margin + ((pageWidth - margin * 2) / 3) * 2 + 10;
-        doc.addImage(signatureBase64, 'JPEG', signX, signY, 60, 25);
+        doc.addImage(signatureBase64, 'JPEG', signX, signY, 70, 28);
       }
     } catch(e) { console.error(e) }
   }
