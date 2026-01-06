@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -117,6 +118,10 @@ export default function VehicleUsageSheet() {
             headerOvertime: headerStates.headerOvertime,
             extraNight: Number(headerStates.extraNight),
             extraDays: Number(headerStates.extraDays),
+            verifiedBy: {
+                name: verifiedByName,
+                date: verifiedByDate ? verifiedByDate.toISOString() : '',
+            },
         };
 
         saveVehicleUsageRecord(monthKey, selectedVehicleId, dataToSave);
@@ -202,11 +207,11 @@ export default function VehicleUsageSheet() {
                     </div>
                     <div className="space-y-2">
                         <Label>Verified By</Label>
-                        <Input placeholder="Enter verifier's name..." value={verifiedByName} onChange={(e) => setVerifiedByName(e.target.value)} />
+                        <Input placeholder="Enter verifier's name..." value={verifiedByName} onChange={(e) => setVerifiedByName(e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
                     </div>
                     <div className="space-y-2">
                         <Label>Verified By Date</Label>
-                        <DatePickerInput value={verifiedByDate} onChange={setVerifiedByDate} />
+                        <DatePickerInput value={verifiedByDate} onChange={setVerifiedByDate} onBlur={handleSave} disabled={!canEdit} />
                     </div>
                 </div>
             )}
@@ -234,7 +239,7 @@ export default function VehicleUsageSheet() {
                             const isHoliday = cellStates[`${day}-isHoliday`];
                             return (
                                 <TableRow key={day} className={cn((isHoliday || isSunday) && 'bg-yellow-100 dark:bg-yellow-900/30')}>
-                                    <TableCell className={cn("sticky left-0 font-medium z-10", (isHoliday || isSunday) ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-card')}>{format(dateForDay, 'dd-MM-yyyy')}</TableCell>
+                                    <TableCell className={cn("sticky left-0 font-medium z-10 border-r", (isHoliday || isSunday) ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-card')}>{format(dateForDay, 'dd-MM-yyyy')}</TableCell>
                                     <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-startKm`] || ''} onChange={(e) => handleInputChange(day, 'startKm', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
                                     <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-endKm`] || ''} onChange={(e) => handleInputChange(day, 'endKm', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
                                     <TableCell className="font-medium text-center">{totalKm}</TableCell>

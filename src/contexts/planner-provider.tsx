@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -229,7 +228,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             }
         }
     
-        // Carry forward plant order SAFELY
+        // ✅ Carry forward plant order SAFELY
         if (prevMonthData.plantsOrder) {
             for (const plantName in prevMonthData.plantsOrder) {
                 updates[`jobRecords/${monthKey}/plantsOrder/${plantName}`] =
