@@ -1050,6 +1050,7 @@ export type VehicleUsageRecord = {
           endKm?: number;
           overtime?: string; // HH:mm
           remarks?: string;
+          isHoliday?: boolean;
         }
       };
       jobNo?: string;

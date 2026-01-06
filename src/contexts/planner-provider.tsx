@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -24,13 +25,13 @@ type PlannerContextType = {
   dismissPendingUpdate: (eventId: string, day: string) => void;
   saveJobSchedule: (schedule: Omit<JobSchedule, 'id'> & { id?: string }) => void;
   savePlantOrder: (monthKey: string, plantName: string, orderedProfileIds: string[]) => void;
-  saveJobRecord: (monthKey: string, profileId: string, day: number | null, value: any, field: 'status' | 'dailyOvertime' | 'dailyComments' | 'plant' | 'sundayDuty') => void;
+  saveJobRecord: (monthKey: string, profileId: string, day: number | null, value: any, field: 'status' | 'dailyOvertime' | 'dailyComments' | 'plant' | 'sundayDuty' | 'isHoliday') => void;
   lockJobRecordSheet: (monthKey: string) => void;
   unlockJobRecordSheet: (monthKey: string) => void;
   addJobRecordPlant: (name: string) => void;
   deleteJobRecordPlant: (id: string) => void;
   carryForwardPlantAssignments: (monthKey: string) => void;
-  saveVehicleUsageRecord: (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>, verifiedBy?: { id: string; name: string }) => void;
+  saveVehicleUsageRecord: (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => void;
   lockVehicleUsageSheet: (monthKey: string) => void;
   unlockVehicleUsageSheet: (monthKey: string) => void;
 };
@@ -170,14 +171,16 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         set(ref(rtdb, path), orderedProfileIds);
     }, []);
 
-    const saveJobRecord = useCallback((monthKey: string, profileId: string, day: number | null, value: any, field: 'status' | 'dailyOvertime' | 'dailyComments' | 'plant' | 'sundayDuty') => {
+    const saveJobRecord = useCallback((monthKey: string, profileId: string, day: number | null, value: any, field: 'status' | 'dailyOvertime' | 'dailyComments' | 'plant' | 'sundayDuty' | 'isHoliday') => {
         let path: string;
-        if (field === 'status' && day !== null) {
-            path = `jobRecords/${monthKey}/records/${profileId}/days/${day}`;
-        } else if (field === 'dailyOvertime' && day !== null) {
-            path = `jobRecords/${monthKey}/records/${profileId}/dailyOvertime/${day}`;
-        } else if (field === 'dailyComments' && day !== null) {
-            path = `jobRecords/${monthKey}/records/${profileId}/dailyComments/${day}`;
+        if (day !== null && ['status', 'dailyOvertime', 'dailyComments', 'isHoliday'].includes(field)) {
+            if (field === 'status') {
+                path = `jobRecords/${monthKey}/records/${profileId}/days/${day}`;
+            } else if (field === 'isHoliday') {
+                 path = `jobRecords/${monthKey}/records/${profileId}/days/${day}/isHoliday`;
+            } else {
+                 path = `jobRecords/${monthKey}/records/${profileId}/${field}/${day}`;
+            }
         } else if (field === 'plant') {
             path = `jobRecords/${monthKey}/records/${profileId}/plant`;
         } else if (field === 'sundayDuty') {
@@ -187,6 +190,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         }
         set(ref(rtdb, path), value);
     }, []);
+    
 
     const lockJobRecordSheet = useCallback((monthKey: string) => {
         update(ref(rtdb, `jobRecords/${monthKey}`), { isLocked: true });
@@ -215,6 +219,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const prevMonthData = prevMonthSnapshot.val();
         const updates: { [key: string]: any } = {};
     
+        // Carry forward plant assignments
         if (prevMonthData.records) {
             for (const profileId in prevMonthData.records) {
                 const plant = prevMonthData.records[profileId]?.plant;
@@ -224,9 +229,11 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             }
         }
     
+        // Carry forward plant order SAFELY
         if (prevMonthData.plantsOrder) {
             for (const plantName in prevMonthData.plantsOrder) {
-                updates[`jobRecords/${monthKey}/plantsOrder/${plantName}`] = prevMonthData.plantsOrder[plantName];
+                updates[`jobRecords/${monthKey}/plantsOrder/${plantName}`] =
+                    prevMonthData.plantsOrder[plantName];
             }
         }
     
@@ -235,15 +242,10 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         }
     }, []);
     
-    const saveVehicleUsageRecord = useCallback((monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>, verifiedBy?: { id: string; name: string }) => {
+    const saveVehicleUsageRecord = useCallback((monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => {
         if (!user) return;
         const path = `vehicleUsageRecords/${monthKey}/records/${vehicleId}`;
-        const updates: Partial<VehicleUsageRecord['records'][string]> = { ...data };
-        
-        if (verifiedBy) {
-            updates.verifiedById = verifiedBy.id;
-        }
-        
+        const updates = { ...data };
         update(ref(rtdb, path), updates);
     }, [user]);
     
