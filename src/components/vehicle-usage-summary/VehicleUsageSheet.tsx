@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -7,8 +5,8 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, Download, Save, Lock, Unlock, Palette } from 'lucide-react';
-import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isSameMonth, getDay } from 'date-fns';
+import { ChevronLeft, ChevronRight, Download, Save, Lock, Unlock, Palette, Checkbox as CheckboxIcon } from 'lucide-react';
+import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isSameMonth, getDay, isAfter, isBefore, startOfToday, parseISO, isValid, parse, sub } from 'date-fns';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
@@ -17,6 +15,16 @@ import { exportToExcel, exportToPdf } from './generateUsageSummary';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Checkbox } from '../ui/checkbox';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import AddJobCodeDialog from '../job-record/AddJobCodeDialog';
+import type { JobCode, ManpowerProfile, JobRecordPlant } from '@/lib/types';
+import EditJobCodeDialog from '../job-record/EditJobCodeDialog';
+import AddJobRecordPlantDialog from '../job-record/AddJobRecordPlantDialog';
+import { ScrollArea } from '../ui/scroll-area';
+import { JOB_CODE_COLORS } from '@/lib/job-codes';
+
+const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
 
 export default function VehicleUsageSheet() {
     const { 
@@ -46,9 +54,21 @@ export default function VehicleUsageSheet() {
       extraNight: 0,
       extraDays: 0,
     });
-    const [verifiedByName, setVerifiedByName] = useState('');
-    const [verifiedByDate, setVerifiedByDate] = useState<Date | undefined>();
     
+    const dayHeaders = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
+
+    const monthlyTotalKm = useMemo(() => {
+        let total = 0;
+        for (const day of dayHeaders) {
+            const startKm = Number(cellStates[`${day}-startKm`] || 0);
+            const endKm = Number(cellStates[`${day}-endKm`] || 0);
+            if (endKm > startKm) {
+                total += endKm - startKm;
+            }
+        }
+        return total;
+    }, [cellStates, dayHeaders]);
+
     useEffect(() => {
         if (vehicleRecord) {
             const newStates: Record<string, any> = {};
@@ -68,15 +88,16 @@ export default function VehicleUsageSheet() {
                 extraNight: vehicleRecord.extraNight || 0,
                 extraDays: vehicleRecord.extraDays || 0,
             });
-            setVerifiedByName(vehicleRecord.verifiedBy?.name || '');
-            setVerifiedByDate(vehicleRecord.verifiedBy?.date ? new Date(vehicleRecord.verifiedBy.date) : undefined);
         } else {
             setCellStates({});
             setHeaderStates({ jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0 });
-            setVerifiedByName('');
-            setVerifiedByDate(undefined);
         }
     }, [vehicleRecord, selectedVehicleId, currentMonth]);
+    
+    useEffect(() => {
+        const extra = monthlyTotalKm > 3000 ? monthlyTotalKm - 3000 : 0;
+        setHeaderStates(prev => ({...prev, extraKm: extra }));
+    }, [monthlyTotalKm]);
 
     const handleInputChange = (day: number, field: string, value: string | number | boolean) => {
         const dayKey = `${day}-${field}`;
@@ -118,32 +139,25 @@ export default function VehicleUsageSheet() {
             headerOvertime: headerStates.headerOvertime,
             extraNight: Number(headerStates.extraNight),
             extraDays: Number(headerStates.extraDays),
-            verifiedBy: {
-                name: verifiedByName,
-                date: verifiedByDate ? verifiedByDate.toISOString() : '',
-            },
         };
 
         saveVehicleUsageRecord(monthKey, selectedVehicleId, dataToSave);
         toast({ title: "Record Saved", description: "Vehicle usage data has been saved."});
     };
-
-    const dayHeaders = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
-
-    const isLocked = record?.isLocked;
-    const canEdit = (can.manage_vehicle_usage) && !isLocked;
     
     const handleExport = (formatType: 'excel' | 'pdf') => {
         const vehicle = vehicles.find(v => v.id === selectedVehicleId);
         const driver = drivers.find(d => d.id === vehicle?.driverId);
         
         if (formatType === 'excel') {
-            exportToExcel(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates, verifiedByName, verifiedByDate);
+            exportToExcel(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates);
         } else {
-            exportToPdf(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates, verifiedByName, verifiedByDate);
+            exportToPdf(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates);
         }
     };
     
+    const isLocked = record?.isLocked;
+    const canEdit = (can.manage_vehicle_usage) && !isLocked;
     const canLockSheet = can.manage_vehicle_usage;
 
     return (
@@ -180,7 +194,7 @@ export default function VehicleUsageSheet() {
                 </div>
             </div>
              {selectedVehicleId && (
-                <div className="p-4 border-b grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-4 border-b grid grid-cols-2 md:grid-cols-5 gap-4">
                      <div className="space-y-2">
                         <Label>Job No.</Label>
                         <Input value={headerStates.jobNo} onChange={e => handleHeaderChange('jobNo', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
@@ -188,10 +202,6 @@ export default function VehicleUsageSheet() {
                     <div className="space-y-2">
                         <Label>Vehicle Type</Label>
                         <Input value={headerStates.vehicleType} onChange={e => handleHeaderChange('vehicleType', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Extra KM</Label>
-                        <Input type="number" value={headerStates.extraKm} onChange={e => handleHeaderChange('extraKm', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
                     </div>
                     <div className="space-y-2">
                         <Label>Over Time (Header)</Label>
@@ -205,13 +215,13 @@ export default function VehicleUsageSheet() {
                         <Label>Extra Days</Label>
                         <Input type="number" value={headerStates.extraDays} onChange={e => handleHeaderChange('extraDays', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
                     </div>
-                    <div className="space-y-2">
-                        <Label>Verified By</Label>
-                        <Input placeholder="Enter verifier's name..." value={verifiedByName} onChange={(e) => setVerifiedByName(e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
+                     <div className="space-y-2">
+                        <Label>Total KM</Label>
+                        <Input value={monthlyTotalKm} readOnly className="font-bold" />
                     </div>
                     <div className="space-y-2">
-                        <Label>Verified By Date</Label>
-                        <DatePickerInput value={verifiedByDate} onChange={setVerifiedByDate} onBlur={handleSave} disabled={!canEdit} />
+                        <Label>Extra KM</Label>
+                        <Input type="number" value={headerStates.extraKm} readOnly className="font-bold" />
                     </div>
                 </div>
             )}
@@ -220,7 +230,7 @@ export default function VehicleUsageSheet() {
                 <Table className="min-w-full border-separate border-spacing-0">
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm w-32">Day</TableHead>
+                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm border-r w-32">Day</TableHead>
                             <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Start KM</TableHead>
                             <TableHead className="sticky top-0 z-20 bg-card shadow-sm">End KM</TableHead>
                             <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Total KM</TableHead>

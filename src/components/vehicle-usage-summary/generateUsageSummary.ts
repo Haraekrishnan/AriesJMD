@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import ExcelJS from 'exceljs';
@@ -10,27 +8,24 @@ import { format, getDay } from 'date-fns';
 import type { Vehicle, Driver, User } from '@/lib/types';
 
 async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
-    try {
-        const absoluteUrl = url.startsWith('/') ? `${window.location.origin}${url}` : url;
-        const response = await fetch(absoluteUrl);
-        if (!response.ok) {
-            console.error(`Failed to fetch image: ${response.statusText} from ${absoluteUrl}`);
-            return null;
-        }
-        return await response.arrayBuffer();
-    } catch (error) {
-        console.error('Error fetching image for Excel:', error);
-        return null;
-    }
+  try {
+      const response = await fetch(url);
+      if (!response.ok) {
+          console.error(`Failed to fetch image: ${response.statusText} from ${url}`);
+          return null;
+      }
+      return await response.arrayBuffer();
+  } catch (error) {
+      console.error('Error fetching image for Excel:', error);
+      return null;
+  }
 }
-
 
 async function fetchImageAsBase64(url: string): Promise<string> {
     try {
-        const absoluteUrl = url.startsWith('/') ? `${window.location.origin}${url}` : url;
-        const response = await fetch(absoluteUrl);
+        const response = await fetch(url);
         if (!response.ok) {
-             console.error(`Failed to fetch image: ${response.statusText} from ${absoluteUrl}`);
+             console.error(`Failed to fetch image: ${response.statusText} from ${url}`);
              return '';
         }
         const blob = await response.blob();
@@ -53,8 +48,6 @@ export async function exportToExcel(
   cellStates: any,
   dayHeaders: number[],
   headerStates: any,
-  verifiedByName: string,
-  verifiedByDate?: Date,
 ) {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Vehicle Log');
@@ -160,26 +153,6 @@ export async function exportToExcel(
   
   let footerRowIndex = sheet.lastRow!.number + 2;
 
-  const verifiedByNameCell = sheet.getCell(`A${footerRowIndex}`);
-  verifiedByNameCell.value = `Verified By: ${verifiedByName}`;
-  verifiedByNameCell.font = { name: 'Calibri', size: 9, bold: true };
-  sheet.mergeCells(`A${footerRowIndex}:B${footerRowIndex}`);
-
-  const verifiedByDateCell = sheet.getCell(`C${footerRowIndex}`);
-  verifiedByDateCell.value = `Date: ${verifiedByDate ? format(verifiedByDate, 'dd-MM-yyyy') : ''}`;
-  verifiedByDateCell.font = { name: 'Calibri', size: 9, bold: true };
-  sheet.mergeCells(`C${footerRowIndex}:D${footerRowIndex}`);
-  
-  const signatureCell = sheet.getCell(`E${footerRowIndex}`);
-  signatureCell.value = 'Signature:';
-  signatureCell.font = { name: 'Calibri', size: 9, bold: true };
-  sheet.mergeCells(`E${footerRowIndex}:F${footerRowIndex}`);
-
-  [verifiedByNameCell, verifiedByDateCell, signatureCell].forEach(cell => {
-      cell.border = greyBorder;
-      cell.alignment = { vertical: 'middle', indent: 1 };
-  });
-
   sheet.columns = [
     { width: 18 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 30 }
   ];
@@ -198,8 +171,6 @@ export async function exportToPdf(
   cellStates: any,
   dayHeaders: number[],
   headerStates: any,
-  verifiedByName: string,
-  verifiedByDate?: Date
 ) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const logo = await fetchImageAsBase64('/images/Aries_logo.png');
@@ -273,26 +244,4 @@ export async function exportToPdf(
       5: { halign: 'left' },
     },
   });
-
-  let y = (doc as any).lastAutoTable.finalY + 20;
-
-  doc.setDrawColor(200, 200, 200);
-  doc.rect(margin, y, 150, 40);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Verified By:', margin + 5, y + 10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(verifiedByName, margin + 5, y + 22);
-
-  doc.rect(margin + 150, y, 150, 40);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Verified By Date:', margin + 155, y + 10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(verifiedByDate ? format(verifiedByDate, 'dd-MM-yyyy') : '', margin + 155, y + 22);
-  
-  doc.rect(margin + 300, y, pageWidth - margin * 2 - 300, 40);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Signature:', margin + 305, y + 10);
-  
-  doc.save(`Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`);
 }
