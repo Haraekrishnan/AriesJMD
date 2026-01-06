@@ -228,33 +228,32 @@ export async function exportToPdf(
   const margin = 25;
   let currentY = 25;
 
-  // Header Section
   if (logoBase64) doc.addImage(logoBase64, 'PNG', margin, currentY, 130, 32);
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
   doc.text(vehicle?.vehicleNumber || '', margin, currentY + 50);
-
-  // Right-side header table
-  const rightHeaderData = [
-    ['JOB NO', (headerStates.jobNo || '').toUpperCase()],
-    ['VEHICLE TYPE', (headerStates.vehicleType || '').toUpperCase()],
-    ['EXTRA KM', headerStates.extraKm || 0],
-    ['OVER TIME', headerStates.headerOvertime || ''],
-    ['EXTRA NIGHT', headerStates.extraNight || 0],
-    ['EXTRA DAYS', headerStates.extraDays || 0],
-  ];
-
+  
+  const rightHeaderX = pageWidth - margin - 150;
+  
   (doc as any).autoTable({
-    body: rightHeaderData,
+    body: [
+      ['JOB NO', (headerStates.jobNo || '').toUpperCase()],
+      ['VEHICLE TYPE', (headerStates.vehicleType || '').toUpperCase()],
+      ['EXTRA KM', headerStates.extraKm || 0],
+      ['OVER TIME', headerStates.headerOvertime || ''],
+      ['EXTRA NIGHT', headerStates.extraNight || 0],
+      ['EXTRA DAYS', headerStates.extraDays || 0],
+    ],
     startY: 25,
     theme: 'grid',
     styles: { fontSize: 8, font: 'helvetica', cellPadding: 3, lineColor: [180, 180, 180], lineWidth: 0.5, valign: 'middle' },
     columnStyles: { 0: { fontStyle: 'bold', cellWidth: 70 }, 1: { cellWidth: 80 } },
     tableWidth: 150,
-    margin: { left: pageWidth - margin - 150 },
+    margin: { left: rightHeaderX },
   });
-  
-  currentY = 100;
+
+  currentY = (doc as any).lastAutoTable.finalY + 20;
 
   // Main Table
   let totalKm = 0;
@@ -278,6 +277,9 @@ export async function exportToPdf(
   
   body.push([{ content: 'TOTAL KILOMETER:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } }, { content: totalKm, styles: { fontStyle: 'bold' } }, '', '']);
 
+  const footerStartY = pageHeight - 90; 
+  const tableBottomMargin = footerStartY + 10; 
+  
   (doc as any).autoTable({
     head: [['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OT', 'REMARKS']],
     body,
@@ -296,36 +298,32 @@ export async function exportToPdf(
         fillColor: [2, 179, 150],
         textColor: 255,
         fontStyle: 'bold',
-        minCellHeight: 18,
+        minCellHeight: 20,
     },
     columnStyles: {
-        0: { cellWidth: 70 },
-        1: { cellWidth: 50 },
-        2: { cellWidth: 50 },
-        3: { cellWidth: 50 },
+        0: { cellWidth: 72 },
+        1: { cellWidth: 48 },
+        2: { cellWidth: 48 },
+        3: { cellWidth: 48 },
         4: { cellWidth: 40 },
-        5: { cellWidth: 'auto', halign: 'left' },
+        5: { cellWidth: 180, halign: 'left' },
     },
-    margin: { left: margin, right: margin, top: currentY },
+    margin: { left: margin, right: margin, top: currentY, bottom: pageHeight - footerStartY + 10 },
     pageBreak: 'avoid',
     rowPageBreak: 'avoid',
   });
-
-  // Footer Section
-  const footerStartY = pageHeight - 75;
 
   (doc as any).autoTable({
     startY: footerStartY,
     body: [
       [{ content: 'Verified By:', styles: { fontStyle: 'bold' } }, { content: 'Verified By Date:', styles: { fontStyle: 'bold' } }, { content: 'Signature:', styles: { fontStyle: 'bold' } }],
-      [headerStates.verifiedByName || '', headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '', ''],
+      [{ content: headerStates.verifiedByName || '', styles: { minCellHeight: 25 } }, { content: headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '', styles: { minCellHeight: 25 } }, ''],
     ],
     theme: 'grid',
     styles: {
-        fontSize: 9,
-        cellPadding: 2,
+        fontSize: 10,
+        cellPadding: 4,
         valign: 'top',
-        minCellHeight: 10, // Reduced height
     },
     columnStyles: {
         0: { cellWidth: (pageWidth - margin * 2) / 3 },
@@ -333,11 +331,6 @@ export async function exportToPdf(
         2: { cellWidth: (pageWidth - margin * 2) / 3 },
     },
     margin: { left: margin, right: margin },
-    didDrawCell: (data: any) => {
-        if (data.row.index === 1) {
-            data.cell.styles.minCellHeight = 25; // Keep space for signature
-        }
-    }
   });
 
   const signaturePath = SIGNATURES[headerStates.verifiedByName];
@@ -348,8 +341,8 @@ export async function exportToPdf(
         doc.addImage(
           signatureBase64,
           'JPEG',
-          margin + (((pageWidth - margin * 2) / 3) * 2) + 20, // Adjusted X position
-          footerStartY + 20, // Adjusted Y position
+          margin + (((pageWidth - margin * 2) / 3) * 2) + 15,
+          footerStartY + 28,
           60,
           25
         );
