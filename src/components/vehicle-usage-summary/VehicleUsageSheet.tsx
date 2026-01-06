@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -53,6 +54,8 @@ export default function VehicleUsageSheet() {
       headerOvertime: '',
       extraNight: 0,
       extraDays: 0,
+      verifiedByName: '',
+      verifiedByDate: undefined as Date | undefined,
     });
     
     const dayHeaders = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
@@ -87,10 +90,12 @@ export default function VehicleUsageSheet() {
                 headerOvertime: vehicleRecord.headerOvertime || '',
                 extraNight: vehicleRecord.extraNight || 0,
                 extraDays: vehicleRecord.extraDays || 0,
+                verifiedByName: vehicleRecord.verifiedBy?.name || '',
+                verifiedByDate: vehicleRecord.verifiedBy?.date ? parseISO(vehicleRecord.verifiedBy.date) : undefined,
             });
         } else {
             setCellStates({});
-            setHeaderStates({ jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0 });
+            setHeaderStates({ jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0, verifiedByName: '', verifiedByDate: undefined });
         }
     }, [vehicleRecord, selectedVehicleId, currentMonth]);
     
@@ -112,7 +117,7 @@ export default function VehicleUsageSheet() {
         });
     };
 
-    const handleHeaderChange = (field: keyof typeof headerStates, value: string | number) => {
+    const handleHeaderChange = (field: keyof typeof headerStates, value: string | number | Date | undefined) => {
         setHeaderStates(prev => ({
             ...prev,
             [field]: value,
@@ -139,6 +144,10 @@ export default function VehicleUsageSheet() {
             headerOvertime: headerStates.headerOvertime,
             extraNight: Number(headerStates.extraNight),
             extraDays: Number(headerStates.extraDays),
+            verifiedBy: {
+                name: headerStates.verifiedByName,
+                date: headerStates.verifiedByDate ? headerStates.verifiedByDate.toISOString() : '',
+            },
         };
 
         saveVehicleUsageRecord(monthKey, selectedVehicleId, dataToSave);
@@ -223,14 +232,22 @@ export default function VehicleUsageSheet() {
                         <Label>Extra KM</Label>
                         <Input type="number" value={headerStates.extraKm} readOnly className="font-bold" />
                     </div>
+                     <div className="space-y-2">
+                        <Label>Verified By</Label>
+                        <Input value={headerStates.verifiedByName} onChange={e => handleHeaderChange('verifiedByName', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Verified Date</Label>
+                        <DatePickerInput value={headerStates.verifiedByDate} onChange={date => handleHeaderChange('verifiedByDate', date)} onBlur={handleSave} disabled={!canEdit} />
+                    </div>
                 </div>
             )}
             <div className="overflow-auto flex-1 relative">
                 {selectedVehicleId ? (
                 <Table className="min-w-full border-separate border-spacing-0">
-                    <TableHeader>
+                    <thead className="sticky top-0 z-10 bg-card">
                         <TableRow>
-                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm border-r w-32">Day</TableHead>
+                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Day</TableHead>
                             <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Start KM</TableHead>
                             <TableHead className="sticky top-0 z-20 bg-card shadow-sm">End KM</TableHead>
                             <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Total KM</TableHead>
@@ -238,7 +255,7 @@ export default function VehicleUsageSheet() {
                             <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Remarks</TableHead>
                             <TableHead className="sticky top-0 z-20 bg-card shadow-sm text-center">Holiday</TableHead>
                         </TableRow>
-                    </TableHeader>
+                    </thead>
                     <TableBody>
                         {dayHeaders.map(day => {
                             const dateForDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
