@@ -31,8 +31,8 @@ type PlannerContextType = {
   deleteJobRecordPlant: (id: string) => void;
   carryForwardPlantAssignments: (monthKey: string) => void;
   saveVehicleUsageRecord: (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => void;
-  lockVehicleUsageSheet: (monthKey: string) => void;
-  unlockVehicleUsageSheet: (monthKey: string) => void;
+  lockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
+  unlockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
 };
 
 const createDataListener = <T extends {}>(
@@ -248,12 +248,14 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb, path), updates);
     }, [user]);
     
-    const lockVehicleUsageSheet = useCallback((monthKey: string) => {
-        update(ref(rtdb, `vehicleUsageRecords/${monthKey}`), { isLocked: true });
+    const lockVehicleUsageSheet = useCallback((monthKey: string, vehicleId: string) => {
+        const path = `vehicleUsageRecords/${monthKey}/records/${vehicleId}/isLocked`;
+        set(ref(rtdb, path), true);
     }, []);
 
-    const unlockVehicleUsageSheet = useCallback((monthKey: string) => {
-        update(ref(rtdb, `vehicleUsageRecords/${monthKey}`), { isLocked: false });
+    const unlockVehicleUsageSheet = useCallback((monthKey: string, vehicleId: string) => {
+        const path = `vehicleUsageRecords/${monthKey}/records/${vehicleId}/isLocked`;
+        set(ref(rtdb, path), false);
     }, []);
 
     useEffect(() => {
