@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -6,15 +7,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, Download, Save, Lock, Unlock, Palette } from 'lucide-react';
-import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isSameMonth } from 'date-fns';
+import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isSameMonth, getDay } from 'date-fns';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import type { VehicleUsageRecord } from '@/lib/types';
 import { exportToExcel, exportToPdf } from './generateUsageSummary';
 import { DatePickerInput } from '../ui/date-picker-input';
-import { cn } from '@/lib/utils';
 import { Checkbox } from '../ui/checkbox';
+import { cn } from '@/lib/utils';
 
 export default function VehicleUsageSheet() {
     const { 
@@ -226,13 +227,14 @@ export default function VehicleUsageSheet() {
                     <TableBody>
                         {dayHeaders.map(day => {
                             const dateForDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                            const isSunday = getDay(dateForDay) === 0;
                             const startKm = Number(cellStates[`${day}-startKm`] || 0);
                             const endKm = Number(cellStates[`${day}-endKm`] || 0);
                             const totalKm = endKm > startKm ? endKm - startKm : 0;
                             const isHoliday = cellStates[`${day}-isHoliday`];
                             return (
-                                <TableRow key={day} className={isHoliday ? 'bg-yellow-100 dark:bg-yellow-900/30' : ''}>
-                                    <TableCell className="sticky left-0 bg-card z-10 font-medium">{format(dateForDay, 'dd-MM-yyyy')}</TableCell>
+                                <TableRow key={day} className={cn((isHoliday || isSunday) && 'bg-yellow-100 dark:bg-yellow-900/30')}>
+                                    <TableCell className={cn("sticky left-0 font-medium z-10", (isHoliday || isSunday) ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-card')}>{format(dateForDay, 'dd-MM-yyyy')}</TableCell>
                                     <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-startKm`] || ''} onChange={(e) => handleInputChange(day, 'startKm', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
                                     <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-endKm`] || ''} onChange={(e) => handleInputChange(day, 'endKm', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
                                     <TableCell className="font-medium text-center">{totalKm}</TableCell>

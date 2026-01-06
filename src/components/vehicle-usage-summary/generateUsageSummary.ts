@@ -5,7 +5,7 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { format } from 'date-fns';
+import { format, getDay } from 'date-fns';
 import type { Vehicle, Driver, User } from '@/lib/types';
 
 async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
@@ -129,7 +129,7 @@ export async function exportToExcel(
     const endKm = Number(cellStates[`${day}-endKm`] || 0);
     const total = endKm > startKm ? endKm - startKm : 0;
     totalKm += total;
-    const isHoliday = cellStates[`${day}-isHoliday`];
+    const isHoliday = cellStates[`${day}-isHoliday`] || getDay(date) === 0;
 
     const row = sheet.addRow([
       format(date, 'dd-MMM-yyyy'),
@@ -241,6 +241,8 @@ export async function exportToPdf(
     const e = Number(cellStates[`${day}-endKm`] || 0);
     const t = e > s ? e - s : 0;
     totalKm += t;
+    const isHoliday = cellStates[`${day}-isHoliday`] || getDay(d) === 0;
+
     return [
       format(d, 'dd-MMM-yyyy'),
       s || '',
@@ -248,7 +250,7 @@ export async function exportToPdf(
       t || '',
       cellStates[`${day}-overtime`] || '',
       cellStates[`${day}-remarks`] || '',
-      cellStates[`${day}-isHoliday`] ? 'HIGHLIGHT' : '',
+      isHoliday ? 'HIGHLIGHT' : '',
     ];
   });
   
