@@ -8,17 +8,22 @@ import 'jspdf-autotable';
 import { format } from 'date-fns';
 
 async function fetchImageAsBase64(url: string): Promise<string> {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch image: ${response.statusText}`);
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.statusText}`);
+        }
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        console.error('Error fetching image for PDF:', error);
+        return ''; // Return empty string on failure
     }
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
 }
 
 export async function exportToExcel(
@@ -43,21 +48,23 @@ export async function exportToExcel(
         console.error("Could not add logo to excel", e);
     }
     
-
-    sheet.mergeCells('A1:H1');
+    sheet.mergeCells('A1:F1');
     sheet.getRow(1).height = 35;
 
-    sheet.mergeCells('B3:C3');
     sheet.getCell('B3').value = 'Job No:';
-    sheet.getCell('D3').value = headerStates.jobNo || '';
+    sheet.getCell('C3').value = headerStates.jobNo || '';
     
-    sheet.mergeCells('B4:C4');
     sheet.getCell('B4').value = 'Vehicle Type:';
-    sheet.getCell('D4').value = headerStates.vehicleType || '';
+    sheet.getCell('C4').value = headerStates.vehicleType || '';
 
-    sheet.mergeCells('A5:B5');
-    sheet.getCell('A5').value = vehicle?.vehicleNumber || '';
-    sheet.getCell('A5').font = { bold: true, size: 14 };
+    sheet.mergeCells('A5:C5');
+    sheet.getCell('A5').value = `VEHICLE NO: ${vehicle?.vehicleNumber || ''}`;
+    sheet.getCell('A5').font = { bold: true, size: 12 };
+    
+    sheet.mergeCells('D5:F5');
+    sheet.getCell('D5').value = `DRIVER'S NAME: ${driver?.name || ''}`;
+    sheet.getCell('D5').font = { bold: true, size: 12 };
+    sheet.getCell('D5').alignment = { horizontal: 'right' };
 
     const headerRow = sheet.addRow(['DATE', 'START KM.', 'END KM.', 'TOTAL KM', 'OVER TIME', 'REMARKS']);
     headerRow.font = { bold: true };
@@ -73,9 +80,9 @@ export async function exportToExcel(
 
         sheet.addRow([
             format(date, 'dd-MMM-yyyy'),
-            startKm,
-            endKm,
-            dayTotal,
+            startKm || '',
+            endKm || '',
+            dayTotal || '',
             cellStates[`${day}-overtime`] || '',
             cellStates[`${day}-remarks`] || ''
         ]);
@@ -86,6 +93,10 @@ export async function exportToExcel(
     sheet.columns.forEach(column => {
         column.width = 20;
     });
+
+    const footerRowIndex = sheet.lastRow!.number + 2;
+    sheet.getCell(`A${footerRowIndex}`).value = `Verified By: ${headerStates.verifiedByName || ''}`;
+    sheet.getCell(`A${footerRowIndex + 1}`).value = `Designation: ${headerStates.verifiedByDesignation || ''}`;
 
     const buffer = await workbook.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), `VehicleUsage_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.xlsx`);
@@ -99,10 +110,12 @@ export async function exportToPdf(
     dayHeaders: number[],
     headerStates: any
 ) {
-    const doc = new jsPDF();
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
     const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
 
-    doc.addImage(logoBase64, 'PNG', 15, 10, 80, 20);
+    if(logoBase64) {
+      doc.addImage(logoBase64, 'PNG', 15, 10, 80, 20);
+    }
 
     doc.setFontSize(10);
     doc.text(`Job No: ${headerStates.jobNo || ''}`, 150, 20);
@@ -121,7 +134,7 @@ export async function exportToPdf(
         totalKm += dayTotal;
 
         return [
-            format(date, 'dd-MMM-yyyy'),
+            format(date, 'dd-MMM-yy'),
             startKm || '',
             endKm || '',
             dayTotal || '',
@@ -131,18 +144,35 @@ export async function exportToPdf(
     });
 
     (doc as any).autoTable({
-        head: [['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OVER TIME', 'REMARKS']],
+        head: [['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OVERTIME', 'REMARKS']],
         body,
         startY: 65,
+        theme: 'grid',
+        styles: { fontSize: 7, cellPadding: 2, overflow: 'linebreak' },
+        headStyles: { fontSize: 8, fontStyle: 'bold' },
+        columnStyles: {
+            0: { cellWidth: 50 },
+            1: { cellWidth: 50 },
+            2: { cellWidth: 50 },
+            3: { cellWidth: 50 },
+            4: { cellWidth: 60 },
+            5: { cellWidth: 'auto' },
+        }
     });
     
-    let finalY = (doc as any).lastAutoTable.finalY + 20;
+    let finalY = (doc as any).lastAutoTable.finalY + 10;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
     doc.text(`TOTAL KILOMETER: ${totalKm}`, 15, finalY);
     
     finalY += 30;
-    doc.text(`Verified By -`, 15, finalY);
-    doc.text(`Name: ${headerStates.verifiedByName || ''}`, 15, finalY + 15);
-    doc.text(`Designation: ${headerStates.verifiedByDesignation || ''}`, 15, finalY + 30);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(`Verified By:`, 15, finalY);
+    finalY += 15;
+    doc.text(`Name: ${headerStates.verifiedByName || ''}`, 15, finalY);
+    finalY += 15;
+    doc.text(`Designation: ${headerStates.verifiedByDesignation || ''}`, 15, finalY);
     
     doc.save(`VehicleUsage_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`);
 }
