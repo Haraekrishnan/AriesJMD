@@ -1,4 +1,3 @@
-
 'use client';
 
 import ExcelJS from 'exceljs';
@@ -59,6 +58,24 @@ export async function exportToExcel(
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Vehicle Log');
   
+  /* -------- COMMON BORDER STYLE -------- */
+  const greyBorder = {
+    top: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+    left: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+    bottom: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+    right: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+  };
+  
+  /* -------- PRE-CALCULATE TOTAL KM (ONCE) -------- */
+  let totalKm = 0;
+  
+  dayHeaders.forEach(day => {
+    const s = Number(cellStates[`${day}-startKm`] || 0);
+    const e = Number(cellStates[`${day}-endKm`] || 0);
+    if (e > s) totalKm += (e - s);
+  });
+  
+
   try {
     const logoBuffer = await fetchImageAsBuffer('/images/Aries_logo.png');
     if (logoBuffer) {
@@ -70,28 +87,66 @@ export async function exportToExcel(
     }
   } catch (e) { console.error(e)}
 
-  sheet.mergeCells('A3:D3');
-  const vehicleCell = sheet.getCell('A3');
-  vehicleCell.value = vehicle?.vehicleNumber || '';
-  vehicleCell.font = { size: 14, bold: true, name: 'Calibri' };
-  vehicleCell.alignment = { horizontal: 'left', vertical: 'middle' };
+  /* =====================================================
+   VEHICLE NO BOX (EXCEL – MATCH PDF)
+===================================================== */
+sheet.mergeCells('A3:B3');
+sheet.mergeCells('C3:D3');
+
+const vehicleLabelCell = sheet.getCell('A3');
+const vehicleValueCell = sheet.getCell('C3');
+
+vehicleLabelCell.value = 'VEHICLE NO';
+vehicleValueCell.value = vehicle?.vehicleNumber || '';
+
+vehicleLabelCell.font = { bold: true, name: 'Calibri', size: 11 };
+vehicleValueCell.font = { bold: true, name: 'Calibri', size: 11 };
+
+vehicleLabelCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+vehicleValueCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+
+vehicleLabelCell.border = greyBorder;
+vehicleValueCell.border = greyBorder;
+
+/* =====================================================
+   TOTAL KM BOX (EXCEL – MATCH PDF)
+===================================================== */
+sheet.mergeCells('A4:B4');
+sheet.mergeCells('C4:D4');
+
+const totalKmLabelCell = sheet.getCell('A4');
+const totalKmValueCell = sheet.getCell('C4');
+
+totalKmLabelCell.value = 'TOTAL KM';
+totalKmValueCell.value = totalKm;
+
+totalKmLabelCell.font = { bold: true, name: 'Calibri', size: 11 };
+totalKmValueCell.font = { bold: true, name: 'Calibri', size: 11 };
+
+totalKmLabelCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+totalKmValueCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+
+totalKmLabelCell.border = greyBorder;
+totalKmValueCell.border = greyBorder;
+
+/* 🔴 Grey fill ONLY for value cell (like PDF) */
+totalKmValueCell.fill = {
+  type: 'pattern',
+  pattern: 'solid',
+  fgColor: { argb: 'FFE6E6E6' },
+};
+
 
   const rightHeaderData = [
     ['JOB NO', (headerStates.jobNo || '').toUpperCase()],
     ['VEHICLE TYPE', (headerStates.vehicleType || '').toUpperCase()],
     ['EXTRA KM', headerStates.extraKm || 0],
     ['OVER TIME', headerStates.headerOvertime || ''],
-    ['EXTRA DAYS', headerStates.extraNight || 0],
+    ['EXTRA NIGHT', headerStates.extraNight || 0],
     ['EXTRA DAYS', headerStates.extraDays || 0],
   ];
 
-  const greyBorder = {
-    top: { style: 'thin', color: { argb: 'FFBFBFBF' } },
-    left: { style: 'thin', color: { argb: 'FFBFBFBF' } },
-    bottom: { style: 'thin', color: { argb: 'FFBFBFBF' } },
-    right: { style: 'thin', color: { argb: 'FFBFBFBF' } }
-  };
-  
+   
   const startRow = 1;
   const startCol = 5;
   
@@ -123,15 +178,16 @@ export async function exportToExcel(
     c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
   });
 
-  let totalKm = 0;
+
   dayHeaders.forEach(day => {
     const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+  
     const startKm = Number(cellStates[`${day}-startKm`] || 0);
     const endKm = Number(cellStates[`${day}-endKm`] || 0);
     const total = endKm > startKm ? endKm - startKm : 0;
-    totalKm += total;
+  
     const isHoliday = cellStates[`${day}-isHoliday`] || getDay(date) === 0;
-
+  
     const row = sheet.addRow([
       format(date, 'dd-MMM-yyyy'),
       startKm || '',
@@ -140,16 +196,27 @@ export async function exportToExcel(
       cellStates[`${day}-overtime`] || '',
       cellStates[`${day}-remarks`] || '',
     ]);
-
+  
     row.eachCell(c => {
-      c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+      c.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' },
+      };
       c.alignment = { horizontal: 'center', vertical: 'middle' };
       c.font = { name: 'Calibri', size: 11 };
+  
       if (isHoliday) {
-        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
+        c.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFFF00' },
+        };
       }
     });
   });
+  
 
   const totalRow = sheet.addRow(['', '', 'TOTAL KILOMETER:', totalKm, '', '']);
   sheet.mergeCells(`A${totalRow.number}:C${totalRow.number}`);
@@ -225,6 +292,14 @@ export async function exportToPdf(
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 25;
   let currentY = margin;
+/* -------- PRE-CALCULATE TOTAL KM (ONCE) -------- */
+let totalKm = 0;
+
+dayHeaders.forEach(day => {
+  const s = Number(cellStates[`${day}-startKm`] || 0);
+  const e = Number(cellStates[`${day}-endKm`] || 0);
+  if (e > s) totalKm += (e - s);
+});
 
   /* ---------------- HEADER ---------------- */
   try {
@@ -238,9 +313,72 @@ export async function exportToPdf(
 
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text(vehicle?.vehicleNumber || '', margin, currentY + 45);
+  /* -------- VEHICLE NUMBER BOX -------- */
+(doc as any).autoTable({
+  startY: currentY + 40,
+  body: [
+    [
+      { content: 'VEHICLE NO', styles: { fontStyle: 'bold', halign: 'right' } },
+      { content: vehicle?.vehicleNumber || '', styles: { fontStyle: 'bold', halign: 'left' } },
+    ],
+  ],
+  theme: 'grid',
+  styles: {
+    fontSize: 11,
+    cellPadding: 5,
+    valign: 'middle',
+  },
+  columnStyles: {
+    0: { cellWidth: 90 },
+    1: { cellWidth: 140 },
+  },
+  margin: { left: margin },
+});
+  
+/* -------- TOTAL KM BOX (TOP) -------- */
+(doc as any).autoTable({
+  startY: (doc as any).lastAutoTable.finalY + 6,
+  body: [
+    [
+      {
+        content: 'TOTAL KM',
+        styles: {
+          fontStyle: 'bold',
+          textColor: 0,
+          halign: 'right',      // ❌ NO fill here
+        },
+      },
+      {
+        content: String(totalKm),
+        styles: {
+          fontStyle: 'bold',
+          textColor: 0,
+          fillColor: [230, 230, 230], // ✅ grey ONLY here
+          halign: 'center',
+        },
+      },
+    ],
+  ],
+  theme: 'grid',
+  styles: {
+    fontSize: 10,
+    cellPadding: 5,
+    valign: 'middle',
+  },
+  columnStyles: {
+    0: { cellWidth: 90 },
+    1: { cellWidth: 60 },
+  },
+  margin: { left: margin },
+});
 
+
+  
+  /* 🔴 MUST BE IMMEDIATELY AFTER THE BOX */
+  currentY = (doc as any).lastAutoTable.finalY + 10;
+  
   const rightHeaderX = pageWidth - margin - 200;
+  
 
   (doc as any).autoTable({
     body: [
@@ -248,7 +386,7 @@ export async function exportToPdf(
       ['VEHICLE TYPE', (headerStates.vehicleType || '').toUpperCase()],
       ['EXTRA KM', headerStates.extraKm || 0],
       ['OVER TIME', headerStates.headerOvertime || ''],
-      ['EXTRA DAYS', headerStates.extraNight || 0],
+      ['EXTRA NIGHT', headerStates.extraNight || 0],
       ['EXTRA DAYS', headerStates.extraDays || 0],
     ],
     startY: margin,
@@ -273,16 +411,12 @@ export async function exportToPdf(
 
   currentY = (doc as any).lastAutoTable.finalY + 12;
 
-  /* ---------------- MAIN TABLE ---------------- */
-  let totalKm = 0;
-
-  const body = dayHeaders.map(day => {
+   const body = dayHeaders.map(day => {
     const d = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
     const s = Number(cellStates[`${day}-startKm`] || 0);
     const e = Number(cellStates[`${day}-endKm`] || 0);
     const t = e > s ? e - s : 0;
-    totalKm += t;
-
+   
     const isHoliday = cellStates[`${day}-isHoliday`] || getDay(d) === 0;
     const fill = isHoliday ? [255, 255, 204] : undefined;
 
