@@ -1017,7 +1017,11 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     const updateDftMachine = useCallback((machine: DftMachine) => {
         const { id, ...data } = machine;
-        update(ref(rtdb, `dftMachines/${id}`), data);
+        const updateData: { [key: string]: any } = { ...data };
+        if (data.tpInspectionDueDate === undefined) {
+            updateData.tpInspectionDueDate = null;
+        }
+        update(ref(rtdb, `dftMachines/${id}`), updateData);
     }, []);
 
     const deleteDftMachine = useCallback((machineId: string) => {

@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -15,6 +14,7 @@ import { Label } from '../ui/label';
 import type { DftMachine } from '@/lib/types';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { ScrollArea } from '../ui/scroll-area';
+import { Textarea } from '../ui/textarea';
 
 const machineSchema = z.object({
   machineName: z.string().min(1, 'Machine name is required'),
@@ -29,6 +29,7 @@ const machineSchema = z.object({
   status: z.string().min(1, 'Status is required'),
   certificateUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
   movedToProjectId: z.string().optional(),
+  remarks: z.string().optional(),
 });
 
 type MachineFormValues = z.infer<typeof machineSchema>;
@@ -55,6 +56,7 @@ export default function EditDftMachineDialog({ isOpen, setIsOpen, machine }: Edi
     if (machine && isOpen) {
         form.reset({
             ...machine,
+            remarks: (machine as any).remarks || '',
             calibrationDueDate: new Date(machine.calibrationDueDate),
             tpInspectionDueDate: machine.tpInspectionDueDate ? new Date(machine.tpInspectionDueDate) : null,
         });
@@ -66,7 +68,7 @@ export default function EditDftMachineDialog({ isOpen, setIsOpen, machine }: Edi
       ...machine,
       ...data,
       calibrationDueDate: data.calibrationDueDate.toISOString(),
-      tpInspectionDueDate: data.tpInspectionDueDate ? data.tpInspectionDueDate.toISOString() : undefined,
+      tpInspectionDueDate: data.tpInspectionDueDate ? data.tpInspectionDueDate.toISOString() : null,
       movedToProjectId: data.movedToProjectId,
     });
     toast({ title: 'Machine Updated', description: `${data.machineName} has been updated.` });
@@ -123,6 +125,10 @@ export default function EditDftMachineDialog({ isOpen, setIsOpen, machine }: Edi
                         <Input {...form.register('movedToProjectId')} placeholder="Enter destination project..." />
                     </div>
                 )}
+                 <div>
+                    <Label>Remarks</Label>
+                    <Textarea {...form.register('remarks')} />
+                </div>
             </div>
           </ScrollArea>
           <DialogFooter className="pt-4">
