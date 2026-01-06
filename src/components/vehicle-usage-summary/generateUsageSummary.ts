@@ -253,8 +253,7 @@ export async function exportToPdf(
     margin: { left: pageWidth - margin - 150 },
   });
 
-  currentY = (doc as any).lastAutoTable.finalY + 15;
-  currentY = Math.max(currentY, 80);
+  currentY = 85;
 
   // Main Table
   let totalKm = 0;
@@ -283,36 +282,40 @@ export async function exportToPdf(
     body,
     startY: currentY,
     theme: 'grid',
+
     styles: {
-      font: 'helvetica',
-      fontSize: 8,
-      cellPadding: 2,
-      halign: 'center',
-      valign: 'middle',
-      minCellHeight: 14.5,
-      overflow: 'linebreak',
+        font: 'helvetica',
+        fontSize: 9,
+        cellPadding: 3,
+        halign: 'center',
+        valign: 'middle',
+        minCellHeight: 15.5,
+        overflow: 'linebreak',
     },
+
     headStyles: {
-      fillColor: [2, 179, 150],
-      textColor: 255,
-      fontStyle: 'bold',
-      minCellHeight: 16,
+        fillColor: [2, 179, 150],
+        textColor: 255,
+        fontStyle: 'bold',
+        minCellHeight: 18,
     },
+
     columnStyles: {
-      0: { cellWidth: 65 },
-      1: { cellWidth: 48 },
-      2: { cellWidth: 48 },
-      3: { cellWidth: 48 },
-      4: { cellWidth: 40 },
-      5: { cellWidth: 'auto', halign: 'left' }
+        0: { cellWidth: 72 },
+        1: { cellWidth: 55 },
+        2: { cellWidth: 55 },
+        3: { cellWidth: 55 },
+        4: { cellWidth: 45 },
+        5: { cellWidth: 'auto', halign: 'left' },
     },
+
     margin: { left: margin, right: margin },
     pageBreak: 'avoid',
-    rowPageBreak: 'avoid',
+    rowPageBreak: 'avoid'
   });
 
   // Footer Section - Positioned from the bottom of the page
-  const footerStartY = pageHeight - 70; // Pin to bottom
+  const footerStartY = (doc as any).lastAutoTable.finalY + 15 > pageHeight - 80 ? pageHeight - 80 : (doc as any).lastAutoTable.finalY + 15;
 
   const footerLabels = [
     { content: 'Verified By:', styles: { fontStyle: 'bold' } },
@@ -331,11 +334,11 @@ export async function exportToPdf(
     theme: 'grid',
     styles: {
         fontSize: 9,
-        font: 'helvetica',
-        cellPadding: 3,
+        cellPadding: 2,
         valign: 'top',
         lineWidth: 0.5,
         lineColor: [100, 100, 100],
+        minCellHeight: 25,
     },
     columnStyles: {
         0: { cellWidth: (pageWidth - margin * 2) / 3 },
@@ -346,9 +349,10 @@ export async function exportToPdf(
     didParseCell: (data: any) => {
         if (data.row.index === 0) { // First row (labels)
             data.cell.styles.minCellHeight = 15;
+            data.cell.styles.valign = 'middle';
         }
         if (data.row.index === 1) { // Second row (values)
-            data.cell.styles.minCellHeight = 25;
+            data.cell.styles.minCellHeight = 30;
             data.cell.styles.valign = 'bottom';
         }
     },
@@ -362,8 +366,8 @@ export async function exportToPdf(
         doc.addImage(
           signatureBase64,
           'JPEG',
-          margin + (((pageWidth - margin * 2) / 3) * 2) + 15, // X position
-          footerStartY + 22, // Y position
+          margin + (((pageWidth - margin * 2) / 3) * 2) + 15,
+          footerStartY + 22,
           70,
           28
         );
