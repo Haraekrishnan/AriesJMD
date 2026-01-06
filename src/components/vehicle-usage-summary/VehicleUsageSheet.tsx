@@ -156,7 +156,10 @@ export default function VehicleUsageSheet() {
         return isAfter(firstDayOfCurrentMonth, implementationStartDate);
       }, [currentMonth]);
       
-    const canGoToNextMonth = useMemo(() => isBefore(currentMonth, startOfToday()), [currentMonth]);
+    const canGoToNextMonth = useMemo(() => {
+        const firstDayOfNextMonth = addMonths(startOfMonth(currentMonth), 1);
+        return isBefore(firstDayOfNextMonth, startOfToday());
+    }, [currentMonth]);
   
     const changeMonth = (amount: number) => {
         setCurrentMonth(prev => addMonths(prev, amount));
