@@ -1,12 +1,10 @@
-
-
 'use client';
-import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, Download, Save } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Save, Lock, Unlock } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isSameMonth } from 'date-fns';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -76,10 +74,16 @@ export default function VehicleUsageSheet() {
     }, [vehicleRecord, selectedVehicleId, currentMonth]);
 
     const handleInputChange = (day: number, field: string, value: string | number) => {
-        setCellStates(prev => ({
-            ...prev,
-            [`${day}-${field}`]: value
-        }));
+        const dayKey = `${day}-${field}`;
+        const nextDayKey = `${day + 1}-startKm`;
+        
+        setCellStates(prev => {
+            const newStates = { ...prev, [dayKey]: value };
+            if (field === 'endKm' && day < getDaysInMonth(currentMonth)) {
+                newStates[nextDayKey] = value;
+            }
+            return newStates;
+        });
     };
 
     const handleHeaderChange = (field: keyof typeof headerStates, value: string) => {
@@ -239,12 +243,13 @@ export default function VehicleUsageSheet() {
                     </TableHeader>
                     <TableBody>
                         {dayHeaders.map(day => {
+                            const dateForDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
                             const startKm = Number(cellStates[`${day}-startKm`] || 0);
                             const endKm = Number(cellStates[`${day}-endKm`] || 0);
                             const totalKm = endKm > startKm ? endKm - startKm : 0;
                             return (
                                 <TableRow key={day}>
-                                    <TableCell className="sticky left-0 bg-card z-10 font-medium">{day}</TableCell>
+                                    <TableCell className="sticky left-0 bg-card z-10 font-medium">{format(dateForDay, 'dd-MM-yyyy')}</TableCell>
                                     <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-startKm`] || ''} onChange={(e) => handleInputChange(day, 'startKm', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
                                     <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-endKm`] || ''} onChange={(e) => handleInputChange(day, 'endKm', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
                                     <TableCell className="font-medium text-center">{totalKm}</TableCell>
