@@ -9,27 +9,25 @@ import { format } from 'date-fns';
 import type { Vehicle, Driver, User } from '@/lib/types';
 
 async function fetchImageAsBase64(url: string): Promise<string> {
-    try {
-        const absoluteUrl = url.startsWith('/') ? `${window.location.origin}${url}` : url;
-        const response = await fetch(absoluteUrl);
-        if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
-        const blob = await response.blob();
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
-    } catch (error) {
-        console.error('Error fetching image for PDF:', error);
-        return '';
-    }
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error('Error fetching image for PDF:', error);
+    return ''; // Return empty string on failure
+  }
 }
 
 async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
     try {
-        const absoluteUrl = url.startsWith('/') ? `${window.location.origin}${url}` : url;
-        const response = await fetch(absoluteUrl);
+        const response = await fetch(url);
         if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
         return await response.arrayBuffer();
     } catch (error) {
