@@ -217,14 +217,15 @@ export async function exportToPdf(
   const logo = await fetchImageAsBase64('/images/Aries_logo.png');
 
   const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 30;
+  
+  let currentY = 30;
 
-  if (logo) doc.addImage(logo, 'PNG', margin, 30, 80, 25);
+  if (logo) doc.addImage(logo, 'PNG', margin, currentY, 80, 25);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
-  doc.text(vehicle?.vehicleNumber || '', margin, 70);
+  doc.text(vehicle?.vehicleNumber || '', margin, currentY + 40);
 
   const rightHeaderData = [
     ['JOB NO', (headerStates.jobNo || '').toUpperCase()],
@@ -237,7 +238,7 @@ export async function exportToPdf(
 
   (doc as any).autoTable({
     body: rightHeaderData,
-    startY: 30,
+    startY: currentY,
     theme: 'grid',
     styles: { fontSize: 8, font: 'helvetica', cellPadding: 3, lineColor: [200, 200, 200], lineWidth: 0.5 },
     columnStyles: { 0: { fontStyle: 'bold' } },
@@ -245,7 +246,7 @@ export async function exportToPdf(
     margin: { left: pageWidth - margin - 220 },
   });
   
-  const mainTableStartY = 95;
+  currentY = (doc as any).lastAutoTable.finalY + 15;
   
   let totalKm = 0;
   const body = dayHeaders.map(day => {
@@ -272,7 +273,7 @@ export async function exportToPdf(
   (doc as any).autoTable({
     head: [['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OT', 'REMARKS']],
     body,
-    startY: mainTableStartY,
+    startY: currentY,
     styles: { fontSize: 8, halign: 'center', font: 'helvetica', cellPadding: 2, minCellHeight: 15 },
     headStyles: { fillColor: [2, 179, 150], textColor: 255, fontStyle: 'bold' },
     theme: 'grid',
@@ -282,36 +283,35 @@ export async function exportToPdf(
         }
     },
     columnStyles: {
-      5: { halign: 'left' },
+      0: { cellWidth: 70 },
+      1: { cellWidth: 50 },
+      2: { cellWidth: 50 },
+      3: { cellWidth: 50 },
+      4: { cellWidth: 50 },
+      5: { cellWidth: 'auto', halign: 'left' },
     },
   });
 
-  let finalY = (doc as any).lastAutoTable.finalY;
+  let finalY = (doc as any).lastAutoTable.finalY + 15;
 
-  // Footer
-  const footerStartY = pageHeight - 60; // Position footer at a fixed location from bottom
-  
-  const footerHeaders = [
-      [{ content: 'Verified By:', styles: { fontStyle: 'bold', halign: 'left' } },
-       { content: 'Verified By Date:', styles: { fontStyle: 'bold', halign: 'left' } },
-       { content: 'Signature:', styles: { fontStyle: 'bold', halign: 'left' } }]
-  ];
-  
-  const footerBody = [
-      [
-          { content: headerStates.verifiedByName || '', styles: { minCellHeight: 20, valign: 'bottom' } },
-          { content: headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '', styles: { minCellHeight: 20, valign: 'bottom' } },
-          { content: '', styles: { minCellHeight: 20 } }
-      ]
+  // Footer Section
+  const footerLabels = ['Verified By:', 'Verified By Date:', 'Signature:'];
+  const footerValues = [
+    headerStates.verifiedByName || '',
+    headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '',
+    ''
   ];
 
   (doc as any).autoTable({
-      startY: footerStartY,
-      head: footerHeaders,
-      body: footerBody,
-      theme: 'grid',
-      styles: { fontSize: 9, font: 'helvetica', valign: 'top', cellPadding: 3 },
-      headStyles: { fillColor: [255, 255, 255], textColor: 0, fontStyle: 'bold' }
+    startY: finalY,
+    body: [footerLabels, footerBody],
+    theme: 'grid',
+    styles: { fontSize: 8, font: 'helvetica', cellPadding: 3, minCellHeight: 40, valign: 'top' },
+    body: [
+      footerLabels.map(label => ({ content: label, styles: { fontStyle: 'bold' } })),
+      footerValues.map(value => ({ content: value, styles: { minCellHeight: 20 } }))
+    ],
+    columnStyles: { 0: { cellWidth: 150 }, 1: { cellWidth: 150 }, 2: { cellWidth: 'auto'} },
   });
 
 
