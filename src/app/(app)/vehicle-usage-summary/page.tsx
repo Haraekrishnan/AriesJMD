@@ -1,9 +1,10 @@
+
 'use client';
 import { useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Notebook } from 'lucide-react';
-import VehicleUsageSheet from '@/components/vehicle/VehicleUsageSheet';
+import VehicleUsageSheet from '@/components/vehicle-usage-summary/VehicleUsageSheet';
 
 export default function VehicleUsageSummaryPage() {
     const { can } = useAppContext();
