@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -147,9 +148,9 @@ const VehicleDataRow = ({ vehicle, currentMonth }: { vehicle: any, currentMonth:
     
     return (
         <AccordionItem value={vehicle.id}>
-            <div className="flex items-center p-2 border-b">
+            <div className="flex justify-between items-center p-2 border-b">
                  <AccordionTrigger className="p-2 flex-1 hover:no-underline">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                         <div className={cn("h-2.5 w-2.5 rounded-full", vehicle.status.color)}></div>
                         <div>
                             <p className="font-semibold">{vehicle.vehicleNumber}</p>
@@ -188,7 +189,7 @@ const VehicleDataRow = ({ vehicle, currentMonth }: { vehicle: any, currentMonth:
                         <Table className="min-w-full border-separate border-spacing-0 bg-background">
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="sticky top-0 z-30 bg-card shadow-sm">Day</TableHead>
+                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Day</TableHead>
                                     <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Start KM</TableHead>
                                     <TableHead className="sticky top-0 z-20 bg-card shadow-sm">End KM</TableHead>
                                     <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Total KM</TableHead>
@@ -258,16 +259,27 @@ export default function VehicleUsageSheet() {
             .sort((a,b) => a.vehicleNumber.localeCompare(b.vehicleNumber));
     }, [vehicles, currentMonth, vehicleUsageRecords]);
 
+    const canGoToPreviousMonth = useMemo(() => {
+        const firstDayOfCurrentMonth = startOfMonth(currentMonth);
+        return isAfter(firstDayOfCurrentMonth, implementationStartDate);
+      }, [currentMonth]);
+      
+    const canGoToNextMonth = useMemo(() => isBefore(currentMonth, startOfToday()), [currentMonth]);
+  
+    const changeMonth = (amount: number) => {
+        setCurrentMonth(prev => addMonths(prev, amount));
+    };
+
     return (
         <div className="flex flex-col h-full bg-card border rounded-lg">
             <div className="p-4 border-b shrink-0">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="flex items-center gap-2">
-                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+                        <Button variant="outline" size="icon" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth}>
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
                         <span className="text-lg font-semibold">{format(currentMonth, 'MMMM yyyy')}</span>
-                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={isSameMonth(currentMonth, new Date())}>
+                        <Button variant="outline" size="icon" onClick={() => changeMonth(1)} disabled={!canGoToNextMonth}>
                             <ChevronRight className="h-4 w-4" />
                         </Button>
                     </div>
