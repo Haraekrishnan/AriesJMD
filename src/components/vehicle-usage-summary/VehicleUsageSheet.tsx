@@ -186,131 +186,162 @@ export default function VehicleUsageSheet() {
     const canEdit = (can.manage_vehicle_usage) && !isLocked;
     const canLockSheet = can.manage_vehicle_usage;
 
+    const getVehicleStatus = (vehicleId: string) => {
+        if (record?.isLocked) {
+            return { label: 'Completed', color: 'bg-green-500' };
+        }
+        const vRecord = record?.records?.[vehicleId];
+        if (!vRecord) {
+            return { label: 'Not Yet Started', color: 'bg-gray-400' };
+        }
+        // Check if any data has been entered
+        const hasData = Object.values(vRecord.days || {}).some(dayData => 
+            dayData.startKm || dayData.endKm || dayData.overtime || dayData.remarks
+        );
+        if (hasData) {
+            return { label: 'On Going', color: 'bg-yellow-500' };
+        }
+        return { label: 'Not Yet Started', color: 'bg-gray-400' };
+    };
+
     return (
-        <div className="flex flex-col h-full bg-card border rounded-lg">
-            <div className="p-4 border-b shrink-0 space-y-4">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <span className="text-lg font-semibold">{format(currentMonth, 'MMMM yyyy')}</span>
-                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={isSameMonth(currentMonth, new Date())}>
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                    </div>
-                    <Select value={selectedVehicleId} onValueChange={setSelectedVehicleId}>
-                        <SelectTrigger className="w-full md:w-[250px]">
-                            <SelectValue placeholder="Select a vehicle..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {vehicles.map(v => <SelectItem key={v.id} value={v.id}>{v.vehicleNumber}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    <div className="flex items-center gap-2">
-                        <Button onClick={() => handleExport('excel')}><Download className="mr-2 h-4 w-4"/>Excel</Button>
-                        <Button onClick={() => handleExport('pdf')}><Download className="mr-2 h-4 w-4"/>PDF</Button>
-                        {canEdit && <Button onClick={handleSave}><Save className="mr-2 h-4 w-4"/>Save</Button>}
-                        {canLockSheet && (
-                            isLocked
-                            ? <Button variant="secondary" onClick={() => unlockVehicleUsageSheet(monthKey)}>Unlock</Button>
-                            : <Button variant="destructive" onClick={() => lockVehicleUsageSheet(monthKey)}>Lock</Button>
-                        )}
-                    </div>
-                </div>
-            </div>
-             {selectedVehicleId && (
-                <div className="p-4 border-b grid grid-cols-2 md:grid-cols-5 gap-4">
-                     <div className="space-y-2">
-                        <Label>Job No.</Label>
-                        <Input value={headerStates.jobNo} onChange={e => handleHeaderChange('jobNo', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Vehicle Type</Label>
-                        <Input value={headerStates.vehicleType} onChange={e => handleHeaderChange('vehicleType', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Over Time (Header)</Label>
-                        <Input value={headerStates.headerOvertime} readOnly className="font-bold" />
-                    </div>
-                     <div className="space-y-2">
-                        <Label>Extra Night</Label>
-                        <Input type="number" value={headerStates.extraNight} onChange={e => handleHeaderChange('extraNight', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Extra Days</Label>
-                        <Input type="number" value={headerStates.extraDays} onChange={e => handleHeaderChange('extraDays', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
-                    </div>
-                     <div className="space-y-2">
-                        <Label>Total KM</Label>
-                        <Input value={monthlyTotalKm} readOnly className="font-bold" />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Extra KM</Label>
-                        <Input type="number" value={headerStates.extraKm} readOnly className="font-bold" />
-                    </div>
-                     <div className="space-y-2">
-                        <Label>Verified By</Label>
-                        <Input value={headerStates.verifiedByName} onChange={e => handleHeaderChange('verifiedByName', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Verified Date</Label>
-                        <DatePickerInput value={headerStates.verifiedByDate} onChange={date => handleHeaderChange('verifiedByDate', date)} onBlur={handleSave} disabled={!canEdit} />
+        <TooltipProvider>
+            <div className="flex flex-col h-full bg-card border rounded-lg">
+                {/* --- HEADER --- */}
+                <div className="p-4 border-b shrink-0 space-y-4">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <span className="text-lg font-semibold">{format(currentMonth, 'MMMM yyyy')}</span>
+                            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={isSameMonth(currentMonth, new Date())}>
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <Select value={selectedVehicleId} onValueChange={setSelectedVehicleId}>
+                            <SelectTrigger className="w-full md:w-[300px]">
+                                <SelectValue placeholder="Select a vehicle..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {vehicles.map(v => {
+                                    const status = getVehicleStatus(v.id);
+                                    return (
+                                        <SelectItem key={v.id} value={v.id}>
+                                            <div className="flex items-center gap-2">
+                                                <div className={cn("h-2 w-2 rounded-full", status.color)}></div>
+                                                <span>{v.vehicleNumber}</span>
+                                                <span className="text-xs text-muted-foreground ml-auto">{status.label}</span>
+                                            </div>
+                                        </SelectItem>
+                                    );
+                                })}
+                            </SelectContent>
+                        </Select>
+                        <div className="flex items-center gap-2">
+                            <Button onClick={() => handleExport('excel')}><Download className="mr-2 h-4 w-4"/>Excel</Button>
+                            <Button onClick={() => handleExport('pdf')}><Download className="mr-2 h-4 w-4"/>PDF</Button>
+                            {canEdit && <Button onClick={handleSave}><Save className="mr-2 h-4 w-4"/>Save</Button>}
+                            {canLockSheet && (
+                                isLocked
+                                ? <Button variant="secondary" onClick={() => unlockVehicleUsageSheet(monthKey)}>Unlock</Button>
+                                : <Button variant="destructive" onClick={() => lockVehicleUsageSheet(monthKey)}>Lock</Button>
+                            )}
+                        </div>
                     </div>
                 </div>
-            )}
-            <div className="overflow-auto flex-1 relative">
-                {selectedVehicleId ? (
-                <Table className="min-w-full border-separate border-spacing-0">
-                    <thead className="sticky top-0 z-10 bg-card">
-                        <TableRow>
-                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Day</TableHead>
-                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Start KM</TableHead>
-                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm">End KM</TableHead>
-                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Total KM</TableHead>
-                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Overtime (Hrs)</TableHead>
-                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Remarks</TableHead>
-                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm text-center">Holiday</TableHead>
-                        </TableRow>
-                    </thead>
-                    <TableBody>
-                        {dayHeaders.map(day => {
-                            const dateForDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-                            const isSunday = getDay(dateForDay) === 0;
-                            const startKm = Number(cellStates[`${day}-startKm`] || 0);
-                            const endKm = Number(cellStates[`${day}-endKm`] || 0);
-                            const totalKm = endKm > startKm ? endKm - startKm : 0;
-                            const isHoliday = cellStates[`${day}-isHoliday`];
-                            return (
-                                <TableRow key={day} className={cn((isHoliday || isSunday) && 'bg-yellow-100 dark:bg-yellow-900/30')}>
-                                    <TableCell className={cn("sticky left-0 font-medium z-10 border-r", (isHoliday || isSunday) ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-card')}>{format(dateForDay, 'dd-MM-yyyy')}</TableCell>
-                                    <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-startKm`] || ''} onChange={(e) => handleInputChange(day, 'startKm', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
-                                    <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-endKm`] || ''} onChange={(e) => handleInputChange(day, 'endKm', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
-                                    <TableCell className="font-medium text-center">{totalKm}</TableCell>
-                                    <TableCell><Input className="h-8" value={cellStates[`${day}-overtime`] || ''} onChange={(e) => handleInputChange(day, 'overtime', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
-                                    <TableCell><Input className="h-8" value={cellStates[`${day}-remarks`] || ''} onChange={(e) => handleInputChange(day, 'remarks', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
-                                    <TableCell className="text-center">
-                                        <Checkbox
-                                            checked={isHoliday}
-                                            onCheckedChange={(checked) => {
-                                                handleInputChange(day, 'isHoliday', !!checked);
-                                                handleSave();
-                                            }}
-                                            disabled={!canEdit}
-                                        />
-                                    </TableCell>
-                                </TableRow>
-                            )
-                        })}
-                    </TableBody>
-                </Table>
-                ) : (
-                    <div className="flex items-center justify-center h-full text-muted-foreground">
-                        Please select a vehicle to view its usage summary.
+                 {selectedVehicleId && (
+                    <div className="p-4 border-b grid grid-cols-2 md:grid-cols-5 gap-4">
+                         <div className="space-y-2">
+                            <Label>Job No.</Label>
+                            <Input value={headerStates.jobNo} onChange={e => handleHeaderChange('jobNo', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Vehicle Type</Label>
+                            <Input value={headerStates.vehicleType} onChange={e => handleHeaderChange('vehicleType', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Over Time (Header)</Label>
+                            <Input value={headerStates.headerOvertime} readOnly className="font-bold" />
+                        </div>
+                         <div className="space-y-2">
+                            <Label>Extra Night</Label>
+                            <Input type="number" value={headerStates.extraNight} onChange={e => handleHeaderChange('extraNight', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Extra Days</Label>
+                            <Input type="number" value={headerStates.extraDays} onChange={e => handleHeaderChange('extraDays', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
+                        </div>
+                         <div className="space-y-2">
+                            <Label>Total KM</Label>
+                            <Input value={monthlyTotalKm} readOnly className="font-bold" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Extra KM</Label>
+                            <Input type="number" value={headerStates.extraKm} readOnly className="font-bold" />
+                        </div>
+                         <div className="space-y-2">
+                            <Label>Verified By</Label>
+                            <Input value={headerStates.verifiedByName} onChange={e => handleHeaderChange('verifiedByName', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Verified Date</Label>
+                            <DatePickerInput value={headerStates.verifiedByDate} onChange={date => handleHeaderChange('verifiedByDate', date)} disabled={!canEdit} />
+                        </div>
                     </div>
                 )}
+                <div className="overflow-auto flex-1 relative">
+                    {selectedVehicleId ? (
+                    <Table className="min-w-full border-separate border-spacing-0">
+                        <thead className="sticky top-0 z-10 bg-card">
+                            <TableRow>
+                                <TableHead className="sticky left-0 z-20 bg-card shadow-sm">Day</TableHead>
+                                <TableHead className="sticky top-0 z-10 bg-card shadow-sm">Start KM</TableHead>
+                                <TableHead className="sticky top-0 z-10 bg-card shadow-sm">End KM</TableHead>
+                                <TableHead className="sticky top-0 z-10 bg-card shadow-sm">Total KM</TableHead>
+                                <TableHead className="sticky top-0 z-10 bg-card shadow-sm">Overtime (Hrs)</TableHead>
+                                <TableHead className="sticky top-0 z-10 bg-card shadow-sm">Remarks</TableHead>
+                                <TableHead className="sticky top-0 z-10 bg-card shadow-sm text-center">Holiday</TableHead>
+                            </TableRow>
+                        </thead>
+                        <TableBody>
+                            {dayHeaders.map(day => {
+                                const dateForDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                                const isSunday = getDay(dateForDay) === 0;
+                                const startKm = Number(cellStates[`${day}-startKm`] || 0);
+                                const endKm = Number(cellStates[`${day}-endKm`] || 0);
+                                const totalKm = endKm > startKm ? endKm - startKm : 0;
+                                const isHoliday = cellStates[`${day}-isHoliday`];
+                                return (
+                                    <TableRow key={day} className={cn((isHoliday || isSunday) && 'bg-yellow-100 dark:bg-yellow-900/30')}>
+                                        <TableCell className={cn("sticky left-0 font-medium z-10 border-r", (isHoliday || isSunday) ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-card')}>{format(dateForDay, 'dd-MM-yyyy')}</TableCell>
+                                        <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-startKm`] || ''} onChange={(e) => handleInputChange(day, 'startKm', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
+                                        <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-endKm`] || ''} onChange={(e) => handleInputChange(day, 'endKm', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
+                                        <TableCell className="font-medium text-center">{totalKm}</TableCell>
+                                        <TableCell><Input className="h-8" value={cellStates[`${day}-overtime`] || ''} onChange={(e) => handleInputChange(day, 'overtime', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
+                                        <TableCell><Input className="h-8" value={cellStates[`${day}-remarks`] || ''} onChange={(e) => handleInputChange(day, 'remarks', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
+                                        <TableCell className="text-center">
+                                            <Checkbox
+                                                checked={isHoliday}
+                                                onCheckedChange={(checked) => {
+                                                    handleInputChange(day, 'isHoliday', !!checked);
+                                                    handleSave();
+                                                }}
+                                                disabled={!canEdit}
+                                            />
+                                        </TableCell>
+                                    </TableRow>
+                                )
+                            })}
+                        </TableBody>
+                    </Table>
+                    ) : (
+                        <div className="flex items-center justify-center h-full text-muted-foreground">
+                            Please select a vehicle to view its usage summary.
+                        </div>
+                    )}
+                </div>
             </div>
-           
-        </div>
+        </TooltipProvider>
     );
 }
