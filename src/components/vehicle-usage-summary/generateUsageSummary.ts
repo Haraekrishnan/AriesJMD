@@ -220,6 +220,7 @@ export async function exportToPdf(
     format: 'a4',
     compress: true,
   });
+
   const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
 
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -252,8 +253,8 @@ export async function exportToPdf(
     margin: { left: pageWidth - margin - 150 },
   });
 
-  currentY = (doc as any).lastAutoTable.finalY + 10;
-  currentY = Math.max(currentY, 75); // Ensure table starts below header info
+  currentY = (doc as any).lastAutoTable.finalY + 15;
+  currentY = Math.max(currentY, 80);
 
   // Main Table
   let totalKm = 0;
@@ -298,43 +299,59 @@ export async function exportToPdf(
       minCellHeight: 16,
     },
     columnStyles: {
-      0: { cellWidth: 72 },
+      0: { cellWidth: 65 },
       1: { cellWidth: 48 },
       2: { cellWidth: 48 },
       3: { cellWidth: 48 },
       4: { cellWidth: 40 },
-      5: {
-        cellWidth: 'auto',
-        halign: 'left',
-      },
+      5: { cellWidth: 'auto', halign: 'left' }
     },
     margin: { left: margin, right: margin },
     pageBreak: 'avoid',
-    rowPageBreak: 'avoid'
+    rowPageBreak: 'avoid',
   });
 
-  // Footer Section
-  const footerY = pageHeight - 80;
-  
+  // Footer Section - Positioned from the bottom of the page
+  const footerStartY = pageHeight - 70; // Pin to bottom
+
+  const footerLabels = [
+    { content: 'Verified By:', styles: { fontStyle: 'bold' } },
+    { content: 'Verified By Date:', styles: { fontStyle: 'bold' } },
+    { content: 'Signature:', styles: { fontStyle: 'bold' } },
+  ];
+  const footerValues = [
+    headerStates.verifiedByName || '',
+    headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '',
+    '', // for signature space
+  ];
+
   (doc as any).autoTable({
-    startY: footerY,
-    body: [
-      [{ content: 'Verified By:', styles: { fontStyle: 'bold' } }, { content: 'Verified By Date:', styles: { fontStyle: 'bold' } }, { content: 'Signature:', styles: { fontStyle: 'bold' } }],
-      [headerStates.verifiedByName || '', headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '', '']
-    ],
+    startY: footerStartY,
+    body: [footerLabels, footerValues],
     theme: 'grid',
-    styles: { fontSize: 9, font: 'helvetica', cellPadding: 3, valign: 'top', minCellHeight: 25 },
+    styles: {
+        fontSize: 9,
+        font: 'helvetica',
+        cellPadding: 3,
+        valign: 'top',
+        lineWidth: 0.5,
+        lineColor: [100, 100, 100],
+    },
     columnStyles: {
-      0: { cellWidth: (pageWidth - margin * 2) / 3 },
-      1: { cellWidth: (pageWidth - margin * 2) / 3 },
-      2: { cellWidth: (pageWidth - margin * 2) / 3 },
+        0: { cellWidth: (pageWidth - margin * 2) / 3 },
+        1: { cellWidth: (pageWidth - margin * 2) / 3 },
+        2: { cellWidth: (pageWidth - margin * 2) / 3 },
     },
     margin: { left: margin, right: margin },
     didParseCell: (data: any) => {
-        if (data.row.index === 1) {
+        if (data.row.index === 0) { // First row (labels)
+            data.cell.styles.minCellHeight = 15;
+        }
+        if (data.row.index === 1) { // Second row (values)
+            data.cell.styles.minCellHeight = 25;
             data.cell.styles.valign = 'bottom';
         }
-    }
+    },
   });
 
   const signaturePath = SIGNATURES[headerStates.verifiedByName];
@@ -345,15 +362,14 @@ export async function exportToPdf(
         doc.addImage(
           signatureBase64,
           'JPEG',
-          margin + ((pageWidth - margin * 2) * 2) / 3 + 15,
-          footerY + 22,
+          margin + (((pageWidth - margin * 2) / 3) * 2) + 15, // X position
+          footerStartY + 22, // Y position
           70,
           28
         );
       }
-    } catch(e) { console.error(e) }
+    } catch(e) { console.error(e); }
   }
-
 
   doc.save(
     `Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`
