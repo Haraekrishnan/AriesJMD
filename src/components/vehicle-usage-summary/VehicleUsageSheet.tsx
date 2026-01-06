@@ -72,6 +72,27 @@ export default function VehicleUsageSheet() {
         return total;
     }, [cellStates, dayHeaders]);
 
+    const monthlyTotalOvertime = useMemo(() => {
+        let totalMinutes = 0;
+        for (const day of dayHeaders) {
+            const overtimeValue = cellStates[`${day}-overtime`] || '';
+            if (typeof overtimeValue === 'string' && overtimeValue.includes(':')) {
+                const [hours, minutes] = overtimeValue.split(':').map(Number);
+                totalMinutes += (hours * 60) + (minutes || 0);
+            } else if (overtimeValue) {
+                totalMinutes += Number(overtimeValue) * 60;
+            }
+        }
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        return `${hours}:${minutes.toString().padStart(2, '0')}`;
+    }, [cellStates, dayHeaders]);
+
+    useEffect(() => {
+        const extra = monthlyTotalKm > 3000 ? monthlyTotalKm - 3000 : 0;
+        setHeaderStates(prev => ({ ...prev, extraKm: extra, headerOvertime: monthlyTotalOvertime }));
+    }, [monthlyTotalKm, monthlyTotalOvertime]);
+
     useEffect(() => {
         if (vehicleRecord) {
             const newStates: Record<string, any> = {};
@@ -99,10 +120,6 @@ export default function VehicleUsageSheet() {
         }
     }, [vehicleRecord, selectedVehicleId, currentMonth]);
     
-    useEffect(() => {
-        const extra = monthlyTotalKm > 3000 ? monthlyTotalKm - 3000 : 0;
-        setHeaderStates(prev => ({...prev, extraKm: extra }));
-    }, [monthlyTotalKm]);
 
     const handleInputChange = (day: number, field: string, value: string | number | boolean) => {
         const dayKey = `${day}-${field}`;
@@ -214,7 +231,7 @@ export default function VehicleUsageSheet() {
                     </div>
                     <div className="space-y-2">
                         <Label>Over Time (Header)</Label>
-                        <Input value={headerStates.headerOvertime} onChange={e => handleHeaderChange('headerOvertime', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
+                        <Input value={headerStates.headerOvertime} readOnly className="font-bold" />
                     </div>
                      <div className="space-y-2">
                         <Label>Extra Night</Label>
