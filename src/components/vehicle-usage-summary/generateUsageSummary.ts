@@ -22,9 +22,10 @@ async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
   }
 }
 
-async function fetchImageAsBase64(url: string): Promise<string> {
+async function fetchImageAsBase64(imgPath: string): Promise<string> {
+    const url = imgPath.startsWith('/') ? `${process.env.NEXT_PUBLIC_APP_URL}${imgPath}` : imgPath;
     try {
-        const response = await fetch(new URL(url, process.env.NEXT_PUBLIC_APP_URL).href);
+        const response = await fetch(url);
         if (!response.ok) {
              console.error(`Failed to fetch image: ${response.statusText} from ${url}`);
              return '';
@@ -214,19 +215,19 @@ export async function exportToPdf(
   headerStates: any,
 ) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-  const logo = await fetchImageAsBase64('/images/Aries_logo.png');
+  const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 30;
   
-  let currentY = 30;
+  let currentY = 25;
 
-  if (logo) doc.addImage(logo, 'PNG', margin, currentY, 120, 30);
-
+  if (logoBase64) doc.addImage(logoBase64, 'PNG', margin, currentY, 120, 25);
+  
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
-  doc.text(vehicle?.vehicleNumber || '', margin, currentY + 50);
+  doc.text(vehicle?.vehicleNumber || '', margin, currentY + 45);
 
   const rightHeaderData = [
     ['JOB NO', (headerStates.jobNo || '').toUpperCase()],
@@ -241,13 +242,13 @@ export async function exportToPdf(
     body: rightHeaderData,
     startY: currentY,
     theme: 'grid',
-    styles: { fontSize: 8, font: 'helvetica', cellPadding: 3, lineColor: [200, 200, 200], lineWidth: 0.5 },
-    columnStyles: { 0: { fontStyle: 'bold' } },
-    tableWidth: 220,
-    margin: { left: pageWidth - margin - 220 },
+    styles: { fontSize: 8, font: 'helvetica', cellPadding: 2, lineColor: [180, 180, 180], lineWidth: 0.5 },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 70 }, 1: { cellWidth: 80 } },
+    tableWidth: 150,
+    margin: { left: pageWidth - margin - 150 },
   });
   
-  currentY = 110;
+  currentY = 100;
   
   let totalKm = 0;
   const body = dayHeaders.map(day => {
@@ -259,12 +260,12 @@ export async function exportToPdf(
     const isHoliday = cellStates[`${day}-isHoliday`] || getDay(d) === 0;
 
     return [
-      { content: format(d, 'dd-MMM-yyyy'), styles: { fillColor: isHoliday ? [255, 255, 153] : undefined } },
-      { content: s || '', styles: { fillColor: isHoliday ? [255, 255, 153] : undefined } },
-      { content: e || '', styles: { fillColor: isHoliday ? [255, 255, 153] : undefined } },
-      { content: t || '', styles: { fillColor: isHoliday ? [255, 255, 153] : undefined } },
-      { content: cellStates[`${day}-overtime`] || '', styles: { fillColor: isHoliday ? [255, 255, 153] : undefined } },
-      { content: cellStates[`${day}-remarks`] || '', styles: { fillColor: isHoliday ? [255, 255, 153] : undefined } },
+      { content: format(d, 'dd-MMM-yyyy'), styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
+      { content: s || '', styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
+      { content: e || '', styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
+      { content: t || '', styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
+      { content: cellStates[`${day}-overtime`] || '', styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
+      { content: cellStates[`${day}-remarks`] || '', styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
     ];
   });
   
@@ -274,7 +275,7 @@ export async function exportToPdf(
     head: [['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OT', 'REMARKS']],
     body,
     startY: currentY,
-    styles: { fontSize: 8, halign: 'center', font: 'helvetica', cellPadding: 3, minCellHeight: 15 },
+    styles: { fontSize: 8, halign: 'center', font: 'helvetica', cellPadding: 2, minCellHeight: 15 },
     headStyles: { fillColor: [2, 179, 150], textColor: 255, fontStyle: 'bold' },
     theme: 'grid',
     columnStyles: {
@@ -287,30 +288,29 @@ export async function exportToPdf(
     },
   });
 
-  let finalY = (doc as any).lastAutoTable.finalY + 30;
-  
-  if (finalY > pageHeight - 60) {
-    doc.addPage();
-    finalY = margin;
-  }
+  let finalY = (doc as any).lastAutoTable.finalY + 20;
 
   doc.setFontSize(8);
   
-  const footerXPositions = [margin, pageWidth / 2, pageWidth - margin];
+  const footerLabels = [
+    { content: 'Verified By:', styles: { fontStyle: 'bold' } },
+    { content: 'Verified By Date:', styles: { fontStyle: 'bold' } },
+    { content: 'Signature:', styles: { fontStyle: 'bold' } }
+  ];
 
-  // Draw labels
-  doc.setFont('helvetica', 'bold');
-  doc.text('Verified By:', footerXPositions[0], finalY);
-  doc.text('Verified By Date:', footerXPositions[1] - 50, finalY);
-  doc.text('Signature:', footerXPositions[2], finalY, { align: 'right' });
+  const footerValues = [
+    headerStates.verifiedByName || '',
+    headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '',
+    '' 
+  ];
 
-  // Draw values
-  finalY += 15;
-  doc.setFont('helvetica', 'normal');
-  doc.text(headerStates.verifiedByName || '', footerXPositions[0], finalY);
-  doc.text(headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '', footerXPositions[1] - 50, finalY);
-  // Signature line
-  doc.line(footerXPositions[2], finalY + 5, footerXPositions[2] - 100, finalY + 5);
+  (doc as any).autoTable({
+    startY: finalY,
+    body: [footerLabels, footerValues],
+    theme: 'grid',
+    styles: { fontSize: 8, font: 'helvetica', cellPadding: 3, minCellHeight: 40, valign: 'top' },
+  });
+
 
   doc.save(
     `Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`
