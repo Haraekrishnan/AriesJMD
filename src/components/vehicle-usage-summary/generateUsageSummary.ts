@@ -1,3 +1,4 @@
+
 'use client';
 
 import ExcelJS from 'exceljs';
@@ -9,23 +10,24 @@ import type { Vehicle, Driver, User } from '@/lib/types';
 
 async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
   try {
-      const response = await fetch(url);
-      if (!response.ok) {
-          console.error(`Failed to fetch image: ${response.statusText} from ${url}`);
-          return null;
-      }
-      return await response.arrayBuffer();
+    const response = await fetch(url);
+    if (!response.ok) {
+        console.error(`Failed to fetch image: ${response.statusText} from ${url}`);
+        return null;
+    }
+    return await response.arrayBuffer();
   } catch (error) {
-      console.error('Error fetching image for Excel:', error);
-      return null;
+    console.error('Error fetching image for Excel:', error);
+    return null;
   }
 }
 
 async function fetchImageAsBase64(url: string): Promise<string> {
     try {
-        const response = await fetch(url);
+        const absoluteUrl = url.startsWith('/') ? `${process.env.NEXT_PUBLIC_APP_URL}${url}` : url;
+        const response = await fetch(absoluteUrl);
         if (!response.ok) {
-             console.error(`Failed to fetch image: ${response.statusText} from ${url}`);
+             console.error(`Failed to fetch image: ${response.statusText} from ${absoluteUrl}`);
              return '';
         }
         const blob = await response.blob();
@@ -152,6 +154,24 @@ export async function exportToExcel(
   totalRow.eachCell(c => c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } });
   
   let footerRowIndex = sheet.lastRow!.number + 2;
+  const verifiedRow = sheet.getRow(footerRowIndex);
+  sheet.mergeCells(footerRowIndex, 1, footerRowIndex, 2);
+  const verifiedCell = verifiedRow.getCell(1);
+  verifiedCell.value = `Verified By: ${headerStates.verifiedByName || '...........................'}`;
+  verifiedCell.border = greyBorder;
+  verifiedCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+  
+  sheet.mergeCells(footerRowIndex, 3, footerRowIndex, 4);
+  const dateCell = verifiedRow.getCell(3);
+  dateCell.value = `Date: ${headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '.....................'}`;
+  dateCell.border = greyBorder;
+  dateCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+  
+  sheet.mergeCells(footerRowIndex, 5, footerRowIndex, 6);
+  const signCell = verifiedRow.getCell(5);
+  signCell.value = 'Signature:';
+  signCell.border = greyBorder;
+  signCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
 
   sheet.columns = [
     { width: 18 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 30 }
@@ -244,4 +264,19 @@ export async function exportToPdf(
       5: { halign: 'left' },
     },
   });
+
+  const finalY = (doc as any).lastAutoTable.finalY + 20;
+  
+  (doc as any).autoTable({
+    body: [
+      [`Verified By: ${headerStates.verifiedByName || ''}`, `Date: ${headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : ''}`, 'Signature:']
+    ],
+    startY: finalY,
+    theme: 'grid',
+    styles: { fontSize: 9, font: 'helvetica' },
+  });
+
+  doc.save(
+    `Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`
+  );
 }
