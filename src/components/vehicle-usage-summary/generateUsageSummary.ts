@@ -12,7 +12,10 @@ async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
     try {
         const absoluteUrl = url.startsWith('/') ? `${window.location.origin}${url}` : url;
         const response = await fetch(absoluteUrl);
-        if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
+        if (!response.ok) {
+            console.error(`Failed to fetch image: ${response.statusText} from ${absoluteUrl}`);
+            return null;
+        }
         return await response.arrayBuffer();
     } catch (error) {
         console.error('Error fetching image for Excel:', error);
@@ -20,11 +23,15 @@ async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
     }
 }
 
+
 async function fetchImageAsBase64(url: string): Promise<string> {
     try {
         const absoluteUrl = url.startsWith('/') ? `${window.location.origin}${url}` : url;
         const response = await fetch(absoluteUrl);
-        if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
+        if (!response.ok) {
+             console.error(`Failed to fetch image: ${response.statusText} from ${absoluteUrl}`);
+             return '';
+        }
         const blob = await response.blob();
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -68,7 +75,7 @@ export async function exportToExcel(
   vehicleCell.font = { size: 14, bold: true, name: 'Calibri' };
   vehicleCell.alignment = { horizontal: 'left', vertical: 'middle' };
 
-  const rightHeader = [
+  const rightHeaderData = [
     ['JOB NO', (headerStates.jobNo || '').toUpperCase()],
     ['VEHICLE TYPE', (headerStates.vehicleType || '').toUpperCase()],
     ['EXTRA KM', headerStates.extraKm || 0],
@@ -87,7 +94,7 @@ export async function exportToExcel(
   const startRow = 1;
   const startCol = 5;
   
-  rightHeader.forEach((r, i) => {
+  rightHeaderData.forEach((r, i) => {
     const row = sheet.getRow(startRow + i);
     const cellLabel = row.getCell(startCol);
     const cellValue = row.getCell(startCol + 1);
@@ -122,6 +129,7 @@ export async function exportToExcel(
     const endKm = Number(cellStates[`${day}-endKm`] || 0);
     const total = endKm > startKm ? endKm - startKm : 0;
     totalKm += total;
+    const isHoliday = cellStates[`${day}-isHoliday`];
 
     const row = sheet.addRow([
       format(date, 'dd-MMM-yyyy'),
@@ -136,13 +144,10 @@ export async function exportToExcel(
       c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
       c.alignment = { horizontal: 'center', vertical: 'middle' };
       c.font = { name: 'Calibri', size: 11 };
-    });
-
-    if (date.getDay() === 0) {
-      row.eachCell(c => {
+      if (isHoliday) {
         c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
-      });
-    }
+      }
+    });
   });
 
   const totalRow = sheet.addRow(['', '', 'TOTAL KILOMETER:', totalKm, '', '']);
@@ -243,7 +248,7 @@ export async function exportToPdf(
       t || '',
       cellStates[`${day}-overtime`] || '',
       cellStates[`${day}-remarks`] || '',
-      d.getDay() === 0 ? 'HIGHLIGHT' : '',
+      cellStates[`${day}-isHoliday`] ? 'HIGHLIGHT' : '',
     ];
   });
   
@@ -257,9 +262,9 @@ export async function exportToPdf(
     headStyles: { fillColor: [2, 179, 150], textColor: 255, fontStyle: 'bold' },
     theme: 'grid',
     didParseCell: (data: any) => {
-      if (data.row.raw[6] === 'HIGHLIGHT' && data.section === 'body') {
-        data.cell.styles.fillColor = [255, 255, 153];
-      }
+        if (data.row.raw[6] === 'HIGHLIGHT' && data.section === 'body') {
+            data.cell.styles.fillColor = [255, 255, 153];
+        }
     },
     columnStyles: {
       5: { halign: 'left' },

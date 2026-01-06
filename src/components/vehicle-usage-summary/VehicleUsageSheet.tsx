@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -14,6 +13,8 @@ import { Label } from '../ui/label';
 import type { VehicleUsageRecord } from '@/lib/types';
 import { exportToExcel, exportToPdf } from './generateUsageSummary';
 import { DatePickerInput } from '../ui/date-picker-input';
+import { cn } from '@/lib/utils';
+import { Checkbox } from '../ui/checkbox';
 
 export default function VehicleUsageSheet() {
     const { 
@@ -65,9 +66,13 @@ export default function VehicleUsageSheet() {
                 extraNight: vehicleRecord.extraNight || 0,
                 extraDays: vehicleRecord.extraDays || 0,
             });
+            setVerifiedByName(vehicleRecord.verifiedBy?.name || '');
+            setVerifiedByDate(vehicleRecord.verifiedBy?.date ? new Date(vehicleRecord.verifiedBy.date) : undefined);
         } else {
             setCellStates({});
             setHeaderStates({ jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0 });
+            setVerifiedByName('');
+            setVerifiedByDate(undefined);
         }
     }, [vehicleRecord, selectedVehicleId, currentMonth]);
 
@@ -204,18 +209,18 @@ export default function VehicleUsageSheet() {
                     </div>
                 </div>
             )}
-            <div className="overflow-auto flex-1">
+            <div className="overflow-auto flex-1 relative">
                 {selectedVehicleId ? (
                 <Table className="min-w-full border-separate border-spacing-0">
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Day</TableHead>
+                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm w-32">Day</TableHead>
                             <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Start KM</TableHead>
                             <TableHead className="sticky top-0 z-20 bg-card shadow-sm">End KM</TableHead>
                             <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Total KM</TableHead>
                             <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Overtime (Hrs)</TableHead>
                             <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Remarks</TableHead>
-                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm w-[50px]"></TableHead>
+                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm text-center">Holiday</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -233,13 +238,15 @@ export default function VehicleUsageSheet() {
                                     <TableCell className="font-medium text-center">{totalKm}</TableCell>
                                     <TableCell><Input className="h-8" value={cellStates[`${day}-overtime`] || ''} onChange={(e) => handleInputChange(day, 'overtime', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
                                     <TableCell><Input className="h-8" value={cellStates[`${day}-remarks`] || ''} onChange={(e) => handleInputChange(day, 'remarks', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
-                                    <TableCell>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-                                            handleInputChange(day, 'isHoliday', !isHoliday)
-                                            handleSave();
-                                        }} disabled={!canEdit}>
-                                            <Palette className="h-4 w-4"/>
-                                        </Button>
+                                    <TableCell className="text-center">
+                                        <Checkbox
+                                            checked={isHoliday}
+                                            onCheckedChange={(checked) => {
+                                                handleInputChange(day, 'isHoliday', !!checked);
+                                                handleSave();
+                                            }}
+                                            disabled={!canEdit}
+                                        />
                                     </TableCell>
                                 </TableRow>
                             )
