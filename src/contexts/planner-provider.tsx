@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { PlannerEvent, DailyPlannerComment, Comment, JobSchedule, JobScheduleItem, JobRecord, JobRecordPlant } from '@/lib/types';
+import { PlannerEvent, DailyPlannerComment, Comment, JobSchedule, JobScheduleItem, JobRecord, JobRecordPlant, VehicleUsageRecord } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, update, get, remove } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -14,6 +14,7 @@ type PlannerContextType = {
   dailyPlannerComments: DailyPlannerComment[];
   jobRecords: { [key: string]: JobRecord };
   jobRecordPlants: JobRecordPlant[];
+  vehicleUsageRecords: { [key: string]: VehicleUsageRecord };
   addPlannerEvent: (eventData: Omit<PlannerEvent, 'id'>) => void;
   updatePlannerEvent: (event: PlannerEvent) => void;
   deletePlannerEvent: (eventId: string) => void;
@@ -29,6 +30,9 @@ type PlannerContextType = {
   addJobRecordPlant: (name: string) => void;
   deleteJobRecordPlant: (id: string) => void;
   carryForwardPlantAssignments: (monthKey: string) => void;
+  saveVehicleUsageRecord: (monthKey: string, vehicleId: string, data: VehicleUsageRecord['records'][string]) => void;
+  lockVehicleUsageSheet: (monthKey: string) => void;
+  unlockVehicleUsageSheet: (monthKey: string) => void;
 };
 
 const createDataListener = <T extends {}>(
@@ -58,6 +62,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     const [jobSchedulesById, setJobSchedulesById] = useState<Record<string, JobSchedule>>({});
     const [jobRecords, setJobRecords] = useState<{[key: string]: JobRecord}>({});
     const [jobRecordPlantsById, setJobRecordPlantsById] = useState<Record<string, JobRecordPlant>>({});
+    const [vehicleUsageRecords, setVehicleUsageRecords] = useState<{ [key: string]: VehicleUsageRecord }>({});
 
     const plannerEvents = useMemo(() => Object.values(plannerEventsById), [plannerEventsById]);
     const dailyPlannerComments = useMemo(() => Object.values(dailyPlannerCommentsById), [dailyPlannerCommentsById]);
@@ -221,6 +226,19 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             await update(ref(rtdb), updates);
         }
     }, []);
+    
+    const saveVehicleUsageRecord = useCallback((monthKey: string, vehicleId: string, data: VehicleUsageRecord['records'][string]) => {
+        const path = `vehicleUsageRecords/${monthKey}/records/${vehicleId}`;
+        update(ref(rtdb, path), data);
+    }, []);
+    
+    const lockVehicleUsageSheet = useCallback((monthKey: string) => {
+        update(ref(rtdb, `vehicleUsageRecords/${monthKey}`), { isLocked: true });
+    }, []);
+
+    const unlockVehicleUsageSheet = useCallback((monthKey: string) => {
+        update(ref(rtdb, `vehicleUsageRecords/${monthKey}`), { isLocked: false });
+    }, []);
 
     useEffect(() => {
         const unsubscribers = [
@@ -235,18 +253,23 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
                 );
                 setJobRecords(monthRecords);
             }),
+             onValue(ref(rtdb, 'vehicleUsageRecords'), (snapshot) => {
+                const data = snapshot.val() || {};
+                setVehicleUsageRecords(data);
+            }),
         ];
         return () => unsubscribers.forEach(unsubscribe => unsubscribe());
     }, []);
 
     const contextValue: PlannerContextType = {
-        plannerEvents, dailyPlannerComments, jobSchedules, jobRecords, jobRecordPlants,
+        plannerEvents, dailyPlannerComments, jobSchedules, jobRecords, jobRecordPlants, vehicleUsageRecords,
         addPlannerEvent, updatePlannerEvent, deletePlannerEvent,
         getExpandedPlannerEvents, addPlannerEventComment,
         markSinglePlannerCommentAsRead, dismissPendingUpdate,
         saveJobSchedule, savePlantOrder, saveJobRecord,
         lockJobRecordSheet, unlockJobRecordSheet, addJobRecordPlant,
         deleteJobRecordPlant, carryForwardPlantAssignments,
+        saveVehicleUsageRecord, lockVehicleUsageSheet, unlockVehicleUsageSheet,
     };
 
     return <PlannerContext.Provider value={contextValue}>{children}</PlannerContext.Provider>;

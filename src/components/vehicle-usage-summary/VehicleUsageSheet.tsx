@@ -1,4 +1,5 @@
 
+
 'use client';
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -41,7 +42,7 @@ export default function VehicleUsageSheet() {
     const { toast } = useToast();
     
     const monthKey = format(currentMonth, 'yyyy-MM');
-    const record = vehicleUsageRecords[monthKey];
+    const record = vehicleUsageRecords?.[monthKey];
     const vehicleRecord = record?.records?.[selectedVehicleId];
 
     const [cellStates, setCellStates] = useState<Record<string, any>>({});
