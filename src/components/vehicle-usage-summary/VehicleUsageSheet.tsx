@@ -120,7 +120,6 @@ export default function VehicleUsageSheet() {
         }
     }, [vehicleRecord, selectedVehicleId, currentMonth]);
     
-
     const handleInputChange = (day: number, field: string, value: string | number | boolean) => {
         const dayKey = `${day}-${field}`;
         const nextDayKey = `${day + 1}-startKm`;
@@ -219,29 +218,10 @@ export default function VehicleUsageSheet() {
                                 <ChevronRight className="h-4 w-4" />
                             </Button>
                         </div>
-                        <Select value={selectedVehicleId} onValueChange={setSelectedVehicleId}>
-                            <SelectTrigger className="w-full md:w-[300px]">
-                                <SelectValue placeholder="Select a vehicle..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {vehicles.map(v => {
-                                    const status = getVehicleStatus(v.id);
-                                    return (
-                                        <SelectItem key={v.id} value={v.id}>
-                                            <div className="flex items-center gap-2">
-                                                <div className={cn("h-2 w-2 rounded-full", status.color)}></div>
-                                                <span>{v.vehicleNumber}</span>
-                                                <span className="text-xs text-muted-foreground ml-auto">{status.label}</span>
-                                            </div>
-                                        </SelectItem>
-                                    );
-                                })}
-                            </SelectContent>
-                        </Select>
                         <div className="flex items-center gap-2">
-                            <Button onClick={() => handleExport('excel')}><Download className="mr-2 h-4 w-4"/>Excel</Button>
-                            <Button onClick={() => handleExport('pdf')}><Download className="mr-2 h-4 w-4"/>PDF</Button>
-                            {canEdit && <Button onClick={handleSave}><Save className="mr-2 h-4 w-4"/>Save</Button>}
+                            <Button onClick={() => handleExport('excel')} disabled={!selectedVehicleId}><Download className="mr-2 h-4 w-4"/>Excel</Button>
+                            <Button onClick={() => handleExport('pdf')} disabled={!selectedVehicleId}><Download className="mr-2 h-4 w-4"/>PDF</Button>
+                            {canEdit && <Button onClick={handleSave} disabled={!selectedVehicleId}><Save className="mr-2 h-4 w-4"/>Save</Button>}
                             {canLockSheet && (
                                 isLocked
                                 ? <Button variant="secondary" onClick={() => unlockVehicleUsageSheet(monthKey)}>Unlock</Button>
@@ -290,56 +270,81 @@ export default function VehicleUsageSheet() {
                         </div>
                     </div>
                 )}
-                <div className="overflow-auto flex-1 relative">
-                    {selectedVehicleId ? (
-                    <Table className="min-w-full border-separate border-spacing-0">
-                        <thead className="sticky top-0 z-10 bg-card">
-                            <TableRow>
-                                <TableHead className="sticky left-0 z-20 bg-card shadow-sm">Day</TableHead>
-                                <TableHead className="sticky top-0 z-10 bg-card shadow-sm">Start KM</TableHead>
-                                <TableHead className="sticky top-0 z-10 bg-card shadow-sm">End KM</TableHead>
-                                <TableHead className="sticky top-0 z-10 bg-card shadow-sm">Total KM</TableHead>
-                                <TableHead className="sticky top-0 z-10 bg-card shadow-sm">Overtime (Hrs)</TableHead>
-                                <TableHead className="sticky top-0 z-10 bg-card shadow-sm">Remarks</TableHead>
-                                <TableHead className="sticky top-0 z-10 bg-card shadow-sm text-center">Holiday</TableHead>
-                            </TableRow>
-                        </thead>
-                        <TableBody>
-                            {dayHeaders.map(day => {
-                                const dateForDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-                                const isSunday = getDay(dateForDay) === 0;
-                                const startKm = Number(cellStates[`${day}-startKm`] || 0);
-                                const endKm = Number(cellStates[`${day}-endKm`] || 0);
-                                const totalKm = endKm > startKm ? endKm - startKm : 0;
-                                const isHoliday = cellStates[`${day}-isHoliday`];
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-[280px_1fr] overflow-hidden">
+                    <ScrollArea className="border-r">
+                        <div className="p-2 space-y-1">
+                            {vehicles.map(v => {
+                                const status = getVehicleStatus(v.id);
                                 return (
-                                    <TableRow key={day} className={cn((isHoliday || isSunday) && 'bg-yellow-100 dark:bg-yellow-900/30')}>
-                                        <TableCell className={cn("sticky left-0 font-medium z-10 border-r", (isHoliday || isSunday) ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-card')}>{format(dateForDay, 'dd-MM-yyyy')}</TableCell>
-                                        <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-startKm`] || ''} onChange={(e) => handleInputChange(day, 'startKm', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
-                                        <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-endKm`] || ''} onChange={(e) => handleInputChange(day, 'endKm', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
-                                        <TableCell className="font-medium text-center">{totalKm}</TableCell>
-                                        <TableCell><Input className="h-8" value={cellStates[`${day}-overtime`] || ''} onChange={(e) => handleInputChange(day, 'overtime', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
-                                        <TableCell><Input className="h-8" value={cellStates[`${day}-remarks`] || ''} onChange={(e) => handleInputChange(day, 'remarks', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
-                                        <TableCell className="text-center">
-                                            <Checkbox
-                                                checked={isHoliday}
-                                                onCheckedChange={(checked) => {
-                                                    handleInputChange(day, 'isHoliday', !!checked);
-                                                    handleSave();
-                                                }}
-                                                disabled={!canEdit}
-                                            />
-                                        </TableCell>
-                                    </TableRow>
-                                )
+                                    <Button
+                                        key={v.id}
+                                        variant={selectedVehicleId === v.id ? "secondary" : "ghost"}
+                                        onClick={() => setSelectedVehicleId(v.id)}
+                                        className="w-full justify-start h-auto p-2"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <div className={cn("h-2 w-2 rounded-full", status.color)}></div>
+                                            <div className="flex-1 text-left">
+                                                <p className="font-semibold">{v.vehicleNumber}</p>
+                                                <p className="text-xs text-muted-foreground">{status.label}</p>
+                                            </div>
+                                        </div>
+                                    </Button>
+                                );
                             })}
-                        </TableBody>
-                    </Table>
-                    ) : (
-                        <div className="flex items-center justify-center h-full text-muted-foreground">
-                            Please select a vehicle to view its usage summary.
                         </div>
-                    )}
+                    </ScrollArea>
+                    <div className="overflow-auto flex-1 relative">
+                        {selectedVehicleId ? (
+                        <Table className="min-w-full border-separate border-spacing-0">
+                            <thead className="sticky top-0 z-10 bg-card">
+                                <TableRow>
+                                    <TableHead className="sticky left-0 z-20 bg-card shadow-sm">Day</TableHead>
+                                    <TableHead className="sticky top-0 z-10 bg-card shadow-sm">Start KM</TableHead>
+                                    <TableHead className="sticky top-0 z-10 bg-card shadow-sm">End KM</TableHead>
+                                    <TableHead className="sticky top-0 z-10 bg-card shadow-sm">Total KM</TableHead>
+                                    <TableHead className="sticky top-0 z-10 bg-card shadow-sm">Overtime (Hrs)</TableHead>
+                                    <TableHead className="sticky top-0 z-10 bg-card shadow-sm">Remarks</TableHead>
+                                    <TableHead className="sticky top-0 z-10 bg-card shadow-sm text-center">Holiday</TableHead>
+                                </TableRow>
+                            </thead>
+                            <TableBody>
+                                {dayHeaders.map(day => {
+                                    const dateForDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                                    const isSunday = getDay(dateForDay) === 0;
+                                    const startKm = Number(cellStates[`${day}-startKm`] || 0);
+                                    const endKm = Number(cellStates[`${day}-endKm`] || 0);
+                                    const totalKm = endKm > startKm ? endKm - startKm : 0;
+                                    const isHoliday = cellStates[`${day}-isHoliday`];
+                                    return (
+                                        <TableRow key={day} className={cn((isHoliday || isSunday) && 'bg-yellow-100 dark:bg-yellow-900/30')}>
+                                            <TableCell className={cn("sticky left-0 font-medium z-10 border-r", (isHoliday || isSunday) ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-card')}>{format(dateForDay, 'dd-MM-yyyy')}</TableCell>
+                                            <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-startKm`] || ''} onChange={(e) => handleInputChange(day, 'startKm', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
+                                            <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-endKm`] || ''} onChange={(e) => handleInputChange(day, 'endKm', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
+                                            <TableCell className="font-medium text-center">{totalKm}</TableCell>
+                                            <TableCell><Input className="h-8" value={cellStates[`${day}-overtime`] || ''} onChange={(e) => handleInputChange(day, 'overtime', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
+                                            <TableCell><Input className="h-8" value={cellStates[`${day}-remarks`] || ''} onChange={(e) => handleInputChange(day, 'remarks', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
+                                            <TableCell className="text-center">
+                                                <Checkbox
+                                                    checked={isHoliday}
+                                                    onCheckedChange={(checked) => {
+                                                        handleInputChange(day, 'isHoliday', !!checked);
+                                                        handleSave();
+                                                    }}
+                                                    disabled={!canEdit}
+                                                />
+                                            </TableCell>
+                                        </TableRow>
+                                    )
+                                })}
+                            </TableBody>
+                        </Table>
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-muted-foreground">
+                                Please select a vehicle to view its usage summary.
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </TooltipProvider>
