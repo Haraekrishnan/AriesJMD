@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -14,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import type { VehicleUsageRecord } from '@/lib/types';
 import { exportToExcel, exportToPdf } from './generateUsageSummary';
+import { DatePickerInput } from '../ui/date-picker-input';
 
 export default function VehicleUsageSheet() {
     const { 
@@ -43,6 +43,8 @@ export default function VehicleUsageSheet() {
       extraNight: 0,
       extraDays: 0,
     });
+    const [verifiedByName, setVerifiedByName] = useState('');
+    const [verifiedByDate, setVerifiedByDate] = useState<Date | undefined>();
     
     useEffect(() => {
         if (vehicleRecord) {
@@ -66,6 +68,8 @@ export default function VehicleUsageSheet() {
             setCellStates({});
             setHeaderStates({ jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0 });
         }
+        setVerifiedByName('');
+        setVerifiedByDate(undefined);
     }, [vehicleRecord, selectedVehicleId, currentMonth]);
 
     const handleInputChange = (day: number, field: string, value: string | number) => {
@@ -109,7 +113,7 @@ export default function VehicleUsageSheet() {
             extraDays: Number(headerStates.extraDays),
         };
 
-        saveVehicleUsageRecord(monthKey, selectedVehicleId, dataToSave, { id: user.id, name: user.name });
+        saveVehicleUsageRecord(monthKey, selectedVehicleId, dataToSave);
         toast({ title: "Record Saved", description: "Vehicle usage data has been saved."});
     };
 
@@ -121,14 +125,20 @@ export default function VehicleUsageSheet() {
     const handleExport = (formatType: 'excel' | 'pdf') => {
         const vehicle = vehicles.find(v => v.id === selectedVehicleId);
         const driver = drivers.find(d => d.id === vehicle?.driverId);
-        const verifier = vehicleRecord?.verifiedById ? users.find(u => u.id === vehicleRecord.verifiedById) : user;
         
-        if (!verifier) return;
+        if (!verifiedByName || !verifiedByDate) {
+            toast({
+                title: "Verification Details Required",
+                description: "Please enter the 'Verified By' name and date before exporting.",
+                variant: 'destructive',
+            });
+            return;
+        }
 
         if (formatType === 'excel') {
-            exportToExcel(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates, verifier.name);
+            exportToExcel(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates, verifiedByName, verifiedByDate);
         } else {
-            exportToPdf(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates, verifier.name, verifier.id);
+            exportToPdf(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates, verifiedByName, verifiedByDate);
         }
     };
     
@@ -193,9 +203,13 @@ export default function VehicleUsageSheet() {
                         <Label>Extra Days</Label>
                         <Input type="number" value={headerStates.extraDays} onChange={e => handleHeaderChange('extraDays', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
                     </div>
-                     <div className="space-y-2 col-span-2">
+                     <div className="space-y-2">
                         <Label>Verified By</Label>
-                        <p className="text-sm p-2 border rounded-md bg-muted">{user?.name}</p>
+                        <Input placeholder="Enter verifier's name..." value={verifiedByName} onChange={(e) => setVerifiedByName(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Verified By Date</Label>
+                        <DatePickerInput value={verifiedByDate} onChange={setVerifiedByDate} />
                     </div>
                 </div>
             )}

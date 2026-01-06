@@ -8,26 +8,10 @@ import 'jspdf-autotable';
 import { format } from 'date-fns';
 import type { Vehicle, Driver, User } from '@/lib/types';
 
-async function fetchImageAsBase64(url: string): Promise<string> {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  } catch (error) {
-    console.error('Error fetching image for PDF:', error);
-    return ''; // Return empty string on failure
-  }
-}
-
 async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
     try {
-        const response = await fetch(url);
+        const absoluteUrl = url.startsWith('/') ? `${window.location.origin}${url}` : url;
+        const response = await fetch(absoluteUrl);
         if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
         return await response.arrayBuffer();
     } catch (error) {
@@ -36,10 +20,23 @@ async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
     }
 }
 
-const SIGNATURES: { [key: string]: string } = {
-  'Harirkrishnan P S': '/images/hari_sign.jpg',
-  'Manu M G': '/images/Manu_Sign.jpg',
-};
+async function fetchImageAsBase64(url: string): Promise<string> {
+    try {
+        const absoluteUrl = url.startsWith('/') ? `${window.location.origin}${url}` : url;
+        const response = await fetch(absoluteUrl);
+        if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        console.error('Error fetching image for PDF:', error);
+        return '';
+    }
+}
 
 export async function exportToExcel(
   vehicle: Vehicle | undefined,
@@ -48,12 +45,12 @@ export async function exportToExcel(
   cellStates: any,
   dayHeaders: number[],
   headerStates: any,
-  verifiedByName: string
+  verifiedByName: string,
+  verifiedByDate?: Date,
 ) {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Vehicle Log');
-
-  /* ---------------- LOGO ---------------- */
+  
   try {
     const logoBuffer = await fetchImageAsBuffer('/images/Aries_logo.png');
     if (logoBuffer) {
@@ -65,14 +62,12 @@ export async function exportToExcel(
     }
   } catch (e) { console.error(e)}
 
-  /* ---------------- VEHICLE NO ---------------- */
   sheet.mergeCells('A3:D3');
   const vehicleCell = sheet.getCell('A3');
   vehicleCell.value = vehicle?.vehicleNumber || '';
   vehicleCell.font = { size: 14, bold: true, name: 'Calibri' };
   vehicleCell.alignment = { horizontal: 'left', vertical: 'middle' };
 
-  /* ---------------- HEADER RIGHT BLOCK ---------------- */
   const rightHeader = [
     ['JOB NO', (headerStates.jobNo || '').toUpperCase()],
     ['VEHICLE TYPE', (headerStates.vehicleType || '').toUpperCase()],
@@ -83,10 +78,10 @@ export async function exportToExcel(
   ];
 
   const greyBorder = {
-    top: { style: 'thin', color: { argb: 'FFD3D3D3' } },
-    left: { style: 'thin', color: { argb: 'FFD3D3D3' } },
-    bottom: { style: 'thin', color: { argb: 'FFD3D3D3' } },
-    right: { style: 'thin', color: { argb: 'FFD3D3D3' } }
+    top: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+    left: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+    bottom: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+    right: { style: 'thin', color: { argb: 'FFBFBFBF' } }
   };
   
   const startRow = 1;
@@ -108,11 +103,8 @@ export async function exportToExcel(
     });
   });
 
-  // Add blank rows for spacing
-  sheet.addRow([]);
   sheet.addRow([]);
 
-  /* ---------------- TABLE HEADER ---------------- */
   const tableHeaderRowIndex = 8;
   const headerRow = sheet.getRow(tableHeaderRowIndex);
   headerRow.values = ['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OVER TIME', 'REMARKS'];
@@ -123,7 +115,6 @@ export async function exportToExcel(
     c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
   });
 
-  /* ---------------- TABLE BODY ---------------- */
   let totalKm = 0;
   dayHeaders.forEach(day => {
     const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
@@ -154,7 +145,6 @@ export async function exportToExcel(
     }
   });
 
-  /* ---------------- TABLE FOOTER (TOTAL KM) ---------------- */
   const totalRow = sheet.addRow(['', '', 'TOTAL KILOMETER:', totalKm, '', '']);
   sheet.mergeCells(`A${totalRow.number}:C${totalRow.number}`);
   totalRow.getCell('A').alignment = { horizontal: 'right', vertical: 'middle' };
@@ -162,36 +152,27 @@ export async function exportToExcel(
   totalRow.font = { bold: true, name: 'Calibri', size: 11 };
   totalRow.eachCell(c => c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } });
   
-  /* ---------------- MAIN FOOTER ---------------- */
   let footerRowIndex = sheet.lastRow!.number + 2;
 
-  // Signature
-  const signaturePath = SIGNATURES[verifiedByName];
-  if (signaturePath) {
-    try {
-      const signatureBuffer = await fetchImageAsBuffer(signaturePath);
-      if (signatureBuffer) {
-        const signatureId = workbook.addImage({ buffer: signatureBuffer, extension: 'jpg' });
-        sheet.addImage(signatureId, {
-          tl: { col: 0, row: footerRowIndex - 1 },
-          ext: { width: 80, height: 30 }
-        });
-      }
-    } catch(e) { console.error(e) }
-  }
+  const verifiedByNameCell = sheet.getCell(`A${footerRowIndex}`);
+  verifiedByNameCell.value = `Verified By: ${verifiedByName}`;
+  verifiedByNameCell.font = { name: 'Calibri', size: 9, bold: true };
+  sheet.mergeCells(`A${footerRowIndex}:B${footerRowIndex}`);
 
-  // Verified By Box
-  sheet.mergeCells(`A${footerRowIndex}:B${footerRowIndex + 1}`);
-  const verifiedCell = sheet.getCell(`A${footerRowIndex}`);
-  verifiedCell.value = `Verified By:\n${verifiedByName}`;
-  verifiedCell.font = { name: 'Calibri', size: 9, bold: true };
-  verifiedCell.alignment = { vertical: 'bottom', wrapText: true };
-  for (let r = footerRowIndex; r <= footerRowIndex + 1; r++) {
-    for (let c = 1; c <= 2; c++) {
-      sheet.getCell(r, c).border = greyBorder;
-    }
-  }
+  const verifiedByDateCell = sheet.getCell(`C${footerRowIndex}`);
+  verifiedByDateCell.value = `Date: ${verifiedByDate ? format(verifiedByDate, 'dd-MM-yyyy') : ''}`;
+  verifiedByDateCell.font = { name: 'Calibri', size: 9, bold: true };
+  sheet.mergeCells(`C${footerRowIndex}:D${footerRowIndex}`);
+  
+  const signatureCell = sheet.getCell(`E${footerRowIndex}`);
+  signatureCell.value = 'Signature:';
+  signatureCell.font = { name: 'Calibri', size: 9, bold: true };
+  sheet.mergeCells(`E${footerRowIndex}:F${footerRowIndex}`);
 
+  [verifiedByNameCell, verifiedByDateCell, signatureCell].forEach(cell => {
+      cell.border = greyBorder;
+      cell.alignment = { vertical: 'middle', indent: 1 };
+  });
 
   sheet.columns = [
     { width: 18 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 30 }
@@ -211,7 +192,8 @@ export async function exportToPdf(
   cellStates: any,
   dayHeaders: number[],
   headerStates: any,
-  verifiedByName: string
+  verifiedByName: string,
+  verifiedByDate?: Date
 ) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const logo = await fetchImageAsBase64('/images/Aries_logo.png');
@@ -219,15 +201,12 @@ export async function exportToPdf(
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 30;
 
-  /* LOGO */
   if (logo) doc.addImage(logo, 'PNG', margin, 30, 120, 35);
 
-  /* VEHICLE NUMBER */
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
   doc.text(vehicle?.vehicleNumber || '', margin, 85);
 
-  /* RIGHT HEADER */
   const rightHeaderData = [
     ['JOB NO', (headerStates.jobNo || '').toUpperCase()],
     ['VEHICLE TYPE', (headerStates.vehicleType || '').toUpperCase()],
@@ -247,9 +226,9 @@ export async function exportToPdf(
     margin: { left: pageWidth - margin - 220 },
   });
   
-  const mainTableStartY = (doc as any).lastAutoTable.finalY + 15;
+  let mainTableStartY = (doc as any).lastAutoTable.finalY + 15;
+  if(mainTableStartY < 100) mainTableStartY = 100;
   
-  /* TABLE DATA */
   let totalKm = 0;
   const body = dayHeaders.map(day => {
     const d = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
@@ -287,26 +266,25 @@ export async function exportToPdf(
     },
   });
 
-  let y = (doc as any).lastAutoTable.finalY + 10;
+  let y = (doc as any).lastAutoTable.finalY + 20;
 
-  const signaturePath = SIGNATURES[verifiedByName];
-  if (signaturePath) {
-    try {
-        const signatureBase64 = await fetchImageAsBase64(signaturePath);
-        if (signatureBase64) {
-            doc.addImage(signatureBase64, 'JPEG', margin, y, 60, 22.5);
-            y += 30; // Move text below signature
-        }
-    } catch(e) { console.error(e) }
-  }
-  
   doc.setDrawColor(200, 200, 200);
-  doc.rect(margin, y, 150, 25);
-  doc.setFont('helvetica', 'bold');
+  doc.rect(margin, y, 150, 40);
   doc.setFontSize(9);
-  doc.text('Verified By:', margin + 5, y + 8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Verified By:', margin + 5, y + 10);
   doc.setFont('helvetica', 'normal');
-  doc.text(verifiedByName, margin + 5, y + 20);
+  doc.text(verifiedByName, margin + 5, y + 22);
+
+  doc.rect(margin + 150, y, 150, 40);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Verified By Date:', margin + 155, y + 10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(verifiedByDate ? format(verifiedByDate, 'dd-MM-yyyy') : '', margin + 155, y + 22);
+
+  doc.rect(margin + 300, y, pageWidth - margin * 2 - 300, 40);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Signature:', margin + 305, y + 10);
   
   doc.save(`Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`);
 }

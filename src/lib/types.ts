@@ -1,4 +1,5 @@
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -1051,7 +1052,6 @@ export type VehicleUsageRecord = {
           remarks?: string;
         }
       };
-      verifiedById?: string;
       jobNo?: string;
       vehicleType?: string;
       extraKm?: number;
