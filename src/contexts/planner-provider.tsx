@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -30,7 +29,7 @@ type PlannerContextType = {
   addJobRecordPlant: (name: string) => void;
   deleteJobRecordPlant: (id: string) => void;
   carryForwardPlantAssignments: (monthKey: string) => void;
-  saveVehicleUsageRecord: (monthKey: string, vehicleId: string, data: VehicleUsageRecord['records'][string]) => void;
+  saveVehicleUsageRecord: (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => void;
   lockVehicleUsageSheet: (monthKey: string) => void;
   unlockVehicleUsageSheet: (monthKey: string) => void;
 };
@@ -227,7 +226,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         }
     }, []);
     
-    const saveVehicleUsageRecord = useCallback((monthKey: string, vehicleId: string, data: VehicleUsageRecord['records'][string]) => {
+    const saveVehicleUsageRecord = useCallback((monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => {
         const path = `vehicleUsageRecords/${monthKey}/records/${vehicleId}`;
         update(ref(rtdb, path), data);
     }, []);

@@ -10,19 +10,7 @@ import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import type { VehicleUsageRecord } from '@/lib/types';
-import * as ExcelJS from 'exceljs';
-import { saveAs } from 'file-saver';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-
-
-async function fetchImageAsArrayBuffer(url: string) {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch image: ${response.statusText}`);
-    }
-    return response.arrayBuffer();
-}
+import { exportToExcel, exportToPdf } from './generateUsageSummary';
 
 export default function VehicleUsageSheet() {
     const { 
@@ -119,77 +107,14 @@ export default function VehicleUsageSheet() {
 
     const isLocked = record?.isLocked;
     const canEdit = (can.manage_vehicle_usage) && !isLocked;
-
-    const handleExport = async (formatType: 'excel' | 'pdf') => {
-        if (!selectedVehicleId) {
-            toast({ variant: 'destructive', title: 'No Vehicle Selected' });
-            return;
-        }
-
+    
+    const handleExport = (formatType: 'excel' | 'pdf') => {
         const vehicle = vehicles.find(v => v.id === selectedVehicleId);
         const driver = drivers.find(d => d.id === vehicle?.driverId);
-
         if (formatType === 'excel') {
-            const workbook = new ExcelJS.Workbook();
-            const sheet = workbook.addWorksheet('Vehicle Usage Summary');
-
-            // TODO: Add company logo and header styling
-            sheet.addRow(['Vehicle Usage Summary']);
-            sheet.addRow([`Month: ${format(currentMonth, 'MMMM yyyy')}`]);
-            sheet.addRow([`Vehicle No: ${vehicle?.vehicleNumber}`, `Driver: ${driver?.name}`]);
-            sheet.addRow([]);
-
-            const headers = ['Day', 'Start KM', 'End KM', 'Total KM', 'Overtime (Hrs)', 'Remarks'];
-            sheet.addRow(headers);
-            
-            let totalKm = 0;
-            dayHeaders.forEach(day => {
-                const startKm = Number(cellStates[`${day}-startKm`] || 0);
-                const endKm = Number(cellStates[`${day}-endKm`] || 0);
-                const dayTotal = endKm > startKm ? endKm - startKm : 0;
-                totalKm += dayTotal;
-                sheet.addRow([
-                    day,
-                    startKm || '',
-                    endKm || '',
-                    dayTotal || '',
-                    cellStates[`${day}-overtime`] || '',
-                    cellStates[`${day}-remarks`] || ''
-                ]);
-            });
-
-            sheet.addRow(['Total', '', '', totalKm]);
-
-            const buffer = await workbook.xlsx.writeBuffer();
-            saveAs(new Blob([buffer]), `VehicleUsage_${vehicle?.vehicleNumber}_${monthKey}.xlsx`);
+            exportToExcel(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates);
         } else {
-            const doc = new jsPDF();
-            doc.text(`Vehicle Usage Summary - ${format(currentMonth, 'MMMM yyyy')}`, 14, 20);
-            doc.text(`Vehicle: ${vehicle?.vehicleNumber} | Driver: ${driver?.name}`, 14, 30);
-            
-            let totalKm = 0;
-            const body = dayHeaders.map(day => {
-                const startKm = Number(cellStates[`${day}-startKm`] || 0);
-                const endKm = Number(cellStates[`${day}-endKm`] || 0);
-                const dayTotal = endKm > startKm ? endKm - startKm : 0;
-                totalKm += dayTotal;
-                return [
-                    day,
-                    startKm || '',
-                    endKm || '',
-                    dayTotal || '',
-                    cellStates[`${day}-overtime`] || '',
-                    cellStates[`${day}-remarks`] || ''
-                ]
-            });
-            body.push(['Total', '', '', totalKm, '', '']);
-            
-            (doc as any).autoTable({
-                head: [['Day', 'Start KM', 'End KM', 'Total KM', 'Overtime (Hrs)', 'Remarks']],
-                body,
-                startY: 40
-            });
-            doc.save(`VehicleUsage_${vehicle?.vehicleNumber}_${monthKey}.pdf`);
+            exportToPdf(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates);
         }
     };
     
@@ -266,6 +191,26 @@ export default function VehicleUsageSheet() {
                     </div>
                 )}
             </div>
+            {selectedVehicleId && (
+                <div className="p-4 border-t grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                        <Label>Job No.</Label>
+                        <Input value={headerStates.jobNo} onChange={e => handleHeaderChange('jobNo', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Vehicle Type</Label>
+                        <Input value={headerStates.vehicleType} onChange={e => handleHeaderChange('vehicleType', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Verified By - Name</Label>
+                        <Input value={headerStates.verifiedByName} onChange={e => handleHeaderChange('verifiedByName', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Verified By - Designation</Label>
+                        <Input value={headerStates.verifiedByDesignation} onChange={e => handleHeaderChange('verifiedByDesignation', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
