@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -225,7 +226,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             }
         }
     
-        // Carry forward plant order SAFELY
+        // ✅ Carry forward plant order SAFELY
         if (prevMonthData.plantsOrder) {
             for (const plantName in prevMonthData.plantsOrder) {
                 updates[`jobRecords/${monthKey}/plantsOrder/${plantName}`] =
@@ -239,9 +240,20 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     }, []);
     
     const saveVehicleUsageRecord = useCallback((monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => {
+        if (!user) return;
         const path = `vehicleUsageRecords/${monthKey}/records/${vehicleId}`;
-        update(ref(rtdb, path), data);
-    }, []);
+        const updates = { ...data };
+        
+        if (headerStates.verifiedByName && headerStates.verifiedByDesignation) {
+            updates.verifiedBy = {
+                id: user.id,
+                name: headerStates.verifiedByName,
+                designation: headerStates.verifiedByDesignation,
+            };
+        }
+        
+        update(ref(rtdb, path), updates);
+    }, [user]);
     
     const lockVehicleUsageSheet = useCallback((monthKey: string) => {
         update(ref(rtdb, `vehicleUsageRecords/${monthKey}`), { isLocked: true });

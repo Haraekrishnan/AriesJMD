@@ -2,6 +2,7 @@
 
 
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -954,6 +955,7 @@ export type LogbookRequest = {
     remarks?: string;
     viewedBy: { [key: string]: boolean };
     comments?: Comment[];
+    approverId?: string;
 };
 
 export type InspectionChecklist = {
@@ -1054,6 +1056,7 @@ export type VehicleUsageRecord = {
         }
       };
       verifiedBy?: {
+        id: string;
         name: string;
         designation: string;
       }
