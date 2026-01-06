@@ -222,11 +222,11 @@ export async function exportToPdf(
   
   let currentY = 25;
 
-  if (logoBase64) doc.addImage(logoBase64, 'PNG', margin, currentY, 120, 25);
+  if (logoBase64) doc.addImage(logoBase64, 'PNG', margin, currentY, 130, 30);
   
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text(vehicle?.vehicleNumber || '', margin, currentY + 45);
+  doc.setFontSize(16);
+  doc.text(vehicle?.vehicleNumber || '', margin, currentY + 50);
 
   const rightHeaderData = [
     ['JOB NO', (headerStates.jobNo || '').toUpperCase()],
@@ -241,13 +241,13 @@ export async function exportToPdf(
     body: rightHeaderData,
     startY: currentY,
     theme: 'grid',
-    styles: { fontSize: 8, font: 'helvetica', cellPadding: 2, lineColor: [180, 180, 180], lineWidth: 0.5 },
+    styles: { fontSize: 8, font: 'helvetica', cellPadding: 3, lineColor: [180, 180, 180], lineWidth: 0.5 },
     columnStyles: { 0: { fontStyle: 'bold', cellWidth: 70 }, 1: { cellWidth: 80 } },
     tableWidth: 150,
     margin: { left: pageWidth - margin - 150 },
   });
   
-  currentY = (doc as any).lastAutoTable.finalY + 25;
+  currentY = (doc as any).lastAutoTable.finalY + 20;
   
   let totalKm = 0;
   const body = dayHeaders.map(day => {
@@ -274,7 +274,7 @@ export async function exportToPdf(
     head: [['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OT', 'REMARKS']],
     body,
     startY: currentY,
-    styles: { fontSize: 8, halign: 'center', font: 'helvetica', cellPadding: 2, minCellHeight: 15 },
+    styles: { fontSize: 8, halign: 'center', font: 'helvetica', cellPadding: 3, minCellHeight: 18 },
     headStyles: { fillColor: [2, 179, 150], textColor: 255, fontStyle: 'bold' },
     theme: 'grid',
     columnStyles: {
@@ -287,26 +287,45 @@ export async function exportToPdf(
     },
   });
 
-  let finalY = (doc as any).lastAutoTable.finalY + 15;
+  const finalY = (doc as any).lastAutoTable.finalY + 25;
+  const signatureBlockWidth = (pageWidth - (margin * 2)) / 3;
 
-  doc.setFontSize(8);
-  
-  const footerLabels = ['Verified By:', 'Verified By Date:', 'Signature:'];
-  const footerValues = [
-    headerStates.verifiedByName || '',
-    headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '',
-    '' 
+  const footerData = [
+    [
+      { content: 'Verified By:', styles: { fontStyle: 'bold' } },
+      { content: 'Verified By Date:', styles: { fontStyle: 'bold' } },
+      { content: 'Signature:', styles: { fontStyle: 'bold' } },
+    ],
+    [
+      headerStates.verifiedByName || '',
+      headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '',
+      ''
+    ]
   ];
 
   (doc as any).autoTable({
-    startY: finalY,
-    body: [
-      footerLabels.map(label => ({ content: label, styles: { fontStyle: 'bold' } })),
-      footerValues
-    ],
-    theme: 'grid',
-    styles: { fontSize: 8, font: 'helvetica', cellPadding: 3, minCellHeight: 30, valign: 'top' },
+      startY: finalY,
+      body: footerData,
+      theme: 'grid',
+      styles: { fontSize: 9, font: 'helvetica', cellPadding: 5, minCellHeight: 40, valign: 'top' },
+      columnStyles: {
+        0: { cellWidth: signatureBlockWidth },
+        1: { cellWidth: signatureBlockWidth },
+        2: { cellWidth: signatureBlockWidth },
+      },
   });
+  
+  const signaturePath = SIGNATURES[headerStates.verifiedByName];
+  if (signaturePath) {
+    try {
+      const signatureBase64 = await fetchImageAsBase64(signaturePath);
+      if (signatureBase64) {
+        const signY = (doc as any).lastAutoTable.finalY - 45; 
+        const signX = margin + signatureBlockWidth * 2 + (signatureBlockWidth / 2) - (60 / 2); // Center in the third column
+        doc.addImage(signatureBase64, 'JPEG', signX, signY, 60, 25);
+      }
+    } catch(e) { console.error(e) }
+  }
 
 
   doc.save(
