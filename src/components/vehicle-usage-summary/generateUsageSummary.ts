@@ -10,9 +10,10 @@ import type { Vehicle, Driver, User } from '@/lib/types';
 
 async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
   try {
-    const response = await fetch(url);
+    const absoluteUrl = url.startsWith('/') ? `${process.env.NEXT_PUBLIC_APP_URL}${url}` : url;
+    const response = await fetch(absoluteUrl);
     if (!response.ok) {
-        console.error(`Failed to fetch image: ${response.statusText} from ${url}`);
+        console.error(`Failed to fetch image: ${response.statusText} from ${absoluteUrl}`);
         return null;
     }
     return await response.arrayBuffer();
@@ -157,21 +158,35 @@ export async function exportToExcel(
   const verifiedRow = sheet.getRow(footerRowIndex);
   sheet.mergeCells(footerRowIndex, 1, footerRowIndex, 2);
   const verifiedCell = verifiedRow.getCell(1);
-  verifiedCell.value = `Verified By: ${headerStates.verifiedByName || '...........................'}`;
+  verifiedCell.value = {
+    richText: [
+      { font: { bold: true }, text: 'Verified By:\n' },
+      { text: headerStates.verifiedByName || '' }
+    ]
+  };
   verifiedCell.border = greyBorder;
-  verifiedCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+  verifiedCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
   
   sheet.mergeCells(footerRowIndex, 3, footerRowIndex, 4);
   const dateCell = verifiedRow.getCell(3);
-  dateCell.value = `Date: ${headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '.....................'}`;
+  dateCell.value = {
+    richText: [
+      { font: { bold: true }, text: 'Verified By Date:\n' },
+      { text: headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '' }
+    ]
+  };
   dateCell.border = greyBorder;
-  dateCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+  dateCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
   
   sheet.mergeCells(footerRowIndex, 5, footerRowIndex, 6);
   const signCell = verifiedRow.getCell(5);
-  signCell.value = 'Signature:';
+  signCell.value = {
+    richText: [{ font: { bold: true }, text: 'Signature:\n' }]
+  };
   signCell.border = greyBorder;
-  signCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+  signCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
+
+  verifiedRow.height = 40;
 
   sheet.columns = [
     { width: 18 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 30 }
@@ -265,15 +280,20 @@ export async function exportToPdf(
     },
   });
 
-  const finalY = (doc as any).lastAutoTable.finalY + 20;
+  const finalY = (doc as any).lastAutoTable.finalY + 10;
   
+  const verifiedByNameText = `Verified By:\n${headerStates.verifiedByName || ''}`;
+  const verifiedByDateText = `Verified By Date:\n${headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : ''}`;
+  const signatureText = 'Signature:\n\n';
+
   (doc as any).autoTable({
-    body: [
-      [`Verified By: ${headerStates.verifiedByName || ''}`, `Date: ${headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : ''}`, 'Signature:']
-    ],
+    body: [[verifiedByNameText, verifiedByDateText, signatureText]],
     startY: finalY,
     theme: 'grid',
-    styles: { fontSize: 9, font: 'helvetica' },
+    styles: { fontSize: 9, font: 'helvetica', cellPadding: 3, valign: 'top' },
+    didParseCell: (data: any) => {
+        data.cell.styles.fontStyle = 'bold';
+    },
   });
 
   doc.save(
