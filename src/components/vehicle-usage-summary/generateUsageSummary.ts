@@ -22,7 +22,7 @@ async function fetchImageAsBase64(url: string): Promise<string> {
         });
     } catch (error) {
         console.error('Error fetching image for PDF:', error);
-        return ''; // Return empty string on failure
+        return '';
     }
 }
 
@@ -166,10 +166,8 @@ export async function exportToExcel(
   
   /* ---------------- MAIN FOOTER ---------------- */
   let footerRowIndex = sheet.lastRow!.number + 2;
-  const verifiedByText = `Verified By: ${verifiedByName}`;
-  sheet.getCell(`A${footerRowIndex}`).value = verifiedByText;
-  sheet.getCell(`A${footerRowIndex}`).font = { name: 'Calibri', size: 9, bold: true };
-  
+
+  // Signature
   const signaturePath = SIGNATURES[verifiedByName];
   if (signaturePath) {
     try {
@@ -183,6 +181,19 @@ export async function exportToExcel(
       }
     } catch(e) { console.error(e) }
   }
+
+  // Verified By Box
+  sheet.mergeCells(`A${footerRowIndex}:B${footerRowIndex + 1}`);
+  const verifiedCell = sheet.getCell(`A${footerRowIndex}`);
+  verifiedCell.value = `Verified By:\n${verifiedByName}`;
+  verifiedCell.font = { name: 'Calibri', size: 9, bold: true };
+  verifiedCell.alignment = { vertical: 'bottom', wrapText: true };
+  for (let r = footerRowIndex; r <= footerRowIndex + 1; r++) {
+    for (let c = 1; c <= 2; c++) {
+      sheet.getCell(r, c).border = greyBorder;
+    }
+  }
+
 
   sheet.columns = [
     { width: 18 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 30 }
@@ -202,7 +213,7 @@ export async function exportToPdf(
   cellStates: any,
   dayHeaders: number[],
   headerStates: any,
-  verifiedByName: string,
+  verifiedByName: string
 ) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const logo = await fetchImageAsBase64('/images/Aries_logo.png');
@@ -238,7 +249,6 @@ export async function exportToPdf(
     margin: { left: pageWidth - margin - 220 },
   });
   
-  // Add a blank row for spacing
   const mainTableStartY = (doc as any).lastAutoTable.finalY + 15;
   
   /* TABLE DATA */
@@ -279,23 +289,26 @@ export async function exportToPdf(
     },
   });
 
-  let y = (doc as any).lastAutoTable.finalY + 30;
+  let y = (doc as any).lastAutoTable.finalY + 10;
 
   const signaturePath = SIGNATURES[verifiedByName];
   if (signaturePath) {
     try {
         const signatureBase64 = await fetchImageAsBase64(signaturePath);
         if (signatureBase64) {
-            doc.addImage(signatureBase64, 'JPEG', margin, y - 20, 60, 22.5);
+            doc.addImage(signatureBase64, 'JPEG', margin, y, 60, 22.5);
+            y += 30; // Move text below signature
         }
     } catch(e) { console.error(e) }
   }
-
+  
+  doc.setDrawColor(200, 200, 200);
+  doc.rect(margin, y, 150, 25);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  doc.text('Verified By:', margin, y);
+  doc.text('Verified By:', margin + 5, y + 8);
   doc.setFont('helvetica', 'normal');
-  doc.text(verifiedByName, margin, y + 12);
+  doc.text(verifiedByName, margin + 5, y + 20);
   
   doc.save(`Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`);
 }
