@@ -6,7 +6,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, Download, Save, Lock, Unlock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Save, Lock, Unlock, Palette } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isSameMonth } from 'date-fns';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -54,6 +54,7 @@ export default function VehicleUsageSheet() {
                 newStates[`${day}-endKm`] = vehicleRecord.days[day].endKm || '';
                 newStates[`${day}-overtime`] = vehicleRecord.days[day].overtime || '';
                 newStates[`${day}-remarks`] = vehicleRecord.days[day].remarks || '';
+                newStates[`${day}-isHoliday`] = vehicleRecord.days[day].isHoliday || false;
             }
             setCellStates(newStates);
             setHeaderStates({
@@ -72,7 +73,7 @@ export default function VehicleUsageSheet() {
         setVerifiedByDate(undefined);
     }, [vehicleRecord, selectedVehicleId, currentMonth]);
 
-    const handleInputChange = (day: number, field: string, value: string | number) => {
+    const handleInputChange = (day: number, field: string, value: string | number | boolean) => {
         const dayKey = `${day}-${field}`;
         const nextDayKey = `${day + 1}-startKm`;
         
@@ -102,6 +103,7 @@ export default function VehicleUsageSheet() {
                     endKm: Number(cellStates[`${day}-endKm`] || 0),
                     overtime: cellStates[`${day}-overtime`] || '',
                     remarks: cellStates[`${day}-remarks`] || '',
+                    isHoliday: cellStates[`${day}-isHoliday`] || false,
                 };
                 return acc;
             }, {} as VehicleUsageRecord['records'][string]['days']),
@@ -126,15 +128,6 @@ export default function VehicleUsageSheet() {
         const vehicle = vehicles.find(v => v.id === selectedVehicleId);
         const driver = drivers.find(d => d.id === vehicle?.driverId);
         
-        if (!verifiedByName || !verifiedByDate) {
-            toast({
-                title: "Verification Details Required",
-                description: "Please enter the 'Verified By' name and date before exporting.",
-                variant: 'destructive',
-            });
-            return;
-        }
-
         if (formatType === 'excel') {
             exportToExcel(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates, verifiedByName, verifiedByDate);
         } else {
@@ -203,7 +196,7 @@ export default function VehicleUsageSheet() {
                         <Label>Extra Days</Label>
                         <Input type="number" value={headerStates.extraDays} onChange={e => handleHeaderChange('extraDays', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
                     </div>
-                     <div className="space-y-2">
+                    <div className="space-y-2">
                         <Label>Verified By</Label>
                         <Input placeholder="Enter verifier's name..." value={verifiedByName} onChange={(e) => setVerifiedByName(e.target.value)} />
                     </div>
@@ -224,6 +217,7 @@ export default function VehicleUsageSheet() {
                             <TableHead>Total KM</TableHead>
                             <TableHead>Overtime (Hrs)</TableHead>
                             <TableHead>Remarks</TableHead>
+                            <TableHead className="w-[50px]"></TableHead>
                         </TableRow>
                     </thead>
                     <TableBody>
@@ -232,14 +226,23 @@ export default function VehicleUsageSheet() {
                             const startKm = Number(cellStates[`${day}-startKm`] || 0);
                             const endKm = Number(cellStates[`${day}-endKm`] || 0);
                             const totalKm = endKm > startKm ? endKm - startKm : 0;
+                            const isHoliday = cellStates[`${day}-isHoliday`];
                             return (
-                                <TableRow key={day}>
+                                <TableRow key={day} className={isHoliday ? 'bg-yellow-100 dark:bg-yellow-900/30' : ''}>
                                     <TableCell className="sticky left-0 bg-card z-10 font-medium">{format(dateForDay, 'dd-MM-yyyy')}</TableCell>
                                     <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-startKm`] || ''} onChange={(e) => handleInputChange(day, 'startKm', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
                                     <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-endKm`] || ''} onChange={(e) => handleInputChange(day, 'endKm', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
                                     <TableCell className="font-medium text-center">{totalKm}</TableCell>
                                     <TableCell><Input className="h-8" value={cellStates[`${day}-overtime`] || ''} onChange={(e) => handleInputChange(day, 'overtime', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
                                     <TableCell><Input className="h-8" value={cellStates[`${day}-remarks`] || ''} onChange={(e) => handleInputChange(day, 'remarks', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
+                                    <TableCell>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                                            handleInputChange(day, 'isHoliday', !isHoliday)
+                                            handleSave();
+                                        }} disabled={!canEdit}>
+                                            <Palette className="h-4 w-4"/>
+                                        </Button>
+                                    </TableCell>
                                 </TableRow>
                             )
                         })}
