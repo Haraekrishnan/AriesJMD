@@ -1,6 +1,8 @@
 
+
 'use client';
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -36,8 +38,6 @@ export default function VehicleUsageSheet() {
     const [headerStates, setHeaderStates] = useState({
       jobNo: '',
       vehicleType: '',
-      verifiedByName: '',
-      verifiedByDesignation: '',
       extraKm: 0,
       headerOvertime: '',
       extraNight: 0,
@@ -57,8 +57,6 @@ export default function VehicleUsageSheet() {
             setHeaderStates({
                 jobNo: vehicleRecord.jobNo || '',
                 vehicleType: vehicleRecord.vehicleType || '',
-                verifiedByName: vehicleRecord.verifiedBy?.name || '',
-                verifiedByDesignation: vehicleRecord.verifiedBy?.designation || '',
                 extraKm: vehicleRecord.extraKm || 0,
                 headerOvertime: vehicleRecord.headerOvertime || '',
                 extraNight: vehicleRecord.extraNight || 0,
@@ -66,7 +64,7 @@ export default function VehicleUsageSheet() {
             });
         } else {
             setCellStates({});
-            setHeaderStates({ jobNo: '', vehicleType: '', verifiedByName: '', verifiedByDesignation: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0 });
+            setHeaderStates({ jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0 });
         }
     }, [vehicleRecord, selectedVehicleId, currentMonth]);
 
@@ -91,8 +89,9 @@ export default function VehicleUsageSheet() {
     };
 
     const handleSave = () => {
-        if (!selectedVehicleId) return;
-        saveVehicleUsageRecord(monthKey, selectedVehicleId, {
+        if (!selectedVehicleId || !user) return;
+        
+        const dataToSave: Partial<VehicleUsageRecord['records'][string]> = {
             days: dayHeaders.reduce((acc, day) => {
                 acc[day] = {
                     startKm: Number(cellStates[`${day}-startKm`] || 0),
@@ -104,15 +103,18 @@ export default function VehicleUsageSheet() {
             }, {} as VehicleUsageRecord['records'][string]['days']),
             jobNo: headerStates.jobNo,
             vehicleType: headerStates.vehicleType,
-            verifiedBy: {
-                name: headerStates.verifiedByName,
-                designation: headerStates.verifiedByDesignation,
-            },
             extraKm: Number(headerStates.extraKm),
             headerOvertime: headerStates.headerOvertime,
             extraNight: Number(headerStates.extraNight),
             extraDays: Number(headerStates.extraDays),
-        });
+            verifiedBy: {
+                id: user.id,
+                name: user.name,
+                designation: user.role,
+            }
+        };
+
+        saveVehicleUsageRecord(monthKey, selectedVehicleId, dataToSave);
         toast({ title: "Record Saved", description: "Vehicle usage data has been saved."});
     };
 
@@ -124,10 +126,12 @@ export default function VehicleUsageSheet() {
     const handleExport = (formatType: 'excel' | 'pdf') => {
         const vehicle = vehicles.find(v => v.id === selectedVehicleId);
         const driver = drivers.find(d => d.id === vehicle?.driverId);
+        const verifier = user ? { name: user.name, designation: user.role } : { name: '', designation: ''};
+
         if (formatType === 'excel') {
-            exportToExcel(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates);
+            exportToExcel(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates, verifier);
         } else {
-            exportToPdf(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates);
+            exportToPdf(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates, verifier);
         }
     };
     
@@ -192,13 +196,9 @@ export default function VehicleUsageSheet() {
                         <Label>Extra Days</Label>
                         <Input type="number" value={headerStates.extraDays} onChange={e => handleHeaderChange('extraDays', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
                     </div>
-                    <div className="space-y-2">
-                        <Label>Verified By - Name</Label>
-                        <Input value={headerStates.verifiedByName} onChange={e => handleHeaderChange('verifiedByName', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Verified By - Designation</Label>
-                        <Input value={headerStates.verifiedByDesignation} onChange={e => handleHeaderChange('verifiedByDesignation', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
+                     <div className="space-y-2 col-span-2">
+                        <Label>Verified By</Label>
+                        <p className="text-sm p-2 border rounded-md bg-muted">{user?.name} ({user?.role})</p>
                     </div>
                 </div>
             )}

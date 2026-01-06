@@ -226,12 +226,8 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             }
         }
     
-        // ✅ Carry forward plant order SAFELY
         if (prevMonthData.plantsOrder) {
-            for (const plantName in prevMonthData.plantsOrder) {
-                updates[`jobRecords/${monthKey}/plantsOrder/${plantName}`] =
-                    prevMonthData.plantsOrder[plantName];
-            }
+            updates[`jobRecords/${monthKey}/plantsOrder`] = prevMonthData.plantsOrder;
         }
     
         if (Object.keys(updates).length > 0) {
@@ -244,11 +240,11 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const path = `vehicleUsageRecords/${monthKey}/records/${vehicleId}`;
         const updates = { ...data };
         
-        if (headerStates.verifiedByName && headerStates.verifiedByDesignation) {
+        if (data.verifiedBy?.name && data.verifiedBy?.designation) {
             updates.verifiedBy = {
                 id: user.id,
-                name: headerStates.verifiedByName,
-                designation: headerStates.verifiedByDesignation,
+                name: data.verifiedBy.name,
+                designation: data.verifiedBy.designation,
             };
         }
         
