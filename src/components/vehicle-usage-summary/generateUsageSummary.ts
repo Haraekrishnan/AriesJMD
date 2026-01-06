@@ -1,3 +1,4 @@
+
 'use client';
 
 import ExcelJS from 'exceljs';
@@ -6,12 +7,18 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { format } from 'date-fns';
 
-async function fetchImageAsArrayBuffer(url: string) {
+async function fetchImageAsBase64(url: string): Promise<string> {
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Failed to fetch image: ${response.statusText}`);
     }
-    return response.arrayBuffer();
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
 }
 
 export async function exportToExcel(
@@ -25,13 +32,17 @@ export async function exportToExcel(
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Vehicle Usage Summary');
 
-    const logoBuffer = await fetchImageAsArrayBuffer('/images/Aries_logo.png');
-    const logoId = workbook.addImage({ buffer: logoBuffer, extension: 'png' });
-
-    sheet.addImage(logoId, {
-        tl: { col: 0.1, row: 0.2 },
-        ext: { width: 160, height: 40 }
-    });
+    try {
+        const logoBuffer = await (await fetch('/images/Aries_logo.png')).arrayBuffer();
+        const logoId = workbook.addImage({ buffer: logoBuffer, extension: 'png' });
+        sheet.addImage(logoId, {
+            tl: { col: 0.1, row: 0.2 },
+            ext: { width: 160, height: 40 }
+        });
+    } catch (e) {
+        console.error("Could not add logo to excel", e);
+    }
+    
 
     sheet.mergeCells('A1:H1');
     sheet.getRow(1).height = 35;
@@ -89,7 +100,7 @@ export async function exportToPdf(
     headerStates: any
 ) {
     const doc = new jsPDF();
-    const logoBase64 = await fetchImageAsArrayBuffer('/images/Aries_logo.png');
+    const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
 
     doc.addImage(logoBase64, 'PNG', 15, 10, 80, 20);
 
