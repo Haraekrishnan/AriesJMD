@@ -28,196 +28,232 @@ async function fetchImageAsBase64(url: string): Promise<string> {
 }
 
 export async function exportToExcel(
-    vehicle: Vehicle | undefined, 
-    driver: Driver | undefined, 
-    currentMonth: Date, 
-    cellStates: any, 
-    dayHeaders: number[],
-    headerStates: any
+  vehicle: Vehicle | undefined,
+  driver: Driver | undefined,
+  currentMonth: Date,
+  cellStates: any,
+  dayHeaders: number[],
+  headerStates: any
 ) {
-    const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('Vehicle Usage Summary');
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet('Vehicle Log');
 
-    try {
-        const logoBuffer = await (await fetch('/images/Aries_logo.png')).arrayBuffer();
-        const logoId = workbook.addImage({ buffer: logoBuffer, extension: 'png' });
-        sheet.addImage(logoId, {
-            tl: { col: 0.1, row: 0.2 },
-            ext: { width: 160, height: 40 }
-        });
-    } catch (e) {
-        console.error("Could not add logo to excel", e);
+  /* ---------------- LOGO ---------------- */
+  try {
+    const logoBuffer = await (await fetch('/images/Aries_logo.png')).arrayBuffer();
+    const logoId = workbook.addImage({ buffer: logoBuffer, extension: 'png' });
+    sheet.addImage(logoId, {
+      tl: { col: 0, row: 0 },
+      ext: { width: 160, height: 50 },
+    });
+  } catch {}
+
+  /* ---------------- HEADER LEFT ---------------- */
+  sheet.getCell('A3').value = vehicle?.vehicleNumber || '';
+  sheet.getCell('A3').font = { size: 14, bold: true };
+
+  /* TOTAL KM */
+  let totalKm = 0;
+  dayHeaders.forEach(day => {
+    const s = Number(cellStates[`${day}-startKm`] || 0);
+    const e = Number(cellStates[`${day}-endKm`] || 0);
+    totalKm += e > s ? e - s : 0;
+  });
+
+  sheet.getCell('A4').value = 'TOTAL KM';
+  sheet.getCell('B4').value = totalKm;
+  sheet.getCell('A4').font = sheet.getCell('B4').font = { bold: true };
+
+  /* ---------------- HEADER RIGHT BLOCK ---------------- */
+  const rightHeader = [
+    ['Job No', headerStates.jobNo],
+    ['Vehicle Type', headerStates.vehicleType],
+    ['EXTRA KM', headerStates.extraKm || 0],
+    ['OVER TIME', headerStates.headerOvertime || ''],
+    ['EXTRA NIGHT', headerStates.extraNight || 0],
+    ['EXTRA DAYS', headerStates.extraDays || 0],
+  ];
+
+  rightHeader.forEach((r, i) => {
+    sheet.getCell(`E${i + 1}`).value = r[0];
+    sheet.getCell(`F${i + 1}`).value = r[1];
+    sheet.getCell(`E${i + 1}`).font = { bold: true };
+  });
+
+  /* ---------------- TABLE HEADER ---------------- */
+  const headerRow = sheet.addRow([
+    'DATE',
+    'START KM',
+    'END KM',
+    'TOTAL KM',
+    'OVER TIME',
+    'REMARKS',
+  ]);
+
+  headerRow.font = { bold: true };
+  headerRow.alignment = { horizontal: 'center' };
+  headerRow.eachCell(c => {
+    c.border = {
+      top: { style: 'thin' },
+      left: { style: 'thin' },
+      bottom: { style: 'thin' },
+      right: { style: 'thin' },
+    };
+  });
+
+  /* ---------------- TABLE BODY ---------------- */
+  dayHeaders.forEach(day => {
+    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+    const startKm = Number(cellStates[`${day}-startKm`] || 0);
+    const endKm = Number(cellStates[`${day}-endKm`] || 0);
+    const total = endKm > startKm ? endKm - startKm : 0;
+    const remark = cellStates[`${day}-remarks`] || '';
+
+    const row = sheet.addRow([
+      format(date, 'dd-MMM-yyyy'),
+      startKm || '',
+      endKm || '',
+      total || '',
+      cellStates[`${day}-overtime`] || '',
+      remark,
+    ]);
+
+    row.eachCell(c => {
+      c.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' },
+      };
+      c.alignment = { horizontal: 'center' };
+    });
+
+    /* Highlight Sundays & Remarks */
+    if (date.getDay() === 0 || remark) {
+      row.eachCell(c => {
+        c.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFF99' },
+        };
+      });
     }
-    
-    // Header section
-    sheet.mergeCells('A1:F1');
-    sheet.getRow(1).height = 35;
-    
-    const headerDetails = [
-        { label: 'Job No:', value: headerStates.jobNo || '' },
-        { label: 'Vehicle Type', value: headerStates.vehicleType || '' },
-        { label: 'EXTRA KM', value: headerStates.extraKm || 0 },
-        { label: 'OVER TIME', value: headerStates.headerOvertime || '' },
-        { label: 'EXTRA NIGHT', value: headerStates.extraNight || 0 },
-        { label: 'EXTRA DAYS', value: headerStates.extraDays || 0 },
-    ];
-    
-    headerDetails.forEach((detail, index) => {
-        sheet.getCell(`E${index + 1}`).value = detail.label;
-        sheet.getCell(`F${index + 1}`).value = detail.value;
-    });
+  });
 
-    sheet.getCell('A2').value = vehicle?.vehicleNumber || '';
-    sheet.getCell('A2').font = { bold: true, size: 14 };
+  /* ---------------- FOOTER ---------------- */
+  sheet.addRow([]);
+  const totalRow = sheet.addRow(['TOTAL KILOMETER', '', '', totalKm]);
+  totalRow.font = { bold: true };
 
-    let totalKm = 0;
-    dayHeaders.forEach(day => {
-        const startKm = Number(cellStates[`${day}-startKm`] || 0);
-        const endKm = Number(cellStates[`${day}-endKm`] || 0);
-        totalKm += endKm > startKm ? endKm - startKm : 0;
-    });
-    sheet.getCell('A3').value = 'TOTAL KM';
-    sheet.getCell('B3').value = totalKm;
-    sheet.getCell('A3').font = { bold: true };
-    sheet.getCell('B3').font = { bold: true };
+  sheet.addRow([]);
+  sheet.addRow(['Verified By:']);
+  sheet.addRow(['Name:', headerStates.verifiedByName || '']);
+  sheet.addRow(['Designation:', headerStates.verifiedByDesignation || '']);
 
-    
-    const headerRow = sheet.addRow(['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OVERTIME', 'REMARKS']);
-    headerRow.font = { bold: true };
-    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+  sheet.columns = [
+    { width: 18 },
+    { width: 14 },
+    { width: 14 },
+    { width: 14 },
+    { width: 14 },
+    { width: 30 },
+  ];
 
-    dayHeaders.forEach(day => {
-        const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-        const startKm = Number(cellStates[`${day}-startKm`] || 0);
-        const endKm = Number(cellStates[`${day}-endKm`] || 0);
-        const dayTotal = endKm > startKm ? endKm - startKm : 0;
-
-        sheet.addRow([
-            format(date, 'dd-MM-yyyy'),
-            startKm || '',
-            endKm || '',
-            dayTotal || '',
-            cellStates[`${day}-overtime`] || '',
-            cellStates[`${day}-remarks`] || ''
-        ]);
-    });
-
-    sheet.columns = [
-        { width: 20 }, { width: 15 }, { width: 15 }, { width: 15 }, { width: 15 }, { width: 30 }
-    ];
-
-    const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `VehicleUsage_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.xlsx`);
+  const buffer = await workbook.xlsx.writeBuffer();
+  saveAs(
+    new Blob([buffer]),
+    `Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.xlsx`
+  );
 }
 
 export async function exportToPdf(
-    vehicle: Vehicle | undefined,
-    driver: Driver | undefined,
-    currentMonth: Date,
-    cellStates: any,
-    dayHeaders: number[],
-    headerStates: any
+  vehicle: Vehicle | undefined,
+  driver: Driver | undefined,
+  currentMonth: Date,
+  cellStates: any,
+  dayHeaders: number[],
+  headerStates: any
 ) {
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
-    const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 30;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const logo = await fetchImageAsBase64('/images/Aries_logo.png');
 
-    // --- HEADER ---
-    if (logoBase64) {
-        doc.addImage(logoBase64, 'PNG', margin, 30, 100, 25);
-    }
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text(vehicle?.vehicleNumber || '', margin, 75);
+  /* LOGO */
+  if (logo) doc.addImage(logo, 'PNG', 30, 30, 120, 35);
 
-    let totalKm = 0;
-    dayHeaders.forEach(day => {
-        const startKm = Number(cellStates[`${day}-startKm`] || 0);
-        const endKm = Number(cellStates[`${day}-endKm`] || 0);
-        totalKm += endKm > startKm ? endKm - startKm : 0;
-    });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text(vehicle?.vehicleNumber || '', 30, 85);
 
-    doc.setFontSize(10);
-    doc.text('TOTAL KM', margin, 90);
-    doc.setFont('helvetica', 'normal');
-    doc.text(String(totalKm), margin + 60, 90);
+  /* TOTAL KM */
+  let totalKm = 0;
+  dayHeaders.forEach(d => {
+    const s = Number(cellStates[`${d}-startKm`] || 0);
+    const e = Number(cellStates[`${d}-endKm`] || 0);
+    totalKm += e > s ? e - s : 0;
+  });
 
-    const headerRightX = pageWidth - margin;
-    doc.setFontSize(8);
-    const headerDetails = [
-      `Job No: ${headerStates.jobNo || ''}`,
-      `Vehicle Type: ${headerStates.vehicleType || ''}`,
-      `EXTRA KM: ${headerStates.extraKm || 0}`,
-      `OVER TIME: ${headerStates.headerOvertime || ''}`,
-      `EXTRA NIGHT: ${headerStates.extraNight || 0}`,
-      `EXTRA DAYS: ${headerStates.extraDays || 0}`,
+  doc.setFontSize(10);
+  doc.text('TOTAL KM:', 30, 105);
+  doc.text(String(totalKm), 100, 105);
+
+  /* RIGHT HEADER */
+  const rx = 560;
+  let ry = 40;
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+
+  [
+    `Job No : ${headerStates.jobNo}`,
+    `Vehicle Type : ${headerStates.vehicleType}`,
+    `EXTRA KM : ${headerStates.extraKm || 0}`,
+    `OVER TIME : ${headerStates.headerOvertime || ''}`,
+    `EXTRA NIGHT : ${headerStates.extraNight || 0}`,
+    `EXTRA DAYS : ${headerStates.extraDays || 0}`,
+  ].forEach(t => {
+    doc.text(t, rx, ry, { align: 'right' });
+    ry += 12;
+  });
+
+  /* TABLE DATA */
+  const body = dayHeaders.map(day => {
+    const d = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+    const s = Number(cellStates[`${day}-startKm`] || 0);
+    const e = Number(cellStates[`${day}-endKm`] || 0);
+    const t = e > s ? e - s : 0;
+    return [
+      format(d, 'dd-MMM-yyyy'),
+      s || '',
+      e || '',
+      t || '',
+      cellStates[`${day}-overtime`] || '',
+      cellStates[`${day}-remarks`] || '',
+      d.getDay() === 0 || cellStates[`${day}-remarks`] ? 'HIGHLIGHT' : '',
     ];
+  });
 
-    let headerY = 40;
-    headerDetails.forEach(line => {
-      doc.text(line, headerRightX, headerY, { align: 'right' });
-      headerY += 10;
-    });
+  (doc as any).autoTable({
+    head: [['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OT', 'REMARKS']],
+    body,
+    startY: 120,
+    styles: { fontSize: 8, halign: 'center' },
+    theme: 'grid',
+    didParseCell: (data: any) => {
+      if (data.row.raw[6] === 'HIGHLIGHT') {
+        data.cell.styles.fillColor = [255, 255, 153];
+      }
+    },
+    columnStyles: {
+      5: { halign: 'left' },
+    },
+  });
 
-    // --- TABLE ---
-    const body = dayHeaders.map(day => {
-        const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-        const startKm = Number(cellStates[`${day}-startKm`] || 0);
-        const endKm = Number(cellStates[`${day}-endKm`] || 0);
-        const dayTotal = endKm > startKm ? endKm - startKm : 0;
+  let y = (doc as any).lastAutoTable.finalY + 30;
 
-        return [
-            format(date, 'dd-MM-yy'),
-            startKm || '',
-            endKm || '',
-            dayTotal || '',
-            cellStates[`${day}-overtime`] || '',
-            cellStates[`${day}-remarks`] || ''
-        ];
-    });
-    
-    const totalRow = ['Total', '', '', totalKm, '', ''];
-    body.push(totalRow);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Verified By:', 30, y);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Name: ${headerStates.verifiedByName || ''}`, 30, y + 15);
+  doc.text(`Designation: ${headerStates.verifiedByDesignation || ''}`, 30, y + 30);
 
-    (doc as any).autoTable({
-        head: [['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OVERTIME', 'REMARKS']],
-        body,
-        startY: 110,
-        theme: 'grid',
-        styles: { fontSize: 8, cellPadding: 4, valign: 'middle' },
-        headStyles: { fontSize: 9, fontStyle: 'bold', fillColor: [230, 230, 230], textColor: [0, 0, 0], halign: 'center' },
-        columnStyles: {
-            0: { cellWidth: 60, halign: 'center' },
-            1: { cellWidth: 55, halign: 'center' },
-            2: { cellWidth: 55, halign: 'center' },
-            3: { cellWidth: 55, halign: 'center' },
-            4: { cellWidth: 55, halign: 'center' },
-            5: { cellWidth: 'auto' },
-        },
-        didParseCell: (data: any) => {
-            if (data.row.raw[0] === 'Total') {
-                data.cell.styles.fontStyle = 'bold';
-            }
-        },
-    });
-    
-    // --- FOOTER ---
-    let finalY = (doc as any).lastAutoTable.finalY + 30;
-    const pageHeight = doc.internal.pageSize.getHeight();
-    if(finalY > pageHeight - 50) {
-        doc.addPage();
-        finalY = margin;
-    }
-    
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Verified By:', margin, finalY);
-    finalY += 15;
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Name: ${headerStates.verifiedByName || ''}`, margin, finalY);
-    finalY += 15;
-    doc.text(`Designation: ${headerStates.verifiedByDesignation || ''}`, margin, finalY);
-
-    doc.save(`VehicleUsage_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`);
+  doc.save(`Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`);
 }
