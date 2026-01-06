@@ -232,8 +232,7 @@ export async function exportToPdf(
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
   doc.text(vehicle?.vehicleNumber || '', margin, currentY + 50);
-  currentY += 60; // Space after vehicle number
-
+  
   const rightHeaderData = [
     ['JOB NO', (headerStates.jobNo || '').toUpperCase()],
     ['VEHICLE TYPE', (headerStates.vehicleType || '').toUpperCase()],
@@ -252,6 +251,9 @@ export async function exportToPdf(
     tableWidth: 150,
     margin: { left: pageWidth - margin - 150 },
   });
+
+  currentY = (doc as any).lastAutoTable.finalY + 10;
+  currentY = Math.max(currentY, 75); // Ensure table starts below header info
 
   // Main Table
   let totalKm = 0;
@@ -282,26 +284,29 @@ export async function exportToPdf(
     theme: 'grid',
     styles: {
       font: 'helvetica',
-      fontSize: 8.5,
-      cellPadding: 3,
+      fontSize: 8,
+      cellPadding: 2,
       halign: 'center',
       valign: 'middle',
-      minCellHeight: 16, // Increase row height
+      minCellHeight: 14.5,
       overflow: 'linebreak',
     },
     headStyles: {
       fillColor: [2, 179, 150],
       textColor: 255,
       fontStyle: 'bold',
-      minCellHeight: 18,
+      minCellHeight: 16,
     },
     columnStyles: {
-      0: { cellWidth: 75 },
-      1: { cellWidth: 50 },
-      2: { cellWidth: 50 },
-      3: { cellWidth: 50 },
-      4: { cellWidth: 45 },
-      5: { cellWidth: 'auto', halign: 'left' },
+      0: { cellWidth: 72 },
+      1: { cellWidth: 48 },
+      2: { cellWidth: 48 },
+      3: { cellWidth: 48 },
+      4: { cellWidth: 40 },
+      5: {
+        cellWidth: 'auto',
+        halign: 'left',
+      },
     },
     margin: { left: margin, right: margin },
     pageBreak: 'avoid',
@@ -309,25 +314,16 @@ export async function exportToPdf(
   });
 
   // Footer Section
-  const footerY = pageHeight - 65; // Pin to bottom
+  const footerY = pageHeight - 80;
   
-  const footerLabels = [
-      { content: 'Verified By:', styles: { fontStyle: 'bold' } },
-      { content: 'Verified By Date:', styles: { fontStyle: 'bold' } },
-      { content: 'Signature:', styles: { fontStyle: 'bold' } },
-  ];
-
-  const footerValues = [
-    headerStates.verifiedByName || '',
-    headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '',
-    '', // Empty for signature
-  ];
-
   (doc as any).autoTable({
     startY: footerY,
-    body: [footerLabels, footerValues],
+    body: [
+      [{ content: 'Verified By:', styles: { fontStyle: 'bold' } }, { content: 'Verified By Date:', styles: { fontStyle: 'bold' } }, { content: 'Signature:', styles: { fontStyle: 'bold' } }],
+      [headerStates.verifiedByName || '', headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '', '']
+    ],
     theme: 'grid',
-    styles: { fontSize: 9, font: 'helvetica', cellPadding: 3, valign: 'top' },
+    styles: { fontSize: 9, font: 'helvetica', cellPadding: 3, valign: 'top', minCellHeight: 25 },
     columnStyles: {
       0: { cellWidth: (pageWidth - margin * 2) / 3 },
       1: { cellWidth: (pageWidth - margin * 2) / 3 },
@@ -335,13 +331,11 @@ export async function exportToPdf(
     },
     margin: { left: margin, right: margin },
     didParseCell: (data: any) => {
-        // Remove borders from the value cells
         if (data.row.index === 1) {
-            data.cell.styles.lineWidth = 0;
+            data.cell.styles.valign = 'bottom';
         }
     }
   });
-
 
   const signaturePath = SIGNATURES[headerStates.verifiedByName];
   if (signaturePath) {
@@ -352,7 +346,7 @@ export async function exportToPdf(
           signatureBase64,
           'JPEG',
           margin + ((pageWidth - margin * 2) * 2) / 3 + 15,
-          footerY + 15, // Adjusted position
+          footerY + 22,
           70,
           28
         );
