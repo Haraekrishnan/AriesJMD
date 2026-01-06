@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, Users, Car, Wrench } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Users, Car, Wrench, Notebook } from 'lucide-react';
 import VehicleTable from '@/components/vehicle/VehicleTable';
 import AddVehicleDialog from '@/components/vehicle/AddVehicleDialog';
 import type { Vehicle, Driver } from '@/lib/types';
@@ -19,6 +19,7 @@ import VehicleLogManagerDialog from '@/components/vehicle/VehicleLogManagerDialo
 import { useSearchParams } from 'next/navigation';
 import StatCard from '@/components/dashboard/stat-card';
 import ExpiringDocumentsReport from '@/components/vehicle/ExpiringDocumentsReport';
+import Link from 'next/link';
 
 export default function VehicleStatusPage() {
     const { can, vehicles, drivers } = useAppContext();
@@ -132,6 +133,13 @@ export default function VehicleStatusPage() {
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Fleet Management</h1>
                     <p className="text-muted-foreground">Manage and track vehicle details and driver information.</p>
+                </div>
+                <div>
+                    <Button asChild>
+                        <Link href="/vehicle-usage-summary">
+                            <Notebook className="mr-2 h-4 w-4" /> Vehicle Usage Summary
+                        </Link>
+                    </Button>
                 </div>
             </div>
 

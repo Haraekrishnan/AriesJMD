@@ -1,5 +1,6 @@
 
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -295,6 +296,7 @@ export const ALL_PERMISSIONS = [
   'perform_inventory_inspection',
   'manage_tp_certification',
   'manage_directives',
+  'manage_vehicle_usage',
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -1036,3 +1038,29 @@ export type DamageReport = {
 };
 
 export type DecorationTheme = 'none' | 'christmas' | 'diwali' | 'new-year';
+
+export type VehicleUsageRecord = {
+  id: string; // YYYY-MM
+  isLocked?: boolean;
+  records: {
+    [vehicleId: string]: {
+      days: { 
+        [day: number]: {
+          startKm?: number;
+          endKm?: number;
+          overtime?: string; // HH:mm
+          remarks?: string;
+        }
+      };
+      verifiedBy?: {
+        name: string;
+        designation: string;
+      }
+      jobNo?: string;
+      vehicleType?: string;
+      extraKm?: number;
+      extraNight?: number;
+      extraDay?: number;
+    };
+  };
+};
