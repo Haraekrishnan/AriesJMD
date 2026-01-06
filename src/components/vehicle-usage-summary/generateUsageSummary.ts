@@ -214,159 +214,159 @@ export async function exportToPdf(
   dayHeaders: number[],
   headerStates: any,
 ) {
-    const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'pt',
-        format: 'a4',
-        compress: true,
-      });
-      
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 28;
-      const contentWidth = pageWidth - margin * 2;
-      
-      let currentY = margin;
-      
-      // --- HEADER ---
-      try {
-        const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
-        if (logoBase64) doc.addImage(logoBase64, 'PNG', margin, currentY, 130, 32);
-      } catch (e) {
-        console.error("Could not add logo to PDF:", e);
-      }
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'pt',
+    format: 'a4',
+    compress: true,
+  });
 
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text(vehicle?.vehicleNumber || '', margin, currentY + 50);
-      
-      const rightHeaderStartY = currentY + 10;
-      const rightHeaderX = pageWidth - margin - 150;
-      
-      (doc as any).autoTable({
-        body: [
-          ['JOB NO', (headerStates.jobNo || '').toUpperCase()],
-          ['VEHICLE TYPE', (headerStates.vehicleType || '').toUpperCase()],
-          ['EXTRA KM', headerStates.extraKm || 0],
-          ['OVER TIME', headerStates.headerOvertime || ''],
-          ['EXTRA NIGHT', headerStates.extraNight || 0],
-          ['EXTRA DAYS', headerStates.extraDays || 0],
-        ],
-        startY: rightHeaderStartY,
-        theme: 'plain',
-        styles: { fontSize: 9, font: 'helvetica', cellPadding: 2, lineWidth: 0.5, lineColor: [180, 180, 180] },
-        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 70 }, 1: { cellWidth: 80 } },
-        tableWidth: 150,
-        margin: { left: rightHeaderX },
-        didDrawCell: (data: any) => {
-            if (data.column.index <= 1) {
-                doc.setDrawColor(180, 180, 180);
-                doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height);
-            }
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 28;
+  const contentWidth = pageWidth - margin * 2;
+  let currentY = margin;
+
+  // --- HEADER ---
+  try {
+    const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
+    if (logoBase64) doc.addImage(logoBase64, 'PNG', margin, currentY, 130, 32);
+  } catch (e) {
+    console.error("Could not add logo to PDF:", e);
+  }
+  
+  const rightHeaderX = pageWidth - margin - 200;
+  (doc as any).autoTable({
+    body: [
+      ['JOB NO', (headerStates.jobNo || '').toUpperCase()],
+      ['VEHICLE TYPE', (headerStates.vehicleType || '').toUpperCase()],
+      ['EXTRA KM', headerStates.extraKm || 0],
+      ['OVER TIME', headerStates.headerOvertime || ''],
+      ['EXTRA NIGHT', headerStates.extraNight || 0],
+      ['EXTRA DAYS', headerStates.extraDays || 0],
+    ],
+    startY: currentY,
+    theme: 'plain',
+    styles: { fontSize: 8.5, font: 'helvetica', cellPadding: 2, lineWidth: 0.5, lineColor: [180, 180, 180] },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 70 }, 1: { cellWidth: 130 } },
+    tableWidth: 200,
+    margin: { left: rightHeaderX },
+    didDrawCell: (data: any) => {
+        if (data.column.index <= 1) {
+            doc.setDrawColor(180, 180, 180);
+            doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height);
         }
-      });
-
-      currentY = (doc as any).lastAutoTable.finalY + 15;
-      
-      // --- MAIN TABLE ---
-      let totalKm = 0;
-      const body = dayHeaders.map(day => {
-        const d = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-        const s = Number(cellStates[`${day}-startKm`] || 0);
-        const e = Number(cellStates[`${day}-endKm`] || 0);
-        const t = e > s ? e - s : 0;
-        totalKm += t;
-        const isHoliday = cellStates[`${day}-isHoliday`] || getDay(d) === 0;
-
-        return [
-          { content: format(d, 'dd-MMM-yyyy'), styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
-          { content: s || '', styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
-          { content: e || '', styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
-          { content: t || '', styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
-          { content: cellStates[`${day}-overtime`] || '', styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
-          { content: cellStates[`${day}-remarks`] || '', styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
-        ];
-      });
-
-      body.push([{ content: 'TOTAL KILOMETER:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } }, { content: totalKm, styles: { fontStyle: 'bold' } }, '', '']);
-
-      const footerStartY = pageHeight - 80;
-      const tableMaxHeight = footerStartY - currentY - 10;
-
-      (doc as any).autoTable({
-        head: [['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OT', 'REMARKS']],
-        body,
-        startY: currentY,
-        theme: 'grid',
-        styles: {
-            font: 'helvetica',
-            fontSize: 9,
-            cellPadding: 3,
-            halign: 'center',
-            valign: 'middle',
-            minCellHeight: 16,
-            overflow: 'linebreak',
-        },
-        headStyles: {
-            fillColor: [2, 179, 150],
-            textColor: 255,
-            fontStyle: 'bold',
-            minCellHeight: 20,
-        },
-        columnStyles: {
-            0: { cellWidth: 75 },
-            1: { cellWidth: 50 },
-            2: { cellWidth: 50 },
-            3: { cellWidth: 50 },
-            4: { cellWidth: 40 },
-            5: { cellWidth: 'auto', halign: 'left' },
-        },
-        tableWidth: 'auto',
-        margin: { left: margin, right: margin, bottom: pageHeight - footerStartY + 10 },
-        pageBreak: 'avoid',
-        rowPageBreak: 'avoid',
-        tableHeight: 'auto',
-      });
-      
-      // --- FOOTER ---
-      (doc as any).autoTable({
-        startY: footerStartY,
-        body: [
-          [{ content: 'Verified By:', styles: { fontStyle: 'bold' } }, { content: 'Verified By Date:', styles: { fontStyle: 'bold' } }, { content: 'Signature:', styles: { fontStyle: 'bold' } }],
-          [{ content: headerStates.verifiedByName || '', styles: { minCellHeight: 28 } }, { content: headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '', styles: { minCellHeight: 28 } }, ''],
-        ],
-        theme: 'grid',
-        styles: {
-            fontSize: 9,
-            cellPadding: 4,
-            valign: 'top',
-        },
-        columnStyles: {
-            0: { cellWidth: (contentWidth) / 3 },
-            1: { cellWidth: (contentWidth) / 3 },
-            2: { cellWidth: (contentWidth) / 3 },
-        },
-        margin: { left: margin, right: margin },
-      });
-
-    const signaturePath = SIGNATURES[headerStates.verifiedByName];
-    if (signaturePath) {
-        try {
-            const signatureBase64 = await fetchImageAsBase64(signaturePath);
-            if (signatureBase64) {
-                doc.addImage(
-                    signatureBase64,
-                    'JPEG',
-                    margin + ((contentWidth) * 2) / 3 + 10,
-                    footerStartY + 25,
-                    70,
-                    28
-                );
-            }
-        } catch (e) { console.error(e); }
     }
+  });
 
-      doc.save(
-        `Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`
-      );
+  currentY = (doc as any).lastAutoTable.finalY + 15;
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text(vehicle?.vehicleNumber || '', margin, currentY);
+  
+  currentY += 15;
+  
+
+  // --- MAIN TABLE ---
+  let totalKm = 0;
+  const body = dayHeaders.map(day => {
+    const d = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+    const s = Number(cellStates[`${day}-startKm`] || 0);
+    const e = Number(cellStates[`${day}-endKm`] || 0);
+    const t = e > s ? e - s : 0;
+    totalKm += t;
+    const isHoliday = cellStates[`${day}-isHoliday`] || getDay(d) === 0;
+
+    return [
+      { content: format(d, 'dd-MMM-yyyy'), styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
+      { content: s || '', styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
+      { content: e || '', styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
+      { content: t || '', styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
+      { content: cellStates[`${day}-overtime`] || '', styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
+      { content: cellStates[`${day}-remarks`] || '', styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
+    ];
+  });
+
+  body.push([{ content: 'TOTAL KILOMETER:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } }, { content: totalKm, styles: { fontStyle: 'bold' } }, '', '']);
+
+  const footerStartY = pageHeight - 85; 
+  const tableMaxHeight = footerStartY - currentY - 10;
+  const rowCount = body.length;
+  const minRowHeight = 16;
+  const calculatedRowHeight = Math.max(minRowHeight, tableMaxHeight / rowCount);
+
+  (doc as any).autoTable({
+    head: [['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OT', 'REMARKS']],
+    body,
+    startY: currentY,
+    theme: 'grid',
+    styles: {
+        font: 'helvetica',
+        fontSize: 8,
+        cellPadding: 2,
+        halign: 'center',
+        valign: 'middle',
+        minCellHeight: calculatedRowHeight, 
+        overflow: 'linebreak',
+    },
+    headStyles: {
+        fillColor: [2, 179, 150],
+        textColor: 255,
+        fontStyle: 'bold',
+        minCellHeight: 18,
+    },
+    columnStyles: {
+        0: { cellWidth: 72 },
+        1: { cellWidth: 55 },
+        2: { cellWidth: 55 },
+        3: { cellWidth: 55 },
+        4: { cellWidth: 45 },
+        5: { cellWidth: 'auto', halign: 'left' },
+    },
+    tableWidth: 'auto',
+    margin: { left: margin, right: margin },
+  });
+  
+  // --- FOOTER ---
+  (doc as any).autoTable({
+    startY: footerStartY,
+    body: [
+      [{ content: 'Verified By:', styles: { fontStyle: 'bold' } }, { content: 'Verified By Date:', styles: { fontStyle: 'bold' } }, { content: 'Signature:', styles: { fontStyle: 'bold' } }],
+      [{ content: headerStates.verifiedByName || '', styles: { minCellHeight: 28 } }, { content: headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '', styles: { minCellHeight: 28 } }, ''],
+    ],
+    theme: 'grid',
+    styles: {
+        fontSize: 9,
+        cellPadding: 4,
+        valign: 'top',
+    },
+    columnStyles: {
+        0: { cellWidth: (contentWidth) / 3 },
+        1: { cellWidth: (contentWidth) / 3 },
+        2: { cellWidth: (contentWidth) / 3 },
+    },
+    margin: { left: margin, right: margin },
+  });
+
+  const signaturePath = SIGNATURES[headerStates.verifiedByName];
+  if (signaturePath) {
+      try {
+          const signatureBase64 = await fetchImageAsBase64(signaturePath);
+          if (signatureBase64) {
+              doc.addImage(
+                  signatureBase64,
+                  'JPEG',
+                  margin + ((contentWidth) * 2) / 3 + 15,
+                  footerStartY + 22,
+                  70,
+                  28
+              );
+          }
+      } catch (e) { console.error(e); }
+  }
+
+  doc.save(
+    `Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`
+  );
 }
