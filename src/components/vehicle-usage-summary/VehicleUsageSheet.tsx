@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -18,7 +19,7 @@ import EditVehicleUsageDialog from './EditVehicleUsageDialog';
 import type { Vehicle, User } from '@/lib/types';
 
 
-const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
+const implementationStartDate = new Date(2026, 0, 1); // January 2026 (Month is 0-indexed)
 
 const VehicleDataRow = ({ vehicle, currentMonth }: { vehicle: any, currentMonth: Date }) => {
     const { user, can, lockVehicleUsageSheet, unlockVehicleUsageSheet, drivers, vehicleUsageRecords, users } = useAppContext();
@@ -124,7 +125,7 @@ const VehicleDataRow = ({ vehicle, currentMonth }: { vehicle: any, currentMonth:
 
 export default function VehicleUsageSheet() {
     const { vehicles, vehicleUsageRecords } = useAppContext();
-    const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
+    const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date(2026,0,1)));
     
     const getVehicleStatus = (vehicleId: string) => {
         const record = vehicleUsageRecords?.[format(currentMonth, 'yyyy-MM')];
