@@ -5,7 +5,7 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { format, getDay } from 'date-fns';
+import { format, getDay, parseISO, isValid } from 'date-fns';
 import type { Vehicle, Driver, User } from '@/lib/types';
 
 async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
@@ -24,7 +24,7 @@ async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
 
 async function fetchImageAsBase64(url: string): Promise<string> {
     try {
-        const response = await fetch(new URL(url, window.location.origin).href);
+        const response = await fetch(url);
         if (!response.ok) {
              console.error(`Failed to fetch image: ${response.statusText} from ${url}`);
              return '';
@@ -304,14 +304,20 @@ export async function exportToPdf(
 
   (doc as any).autoTable({
     startY: finalY,
-    body: [footerLabels, footerBody],
-    theme: 'grid',
-    styles: { fontSize: 8, font: 'helvetica', cellPadding: 3, minCellHeight: 40, valign: 'top' },
-    body: [
-      footerLabels.map(label => ({ content: label, styles: { fontStyle: 'bold' } })),
-      footerValues.map(value => ({ content: value, styles: { minCellHeight: 20 } }))
-    ],
-    columnStyles: { 0: { cellWidth: 150 }, 1: { cellWidth: 150 }, 2: { cellWidth: 'auto'} },
+    body: [footerLabels, footerValues],
+    theme: 'plain',
+    styles: { fontSize: 8, font: 'helvetica' },
+    columnStyles: {
+      0: { cellWidth: 150, fontStyle: 'bold' },
+      1: { cellWidth: 150, fontStyle: 'bold' },
+      2: { cellWidth: 'auto', fontStyle: 'bold' }
+    },
+    didParseCell: (data: any) => {
+      // Make only the first row (labels) bold
+      if (data.row.index > 0) {
+        data.cell.styles.fontStyle = 'normal';
+      }
+    }
   });
 
 
