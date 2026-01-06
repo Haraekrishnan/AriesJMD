@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -6,15 +5,16 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight, Download, Save, Lock, Unlock, Palette, Checkbox as CheckboxIcon } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isSameMonth, getDay, isAfter, isBefore, startOfToday, parseISO, isValid, parse, sub } from 'date-fns';
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
-import type { VehicleUsageRecord } from '@/lib/types';
-import { exportToExcel, exportToPdf } from './generateUsageSummary';
-import { DatePickerInput } from '../ui/date-picker-input';
-import { Checkbox } from '../ui/checkbox';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -24,6 +24,9 @@ import EditJobCodeDialog from '../job-record/EditJobCodeDialog';
 import AddJobRecordPlantDialog from '../job-record/AddJobRecordPlantDialog';
 import { ScrollArea } from '../ui/scroll-area';
 import { JOB_CODE_COLORS } from '@/lib/job-codes';
+import { DatePickerInput } from '../ui/date-picker-input';
+import { Checkbox } from '../ui/checkbox';
+import { exportToExcel, exportToPdf } from './generateUsageSummary';
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
 
@@ -218,7 +221,7 @@ export default function VehicleUsageSheet() {
                                 <ChevronRight className="h-4 w-4" />
                             </Button>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             <Button onClick={() => handleExport('excel')} disabled={!selectedVehicleId}><Download className="mr-2 h-4 w-4"/>Excel</Button>
                             <Button onClick={() => handleExport('pdf')} disabled={!selectedVehicleId}><Download className="mr-2 h-4 w-4"/>PDF</Button>
                             {canEdit && <Button onClick={handleSave} disabled={!selectedVehicleId}><Save className="mr-2 h-4 w-4"/>Save</Button>}
@@ -297,17 +300,17 @@ export default function VehicleUsageSheet() {
                     <div className="overflow-auto flex-1 relative">
                         {selectedVehicleId ? (
                         <Table className="min-w-full border-separate border-spacing-0">
-                            <thead className="sticky top-0 z-10 bg-card">
+                            <TableHeader>
                                 <TableRow>
-                                    <TableHead className="sticky left-0 z-20 bg-card shadow-sm">Day</TableHead>
-                                    <TableHead className="sticky top-0 z-10 bg-card shadow-sm">Start KM</TableHead>
-                                    <TableHead className="sticky top-0 z-10 bg-card shadow-sm">End KM</TableHead>
-                                    <TableHead className="sticky top-0 z-10 bg-card shadow-sm">Total KM</TableHead>
-                                    <TableHead className="sticky top-0 z-10 bg-card shadow-sm">Overtime (Hrs)</TableHead>
-                                    <TableHead className="sticky top-0 z-10 bg-card shadow-sm">Remarks</TableHead>
-                                    <TableHead className="sticky top-0 z-10 bg-card shadow-sm text-center">Holiday</TableHead>
+                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Day</TableHead>
+                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Start KM</TableHead>
+                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">End KM</TableHead>
+                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Total KM</TableHead>
+                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Overtime (Hrs)</TableHead>
+                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Remarks</TableHead>
+                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm text-center">Holiday</TableHead>
                                 </TableRow>
-                            </thead>
+                            </TableHeader>
                             <TableBody>
                                 {dayHeaders.map(day => {
                                     const dateForDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
