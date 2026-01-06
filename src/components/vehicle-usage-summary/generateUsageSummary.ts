@@ -313,29 +313,30 @@ export async function exportToPdf(
 
   const footerY = doc.internal.pageSize.getHeight() - 70;
   
+  const footerLabels = [
+      { content: 'Verified By:', styles: { fontStyle: 'bold' } },
+      { content: 'Verified By Date:', styles: { fontStyle: 'bold' } },
+      { content: 'Signature:', styles: { fontStyle: 'bold' } },
+  ];
+
+  const footerValues = [
+    headerStates.verifiedByName || '',
+    headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '',
+    '',
+  ];
+
   (doc as any).autoTable({
     startY: footerY,
-    body: [
-      ['Verified By:', 'Verified By Date:', 'Signature:'],
-      [
-        headerStates.verifiedByName || '',
-        headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '',
-        '',
-      ],
-    ],
+    body: [footerLabels, footerValues],
     theme: 'grid',
-    styles: {
-      fontSize: 9,
-      cellPadding: 4,
-      valign: 'top',
-    },
+    styles: { fontSize: 8, font: 'helvetica', cellPadding: 3, minCellHeight: 20, valign: 'top' },
     columnStyles: {
       0: { cellWidth: (pageWidth - margin * 2) / 3 },
       1: { cellWidth: (pageWidth - margin * 2) / 3 },
       2: { cellWidth: (pageWidth - margin * 2) / 3 },
     },
     margin: { left: margin, right: margin },
-    didParseCell: (data: any) => {
+    didDrawCell: (data: any) => {
         if (data.row.index === 0) { // Bold labels row
             data.cell.styles.fontStyle = 'bold';
         }
