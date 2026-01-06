@@ -65,7 +65,7 @@ export async function exportToExcel(
       const logoId = workbook.addImage({ buffer: logoBuffer, extension: 'png' });
       sheet.addImage(logoId, {
         tl: { col: 0, row: 0 },
-        ext: { width: 160, height: 50 },
+        ext: { width: 160, height: 40 },
       });
     }
   } catch (e) { console.error(e)}
@@ -218,7 +218,6 @@ export async function exportToPdf(
   const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
 
   const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 30;
   
   let currentY = 25;
@@ -248,7 +247,7 @@ export async function exportToPdf(
     margin: { left: pageWidth - margin - 150 },
   });
   
-  currentY = 100;
+  currentY = (doc as any).lastAutoTable.finalY + 25;
   
   let totalKm = 0;
   const body = dayHeaders.map(day => {
@@ -288,16 +287,11 @@ export async function exportToPdf(
     },
   });
 
-  let finalY = (doc as any).lastAutoTable.finalY + 20;
+  let finalY = (doc as any).lastAutoTable.finalY + 15;
 
   doc.setFontSize(8);
   
-  const footerLabels = [
-    { content: 'Verified By:', styles: { fontStyle: 'bold' } },
-    { content: 'Verified By Date:', styles: { fontStyle: 'bold' } },
-    { content: 'Signature:', styles: { fontStyle: 'bold' } }
-  ];
-
+  const footerLabels = ['Verified By:', 'Verified By Date:', 'Signature:'];
   const footerValues = [
     headerStates.verifiedByName || '',
     headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '',
@@ -306,9 +300,12 @@ export async function exportToPdf(
 
   (doc as any).autoTable({
     startY: finalY,
-    body: [footerLabels, footerValues],
+    body: [
+      footerLabels.map(label => ({ content: label, styles: { fontStyle: 'bold' } })),
+      footerValues
+    ],
     theme: 'grid',
-    styles: { fontSize: 8, font: 'helvetica', cellPadding: 3, minCellHeight: 40, valign: 'top' },
+    styles: { fontSize: 8, font: 'helvetica', cellPadding: 3, minCellHeight: 30, valign: 'top' },
   });
 
 
