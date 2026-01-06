@@ -24,7 +24,7 @@ async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
 
 async function fetchImageAsBase64(url: string): Promise<string> {
     try {
-        const response = await fetch(url);
+        const response = await fetch(new URL(url, process.env.NEXT_PUBLIC_APP_URL).href);
         if (!response.ok) {
              console.error(`Failed to fetch image: ${response.statusText} from ${url}`);
              return '';
@@ -217,15 +217,16 @@ export async function exportToPdf(
   const logo = await fetchImageAsBase64('/images/Aries_logo.png');
 
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 30;
   
   let currentY = 30;
 
-  if (logo) doc.addImage(logo, 'PNG', margin, currentY, 80, 25);
+  if (logo) doc.addImage(logo, 'PNG', margin, currentY, 120, 30);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
-  doc.text(vehicle?.vehicleNumber || '', margin, currentY + 40);
+  doc.text(vehicle?.vehicleNumber || '', margin, currentY + 50);
 
   const rightHeaderData = [
     ['JOB NO', (headerStates.jobNo || '').toUpperCase()],
@@ -246,7 +247,7 @@ export async function exportToPdf(
     margin: { left: pageWidth - margin - 220 },
   });
   
-  currentY = (doc as any).lastAutoTable.finalY + 15;
+  currentY = 110;
   
   let totalKm = 0;
   const body = dayHeaders.map(day => {
@@ -258,13 +259,12 @@ export async function exportToPdf(
     const isHoliday = cellStates[`${day}-isHoliday`] || getDay(d) === 0;
 
     return [
-      format(d, 'dd-MMM-yyyy'),
-      s || '',
-      e || '',
-      t || '',
-      cellStates[`${day}-overtime`] || '',
-      cellStates[`${day}-remarks`] || '',
-      isHoliday ? 'HIGHLIGHT' : '',
+      { content: format(d, 'dd-MMM-yyyy'), styles: { fillColor: isHoliday ? [255, 255, 153] : undefined } },
+      { content: s || '', styles: { fillColor: isHoliday ? [255, 255, 153] : undefined } },
+      { content: e || '', styles: { fillColor: isHoliday ? [255, 255, 153] : undefined } },
+      { content: t || '', styles: { fillColor: isHoliday ? [255, 255, 153] : undefined } },
+      { content: cellStates[`${day}-overtime`] || '', styles: { fillColor: isHoliday ? [255, 255, 153] : undefined } },
+      { content: cellStates[`${day}-remarks`] || '', styles: { fillColor: isHoliday ? [255, 255, 153] : undefined } },
     ];
   });
   
@@ -274,14 +274,9 @@ export async function exportToPdf(
     head: [['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OT', 'REMARKS']],
     body,
     startY: currentY,
-    styles: { fontSize: 8, halign: 'center', font: 'helvetica', cellPadding: 2, minCellHeight: 15 },
+    styles: { fontSize: 8, halign: 'center', font: 'helvetica', cellPadding: 3, minCellHeight: 15 },
     headStyles: { fillColor: [2, 179, 150], textColor: 255, fontStyle: 'bold' },
     theme: 'grid',
-    didParseCell: (data: any) => {
-        if (data.row.raw[6] === 'HIGHLIGHT' && data.section === 'body') {
-            data.cell.styles.fillColor = [255, 255, 153];
-        }
-    },
     columnStyles: {
       0: { cellWidth: 70 },
       1: { cellWidth: 50 },
@@ -292,34 +287,30 @@ export async function exportToPdf(
     },
   });
 
-  let finalY = (doc as any).lastAutoTable.finalY + 15;
+  let finalY = (doc as any).lastAutoTable.finalY + 30;
+  
+  if (finalY > pageHeight - 60) {
+    doc.addPage();
+    finalY = margin;
+  }
 
-  // Footer Section
-  const footerLabels = ['Verified By:', 'Verified By Date:', 'Signature:'];
-  const footerValues = [
-    headerStates.verifiedByName || '',
-    headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '',
-    ''
-  ];
+  doc.setFontSize(8);
+  
+  const footerXPositions = [margin, pageWidth / 2, pageWidth - margin];
 
-  (doc as any).autoTable({
-    startY: finalY,
-    body: [footerLabels, footerValues],
-    theme: 'plain',
-    styles: { fontSize: 8, font: 'helvetica' },
-    columnStyles: {
-      0: { cellWidth: 150, fontStyle: 'bold' },
-      1: { cellWidth: 150, fontStyle: 'bold' },
-      2: { cellWidth: 'auto', fontStyle: 'bold' }
-    },
-    didParseCell: (data: any) => {
-      // Make only the first row (labels) bold
-      if (data.row.index > 0) {
-        data.cell.styles.fontStyle = 'normal';
-      }
-    }
-  });
+  // Draw labels
+  doc.setFont('helvetica', 'bold');
+  doc.text('Verified By:', footerXPositions[0], finalY);
+  doc.text('Verified By Date:', footerXPositions[1] - 50, finalY);
+  doc.text('Signature:', footerXPositions[2], finalY, { align: 'right' });
 
+  // Draw values
+  finalY += 15;
+  doc.setFont('helvetica', 'normal');
+  doc.text(headerStates.verifiedByName || '', footerXPositions[0], finalY);
+  doc.text(headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '', footerXPositions[1] - 50, finalY);
+  // Signature line
+  doc.line(footerXPositions[2], finalY + 5, footerXPositions[2] - 100, finalY + 5);
 
   doc.save(
     `Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`
