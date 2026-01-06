@@ -1,3 +1,4 @@
+
 'use client';
 
 import ExcelJS from 'exceljs';
@@ -23,7 +24,7 @@ async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
 
 async function fetchImageAsBase64(url: string): Promise<string> {
     try {
-        const response = await fetch(url);
+        const response = await fetch(new URL(url, window.location.origin).href);
         if (!response.ok) {
              console.error(`Failed to fetch image: ${response.statusText} from ${url}`);
              return '';
@@ -219,11 +220,11 @@ export async function exportToPdf(
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 30;
 
-  if (logo) doc.addImage(logo, 'PNG', margin, 30, 120, 35);
+  if (logo) doc.addImage(logo, 'PNG', margin, 30, 80, 25);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
-  doc.text(vehicle?.vehicleNumber || '', margin, 85);
+  doc.text(vehicle?.vehicleNumber || '', margin, 70);
 
   const rightHeaderData = [
     ['JOB NO', (headerStates.jobNo || '').toUpperCase()],
@@ -244,7 +245,7 @@ export async function exportToPdf(
     margin: { left: pageWidth - margin - 220 },
   });
   
-  let mainTableStartY = 95;
+  const mainTableStartY = (doc as any).lastAutoTable.finalY + 15 > 95 ? (doc as any).lastAutoTable.finalY + 15 : 95;
   
   let totalKm = 0;
   const body = dayHeaders.map(day => {
@@ -292,9 +293,9 @@ export async function exportToPdf(
   
   const footerData = [
       [
-          { content: `Verified By:\n${headerStates.verifiedByName || ''}`, styles: { halign: 'left' } },
-          { content: `Verified By Date:\n${headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : ''}`, styles: { halign: 'left' } },
-          { content: `Signature:\n`, styles: { halign: 'left' } }
+          { content: `Verified By:\n${headerStates.verifiedByName || ''}`, styles: { fontStyle: 'bold' } },
+          { content: `Verified By Date:\n${headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : ''}`, styles: { fontStyle: 'bold' } },
+          { content: `Signature:\n`, styles: { fontStyle: 'bold' } }
       ]
   ];
   
@@ -310,3 +311,5 @@ export async function exportToPdf(
     `Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`
   );
 }
+
+    
