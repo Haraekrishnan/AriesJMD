@@ -81,7 +81,7 @@ export async function exportToExcel(
     ['VEHICLE TYPE', (headerStates.vehicleType || '').toUpperCase()],
     ['EXTRA KM', headerStates.extraKm || 0],
     ['OVER TIME', headerStates.headerOvertime || ''],
-    ['EXTRA NIGHT', headerStates.extraNight || 0],
+    ['EXTRA DAYS', headerStates.extraNight || 0],
     ['EXTRA DAYS', headerStates.extraDays || 0],
   ];
 
@@ -224,7 +224,6 @@ export async function exportToPdf(
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 25;
-  const contentWidth = pageWidth - margin * 2;
   let currentY = margin;
 
   // --- HEADER ---
@@ -234,21 +233,20 @@ export async function exportToPdf(
   } catch (e) {
     console.error("Could not add logo to PDF:", e);
   }
-  
+
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.text(vehicle?.vehicleNumber || '', margin, currentY + 45);
-  currentY += 50;
 
   const rightHeaderX = pageWidth - margin - 200;
   (doc as any).autoTable({
     body: [
-      ['JOB NO', (headerStates.jobNo || '').toUpperCase()],
-      ['VEHICLE TYPE', (headerStates.vehicleType || '').toUpperCase()],
-      ['EXTRA KM', headerStates.extraKm || 0],
-      ['OVER TIME', headerStates.headerOvertime || ''],
-      ['EXTRA NIGHT', headerStates.extraNight || 0],
-      ['EXTRA DAYS', headerStates.extraDays || 0],
+        ['JOB NO', (headerStates.jobNo || '').toUpperCase()],
+        ['VEHICLE TYPE', (headerStates.vehicleType || '').toUpperCase()],
+        ['EXTRA KM', headerStates.extraKm || 0],
+        ['OVER TIME', headerStates.headerOvertime || ''],
+        ['EXTRA DAYS', headerStates.extraNight || 0],
+        ['EXTRA DAYS', headerStates.extraDays || 0],
     ],
     startY: margin,
     theme: 'plain',
@@ -263,6 +261,9 @@ export async function exportToPdf(
         }
     }
   });
+
+  currentY = (doc as any).lastAutoTable.finalY + 10;
+  
 
   // --- MAIN TABLE ---
   let totalKm = 0;
@@ -285,13 +286,8 @@ export async function exportToPdf(
   });
 
   body.push([{ content: 'TOTAL KILOMETER:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } }, { content: totalKm, styles: { fontStyle: 'bold' } }, '', '']);
-
-  const tableHeaderHeight = 20; // Estimated height of header
-  const tableFooterHeight = 20; // Estimated height of "TOTAL" row
-  const footerHeight = 70; // Height for the bottom verified/signature block
-  const availableTableHeight = pageHeight - currentY - footerHeight - tableHeaderHeight - tableFooterHeight - (margin * 2);
-  const rowCount = body.length;
-  const rowHeight = availableTableHeight / rowCount;
+  
+  const footerY = pageHeight - 75; // Pinned footer position
 
   (doc as any).autoTable({
     head: [['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OT', 'REMARKS']],
@@ -304,7 +300,6 @@ export async function exportToPdf(
         cellPadding: 2,
         halign: 'center',
         valign: 'middle',
-        minCellHeight: Math.max(14, rowHeight), 
         overflow: 'linebreak',
     },
     headStyles: {
@@ -321,14 +316,12 @@ export async function exportToPdf(
         4: { cellWidth: 40 },
         5: { cellWidth: 'auto', halign: 'left' },
     },
-    margin: { left: margin, right: margin, bottom: footerHeight + 10 },
-    pageBreak: 'avoid',   // Prevent page breaks within the table
-    rowPageBreak: 'avoid'
+    margin: { left: margin, right: margin, bottom: pageHeight - footerY + 10 },
+    pageBreak: 'avoid',
+    rowPageBreak: 'avoid',
   });
   
   // --- FOOTER ---
-  const footerY = (doc as any).lastAutoTable.finalY + 15 > pageHeight - footerHeight ? pageHeight - footerHeight : (doc as any).lastAutoTable.finalY + 15;
-
   (doc as any).autoTable({
     startY: footerY,
     body: [
@@ -344,12 +337,12 @@ export async function exportToPdf(
         fontSize: 9,
         cellPadding: 4,
         valign: 'top',
-        minCellHeight: 25,
+        minCellHeight: 30, // Increased row height
     },
     columnStyles: {
-        0: { cellWidth: (contentWidth) / 3 },
-        1: { cellWidth: (contentWidth) / 3 },
-        2: { cellWidth: (contentWidth) / 3 },
+        0: { cellWidth: (pageWidth - margin * 2) / 3 },
+        1: { cellWidth: (pageWidth - margin * 2) / 3 },
+        2: { cellWidth: (pageWidth - margin * 2) / 3 },
     },
     margin: { left: margin, right: margin },
   });
@@ -362,14 +355,15 @@ export async function exportToPdf(
               doc.addImage(
                   signatureBase64,
                   'JPEG',
-                  margin + ((contentWidth) * 2) / 3 + 15,
-                  footerY + 22,
+                  margin + ((pageWidth - margin * 2) * 2) / 3 + 15,
+                  footerY + 25,
                   70,
                   28
               );
           }
       } catch (e) { console.error(e); }
   }
+
 
   doc.save(
     `Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`
