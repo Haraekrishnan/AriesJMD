@@ -233,7 +233,8 @@ export async function exportToPdf(
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
   doc.text(vehicle?.vehicleNumber || '', margin, currentY + 50);
-  
+
+  // Right-side header table
   const rightHeaderData = [
     ['JOB NO', (headerStates.jobNo || '').toUpperCase()],
     ['VEHICLE TYPE', (headerStates.vehicleType || '').toUpperCase()],
@@ -247,13 +248,13 @@ export async function exportToPdf(
     body: rightHeaderData,
     startY: 25,
     theme: 'grid',
-    styles: { fontSize: 8, font: 'helvetica', cellPadding: 2, lineColor: [180, 180, 180], lineWidth: 0.5, valign: 'middle' },
+    styles: { fontSize: 8, font: 'helvetica', cellPadding: 3, lineColor: [180, 180, 180], lineWidth: 0.5, valign: 'middle' },
     columnStyles: { 0: { fontStyle: 'bold', cellWidth: 70 }, 1: { cellWidth: 80 } },
     tableWidth: 150,
     margin: { left: pageWidth - margin - 150 },
   });
-
-  currentY = 85;
+  
+  currentY = 100;
 
   // Main Table
   let totalKm = 0;
@@ -282,63 +283,49 @@ export async function exportToPdf(
     body,
     startY: currentY,
     theme: 'grid',
-
     styles: {
         font: 'helvetica',
-        fontSize: 9,
-        cellPadding: 3,
+        fontSize: 8.5,
+        cellPadding: 2,
         halign: 'center',
         valign: 'middle',
-        minCellHeight: 15.5,
+        minCellHeight: 15,
         overflow: 'linebreak',
     },
-
     headStyles: {
         fillColor: [2, 179, 150],
         textColor: 255,
         fontStyle: 'bold',
         minCellHeight: 18,
     },
-
     columnStyles: {
-        0: { cellWidth: 72 },
-        1: { cellWidth: 55 },
-        2: { cellWidth: 55 },
-        3: { cellWidth: 55 },
-        4: { cellWidth: 45 },
+        0: { cellWidth: 70 },
+        1: { cellWidth: 50 },
+        2: { cellWidth: 50 },
+        3: { cellWidth: 50 },
+        4: { cellWidth: 40 },
         5: { cellWidth: 'auto', halign: 'left' },
     },
-
-    margin: { left: margin, right: margin },
+    margin: { left: margin, right: margin, top: currentY },
     pageBreak: 'avoid',
-    rowPageBreak: 'avoid'
+    rowPageBreak: 'avoid',
   });
 
-  // Footer Section - Positioned from the bottom of the page
-  const footerStartY = (doc as any).lastAutoTable.finalY + 15 > pageHeight - 80 ? pageHeight - 80 : (doc as any).lastAutoTable.finalY + 15;
-
-  const footerLabels = [
-    { content: 'Verified By:', styles: { fontStyle: 'bold' } },
-    { content: 'Verified By Date:', styles: { fontStyle: 'bold' } },
-    { content: 'Signature:', styles: { fontStyle: 'bold' } },
-  ];
-  const footerValues = [
-    headerStates.verifiedByName || '',
-    headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '',
-    '', // for signature space
-  ];
+  // Footer Section
+  const footerStartY = pageHeight - 75;
 
   (doc as any).autoTable({
     startY: footerStartY,
-    body: [footerLabels, footerValues],
+    body: [
+      [{ content: 'Verified By:', styles: { fontStyle: 'bold' } }, { content: 'Verified By Date:', styles: { fontStyle: 'bold' } }, { content: 'Signature:', styles: { fontStyle: 'bold' } }],
+      [headerStates.verifiedByName || '', headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '', ''],
+    ],
     theme: 'grid',
     styles: {
         fontSize: 9,
         cellPadding: 2,
         valign: 'top',
-        lineWidth: 0.5,
-        lineColor: [100, 100, 100],
-        minCellHeight: 25,
+        minCellHeight: 10, // Reduced height
     },
     columnStyles: {
         0: { cellWidth: (pageWidth - margin * 2) / 3 },
@@ -346,16 +333,11 @@ export async function exportToPdf(
         2: { cellWidth: (pageWidth - margin * 2) / 3 },
     },
     margin: { left: margin, right: margin },
-    didParseCell: (data: any) => {
-        if (data.row.index === 0) { // First row (labels)
-            data.cell.styles.minCellHeight = 15;
-            data.cell.styles.valign = 'middle';
+    didDrawCell: (data: any) => {
+        if (data.row.index === 1) {
+            data.cell.styles.minCellHeight = 25; // Keep space for signature
         }
-        if (data.row.index === 1) { // Second row (values)
-            data.cell.styles.minCellHeight = 30;
-            data.cell.styles.valign = 'bottom';
-        }
-    },
+    }
   });
 
   const signaturePath = SIGNATURES[headerStates.verifiedByName];
@@ -366,14 +348,15 @@ export async function exportToPdf(
         doc.addImage(
           signatureBase64,
           'JPEG',
-          margin + (((pageWidth - margin * 2) / 3) * 2) + 15,
-          footerStartY + 22,
-          70,
-          28
+          margin + (((pageWidth - margin * 2) / 3) * 2) + 20, // Adjusted X position
+          footerStartY + 20, // Adjusted Y position
+          60,
+          25
         );
       }
     } catch(e) { console.error(e); }
   }
+
 
   doc.save(
     `Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`
