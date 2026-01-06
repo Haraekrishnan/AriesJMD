@@ -69,8 +69,6 @@ export default function VehicleUsageSheet() {
             setCellStates({});
             setHeaderStates({ jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0 });
         }
-        setVerifiedByName('');
-        setVerifiedByDate(undefined);
     }, [vehicleRecord, selectedVehicleId, currentMonth]);
 
     const handleInputChange = (day: number, field: string, value: string | number | boolean) => {
@@ -206,7 +204,7 @@ export default function VehicleUsageSheet() {
                     </div>
                 </div>
             )}
-            <div className="overflow-auto flex-1 relative">
+            <div className="overflow-auto flex-1">
                 {selectedVehicleId ? (
                 <Table className="min-w-full border-collapse">
                     <thead className="sticky top-0 z-10 bg-card">
