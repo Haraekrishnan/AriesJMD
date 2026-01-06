@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -112,13 +113,13 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
         const startKmValue = Number(cellStates[`${day}-startKm`] || 0);
         const endKmValue = Number(cellStates[`${day}-endKm`] || 0);
     
-        if (field === 'endKm' && endKmValue < startKmValue) {
+        if (field === 'endKm' && endKmValue > 0 && endKmValue < startKmValue) {
           toast({
             variant: 'destructive',
             title: 'Invalid Kilometers',
-            description: 'End KM cannot be less than Start KM. It has been reset.',
+            description: 'End KM cannot be less than Start KM. The value has been cleared.',
           });
-          handleInputChange(day, 'endKm', startKmValue);
+          handleInputChange(day, 'endKm', '');
         }
     };
     
