@@ -23,7 +23,7 @@ async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
 }
 
 async function fetchImageAsBase64(imgPath: string): Promise<string> {
-    const url = imgPath.startsWith('/') ? `${process.env.NEXT_PUBLIC_APP_URL}${imgPath}` : imgPath;
+    const url = imgPath.startsWith('/') ? `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}${imgPath}` : imgPath;
     try {
         const response = await fetch(url);
         if (!response.ok) {
@@ -222,11 +222,11 @@ export async function exportToPdf(
   
   let currentY = 25;
 
-  if (logoBase64) doc.addImage(logoBase64, 'PNG', margin, currentY, 130, 30);
+  if (logoBase64) doc.addImage(logoBase64, 'PNG', margin, currentY, 160, 40);
   
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.text(vehicle?.vehicleNumber || '', margin, currentY + 50);
+  doc.text(vehicle?.vehicleNumber || '', margin, currentY + 60);
 
   const rightHeaderData = [
     ['JOB NO', (headerStates.jobNo || '').toUpperCase()],
@@ -241,10 +241,10 @@ export async function exportToPdf(
     body: rightHeaderData,
     startY: currentY,
     theme: 'grid',
-    styles: { fontSize: 8, font: 'helvetica', cellPadding: 3, lineColor: [180, 180, 180], lineWidth: 0.5 },
-    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 70 }, 1: { cellWidth: 80 } },
-    tableWidth: 150,
-    margin: { left: pageWidth - margin - 150 },
+    styles: { fontSize: 8, font: 'helvetica', cellPadding: 4, lineColor: [180, 180, 180], lineWidth: 0.5 },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 80 }, 1: { cellWidth: 90 } },
+    tableWidth: 170,
+    margin: { left: pageWidth - margin - 170 },
   });
   
   currentY = (doc as any).lastAutoTable.finalY + 20;
@@ -274,7 +274,7 @@ export async function exportToPdf(
     head: [['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OT', 'REMARKS']],
     body,
     startY: currentY,
-    styles: { fontSize: 8, halign: 'center', font: 'helvetica', cellPadding: 3, minCellHeight: 18 },
+    styles: { fontSize: 9, halign: 'center', font: 'helvetica', cellPadding: 4, minCellHeight: 20 },
     headStyles: { fillColor: [2, 179, 150], textColor: 255, fontStyle: 'bold' },
     theme: 'grid',
     columnStyles: {
@@ -287,32 +287,37 @@ export async function exportToPdf(
     },
   });
 
-  const finalY = (doc as any).lastAutoTable.finalY + 25;
+  const finalY = (doc as any).lastAutoTable.finalY + 30;
   const signatureBlockWidth = (pageWidth - (margin * 2)) / 3;
 
-  const footerData = [
-    [
-      { content: 'Verified By:', styles: { fontStyle: 'bold' } },
-      { content: 'Verified By Date:', styles: { fontStyle: 'bold' } },
-      { content: 'Signature:', styles: { fontStyle: 'bold' } },
-    ],
-    [
-      headerStates.verifiedByName || '',
-      headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '',
-      ''
-    ]
+  const footerLabels = [
+    { content: 'Verified By:', styles: { fontStyle: 'bold', valign: 'top' } },
+    { content: 'Verified By Date:', styles: { fontStyle: 'bold', valign: 'top' } },
+    { content: 'Signature:', styles: { fontStyle: 'bold', valign: 'top' } },
+  ];
+  
+  const footerValues = [
+    headerStates.verifiedByName || '',
+    headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '',
+    '' // Empty for signature
   ];
 
   (doc as any).autoTable({
-      startY: finalY,
-      body: footerData,
-      theme: 'grid',
-      styles: { fontSize: 9, font: 'helvetica', cellPadding: 5, minCellHeight: 40, valign: 'top' },
-      columnStyles: {
-        0: { cellWidth: signatureBlockWidth },
-        1: { cellWidth: signatureBlockWidth },
-        2: { cellWidth: signatureBlockWidth },
-      },
+    startY: finalY,
+    body: [footerLabels, footerValues],
+    theme: 'grid',
+    styles: { fontSize: 9, font: 'helvetica', cellPadding: 5, minCellHeight: 20, valign: 'top' },
+    bodyStyles: { minCellHeight: 30 },
+    columnStyles: {
+      0: { cellWidth: signatureBlockWidth },
+      1: { cellWidth: signatureBlockWidth },
+      2: { cellWidth: signatureBlockWidth },
+    },
+    didParseCell: (data: any) => {
+        if (data.row.section === 'body' && data.row.index === 0) {
+            data.cell.styles.minCellHeight = 10;
+        }
+    }
   });
   
   const signaturePath = SIGNATURES[headerStates.verifiedByName];
@@ -320,8 +325,8 @@ export async function exportToPdf(
     try {
       const signatureBase64 = await fetchImageAsBase64(signaturePath);
       if (signatureBase64) {
-        const signY = (doc as any).lastAutoTable.finalY - 45; 
-        const signX = margin + signatureBlockWidth * 2 + (signatureBlockWidth / 2) - (60 / 2); // Center in the third column
+        const signY = (doc as any).lastAutoTable.finalY - 35; 
+        const signX = margin + signatureBlockWidth * 2 + (signatureBlockWidth / 2) - (60 / 2); 
         doc.addImage(signatureBase64, 'JPEG', signX, signY, 60, 25);
       }
     } catch(e) { console.error(e) }
