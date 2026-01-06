@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import ExcelJS from 'exceljs';
@@ -11,7 +10,8 @@ import type { Vehicle, Driver, User } from '@/lib/types';
 
 async function fetchImageAsBase64(url: string): Promise<string> {
     try {
-        const response = await fetch(url);
+        const absoluteUrl = url.startsWith('/') ? `${window.location.origin}${url}` : url;
+        const response = await fetch(absoluteUrl);
         if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
         const blob = await response.blob();
         return new Promise((resolve, reject) => {
@@ -22,13 +22,14 @@ async function fetchImageAsBase64(url: string): Promise<string> {
         });
     } catch (error) {
         console.error('Error fetching image for PDF:', error);
-        return '';
+        return ''; // Return empty string on failure
     }
 }
 
 async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
     try {
-        const response = await fetch(url);
+        const absoluteUrl = url.startsWith('/') ? `${window.location.origin}${url}` : url;
+        const response = await fetch(absoluteUrl);
         if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
         return await response.arrayBuffer();
     } catch (error) {
@@ -202,7 +203,6 @@ export async function exportToPdf(
   dayHeaders: number[],
   headerStates: any,
   verifiedByName: string,
-  verifiedById: string
 ) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const logo = await fetchImageAsBase64('/images/Aries_logo.png');
