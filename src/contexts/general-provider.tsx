@@ -7,6 +7,10 @@ import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, query, equalTo, get, orderByChild } from 'firebase/database';
 import { JOB_CODES as INITIAL_JOB_CODES } from '@/lib/mock-data';
 import { useAuth } from './auth-provider';
+import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
+import { useToast } from '@/hooks/use-toast';
+import { format, parseISO } from 'date-fns';
+
 
 // --- TYPE DEFINITIONS ---
 
@@ -21,8 +25,6 @@ type GeneralContextType = {
   vehicles: Vehicle[];
   drivers: Driver[];
   notificationSettings: NotificationSettings;
-  appName: string;
-  appLogo: string | null;
   unlockRequests: UnlockRequest[];
   feedback: Feedback[];
   managementRequests: ManagementRequest[];
@@ -45,6 +47,13 @@ type GeneralContextType = {
   updateDriver: (driver: Driver) => void;
   deleteDriver: (driverId: string) => void;
   addUsersToIncidentReport: (incidentId: string, userIds: string[], comment: string) => void;
+  
+  addManagementRequest: (requestData: Omit<ManagementRequest, 'id'|'creatorId'|'lastUpdated'|'status'|'comments'|'readBy'>) => void;
+  updateManagementRequest: (request: ManagementRequest, comment: string) => void;
+  forwardManagementRequest: (originalRequest: ManagementRequest, forwardData: { toUserId: string; ccUserIds: string[]; body: string; }) => void;
+  deleteManagementRequest: (requestId: string) => void;
+  addManagementRequestComment: (requestId: string, commentText: string, ccUserIds?: string[]) => void;
+  markManagementRequestAsViewed: (requestId: string) => void;
 };
 
 // --- HELPER FUNCTIONS ---
@@ -71,6 +80,8 @@ const GeneralContext = createContext<GeneralContextType | undefined>(undefined);
 
 export function GeneralProvider({ children }: { children: ReactNode }) {
   const { user, addActivityLog, users } = useAuth();
+  const { toast } = useToast();
+
   const [projectsById, setProjectsById] = useState<Record<string, Project>>({});
   const [jobCodesById, setJobCodesById] = useState<Record<string, JobCode>>({});
   const [activityLogsById, setActivityLogsById] = useState<Record<string, ActivityLog>>({});
@@ -81,8 +92,6 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   const [vehiclesById, setVehiclesById] = useState<Record<string, Vehicle>>({});
   const [driversById, setDriversById] = useState<Record<string, Driver>>({});
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({ events: {}, additionalRecipients: '' });
-  const [appName, setAppName] = useState('Aries Marine');
-  const [appLogo, setAppLogo] = useState<string | null>(null);
   const [unlockRequestsById, setUnlockRequestsById] = useState<Record<string, UnlockRequest>>({});
   const [feedbackById, setFeedbackById] = useState<Record<string, Feedback>>({});
   const [managementRequestsById, setManagementRequestsById] = useState<Record<string, ManagementRequest>>({});
@@ -231,6 +240,136 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
     set(newCommentRef, newComment);
   }, [incidentReportsById, user, users]);
 
+  const addManagementRequestComment = useCallback((requestId: string, commentText: string, ccUserIds: string[] = []) => {
+    if (!user) return;
+    const request = managementRequestsById[requestId];
+    if (!request) return;
+
+    const newCommentRef = push(ref(rtdb, `managementRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = { id: newCommentRef.key!, userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
+    
+    const updates: {[key: string]: any} = {};
+    updates[`managementRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment };
+    updates[`managementRequests/${requestId}/lastUpdated`] = new Date().toISOString();
+
+    const currentParticipants = new Set([request.creatorId, request.toUserId, ...(request.ccUserIds || [])]);
+    ccUserIds.forEach(id => currentParticipants.add(id));
+    updates[`managementRequests/${requestId}/ccUserIds`] = Array.from(currentParticipants);
+
+    // Mark as unread for all participants except the current user
+    participants.forEach(p => {
+        if (p.id !== user.id) {
+            updates[`managementRequests/${requestId}/readBy/${p.id}`] = false;
+        }
+    });
+
+    update(ref(rtdb), updates);
+  }, [user, managementRequestsById, users]);
+  
+    const addManagementRequest = useCallback((data: Omit<ManagementRequest, 'id'|'creatorId'|'lastUpdated'|'status'|'comments'|'readBy'>) => {
+        if (!user) return;
+        const newRef = push(ref(rtdb, 'managementRequests'));
+        const now = new Date().toISOString();
+        const initialComment: Comment = {
+            id: 'c0',
+            userId: user.id,
+            text: data.body,
+            date: now,
+            viewedBy: { [user.id]: true }
+        };
+        const newRequest: Omit<ManagementRequest, 'id'> = {
+            ...data,
+            creatorId: user.id,
+            lastUpdated: now,
+            status: 'New',
+            comments: [initialComment],
+            readBy: { [user.id]: true },
+        };
+        set(newRef, newRequest);
+
+        const recipient = users.find(u => u.id === data.toUserId);
+        if (recipient?.email) {
+            const htmlBody = `
+                <p>You have received a new request from <strong>${user.name}</strong>.</p>
+                <hr>
+                <h3>${data.subject}</h3>
+                <div style="padding: 10px; border-left: 3px solid #ccc;">${data.body}</div>
+                <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/management-requests">Click here to view the request and reply.</a></p>
+            `;
+            sendNotificationEmail({
+                to: [recipient.email],
+                subject: `New Request: ${data.subject}`,
+                htmlBody,
+                notificationSettings,
+                event: 'onNewTask', 
+            });
+        }
+    }, [user, users, notificationSettings]);
+
+    const forwardManagementRequest = useCallback((originalRequest: ManagementRequest, forwardData: { toUserId: string; ccUserIds: string[]; body: string; }) => {
+        if (!user) return;
+    
+        const newRef = push(ref(rtdb, 'managementRequests'));
+        const now = new Date().toISOString();
+        const originalCreator = users.find(u => u.id === originalRequest.creatorId);
+    
+        const forwardedBody = `
+    ${forwardData.body}
+    
+    ---------- Forwarded message ----------
+    From: ${originalCreator?.name || 'Unknown'}
+    Date: ${format(parseISO(originalRequest.lastUpdated), 'PPP p')}
+    Subject: ${originalRequest.subject}
+    
+    ${originalRequest.body}
+    `;
+    
+        const newRequest: Omit<ManagementRequest, 'id'> = {
+            toUserId: forwardData.toUserId,
+            ccUserIds: forwardData.ccUserIds,
+            subject: `Fwd: ${originalRequest.subject}`,
+            body: forwardedBody,
+            creatorId: user.id,
+            lastUpdated: now,
+            status: 'New',
+            comments: [],
+            readBy: { [user.id]: true },
+        };
+        set(newRef, newRequest);
+    
+        // Notify new recipients
+        const allNewRecipients = new Set([forwardData.toUserId, ...forwardData.ccUserIds]);
+        allNewRecipients.forEach(recipientId => {
+          const recipient = users.find(u => u.id === recipientId);
+          if (recipient?.email) {
+            sendNotificationEmail({
+              to: [recipient.email],
+              subject: `Fwd: ${originalRequest.subject}`,
+              htmlBody: `<p><strong>${user.name}</strong> forwarded a request to you.</p><hr/>` + forwardedBody.replace(/\n/g, '<br/>'),
+              notificationSettings,
+              event: 'onManagementRequest'
+            });
+          }
+        });
+      }, [user, users, notificationSettings]);
+
+    const updateManagementRequest = useCallback((request: ManagementRequest, comment: string) => {
+        const { id, ...data } = request;
+        update(ref(rtdb, `managementRequests/${id}`), { ...data, lastUpdated: new Date().toISOString() });
+        addManagementRequestComment(id, comment);
+    }, [addManagementRequestComment]);
+
+    const deleteManagementRequest = useCallback((requestId: string) => {
+        if (!user || user.role !== 'Admin') return;
+        remove(ref(rtdb, `managementRequests/${requestId}`));
+    }, [user]);
+
+    const markManagementRequestAsViewed = useCallback((requestId: string) => {
+        if (!user) return;
+        update(ref(rtdb, `managementRequests/${requestId}/readBy`), { [user.id]: true });
+    }, [user]);
+
+
   useEffect(() => {
     const unsubscribers = [
       createDataListener('projects', setProjectsById),
@@ -245,12 +384,6 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
       createDataListener('managementRequests', setManagementRequestsById),
       onValue(ref(rtdb, 'settings/notificationSettings'), (snapshot) => {
         setNotificationSettings(snapshot.val() || { events: {}, additionalRecipients: '' });
-      }),
-      onValue(ref(rtdb, 'branding/appName'), (snapshot) => {
-        setAppName(snapshot.val() || 'Aries Marine');
-      }),
-      onValue(ref(rtdb, 'branding/appLogo'), (snapshot) => {
-        setAppLogo(snapshot.val());
       }),
       createDataListener('unlockRequests', setUnlockRequestsById),
       createDataListener('feedback', setFeedbackById),
@@ -271,9 +404,10 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const contextValue: GeneralContextType = {
-    projects, jobCodes, activityLogs, announcements, broadcasts, incidentReports, downloadableDocuments, vehicles, drivers, notificationSettings, appName, appLogo, unlockRequests, feedback, managementRequests,
+    projects, jobCodes, activityLogs, announcements, broadcasts, incidentReports, downloadableDocuments, vehicles, drivers, notificationSettings, unlockRequests, feedback, managementRequests,
     addProject, updateProject, deleteProject, addJobCode, updateJobCode, deleteJobCode, updateFeedbackStatus, markFeedbackAsViewed,
-    addDocument, updateDocument, deleteDocument, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addUsersToIncidentReport
+    addDocument, updateDocument, deleteDocument, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addUsersToIncidentReport,
+    addManagementRequest, updateManagementRequest, forwardManagementRequest, deleteManagementRequest, addManagementRequestComment, markManagementRequestAsViewed,
   };
 
   return <GeneralContext.Provider value={contextValue}>{children}</GeneralContext.Provider>;

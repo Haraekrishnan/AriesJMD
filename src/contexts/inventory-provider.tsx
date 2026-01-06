@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestItem, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, ManagementRequest, ManagementRequestStatus, PpeRequestStatus, Role, ConsumableInwardRecord, Directive, DirectiveStatus, DamageReport, User, NotificationSettings, DamageReportStatus } from '@/lib/types';
+import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestItem, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, PpeRequestStatus, Role, ConsumableInwardRecord, Directive, DirectiveStatus, DamageReport, User, NotificationSettings, DamageReportStatus } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -83,7 +83,6 @@ type InventoryContextType = {
   machineLogs: MachineLog[];
   certificateRequests: CertificateRequest[];
   internalRequests: InternalRequest[];
-  managementRequests: ManagementRequest[];
   inventoryTransferRequests: InventoryTransferRequest[];
   ppeRequests: PpeRequest[];
   ppeStock: PpeStock[];
@@ -163,13 +162,6 @@ type InventoryContextType = {
   markInternalRequestAsViewed: (requestId: string) => void;
   acknowledgeInternalRequest: (requestId: string) => void;
 
-  addManagementRequest: (requestData: Omit<ManagementRequest, 'id'|'creatorId'|'lastUpdated'|'status'|'comments'|'readBy'>) => void;
-  updateManagementRequest: (request: ManagementRequest, comment: string) => void;
-  forwardManagementRequest: (originalRequest: ManagementRequest, forwardData: { toUserId: string; ccUserIds: string[]; body: string; }) => void;
-  deleteManagementRequest: (requestId: string) => void;
-  addManagementRequestComment: (requestId: string, commentText: string, ccUserIds?: string[]) => void;
-  markManagementRequestAsViewed: (requestId: string) => void;
-
   addPpeRequest: (request: Omit<PpeRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => void;
   updatePpeRequest: (request: PpeRequest) => void;
   updatePpeRequestStatus: (requestId: string, status: PpeRequestStatus, comment: string) => void;
@@ -229,7 +221,7 @@ const InventoryContext = createContext<InventoryContextType | undefined>(undefin
 
 export function InventoryProvider({ children }: { children: ReactNode }) {
     const { user, users, can, addActivityLog } = useAuth();
-    const { projects, notificationSettings } = useGeneral();
+    const { projects, notificationSettings, managementRequests } = useGeneral();
     const { manpowerProfiles } = useManpower();
     const { toast } = useToast();
     const { consumableItems, consumableInwardHistory } = useConsumable();
@@ -253,7 +245,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const [tpCertListsById, setTpCertListsById] = useState<Record<string, TpCertList>>({});
     const [inspectionChecklistsById, setInspectionChecklistsById] = useState<Record<string, InspectionChecklist>>({});
     const [igpOgpRecordsById, setIgpOgpRecordsById] = useState<Record<string, IgpOgpRecord>>({});
-    const [managementRequestsById, setManagementRequestsById] = useState<Record<string, ManagementRequest>>({});
     const [damageReportsById, setDamageReportsById] = useState<Record<string, DamageReport>>({});
     const [directives, setDirectives] = useState<Directive[]>([]);
     
@@ -276,7 +267,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const tpCertLists = useMemo(() => Object.values(tpCertListsById), [tpCertListsById]);
     const inspectionChecklists = useMemo(() => Object.values(inspectionChecklistsById), [inspectionChecklistsById]);
     const igpOgpRecords = useMemo(() => Object.values(igpOgpRecordsById), [igpOgpRecordsById]);
-    const managementRequests = useMemo(() => Object.values(managementRequestsById), [managementRequestsById]);
     const damageReports = useMemo(() => Object.values(damageReportsById), [damageReportsById]);
     
     const consumableItemIds = useMemo(() => new Set(consumableItems.map(item => item.id)), [consumableItems]);
@@ -345,60 +335,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         if (!user) return;
         _addInternalRequestComment(requestId, commentText, user, internalRequestsById, users, notificationSettings, notify, subject);
     }, [user, internalRequestsById, users, notificationSettings]);
-
-    const addManagementRequestComment = useCallback((requestId: string, commentText: string, ccUserIds: string[] = []) => {
-        if (!user) return;
-        const request = managementRequestsById[requestId];
-        if (!request) return;
-    
-        const newCommentRef = push(ref(rtdb, `managementRequests/${requestId}/comments`));
-        const newComment: Omit<Comment, 'id'> = {
-            id: newCommentRef.key!,
-            userId: user.id,
-            text: commentText,
-            date: new Date().toISOString(),
-            eventId: requestId
-        };
-        
-        const allRecipientIds = new Set([request.creatorId, request.toUserId, ...(request.ccUserIds || []), ...ccUserIds]);
-        const updates: { [key: string]: any } = {};
-        updates[`managementRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, viewedBy: { [user.id]: true } };
-        updates[`managementRequests/${requestId}/lastUpdated`] = new Date().toISOString();
-        
-        allRecipientIds.forEach(id => {
-            if (id !== user.id) {
-                updates[`managementRequests/${requestId}/readBy/${id}`] = false;
-            }
-        });
-    
-        if (ccUserIds.length > 0) {
-            updates[`managementRequests/${requestId}/ccUserIds`] = Array.from(new Set([...(request.ccUserIds || []), ...ccUserIds]));
-        }
-    
-        update(ref(rtdb), updates);
-
-        const emailRecipients = Array.from(allRecipientIds)
-            .filter(id => id !== user.id)
-            .map(id => users.find(u => u.id === id)?.email)
-            .filter((email): email is string => !!email);
-
-        if (emailRecipients.length > 0) {
-            const htmlBody = `
-                <p>There is a new reply on the request: <strong>${request.subject}</strong></p>
-                <p><strong>From:</strong> ${user.name}</p>
-                <p><strong>Message:</strong></p>
-                <div style="padding: 10px; border-left: 3px solid #ccc;">${commentText}</div>
-                <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/management-requests">View Request</a></p>
-            `;
-            sendNotificationEmail({
-                to: emailRecipients,
-                subject: `Re: ${request.subject}`,
-                htmlBody,
-                notificationSettings,
-                event: 'onTaskComment', 
-            });
-        }
-    }, [user, managementRequestsById, users, notificationSettings]);
 
     const addPpeRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean) => {
         if (!user) return;
@@ -1017,11 +953,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     const updateDftMachine = useCallback((machine: DftMachine) => {
         const { id, ...data } = machine;
-        const updateData: { [key: string]: any } = { ...data };
-        if (data.tpInspectionDueDate === undefined) {
-            updateData.tpInspectionDueDate = null;
-        }
-        update(ref(rtdb, `dftMachines/${id}`), updateData);
+        update(ref(rtdb, `dftMachines/${id}`), data);
     }, []);
 
     const deleteDftMachine = useCallback((machineId: string) => {
@@ -1423,108 +1355,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb, `ppeRequests/${requestId}`), { attachmentUrl: null });
     }, []);
     
-    const addManagementRequest = useCallback((data: Omit<ManagementRequest, 'id'|'creatorId'|'lastUpdated'|'status'|'comments'|'readBy'>) => {
-        if (!user) return;
-        const newRef = push(ref(rtdb, 'managementRequests'));
-        const now = new Date().toISOString();
-        const initialComment: Comment = {
-            id: 'c0',
-            userId: user.id,
-            text: data.body,
-            date: now,
-            viewedBy: { [user.id]: true }
-        };
-        const newRequest: Omit<ManagementRequest, 'id'> = {
-            ...data,
-            creatorId: user.id,
-            lastUpdated: now,
-            status: 'New',
-            comments: [initialComment],
-            readBy: { [user.id]: true },
-        };
-        set(newRef, newRequest);
-
-        const recipient = users.find(u => u.id === data.toUserId);
-        if (recipient?.email) {
-            const htmlBody = `
-                <p>You have received a new request from <strong>${user.name}</strong>.</p>
-                <hr>
-                <h3>${data.subject}</h3>
-                <div style="padding: 10px; border-left: 3px solid #ccc;">${data.body}</div>
-                <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/management-requests">Click here to view the request and reply.</a></p>
-            `;
-            sendNotificationEmail({
-                to: [recipient.email],
-                subject: `New Request: ${data.subject}`,
-                htmlBody,
-                notificationSettings,
-                event: 'onNewTask', 
-            });
-        }
-    }, [user, users, notificationSettings]);
-
-    const forwardManagementRequest = useCallback((originalRequest: ManagementRequest, forwardData: { toUserId: string; ccUserIds: string[]; body: string; }) => {
-        if (!user) return;
-    
-        const newRef = push(ref(rtdb, 'managementRequests'));
-        const now = new Date().toISOString();
-        const originalCreator = users.find(u => u.id === originalRequest.creatorId);
-    
-        const forwardedBody = `
-    ${forwardData.body}
-    
-    ---------- Forwarded message ----------
-    From: ${originalCreator?.name || 'Unknown'}
-    Date: ${format(parseISO(originalRequest.lastUpdated), 'PPP p')}
-    Subject: ${originalRequest.subject}
-    
-    ${originalRequest.body}
-    `;
-    
-        const newRequest: Omit<ManagementRequest, 'id'> = {
-            toUserId: forwardData.toUserId,
-            ccUserIds: forwardData.ccUserIds,
-            subject: `Fwd: ${originalRequest.subject}`,
-            body: forwardedBody,
-            creatorId: user.id,
-            lastUpdated: now,
-            status: 'New',
-            comments: [],
-            readBy: { [user.id]: true },
-        };
-        set(newRef, newRequest);
-    
-        // Notify new recipients
-        const allNewRecipients = new Set([forwardData.toUserId, ...forwardData.ccUserIds]);
-        allNewRecipients.forEach(recipientId => {
-          const recipient = users.find(u => u.id === recipientId);
-          if (recipient?.email) {
-            sendNotificationEmail({
-              to: [recipient.email],
-              subject: `Fwd: ${originalRequest.subject}`,
-              htmlBody: `<p><strong>${user.name}</strong> forwarded a request to you.</p><hr/>` + forwardedBody.replace(/\n/g, '<br/>'),
-              notificationSettings,
-              event: 'onManagementRequest'
-            });
-          }
-        });
-      }, [user, users, notificationSettings]);
-
-    const updateManagementRequest = useCallback((request: ManagementRequest, comment: string) => {
-        const { id, ...data } = request;
-        update(ref(rtdb, `managementRequests/${id}`), { ...data, lastUpdated: new Date().toISOString() });
-        addManagementRequestComment(id, comment);
-    }, [addManagementRequestComment]);
-
-    const deleteManagementRequest = useCallback((requestId: string) => {
-        if (!user || user.role !== 'Admin') return;
-        remove(ref(rtdb, `managementRequests/${requestId}`));
-    }, [user]);
-
-    const markManagementRequestAsViewed = useCallback((requestId: string) => {
-        if (!user) return;
-        update(ref(rtdb, `managementRequests/${requestId}/readBy`), { [user.id]: true });
-    }, [user]);
     
     const resolveInternalRequestDispute = useCallback(() => {}, []);
     
@@ -1664,7 +1494,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             createDataListener('tpCertLists', setTpCertListsById),
             createDataListener('inspectionChecklists', setInspectionChecklistsById),
             createDataListener('igpOgpRecords', setIgpOgpRecordsById),
-            createDataListener('managementRequests', setManagementRequestsById),
             createDataListener('damageReports', setDamageReportsById),
         ];
         return () => unsubscribers.forEach(unsubscribe => unsubscribe());
@@ -1684,7 +1513,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         addOtherEquipment, updateOtherEquipment, deleteOtherEquipment,
         addMachineLog, deleteMachineLog, getMachineLogs,
         addInternalRequest, deleteInternalRequest, forceDeleteInternalRequest, addInternalRequestComment, updateInternalRequestStatus, updateInternalRequestItemStatus, updateInternalRequestItem, markInternalRequestAsViewed, acknowledgeInternalRequest,
-        addManagementRequest, updateManagementRequest, deleteManagementRequest, addManagementRequestComment, markManagementRequestAsViewed, forwardManagementRequest,
         addPpeRequest, updatePpeRequest, updatePpeRequestStatus, addPpeRequestComment, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed,
         updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord,
         addTpCertList, updateTpCertList, deleteTpCertList,

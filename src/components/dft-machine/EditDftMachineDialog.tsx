@@ -15,6 +15,7 @@ import type { DftMachine } from '@/lib/types';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { ScrollArea } from '../ui/scroll-area';
 import { Textarea } from '../ui/textarea';
+import { parseISO } from 'date-fns';
 
 const machineSchema = z.object({
   machineName: z.string().min(1, 'Machine name is required'),
@@ -58,7 +59,7 @@ export default function EditDftMachineDialog({ isOpen, setIsOpen, machine }: Edi
             ...machine,
             remarks: (machine as any).remarks || '',
             calibrationDueDate: new Date(machine.calibrationDueDate),
-            tpInspectionDueDate: machine.tpInspectionDueDate ? new Date(machine.tpInspectionDueDate) : null,
+            tpInspectionDueDate: machine.tpInspectionDueDate ? parseISO(machine.tpInspectionDueDate) : null,
         });
     }
   }, [machine, isOpen, form]);
@@ -69,7 +70,7 @@ export default function EditDftMachineDialog({ isOpen, setIsOpen, machine }: Edi
       ...data,
       calibrationDueDate: data.calibrationDueDate.toISOString(),
       tpInspectionDueDate: data.tpInspectionDueDate ? data.tpInspectionDueDate.toISOString() : null,
-      movedToProjectId: data.movedToProjectId,
+      movedToProjectId: data.movedToProjectId || null,
     });
     toast({ title: 'Machine Updated', description: `${data.machineName} has been updated.` });
     setIsOpen(false);
