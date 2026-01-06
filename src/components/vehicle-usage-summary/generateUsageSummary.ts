@@ -67,19 +67,23 @@ export async function exportToExcel(
     sheet.getCell(`E${i + 1}`).value = r[0];
     sheet.getCell(`F${i + 1}`).value = r[1];
     sheet.getCell(`E${i + 1}`).font = { bold: true };
+    sheet.getCell(`E${i + 1}`).alignment = { horizontal: 'right' };
   });
   
   sheet.getRow(6).height = 10;
+  
+  const startRow = 7;
 
   /* ---------------- TABLE HEADER ---------------- */
-  const headerRow = sheet.addRow([
+  const headerRow = sheet.getRow(startRow);
+  headerRow.values = [
     'DATE',
     'START KM',
     'END KM',
     'TOTAL KM',
     'OT',
     'REMARKS',
-  ]);
+  ];
   
   headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
   headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -122,23 +126,25 @@ export async function exportToExcel(
       c.alignment = { horizontal: 'center', vertical: 'middle' };
     });
 
+    /* Highlight Sundays */
     if (date.getDay() === 0) {
       row.eachCell(c => {
         c.fill = {
           type: 'pattern',
           pattern: 'solid',
-          fgColor: { argb: 'FFFFFF00' }, // Yellow
+          fgColor: { argb: 'FFFFFF00' },
         };
       });
     }
   });
 
   /* ---------------- FOOTER ---------------- */
+  sheet.addRow([]);
   const totalRow = sheet.addRow(['TOTAL KILOMETER', '', '', totalKm]);
   totalRow.font = { bold: true };
   sheet.mergeCells(`A${totalRow.number}:C${totalRow.number}`);
-  totalRow.getCell('A').alignment = { horizontal: 'right' };
-  totalRow.getCell('D').alignment = { horizontal: 'center' };
+  totalRow.getCell('A').alignment = { horizontal: 'right', vertical: 'middle' };
+  totalRow.getCell('D').alignment = { horizontal: 'center', vertical: 'middle' };
 
   sheet.addRow([]);
   const verifiedByRow = sheet.addRow([]);
@@ -168,15 +174,43 @@ export async function exportToPdf(
   headerStates: any
 ) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-  const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
+  const logo = await fetchImageAsBase64('/images/Aries_logo.png');
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 30;
+  const contentWidth = pageWidth - margin * 2;
 
-  let totalKm = 0;
+  /* LOGO */
+  if (logo) doc.addImage(logo, 'PNG', margin, margin, 120, 35);
+
+  /* RIGHT HEADER */
+  const rx = pageWidth - margin;
+  let ry = 40;
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  [
+    `Job No: ${headerStates.jobNo || ''}`,
+    `Vehicle Type: ${headerStates.vehicleType || ''}`,
+    `EXTRA KM: ${headerStates.extraKm || 0}`,
+    `OVER TIME: ${headerStates.headerOvertime || ''}`,
+    `EXTRA NIGHT: ${headerStates.extraNight || 0}`,
+    `EXTRA DAYS: ${headerStates.extraDays || 0}`,
+  ].forEach(t => {
+    doc.text(t, rx, ry, { align: 'right' });
+    ry += 12;
+  });
+
+  /* VEHICLE NUMBER */
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text(vehicle?.vehicleNumber || '', margin, 95);
+
+  /* TABLE DATA */
   const body = dayHeaders.map(day => {
     const d = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
     const s = Number(cellStates[`${day}-startKm`] || 0);
     const e = Number(cellStates[`${day}-endKm`] || 0);
     const t = e > s ? e - s : 0;
-    totalKm += t;
     return [
       format(d, 'dd-MMM-yyyy'),
       s || '',
@@ -188,69 +222,53 @@ export async function exportToPdf(
     ];
   });
   
-  // Add total row to body
-  body.push([{ content: 'TOTAL KILOMETER', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } }, { content: totalKm, styles: { halign: 'center', fontStyle: 'bold' } }, '', '']);
+  let totalKm = 0;
+  dayHeaders.forEach(d => {
+    const s = Number(cellStates[`${d}-startKm`] || 0);
+    const e = Number(cellStates[`${d}-endKm`] || 0);
+    totalKm += e > s ? e - s : 0;
+  });
+  
+  body.push([
+    { content: 'TOTAL KILOMETER', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } }, 
+    { content: totalKm, styles: { halign: 'center', fontStyle: 'bold' } }, 
+    '', 
+    ''
+  ]);
 
   (doc as any).autoTable({
     head: [['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OT', 'REMARKS']],
     body,
-    startY: 120,
+    startY: 110,
     theme: 'grid',
-    styles: { fontSize: 8, halign: 'center', cellPadding: 4 },
+    styles: { fontSize: 9, halign: 'center', cellPadding: 5 },
     headStyles: { 
-      fillColor: [2, 179, 150], // #02B396
+      fillColor: [2, 179, 150],
       textColor: [255, 255, 255],
       fontStyle: 'bold',
     },
     didParseCell: (data: any) => {
       if (data.row.raw[6] === 'HIGHLIGHT') {
-        data.cell.styles.fillColor = [255, 255, 153]; // Yellow
+        data.cell.styles.fillColor = [255, 255, 153];
       }
     },
     columnStyles: {
-      0: { cellWidth: 70 }, // Date
-      1: { cellWidth: 70 }, // Start KM
-      2: { cellWidth: 70 }, // End KM
-      3: { cellWidth: 70 }, // Total KM
-      4: { cellWidth: 40 }, // OT
-      5: { cellWidth: 'auto', halign: 'left' }, // Remarks
+      0: { cellWidth: 70 },
+      1: { cellWidth: 70 },
+      2: { cellWidth: 70 },
+      3: { cellWidth: 70 },
+      4: { cellWidth: 50 },
+      5: { cellWidth: 'auto', halign: 'left' },
     },
-    didDrawPage: (data: any) => {
-      // Draw header
-      if (logoBase64) doc.addImage(logoBase64, 'PNG', 30, 20, 120, 30);
-      
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(14);
-      doc.text(vehicle?.vehicleNumber || '', 30, 75);
-
-      const headerRightX = doc.internal.pageSize.width - 30;
-      let headerRightY = 30;
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-
-      [
-        `Job No: ${headerStates.jobNo || ''}`,
-        `Vehicle Type: ${headerStates.vehicleType || ''}`,
-        `EXTRA KM: ${headerStates.extraKm || 0}`,
-        `OVER TIME: ${headerStates.headerOvertime || ''}`,
-        `EXTRA NIGHT: ${headerStates.extraNight || 0}`,
-        `EXTRA DAYS: ${headerStates.extraDays || 0}`,
-      ].forEach(t => {
-        doc.text(t, headerRightX, headerRightY, { align: 'right' });
-        headerRightY += 10;
-      });
-
-      // Draw footer
-      const pageHeight = doc.internal.pageSize.getHeight();
-      let footerY = pageHeight - 50;
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Verified By:', 30, footerY);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Name: ${headerStates.verifiedByName || ''}`, 30, footerY + 15);
-      doc.text(`Designation: ${headerStates.verifiedByDesignation || ''}`, 30, footerY + 30);
-    }
   });
+
+  let finalY = (doc as any).lastAutoTable.finalY + 30;
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Verified By:', margin, finalY);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Name: ${headerStates.verifiedByName || ''}`, margin, finalY + 15);
+  doc.text(`Designation: ${headerStates.verifiedByDesignation || ''}`, margin, finalY + 30);
 
   doc.save(`Vehicle_Log_${vehicle?.vehicleNumber}_${format(currentMonth, 'yyyy-MM')}.pdf`);
 }
