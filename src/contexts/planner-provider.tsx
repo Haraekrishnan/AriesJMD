@@ -206,7 +206,9 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     }, []);
     
     const carryForwardPlantAssignments = useCallback(async (monthKey: string) => {
-        const prevMonthKey = format(startOfDay(new Date(monthKey)).setMonth(new Date(monthKey).getMonth() - 1), 'yyyy-MM');
+        const prevMonthDate = subMonths(new Date(monthKey), 1);
+        const prevMonthKey = format(prevMonthDate, 'yyyy-MM');
+        
         const prevMonthSnapshot = await get(ref(rtdb, `jobRecords/${prevMonthKey}`));
         
         if (!prevMonthSnapshot.exists()) {
