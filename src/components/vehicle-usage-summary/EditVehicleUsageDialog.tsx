@@ -100,6 +100,11 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
     const handleInputChange = (day: number, field: string, value: string | number | boolean) => {
         const dayKey = `${day}-${field}`;
         const nextDayKey = `${day + 1}-startKm`;
+    
+        if ((field === 'startKm' || field === 'endKm') && Number(value) < 0) {
+            return;
+        }
+
         setCellStates(prev => {
             const newStates = { ...prev, [dayKey]: value };
             if (field === 'endKm' && day < getDaysInMonth(currentMonth)) {
