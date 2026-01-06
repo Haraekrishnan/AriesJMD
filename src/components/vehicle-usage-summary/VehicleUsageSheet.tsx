@@ -206,18 +206,18 @@ export default function VehicleUsageSheet() {
             )}
             <div className="overflow-auto flex-1">
                 {selectedVehicleId ? (
-                <Table className="min-w-full border-collapse">
-                    <thead className="sticky top-0 z-10 bg-card">
+                <Table className="min-w-full border-separate border-spacing-0">
+                    <TableHeader>
                         <TableRow>
-                            <TableHead className="sticky left-0 bg-card z-10">Day</TableHead>
-                            <TableHead>Start KM</TableHead>
-                            <TableHead>End KM</TableHead>
-                            <TableHead>Total KM</TableHead>
-                            <TableHead>Overtime (Hrs)</TableHead>
-                            <TableHead>Remarks</TableHead>
-                            <TableHead className="w-[50px]"></TableHead>
+                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Day</TableHead>
+                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Start KM</TableHead>
+                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm">End KM</TableHead>
+                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Total KM</TableHead>
+                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Overtime (Hrs)</TableHead>
+                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Remarks</TableHead>
+                            <TableHead className="sticky top-0 z-20 bg-card shadow-sm w-[50px]"></TableHead>
                         </TableRow>
-                    </thead>
+                    </TableHeader>
                     <TableBody>
                         {dayHeaders.map(day => {
                             const dateForDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
