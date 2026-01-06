@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -6,11 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Download, Save, Lock, Unlock, Palette, Checkbox as CheckboxIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Save, Lock, Unlock, Palette, Checkbox as CheckboxIcon, Edit } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isSameMonth, getDay, isAfter, isBefore, startOfToday, parseISO, isValid, parse, sub } from 'date-fns';
-import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -18,49 +17,29 @@ import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import AddJobCodeDialog from '../job-record/AddJobCodeDialog';
 import type { JobCode, ManpowerProfile, JobRecordPlant } from '@/lib/types';
-import EditJobCodeDialog from '../job-record/EditJobCodeDialog';
-import AddJobRecordPlantDialog from '../job-record/AddJobRecordPlantDialog';
 import { ScrollArea } from '../ui/scroll-area';
-import { JOB_CODE_COLORS } from '@/lib/job-codes';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Checkbox } from '../ui/checkbox';
 import { exportToExcel, exportToPdf } from './generateUsageSummary';
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
 
-export default function VehicleUsageSheet() {
-    const { 
-        user,
-        vehicles, 
-        drivers,
-        vehicleUsageRecords,
-        saveVehicleUsageRecord,
-        lockVehicleUsageSheet,
-        unlockVehicleUsageSheet,
-        can
-    } = useAppContext();
-    const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
-    const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
+const VehicleDataRow = ({ vehicle, currentMonth }: { vehicle: any, currentMonth: Date }) => {
+    const { user, drivers, vehicleUsageRecords, saveVehicleUsageRecord, lockVehicleUsageSheet, unlockVehicleUsageSheet, can } = useAppContext();
+    const [isEditing, setIsEditing] = useState(false);
     const { toast } = useToast();
     
     const monthKey = format(currentMonth, 'yyyy-MM');
     const record = vehicleUsageRecords?.[monthKey];
-    const vehicleRecord = record?.records?.[selectedVehicleId];
+    const vehicleRecord = record?.records?.[vehicle.id];
 
     const [cellStates, setCellStates] = useState<Record<string, any>>({});
     const [headerStates, setHeaderStates] = useState({
-      jobNo: '',
-      vehicleType: '',
-      extraKm: 0,
-      headerOvertime: '',
-      extraNight: 0,
-      extraDays: 0,
-      verifiedByName: '',
-      verifiedByDate: undefined as Date | undefined,
+      jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0,
+      verifiedByName: '', verifiedByDate: undefined as Date | undefined,
     });
-    
+
     const dayHeaders = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
 
     const monthlyTotalKm = useMemo(() => {
@@ -68,9 +47,7 @@ export default function VehicleUsageSheet() {
         for (const day of dayHeaders) {
             const startKm = Number(cellStates[`${day}-startKm`] || 0);
             const endKm = Number(cellStates[`${day}-endKm`] || 0);
-            if (endKm > startKm) {
-                total += endKm - startKm;
-            }
+            if (endKm > startKm) total += endKm - startKm;
         }
         return total;
     }, [cellStates, dayHeaders]);
@@ -121,12 +98,11 @@ export default function VehicleUsageSheet() {
             setCellStates({});
             setHeaderStates({ jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0, verifiedByName: '', verifiedByDate: undefined });
         }
-    }, [vehicleRecord, selectedVehicleId, currentMonth]);
-    
+    }, [vehicleRecord, vehicle.id, currentMonth]);
+
     const handleInputChange = (day: number, field: string, value: string | number | boolean) => {
         const dayKey = `${day}-${field}`;
         const nextDayKey = `${day + 1}-startKm`;
-        
         setCellStates(prev => {
             const newStates = { ...prev, [dayKey]: value };
             if (field === 'endKm' && day < getDaysInMonth(currentMonth)) {
@@ -137,16 +113,12 @@ export default function VehicleUsageSheet() {
     };
 
     const handleHeaderChange = (field: keyof typeof headerStates, value: string | number | Date | undefined) => {
-        setHeaderStates(prev => ({
-            ...prev,
-            [field]: value,
-        }));
+        setHeaderStates(prev => ({ ...prev, [field]: value }));
     };
 
     const handleSave = () => {
-        if (!selectedVehicleId || !user) return;
-        
-        const dataToSave: Partial<VehicleUsageRecord['records'][string]> = {
+        if (!vehicle.id || !user) return;
+        const dataToSave: Partial<any> = {
             days: dayHeaders.reduce((acc, day) => {
                 acc[day] = {
                     startKm: Number(cellStates[`${day}-startKm`] || 0),
@@ -156,39 +128,109 @@ export default function VehicleUsageSheet() {
                     isHoliday: cellStates[`${day}-isHoliday`] || false,
                 };
                 return acc;
-            }, {} as VehicleUsageRecord['records'][string]['days']),
-            jobNo: headerStates.jobNo,
-            vehicleType: headerStates.vehicleType,
-            extraKm: Number(headerStates.extraKm),
-            headerOvertime: headerStates.headerOvertime,
-            extraNight: Number(headerStates.extraNight),
-            extraDays: Number(headerStates.extraDays),
-            verifiedBy: {
-                name: headerStates.verifiedByName,
-                date: headerStates.verifiedByDate ? headerStates.verifiedByDate.toISOString() : '',
-            },
+            }, {} as any),
+            ...headerStates,
+            verifiedByDate: headerStates.verifiedByDate ? headerStates.verifiedByDate.toISOString() : '',
         };
-
-        saveVehicleUsageRecord(monthKey, selectedVehicleId, dataToSave);
-        toast({ title: "Record Saved", description: "Vehicle usage data has been saved."});
+        saveVehicleUsageRecord(monthKey, vehicle.id, dataToSave);
+        toast({ title: "Record Saved", description: "Vehicle usage data has been saved." });
     };
-    
+
     const handleExport = (formatType: 'excel' | 'pdf') => {
-        const vehicle = vehicles.find(v => v.id === selectedVehicleId);
         const driver = drivers.find(d => d.id === vehicle?.driverId);
-        
-        if (formatType === 'excel') {
-            exportToExcel(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates);
-        } else {
-            exportToPdf(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates);
-        }
+        if (formatType === 'excel') exportToExcel(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates);
+        else exportToPdf(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates);
     };
-    
-    const isLocked = record?.isLocked;
-    const canEdit = (can.manage_vehicle_usage) && !isLocked;
-    const canLockSheet = can.manage_vehicle_usage;
 
+    const isLocked = record?.isLocked;
+    const canEdit = can.manage_vehicle_usage && !isLocked;
+    const canLockSheet = can.manage_vehicle_usage;
+    
+    return (
+        <AccordionItem value={vehicle.id}>
+            <div className="flex items-center p-2 border-b">
+                 <AccordionTrigger className="p-2 flex-1 hover:no-underline">
+                    <div className="flex items-center gap-2">
+                        <div className={cn("h-2.5 w-2.5 rounded-full", vehicle.status.color)}></div>
+                        <div>
+                            <p className="font-semibold">{vehicle.vehicleNumber}</p>
+                            <p className="text-xs text-muted-foreground">{vehicle.status.label}</p>
+                        </div>
+                    </div>
+                </AccordionTrigger>
+                 <div className="flex items-center gap-2 pr-2">
+                    <Button variant="outline" size="sm" onClick={() => handleExport('excel')}><Download className="mr-2 h-4 w-4"/>Excel</Button>
+                    <Button variant="outline" size="sm" onClick={() => handleExport('pdf')}><Download className="mr-2 h-4 w-4"/>PDF</Button>
+                    {canEdit && <Button size="sm" onClick={handleSave}><Save className="mr-2 h-4 w-4"/>Save</Button>}
+                    {canEdit && (isEditing ? <Button size="sm" variant="secondary" onClick={() => setIsEditing(false)}>Close</Button> : <Button size="sm" onClick={() => setIsEditing(true)}><Edit className="mr-2 h-4 w-4"/>Edit</Button>)}
+                    {canLockSheet && (
+                        isLocked
+                        ? (user?.role === 'Admin' && <Button variant="secondary" size="sm" onClick={() => unlockVehicleUsageSheet(monthKey)}>Unlock</Button>)
+                        : <Button variant="destructive" size="sm" onClick={() => lockVehicleUsageSheet(monthKey)}>Lock</Button>
+                    )}
+                </div>
+            </div>
+           
+            <AccordionContent>
+                <div className="p-4 border-t bg-muted/30">
+                    <div className="p-4 border rounded-md mb-4 bg-background grid grid-cols-2 md:grid-cols-5 gap-4">
+                         <div className="space-y-2"><Label>Job No.</Label><Input value={headerStates.jobNo} onChange={e => handleHeaderChange('jobNo', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></div>
+                        <div className="space-y-2"><Label>Vehicle Type</Label><Input value={headerStates.vehicleType} onChange={e => handleHeaderChange('vehicleType', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></div>
+                        <div className="space-y-2"><Label>Over Time (Header)</Label><Input value={headerStates.headerOvertime} readOnly className="font-bold" /></div>
+                         <div className="space-y-2"><Label>Extra Night</Label><Input type="number" value={headerStates.extraNight} onChange={e => handleHeaderChange('extraNight', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></div>
+                        <div className="space-y-2"><Label>Extra Days</Label><Input type="number" value={headerStates.extraDays} onChange={e => handleHeaderChange('extraDays', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></div>
+                         <div className="space-y-2"><Label>Total KM</Label><Input value={monthlyTotalKm} readOnly className="font-bold" /></div>
+                        <div className="space-y-2"><Label>Extra KM</Label><Input type="number" value={headerStates.extraKm} readOnly className="font-bold" /></div>
+                         <div className="space-y-2"><Label>Verified By</Label><Input value={headerStates.verifiedByName} onChange={e => handleHeaderChange('verifiedByName', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></div>
+                        <div className="space-y-2"><Label>Verified Date</Label><DatePickerInput value={headerStates.verifiedByDate} onChange={date => handleHeaderChange('verifiedByDate', date)} disabled={!canEdit} /></div>
+                    </div>
+                     <Table className="min-w-full border-separate border-spacing-0 bg-background">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="sticky top-0 z-30 bg-card shadow-sm">Day</TableHead>
+                                <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Start KM</TableHead>
+                                <TableHead className="sticky top-0 z-20 bg-card shadow-sm">End KM</TableHead>
+                                <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Total KM</TableHead>
+                                <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Overtime (Hrs)</TableHead>
+                                <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Remarks</TableHead>
+                                <TableHead className="sticky top-0 z-20 bg-card shadow-sm w-[50px]">Holiday</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {dayHeaders.map(day => {
+                                const dateForDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                                const isSunday = getDay(dateForDay) === 0;
+                                const startKm = Number(cellStates[`${day}-startKm`] || 0);
+                                const endKm = Number(cellStates[`${day}-endKm`] || 0);
+                                const totalKm = endKm > startKm ? endKm - startKm : 0;
+                                const isHoliday = cellStates[`${day}-isHoliday`];
+                                return (
+                                    <TableRow key={day} className={cn((isHoliday || isSunday) && 'bg-yellow-100 dark:bg-yellow-900/30')}>
+                                        <TableCell className={cn("sticky left-0 font-medium z-10 border-r", (isHoliday || isSunday) ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-card')}>{format(dateForDay, 'dd-MM-yyyy')}</TableCell>
+                                        <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-startKm`] || ''} onChange={(e) => handleInputChange(day, 'startKm', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></TableCell>
+                                        <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-endKm`] || ''} onChange={(e) => handleInputChange(day, 'endKm', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></TableCell>
+                                        <TableCell className="font-medium text-center">{totalKm}</TableCell>
+                                        <TableCell><Input className="h-8" value={cellStates[`${day}-overtime`] || ''} onChange={(e) => handleInputChange(day, 'overtime', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></TableCell>
+                                        <TableCell><Input className="h-8" value={cellStates[`${day}-remarks`] || ''} onChange={(e) => handleInputChange(day, 'remarks', e.target.value)} onBlur={handleSave} readOnly={!canEdit} /></TableCell>
+                                        <TableCell className="text-center"><Checkbox checked={isHoliday} onCheckedChange={(checked) => { handleInputChange(day, 'isHoliday', !!checked); handleSave(); }} disabled={!canEdit}/></TableCell>
+                                    </TableRow>
+                                )
+                            })}
+                        </TableBody>
+                    </Table>
+                </div>
+            </AccordionContent>
+        </AccordionItem>
+    )
+};
+
+
+export default function VehicleUsageSheet() {
+    const { vehicles, vehicleUsageRecords } = useAppContext();
+    const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
+    
     const getVehicleStatus = (vehicleId: string) => {
+        const record = vehicleUsageRecords?.[format(currentMonth, 'yyyy-MM')];
         if (record?.isLocked) {
             return { label: 'Completed', color: 'bg-green-500' };
         }
@@ -196,7 +238,6 @@ export default function VehicleUsageSheet() {
         if (!vRecord) {
             return { label: 'Not Yet Started', color: 'bg-gray-400' };
         }
-        // Check if any data has been entered
         const hasData = Object.values(vRecord.days || {}).some(dayData => 
             dayData.startKm || dayData.endKm || dayData.overtime || dayData.remarks
         );
@@ -206,150 +247,35 @@ export default function VehicleUsageSheet() {
         return { label: 'Not Yet Started', color: 'bg-gray-400' };
     };
 
+    const sortedVehicles = useMemo(() => {
+        return [...vehicles]
+            .map(v => ({ ...v, status: getVehicleStatus(v.id) }))
+            .sort((a,b) => a.vehicleNumber.localeCompare(b.vehicleNumber));
+    }, [vehicles, currentMonth, vehicleUsageRecords]);
+
     return (
-        <TooltipProvider>
-            <div className="flex flex-col h-full bg-card border rounded-lg">
-                {/* --- HEADER --- */}
-                <div className="p-4 border-b shrink-0 space-y-4">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
-                                <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <span className="text-lg font-semibold">{format(currentMonth, 'MMMM yyyy')}</span>
-                            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={isSameMonth(currentMonth, new Date())}>
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <Button onClick={() => handleExport('excel')} disabled={!selectedVehicleId}><Download className="mr-2 h-4 w-4"/>Excel</Button>
-                            <Button onClick={() => handleExport('pdf')} disabled={!selectedVehicleId}><Download className="mr-2 h-4 w-4"/>PDF</Button>
-                            {canEdit && <Button onClick={handleSave} disabled={!selectedVehicleId}><Save className="mr-2 h-4 w-4"/>Save</Button>}
-                            {canLockSheet && (
-                                isLocked
-                                ? <Button variant="secondary" onClick={() => unlockVehicleUsageSheet(monthKey)}>Unlock</Button>
-                                : <Button variant="destructive" onClick={() => lockVehicleUsageSheet(monthKey)}>Lock</Button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-                 {selectedVehicleId && (
-                    <div className="p-4 border-b grid grid-cols-2 md:grid-cols-5 gap-4">
-                         <div className="space-y-2">
-                            <Label>Job No.</Label>
-                            <Input value={headerStates.jobNo} onChange={e => handleHeaderChange('jobNo', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Vehicle Type</Label>
-                            <Input value={headerStates.vehicleType} onChange={e => handleHeaderChange('vehicleType', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Over Time (Header)</Label>
-                            <Input value={headerStates.headerOvertime} readOnly className="font-bold" />
-                        </div>
-                         <div className="space-y-2">
-                            <Label>Extra Night</Label>
-                            <Input type="number" value={headerStates.extraNight} onChange={e => handleHeaderChange('extraNight', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Extra Days</Label>
-                            <Input type="number" value={headerStates.extraDays} onChange={e => handleHeaderChange('extraDays', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
-                        </div>
-                         <div className="space-y-2">
-                            <Label>Total KM</Label>
-                            <Input value={monthlyTotalKm} readOnly className="font-bold" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Extra KM</Label>
-                            <Input type="number" value={headerStates.extraKm} readOnly className="font-bold" />
-                        </div>
-                         <div className="space-y-2">
-                            <Label>Verified By</Label>
-                            <Input value={headerStates.verifiedByName} onChange={e => handleHeaderChange('verifiedByName', e.target.value)} onBlur={handleSave} readOnly={!canEdit} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Verified Date</Label>
-                            <DatePickerInput value={headerStates.verifiedByDate} onChange={date => handleHeaderChange('verifiedByDate', date)} disabled={!canEdit} />
-                        </div>
-                    </div>
-                )}
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-[280px_1fr] overflow-hidden">
-                    <ScrollArea className="border-r">
-                        <div className="p-2 space-y-1">
-                            {vehicles.map(v => {
-                                const status = getVehicleStatus(v.id);
-                                return (
-                                    <Button
-                                        key={v.id}
-                                        variant={selectedVehicleId === v.id ? "secondary" : "ghost"}
-                                        onClick={() => setSelectedVehicleId(v.id)}
-                                        className="w-full justify-start h-auto p-2"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <div className={cn("h-2 w-2 rounded-full", status.color)}></div>
-                                            <div className="flex-1 text-left">
-                                                <p className="font-semibold">{v.vehicleNumber}</p>
-                                                <p className="text-xs text-muted-foreground">{status.label}</p>
-                                            </div>
-                                        </div>
-                                    </Button>
-                                );
-                            })}
-                        </div>
-                    </ScrollArea>
-                    <div className="overflow-auto flex-1 relative">
-                        {selectedVehicleId ? (
-                        <Table className="min-w-full border-separate border-spacing-0">
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Day</TableHead>
-                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Start KM</TableHead>
-                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">End KM</TableHead>
-                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Total KM</TableHead>
-                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Overtime (Hrs)</TableHead>
-                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Remarks</TableHead>
-                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm text-center">Holiday</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {dayHeaders.map(day => {
-                                    const dateForDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-                                    const isSunday = getDay(dateForDay) === 0;
-                                    const startKm = Number(cellStates[`${day}-startKm`] || 0);
-                                    const endKm = Number(cellStates[`${day}-endKm`] || 0);
-                                    const totalKm = endKm > startKm ? endKm - startKm : 0;
-                                    const isHoliday = cellStates[`${day}-isHoliday`];
-                                    return (
-                                        <TableRow key={day} className={cn((isHoliday || isSunday) && 'bg-yellow-100 dark:bg-yellow-900/30')}>
-                                            <TableCell className={cn("sticky left-0 font-medium z-10 border-r", (isHoliday || isSunday) ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-card')}>{format(dateForDay, 'dd-MM-yyyy')}</TableCell>
-                                            <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-startKm`] || ''} onChange={(e) => handleInputChange(day, 'startKm', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
-                                            <TableCell><Input type="number" className="h-8" value={cellStates[`${day}-endKm`] || ''} onChange={(e) => handleInputChange(day, 'endKm', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
-                                            <TableCell className="font-medium text-center">{totalKm}</TableCell>
-                                            <TableCell><Input className="h-8" value={cellStates[`${day}-overtime`] || ''} onChange={(e) => handleInputChange(day, 'overtime', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
-                                            <TableCell><Input className="h-8" value={cellStates[`${day}-remarks`] || ''} onChange={(e) => handleInputChange(day, 'remarks', e.target.value)} onBlur={() => handleSave()} readOnly={!canEdit} /></TableCell>
-                                            <TableCell className="text-center">
-                                                <Checkbox
-                                                    checked={isHoliday}
-                                                    onCheckedChange={(checked) => {
-                                                        handleInputChange(day, 'isHoliday', !!checked);
-                                                        handleSave();
-                                                    }}
-                                                    disabled={!canEdit}
-                                                />
-                                            </TableCell>
-                                        </TableRow>
-                                    )
-                                })}
-                            </TableBody>
-                        </Table>
-                        ) : (
-                            <div className="flex items-center justify-center h-full text-muted-foreground">
-                                Please select a vehicle to view its usage summary.
-                            </div>
-                        )}
+        <div className="flex flex-col h-full bg-card border rounded-lg">
+            <div className="p-4 border-b shrink-0">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-lg font-semibold">{format(currentMonth, 'MMMM yyyy')}</span>
+                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={isSameMonth(currentMonth, new Date())}>
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
                     </div>
                 </div>
             </div>
-        </TooltipProvider>
+            <ScrollArea className="flex-1">
+                <Accordion type="single" collapsible>
+                    {sortedVehicles.map(vehicle => (
+                        <VehicleDataRow key={vehicle.id} vehicle={vehicle} currentMonth={currentMonth} />
+                    ))}
+                </Accordion>
+            </ScrollArea>
+        </div>
     );
 }
+
