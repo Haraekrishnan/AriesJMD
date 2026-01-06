@@ -223,7 +223,7 @@ export async function exportToPdf(
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 28;
+  const margin = 25;
   const contentWidth = pageWidth - margin * 2;
   let currentY = margin;
 
@@ -235,6 +235,11 @@ export async function exportToPdf(
     console.error("Could not add logo to PDF:", e);
   }
   
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text(vehicle?.vehicleNumber || '', margin, currentY + 45);
+  currentY += 50;
+
   const rightHeaderX = pageWidth - margin - 200;
   (doc as any).autoTable({
     body: [
@@ -245,7 +250,7 @@ export async function exportToPdf(
       ['EXTRA NIGHT', headerStates.extraNight || 0],
       ['EXTRA DAYS', headerStates.extraDays || 0],
     ],
-    startY: currentY,
+    startY: margin,
     theme: 'plain',
     styles: { fontSize: 8.5, font: 'helvetica', cellPadding: 2, lineWidth: 0.5, lineColor: [180, 180, 180] },
     columnStyles: { 0: { fontStyle: 'bold', cellWidth: 70 }, 1: { cellWidth: 130 } },
@@ -258,15 +263,6 @@ export async function exportToPdf(
         }
     }
   });
-
-  currentY = (doc as any).lastAutoTable.finalY + 15;
-
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text(vehicle?.vehicleNumber || '', margin, currentY);
-  
-  currentY += 15;
-  
 
   // --- MAIN TABLE ---
   let totalKm = 0;
@@ -284,17 +280,18 @@ export async function exportToPdf(
       { content: e || '', styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
       { content: t || '', styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
       { content: cellStates[`${day}-overtime`] || '', styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
-      { content: cellStates[`${day}-remarks`] || '', styles: { fillColor: isHoliday ? [255, 255, 204] : undefined } },
+      { content: cellStates[`${day}-remarks`] || '', styles: { fillColor: isHoliday ? [255, 255, 204] : undefined, halign: 'left' } },
     ];
   });
 
   body.push([{ content: 'TOTAL KILOMETER:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } }, { content: totalKm, styles: { fontStyle: 'bold' } }, '', '']);
 
-  const footerStartY = pageHeight - 85; 
-  const tableMaxHeight = footerStartY - currentY - 10;
+  const tableHeaderHeight = 20; // Estimated height of header
+  const tableFooterHeight = 20; // Estimated height of "TOTAL" row
+  const footerHeight = 70; // Height for the bottom verified/signature block
+  const availableTableHeight = pageHeight - currentY - footerHeight - tableHeaderHeight - tableFooterHeight - (margin * 2);
   const rowCount = body.length;
-  const minRowHeight = 16;
-  const calculatedRowHeight = Math.max(minRowHeight, tableMaxHeight / rowCount);
+  const rowHeight = availableTableHeight / rowCount;
 
   (doc as any).autoTable({
     head: [['DATE', 'START KM', 'END KM', 'TOTAL KM', 'OT', 'REMARKS']],
@@ -307,39 +304,47 @@ export async function exportToPdf(
         cellPadding: 2,
         halign: 'center',
         valign: 'middle',
-        minCellHeight: calculatedRowHeight, 
+        minCellHeight: Math.max(14, rowHeight), 
         overflow: 'linebreak',
     },
     headStyles: {
         fillColor: [2, 179, 150],
         textColor: 255,
         fontStyle: 'bold',
-        minCellHeight: 18,
+        minCellHeight: 16,
     },
     columnStyles: {
         0: { cellWidth: 72 },
-        1: { cellWidth: 55 },
-        2: { cellWidth: 55 },
-        3: { cellWidth: 55 },
-        4: { cellWidth: 45 },
+        1: { cellWidth: 48 },
+        2: { cellWidth: 48 },
+        3: { cellWidth: 48 },
+        4: { cellWidth: 40 },
         5: { cellWidth: 'auto', halign: 'left' },
     },
-    tableWidth: 'auto',
-    margin: { left: margin, right: margin },
+    margin: { left: margin, right: margin, bottom: footerHeight + 10 },
+    pageBreak: 'avoid',   // Prevent page breaks within the table
+    rowPageBreak: 'avoid'
   });
   
   // --- FOOTER ---
+  const footerY = (doc as any).lastAutoTable.finalY + 15 > pageHeight - footerHeight ? pageHeight - footerHeight : (doc as any).lastAutoTable.finalY + 15;
+
   (doc as any).autoTable({
-    startY: footerStartY,
+    startY: footerY,
     body: [
-      [{ content: 'Verified By:', styles: { fontStyle: 'bold' } }, { content: 'Verified By Date:', styles: { fontStyle: 'bold' } }, { content: 'Signature:', styles: { fontStyle: 'bold' } }],
-      [{ content: headerStates.verifiedByName || '', styles: { minCellHeight: 28 } }, { content: headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '', styles: { minCellHeight: 28 } }, ''],
+      ['Verified By:', 'Verified By Date:', 'Signature:'],
+      [
+        headerStates.verifiedByName || '',
+        headerStates.verifiedByDate ? format(headerStates.verifiedByDate, 'dd-MM-yyyy') : '',
+        '',
+      ],
     ],
     theme: 'grid',
     styles: {
         fontSize: 9,
         cellPadding: 4,
         valign: 'top',
+        minCellHeight: 25,
     },
     columnStyles: {
         0: { cellWidth: (contentWidth) / 3 },
@@ -358,7 +363,7 @@ export async function exportToPdf(
                   signatureBase64,
                   'JPEG',
                   margin + ((contentWidth) * 2) / 3 + 15,
-                  footerStartY + 22,
+                  footerY + 22,
                   70,
                   28
               );
