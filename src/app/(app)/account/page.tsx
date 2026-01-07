@@ -88,13 +88,30 @@ export default function AccountPage() {
   
   const handleProfileSave = (e: React.FormEvent) => {
     e.preventDefault();
-    updateProfile(name, email, avatarFile, password, signatureFile);
+    updateProfile({ name, email, avatarFile, password });
     toast({
       title: 'Profile Updated',
       description: 'Your profile information has been saved.',
     });
     setPassword('');
     setAvatarFile(null);
+  };
+  
+  const handleSignatureSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!signatureFile) {
+      toast({
+        variant: 'destructive',
+        title: 'No Signature File',
+        description: 'Please select a signature file to upload.',
+      });
+      return;
+    }
+    updateProfile({ signatureFile });
+    toast({
+      title: 'Signature Updated',
+      description: 'Your signature has been saved.',
+    });
     setSignatureFile(null);
   };
 
@@ -239,7 +256,7 @@ export default function AccountPage() {
       </div>
       
        {can.manage_signatures && (
-        <form onSubmit={handleProfileSave}>
+        <form onSubmit={handleSignatureSave}>
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2"><Signature /> Signature</CardTitle>
@@ -499,5 +516,7 @@ export default function AccountPage() {
     </div>
   );
 }
+
+    
 
     

@@ -12,6 +12,13 @@ import { uploadFile } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 
 // --- TYPE DEFINITIONS ---
+interface UpdateProfilePayload {
+  name?: string;
+  email?: string;
+  avatarFile?: File | null;
+  password?: string;
+  signatureFile?: File | null;
+}
 
 type PermissionsObject = Record<Permission, boolean>;
 
@@ -29,7 +36,7 @@ type AuthContextType = {
 
   login: (email: string, pass: string) => Promise<{ success: boolean; user?: User }>;
   logout: () => void;
-  updateProfile: (name: string, email: string, avatarFile: File | null, password?: string, signatureFile?: File | null) => void;
+  updateProfile: (data: UpdateProfilePayload) => void;
   requestPasswordReset: (email: string) => Promise<boolean>;
   resolveResetRequest: (requestId: string) => void;
   resetPassword: (email: string, code: string, newPass: string) => Promise<boolean>;
@@ -155,14 +162,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user?.id === updatedUser.id) setUser(updatedUser);
   }, [user, addActivityLog]);
   
-  const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string, signatureFile?: File | null) => {
+  const updateProfile = useCallback(async (data: UpdateProfilePayload) => {
     if (user) {
-        const updatedUser: User = { ...user, name, email };
-        if (password) updatedUser.password = password;
+        const updatedUser: User = { ...user };
+        
+        if (data.name) updatedUser.name = data.name;
+        if (data.email) updatedUser.email = data.email;
+        if (data.password) updatedUser.password = data.password;
 
-        if (avatarFile) {
+        if (data.avatarFile) {
             try {
-                const avatarUrl = await uploadFile(avatarFile, `avatars/${user.id}/${avatarFile.name}`);
+                const avatarUrl = await uploadFile(data.avatarFile, `avatars/${user.id}/${data.avatarFile.name}`);
                 updatedUser.avatar = avatarUrl;
             } catch (error) {
                 console.error("Avatar upload failed:", error);
@@ -170,9 +180,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
         }
         
-        if (signatureFile) {
+        if (data.signatureFile) {
             try {
-                const signatureUrl = await uploadFile(signatureFile, `signatures/${user.id}/${signatureFile.name}`);
+                const signatureUrl = await uploadFile(data.signatureFile, `signatures/${user.id}/${data.signatureFile.name}`);
                 updatedUser.signatureUrl = signatureUrl;
             } catch (error) {
                 console.error("Signature upload failed:", error);
@@ -449,3 +459,5 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
+    
