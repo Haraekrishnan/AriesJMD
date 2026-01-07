@@ -33,6 +33,7 @@ type AuthContextType = {
   can: PermissionsObject;
   appName: string;
   appLogo: string | null;
+  activeTheme: string | null;
 
   login: (email: string, pass: string) => Promise<{ success: boolean; user?: User }>;
   logout: () => void;
@@ -54,9 +55,11 @@ type AuthContextType = {
   updateFeedbackStatus: (feedbackId: string, status: Feedback['status']) => void;
   markFeedbackAsViewed: () => void;
   updateBranding: (name: string, logo: string | null) => void;
+  updateActiveTheme: (theme: string) => void;
   addActivityLog: (userId: string, action: string, details?: string) => void;
   getVisibleUsers: () => User[];
   getAssignableUsers: () => User[];
+  clearInventoryTransferHistory: () => void; // Added for Account Page
 };
 
 // --- HELPER FUNCTIONS ---
@@ -92,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [feedbackById, setFeedbackById] = useState<Record<string, Feedback>>({});
   const [appName, setAppName] = useState('Aries Marine');
   const [appLogo, setAppLogo] = useState<string | null>(null);
+  const [activeTheme, setActiveTheme] = useState<string | null>('none');
 
   const users = useMemo(() => Object.values(usersById), [usersById]);
   const roles = useMemo(() => Object.values(rolesById), [rolesById]);
@@ -150,61 +154,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     router.push('/login');
   }, [user, setStoredUserId, router, addActivityLog]);
-
-    const updateUser = useCallback((updatedUser: User) => {
-      if (!updatedUser.id) return;
-    
-      // Create a clean object with only the fields we want to update.
-      // This prevents accidentally wiping fields that might exist in the DB but not in the local object.
-      const updates: Partial<User> = {};
-      if (updatedUser.name) updates.name = updatedUser.name;
-      if (updatedUser.email) updates.email = updatedUser.email;
-      if (updatedUser.role) updates.role = updatedUser.role;
-      updates.supervisorId = updatedUser.supervisorId ?? null;
-      updates.projectIds = updatedUser.projectIds ?? [];
-      updates.avatar = updatedUser.avatar ?? null;
-      updates.signatureUrl = updatedUser.signatureUrl ?? null;
-      updates.status = updatedUser.status ?? 'active';
-
-      // Only include password if it's explicitly being changed.
-      if (updatedUser.password) {
-        updates.password = updatedUser.password;
-      }
-    
-      update(ref(rtdb, `users/${updatedUser.id}`), updates);
-    
-      // If the currently logged-in user is the one being updated, update the local state.
-      if (user?.id === updatedUser.id) {
-          setUser(prevUser => ({...prevUser!, ...updatedUser}));
-      }
-    
-      if (user?.id) {
-          addActivityLog(user.id, 'User Profile Updated');
-      }
-    }, [user, addActivityLog]);
+  
+  const updateUser = useCallback((updatedUser: User) => {
+    if (!updatedUser.id) return;
+  
+    const updates: Partial<User> = {
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        supervisorId: updatedUser.supervisorId ?? null,
+        projectIds: updatedUser.projectIds ?? null,
+        avatar: updatedUser.avatar ?? null,
+        signatureUrl: updatedUser.signatureUrl ?? null,
+        status: updatedUser.status,
+    };
+  
+    if (updatedUser.password) {
+      updates.password = updatedUser.password;
+    }
+  
+    update(ref(rtdb, `users/${updatedUser.id}`), updates);
+  
+    if (user?.id === updatedUser.id) {
+      // Ensure local state is updated correctly
+      setUser(prevUser => ({...prevUser!, ...updates}));
+    }
+  
+    if (user?.id) {
+      addActivityLog(user.id, 'User Profile Updated', `Updated details for ${updatedUser.name}`);
+    }
+  }, [user, addActivityLog]);
+  
   
   const updateProfile = useCallback(async (data: UpdateProfilePayload) => {
     if (!user) return;
   
     const updatedUser = { ...user };
+    let hasChanges = false;
   
-    if (data.name) updatedUser.name = data.name;
-    if (data.email) updatedUser.email = data.email;
-    if (data.password) updatedUser.password = data.password;
+    if (data.name && data.name !== user.name) {
+      updatedUser.name = data.name;
+      hasChanges = true;
+    }
+    if (data.email && data.email !== user.email) {
+      updatedUser.email = data.email;
+      hasChanges = true;
+    }
+    if (data.password) {
+      updatedUser.password = data.password;
+      hasChanges = true;
+    }
   
     try {
       if (data.avatarFile) {
         const avatarUrl = await uploadFile(data.avatarFile, `avatars/${user.id}/${data.avatarFile.name}`);
         updatedUser.avatar = avatarUrl;
+        hasChanges = true;
       }
   
       if (data.signatureFile) {
         const signatureUrl = await uploadFile(data.signatureFile, `signatures/${user.id}/${data.signatureFile.name}`);
         updatedUser.signatureUrl = signatureUrl;
+        hasChanges = true;
       }
       
-      updateUser(updatedUser);
-      
+      if (hasChanges) {
+        updateUser(updatedUser);
+      }
+          
     } catch (error) {
       console.error("Profile update failed:", error);
       toast({ variant: "destructive", title: "Update Failed", description: "Could not save all changes." });
@@ -357,6 +374,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     addActivityLog(user.id, 'Branding Updated', `App name changed to "${name}"`);
   }, [user, addActivityLog, toast]);
 
+  const updateActiveTheme = useCallback((theme: string) => {
+    set(ref(rtdb, 'decorations/activeTheme'), theme);
+  }, []);
+
   const getSubordinateChain = useCallback((userId: string, allUsers: User[]): Set<string> => {
     const subordinates = new Set<string>();
     const queue = [userId];
@@ -422,6 +443,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return assignableUsers.filter(u => !supervisorChain.has(u.id));
   }, [user, users, getVisibleUsers]);
   
+  const clearInventoryTransferHistory = useCallback(() => {}, []);
+
   useEffect(() => {
     const unsubscribers = [
       createDataListener('users', setUsersById),
@@ -435,7 +458,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setAppName(data.appName || 'Aries Marine');
           setAppLogo(data.appLogo || null);
         }
-      })
+      }),
+      onValue(ref(rtdb, 'decorations/activeTheme'), (snapshot) => {
+        setActiveTheme(snapshot.val() || 'none');
+      }),
     ];
 
     if (!storedUserId) {
@@ -461,9 +487,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [storedUserId, users, logout]);
 
   const contextValue: AuthContextType = {
-    user, loading, users, roles, passwordResetRequests, unlockRequests, feedback, can, appName, appLogo,
+    user, loading, users, roles, passwordResetRequests, unlockRequests, feedback, can, appName, appLogo, activeTheme,
     login, logout, updateProfile, requestPasswordReset,
-    resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, updateBranding, addActivityLog, getVisibleUsers, getAssignableUsers,
+    resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, updateBranding, updateActiveTheme, addActivityLog, getVisibleUsers, getAssignableUsers, clearInventoryTransferHistory
   };
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
