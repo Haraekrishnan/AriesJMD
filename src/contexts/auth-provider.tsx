@@ -29,7 +29,7 @@ type AuthContextType = {
 
   login: (email: string, pass: string) => Promise<{ success: boolean; user?: User }>;
   logout: () => void;
-  updateProfile: (name: string, email: string, avatarFile: File | null, password?: string) => void;
+  updateProfile: (name: string, email: string, avatarFile: File | null, password?: string, signatureFile?: File | null) => void;
   requestPasswordReset: (email: string) => Promise<boolean>;
   resolveResetRequest: (requestId: string) => void;
   resetPassword: (email: string, code: string, newPass: string) => Promise<boolean>;
@@ -155,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user?.id === updatedUser.id) setUser(updatedUser);
   }, [user, addActivityLog]);
   
-  const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string) => {
+  const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string, signatureFile?: File | null) => {
     if (user) {
         const updatedUser: User = { ...user, name, email };
         if (password) updatedUser.password = password;
@@ -169,6 +169,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload new profile picture." });
             }
         }
+        
+        if (signatureFile) {
+            try {
+                const signatureUrl = await uploadFile(signatureFile, `signatures/${user.id}/${signatureFile.name}`);
+                updatedUser.signatureUrl = signatureUrl;
+            } catch (error) {
+                console.error("Signature upload failed:", error);
+                toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload new signature." });
+            }
+        }
+
         updateUser(updatedUser);
     }
   }, [user, updateUser, toast]);

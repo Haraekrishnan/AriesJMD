@@ -148,6 +148,7 @@ export type User = {
   planningScore?: number;
   permissions?: Permission[];
   dismissedPendingUpdates?: { [key: string]: boolean };
+  signatureUrl?: string;
 };
 
 export type PasswordResetRequest = {
@@ -296,6 +297,7 @@ export const ALL_PERMISSIONS = [
   'manage_tp_certification',
   'manage_directives',
   'manage_vehicle_usage',
+  'manage_signatures',
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];

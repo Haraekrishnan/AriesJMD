@@ -10,7 +10,7 @@ import { useMemo, useState, useEffect } from 'react';
 import type { User as UserType } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle, Trash2, Edit, Layers, Lock, Unlock, Eye, EyeOff, DatabaseZap, PartyPopper } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, Edit, Layers, Lock, Unlock, Eye, EyeOff, DatabaseZap, PartyPopper, Signature } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AddEmployeeDialog from '@/components/account/add-employee-dialog';
 import EditEmployeeDialog from '@/components/account/edit-employee-dialog';
@@ -39,6 +39,8 @@ export default function AccountPage() {
   const [isAddRoleDialogOpen, setIsAddRoleDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [signatureFile, setSignatureFile] = useState<File | null>(null);
+  const [signatureUrl, setSignatureUrl] = useState(user?.signatureUrl || '');
 
   const [newAppName, setNewAppName] = useState(appName);
   const [newAppLogo, setNewAppLogo] = useState<string | null>(appLogo);
@@ -58,6 +60,7 @@ export default function AccountPage() {
         setName(user.name);
         setEmail(user.email);
         setAvatar(user.avatar);
+        setSignatureUrl(user.signatureUrl || '');
     }
   }, [user]);
 
@@ -85,13 +88,14 @@ export default function AccountPage() {
   
   const handleProfileSave = (e: React.FormEvent) => {
     e.preventDefault();
-    updateProfile(name, email, avatarFile, password);
+    updateProfile(name, email, avatarFile, password, signatureFile);
     toast({
       title: 'Profile Updated',
       description: 'Your profile information has been saved.',
     });
     setPassword('');
     setAvatarFile(null);
+    setSignatureFile(null);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,6 +103,14 @@ export default function AccountPage() {
       const file = e.target.files[0];
       setAvatarFile(file);
       setAvatar(URL.createObjectURL(file));
+    }
+  };
+  
+  const handleSignatureFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSignatureFile(file);
+      setSignatureUrl(URL.createObjectURL(file));
     }
   };
 
@@ -226,6 +238,37 @@ export default function AccountPage() {
         </div>
       </div>
       
+       {can.manage_signatures && (
+        <form onSubmit={handleProfileSave}>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Signature /> Signature</CardTitle>
+                    <CardDescription>Upload or update your digital signature. This will be used in reports you generate.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label>Current Signature</Label>
+                        <div className="w-full h-32 border rounded-md bg-muted flex items-center justify-center">
+                            {signatureUrl ? (
+                                <img src={signatureUrl} alt="Signature" className="max-h-full max-w-full object-contain" />
+                            ) : (
+                                <p className="text-sm text-muted-foreground">No signature uploaded</p>
+                            )}
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="signature-upload">Upload New Signature</Label>
+                        <Input id="signature-upload" type="file" onChange={handleSignatureFileChange} accept=".png" />
+                        <p className="text-xs text-muted-foreground">For best results, upload a PNG with a transparent background.</p>
+                    </div>
+                </CardContent>
+                <CardFooter>
+                    <Button type="submit">Save Signature</Button>
+                </CardFooter>
+            </Card>
+        </form>
+       )}
+
       {can.manage_feedback && (
         <Card>
             <CardHeader>
