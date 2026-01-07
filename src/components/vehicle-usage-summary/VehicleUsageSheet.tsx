@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -17,11 +16,12 @@ import { ScrollArea } from '../ui/scroll-area';
 import { exportToExcel, exportToPdf } from './generateUsageSummary';
 import EditVehicleUsageDialog from './EditVehicleUsageDialog';
 import type { Vehicle, User } from '@/lib/types';
+import { Badge } from '../ui/badge';
 
 
 const implementationStartDate = new Date(2026, 0, 1); // January 2026 (Month is 0-indexed)
 
-const VehicleDataRow = ({ vehicle, currentMonth }: { vehicle: any, currentMonth: Date }) => {
+const VehicleDataRow = ({ vehicle, currentMonth, slNo }: { vehicle: any, currentMonth: Date, slNo: number }) => {
     const { user, can, lockVehicleUsageSheet, unlockVehicleUsageSheet, drivers, vehicleUsageRecords, users } = useAppContext();
     const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
 
@@ -68,15 +68,24 @@ const VehicleDataRow = ({ vehicle, currentMonth }: { vehicle: any, currentMonth:
         else exportToPdf(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates);
     };
 
+    const getStatusBadge = () => {
+        const status = vehicle.status;
+        const variant: 'success' | 'warning' | 'destructive' = status.label === 'Completed' ? 'success' : status.label === 'On Going' ? 'warning' : 'destructive';
+        return <Badge variant={variant}>{status.label}</Badge>;
+    }
+
     return (
         <>
             <div className="flex justify-between items-center p-2 border-b">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className={cn("h-2.5 w-2.5 rounded-full", vehicle.status.color)}></div>
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <span className="font-semibold text-sm w-8 text-center">{slNo}.</span>
                     <div className="flex-1 truncate">
                         <p className="font-semibold truncate">{vehicle.vehicleNumber}</p>
-                        <p className="text-xs text-muted-foreground truncate">{vehicle.status.label}</p>
                     </div>
+                </div>
+
+                <div className="flex-1 flex justify-center items-center gap-2">
+                    {getStatusBadge()}
                 </div>
 
                 <div className="flex-1 flex justify-center items-center text-xs text-muted-foreground gap-6">
@@ -147,6 +156,7 @@ export default function VehicleUsageSheet() {
 
     const sortedVehicles = useMemo(() => {
         return [...vehicles]
+            .filter(v => v.status === 'Active' || v.status === 'In Maintenance')
             .map(v => ({ ...v, status: getVehicleStatus(v.id) }))
             .sort((a,b) => a.vehicleNumber.localeCompare(b.vehicleNumber));
     }, [vehicles, currentMonth, vehicleUsageRecords]);
@@ -157,7 +167,7 @@ export default function VehicleUsageSheet() {
       }, [currentMonth]);
       
     const canGoToNextMonth = useMemo(() => {
-        const firstDayOfNextMonth = addMonths(startOfMonth(currentMonth), 1);
+        const firstDayOfNextMonth = startOfMonth(addMonths(currentMonth, 1));
         return isBefore(firstDayOfNextMonth, startOfToday());
     }, [currentMonth]);
   
@@ -181,8 +191,8 @@ export default function VehicleUsageSheet() {
                 </div>
             </div>
             <ScrollArea className="flex-1">
-                 {sortedVehicles.map(vehicle => (
-                    <VehicleDataRow key={vehicle.id} vehicle={vehicle} currentMonth={currentMonth} />
+                 {sortedVehicles.map((vehicle, index) => (
+                    <VehicleDataRow key={vehicle.id} vehicle={vehicle} currentMonth={currentMonth} slNo={index + 1} />
                 ))}
             </ScrollArea>
         </div>
