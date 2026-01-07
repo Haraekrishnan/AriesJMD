@@ -71,7 +71,7 @@ const VehicleDataRow = ({ vehicle, currentMonth, slNo }: { vehicle: any, current
 
     const getStatusBadge = () => {
         const status = vehicle.status;
-        const variant: 'success' | 'warning' | 'destructive' = status.label === 'Completed' ? 'success' : status.label === 'On Going' ? 'warning' : 'destructive';
+        const variant: 'success' | 'yellow' | 'destructive' = status.label === 'Completed' ? 'success' : status.label === 'On Going' ? 'yellow' : 'destructive';
         return <Badge variant={variant}>{status.label}</Badge>;
     }
 
