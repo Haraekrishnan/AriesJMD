@@ -78,9 +78,9 @@ const VehicleDataRow = ({ vehicle, currentMonth, slNo }: { vehicle: any, current
     return (
         <>
             <div className="flex justify-between items-center p-2 border-b">
-                <div className="flex items-baseline gap-4 flex-1">
+                <div className="flex items-center gap-4 flex-1">
                     <span className="font-semibold text-sm w-8 text-center">{slNo}.</span>
-                    <div className="flex items-baseline gap-2 w-48">
+                    <div className="flex justify-between items-center w-48">
                         <p className="font-semibold truncate">{vehicle.vehicleNumber}</p>
                         {getStatusBadge()}
                     </div>
