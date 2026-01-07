@@ -163,34 +163,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, addActivityLog]);
   
   const updateProfile = useCallback(async (data: UpdateProfilePayload) => {
-    if (user) {
-        const updatedUser: User = { ...user };
-        
-        if (data.name) updatedUser.name = data.name;
-        if (data.email) updatedUser.email = data.email;
-        if (data.password) updatedUser.password = data.password;
-
-        if (data.avatarFile) {
-            try {
-                const avatarUrl = await uploadFile(data.avatarFile, `avatars/${user.id}/${data.avatarFile.name}`);
-                updatedUser.avatar = avatarUrl;
-            } catch (error) {
-                console.error("Avatar upload failed:", error);
-                toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload new profile picture." });
-            }
-        }
-        
-        if (data.signatureFile) {
-            try {
-                const signatureUrl = await uploadFile(data.signatureFile, `signatures/${user.id}/${data.signatureFile.name}`);
-                updatedUser.signatureUrl = signatureUrl;
-            } catch (error) {
-                console.error("Signature upload failed:", error);
-                toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload new signature." });
-            }
-        }
-
-        updateUser(updatedUser);
+    if (!user) return;
+  
+    const updatedUser: User = { ...user };
+    const updates: Partial<User> = {};
+  
+    if (data.name && data.name !== user.name) updates.name = data.name;
+    if (data.email && data.email !== user.email) updates.email = data.email;
+    if (data.password) updates.password = data.password;
+  
+    try {
+      if (data.avatarFile) {
+        const avatarUrl = await uploadFile(data.avatarFile, `avatars/${user.id}/${data.avatarFile.name}`);
+        updates.avatar = avatarUrl;
+      }
+      if (data.signatureFile) {
+        const signatureUrl = await uploadFile(data.signatureFile, `signatures/${user.id}/${data.signatureFile.name}`);
+        updates.signatureUrl = signatureUrl;
+      }
+  
+      if (Object.keys(updates).length > 0) {
+        const finalUserData = { ...user, ...updates };
+        updateUser(finalUserData);
+      }
+    } catch (error) {
+      console.error("Profile update failed:", error);
+      toast({ variant: "destructive", title: "Update Failed", description: "Could not save all changes." });
     }
   }, [user, updateUser, toast]);
 
@@ -459,5 +457,3 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
-
-    

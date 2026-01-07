@@ -88,30 +88,13 @@ export default function AccountPage() {
   
   const handleProfileSave = (e: React.FormEvent) => {
     e.preventDefault();
-    updateProfile({ name, email, avatarFile, password });
+    updateProfile({ name, email, avatarFile, password, signatureFile });
     toast({
       title: 'Profile Updated',
       description: 'Your profile information has been saved.',
     });
     setPassword('');
     setAvatarFile(null);
-  };
-  
-  const handleSignatureSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!signatureFile) {
-      toast({
-        variant: 'destructive',
-        title: 'No Signature File',
-        description: 'Please select a signature file to upload.',
-      });
-      return;
-    }
-    updateProfile({ signatureFile });
-    toast({
-      title: 'Signature Updated',
-      description: 'Your signature has been saved.',
-    });
     setSignatureFile(null);
   };
 
@@ -194,70 +177,66 @@ export default function AccountPage() {
         <h1 className="text-3xl font-bold tracking-tight">Account Settings</h1>
         <p className="text-muted-foreground">Manage your profile, team members, and application settings.</p>
       </div>
-      <div className="grid gap-8 md:grid-cols-3">
-        <div className="md:col-span-1 space-y-8">
-          <Card>
-            <CardHeader className="items-center text-center">
-              <Avatar className="h-24 w-24 mb-4">
-                <AvatarImage src={avatar} alt={name} data-ai-hint="user avatar" />
-                <AvatarFallback>{name.charAt(0)}</AvatarFallback>
-              </Avatar>
-              <CardTitle>{name}</CardTitle>
-              <p className="text-sm text-muted-foreground">{user.role}</p>
-            </CardHeader>
-          </Card>
-           {can.manage_user_lock_status && <UnlockRequests />}
-        </div>
-        <div className="md:col-span-2">
-          <form onSubmit={handleProfileSave}>
-            <Card>
-                <CardHeader>
-                <CardTitle>Update Profile</CardTitle>
-                <CardDescription>Edit your personal information.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
-                    <Input id="name" value={name} onChange={e => setName(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="current-password">Current Password</Label>
-                  <div className="relative">
-                    <Input id="current-password" type={showCurrentPassword ? 'text' : 'password'} disabled value={user.password} />
-                    <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowCurrentPassword(!showCurrentPassword)}>
-                      {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">New Password</Label>
-                   <div className="relative">
-                    <Input id="password" type={showNewPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Leave blank to keep current password" />
-                     <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowNewPassword(!showNewPassword)}>
-                      {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="avatar-upload">Change Profile Picture</Label>
-                    <Input id="avatar-upload" type="file" onChange={handleFileChange} accept=".jpg, .jpeg, .png" />
-                </div>
-                </CardContent>
-                <CardFooter>
-                <Button type="submit">Save Changes</Button>
-                </CardFooter>
-            </Card>
-          </form>
-        </div>
-      </div>
       
-       {can.manage_signatures && (
-        <form onSubmit={handleSignatureSave}>
+      <form onSubmit={handleProfileSave}>
+        <div className="grid gap-8 md:grid-cols-3">
+          <div className="md:col-span-1 space-y-8">
             <Card>
+              <CardHeader className="items-center text-center">
+                <Avatar className="h-24 w-24 mb-4">
+                  <AvatarImage src={avatar} alt={name} data-ai-hint="user avatar" />
+                  <AvatarFallback>{name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <CardTitle>{name}</CardTitle>
+                <p className="text-sm text-muted-foreground">{user.role}</p>
+              </CardHeader>
+            </Card>
+            {can.manage_user_lock_status && <UnlockRequests />}
+          </div>
+          <div className="md:col-span-2">
+              <Card>
+                  <CardHeader>
+                  <CardTitle>Update Profile</CardTitle>
+                  <CardDescription>Edit your personal information.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                      <Label htmlFor="name">Full Name</Label>
+                      <Input id="name" value={name} onChange={e => setName(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="current-password">Current Password</Label>
+                    <div className="relative">
+                      <Input id="current-password" type={showCurrentPassword ? 'text' : 'password'} disabled value={user.password} />
+                      <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowCurrentPassword(!showCurrentPassword)}>
+                        {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">New Password</Label>
+                    <div className="relative">
+                      <Input id="password" type={showNewPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Leave blank to keep current password" />
+                      <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowNewPassword(!showNewPassword)}>
+                        {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="avatar-upload">Change Profile Picture</Label>
+                      <Input id="avatar-upload" type="file" onChange={handleFileChange} accept=".jpg, .jpeg, .png" />
+                  </div>
+                  </CardContent>
+              </Card>
+          </div>
+        </div>
+        
+        {can.manage_signatures && (
+            <Card className="mt-8">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2"><Signature /> Signature</CardTitle>
                     <CardDescription>Upload or update your digital signature. This will be used in reports you generate.</CardDescription>
@@ -279,12 +258,13 @@ export default function AccountPage() {
                         <p className="text-xs text-muted-foreground">For best results, upload a PNG with a transparent background.</p>
                     </div>
                 </CardContent>
-                <CardFooter>
-                    <Button type="submit">Save Signature</Button>
-                </CardFooter>
             </Card>
-        </form>
-       )}
+        )}
+
+        <CardFooter className="px-0 pt-6">
+            <Button type="submit">Save All Changes</Button>
+        </CardFooter>
+      </form>
 
       {can.manage_feedback && (
         <Card>
@@ -516,7 +496,3 @@ export default function AccountPage() {
     </div>
   );
 }
-
-    
-
-    
