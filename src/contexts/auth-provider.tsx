@@ -151,21 +151,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   }, [user, setStoredUserId, router, addActivityLog]);
 
-  const updateUser = useCallback((updatedUser: User) => {
-    const { id, ...data } = updatedUser;
-    const dataToSave: any = { ...data };
-    if (dataToSave.supervisorId === 'none' || dataToSave.supervisorId === undefined) {
-      dataToSave.supervisorId = null;
-    }
-    update(ref(rtdb, `users/${id}`), dataToSave);
-    if (user?.id) addActivityLog(user.id, 'User Profile Updated', `Updated details for ${updatedUser.name}`);
-    if (user?.id === updatedUser.id) setUser(updatedUser);
+    const updateUser = useCallback((updatedUser: User) => {
+      if (!updatedUser.id) return;
+
+      const updates: Partial<User> = {
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        supervisorId: updatedUser.supervisorId ?? null,
+        projectIds: updatedUser.projectIds ?? [],
+        avatar: updatedUser.avatar ?? null,
+        signatureUrl: updatedUser.signatureUrl ?? null,
+        status: updatedUser.status,
+      };
+
+      if (updatedUser.password) {
+        updates.password = updatedUser.password;
+      }
+
+      update(ref(rtdb, `users/${updatedUser.id}`), updates);
+
+      if (user?.id === updatedUser.id) {
+          setUser(prevUser => ({...prevUser, ...updates} as User));
+      }
+
+      if (user?.id) {
+          addActivityLog(user.id, 'User Profile Updated');
+      }
   }, [user, addActivityLog]);
   
   const updateProfile = useCallback(async (data: UpdateProfilePayload) => {
     if (!user) return;
   
-    const updatedUser: User = { ...user };
     const updates: Partial<User> = {};
   
     if (data.name && data.name !== user.name) updates.name = data.name;
@@ -177,9 +194,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const avatarUrl = await uploadFile(data.avatarFile, `avatars/${user.id}/${data.avatarFile.name}`);
         updates.avatar = avatarUrl;
       }
+  
       if (data.signatureFile) {
         const signatureUrl = await uploadFile(data.signatureFile, `signatures/${user.id}/${data.signatureFile.name}`);
         updates.signatureUrl = signatureUrl;
+        // Direct write to ensure persistence
+        await update(ref(rtdb, `users/${user.id}`), { signatureUrl });
       }
   
       if (Object.keys(updates).length > 0) {
