@@ -78,17 +78,17 @@ const VehicleDataRow = ({ vehicle, currentMonth, slNo }: { vehicle: any, current
     return (
         <>
             <div className="flex justify-between items-center p-2 border-b">
-                <div className="flex items-center gap-4 flex-1 min-w-0">
+                <div className="flex items-baseline gap-4 flex-1">
                     <span className="font-semibold text-sm w-8 text-center">{slNo}.</span>
-                    <div className="flex items-baseline gap-2 flex-1 truncate">
+                    <div className="flex items-baseline gap-2 w-48">
                         <p className="font-semibold truncate">{vehicle.vehicleNumber}</p>
-                        <div className="flex-shrink-0">{getStatusBadge()}</div>
+                        {getStatusBadge()}
                     </div>
                 </div>
 
                 <div className="flex-1 flex justify-center items-center text-xs text-muted-foreground gap-6">
                     <div>
-                        <span className="font-semibold">Entered By:</span> {lastUpdatedBy?.name || 'N/A'}
+                        <span className="font-semibold">Updated by:</span> {lastUpdatedBy?.name || 'N/A'}
                         {vehicleRecord?.lastUpdated && <span className="ml-1">({format(parseISO(vehicleRecord.lastUpdated), 'dd-MM-yy, h:mm a')})</span>}
                     </div>
                     <div>
@@ -132,7 +132,7 @@ const VehicleDataRow = ({ vehicle, currentMonth, slNo }: { vehicle: any, current
 
 
 export default function VehicleUsageSheet() {
-    const { vehicles, vehicleUsageRecords } = useAppContext();
+    const { vehicles, vehicleUsageRecords, can } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     
     const getVehicleStatus = (vehicleId: string) => {
