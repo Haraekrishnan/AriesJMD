@@ -153,59 +153,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const updateUser = useCallback((updatedUser: User) => {
       if (!updatedUser.id) return;
+    
+      // Create a clean object with only the fields we want to update.
+      // This prevents accidentally wiping fields that might exist in the DB but not in the local object.
+      const updates: Partial<User> = {};
+      if (updatedUser.name) updates.name = updatedUser.name;
+      if (updatedUser.email) updates.email = updatedUser.email;
+      if (updatedUser.role) updates.role = updatedUser.role;
+      updates.supervisorId = updatedUser.supervisorId ?? null;
+      updates.projectIds = updatedUser.projectIds ?? [];
+      updates.avatar = updatedUser.avatar ?? null;
+      updates.signatureUrl = updatedUser.signatureUrl ?? null;
+      updates.status = updatedUser.status ?? 'active';
 
-      const updates: Partial<User> = {
-        name: updatedUser.name,
-        email: updatedUser.email,
-        role: updatedUser.role,
-        supervisorId: updatedUser.supervisorId ?? null,
-        projectIds: updatedUser.projectIds ?? [],
-        avatar: updatedUser.avatar ?? null,
-        signatureUrl: updatedUser.signatureUrl ?? null,
-        status: updatedUser.status,
-      };
-
+      // Only include password if it's explicitly being changed.
       if (updatedUser.password) {
         updates.password = updatedUser.password;
       }
-
+    
       update(ref(rtdb, `users/${updatedUser.id}`), updates);
-
+    
+      // If the currently logged-in user is the one being updated, update the local state.
       if (user?.id === updatedUser.id) {
-          setUser(prevUser => ({...prevUser, ...updates} as User));
+          setUser(prevUser => ({...prevUser!, ...updatedUser}));
       }
-
+    
       if (user?.id) {
           addActivityLog(user.id, 'User Profile Updated');
       }
-  }, [user, addActivityLog]);
+    }, [user, addActivityLog]);
   
   const updateProfile = useCallback(async (data: UpdateProfilePayload) => {
     if (!user) return;
   
-    const updates: Partial<User> = {};
+    const updatedUser = { ...user };
   
-    if (data.name && data.name !== user.name) updates.name = data.name;
-    if (data.email && data.email !== user.email) updates.email = data.email;
-    if (data.password) updates.password = data.password;
+    if (data.name) updatedUser.name = data.name;
+    if (data.email) updatedUser.email = data.email;
+    if (data.password) updatedUser.password = data.password;
   
     try {
       if (data.avatarFile) {
         const avatarUrl = await uploadFile(data.avatarFile, `avatars/${user.id}/${data.avatarFile.name}`);
-        updates.avatar = avatarUrl;
+        updatedUser.avatar = avatarUrl;
       }
   
       if (data.signatureFile) {
         const signatureUrl = await uploadFile(data.signatureFile, `signatures/${user.id}/${data.signatureFile.name}`);
-        updates.signatureUrl = signatureUrl;
-        // Direct write to ensure persistence
-        await update(ref(rtdb, `users/${user.id}`), { signatureUrl });
+        updatedUser.signatureUrl = signatureUrl;
       }
-  
-      if (Object.keys(updates).length > 0) {
-        const finalUserData = { ...user, ...updates };
-        updateUser(finalUserData);
-      }
+      
+      updateUser(updatedUser);
+      
     } catch (error) {
       console.error("Profile update failed:", error);
       toast({ variant: "destructive", title: "Update Failed", description: "Could not save all changes." });
