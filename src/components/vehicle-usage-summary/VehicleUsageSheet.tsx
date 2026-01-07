@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -79,18 +80,16 @@ const VehicleDataRow = ({ vehicle, currentMonth, slNo }: { vehicle: any, current
             <div className="flex justify-between items-center p-2 border-b">
                 <div className="flex items-center gap-4 flex-1 min-w-0">
                     <span className="font-semibold text-sm w-8 text-center">{slNo}.</span>
-                    <div className="flex-1 truncate">
+                    <div className="flex items-center gap-2 flex-1 truncate">
                         <p className="font-semibold truncate">{vehicle.vehicleNumber}</p>
+                         {getStatusBadge()}
                     </div>
-                </div>
-
-                <div className="flex-1 flex justify-center items-center gap-2">
-                    {getStatusBadge()}
                 </div>
 
                 <div className="flex-1 flex justify-center items-center text-xs text-muted-foreground gap-6">
                     <div>
                         <span className="font-semibold">Entered By:</span> {lastUpdatedBy?.name || 'N/A'}
+                        {vehicleRecord?.lastUpdated && <span className="ml-1">({format(parseISO(vehicleRecord.lastUpdated), 'dd-MM-yy, h:mm a')})</span>}
                     </div>
                     <div>
                         <span className="font-semibold">Verified By:</span> {vehicleRecord?.verifiedBy?.name || 'N/A'}
@@ -134,7 +133,7 @@ const VehicleDataRow = ({ vehicle, currentMonth, slNo }: { vehicle: any, current
 
 export default function VehicleUsageSheet() {
     const { vehicles, vehicleUsageRecords } = useAppContext();
-    const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date(2026,0,1)));
+    const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     
     const getVehicleStatus = (vehicleId: string) => {
         const record = vehicleUsageRecords?.[format(currentMonth, 'yyyy-MM')];
@@ -150,7 +149,7 @@ export default function VehicleUsageSheet() {
                 return { label: 'On Going', color: 'bg-yellow-500' };
             }
         }
-        return { label: 'Not Yet Started', color: 'bg-gray-400' };
+        return { label: 'Not Yet Started', color: 'bg-red-500' };
     };
     
 
