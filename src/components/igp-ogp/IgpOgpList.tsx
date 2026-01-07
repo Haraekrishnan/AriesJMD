@@ -74,10 +74,20 @@ export default function IgpOgpList({ records = [] }: IgpOgpListProps) {
     }, [records]);
 
     const filteredRecords = useMemo(() => {
-        return groupedByMrn.filter(group => 
-            group.mrnNumber.toLowerCase().includes(searchTerm.toLowerCase())
-        ).sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime());
-    }, [groupedByMrn, searchTerm]);
+        if (!searchTerm) {
+          return groupedByMrn.sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime());
+        }
+      
+        const lowercasedTerm = searchTerm.toLowerCase();
+      
+        return groupedByMrn
+          .filter(group => {
+            const mrnMatch = group.mrnNumber.toLowerCase().includes(lowercasedTerm);
+            const itemMatch = group.summary.some(item => item.itemName?.toLowerCase().includes(lowercasedTerm));
+            return mrnMatch || itemMatch;
+          })
+          .sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime());
+      }, [groupedByMrn, searchTerm]);
     
     const handleDelete = (mrn: string) => {
         deleteIgpOgpRecord(mrn);
@@ -92,7 +102,7 @@ export default function IgpOgpList({ records = [] }: IgpOgpListProps) {
         <div className="space-y-4">
             <div className="max-w-sm">
                 <Input 
-                    placeholder="Search by MRN Number..."
+                    placeholder="Search by MRN or Item Name..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
