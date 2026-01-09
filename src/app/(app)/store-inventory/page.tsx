@@ -168,8 +168,14 @@ export default function StoreInventoryPage() {
         const now = new Date();
         const thirtyDaysFromNow = addDays(now, 30);
         const notifications: { message: string, item: InventoryItem }[] = [];
+        
+        let userInventoryItems = inventoryItems;
+        if (user && !can.manage_inventory) {
+            const userProjectIds = new Set(user.projectIds);
+            userInventoryItems = inventoryItems.filter(item => item.projectId && userProjectIds.has(item.projectId));
+        }
 
-        inventoryItems.forEach(item => {
+        userInventoryItems.forEach(item => {
             if (item.category === 'Daily Consumable' || item.category === 'Job Consumable') return;
             if (item.inspectionDueDate) {
                 const inspectionDueDate = parseISO(item.inspectionDueDate);
@@ -190,7 +196,7 @@ export default function StoreInventoryPage() {
         });
 
         return notifications;
-    }, [inventoryItems]);
+    }, [inventoryItems, user, can.manage_inventory]);
 
     return (
         <div className="space-y-8">
@@ -246,7 +252,7 @@ export default function StoreInventoryPage() {
                 </AccordionItem>
             </Accordion>
 
-            {canManageInventory && inventoryNotifications.length > 0 && (
+            {inventoryNotifications.length > 0 && (
                  <Card>
                     <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                         <div>
@@ -371,6 +377,7 @@ export default function StoreInventoryPage() {
         </div>
     );
 }
+
 
 
 

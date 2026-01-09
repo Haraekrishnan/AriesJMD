@@ -257,14 +257,19 @@ export default function EquipmentStatusPage() {
     }, [myFulfilledEquipmentCertRequests, markFulfilledRequestsAsViewed]);
 
     const expiringMachines = useMemo(() => {
-        if (!can.manage_equipment_status) return [];
         const thirtyDaysFromNow = addDays(new Date(), 30);
-        const allRelevantMachines = [...utMachines, ...dftMachines, ...anemometers];
+        let relevantMachines = [...utMachines, ...dftMachines, ...anemometers];
+
+        // Filter machines based on user's projects if they don't have full view permissions
+        if (user && !can.manage_equipment_status) {
+            const userProjectIds = new Set(user.projectIds);
+            relevantMachines = relevantMachines.filter(m => m.projectId && userProjectIds.has(m.projectId));
+        }
         
-        return allRelevantMachines
+        return relevantMachines
             .map(m => ({ machine: m, calibrationDueDate: m.calibrationDueDate ? new Date(m.calibrationDueDate) : null }))
             .filter(item => item.calibrationDueDate && isBefore(item.calibrationDueDate, thirtyDaysFromNow));
-    }, [utMachines, dftMachines, anemometers, can.manage_equipment_status]);
+    }, [utMachines, dftMachines, anemometers, user, can.manage_equipment_status]);
 
     // UT Handlers
     const handleEditUT = (machine: UTMachine) => { setSelectedUTMachine(machine); setIsEditUTMachineOpen(true); };
