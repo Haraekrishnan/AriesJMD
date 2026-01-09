@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useState, useEffect } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -38,7 +37,7 @@ const statusOptions: {value: InventoryItemStatus | 'Inspection Expired' | 'TP Ex
 ];
 
 export default function InventoryFilters({ onApplyFilters }: InventoryFiltersProps) {
-    const { projects, inventoryItems } = useAppContext();
+    const { projects, inventoryItems, user, can } = useAppContext();
     const [name, setName] = useState('all');
     const [status, setStatus] = useState('all');
     const [projectId, setProjectId] = useState('all');
@@ -59,6 +58,8 @@ export default function InventoryFilters({ onApplyFilters }: InventoryFiltersPro
         setSearch('');
         setUpdatedDateRange(undefined);
     };
+    
+    const canViewAllProjects = can.manage_inventory || user?.role === 'Admin';
 
     return (
         <div className="flex flex-wrap gap-4 items-center">
@@ -70,7 +71,20 @@ export default function InventoryFilters({ onApplyFilters }: InventoryFiltersPro
             />
             <Select value={name} onValueChange={setName}><SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filter by item..." /></SelectTrigger><SelectContent><SelectItem value="all">All Items</SelectItem>{itemNames.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent></Select>
             <Select value={status} onValueChange={setStatus}><SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filter by status..." /></SelectTrigger><SelectContent><SelectItem value="all">All Statuses</SelectItem>{statusOptions.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent></Select>
-            <Select value={projectId} onValueChange={setProjectId}><SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filter by project..." /></SelectTrigger><SelectContent><SelectItem value="all">All Projects</SelectItem>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
+            <Select value={projectId} onValueChange={setProjectId}>
+                <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filter by project..." /></SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Projects</SelectItem>
+                    {projects.map(p => {
+                        const isAllowed = canViewAllProjects || user?.projectIds?.includes(p.id);
+                        return (
+                            <SelectItem key={p.id} value={p.id} disabled={!isAllowed} className={!isAllowed ? 'text-muted-foreground' : ''}>
+                                {p.name}
+                            </SelectItem>
+                        );
+                    })}
+                </SelectContent>
+            </Select>
             <DateRangePicker placeholder="Filter by updated date..." date={updatedDateRange} onDateChange={setUpdatedDateRange} />
 
             <div className="flex gap-2 ml-auto">

@@ -20,7 +20,7 @@ interface EquipmentFiltersProps {
 const statusOptions = ["In Service", "Idle", "Damaged", "Out of Service", "Moved to another project", "Active", "Inactive", "Returned"];
 
 export default function EquipmentFilters({ onFiltersChange }: EquipmentFiltersProps) {
-    const { projects } = useAppContext();
+    const { projects, user, can } = useAppContext();
     const [filters, setFilters] = useState<EquipmentFilterValues>({
         status: 'all',
         projectId: 'all',
@@ -43,6 +43,8 @@ export default function EquipmentFilters({ onFiltersChange }: EquipmentFiltersPr
     
     const uniqueStatusOptions = Array.from(new Set(statusOptions));
 
+    const canViewAllProjects = can.manage_equipment_status || user?.role === 'Admin' || user?.role === 'NDT Supervisor';
+
     return (
         <Card>
             <CardHeader>
@@ -61,7 +63,14 @@ export default function EquipmentFilters({ onFiltersChange }: EquipmentFiltersPr
                     <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filter by project..." /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Projects</SelectItem>
-                        {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                        {projects.map(p => {
+                            const isAllowed = canViewAllProjects || user?.projectIds?.includes(p.id);
+                            return (
+                                <SelectItem key={p.id} value={p.id} disabled={!isAllowed} className={!isAllowed ? 'text-muted-foreground' : ''}>
+                                    {p.name}
+                                </SelectItem>
+                            );
+                        })}
                     </SelectContent>
                 </Select>
                 <Button variant="ghost" onClick={handleClear}><X className="mr-2 h-4 w-4" /> Clear Filters</Button>
@@ -69,4 +78,3 @@ export default function EquipmentFilters({ onFiltersChange }: EquipmentFiltersPr
         </Card>
     );
 }
-
