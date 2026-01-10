@@ -12,19 +12,14 @@ import type { InventoryTransferRequest } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 interface TransferReportDownloadsProps {
-  requests: InventoryTransferRequest[];
+  request: InventoryTransferRequest;
 }
 
-export default function TransferReportDownloads({ requests }: TransferReportDownloadsProps) {
+export default function TransferReportDownloads({ request }: TransferReportDownloadsProps) {
   const { projects, users } = useAppContext();
   const { toast } = useToast();
 
   const handleExportExcel = async () => {
-    if (requests.length === 0) {
-      toast({ variant: 'destructive', title: 'No Data to Export' });
-      return;
-    }
-
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Transfer Report');
     
@@ -41,52 +36,48 @@ export default function TransferReportDownloads({ requests }: TransferReportDown
         { header: 'Approved By', key: 'approver', width: 20 },
     ];
     
-    requests.forEach(req => {
-        const fromProject = projects.find(p => p.id === req.fromProjectId)?.name || 'N/A';
-        const toProject = projects.find(p => p.id === req.toProjectId)?.name || 'N/A';
-        const requester = users.find(u => u.id === req.requesterId)?.name || 'N/A';
-        const approver = req.approverId ? users.find(u => u.id === req.approverId)?.name : 'N/A';
+    const fromProject = projects.find(p => p.id === request.fromProjectId)?.name || 'N/A';
+    const toProject = projects.find(p => p.id === request.toProjectId)?.name || 'N/A';
+    const requester = users.find(u => u.id === request.requesterId)?.name || 'N/A';
+    const approver = request.approverId ? users.find(u => u.id === request.approverId)?.name : 'N/A';
 
-        req.items.forEach(item => {
-            worksheet.addRow({
-                requestDate: format(parseISO(req.requestDate), 'dd-MM-yyyy'),
-                fromProject,
-                toProject,
-                reason: req.reason,
-                itemName: item.name,
-                serialNumber: item.serialNumber,
-                ariesId: item.ariesId || 'N/A',
-                status: req.status,
-                requester,
-                approver,
-            });
+    request.items.forEach(item => {
+        worksheet.addRow({
+            requestDate: format(parseISO(request.requestDate), 'dd-MM-yyyy'),
+            fromProject,
+            toProject,
+            reason: request.reason,
+            itemName: item.name,
+            serialNumber: item.serialNumber,
+            ariesId: item.ariesId || 'N/A',
+            status: request.status,
+            requester,
+            approver,
         });
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), 'Inventory_Transfer_Report.xlsx');
+    saveAs(new Blob([buffer]), `Transfer_${request.id.slice(-6)}.xlsx`);
   };
 
   const handleExportPdf = async () => {
     const doc = new jsPDF({ orientation: 'landscape' });
-    doc.text('Inventory Transfer Report', 14, 15);
+    doc.text(`Inventory Transfer Report (ID: ...${request.id.slice(-6)})`, 14, 15);
     
-    const body = requests.flatMap(req => {
-        const fromProject = projects.find(p => p.id === req.fromProjectId)?.name || 'N/A';
-        const toProject = projects.find(p => p.id === req.toProjectId)?.name || 'N/A';
-        const requester = users.find(u => u.id === req.requesterId)?.name || 'N/A';
-        
-        return req.items.map(item => [
-            format(parseISO(req.requestDate), 'dd-MM-yy'),
-            fromProject,
-            toProject,
-            req.reason,
-            item.name,
-            item.serialNumber,
-            req.status,
-            requester,
-        ]);
-    });
+    const fromProject = projects.find(p => p.id === request.fromProjectId)?.name || 'N/A';
+    const toProject = projects.find(p => p.id === request.toProjectId)?.name || 'N/A';
+    const requester = users.find(u => u.id === request.requesterId)?.name || 'N/A';
+    
+    const body = request.items.map(item => [
+        format(parseISO(request.requestDate), 'dd-MM-yy'),
+        fromProject,
+        toProject,
+        request.reason,
+        item.name,
+        item.serialNumber,
+        request.status,
+        requester,
+    ]);
 
     (doc as any).autoTable({
         head: [['Date', 'From', 'To', 'Reason', 'Item', 'Serial No.', 'Status', 'Requested By']],
@@ -94,7 +85,7 @@ export default function TransferReportDownloads({ requests }: TransferReportDown
         startY: 20,
     });
     
-    doc.save('Inventory_Transfer_Report.pdf');
+    doc.save(`Transfer_${request.id.slice(-6)}.pdf`);
   };
 
   return (

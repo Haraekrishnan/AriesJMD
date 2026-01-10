@@ -128,7 +128,6 @@ export default function PendingTransfers() {
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <h4 className="font-semibold text-sm">Awaiting Store Approval</h4>
-              <TransferReportDownloads requests={forApproval} />
             </div>
              <Accordion type="multiple" className="w-full space-y-2">
                 {forApproval.map(req => {
@@ -203,7 +202,10 @@ export default function PendingTransfers() {
                         </div>
                         <AccordionContent className="p-4 pt-0">
                              <div className="text-xs space-y-2 mt-2 pt-2 border-t">
-                                <p><strong>Reason:</strong> {req.reason} {requestedBy ? ` by ${requestedBy.name}` : ''}</p>
+                                <div className="flex justify-between items-center">
+                                    <p><strong>Reason:</strong> {req.reason} {requestedBy ? ` by ${requestedBy.name}` : ''}</p>
+                                    <TransferReportDownloads request={req} />
+                                </div>
                                 {req.remarks && <p><strong>Remarks:</strong> {req.remarks}</p>}
                                 <div className="pt-1">
                                     <p className="font-semibold">Item Summary:</p>
@@ -290,7 +292,6 @@ export default function PendingTransfers() {
                       <AccordionTrigger className="p-0 hover:no-underline flex-1">
                           <span className="font-semibold text-lg">Transfer History</span>
                       </AccordionTrigger>
-                      <TransferReportDownloads requests={allCompletedRequests} />
                   </div>
               <AccordionContent className="p-2 space-y-2">
                 {allCompletedRequests.map(req => {
@@ -327,6 +328,7 @@ export default function PendingTransfers() {
                                         </div>
                                     </AccordionTrigger>
                                     <div className="flex items-center gap-2">
+                                        <TransferReportDownloads request={req} />
                                         {showTpOption && canCreateTpList && (
                                             <Button size="xs" variant="outline" onClick={() => handleCreateTpList(req)}>
                                                 <FilePlus className="mr-2 h-3 w-3" /> Create TP List
