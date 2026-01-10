@@ -1,6 +1,6 @@
 
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -79,7 +79,7 @@ export default function PendingTransfers() {
       return allowedRoles.includes(user.role);
   }, [user]);
 
-  const handleCreateTpList = (request: InventoryTransferRequest) => {
+  const handleCreateTpList = useCallback((request: InventoryTransferRequest) => {
     const listData = {
       name: `From Transfer ${request.id.slice(-6)}`,
       date: new Date().toISOString().split('T')[0],
@@ -93,7 +93,7 @@ export default function PendingTransfers() {
       })),
     };
     setEditingTpList(listData);
-  };
+  }, []);
   
   const handleReject = () => {
     if (rejectionRequestId && comment) {
@@ -285,13 +285,13 @@ export default function PendingTransfers() {
 
         {allCompletedRequests.length > 0 && (
           <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="completed-transfers" className="border rounded-md">
-              <div className="flex items-center justify-between p-4 bg-muted/50">
-                <AccordionTrigger className="p-0 hover:no-underline flex-1">
-                  <span className="font-semibold text-lg">Transfer History</span>
-                </AccordionTrigger>
-                <TransferReportDownloads requests={allCompletedRequests} />
-              </div>
+              <AccordionItem value="completed-transfers" className="border-none">
+                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-md">
+                      <AccordionTrigger className="p-0 hover:no-underline flex-1">
+                          <span className="font-semibold text-lg">Transfer History</span>
+                      </AccordionTrigger>
+                      <TransferReportDownloads requests={allCompletedRequests} />
+                  </div>
               <AccordionContent className="p-2 space-y-2">
                 {allCompletedRequests.map(req => {
                     const fromProject = projects.find(p => p.id === req.fromProjectId);
@@ -398,4 +398,5 @@ export default function PendingTransfers() {
       />
     )}
     </>
-    
+  );
+}
