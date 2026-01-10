@@ -19,7 +19,7 @@ import GenerateTpCertDialog from '../inventory/GenerateTpCertDialog';
 import TransferReportDownloads from './TransferReportDownloads';
 
 export default function PendingTransfers() {
-  const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, deleteInventoryTransferRequest, addTpCertList, disputeInventoryTransfer, acknowledgeTransfer, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims } = useAppContext();
+  const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, deleteInventoryTransferRequest, addTpCertList, disputeInventoryTransfer, acknowledgeTransfer, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, resolveInternalRequestDispute } = useAppContext();
   const { toast } = useToast();
   const [rejectionRequestId, setRejectionRequestId] = useState<string | null>(null);
   const [disputeRequestId, setDisputeRequestId] = useState<string | null>(null);
@@ -286,12 +286,12 @@ export default function PendingTransfers() {
         {allCompletedRequests.length > 0 && (
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="completed-transfers" className="border rounded-md">
-              <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline">
-                 <div className="flex justify-between w-full font-semibold text-sm pr-2">
-                    <span>Transfer History</span>
-                    <TransferReportDownloads requests={allCompletedRequests} />
-                 </div>
-              </AccordionTrigger>
+              <div className="flex items-center justify-between p-4 bg-muted/50">
+                <AccordionTrigger className="p-0 hover:no-underline flex-1">
+                  <span className="font-semibold text-lg">Transfer History</span>
+                </AccordionTrigger>
+                <TransferReportDownloads requests={allCompletedRequests} />
+              </div>
               <AccordionContent className="p-2 space-y-2">
                 {allCompletedRequests.map(req => {
                     const fromProject = projects.find(p => p.id === req.fromProjectId);
@@ -338,7 +338,10 @@ export default function PendingTransfers() {
                                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4"/></Button>
                                                 </AlertDialogTrigger>
                                                 <AlertDialogContent>
-                                                    <AlertDialogHeader><AlertDialogTitle>Delete this transfer record?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Delete this transfer record?</AlertDialogTitle>
+                                                        <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                                                    </AlertDialogHeader>
                                                     <AlertDialogFooter>
                                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                                                         <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
@@ -395,5 +398,4 @@ export default function PendingTransfers() {
       />
     )}
     </>
-  );
-}
+    
