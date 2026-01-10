@@ -80,13 +80,6 @@ type InventoryContextType = {
   digitalCameras: DigitalCamera[];
   anemometers: Anemometer[];
   otherEquipments: OtherEquipment[];
-  pneumaticDrillingMachines: PneumaticDrillingMachine[];
-  pneumaticAngleGrinders: PneumaticAngleGrinder[];
-  wiredDrillingMachines: WiredDrillingMachine[];
-  cordlessDrillingMachines: CordlessDrillingMachine[];
-  wiredAngleGrinders: WiredAngleGrinder[];
-  cordlessAngleGrinders: CordlessAngleGrinder[];
-  cordlessReciprocatingSaws: CordlessReciprocatingSaw[];
   machineLogs: MachineLog[];
   certificateRequests: CertificateRequest[];
   internalRequests: InternalRequest[];
@@ -154,35 +147,7 @@ type InventoryContextType = {
   addOtherEquipment: (equipment: Omit<OtherEquipment, 'id'>) => void;
   updateOtherEquipment: (equipment: OtherEquipment) => void;
   deleteOtherEquipment: (equipmentId: string) => void;
-
-  addPneumaticDrillingMachine: (item: Omit<PneumaticDrillingMachine, 'id'>) => void;
-  updatePneumaticDrillingMachine: (item: PneumaticDrillingMachine) => void;
-  deletePneumaticDrillingMachine: (itemId: string) => void;
-
-  addPneumaticAngleGrinder: (item: Omit<PneumaticAngleGrinder, 'id'>) => void;
-  updatePneumaticAngleGrinder: (item: PneumaticAngleGrinder) => void;
-  deletePneumaticAngleGrinder: (itemId: string) => void;
-
-  addWiredDrillingMachine: (item: Omit<WiredDrillingMachine, 'id'>) => void;
-  updateWiredDrillingMachine: (item: WiredDrillingMachine) => void;
-  deleteWiredDrillingMachine: (itemId: string) => void;
   
-  addCordlessDrillingMachine: (item: Omit<CordlessDrillingMachine, 'id'>) => void;
-  updateCordlessDrillingMachine: (item: CordlessDrillingMachine) => void;
-  deleteCordlessDrillingMachine: (itemId: string) => void;
-
-  addWiredAngleGrinder: (item: Omit<WiredAngleGrinder, 'id'>) => void;
-  updateWiredAngleGrinder: (item: WiredAngleGrinder) => void;
-  deleteWiredAngleGrinder: (itemId: string) => void;
-
-  addCordlessAngleGrinder: (item: Omit<CordlessAngleGrinder, 'id'>) => void;
-  updateCordlessAngleGrinder: (item: CordlessAngleGrinder) => void;
-  deleteCordlessAngleGrinder: (itemId: string) => void;
-  
-  addCordlessReciprocatingSaw: (item: Omit<CordlessReciprocatingSaw, 'id'>) => void;
-  updateCordlessReciprocatingSaw: (item: CordlessReciprocatingSaw) => void;
-  deleteCordlessReciprocatingSaw: (itemId: string) => void;
-
   addMachineLog: (log: Omit<MachineLog, 'id'|'machineId'|'loggedByUserId'>, machineId: string) => void;
   deleteMachineLog: (logId: string) => void;
   getMachineLogs: (machineId: string) => MachineLog[];
@@ -193,12 +158,12 @@ type InventoryContextType = {
   addInternalRequestComment: (requestId: string, commentText: string, notify?: boolean, subject?: string) => void;
   updateInternalRequestStatus: (requestId: string, status: InternalRequestStatus) => void;
   updateInternalRequestItemStatus: (requestId: string, itemId: string, status: InternalRequestItemStatus, comment?: string) => void;
-  updateInternalRequestItem: (requestId: string, updatedItem: InternalRequestItem, originalItem: InternalRequestItem) => void;
+  updateInternalRequestItem: (requestId: string, updatedItem: InternalRequestItem, originalItem: InternalRequestItem, reason?: string) => void;
   markInternalRequestAsViewed: (requestId: string) => void;
   acknowledgeInternalRequest: (requestId: string) => void;
 
   addPpeRequest: (request: Omit<PpeRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => void;
-  updatePpeRequest: (request: PpeRequest) => void;
+  updatePpeRequest: (request: PpeRequest, reason?: string) => void;
   updatePpeRequestStatus: (requestId: string, status: PpeRequestStatus, comment: string) => void;
   addPpeRequestComment: (requestId: string, commentText: string, notify?: boolean) => void;
   resolvePpeDispute: (requestId: string, resolution: 'reissue' | 'reverse', comment: string) => void;
@@ -270,16 +235,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const [digitalCamerasById, setDigitalCamerasById] = useState<Record<string, DigitalCamera>>({});
     const [anemometersById, setAnemometersById] = useState<Record<string, Anemometer>>({});
     const [otherEquipmentsById, setOtherEquipmentsById] = useState<Record<string, OtherEquipment>>({});
-    
-    // New power tools
-    const [pneumaticDrillingMachinesById, setPneumaticDrillingMachinesById] = useState<Record<string, PneumaticDrillingMachine>>({});
-    const [pneumaticAngleGrindersById, setPneumaticAngleGrindersById] = useState<Record<string, PneumaticAngleGrinder>>({});
-    const [wiredDrillingMachinesById, setWiredDrillingMachinesById] = useState<Record<string, WiredDrillingMachine>>({});
-    const [cordlessDrillingMachinesById, setCordlessDrillingMachinesById] = useState<Record<string, CordlessDrillingMachine>>({});
-    const [wiredAngleGrindersById, setWiredAngleGrindersById] = useState<Record<string, WiredAngleGrinder>>({});
-    const [cordlessAngleGrindersById, setCordlessAngleGrindersById] = useState<Record<string, CordlessAngleGrinder>>({});
-    const [cordlessReciprocatingSawsById, setCordlessReciprocatingSawsById] = useState<Record<string, CordlessReciprocatingSaw>>({});
-    
     const [machineLogsById, setMachineLogsById] = useState<Record<string, MachineLog>>({});
     const [certificateRequestsById, setCertificateRequestsById] = useState<Record<string, CertificateRequest>>({});
     const [internalRequestsById, setInternalRequestsById] = useState<Record<string, InternalRequest>>({});
@@ -302,17 +257,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const digitalCameras = useMemo(() => Object.values(digitalCamerasById), [digitalCamerasById]);
     const anemometers = useMemo(() => Object.values(anemometersById), [anemometersById]);
     const otherEquipments = useMemo(() => Object.values(otherEquipmentsById), [otherEquipmentsById]);
-    
-    // New power tools
-    const pneumaticDrillingMachines = useMemo(() => Object.values(pneumaticDrillingMachinesById), [pneumaticDrillingMachinesById]);
-    const pneumaticAngleGrinders = useMemo(() => Object.values(pneumaticAngleGrindersById), [pneumaticAngleGrindersById]);
-    const wiredDrillingMachines = useMemo(() => Object.values(wiredDrillingMachinesById), [wiredDrillingMachinesById]);
-    const cordlessDrillingMachines = useMemo(() => Object.values(cordlessDrillingMachinesById), [cordlessDrillingMachinesById]);
-    const wiredAngleGrinders = useMemo(() => Object.values(wiredAngleGrindersById), [wiredAngleGrindersById]);
-    const cordlessAngleGrinders = useMemo(() => Object.values(cordlessAngleGrindersById), [cordlessAngleGrindersById]);
-    const cordlessReciprocatingSaws = useMemo(() => Object.values(cordlessReciprocatingSawsById), [cordlessReciprocatingSawsById]);
-
-
     const machineLogs = useMemo(() => Object.values(machineLogsById), [machineLogsById]);
     const certificateRequests = useMemo(() => Object.values(certificateRequestsById), [certificateRequestsById]);
     const internalRequests = useMemo(() => Object.values(internalRequestsById), [internalRequestsById]);
@@ -401,33 +345,11 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const newComment: Omit<Comment, 'id'> = { id: newCommentRef.key!, userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
         
         const updates: {[key: string]: any} = {};
-        updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, viewedBy: { [user.id]: true } };
+        updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment };
         updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
         
         update(ref(rtdb), updates);
-
-        if (notify) {
-            const requester = users.find(u => u.id === request.requesterId);
-            if (requester?.email && requester.id !== user.id) {
-                const htmlBody = `
-                    <p>There is an update on your PPE request (ID: #${requestId.slice(-6)}).</p>
-                    <p><strong>From:</strong> ${user.name}</p>
-                    <p><strong>Message:</strong></p>
-                    <div style="padding: 10px; border-left: 3px solid #ccc;">${commentText}</div>
-                    <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/my-requests">View Request</a></p>
-                `;
-                sendNotificationEmail({
-                    to: [requester.email],
-                    subject: `Update on PPE Request #${requestId.slice(-6)}`,
-                    htmlBody,
-                    notificationSettings,
-                    event: 'onInternalRequestUpdate', 
-                    involvedUser: requester,
-                    creatorUser: user
-                });
-            }
-        }
-    }, [user, ppeRequestsById, users, notificationSettings]);
+    }, [user, ppeRequestsById]);
 
     const updatePpeRequestStatus = useCallback((requestId: string, status: PpeRequestStatus, comment: string) => {
         if (!user) return;
@@ -1114,29 +1036,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const deleteOtherEquipment = useCallback((equipmentId: string) => {
         remove(ref(rtdb, `otherEquipments/${equipmentId}`));
     }, []);
-
-    // New power tool functions
-    const addPneumaticDrillingMachine = (item: Omit<PneumaticDrillingMachine, 'id'>) => { const newRef = push(ref(rtdb, 'pneumaticDrillingMachines')); set(newRef, item); };
-    const updatePneumaticDrillingMachine = (item: PneumaticDrillingMachine) => { const { id, ...data } = item; update(ref(rtdb, `pneumaticDrillingMachines/${id}`), data); };
-    const deletePneumaticDrillingMachine = (itemId: string) => { remove(ref(rtdb, `pneumaticDrillingMachines/${itemId}`)); };
-    const addPneumaticAngleGrinder = (item: Omit<PneumaticAngleGrinder, 'id'>) => { const newRef = push(ref(rtdb, 'pneumaticAngleGrinders')); set(newRef, item); };
-    const updatePneumaticAngleGrinder = (item: PneumaticAngleGrinder) => { const { id, ...data } = item; update(ref(rtdb, `pneumaticAngleGrinders/${id}`), data); };
-    const deletePneumaticAngleGrinder = (itemId: string) => { remove(ref(rtdb, `pneumaticAngleGrinders/${itemId}`)); };
-    const addWiredDrillingMachine = (item: Omit<WiredDrillingMachine, 'id'>) => { const newRef = push(ref(rtdb, 'wiredDrillingMachines')); set(newRef, item); };
-    const updateWiredDrillingMachine = (item: WiredDrillingMachine) => { const { id, ...data } = item; update(ref(rtdb, `wiredDrillingMachines/${id}`), data); };
-    const deleteWiredDrillingMachine = (itemId: string) => { remove(ref(rtdb, `wiredDrillingMachines/${itemId}`)); };
-    const addCordlessDrillingMachine = (item: Omit<CordlessDrillingMachine, 'id'>) => { const newRef = push(ref(rtdb, 'cordlessDrillingMachines')); set(newRef, item); };
-    const updateCordlessDrillingMachine = (item: CordlessDrillingMachine) => { const { id, ...data } = item; update(ref(rtdb, `cordlessDrillingMachines/${id}`), data); };
-    const deleteCordlessDrillingMachine = (itemId: string) => { remove(ref(rtdb, `cordlessDrillingMachines/${itemId}`)); };
-    const addWiredAngleGrinder = (item: Omit<WiredAngleGrinder, 'id'>) => { const newRef = push(ref(rtdb, 'wiredAngleGrinders')); set(newRef, item); };
-    const updateWiredAngleGrinder = (item: WiredAngleGrinder) => { const { id, ...data } = item; update(ref(rtdb, `wiredAngleGrinders/${id}`), data); };
-    const deleteWiredAngleGrinder = (itemId: string) => { remove(ref(rtdb, `wiredAngleGrinders/${itemId}`)); };
-    const addCordlessAngleGrinder = (item: Omit<CordlessAngleGrinder, 'id'>) => { const newRef = push(ref(rtdb, 'cordlessAngleGrinders')); set(newRef, item); };
-    const updateCordlessAngleGrinder = (item: CordlessAngleGrinder) => { const { id, ...data } = item; update(ref(rtdb, `cordlessAngleGrinders/${id}`), data); };
-    const deleteCordlessAngleGrinder = (itemId: string) => { remove(ref(rtdb, `cordlessAngleGrinders/${itemId}`)); };
-    const addCordlessReciprocatingSaw = (item: Omit<CordlessReciprocatingSaw, 'id'>) => { const newRef = push(ref(rtdb, 'cordlessReciprocatingSaws')); set(newRef, item); };
-    const updateCordlessReciprocatingSaw = (item: CordlessReciprocatingSaw) => { const { id, ...data } = item; update(ref(rtdb, `cordlessReciprocatingSaws/${id}`), data); };
-    const deleteCordlessReciprocatingSaw = (itemId: string) => { remove(ref(rtdb, `cordlessReciprocatingSaws/${itemId}`)); };
     
     const addMachineLog = useCallback((log: Omit<MachineLog, 'id'|'machineId'|'loggedByUserId'>, machineId: string) => {
         if(!user) return;
@@ -1153,7 +1052,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         return machineLogs.filter(log => log.machineId === machineId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [machineLogs]);
 
-    const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id'|'requesterId'|'date'|'status'|'comments'|'viewedByRequester'>) => {
+    const addInternalRequest = useCallback((requestData: Omit<InternalRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => {
         if (!user) return;
         const newRequestRef = push(ref(rtdb, 'internalRequests'));
         
@@ -1297,39 +1196,52 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
           return request.items.some(item => item.inventoryItemId && consumableItemIds.has(item.inventoryItemId));
       }
     
-      const updateInternalRequestItem = useCallback((requestId: string, updatedItem: InternalRequestItem, originalItem: InternalRequestItem) => {
+      const updateInternalRequestItem = useCallback((requestId: string, updatedItem: InternalRequestItem, originalItem: InternalRequestItem, reason?: string) => {
         if (!user) return;
         const request = internalRequestsById[requestId];
         if (!request) return;
     
-        if (!can.approve_store_requests && request.requesterId !== user.id) return;
+        const canEdit = can.approve_store_requests || user.id === request.requesterId;
+        if (!canEdit) return;
     
         const itemIndex = request.items.findIndex(i => i.id === updatedItem.id);
         if (itemIndex === -1) return;
     
-        let commentParts: string[] = [];
+        const sanitizedItem = { ...updatedItem, inventoryItemId: updatedItem.inventoryItemId || null };
+        update(ref(rtdb, `internalRequests/${requestId}/items/${itemIndex}`), sanitizedItem);
+    
+        const commentParts: string[] = [];
         if (originalItem.description !== updatedItem.description) {
-            commentParts.push(`description from "${originalItem.description}" to "${updatedItem.description}"`);
+            commentParts.push(`Description changed from "${originalItem.description}" to "${updatedItem.description}".`);
         }
         if (originalItem.quantity !== updatedItem.quantity) {
-            commentParts.push(`quantity from ${originalItem.quantity} to ${updatedItem.quantity}`);
+            commentParts.push(`Quantity changed from ${originalItem.quantity} to ${updatedItem.quantity}.`);
+        }
+        if (reason) {
+            commentParts.push(`Reason: ${reason}`);
         }
     
         if (commentParts.length > 0) {
             const commentText = `Item "${originalItem.description}" updated: ${commentParts.join(', ')}.`;
-            addInternalRequestComment(requestId, commentText, true, `Update on Store Request #${requestId.slice(-6)}`);
+            
+            // Add comment and notify if user is not the requester
+            const shouldNotify = user.id !== request.requesterId;
+            addInternalRequestComment(requestId, commentText, shouldNotify, `Update on Store Request #${requestId.slice(-6)}`);
+    
+            // Additionally, send an email for clarity
             const requester = users.find(u => u.id === request.requesterId);
-            if (requester?.email && requester.id !== user.id) {
+            if (requester?.email && shouldNotify) {
+                 const htmlBody = `
+                    <p><strong>${user.name}</strong> updated your store request.</p>
+                    <ul>
+                        ${commentParts.map(c => `<li>${c}</li>`).join('')}
+                    </ul>
+                    <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/my-requests">View Request</a></p>
+                `;
                 sendNotificationEmail({
                     to: [requester.email],
                     subject: `Store Request Updated (#${requestId.slice(-6)})`,
-                    htmlBody: `
-                        <p><strong>${user.name}</strong> updated your store request.</p>
-                        <ul>
-                            ${commentParts.map(c => `<li>${c}</li>`).join('')}
-                        </ul>
-                        <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/my-requests">View Request</a></p>
-                    `,
+                    htmlBody,
                     notificationSettings,
                     event: 'onInternalRequestUpdate',
                     involvedUser: requester,
@@ -1337,10 +1249,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 });
             }
         }
-    
-        const sanitizedItem = { ...updatedItem, inventoryItemId: updatedItem.inventoryItemId || null };
-        update(ref(rtdb, `internalRequests/${requestId}/items/${itemIndex}`), sanitizedItem);
       }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment, users, notificationSettings]);
+      
     
       const markInternalRequestAsViewed = useCallback((requestId: string) => {
         if (!user) return;
@@ -1473,39 +1383,13 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb), updates);
     }, [user, igpOgpRecords]);
     
-    const updatePpeRequest = useCallback((request: PpeRequest) => {
-        if (!user) return;
+    const updatePpeRequest = useCallback((request: PpeRequest, reason?: string) => {
         const { id, ...data } = request;
-        
-        let commentText = `Request details updated by ${user.name}.`;
-        const originalRequest = ppeRequests.find(r => r.id === id);
-        
-        if (originalRequest) {
-            const changes = [];
-            if (originalRequest.quantity !== data.quantity) changes.push(`Quantity changed from ${originalRequest.quantity} to ${data.quantity}`);
-            if (originalRequest.size !== data.size) changes.push(`Size changed from ${originalRequest.size} to ${data.size}`);
-            
-            if (changes.length > 0) {
-                const commentBody = `Item details updated: ${changes.join(', ')}.`;
-                addPpeRequestComment(id, commentBody, true);
-    
-                const requester = users.find(u => u.id === request.requesterId);
-                if (requester?.email && requester.id !== user.id) {
-                    sendNotificationEmail({
-                        to: [requester.email],
-                        subject: `Update on your PPE request #${id.slice(-6)}`,
-                        htmlBody: `<p>${user.name} has updated your PPE request:</p><ul><li>${commentBody}</li></ul>`,
-                        notificationSettings,
-                        event: 'onInternalRequestUpdate',
-                        involvedUser: requester,
-                        creatorUser: user,
-                    });
-                }
-            }
-        }
-
         update(ref(rtdb, `ppeRequests/${id}`), { ...data, attachmentUrl: data.attachmentUrl || null });
-    }, [user, ppeRequests, addPpeRequestComment, users, notificationSettings]);
+        if (reason) {
+            addPpeRequestComment(id, reason, true);
+        }
+    }, [addPpeRequestComment]);
     
     const deletePpeRequest = useCallback((requestId: string) => {
         remove(ref(rtdb, `ppeRequests/${requestId}`));
@@ -1572,7 +1456,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb), updates);
 
         if (comment) {
-            // Placeholder for adding comments to damage reports to damage reports if needed later
+            // Placeholder for adding comments to damage reports if needed later
         }
 
     }, [user, damageReportsById, inventoryItems]);
@@ -1644,13 +1528,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             createDataListener('digitalCameras', setDigitalCamerasById),
             createDataListener('anemometers', setAnemometersById),
             createDataListener('otherEquipments', setOtherEquipmentsById),
-            createDataListener('pneumaticDrillingMachines', setPneumaticDrillingMachinesById),
-            createDataListener('pneumaticAngleGrinders', setPneumaticAngleGrindersById),
-            createDataListener('wiredDrillingMachines', setWiredDrillingMachinesById),
-            createDataListener('cordlessDrillingMachines', setCordlessDrillingMachinesById),
-            createDataListener('wiredAngleGrinders', setWiredAngleGrindersById),
-            createDataListener('cordlessAngleGrinders', setCordlessAngleGrindersById),
-            createDataListener('cordlessReciprocatingSaws', setCordlessReciprocatingSawsById),
             createDataListener('machineLogs', setMachineLogsById),
             createDataListener('certificateRequests', setCertificateRequestsById),
             createDataListener('internalRequests', setInternalRequestsById),
@@ -1667,7 +1544,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const contextValue: InventoryContextType = {
-        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory, directives: [], damageReports,
+        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory, directives: [], damageReports,
         addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, updateInventoryItemGroupByProject, updateMultipleInventoryItems, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
         addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
         addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest,
@@ -1678,7 +1555,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         addDigitalCamera, updateDigitalCamera, deleteDigitalCamera,
         addAnemometer, updateAnemometer, deleteAnemometer,
         addOtherEquipment, updateOtherEquipment, deleteOtherEquipment,
-        addPneumaticDrillingMachine, updatePneumaticDrillingMachine, deletePneumaticDrillingMachine, addPneumaticAngleGrinder, updatePneumaticAngleGrinder, deletePneumaticAngleGrinder, addWiredDrillingMachine, updateWiredDrillingMachine, deleteWiredDrillingMachine, addCordlessDrillingMachine, updateCordlessDrillingMachine, deleteCordlessDrillingMachine, addWiredAngleGrinder, updateWiredAngleGrinder, deleteWiredAngleGrinder, addCordlessAngleGrinder, updateCordlessAngleGrinder, deleteCordlessAngleGrinder, addCordlessReciprocatingSaw, updateCordlessReciprocatingSaw, deleteCordlessReciprocatingSaw,
         addMachineLog, deleteMachineLog, getMachineLogs,
         addInternalRequest, deleteInternalRequest, forceDeleteInternalRequest, addInternalRequestComment, updateInternalRequestStatus, updateInternalRequestItemStatus, updateInternalRequestItem, markInternalRequestAsViewed, acknowledgeInternalRequest,
         addPpeRequest, updatePpeRequest, updatePpeRequestStatus, addPpeRequestComment, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed,

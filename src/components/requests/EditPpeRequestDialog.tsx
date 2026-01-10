@@ -11,12 +11,14 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { ChevronsUpDown, Paperclip, Upload, X } from 'lucide-react';
+import { ChevronsUpDown, Paperclip, Upload, X, AlertCircle } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
 import { useEffect, useState } from 'react';
 import type { PpeRequest } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+
 
 const coverallSizeOptions = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
 
@@ -43,6 +45,9 @@ export default function EditPpeRequestDialog({ isOpen, setIsOpen, request }: Edi
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [isManpowerPopoverOpen, setIsManpowerPopoverOpen] = useState(false);
+  const [isReasonDialogOpen, setIsReasonDialogOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const [formData, setFormData] = useState<PpeRequestFormValues | null>(null);
 
   const form = useForm<PpeRequestFormValues>({
     resolver: zodResolver(ppeRequestSchema),
@@ -107,13 +112,35 @@ export default function EditPpeRequestDialog({ isOpen, setIsOpen, request }: Edi
         toast({ variant: 'destructive', title: 'Upload Error', description: 'An error occurred during upload.' });
     }
   };
+  
+  const handleSaveChanges = (data: PpeRequestFormValues) => {
+    const hasChanged = data.size !== request.size || data.quantity !== request.quantity;
+    if (hasChanged) {
+        setFormData(data);
+        setIsReasonDialogOpen(true);
+    } else {
+        submitUpdate(data);
+    }
+  };
 
-  const onSubmit = (data: PpeRequestFormValues) => {
-    updatePpeRequest({ ...request, ...data });
+  const submitUpdate = (data: PpeRequestFormValues, changeReason?: string) => {
+    updatePpeRequest({ ...request, ...data }, changeReason);
     toast({
       title: 'PPE Request Updated',
     });
     setIsOpen(false);
+  };
+
+  const handleConfirmReason = () => {
+    if (!reason.trim()) {
+        toast({ title: 'Reason is required', variant: 'destructive'});
+        return;
+    }
+    if (formData) {
+        submitUpdate(formData, reason);
+    }
+    setIsReasonDialogOpen(false);
+    setReason('');
   };
   
   const handleOpenChange = (open: boolean) => {
@@ -124,6 +151,7 @@ export default function EditPpeRequestDialog({ isOpen, setIsOpen, request }: Edi
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md flex flex-col h-full sm:h-auto sm:max-h-[90vh]">
         <DialogHeader>
@@ -131,7 +159,7 @@ export default function EditPpeRequestDialog({ isOpen, setIsOpen, request }: Edi
           <DialogDescription>Update the details for this PPE request.</DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto pr-2">
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-1">
+            <form onSubmit={form.handleSubmit(handleSaveChanges)} className="space-y-4 px-1">
               <div className="space-y-2">
                 <Label>Employee</Label>
                 <Controller
@@ -193,41 +221,55 @@ export default function EditPpeRequestDialog({ isOpen, setIsOpen, request }: Edi
                     )}/>
                 </div>
 
-              {requestType === 'Replacement' && (
-                <div className="space-y-2">
-                  <Label>Attach Photo of Damaged Item</Label>
-                  {form.getValues('attachmentUrl') ? (
-                     <div className="flex items-center justify-between p-2 rounded-md border text-sm">
-                        <a href={form.getValues('attachmentUrl')!} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 truncate hover:underline">
-                          <Paperclip className="h-4 w-4"/>
-                          <span className="truncate">Attached Image</span>
-                        </a>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => form.setValue('attachmentUrl', undefined)}>
-                          <X className="h-4 w-4"/>
+                {requestType === 'Replacement' && (
+                  <div className="space-y-2">
+                    <Label>Attach Photo of Damaged Item</Label>
+                    {form.getValues('attachmentUrl') ? (
+                       <div className="flex items-center justify-between p-2 rounded-md border text-sm">
+                          <a href={form.getValues('attachmentUrl')!} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 truncate hover:underline">
+                            <Paperclip className="h-4 w-4"/>
+                            <span className="truncate">Attached Image</span>
+                          </a>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => form.setValue('attachmentUrl', undefined)}>
+                            <X className="h-4 w-4"/>
+                          </Button>
+                       </div>
+                    ) : (
+                      <div className="relative">
+                        <Button asChild variant="outline" size="sm">
+                          <Label htmlFor="file-upload"><Upload className="mr-2 h-4 w-4"/> {isUploading ? 'Uploading...' : 'Upload Image'}</Label>
                         </Button>
-                     </div>
-                  ) : (
-                    <div className="relative">
-                      <Button asChild variant="outline" size="sm">
-                        <Label htmlFor="file-upload"><Upload className="mr-2 h-4 w-4"/> {isUploading ? 'Uploading...' : 'Upload Image'}</Label>
-                      </Button>
-                      <Input id="file-upload" type="file" accept="image/*" onChange={handleFileChange} className="hidden" disabled={isUploading}/>
-                    </div>
-                  )}
+                        <Input id="file-upload" type="file" accept="image/*" onChange={handleFileChange} className="hidden" disabled={isUploading}/>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                <div className="space-y-2">
+                  <Label>Remarks</Label>
+                  <Textarea {...form.register('remarks')} rows={3} placeholder="Reason for replacement, etc."/>
                 </div>
-              )}
-              
-              <div className="space-y-2">
-                <Label>Remarks</Label>
-                <Textarea {...form.register('remarks')} rows={3} placeholder="Reason for replacement, etc."/>
-              </div>
+                <DialogFooter className="pt-4 border-t">
+                  <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+                  <Button type="submit" disabled={isUploading}>Save Changes</Button>
+              </DialogFooter>
             </form>
         </div>
-        <DialogFooter className="mt-auto pt-4 border-t">
-            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={isUploading} onClick={form.handleSubmit(onSubmit)}>Save Changes</Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
+    <AlertDialog open={isReasonDialogOpen} onOpenChange={setIsReasonDialogOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Reason for Change</AlertDialogTitle>
+                <AlertDialogDescription>Please provide a reason for modifying the quantity or size of this request. This will be logged.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <Textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="Type your reason here..." />
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmReason}>Confirm & Save</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

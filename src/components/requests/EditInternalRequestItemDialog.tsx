@@ -16,6 +16,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { Textarea } from '../ui/textarea';
 
 
 const itemSchema = z.object({
@@ -41,6 +43,9 @@ export default function EditInternalRequestItemDialog({ isOpen, setIsOpen, reque
   const { toast } = useToast();
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isReasonDialogOpen, setIsReasonDialogOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const [formData, setFormData] = useState<FormValues | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(itemSchema),
@@ -62,14 +67,36 @@ export default function EditInternalRequestItemDialog({ isOpen, setIsOpen, reque
     if (!searchTerm) return consumableItems;
     return consumableItems.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [searchTerm, consumableItems]);
+  
+  const handleSaveChanges = (data: FormValues) => {
+    const hasChanged = data.description !== item.description || data.quantity !== item.quantity;
+    if (hasChanged) {
+        setFormData(data);
+        setIsReasonDialogOpen(true);
+    } else {
+        submitUpdate(data);
+    }
+  };
 
-  const onSubmit = (data: FormValues) => {
+  const submitUpdate = (data: FormValues, changeReason?: string) => {
     const updatedItem = { ...item, ...data, inventoryItemId: data.inventoryItemId || null };
-    updateInternalRequestItem(request.id, updatedItem as InternalRequestItem, item);
+    updateInternalRequestItem(request.id, updatedItem as InternalRequestItem, item, changeReason);
     toast({ title: 'Item Updated', description: 'The request item has been updated.' });
     setIsOpen(false);
   };
   
+  const handleConfirmReason = () => {
+    if (!reason.trim()) {
+        toast({ title: 'Reason is required', variant: 'destructive' });
+        return;
+    }
+    if (formData) {
+        submitUpdate(formData, reason);
+    }
+    setIsReasonDialogOpen(false);
+    setReason('');
+  };
+
   const handleItemSelect = (itemName: string) => {
     const selectedItem = consumableItems.find(i => i.name === itemName);
     if(selectedItem) {
@@ -83,13 +110,14 @@ export default function EditInternalRequestItemDialog({ isOpen, setIsOpen, reque
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit Request Item</DialogTitle>
           <DialogDescription>Modify the item details for this request.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+        <form onSubmit={form.handleSubmit(handleSaveChanges)} className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="description">Item Description</Label>
             {isConsumable ? (
@@ -154,5 +182,19 @@ export default function EditInternalRequestItemDialog({ isOpen, setIsOpen, reque
         </form>
       </DialogContent>
     </Dialog>
+    <AlertDialog open={isReasonDialogOpen} onOpenChange={setIsReasonDialogOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Reason for Change</AlertDialogTitle>
+                <AlertDialogDescription>Please provide a reason for modifying this item. This will be logged.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <Textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="Type your reason here..." />
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmReason}>Confirm & Save</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
