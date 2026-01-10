@@ -345,11 +345,33 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const newComment: Omit<Comment, 'id'> = { id: newCommentRef.key!, userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
         
         const updates: {[key: string]: any} = {};
-        updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment };
+        updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, viewedBy: { [user.id]: true } };
         updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
         
         update(ref(rtdb), updates);
-    }, [user, ppeRequestsById]);
+
+        if (notify) {
+            const requester = users.find(u => u.id === request.requesterId);
+            if (requester?.email && requester.id !== user.id) {
+                const htmlBody = `
+                    <p>There is an update on your PPE request (ID: #${requestId.slice(-6)}).</p>
+                    <p><strong>From:</strong> ${user.name}</p>
+                    <p><strong>Message:</strong></p>
+                    <div style="padding: 10px; border-left: 3px solid #ccc;">${commentText}</div>
+                    <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/my-requests">View Request</a></p>
+                `;
+                sendNotificationEmail({
+                    to: [requester.email],
+                    subject: `Update on PPE Request #${requestId.slice(-6)}`,
+                    htmlBody,
+                    notificationSettings,
+                    event: 'onInternalRequestUpdate', 
+                    involvedUser: requester,
+                    creatorUser: user
+                });
+            }
+        }
+    }, [user, ppeRequestsById, users, notificationSettings]);
 
     const updatePpeRequestStatus = useCallback((requestId: string, status: PpeRequestStatus, comment: string) => {
         if (!user) return;
@@ -1200,27 +1222,41 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         if (!user) return;
         const request = internalRequestsById[requestId];
         if (!request) return;
-
+    
         if (!can.approve_store_requests && request.requesterId !== user.id) return;
     
         const itemIndex = request.items.findIndex(i => i.id === updatedItem.id);
         if (itemIndex === -1) return;
     
         let commentParts: string[] = [];
-        if(originalItem.description !== updatedItem.description) {
+        if (originalItem.description !== updatedItem.description) {
             commentParts.push(`description from "${originalItem.description}" to "${updatedItem.description}"`);
         }
-        if(originalItem.quantity !== updatedItem.quantity) {
+        if (originalItem.quantity !== updatedItem.quantity) {
             commentParts.push(`quantity from ${originalItem.quantity} to ${updatedItem.quantity}`);
         }
+    
+        if (commentParts.length > 0) {
+            const commentText = `Item "${originalItem.description}" updated: ${commentParts.join(', ')}.`;
+            addInternalRequestComment(requestId, commentText, true);
 
-        if(commentParts.length > 0) {
-            addInternalRequestComment(requestId, `Item "${originalItem.description}" updated: ${commentParts.join(', ')}.`, true);
+            const requester = users.find(u => u.id === request.requesterId);
+            if(requester && requester.email && requester.id !== user.id) {
+                 sendNotificationEmail({
+                    to: [requester.email],
+                    subject: `Update on your request #${requestId.slice(-6)}`,
+                    htmlBody: `<p>${user.name} made changes to your request:</p><ul><li>${commentText}</li></ul>`,
+                    notificationSettings,
+                    event: 'onInternalRequestUpdate',
+                    involvedUser: requester,
+                    creatorUser: user,
+                 });
+            }
         }
-
+    
         const sanitizedItem = { ...updatedItem, inventoryItemId: updatedItem.inventoryItemId || null };
         update(ref(rtdb, `internalRequests/${requestId}/items/${itemIndex}`), sanitizedItem);
-      }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment]);
+      }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment, users, notificationSettings]);
     
       const markInternalRequestAsViewed = useCallback((requestId: string) => {
         if (!user) return;
@@ -1364,14 +1400,28 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             const changes = [];
             if (originalRequest.quantity !== data.quantity) changes.push(`Quantity changed from ${originalRequest.quantity} to ${data.quantity}`);
             if (originalRequest.size !== data.size) changes.push(`Size changed from ${originalRequest.size} to ${data.size}`);
+            
             if (changes.length > 0) {
-                commentText += ` Changes: ${changes.join(', ')}.`;
+                const commentBody = `Item details updated: ${changes.join(', ')}.`;
+                addPpeRequestComment(id, commentBody, true);
+    
+                const requester = users.find(u => u.id === request.requesterId);
+                if (requester?.email && requester.id !== user.id) {
+                    sendNotificationEmail({
+                        to: [requester.email],
+                        subject: `Update on your PPE request #${id.slice(-6)}`,
+                        htmlBody: `<p>${user.name} has updated your PPE request:</p><ul><li>${commentBody}</li></ul>`,
+                        notificationSettings,
+                        event: 'onInternalRequestUpdate',
+                        involvedUser: requester,
+                        creatorUser: user,
+                    });
+                }
             }
         }
 
         update(ref(rtdb, `ppeRequests/${id}`), { ...data, attachmentUrl: data.attachmentUrl || null });
-        addPpeRequestComment(id, commentText);
-    }, [user, ppeRequests, addPpeRequestComment]);
+    }, [user, ppeRequests, addPpeRequestComment, users, notificationSettings]);
     
     const deletePpeRequest = useCallback((requestId: string) => {
         remove(ref(rtdb, `ppeRequests/${requestId}`));
@@ -1438,7 +1488,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb), updates);
 
         if (comment) {
-            // Placeholder for adding comments to damage reports if needed later
+            // Placeholder for adding comments to damage reports to damage reports if needed later
         }
 
     }, [user, damageReportsById, inventoryItems]);
@@ -1562,3 +1612,5 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
+
+    
