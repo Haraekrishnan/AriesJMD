@@ -1206,9 +1206,20 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const itemIndex = request.items.findIndex(i => i.id === updatedItem.id);
         if (itemIndex === -1) return;
     
+        let commentParts: string[] = [];
+        if(originalItem.description !== updatedItem.description) {
+            commentParts.push(`description from "${originalItem.description}" to "${updatedItem.description}"`);
+        }
+        if(originalItem.quantity !== updatedItem.quantity) {
+            commentParts.push(`quantity from ${originalItem.quantity} to ${updatedItem.quantity}`);
+        }
+
+        if(commentParts.length > 0) {
+            addInternalRequestComment(requestId, `Item "${originalItem.description}" updated: ${commentParts.join(', ')}.`, true);
+        }
+
         const sanitizedItem = { ...updatedItem, inventoryItemId: updatedItem.inventoryItemId || null };
         update(ref(rtdb, `internalRequests/${requestId}/items/${itemIndex}`), sanitizedItem);
-        addInternalRequestComment(requestId, `Item "${originalItem.description}" updated to "${updatedItem.description}" (Qty: ${updatedItem.quantity}).`, true);
       }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment]);
     
       const markInternalRequestAsViewed = useCallback((requestId: string) => {
@@ -1343,9 +1354,24 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, [user, igpOgpRecords]);
     
     const updatePpeRequest = useCallback((request: PpeRequest) => {
+        if (!user) return;
         const { id, ...data } = request;
+        
+        let commentText = `Request details updated by ${user.name}.`;
+        const originalRequest = ppeRequests.find(r => r.id === id);
+        
+        if (originalRequest) {
+            const changes = [];
+            if (originalRequest.quantity !== data.quantity) changes.push(`Quantity changed from ${originalRequest.quantity} to ${data.quantity}`);
+            if (originalRequest.size !== data.size) changes.push(`Size changed from ${originalRequest.size} to ${data.size}`);
+            if (changes.length > 0) {
+                commentText += ` Changes: ${changes.join(', ')}.`;
+            }
+        }
+
         update(ref(rtdb, `ppeRequests/${id}`), { ...data, attachmentUrl: data.attachmentUrl || null });
-    }, []);
+        addPpeRequestComment(id, commentText);
+    }, [user, ppeRequests, addPpeRequestComment]);
     
     const deletePpeRequest = useCallback((requestId: string) => {
         remove(ref(rtdb, `ppeRequests/${requestId}`));
