@@ -80,6 +80,13 @@ type InventoryContextType = {
   digitalCameras: DigitalCamera[];
   anemometers: Anemometer[];
   otherEquipments: OtherEquipment[];
+  pneumaticDrillingMachines: PneumaticDrillingMachine[];
+  pneumaticAngleGrinders: PneumaticAngleGrinder[];
+  wiredDrillingMachines: WiredDrillingMachine[];
+  cordlessDrillingMachines: CordlessDrillingMachine[];
+  wiredAngleGrinders: WiredAngleGrinder[];
+  cordlessAngleGrinders: CordlessAngleGrinder[];
+  cordlessReciprocatingSaws: CordlessReciprocatingSaw[];
   machineLogs: MachineLog[];
   certificateRequests: CertificateRequest[];
   internalRequests: InternalRequest[];
@@ -147,7 +154,35 @@ type InventoryContextType = {
   addOtherEquipment: (equipment: Omit<OtherEquipment, 'id'>) => void;
   updateOtherEquipment: (equipment: OtherEquipment) => void;
   deleteOtherEquipment: (equipmentId: string) => void;
+
+  addPneumaticDrillingMachine: (item: Omit<PneumaticDrillingMachine, 'id'>) => void;
+  updatePneumaticDrillingMachine: (item: PneumaticDrillingMachine) => void;
+  deletePneumaticDrillingMachine: (itemId: string) => void;
+
+  addPneumaticAngleGrinder: (item: Omit<PneumaticAngleGrinder, 'id'>) => void;
+  updatePneumaticAngleGrinder: (item: PneumaticAngleGrinder) => void;
+  deletePneumaticAngleGrinder: (itemId: string) => void;
+
+  addWiredDrillingMachine: (item: Omit<WiredDrillingMachine, 'id'>) => void;
+  updateWiredDrillingMachine: (item: WiredDrillingMachine) => void;
+  deleteWiredDrillingMachine: (itemId: string) => void;
   
+  addCordlessDrillingMachine: (item: Omit<CordlessDrillingMachine, 'id'>) => void;
+  updateCordlessDrillingMachine: (item: CordlessDrillingMachine) => void;
+  deleteCordlessDrillingMachine: (itemId: string) => void;
+
+  addWiredAngleGrinder: (item: Omit<WiredAngleGrinder, 'id'>) => void;
+  updateWiredAngleGrinder: (item: WiredAngleGrinder) => void;
+  deleteWiredAngleGrinder: (itemId: string) => void;
+
+  addCordlessAngleGrinder: (item: Omit<CordlessAngleGrinder, 'id'>) => void;
+  updateCordlessAngleGrinder: (item: CordlessAngleGrinder) => void;
+  deleteCordlessAngleGrinder: (itemId: string) => void;
+  
+  addCordlessReciprocatingSaw: (item: Omit<CordlessReciprocatingSaw, 'id'>) => void;
+  updateCordlessReciprocatingSaw: (item: CordlessReciprocatingSaw) => void;
+  deleteCordlessReciprocatingSaw: (itemId: string) => void;
+
   addMachineLog: (log: Omit<MachineLog, 'id'|'machineId'|'loggedByUserId'>, machineId: string) => void;
   deleteMachineLog: (logId: string) => void;
   getMachineLogs: (machineId: string) => MachineLog[];
@@ -235,6 +270,16 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const [digitalCamerasById, setDigitalCamerasById] = useState<Record<string, DigitalCamera>>({});
     const [anemometersById, setAnemometersById] = useState<Record<string, Anemometer>>({});
     const [otherEquipmentsById, setOtherEquipmentsById] = useState<Record<string, OtherEquipment>>({});
+    
+    // New power tools
+    const [pneumaticDrillingMachinesById, setPneumaticDrillingMachinesById] = useState<Record<string, PneumaticDrillingMachine>>({});
+    const [pneumaticAngleGrindersById, setPneumaticAngleGrindersById] = useState<Record<string, PneumaticAngleGrinder>>({});
+    const [wiredDrillingMachinesById, setWiredDrillingMachinesById] = useState<Record<string, WiredDrillingMachine>>({});
+    const [cordlessDrillingMachinesById, setCordlessDrillingMachinesById] = useState<Record<string, CordlessDrillingMachine>>({});
+    const [wiredAngleGrindersById, setWiredAngleGrindersById] = useState<Record<string, WiredAngleGrinder>>({});
+    const [cordlessAngleGrindersById, setCordlessAngleGrindersById] = useState<Record<string, CordlessAngleGrinder>>({});
+    const [cordlessReciprocatingSawsById, setCordlessReciprocatingSawsById] = useState<Record<string, CordlessReciprocatingSaw>>({});
+    
     const [machineLogsById, setMachineLogsById] = useState<Record<string, MachineLog>>({});
     const [certificateRequestsById, setCertificateRequestsById] = useState<Record<string, CertificateRequest>>({});
     const [internalRequestsById, setInternalRequestsById] = useState<Record<string, InternalRequest>>({});
@@ -257,6 +302,17 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const digitalCameras = useMemo(() => Object.values(digitalCamerasById), [digitalCamerasById]);
     const anemometers = useMemo(() => Object.values(anemometersById), [anemometersById]);
     const otherEquipments = useMemo(() => Object.values(otherEquipmentsById), [otherEquipmentsById]);
+    
+    // New power tools
+    const pneumaticDrillingMachines = useMemo(() => Object.values(pneumaticDrillingMachinesById), [pneumaticDrillingMachinesById]);
+    const pneumaticAngleGrinders = useMemo(() => Object.values(pneumaticAngleGrindersById), [pneumaticAngleGrindersById]);
+    const wiredDrillingMachines = useMemo(() => Object.values(wiredDrillingMachinesById), [wiredDrillingMachinesById]);
+    const cordlessDrillingMachines = useMemo(() => Object.values(cordlessDrillingMachinesById), [cordlessDrillingMachinesById]);
+    const wiredAngleGrinders = useMemo(() => Object.values(wiredAngleGrindersById), [wiredAngleGrindersById]);
+    const cordlessAngleGrinders = useMemo(() => Object.values(cordlessAngleGrindersById), [cordlessAngleGrindersById]);
+    const cordlessReciprocatingSaws = useMemo(() => Object.values(cordlessReciprocatingSawsById), [cordlessReciprocatingSawsById]);
+
+
     const machineLogs = useMemo(() => Object.values(machineLogsById), [machineLogsById]);
     const certificateRequests = useMemo(() => Object.values(certificateRequestsById), [certificateRequestsById]);
     const internalRequests = useMemo(() => Object.values(internalRequestsById), [internalRequestsById]);
@@ -1058,6 +1114,29 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const deleteOtherEquipment = useCallback((equipmentId: string) => {
         remove(ref(rtdb, `otherEquipments/${equipmentId}`));
     }, []);
+
+    // New power tool functions
+    const addPneumaticDrillingMachine = (item: Omit<PneumaticDrillingMachine, 'id'>) => { const newRef = push(ref(rtdb, 'pneumaticDrillingMachines')); set(newRef, item); };
+    const updatePneumaticDrillingMachine = (item: PneumaticDrillingMachine) => { const { id, ...data } = item; update(ref(rtdb, `pneumaticDrillingMachines/${id}`), data); };
+    const deletePneumaticDrillingMachine = (itemId: string) => { remove(ref(rtdb, `pneumaticDrillingMachines/${itemId}`)); };
+    const addPneumaticAngleGrinder = (item: Omit<PneumaticAngleGrinder, 'id'>) => { const newRef = push(ref(rtdb, 'pneumaticAngleGrinders')); set(newRef, item); };
+    const updatePneumaticAngleGrinder = (item: PneumaticAngleGrinder) => { const { id, ...data } = item; update(ref(rtdb, `pneumaticAngleGrinders/${id}`), data); };
+    const deletePneumaticAngleGrinder = (itemId: string) => { remove(ref(rtdb, `pneumaticAngleGrinders/${itemId}`)); };
+    const addWiredDrillingMachine = (item: Omit<WiredDrillingMachine, 'id'>) => { const newRef = push(ref(rtdb, 'wiredDrillingMachines')); set(newRef, item); };
+    const updateWiredDrillingMachine = (item: WiredDrillingMachine) => { const { id, ...data } = item; update(ref(rtdb, `wiredDrillingMachines/${id}`), data); };
+    const deleteWiredDrillingMachine = (itemId: string) => { remove(ref(rtdb, `wiredDrillingMachines/${itemId}`)); };
+    const addCordlessDrillingMachine = (item: Omit<CordlessDrillingMachine, 'id'>) => { const newRef = push(ref(rtdb, 'cordlessDrillingMachines')); set(newRef, item); };
+    const updateCordlessDrillingMachine = (item: CordlessDrillingMachine) => { const { id, ...data } = item; update(ref(rtdb, `cordlessDrillingMachines/${id}`), data); };
+    const deleteCordlessDrillingMachine = (itemId: string) => { remove(ref(rtdb, `cordlessDrillingMachines/${itemId}`)); };
+    const addWiredAngleGrinder = (item: Omit<WiredAngleGrinder, 'id'>) => { const newRef = push(ref(rtdb, 'wiredAngleGrinders')); set(newRef, item); };
+    const updateWiredAngleGrinder = (item: WiredAngleGrinder) => { const { id, ...data } = item; update(ref(rtdb, `wiredAngleGrinders/${id}`), data); };
+    const deleteWiredAngleGrinder = (itemId: string) => { remove(ref(rtdb, `wiredAngleGrinders/${itemId}`)); };
+    const addCordlessAngleGrinder = (item: Omit<CordlessAngleGrinder, 'id'>) => { const newRef = push(ref(rtdb, 'cordlessAngleGrinders')); set(newRef, item); };
+    const updateCordlessAngleGrinder = (item: CordlessAngleGrinder) => { const { id, ...data } = item; update(ref(rtdb, `cordlessAngleGrinders/${id}`), data); };
+    const deleteCordlessAngleGrinder = (itemId: string) => { remove(ref(rtdb, `cordlessAngleGrinders/${itemId}`)); };
+    const addCordlessReciprocatingSaw = (item: Omit<CordlessReciprocatingSaw, 'id'>) => { const newRef = push(ref(rtdb, 'cordlessReciprocatingSaws')); set(newRef, item); };
+    const updateCordlessReciprocatingSaw = (item: CordlessReciprocatingSaw) => { const { id, ...data } = item; update(ref(rtdb, `cordlessReciprocatingSaws/${id}`), data); };
+    const deleteCordlessReciprocatingSaw = (itemId: string) => { remove(ref(rtdb, `cordlessReciprocatingSaws/${itemId}`)); };
     
     const addMachineLog = useCallback((log: Omit<MachineLog, 'id'|'machineId'|'loggedByUserId'>, machineId: string) => {
         if(!user) return;
@@ -1238,19 +1317,24 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
         if (commentParts.length > 0) {
             const commentText = `Item "${originalItem.description}" updated: ${commentParts.join(', ')}.`;
-            addInternalRequestComment(requestId, commentText, true);
-
+            addInternalRequestComment(requestId, commentText, true, `Update on Store Request #${requestId.slice(-6)}`);
             const requester = users.find(u => u.id === request.requesterId);
-            if(requester && requester.email && requester.id !== user.id) {
-                 sendNotificationEmail({
+            if (requester?.email && requester.id !== user.id) {
+                sendNotificationEmail({
                     to: [requester.email],
-                    subject: `Update on your request #${requestId.slice(-6)}`,
-                    htmlBody: `<p>${user.name} made changes to your request:</p><ul><li>${commentText}</li></ul>`,
+                    subject: `Store Request Updated (#${requestId.slice(-6)})`,
+                    htmlBody: `
+                        <p><strong>${user.name}</strong> updated your store request.</p>
+                        <ul>
+                            ${commentParts.map(c => `<li>${c}</li>`).join('')}
+                        </ul>
+                        <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/my-requests">View Request</a></p>
+                    `,
                     notificationSettings,
                     event: 'onInternalRequestUpdate',
                     involvedUser: requester,
                     creatorUser: user,
-                 });
+                });
             }
         }
     
@@ -1560,6 +1644,13 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             createDataListener('digitalCameras', setDigitalCamerasById),
             createDataListener('anemometers', setAnemometersById),
             createDataListener('otherEquipments', setOtherEquipmentsById),
+            createDataListener('pneumaticDrillingMachines', setPneumaticDrillingMachinesById),
+            createDataListener('pneumaticAngleGrinders', setPneumaticAngleGrindersById),
+            createDataListener('wiredDrillingMachines', setWiredDrillingMachinesById),
+            createDataListener('cordlessDrillingMachines', setCordlessDrillingMachinesById),
+            createDataListener('wiredAngleGrinders', setWiredAngleGrindersById),
+            createDataListener('cordlessAngleGrinders', setCordlessAngleGrindersById),
+            createDataListener('cordlessReciprocatingSaws', setCordlessReciprocatingSawsById),
             createDataListener('machineLogs', setMachineLogsById),
             createDataListener('certificateRequests', setCertificateRequestsById),
             createDataListener('internalRequests', setInternalRequestsById),
@@ -1576,7 +1667,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const contextValue: InventoryContextType = {
-        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory, directives: [], damageReports,
+        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory, directives: [], damageReports,
         addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, updateInventoryItemGroupByProject, updateMultipleInventoryItems, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
         addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
         addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest,
@@ -1587,6 +1678,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         addDigitalCamera, updateDigitalCamera, deleteDigitalCamera,
         addAnemometer, updateAnemometer, deleteAnemometer,
         addOtherEquipment, updateOtherEquipment, deleteOtherEquipment,
+        addPneumaticDrillingMachine, updatePneumaticDrillingMachine, deletePneumaticDrillingMachine, addPneumaticAngleGrinder, updatePneumaticAngleGrinder, deletePneumaticAngleGrinder, addWiredDrillingMachine, updateWiredDrillingMachine, deleteWiredDrillingMachine, addCordlessDrillingMachine, updateCordlessDrillingMachine, deleteCordlessDrillingMachine, addWiredAngleGrinder, updateWiredAngleGrinder, deleteWiredAngleGrinder, addCordlessAngleGrinder, updateCordlessAngleGrinder, deleteCordlessAngleGrinder, addCordlessReciprocatingSaw, updateCordlessReciprocatingSaw, deleteCordlessReciprocatingSaw,
         addMachineLog, deleteMachineLog, getMachineLogs,
         addInternalRequest, deleteInternalRequest, forceDeleteInternalRequest, addInternalRequestComment, updateInternalRequestStatus, updateInternalRequestItemStatus, updateInternalRequestItem, markInternalRequestAsViewed, acknowledgeInternalRequest,
         addPpeRequest, updatePpeRequest, updatePpeRequestStatus, addPpeRequestComment, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed,
@@ -1612,5 +1704,3 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
-
-    
