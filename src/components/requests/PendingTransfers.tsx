@@ -6,9 +6,9 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import { ThumbsUp, ThumbsDown, SendToBack, CheckCircle, AlertTriangle, Trash2, FilePlus, UserCheck } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Label } from '@/components/ui/label';
+import { ThumbsUp, ThumbsDown, SendToBack, CheckCircle, AlertTriangle, Trash2, FilePlus, UserCheck, FileDown } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '../ui/dropdown-menu';
 import type { InventoryItem, InventoryTransferRequest, TpCertList, UTMachine, Role } from '@/lib/types';
@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import GenerateTpCertDialog from '../inventory/GenerateTpCertDialog';
+import TransferReportDownloads from './TransferReportDownloads';
 
 export default function PendingTransfers() {
   const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, deleteInventoryTransferRequest, addTpCertList, disputeInventoryTransfer, acknowledgeTransfer, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims } = useAppContext();
@@ -44,7 +45,7 @@ export default function PendingTransfers() {
       const isMyProject = user.projectIds?.includes(req.fromProjectId) || user.projectIds?.includes(req.toProjectId);
       const isRequester = req.requesterId === user.id;
 
-      if (can.approve_store_requests && req.status === 'Pending') {
+      if ((can.approve_store_requests || user.role === 'Assistant Store Incharge') && (req.status === 'Pending' || req.status === 'Disputed')) {
         forApproval.push(req);
       }
       
@@ -63,9 +64,11 @@ export default function PendingTransfers() {
       }
     });
 
+    const sortFn = (a: InventoryTransferRequest, b: InventoryTransferRequest) => parseISO(b.requestDate).getTime() - parseISO(a.requestDate).getTime();
+
     return { 
-        forApproval, 
-        myActiveRequests: myActiveRequests.sort((a,b) => parseISO(b.requestDate).getTime() - parseISO(a.requestDate).getTime()),
+        forApproval: forApproval.sort(sortFn), 
+        myActiveRequests: myActiveRequests.sort(sortFn),
         allCompletedRequests: completed.sort((a,b) => (b.approvalDate || b.requestDate).localeCompare(a.approvalDate || a.requestDate)),
     };
   }, [inventoryTransferRequests, user, can.approve_store_requests, projects]);
@@ -123,7 +126,10 @@ export default function PendingTransfers() {
     <CardContent className="space-y-4 p-0">
         {forApproval.length > 0 && (
           <div className="space-y-2">
-            <h4 className="font-semibold text-sm">Awaiting Store Approval</h4>
+            <div className="flex justify-between items-center">
+              <h4 className="font-semibold text-sm">Awaiting Store Approval</h4>
+              <TransferReportDownloads requests={forApproval} />
+            </div>
              <Accordion type="multiple" className="w-full space-y-2">
                 {forApproval.map(req => {
                   const requester = users.find(u => u.id === req.requesterId);
@@ -136,6 +142,8 @@ export default function PendingTransfers() {
                       acc[item.name] = (acc[item.name] || 0) + 1;
                       return acc;
                   }, {} as Record<string, number>);
+                  
+                  const sortedItems = [...req.items].sort((a,b) => a.name.localeCompare(b.name));
 
                   return (
                     <AccordionItem value={req.id} key={req.id} className="border rounded-lg bg-muted/50">
@@ -151,36 +159,46 @@ export default function PendingTransfers() {
                                 </div>
                             </AccordionTrigger>
                             <div className="flex items-center gap-2 pl-4">
-                                {showTpOption ? (
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button size="sm"><ThumbsUp className="mr-2 h-4 w-4" /> Approve</Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent>
-                                            <DropdownMenuItem onSelect={() => approveInventoryTransferRequest(req, false)}>Approve Transfer Only</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => approveInventoryTransferRequest(req, true)}>Approve & Create TP List</DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                ) : (
-                                    <Button size="sm" onClick={() => approveInventoryTransferRequest(req, false)}>
-                                        <ThumbsUp className="mr-2 h-4 w-4" /> Approve
-                                    </Button>
-                                )}
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button size="sm" variant="destructive" onClick={() => setRejectionRequestId(req.id)}>
-                                            <ThumbsDown className="mr-2 h-4 w-4" /> Reject
+                                {can.approve_store_requests && req.status === 'Pending' && (
+                                <>
+                                    {showTpOption ? (
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button size="sm"><ThumbsUp className="mr-2 h-4 w-4" /> Approve</Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent>
+                                                <DropdownMenuItem onSelect={() => approveInventoryTransferRequest(req, false)}>Approve Transfer Only</DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => approveInventoryTransferRequest(req, true)}>Approve & Create TP List</DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    ) : (
+                                        <Button size="sm" onClick={() => approveInventoryTransferRequest(req, false)}>
+                                            <ThumbsUp className="mr-2 h-4 w-4" /> Approve
                                         </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader><AlertDialogTitle>Reject Transfer?</AlertDialogTitle><AlertDialogDescription>Please provide a reason for rejecting this transfer request.</AlertDialogDescription></AlertDialogHeader>
-                                        <div className="py-2"><Label htmlFor="rejection-comment">Comment</Label><Textarea id="rejection-comment" value={comment} onChange={e => setComment(e.target.value)} /></div>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={handleReject}>Confirm Rejection</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
+                                    )}
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button size="sm" variant="destructive" onClick={() => setRejectionRequestId(req.id)}>
+                                                <ThumbsDown className="mr-2 h-4 w-4" /> Reject
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader><AlertDialogTitle>Reject Transfer?</AlertDialogTitle><AlertDialogDescription>Please provide a reason for rejecting this transfer request.</AlertDialogDescription></AlertDialogHeader>
+                                            <div className="py-2"><Label htmlFor="rejection-comment">Comment</Label><Textarea id="rejection-comment" value={comment} onChange={e => setComment(e.target.value)} /></div>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={handleReject}>Confirm Rejection</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </>
+                                )}
+                                {req.status === 'Disputed' && can.approve_store_requests && (
+                                     <div className="flex gap-2">
+                                        <Button size="sm" onClick={() => resolveInternalRequestDispute(req.id, 'reissue', 'Dispute accepted. Items will be re-issued.')}>Re-issue</Button>
+                                        <Button size="sm" variant="outline" onClick={() => resolveInternalRequestDispute(req.id, 'reverse', 'Dispute rejected. Items confirmed as issued.')}>Confirm Issued</Button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <AccordionContent className="p-4 pt-0">
@@ -196,7 +214,7 @@ export default function PendingTransfers() {
                                         <AccordionTrigger className="text-xs hover:no-underline p-0">Show Item Details</AccordionTrigger>
                                         <AccordionContent>
                                             <ul className="list-disc list-inside text-muted-foreground mt-1">
-                                            {req.items.map(item => {
+                                            {sortedItems.map(item => {
                                                 const itemName = item.name || allItems.find(i => i.id === item.itemId)?.name || 'Unknown';
                                                 return (
                                                 <li key={item.itemId}>{itemName} (SN: {item.serialNumber}{item.ariesId ? `, ID: ${item.ariesId}` : ''})</li>
@@ -223,6 +241,7 @@ export default function PendingTransfers() {
                     const toProject = projects.find(p => p.id === req.toProjectId);
                     const fromProject = projects.find(p => p.id === req.fromProjectId);
                     const statusVariant = req.status === 'Disputed' || req.status === 'Rejected' ? 'destructive' : req.status === 'Approved' ? 'default' : 'secondary';
+                    const sortedItems = [...req.items].sort((a,b) => a.name.localeCompare(b.name));
                 return (
                     <AccordionItem value={req.id} key={req.id} className="border rounded-lg bg-muted/50">
                         <div className="flex justify-between items-center p-4">
@@ -252,7 +271,7 @@ export default function PendingTransfers() {
                         </div>
                         <AccordionContent className="p-4 pt-0">
                             <ul className="list-disc list-inside text-xs text-muted-foreground bg-background p-2 rounded-md">
-                                {req.items.map(item => (
+                                {sortedItems.map(item => (
                                     <li key={item.itemId}>{item.name} (SN: {item.serialNumber})</li>
                                 ))}
                             </ul>
@@ -267,8 +286,11 @@ export default function PendingTransfers() {
         {allCompletedRequests.length > 0 && (
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="completed-transfers" className="border rounded-md">
-              <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline font-semibold text-sm">
-                Transfer History ({allCompletedRequests.length})
+              <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline">
+                 <div className="flex justify-between w-full font-semibold text-sm pr-2">
+                    <span>Transfer History</span>
+                    <TransferReportDownloads requests={allCompletedRequests} />
+                 </div>
               </AccordionTrigger>
               <AccordionContent className="p-2 space-y-2">
                 {allCompletedRequests.map(req => {
@@ -284,6 +306,8 @@ export default function PendingTransfers() {
                         acc[item.name] = (acc[item.name] || 0) + 1;
                         return acc;
                     }, {} as Record<string, number>);
+                    
+                    const sortedItems = [...req.items].sort((a,b) => a.name.localeCompare(b.name));
 
                     return (
                         <Accordion key={req.id} type="single" collapsible>
@@ -345,7 +369,7 @@ export default function PendingTransfers() {
                                                 <AccordionTrigger className="text-xs hover:no-underline p-0">Show Item Details</AccordionTrigger>
                                                 <AccordionContent>
                                                     <ul className="list-disc list-inside text-muted-foreground mt-1">
-                                                        {req.items.map(item => (
+                                                        {sortedItems.map(item => (
                                                             <li key={item.itemId}>{item.name} (SN: {item.serialNumber})</li>
                                                         ))}
                                                     </ul>
