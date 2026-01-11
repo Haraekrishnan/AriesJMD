@@ -2,14 +2,17 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, formatDistanceToNow } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import type { Feedback, FeedbackStatus } from '@/lib/types';
+import type { Feedback, FeedbackStatus, Comment } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Label } from '@/components/ui/label';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Textarea } from '../ui/textarea';
+import { Send } from 'lucide-react';
+import { ScrollArea } from '../ui/scroll-area';
 
 const statusVariant: Record<FeedbackStatus, 'default' | 'secondary' | 'success'> = {
     'New': 'default',
@@ -20,8 +23,9 @@ const statusVariant: Record<FeedbackStatus, 'default' | 'secondary' | 'success'>
 const statusOptions: FeedbackStatus[] = ['New', 'In Progress', 'Resolved'];
 
 export default function FeedbackManagement() {
-    const { feedback, users, updateFeedbackStatus, markFeedbackAsViewed } = useAppContext();
+    const { user, feedback, users, updateFeedbackStatus, markFeedbackAsViewed, addFeedbackComment } = useAppContext();
     const [filter, setFilter] = useState<'all' | FeedbackStatus>('all');
+    const [newComments, setNewComments] = useState<Record<string, string>>({});
     
     useEffect(() => {
         markFeedbackAsViewed();
@@ -46,6 +50,13 @@ export default function FeedbackManagement() {
 
     const handleStatusChange = (id: string, status: FeedbackStatus) => {
         updateFeedbackStatus(id, status);
+    };
+
+    const handleAddComment = (feedbackId: string) => {
+        const text = newComments[feedbackId];
+        if (!text || !text.trim()) return;
+        addFeedbackComment(feedbackId, text);
+        setNewComments(prev => ({ ...prev, [feedbackId]: '' }));
     };
 
     if (!feedback || feedback.length === 0) {
@@ -74,6 +85,7 @@ export default function FeedbackManagement() {
              <Accordion type="multiple" className="w-full space-y-2">
                 {filteredFeedback.map(item => {
                     const submitter = users.find(u => u.id === item.userId);
+                    const commentsArray = Array.isArray(item.comments) ? item.comments : (item.comments ? Object.values(item.comments) : []);
                     return (
                         <AccordionItem key={item.id} value={item.id} className="border rounded-lg">
                             <AccordionTrigger className="p-4 hover:no-underline text-left">
@@ -87,16 +99,57 @@ export default function FeedbackManagement() {
                             </AccordionTrigger>
                             <AccordionContent className="p-4 pt-0">
                                 <div className="p-4 bg-muted rounded-md mb-4 whitespace-pre-wrap">{item.message}</div>
-                                <div className="flex items-center gap-2">
-                                    <Label className="text-xs">Change Status:</Label>
-                                    <Select value={item.status} onValueChange={(value) => handleStatusChange(item.id, value as FeedbackStatus)}>
-                                        <SelectTrigger className="w-[180px] h-8 text-xs">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
+                                
+                                {commentsArray.length > 0 && (
+                                    <div className="space-y-2 mb-4">
+                                        <Label>Conversation</Label>
+                                        <ScrollArea className="h-32 rounded-md border p-2">
+                                            {commentsArray.map(c => {
+                                                const commentUser = users.find(u => u.id === c.userId);
+                                                return (
+                                                    <div key={c.id} className="flex items-start gap-2 mb-2">
+                                                        <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
+                                                        <div className="text-xs bg-background p-2 rounded-md w-full border">
+                                                            <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(parseISO(c.date), { addSuffix: true })}</p></div>
+                                                            <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </ScrollArea>
+                                    </div>
+                                )}
+                                
+                                <div className="space-y-2">
+                                    <Label>Admin Tools</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Select value={item.status} onValueChange={(value) => handleStatusChange(item.id, value as FeedbackStatus)}>
+                                            <SelectTrigger className="w-[180px] h-8 text-xs">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="relative pt-2">
+                                        <Textarea
+                                            value={newComments[item.id] || ''}
+                                            onChange={(e) => setNewComments(prev => ({...prev, [item.id]: e.target.value}))}
+                                            placeholder="Reply to the user..."
+                                            className="pr-10"
+                                            rows={2}
+                                        />
+                                        <Button
+                                            type="button"
+                                            size="icon"
+                                            className="absolute right-2 top-1/2 -translate-y-[-50%]"
+                                            onClick={() => handleAddComment(item.id)}
+                                            disabled={!newComments[item.id]?.trim()}
+                                        >
+                                            <Send className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                 </div>
                             </AccordionContent>
                         </AccordionItem>
@@ -106,5 +159,3 @@ export default function FeedbackManagement() {
         </div>
     );
 }
-
-    
