@@ -76,16 +76,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
           <PlannerProvider>
             <ManpowerProvider>
               <PurchaseProvider>
-                <ConsumableProvider>
-                  <AccommodationProvider>
-                    <DecorationContextProvider>
-                      <InventoryProvider>
-                        <CombinedProvider>
-                          {children}
-                        </CombinedProvider>
-                      </InventoryProvider>
-                    </DecorationContextProvider>
-                  </AccommodationProvider>
+                 <ConsumableProvider>
+                    <AccommodationProvider>
+                        <DecorationContextProvider>
+                            <InventoryProvider>
+                                <CombinedProvider>
+                                {children}
+                                </CombinedProvider>
+                            </InventoryProvider>
+                        </DecorationContextProvider>
+                    </AccommodationProvider>
                 </ConsumableProvider>
               </PurchaseProvider>
             </ManpowerProvider>
@@ -103,5 +103,3 @@ export const useAppContext = () => {
   }
   return context;
 };
-
-    
