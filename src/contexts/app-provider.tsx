@@ -2,7 +2,7 @@
 'use client';
 import { createContext, useContext, ReactNode, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { AuthProvider, useAuth } from './auth-provider';
+import { AuthProvider, useAuth } from '@/contexts/auth-provider';
 import { GeneralProvider, useGeneral } from './general-provider';
 import { InventoryProvider, useInventory } from './inventory-provider';
 import { ManpowerProvider, useManpower } from './manpower-provider';
@@ -24,7 +24,7 @@ function CombinedProvider({ children }: { children: ReactNode }) {
   const purchaseProps = usePurchase();
   const consumableProps = useConsumable();
   const accommodationProps = useAccommodation();
-  const inventoryProps = useInventory();
+  const inventoryProps = useInventory(authProps);
   const decorationsProps = useDecorations();
   
   const { user, loading } = authProps;
@@ -41,7 +41,9 @@ function CombinedProvider({ children }: { children: ReactNode }) {
     } else if (user) {
       if (user.status === 'locked' && pathname !== '/status') {
         router.replace('/status');
-      } else if (user.status !== 'locked' && isAuthPage) {
+      } else if (user.status !== 'locked' && pathname === '/status') {
+        router.replace('/dashboard');
+      } else if (user.status !== 'locked' && pathname === '/login') {
         router.replace('/dashboard');
       }
     }
@@ -67,7 +69,7 @@ function CombinedProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function AppProvider({ children }: { children: ReactNode }) {
+export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
       <GeneralProvider>

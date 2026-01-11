@@ -11,7 +11,14 @@ import { useAppContext } from '@/contexts/app-provider';
 
 export default function StatusPage() {
   const { user, loading, logout, requestUnlock } = useAppContext();
+  const router = useRouter();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!loading && user && user.status !== 'locked') {
+      router.replace('/dashboard');
+    }
+  }, [user, loading, router]);
 
   if (loading) {
     return (
@@ -39,6 +46,20 @@ export default function StatusPage() {
         });
     }
   };
+  
+  if (!user || user.status !== 'locked') {
+    return (
+       <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex items-center space-x-4">
+            <Skeleton className="h-12 w-12 rounded-full" />
+            <div className="space-y-2">
+                <p className="text-muted-foreground">Redirecting...</p>
+                <Skeleton className="h-4 w-[250px]" />
+            </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
