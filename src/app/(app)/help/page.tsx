@@ -87,6 +87,15 @@ export default function HelpPage() {
     return isValid(date) ? format(date, 'dd MMM, yyyy') : 'Invalid Date';
   };
 
+  const handleAccordionToggle = (value: string) => {
+    if (value) {
+        const feedbackItem = myFeedback.find(f => f.id === value);
+        if (feedbackItem && !feedbackItem.viewedByUser) {
+            markFeedbackAsViewed(value);
+        }
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center gap-4">
@@ -149,14 +158,10 @@ export default function HelpPage() {
             </CardHeader>
             <CardContent>
                 <Accordion 
-                    type="multiple" 
+                    type="single"
+                    collapsible 
                     className="w-full space-y-2"
-                    onValueChange={(value) => {
-                        if (value.length > 0) {
-                            const latestOpenedId = value[value.length - 1];
-                            markFeedbackAsViewed(latestOpenedId);
-                        }
-                    }}
+                    onValueChange={handleAccordionToggle}
                 >
                     {myFeedback.map(item => {
                         const commentsArray = Array.isArray(item.comments) ? item.comments : (item.comments ? Object.values(item.comments) : []);
@@ -164,9 +169,12 @@ export default function HelpPage() {
                              <AccordionItem key={item.id} value={item.id} className="border rounded-lg">
                                 <AccordionTrigger className="p-4 hover:no-underline text-left">
                                     <div className="flex justify-between w-full items-center">
-                                        <div className="flex-1">
-                                          <p className="font-semibold">{item.subject}</p>
-                                          <p className="text-sm text-muted-foreground">Submitted on {formatDate(item.date)}</p>
+                                        <div className="flex-1 flex items-center gap-2">
+                                          {!item.viewedByUser && <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>}
+                                          <div>
+                                              <p className="font-semibold">{item.subject}</p>
+                                              <p className="text-sm text-muted-foreground">Submitted on {formatDate(item.date)}</p>
+                                          </div>
                                         </div>
                                         <Badge variant={statusVariant[item.status]} className="ml-4">{item.status}</Badge>
                                     </div>

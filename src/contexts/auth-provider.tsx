@@ -97,9 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const myFeedbackUpdates = useMemo(() => {
     if (!user) return 0;
     return feedback.filter(f =>
-      f.userId === user.id &&
-      (f.comments && Object.values(f.comments).length > 0) && // Ensure there are comments
-      !f.viewedByUser
+      f.userId === user.id && !f.viewedByUser
     ).length;
   }, [user, feedback]);
 
@@ -324,9 +322,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userId: user.id, subject, message, date: new Date().toISOString(), status: 'New', viewedByUser: true, comments: {},
     });
   }, [user]);
-  
-  const addFeedbackComment = useCallback((feedbackId: string, text: string) => {
-    if(!user) return;
+
+    const addFeedbackComment = useCallback((feedbackId: string, text: string) => {
+    if (!user) return;
     const feedbackItem = feedback.find(f => f.id === feedbackId);
     if (!feedbackItem) return;
 
@@ -338,13 +336,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         date: new Date().toISOString(),
         eventId: feedbackId,
     };
-    set(newCommentRef, { ...newComment });
     
-    // Reset viewed flag for the user
-    update(ref(rtdb, `feedback/${feedbackId}`), { viewedByUser: false });
+    const updates: { [key: string]: any } = {};
+    updates[`feedback/${feedbackId}/comments/${newCommentRef.key}`] = { ...newComment };
+    updates[`feedback/${feedbackId}/viewedByUser`] = false;
+
+    update(ref(rtdb), updates);
 
     const feedbackCreator = users.find(u => u.id === feedbackItem.userId);
-    if(feedbackCreator?.email && feedbackCreator.id !== user.id) {
+    if (feedbackCreator?.email && feedbackCreator.id !== user.id) {
         sendNotificationEmail({
             to: [feedbackCreator.email],
             subject: `Update on your feedback: "${feedbackItem.subject}"`,
@@ -359,7 +359,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, feedback, users]);
   
-  const updateFeedbackStatus = useCallback((feedbackId: string, status: Feedback['status']) => {
+    const updateFeedbackStatus = useCallback((feedbackId: string, status: Feedback['status']) => {
     if (!user) return;
     const feedbackItem = feedback.find(f => f.id === feedbackId);
     if (!feedbackItem) return;
@@ -372,13 +372,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     addFeedbackComment(feedbackId, `Status changed to ${status}`);
   }, [user, addFeedbackComment, feedback]);
 
-  const markFeedbackAsViewed = useCallback(async (feedbackId: string) => {
+  const markFeedbackAsViewed = useCallback(async (feedbackId?: string) => {
     if (!user) return;
-    const feedbackItem = feedback.find(f => f.id === feedbackId);
-    if(feedbackItem && feedbackItem.userId === user.id) {
-        await update(ref(rtdb, `feedback/${feedbackId}`), {
-            viewedByUser: true,
+    
+    if (feedbackId) {
+        const feedbackItem = feedback.find(f => f.id === feedbackId);
+        if (feedbackItem && feedbackItem.userId === user.id) {
+             await update(ref(rtdb, `feedback/${feedbackId}`), { viewedByUser: true });
+        }
+    } else { // This is for admin side to clear all
+        const updates: { [key: string]: any } = {};
+        feedback.forEach(f => {
+            if (!f.viewedBy?.[user.id]) {
+                updates[`feedback/${f.id}/viewedBy/${user.id}`] = true;
+            }
         });
+        if (Object.keys(updates).length > 0) {
+            await update(ref(rtdb), updates);
+        }
     }
   }, [user, feedback]);
   

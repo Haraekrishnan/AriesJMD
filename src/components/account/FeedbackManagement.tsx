@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -27,9 +28,15 @@ export default function FeedbackManagement() {
     const [filter, setFilter] = useState<'all' | FeedbackStatus>('all');
     const [newComments, setNewComments] = useState<Record<string, string>>({});
     
-    useEffect(() => {
-        markFeedbackAsViewed();
-    }, [markFeedbackAsViewed]);
+    const handleAccordionToggle = (value: string) => {
+        if (value && user) {
+            const feedbackItem = filteredFeedback.find(f => f.id === value);
+            if (feedbackItem && !feedbackItem.viewedBy?.[user.id]) {
+                markFeedbackAsViewed(value);
+            }
+        }
+    };
+
 
     const filteredFeedback = useMemo(() => {
         if (!feedback || !Array.isArray(feedback)) return [];
@@ -82,7 +89,16 @@ export default function FeedbackManagement() {
                     </SelectContent>
                 </Select>
             </div>
-             <Accordion type="multiple" className="w-full space-y-2">
+             <Accordion 
+                type="multiple"
+                className="w-full space-y-2"
+                onValueChange={(value) => {
+                    if (value.length > 0) {
+                        const latestOpenedId = value[value.length - 1];
+                        markFeedbackAsViewed(latestOpenedId);
+                    }
+                }}
+            >
                 {filteredFeedback.map(item => {
                     const submitter = users.find(u => u.id === item.userId);
                     const commentsArray = Array.isArray(item.comments) ? item.comments : (item.comments ? Object.values(item.comments) : []);
@@ -90,9 +106,12 @@ export default function FeedbackManagement() {
                         <AccordionItem key={item.id} value={item.id} className="border rounded-lg">
                             <AccordionTrigger className="p-4 hover:no-underline text-left">
                                 <div className="flex justify-between w-full items-center">
-                                    <div className="flex-1">
-                                      <p className="font-semibold">{item.subject}</p>
-                                      <p className="text-sm text-muted-foreground">From: {submitter?.name || 'Unknown User'} on {formatDate(item.date)}</p>
+                                    <div className="flex-1 flex items-center gap-2">
+                                        {!item.viewedBy?.[user!.id] && <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>}
+                                        <div>
+                                            <p className="font-semibold">{item.subject}</p>
+                                            <p className="text-sm text-muted-foreground">From: {submitter?.name || 'Unknown User'} on {formatDate(item.date)}</p>
+                                        </div>
                                     </div>
                                     <Badge variant={statusVariant[item.status]} className="ml-4">{item.status}</Badge>
                                 </div>
