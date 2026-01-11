@@ -12,20 +12,12 @@ import { useAppContext } from '@/contexts/app-provider';
 export default function StatusPage() {
   const { user, loading, logout, requestUnlock } = useAppContext();
   const { toast } = useToast();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!loading && user?.status !== 'locked') {
-      router.replace('/dashboard');
-    }
-  }, [user, loading, router]);
-
 
   if (loading || !user) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="text-center space-y-2">
-                <p className="text-muted-foreground">Redirecting...</p>
+                <p className="text-muted-foreground">Loading status...</p>
                 <div className="flex items-center space-x-4">
                     <Skeleton className="h-12 w-12 rounded-full" />
                     <div className="space-y-2">

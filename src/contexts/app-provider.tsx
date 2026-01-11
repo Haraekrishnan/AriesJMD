@@ -34,15 +34,16 @@ function CombinedProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (loading) return;
+    
+    const isAuthPage = pathname === '/login';
+    const isStatusPage = pathname === '/status';
 
-    const isAuthPage = pathname === '/login' || pathname === '/status';
-
-    if (!user && !isAuthPage) {
+    if (!user && !isAuthPage && !isStatusPage) {
       router.replace('/login');
     } else if (user) {
-      if (user.status === 'locked' && pathname !== '/status') {
+      if (user.status === 'locked' && !isStatusPage) {
         router.replace('/status');
-      } else if (user.status !== 'locked' && isAuthPage) {
+      } else if (user.status !== 'locked' && (isAuthPage || isStatusPage)) {
         router.replace('/dashboard');
       }
     }

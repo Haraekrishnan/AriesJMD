@@ -14,13 +14,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAppContext();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!loading && user && user.status === 'locked') {
-      router.replace('/status');
-    }
-  }, [user, loading, router]);
-
-
   if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -36,15 +29,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If user is locked, this component might render briefly before redirect.
-  // We can show a minimal loading state or nothing to prevent flashing the full layout.
-  if (user.status === 'locked') {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-         <p className="text-muted-foreground">Redirecting to status page...</p>
-      </div>
-    );
-  }
+  // The main redirection logic is now in app-provider.
+  // This avoids conflicts and ensures consistent routing behavior.
   
   return (
       <div className="flex min-h-screen w-full bg-background">
