@@ -17,23 +17,22 @@ export default function StatusPage() {
   useEffect(() => {
     if (!loading && user && user.status !== 'locked') {
       router.replace('/dashboard');
+    } else if (!loading && !user) {
+      router.replace('/login');
     }
   }, [user, loading, router]);
 
-  if (loading) {
+  if (loading || !user || user.status !== 'locked') {
     return (
-        <div className="flex h-screen w-full items-center justify-center bg-background">
-            <div className="text-center space-y-2">
-                <p className="text-muted-foreground">Loading status...</p>
-                <div className="flex items-center space-x-4">
-                    <Skeleton className="h-12 w-12 rounded-full" />
-                    <div className="space-y-2">
-                        <Skeleton className="h-4 w-[250px]" />
-                        <Skeleton className="h-4 w-[200px]" />
-                    </div>
-                </div>
+       <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex items-center space-x-4">
+            <Skeleton className="h-12 w-12 rounded-full" />
+            <div className="space-y-2">
+                <p className="text-muted-foreground">Verifying status...</p>
+                <Skeleton className="h-4 w-[250px]" />
             </div>
         </div>
+      </div>
     );
   }
 
@@ -46,20 +45,6 @@ export default function StatusPage() {
         });
     }
   };
-  
-  if (!user || user.status !== 'locked') {
-    return (
-       <div className="flex h-screen w-full items-center justify-center bg-background">
-        <div className="flex items-center space-x-4">
-            <Skeleton className="h-12 w-12 rounded-full" />
-            <div className="space-y-2">
-                <p className="text-muted-foreground">Redirecting...</p>
-                <Skeleton className="h-4 w-[250px]" />
-            </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">

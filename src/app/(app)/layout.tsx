@@ -15,13 +15,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && user?.status === 'locked') {
+    if (!loading && !user) {
+      router.replace('/login');
+    } else if (!loading && user?.status === 'locked') {
       router.replace('/status');
     }
   }, [user, loading, router]);
 
 
-  if (loading || !user) {
+  if (loading || !user || user.status === 'locked') {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
@@ -36,11 +38,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
   
-  if (user.status === 'locked') {
-    return null; 
-  }
-
-
   return (
       <div className="flex min-h-screen w-full bg-background">
         <DecorationProvider />
