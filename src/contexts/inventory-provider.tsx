@@ -5,14 +5,11 @@ import React, { createContext, useContext, ReactNode, useState, useEffect, useMe
 import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestItem, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, PpeRequestStatus, Role, ConsumableInwardRecord, Directive, DirectiveStatus, DamageReport, User, NotificationSettings, DamageReportStatus } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
-import { useAuth } from './auth-provider';
-import { useGeneral } from './general-provider';
+import { useAppContext } from './app-provider';
 import { useToast } from '@/hooks/use-toast';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
-import { useManpower } from './manpower-provider';
 import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
 import { format, parseISO, isValid, isAfter } from 'date-fns';
-import { useConsumable } from './consumable-provider';
 import { getStorage, ref as storageRef, deleteObject } from "firebase/storage";
 import { v4 as uuidv4 } from 'uuid';
 import { uploadFile } from '@/lib/storage';
@@ -220,9 +217,7 @@ const createDataListener = <T extends {}>(
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
 
 export function InventoryProvider({ children }: { children: ReactNode }) {
-    const { user, users, can, addActivityLog } = useAuth();
-    const { projects, notificationSettings, managementRequests } = useGeneral();
-    const { manpowerProfiles } = useManpower();
+    const { user, users, can, addActivityLog, projects, notificationSettings, manpowerProfiles } = useAppContext();
     const { toast } = useToast();
     const { consumableItems, consumableInwardHistory } = useConsumable();
 
@@ -1544,7 +1539,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const contextValue: InventoryContextType = {
-        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory, directives: [], damageReports,
+        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, internalRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory, directives: [], damageReports,
         addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, updateInventoryItemGroupByProject, updateMultipleInventoryItems, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
         addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
         addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest,
@@ -1580,3 +1575,5 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
+
+    

@@ -5,7 +5,7 @@ import React, { createContext, useContext, ReactNode, useState, useEffect, useMe
 import { Vendor, Payment, PaymentStatus, PurchaseRegister, Comment } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update } from 'firebase/database';
-import { useAuth } from './auth-provider';
+import { useAppContext } from './app-provider';
 import { useToast } from '@/hooks/use-toast';
 
 // --- TYPE DEFINITIONS ---
@@ -53,7 +53,7 @@ const createDataListener = <T extends {}>(
 const PurchaseContext = createContext<PurchaseContextType | undefined>(undefined);
 
 export function PurchaseProvider({ children }: { children: ReactNode }) {
-    const { user, addActivityLog } = useAuth();
+    const { user, addActivityLog } = useAppContext();
     const { toast } = useToast();
 
     const [vendorsById, setVendorsById] = useState<Record<string, Vendor>>({});
