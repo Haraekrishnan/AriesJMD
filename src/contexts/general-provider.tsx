@@ -6,7 +6,7 @@ import { Announcement, ActivityLog, IncidentReport, Comment, DownloadableDocumen
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, query, equalTo, get, orderByChild } from 'firebase/database';
 import { JOB_CODES as INITIAL_JOB_CODES } from '@/lib/mock-data';
-import { useAuth } from './auth-provider';
+import { useAppContext } from './app-provider';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
@@ -36,7 +36,7 @@ type GeneralContextType = {
   updateJobCode: (jobCode: JobCode) => void;
   deleteJobCode: (jobCodeId: string) => void;
   updateFeedbackStatus: (feedbackId: string, status: Feedback['status']) => void;
-  markFeedbackAsViewed: () => void;
+  markFeedbackAsViewed: (feedbackId?: string) => void;
   addDocument: (docData: Omit<DownloadableDocument, 'id' | 'uploadedBy' | 'createdAt'>) => void;
   updateDocument: (doc: DownloadableDocument) => void;
   deleteDocument: (docId: string) => void;
@@ -79,7 +79,7 @@ const createDataListener = <T extends {}>(
 const GeneralContext = createContext<GeneralContextType | undefined>(undefined);
 
 export function GeneralProvider({ children }: { children: ReactNode }) {
-  const { user, addActivityLog, users } = useAuth();
+  const { user, addActivityLog, users } = useAppContext();
   const { toast } = useToast();
 
   const [projectsById, setProjectsById] = useState<Record<string, Project>>({});
@@ -140,16 +140,20 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateFeedbackStatus = useCallback((feedbackId: string, status: Feedback['status']) => {
-    update(ref(rtdb, `feedback/${feedbackId}`), { status });
+    update(ref(rtdb, `feedback/${feedbackId}`), { status, viewedByUser: false });
   }, []);
 
-  const markFeedbackAsViewed = useCallback(() => {
-    if (!user) return;
-    feedback.forEach(f => {
-      if (!f.viewedBy?.[user.id]) {
-        update(ref(rtdb, `feedback/${f.id}/viewedBy`), { [user.id]: true });
-      }
-    });
+  const markFeedbackAsViewed = useCallback(async (feedbackId?: string) => {
+    if (!user || !feedbackId) return;
+
+    const feedbackItem = feedback.find(f => f.id === feedbackId);
+    if (!feedbackItem) return;
+
+    if (feedbackItem.userId === user.id) {
+        await update(ref(rtdb, `feedback/${feedbackId}`), {
+            viewedByUser: true,
+        });
+    }
   }, [user, feedback]);
 
   const addDocument = useCallback((docData: Omit<DownloadableDocument, 'id' | 'uploadedBy' | 'createdAt'>) => {
@@ -249,7 +253,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
     const newComment: Omit<Comment, 'id'> = { id: newCommentRef.key!, userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
     
     const updates: {[key: string]: any} = {};
-    updates[`managementRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment };
+    updates[`managementRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, viewedBy: { [user.id]: true } };
     updates[`managementRequests/${requestId}/lastUpdated`] = new Date().toISOString();
 
     const currentParticipants = new Set([request.creatorId, request.toUserId, ...(request.ccUserIds || [])]);
@@ -420,3 +424,5 @@ export const useGeneral = (): GeneralContextType => {
   }
   return context;
 };
+
+    

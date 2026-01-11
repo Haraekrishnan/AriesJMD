@@ -1,11 +1,13 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
 import { PlannerEvent, DailyPlannerComment, Comment, JobSchedule, JobScheduleItem, JobRecord, JobRecordPlant, VehicleUsageRecord, User } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, update, get, remove } from 'firebase/database';
-import { useAuth } from './auth-provider';
 import { eachDayOfInterval, endOfMonth, startOfMonth, format, isSameDay, getDay, isWeekend, parseISO, getDate, endOfWeek, startOfWeek, startOfDay, isBefore, subMonths } from 'date-fns';
+import { useAppContext } from './app-provider';
+
 
 type PlannerContextType = {
   plannerEvents: PlannerEvent[];
@@ -55,7 +57,7 @@ const createDataListener = <T extends {}>(
 const PlannerContext = createContext<PlannerContextType | undefined>(undefined);
 
 export function PlannerProvider({ children }: { children: ReactNode }) {
-    const { user, users } = useAuth();
+    const { user, users } = useAppContext();
     const [plannerEventsById, setPlannerEventsById] = useState<Record<string, PlannerEvent>>({});
     const [dailyPlannerCommentsById, setDailyPlannerCommentsById] = useState<Record<string, DailyPlannerComment>>({});
     const [jobSchedulesById, setJobSchedulesById] = useState<Record<string, JobSchedule>>({});
@@ -303,3 +305,5 @@ export const usePlanner = (): PlannerContextType => {
   }
   return context;
 };
+
+    

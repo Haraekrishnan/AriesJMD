@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -9,6 +10,7 @@ import { format, isBefore, parseISO, startOfDay } from 'date-fns';
 import { useGeneral } from './general-provider';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { useToast } from '@/hooks/use-toast';
+import { useAppContext } from './app-provider';
 
 // --- TYPE DEFINITIONS ---
 
@@ -73,7 +75,7 @@ const createDataListener = <T extends {}>(
 const ManpowerContext = createContext<ManpowerContextType | undefined>(undefined);
 
 export function ManpowerProvider({ children }: { children: ReactNode }) {
-    const { user, users, can, addActivityLog } = useAuth();
+    const { user, users, can, addActivityLog } = useAppContext();
     const { projects, notificationSettings } = useGeneral();
     const { toast } = useToast();
     
@@ -465,3 +467,5 @@ export const useManpower = (): ManpowerContextType => {
   }
   return context;
 };
+
+    

@@ -55,7 +55,6 @@ export function AppSidebar() {
     inventoryTransferRequests, dailyPlannerComments, logbookRequests,
     pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount,
     damageReports,
-    myFeedbackUpdates,
   } = useAppContext();
   const pathname = usePathname();
 
@@ -138,7 +137,7 @@ const plannerNotificationCount =
     
     const canApprovePayments = user.role === 'Admin' || user.role === 'Manager';
     const pendingPaymentApprovalCount = canApprovePayments ? (payments || []).filter(p => p.status === 'Pending').length : 0;
-    const pendingFeedbackCount = can.manage_feedback ? (feedback || []).filter(f => !f.viewedByUser).length : 0;
+    const pendingFeedbackCount = can.manage_feedback ? (feedback || []).filter(f => !f.viewedBy?.[user.id]).length : 0;
     const pendingUnlockRequestCount = can.manage_user_lock_status ? (unlockRequests || []).filter(r => r.status === 'pending').length : 0;
 
     const canApproveTransfers = can.approve_store_requests;
@@ -159,7 +158,6 @@ const plannerNotificationCount =
       incidentReporting: incidentNotificationCount,
       vendorLedger: pendingPaymentApprovalCount,
       account: pendingFeedbackCount + pendingUnlockRequestCount,
-      help: myFeedbackUpdates,
       manpower: pendingLogbookRequestCount
     };
   }, [
@@ -167,8 +165,7 @@ const plannerNotificationCount =
     internalRequests, managementRequests, incidentReports, damageReports,
     ppeRequests, payments, feedback, unlockRequests,
     inventoryTransferRequests, dailyPlannerComments, logbookRequests,
-    myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount,
-    myFeedbackUpdates
+    myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount
   ]);
   
   const navItems = useMemo(() => [
@@ -193,7 +190,7 @@ const plannerNotificationCount =
     { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0, show: true },
     { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },
     { href: '/account', icon: UserIcon, label: 'Account', notificationCount: notificationCounts.account || 0, show: true },
-    { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: notificationCounts.help || 0, show: true },
+    { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: 0, show: true },
     { href: '/tp-certification', icon: FileText, label: 'TP Certification', notificationCount: 0, show: false },
   ], [can, notificationCounts]);
 

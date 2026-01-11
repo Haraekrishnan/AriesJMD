@@ -8,7 +8,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Menu, ShieldAlert, History, Ship, LogOut, LayoutDashboard, Send, CheckSquare, CalendarCheck, ShoppingCart, Warehouse, ArrowRightLeft, Package, CreditCard, Briefcase, TrendingUp, Trophy, User as UserIcon, HelpCircle, Radio, ClipboardList, FileText, Download, MessageSquare, Hammer } from 'lucide-react';
+import { Menu, ShieldAlert, History, Ship, LogOut, LayoutDashboard, Send, CheckSquare, CalendarCheck, ShoppingCart, Warehouse, ArrowRightLeft, Package, HardHat, Car, CalendarDays, Home, Users, AlertTriangle, Briefcase, TrendingUp, Trophy, User as UserIcon, HelpCircle, Radio, ClipboardList, FileText, Download, MessageSquare, Hammer } from 'lucide-react';
 import AnnouncementApprovalDialog from '../announcements/AnnouncementApprovalDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import NewAnnouncementDialog from '../announcements/NewAnnouncementDialog';
@@ -27,7 +27,7 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
       ppeRequests, payments, feedback, unlockRequests,
       inventoryTransferRequests, dailyPlannerComments, logbookRequests,
       pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount,
-      damageReports, myFeedbackUpdates
+      damageReports
     } = useAppContext();
     const pathname = usePathname();
 
@@ -110,7 +110,7 @@ const plannerNotificationCount =
     
     const canApprovePayments = user.role === 'Admin' || user.role === 'Manager';
     const pendingPaymentApprovalCount = canApprovePayments ? (payments || []).filter(p => p.status === 'Pending').length : 0;
-    const pendingFeedbackCount = can.manage_feedback ? (feedback || []).filter(f => !f.viewedByUser).length : 0;
+    const pendingFeedbackCount = can.manage_feedback ? (feedback || []).filter(f => !f.viewedBy?.[user.id]).length : 0;
     const pendingUnlockRequestCount = can.manage_user_lock_status ? (unlockRequests || []).filter(r => r.status === 'pending').length : 0;
 
     const canApproveTransfers = can.approve_store_requests;
@@ -131,7 +131,6 @@ const plannerNotificationCount =
       incidentReporting: incidentNotificationCount,
       vendorLedger: pendingPaymentApprovalCount,
       account: pendingFeedbackCount + pendingUnlockRequestCount,
-      help: myFeedbackUpdates,
       manpower: pendingLogbookRequestCount
     };
   }, [
@@ -139,8 +138,7 @@ const plannerNotificationCount =
     internalRequests, managementRequests, incidentReports, damageReports,
     ppeRequests, payments, feedback, unlockRequests,
     inventoryTransferRequests, dailyPlannerComments, logbookRequests,
-    myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount,
-    myFeedbackUpdates
+    myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount
   ]);
     
     const navItems = [
@@ -165,7 +163,7 @@ const plannerNotificationCount =
       { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0, show: true },
       { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },
       { href: '/account', icon: UserIcon, label: 'Account', notificationCount: notificationCounts.account || 0, show: true },
-      { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: notificationCounts.help || 0, show: true },
+      { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: 0, show: true },
       { href: '/tp-certification', icon: FileText, label: 'TP Certification', notificationCount: 0, show: false },
     ];
   

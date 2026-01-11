@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -13,8 +12,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Textarea } from '../ui/textarea';
-import { Send } from 'lucide-react';
+import { Send, Trash2 } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 
 const statusVariant: Record<FeedbackStatus, 'default' | 'secondary' | 'success'> = {
     'New': 'default',
@@ -25,7 +25,7 @@ const statusVariant: Record<FeedbackStatus, 'default' | 'secondary' | 'success'>
 const statusOptions: FeedbackStatus[] = ['New', 'In Progress', 'Resolved'];
 
 export default function FeedbackManagement() {
-    const { user, feedback, users, updateFeedbackStatus, markFeedbackAsViewed, addFeedbackComment } = useAppContext();
+    const { user, feedback, users, updateFeedbackStatus, addFeedbackComment, deleteFeedback } = useAppContext();
     const [filter, setFilter] = useState<'all' | FeedbackStatus>('all');
     const [newComments, setNewComments] = useState<Record<string, string>>({});
     
@@ -92,11 +92,11 @@ export default function FeedbackManagement() {
                             <AccordionTrigger className="p-4 hover:no-underline text-left">
                                 <div className="flex justify-between w-full items-center">
                                     <div className="flex-1 flex items-center gap-2">
-                                        {!item.viewedByUser && <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>}
-                                        <div>
-                                            <p className="font-semibold">{item.subject}</p>
-                                            <p className="text-sm text-muted-foreground">From: {submitter?.name || 'Unknown User'} on {formatDate(item.date)}</p>
-                                        </div>
+                                          {!item.viewedByUser && <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>}
+                                          <div>
+                                              <p className="font-semibold">{item.subject}</p>
+                                              <p className="text-sm text-muted-foreground">From: {submitter?.name || 'Unknown User'} on {formatDate(item.date)}</p>
+                                          </div>
                                     </div>
                                     <Badge variant={statusVariant[item.status]} className="ml-4">{item.status}</Badge>
                                 </div>
@@ -135,6 +135,25 @@ export default function FeedbackManagement() {
                                                 {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                                             </SelectContent>
                                         </Select>
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="destructive" size="sm" className="h-8">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        This action cannot be undone. This will permanently delete this feedback and all associated comments.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => deleteFeedback(item.id)}>Delete</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
                                     </div>
                                     <div className="relative pt-2">
                                         <Textarea
@@ -163,4 +182,3 @@ export default function FeedbackManagement() {
         </div>
     );
 }
-

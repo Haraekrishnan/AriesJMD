@@ -1,9 +1,8 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, Dispatch, SetStateAction, useMemo } from 'react';
-import { User, RoleDefinition, Permission, ALL_PERMISSIONS, PasswordResetRequest, UnlockRequest, Feedback, Comment } from '@/lib/types';
+import { User, RoleDefinition, Permission, ALL_PERMISSIONS, PasswordResetRequest, UnlockRequest, Feedback, Comment, DecorationTheme } from '@/lib/types';
 import { useRouter, usePathname } from 'next/navigation';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, get, query, orderByChild, equalTo, update, push, set, remove } from 'firebase/database';
@@ -27,11 +26,12 @@ type AuthContextType = {
   can: PermissionsObject;
   appName: string;
   appLogo: string | null;
+  activeTheme: DecorationTheme | null;
   myFeedbackUpdates: number;
 
   login: (email: string, pass: string) => Promise<{ success: boolean; user?: User }>;
   logout: () => void;
-  updateProfile: (data: Partial<User & { avatarFile?: File, signatureFile?: File, password?: string }>) => Promise<void>;
+  updateProfile: (name: string, email: string, avatarFile: File | null, password?: string, signatureFile?: File | null) => void;
   requestPasswordReset: (email: string) => Promise<boolean>;
   resolveResetRequest: (requestId: string) => void;
   resetPassword: (email: string, code: string, newPass: string) => Promise<boolean>;
@@ -47,9 +47,12 @@ type AuthContextType = {
   deleteRole: (roleId: string) => void;
   addFeedback: (subject: string, message: string) => void;
   updateFeedbackStatus: (feedbackId: string, status: Feedback['status']) => void;
-  addFeedbackComment: (feedbackId: string, text: string) => void;
   markFeedbackAsViewed: (feedbackId?: string) => void;
+  addFeedbackComment: (feedbackId: string, text: string) => void;
+  deleteFeedback: (feedbackId: string) => void;
   updateBranding: (name: string, logo: string | null) => void;
+  updateActiveTheme: (theme: DecorationTheme) => void;
+  clearInventoryTransferHistory: () => void;
   addActivityLog: (userId: string, action: string, details?: string) => void;
   getVisibleUsers: () => User[];
   getAssignableUsers: () => User[];
@@ -88,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [feedbackById, setFeedbackById] = useState<Record<string, Feedback>>({});
   const [appName, setAppName] = useState('Aries Marine');
   const [appLogo, setAppLogo] = useState<string | null>(null);
+  const [activeTheme, setActiveTheme] = useState<DecorationTheme | null>('none');
 
   const users = useMemo(() => Object.values(usersById), [usersById]);
   const roles = useMemo(() => Object.values(rolesById), [rolesById]);
@@ -95,13 +99,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const unlockRequests = useMemo(() => Object.values(unlockRequestsById), [unlockRequestsById]);
   const feedback = useMemo(() => Object.values(feedbackById), [feedbackById]);
   
-  const myFeedbackUpdates = useMemo(() => {
-    if (!user) return 0;
-    return feedback.filter(f =>
-      f.userId === user.id && !f.viewedByUser
-    ).length;
-  }, [user, feedback]);
-
   const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
@@ -165,41 +162,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user?.id === updatedUser.id) setUser(updatedUser);
   }, [user, addActivityLog]);
   
-  const updateProfile = useCallback(async (data: Partial<User & { avatarFile?: File, signatureFile?: File, password?: string }>) => {
-    if (!user) return;
-    
-    const updatedUser = { ...user, ...data };
-    
-    if (data.avatarFile) {
-        try {
-            const avatarUrl = await uploadFile(data.avatarFile, `avatars/${user.id}/${data.avatarFile.name}`);
-            updatedUser.avatar = avatarUrl;
-        } catch (error) {
-            console.error("Avatar upload failed:", error);
-            toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload new profile picture." });
+  const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string, signatureFile?: File | null) => {
+    if (user) {
+        const updatedUser: User = { ...user, name, email };
+        if (password) updatedUser.password = password;
+
+        if (avatarFile) {
+            try {
+                const avatarUrl = await uploadFile(avatarFile, `avatars/${user.id}/${avatarFile.name}`);
+                updatedUser.avatar = avatarUrl;
+            } catch (error) {
+                console.error("Avatar upload failed:", error);
+                toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload new profile picture." });
+            }
         }
-    }
-
-    if (data.signatureFile) {
-        try {
-            const signatureUrl = await uploadFile(data.signatureFile, `signatures/${user.id}/${data.signatureFile.name}`);
-            updatedUser.signatureUrl = signatureUrl;
-        } catch (error) {
-            console.error("Signature upload failed:", error);
-            toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload new signature." });
+        if (signatureFile) {
+            try {
+                const signatureUrl = await uploadFile(signatureFile, `signatures/${user.id}/${signatureFile.name}`);
+                updatedUser.signatureUrl = signatureUrl;
+            } catch (error) {
+                console.error("Signature upload failed:", error);
+                toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload new signature." });
+            }
         }
+        updateUser(updatedUser);
     }
-
-    // This will perform a shallow update, preserving fields not in the `updatedUser` object on the DB
-    const { id, ...rest } = updatedUser;
-    const { avatarFile, signatureFile, ...dbData } = rest; // Exclude files from DB write
-    await update(ref(rtdb, `users/${id}`), dbData);
-
-    if (user.id === id) {
-        setUser(updatedUser); // Update local state
-    }
-}, [user, toast]);
-
+  }, [user, updateUser, toast]);
 
     const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
         const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
@@ -287,7 +275,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [unlockUser]);
 
   const addUser = useCallback((userData: Omit<User, 'id' | 'avatar' | 'status'>) => {
-    if (!user) return;
     const newRef = push(ref(rtdb, 'users'));
     set(newRef, {
       ...userData,
@@ -320,74 +307,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const newRef = push(ref(rtdb, 'feedback'));
     set(newRef, {
-      userId: user.id, subject, message, date: new Date().toISOString(), status: 'New', viewedByUser: true, comments: {},
+      userId: user.id, subject, message, date: new Date().toISOString(), status: 'New', viewedByUser: true,
     });
   }, [user]);
-  
+
   const addFeedbackComment = useCallback((feedbackId: string, text: string) => {
     if (!user) return;
-    const feedbackItem = feedback.find(f => f.id === feedbackId);
-    if (!feedbackItem) return;
-
     const newCommentRef = push(ref(rtdb, `feedback/${feedbackId}/comments`));
     const newComment: Omit<Comment, 'id'> = {
         id: newCommentRef.key!,
         userId: user.id,
         text,
         date: new Date().toISOString(),
-        eventId: feedbackId,
     };
+    update(ref(rtdb, `feedback/${feedbackId}/comments`), { [newCommentRef.key!]: newComment });
     
-    const updates: { [key: string]: any } = {};
-    updates[`feedback/${feedbackId}/comments/${newCommentRef.key}`] = { ...newComment };
-    updates[`feedback/${feedbackId}/viewedByUser`] = false;
-
-    update(ref(rtdb), updates);
-
-    const feedbackCreator = users.find(u => u.id === feedbackItem.userId);
-    if (feedbackCreator?.email && feedbackCreator.id !== user.id) {
-        sendNotificationEmail({
-            to: [feedbackCreator.email],
-            subject: `Update on your feedback: "${feedbackItem.subject}"`,
-            htmlBody: `
-                <p>There's an update on your submitted feedback.</p>
-                <p><strong>Reply from ${user.name}:</strong></p>
-                <div style="padding: 10px; border-left: 3px solid #ccc; margin-top: 10px;">${text}</div>
-                <p>You can view the full conversation in the 'Help' section of the app.</p>
-            `,
-            notificationSettings: {} as any,
-            event: 'onInternalRequestUpdate'
-        });
+    // Mark as unread for the requester when an admin comments
+    if (user.role === 'Admin') {
+      update(ref(rtdb, `feedback/${feedbackId}`), { viewedByUser: false });
     }
-  }, [user, feedback, users]);
+  }, [user]);
 
   const updateFeedbackStatus = useCallback((feedbackId: string, status: Feedback['status']) => {
-    if (!user) return;
-    const feedbackItem = feedback.find(f => f.id === feedbackId);
-    if (!feedbackItem) return;
-
-    const updates: { [key: string]: any } = {
-        [`feedback/${feedbackId}/status`]: status,
-        [`feedback/${feedbackId}/viewedByUser`]: false,
-    };
-    update(ref(rtdb), updates);
-    addFeedbackComment(feedbackId, `Status changed to ${status}`);
-  }, [user, addFeedbackComment, feedback]);
+    update(ref(rtdb, `feedback/${feedbackId}`), { status, viewedByUser: false });
+  }, []);
 
   const markFeedbackAsViewed = useCallback(async (feedbackId?: string) => {
-    if (!user || !feedbackId) return;
-
-    const feedbackItem = feedback.find(f => f.id === feedbackId);
-    if (!feedbackItem) return;
-
-    // Only requestor can mark as viewed by them
-    if (feedbackItem.userId !== user.id) return;
+    if (!user) return;
     
-    await update(ref(rtdb, `feedback/${feedbackId}`), {
-      viewedByUser: true,
-    });
+    if (feedbackId) {
+      const feedbackItem = feedback.find(f => f.id === feedbackId);
+      if (!feedbackItem) return;
+
+      if (feedbackItem.userId === user.id) {
+        await update(ref(rtdb, `feedback/${feedbackId}`), {
+          viewedByUser: true,
+        });
+      }
+    }
   }, [user, feedback]);
-  
+
+  const deleteFeedback = useCallback((feedbackId: string) => {
+    if (!user || user.role !== 'Admin') {
+      toast({
+        variant: 'destructive',
+        title: 'Permission Denied',
+        description: 'Only an administrator can delete feedback.',
+      });
+      return;
+    }
+    remove(ref(rtdb, `feedback/${feedbackId}`));
+    addActivityLog(user.id, 'Feedback Deleted', `Deleted feedback ID: ${feedbackId}`);
+    toast({
+      variant: 'destructive',
+      title: 'Feedback Deleted',
+    });
+  }, [user, addActivityLog, toast]);
+
   const updateBranding = useCallback((name: string, logo: string | null) => {
     if (!user || user.role !== 'Admin') {
       toast({ variant: 'destructive', title: 'Permission Denied', description: 'Only administrators can change branding settings.' });
@@ -398,6 +374,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'Branding Updated', `App name changed to "${name}"`);
   }, [user, addActivityLog, toast]);
+  
+  const updateActiveTheme = useCallback((theme: DecorationTheme) => {
+    if (user && (user.role === 'Admin' || user.role === 'Project Coordinator')) {
+        set(ref(rtdb, 'decorations/activeTheme'), theme);
+    }
+  }, [user]);
+
+  const clearInventoryTransferHistory = useCallback(() => {
+    // This function seems to belong more in inventory context.
+    // For now, it does nothing here.
+  }, []);
 
   const getSubordinateChain = useCallback((userId: string, allUsers: User[]): Set<string> => {
     const subordinates = new Set<string>();
@@ -463,6 +450,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     return assignableUsers.filter(u => !supervisorChain.has(u.id));
   }, [user, users, getVisibleUsers]);
+
+  const myFeedbackUpdates = useMemo(() => {
+    if (!user) return 0;
+    return feedback.filter(f =>
+      f.userId === user.id && !f.viewedByUser
+    ).length;
+  }, [user, feedback]);
   
   useEffect(() => {
     const unsubscribers = [
@@ -477,6 +471,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setAppName(data.appName || 'Aries Marine');
           setAppLogo(data.appLogo || null);
         }
+      }),
+      onValue(ref(rtdb, 'decorations/activeTheme'), (snapshot) => {
+        setActiveTheme(snapshot.val() || 'none');
       })
     ];
 
@@ -503,20 +500,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [storedUserId, users, logout]);
 
   const contextValue: AuthContextType = {
-    user, loading, users, roles, passwordResetRequests, unlockRequests, feedback, can, appName, appLogo,
+    user, loading, users, roles, passwordResetRequests, unlockRequests, feedback, can, appName, appLogo, activeTheme, myFeedbackUpdates,
     login, logout, updateProfile, requestPasswordReset,
-    resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, updateBranding, addActivityLog, getVisibleUsers, getAssignableUsers, addFeedbackComment,
-    myFeedbackUpdates,
+    resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, addFeedbackComment, deleteFeedback, updateBranding, updateActiveTheme, clearInventoryTransferHistory, addActivityLog, getVisibleUsers, getAssignableUsers,
   };
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 }
 
-export const useAuth = (): AuthContextType => {
+export const useAppContext = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAppContext must be used within an AuthProvider');
   }
   return context;
 };
-
