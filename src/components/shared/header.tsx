@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -27,7 +28,7 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
       ppeRequests, payments, feedback, unlockRequests,
       inventoryTransferRequests, dailyPlannerComments, logbookRequests,
       pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount,
-      damageReports
+      damageReports, myFeedbackUpdates
     } = useAppContext();
     const pathname = usePathname();
 
@@ -131,6 +132,7 @@ const plannerNotificationCount =
       incidentReporting: incidentNotificationCount,
       vendorLedger: pendingPaymentApprovalCount,
       account: pendingFeedbackCount + pendingUnlockRequestCount,
+      help: myFeedbackUpdates,
       manpower: pendingLogbookRequestCount
     };
   }, [
@@ -138,7 +140,8 @@ const plannerNotificationCount =
     internalRequests, managementRequests, incidentReports, damageReports,
     ppeRequests, payments, feedback, unlockRequests,
     inventoryTransferRequests, dailyPlannerComments, logbookRequests,
-    myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount
+    myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount,
+    myFeedbackUpdates
   ]);
     
     const navItems = [
@@ -163,7 +166,7 @@ const plannerNotificationCount =
       { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0, show: true },
       { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },
       { href: '/account', icon: UserIcon, label: 'Account', notificationCount: notificationCounts.account || 0, show: true },
-      { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: 0, show: true },
+      { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: notificationCounts.help || 0, show: true },
       { href: '/tp-certification', icon: FileText, label: 'TP Certification', notificationCount: 0, show: false },
     ];
   

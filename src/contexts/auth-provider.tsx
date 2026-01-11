@@ -27,6 +27,7 @@ type AuthContextType = {
   can: PermissionsObject;
   appName: string;
   appLogo: string | null;
+  myFeedbackUpdates: number;
 
   login: (email: string, pass: string) => Promise<{ success: boolean; user?: User }>;
   logout: () => void;
@@ -94,6 +95,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const unlockRequests = useMemo(() => Object.values(unlockRequestsById), [unlockRequestsById]);
   const feedback = useMemo(() => Object.values(feedbackById), [feedbackById]);
   
+  const myFeedbackUpdates = useMemo(() => {
+    if (!user) return 0;
+    return feedback.filter(f => {
+        if (f.userId !== user.id) return false;
+        
+        const hasUnreadComment = (Array.isArray(f.comments) ? f.comments : Object.values(f.comments || {}))
+            .some(c => c && c.userId !== user.id && !c.viewedBy?.[user.id]);
+        
+        const hasUnreadStatus = !f.viewedBy?.[user.id];
+
+        return hasUnreadComment || hasUnreadStatus;
+    }).length;
+  }, [user, feedback]);
+
   const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
@@ -315,8 +330,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userId: user.id, subject, message, date: new Date().toISOString(), status: 'New', viewedBy: { [user.id]: true }, comments: [],
     });
   }, [user]);
-
-  const addFeedbackComment = useCallback((feedbackId: string, text: string) => {
+  
+    const addFeedbackComment = useCallback((feedbackId: string, text: string) => {
     if(!user) return;
     const feedbackItem = feedback.find(f => f.id === feedbackId);
     if (!feedbackItem) return;
@@ -354,17 +369,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateFeedbackStatus = useCallback((feedbackId: string, status: Feedback['status']) => {
     if (!user) return;
-    update(ref(rtdb, `feedback/${feedbackId}`), { status });
+    const updates: { [key: string]: any } = {
+        [`feedback/${feedbackId}/status`]: status,
+        [`feedback/${feedbackId}/viewedBy/${feedback.find(f => f.id === feedbackId)?.userId}`]: false,
+    };
+    update(ref(rtdb), updates);
     addFeedbackComment(feedbackId, `Status changed to ${status}`);
-  }, [user, addFeedbackComment]);
+  }, [user, addFeedbackComment, feedback]);
 
   const markFeedbackAsViewed = useCallback(() => {
     if (!user) return;
+    const updates: { [key: string]: any } = {};
     feedback.forEach(f => {
-      if (f.userId === user.id && !f.viewedBy?.[user.id]) {
-        update(ref(rtdb, `feedback/${f.id}/viewedBy`), { [user.id]: true });
+      if (f.userId === user.id) {
+        const hasUnread = !f.viewedBy?.[user.id] || 
+          Object.values(f.comments || {}).some(c => c.userId !== user.id && !c.viewedBy?.[user.id]);
+        
+        if (hasUnread) {
+          updates[`feedback/${f.id}/viewedBy/${user.id}`] = true;
+          Object.values(f.comments || {}).forEach(c => {
+            if (c.userId !== user.id && !c.viewedBy?.[user.id]) {
+                updates[`feedback/${f.id}/comments/${c.id}/viewedBy/${user.id}`] = true;
+            }
+          });
+        }
       }
     });
+    if (Object.keys(updates).length > 0) {
+        update(ref(rtdb), updates);
+    }
   }, [user, feedback]);
   
   const updateBranding = useCallback((name: string, logo: string | null) => {
@@ -484,7 +517,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const contextValue: AuthContextType = {
     user, loading, users, roles, passwordResetRequests, unlockRequests, feedback, can, appName, appLogo,
     login, logout, updateProfile, requestPasswordReset,
-    resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, updateBranding, addActivityLog, getVisibleUsers, getAssignableUsers, addFeedbackComment
+    resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, updateBranding, addActivityLog, getVisibleUsers, getAssignableUsers, addFeedbackComment,
+    myFeedbackUpdates,
   };
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
@@ -497,3 +531,4 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+

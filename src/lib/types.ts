@@ -873,7 +873,7 @@ export type Feedback = {
   date: string; // ISO String
   status: FeedbackStatus;
   viewedBy?: { [key: string]: boolean };
-  comments?: Comment[];
+  comments?: { [key: string]: Comment };
 };
 
 export type JobRecordPlant = {
@@ -1072,3 +1072,4 @@ export type VehicleUsageRecord = {
     };
   };
 };
+
