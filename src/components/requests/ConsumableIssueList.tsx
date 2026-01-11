@@ -22,7 +22,7 @@ export default function ConsumableIssueList() {
 
             const requester = users.find(u => u.id === req.requesterId);
             
-            (req.items || []).forEach(item => {
+            req.items.forEach(item => {
                 if (item.status === 'Issued') {
                     const issuedDate = (item as any).issuedDate;
                     if (issuedDate) {
@@ -58,7 +58,7 @@ export default function ConsumableIssueList() {
     const formatDate = (dateString?: string) => {
         if (!dateString) return 'N/A';
         const date = parseISO(dateString);
-        return isValid(date) ? format(date, 'dd MMM, yyyy') : 'Invalid Date';
+        return isValid(date) ? format(date, 'dd MMM, yyyy') : 'N/A';
     };
 
     return (
@@ -107,4 +107,3 @@ export default function ConsumableIssueList() {
         </div>
     );
 }
-

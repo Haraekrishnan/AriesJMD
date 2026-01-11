@@ -5,16 +5,18 @@ import React, { createContext, useContext, ReactNode, useState, useEffect, useMe
 import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestItem, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, PpeRequestStatus, Role, ConsumableInwardRecord, Directive, DirectiveStatus, DamageReport, User, NotificationSettings, DamageReportStatus } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
-import { useAppContext } from './app-provider';
+import { useAuth } from './auth-provider';
+import { useGeneral } from './general-provider';
 import { useToast } from '@/hooks/use-toast';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
+import { useManpower } from './manpower-provider';
 import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
 import { format, parseISO, isValid, isAfter } from 'date-fns';
+import { useConsumable } from './consumable-provider';
 import { getStorage, ref as storageRef, deleteObject } from "firebase/storage";
 import { v4 as uuidv4 } from 'uuid';
 import { uploadFile } from '@/lib/storage';
 import { normalizeGoogleDriveLink } from '@/lib/utils';
-
 
 const _addInternalRequestComment = (
     requestId: string,
@@ -218,8 +220,11 @@ const createDataListener = <T extends {}>(
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
 
 export function InventoryProvider({ children }: { children: ReactNode }) {
-    const { user, users, can, addActivityLog, projects, notificationSettings, manpowerProfiles, consumableItems, consumableInwardHistory } = useAppContext();
+    const { user, users, can, addActivityLog } = useAuth();
+    const { projects, notificationSettings, managementRequests } = useGeneral();
+    const { manpowerProfiles } = useManpower();
     const { toast } = useToast();
+    const { consumableItems, consumableInwardHistory } = useConsumable();
 
     // State
     const [inventoryItemsById, setInventoryItemsById] = useState<Record<string, InventoryItem>>({});
@@ -264,13 +269,13 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const igpOgpRecords = useMemo(() => Object.values(igpOgpRecordsById), [igpOgpRecordsById]);
     const damageReports = useMemo(() => Object.values(damageReportsById), [damageReportsById]);
     
-    const consumableItemIds = useMemo(() => new Set((consumableItems || []).map(item => item.id)), [consumableItems]);
+    const consumableItemIds = useMemo(() => new Set(consumableItems.map(item => item.id)), [consumableItems]);
 
     const { 
         pendingConsumableRequestCount, updatedConsumableRequestCount,
         pendingGeneralRequestCount, updatedGeneralRequestCount
     } = useMemo(() => {
-        if (!user || !can) return { pendingConsumableRequestCount: 0, updatedConsumableRequestCount: 0, pendingGeneralRequestCount: 0, updatedGeneralRequestCount: 0 };
+        if (!user) return { pendingConsumableRequestCount: 0, updatedConsumableRequestCount: 0, pendingGeneralRequestCount: 0, updatedGeneralRequestCount: 0 };
         
         let pendingConsumable = 0, updatedConsumable = 0;
         let pendingGeneral = 0, updatedGeneral = 0;
@@ -297,7 +302,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         });
         
         return { pendingConsumableRequestCount: pendingConsumable, updatedConsumableRequestCount: updatedConsumable, pendingGeneralRequestCount: pendingGeneral, updatedGeneralRequestCount: updatedGeneral };
-    }, [user, internalRequests, can, consumableItemIds]);
+    }, [user, internalRequests, can.approve_store_requests, consumableItemIds]);
 
     const { pendingPpeRequestCount, updatedPpeRequestCount } = useMemo(() => {
         if (!user) return { pendingPpeRequestCount: 0, updatedPpeRequestCount: 0 };
@@ -766,7 +771,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
         update(ref(rtdb), updates);
         addActivityLog(user.id, 'Inventory Transfer Rejected', `Request ID: ${requestId}`);
-    }, [user, can, addActivityLog]);
+    }, [user, can.approve_store_requests, addActivityLog]);
     
     const disputeInventoryTransfer = useCallback((requestId: string, comment: string) => {
         if (!user) return;
@@ -1114,7 +1119,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus) => {
         if (!user || !can.approve_store_requests) return;
         update(ref(rtdb, `internalRequests/${requestId}`), { status, approverId: user.id, acknowledgedByRequester: false });
-      }, [user, can]);
+      }, [user, can.approve_store_requests]);
     
       const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment?: string) => {
         if (!user || !can.approve_store_requests) return;
@@ -1185,7 +1190,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
     
         update(ref(rtdb), updates);
-      }, [user, can, internalRequestsById, inventoryItems, toast, consumableItems, users, notificationSettings]);
+      }, [user, can.approve_store_requests, internalRequestsById, inventoryItems, toast, consumableItems, users, notificationSettings]);
     
       const isConsumable = (request: InternalRequest) => {
           return request.items.some(item => item.inventoryItemId && consumableItemIds.has(item.inventoryItemId));
@@ -1244,7 +1249,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 });
             }
         }
-      }, [user, can, internalRequestsById, addInternalRequestComment, users, notificationSettings]);
+      }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment, users, notificationSettings]);
       
     
       const markInternalRequestAsViewed = useCallback((requestId: string) => {
@@ -1539,7 +1544,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const contextValue: InventoryContextType = {
-        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, internalRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory, directives: [], damageReports,
+        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory, directives: [], damageReports,
         addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, updateInventoryItemGroupByProject, updateMultipleInventoryItems, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
         addInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
         addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest,

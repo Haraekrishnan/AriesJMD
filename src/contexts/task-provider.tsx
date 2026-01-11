@@ -5,10 +5,11 @@ import React, { createContext, useContext, ReactNode, useState, useEffect, useMe
 import { Task, TaskStatus, ApprovalState, Comment, Subtask, NotificationEventKey } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update } from 'firebase/database';
+import { useAuth } from './auth-provider';
 import { useToast } from '@/hooks/use-toast';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { format, isPast } from 'date-fns';
-import { useAppContext } from './app-provider';
+import { useGeneral } from './general-provider';
 
 type TaskContextType = {
   tasks: Task[];
@@ -48,7 +49,8 @@ const createDataListener = <T extends {}>(
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
 export function TaskProvider({ children }: { children: ReactNode }) {
-  const { user, users, addActivityLog, notificationSettings } = useAppContext();
+  const { user, users, addActivityLog } = useAuth();
+  const { notificationSettings } = useGeneral();
   const { toast } = useToast();
   const [tasksById, setTasksById] = useState<Record<string, Task>>({});
   
@@ -383,5 +385,3 @@ export const useTask = (): TaskContextType => {
   }
   return context;
 };
-
-    

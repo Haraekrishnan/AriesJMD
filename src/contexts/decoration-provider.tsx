@@ -4,7 +4,7 @@ import { createContext, useContext, ReactNode, useState, useEffect } from 'react
 import { ref, onValue, set } from 'firebase/database';
 import { rtdb } from '@/lib/rtdb';
 import type { DecorationTheme } from '@/lib/types';
-import { useAppContext } from './app-provider';
+import { useAuth } from './auth-provider';
 
 interface DecorationContextType {
     activeTheme: DecorationTheme | null;
@@ -14,7 +14,7 @@ interface DecorationContextType {
 const DecorationContext = createContext<DecorationContextType | undefined>(undefined);
 
 export function DecorationContextProvider({ children }: { children: ReactNode }) {
-    const { user } = useAppContext();
+    const { user } = useAuth();
     const [activeTheme, setActiveTheme] = useState<DecorationTheme | null>(null);
 
     useEffect(() => {

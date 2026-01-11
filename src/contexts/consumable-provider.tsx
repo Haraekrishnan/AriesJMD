@@ -4,7 +4,7 @@ import React, { createContext, useContext, ReactNode, useState, useEffect, useMe
 import type { InventoryItem, ConsumableInwardRecord, InventoryCategory } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, update, push, set, remove, get } from 'firebase/database';
-import { useAppContext } from './app-provider';
+import { useAuth } from './auth-provider';
 
 type ConsumableContextType = {
   consumableItems: InventoryItem[];
@@ -37,7 +37,7 @@ const createDataListener = <T extends {}>(
 };
 
 export function ConsumableProvider({ children }: { children: ReactNode }) {
-  const { user, addActivityLog } = useAppContext();
+  const { user, addActivityLog } = useAuth();
   const [inventoryItemsById, setInventoryItemsById] = useState<Record<string, InventoryItem>>({});
   const [consumableInwardHistoryById, setConsumableInwardHistoryById] = useState<Record<string, ConsumableInwardRecord>>({});
 

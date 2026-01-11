@@ -36,7 +36,7 @@ type GeneralContextType = {
   updateJobCode: (jobCode: JobCode) => void;
   deleteJobCode: (jobCodeId: string) => void;
   updateFeedbackStatus: (feedbackId: string, status: Feedback['status']) => void;
-  markFeedbackAsViewed: (feedbackId?: string) => void;
+  markFeedbackAsViewed: () => void;
   addDocument: (docData: Omit<DownloadableDocument, 'id' | 'uploadedBy' | 'createdAt'>) => void;
   updateDocument: (doc: DownloadableDocument) => void;
   deleteDocument: (docId: string) => void;
@@ -140,20 +140,16 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateFeedbackStatus = useCallback((feedbackId: string, status: Feedback['status']) => {
-    update(ref(rtdb, `feedback/${feedbackId}`), { status, viewedByUser: false });
+    update(ref(rtdb, `feedback/${feedbackId}`), { status });
   }, []);
 
-  const markFeedbackAsViewed = useCallback(async (feedbackId?: string) => {
-    if (!user || !feedbackId) return;
-
-    const feedbackItem = feedback.find(f => f.id === feedbackId);
-    if (!feedbackItem) return;
-
-    if (feedbackItem.userId === user.id) {
-        await update(ref(rtdb, `feedback/${feedbackId}`), {
-            viewedByUser: true,
-        });
-    }
+  const markFeedbackAsViewed = useCallback(() => {
+    if (!user) return;
+    feedback.forEach(f => {
+      if (!f.viewedBy?.[user.id]) {
+        update(ref(rtdb, `feedback/${f.id}/viewedBy`), { [user.id]: true });
+      }
+    });
   }, [user, feedback]);
 
   const addDocument = useCallback((docData: Omit<DownloadableDocument, 'id' | 'uploadedBy' | 'createdAt'>) => {
@@ -253,7 +249,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
     const newComment: Omit<Comment, 'id'> = { id: newCommentRef.key!, userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
     
     const updates: {[key: string]: any} = {};
-    updates[`managementRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, viewedBy: { [user.id]: true } };
+    updates[`managementRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment };
     updates[`managementRequests/${requestId}/lastUpdated`] = new Date().toISOString();
 
     const currentParticipants = new Set([request.creatorId, request.toUserId, ...(request.ccUserIds || [])]);
@@ -261,7 +257,6 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
     updates[`managementRequests/${requestId}/ccUserIds`] = Array.from(currentParticipants);
 
     // Mark as unread for all participants except the current user
-    const participants = users.filter(u => currentParticipants.has(u.id));
     participants.forEach(p => {
         if (p.id !== user.id) {
             updates[`managementRequests/${requestId}/readBy/${p.id}`] = false;

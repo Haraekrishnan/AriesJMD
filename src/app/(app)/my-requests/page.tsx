@@ -2,7 +2,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useInventory } from '@/contexts/inventory-provider';
+import { useConsumable } from '@/contexts/consumable-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
@@ -14,9 +16,11 @@ import NewPpeRequestDialog from '@/components/requests/NewPpeRequestDialog';
 import PpeRequestTable from '@/components/requests/PpeRequestTable';
 import { Role } from '@/lib/types';
 import NewConsumableRequestDialog from '@/components/requests/NewConsumableRequestDialog';
+import { usePurchase } from '@/contexts/purchase-provider';
 
 export default function MyRequestsPage() {
-    const { user, roles, can, 
+    const { user, roles, can } = useAuth();
+    const { 
         internalRequests, 
         ppeRequests,
         pendingConsumableRequestCount,
@@ -25,8 +29,8 @@ export default function MyRequestsPage() {
         updatedGeneralRequestCount,
         pendingPpeRequestCount,
         updatedPpeRequestCount,
-        consumableItems,
-    } = useAppContext();
+     } = useInventory();
+    const { consumableItems } = useConsumable();
 
     const [isNewRequestDialogOpen, setIsNewRequestDialogOpen] = useState(false);
     const [isNewConsumableRequestDialogOpen, setIsNewConsumableRequestDialogOpen] = useState(false);

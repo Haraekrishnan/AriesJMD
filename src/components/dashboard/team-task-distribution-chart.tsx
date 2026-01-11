@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
@@ -21,7 +21,7 @@ interface TeamTaskDistributionChartProps {
 }
 
 export default function TeamTaskDistributionChart({ tasks }: TeamTaskDistributionChartProps) {
-  const { user, getVisibleUsers } = useAppContext();
+  const { user, getVisibleUsers } = useAuth();
 
   const visibleUsers = useMemo(() => {
     return getVisibleUsers().filter(u => u.role !== 'Manager');

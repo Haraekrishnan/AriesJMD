@@ -1,7 +1,9 @@
 
 'use client';
 import { useState, useMemo, useEffect } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useInventory } from '@/contexts/inventory-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, AlertTriangle, CheckCircle, X, FileDown, ChevronsUpDown, FilePlus, Search, FilePen } from 'lucide-react';
@@ -51,6 +53,7 @@ import { useToast } from '@/hooks/use-toast';
 import EquipmentFilters, { type EquipmentFilterValues } from '@/components/equipment/EquipmentFilters';
 import ExpiringCalibrationsReport from '@/components/equipment/ExpiringCalibrationsReport';
 import { Input } from '@/components/ui/input';
+import { useAppContext } from '@/contexts/app-provider';
 import UpdateItemsDialog from '@/components/inventory/UpdateItemsDialog';
 import AddPneumaticDrillingMachineDialog from '@/components/pneumatic-drilling-machine/AddPneumaticDrillingMachineDialog';
 import EditPneumaticDrillingMachineDialog from '@/components/pneumatic-drilling-machine/EditPneumaticDrillingMachineDialog';
@@ -75,14 +78,16 @@ import EditCordlessReciprocatingSawDialog from '@/components/cordless-reciprocat
 import CordlessReciprocatingSawTable from '@/components/cordless-reciprocating-saw/CordlessReciprocatingSawTable';
 
 export default function EquipmentStatusPage() {
-    const { user, users, can, projects,
+    const { user, users, can } = useAuth();
+    const { projects } = useGeneral();
+    const { 
         utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, 
         pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines,
         wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws,
-        certificateRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, machineLogs, inventoryItems, manpowerProfiles
-     } = useAppContext();
+        certificateRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, machineLogs, inventoryItems 
+    } = useInventory();
     const { toast } = useToast();
-    
+    const { manpowerProfiles } = useAppContext();
     const [activeTab, setActiveTab] = useState('ut-machines');
     
     // UT Machine State

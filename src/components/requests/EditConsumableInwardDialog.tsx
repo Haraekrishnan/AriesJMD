@@ -14,19 +14,11 @@ import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { ConsumableInwardRecord } from '@/lib/types';
 import { useEffect } from 'react';
 import { parseISO, isValid } from 'date-fns';
-import { get, ref, set } from 'firebase/database';
-import { rtdb } from '@/lib/rtdb';
-
-
-const coverallSizeOptions = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
+import { useConsumable } from '@/contexts/consumable-provider';
 
 const inwardSchema = z.object({
     date: z.date({ required_error: "Date is required" }),
-    sizes: z.record(z.string(), z.coerce.number().min(0).optional()).optional(),
-    quantity: z.coerce.number().min(0).optional(),
-}).refine(data => {
-    // This logic is simplified as we cannot know the ppeType in the schema alone
-    return true; 
+    quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
 });
 
 type InwardFormValues = z.infer<typeof inwardSchema>;
@@ -38,7 +30,7 @@ interface EditConsumableInwardDialogProps {
 }
 
 export default function EditConsumableInwardDialog({ isOpen, setIsOpen, record }: EditConsumableInwardDialogProps) {
-    const { updateConsumableInwardRecord, consumableItems, consumableInwardHistory } = useAppContext();
+    const { updateConsumableInwardRecord, consumableItems } = useConsumable();
     const { toast } = useToast();
     
     const form = useForm<InwardFormValues>({
@@ -59,7 +51,7 @@ export default function EditConsumableInwardDialog({ isOpen, setIsOpen, record }
         const originalRecord = consumableInwardHistory.find(r => r.id === record.id);
         if (!originalRecord) return;
         
-        const quantityDifference = data.quantity! - originalRecord.quantity;
+        const quantityDifference = data.quantity - originalRecord.quantity;
 
         updateConsumableInwardRecord({ ...record, ...data, date: data.date.toISOString() });
         
@@ -104,3 +96,6 @@ export default function EditConsumableInwardDialog({ isOpen, setIsOpen, record }
     );
 }
 
+// Dummy imports to satisfy compiler - will be removed after context refactor
+import { get, ref, set } from 'firebase/database';
+import { rtdb } from '@/lib/rtdb';
