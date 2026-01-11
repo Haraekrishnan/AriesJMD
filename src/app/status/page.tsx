@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -13,13 +13,12 @@ export default function StatusPage() {
   const { user, loading, logout, requestUnlock } = useAppContext();
   const router = useRouter();
   const { toast } = useToast();
+  const [isRequesting, setIsRequesting] = useState(false);
 
   useEffect(() => {
-    if (loading) return;
-
-    if (!user) {
+    if (!loading && !user) {
       router.replace('/login');
-    } else if (user.status !== 'locked') {
+    } else if (!loading && user && user.status !== 'locked') {
       router.replace('/dashboard');
     }
   }, [user, loading, router]);
@@ -39,13 +38,15 @@ export default function StatusPage() {
     );
   }
   
-  const handleUnlockRequest = () => {
+  const handleUnlockRequest = async () => {
     if (user) {
-        requestUnlock(user.id, user.name);
+        setIsRequesting(true);
+        await requestUnlock(user.id, user.name);
         toast({
             title: 'Unlock Request Sent',
             description: 'Your request has been sent to the administrator for review.',
         });
+        setIsRequesting(false);
     }
   };
 
@@ -62,7 +63,9 @@ export default function StatusPage() {
           </CardDescription>
         </CardHeader>
         <CardFooter className="flex flex-col gap-4">
-          <Button onClick={handleUnlockRequest} className="w-full">Request Unlock</Button>
+          <Button onClick={handleUnlockRequest} className="w-full" disabled={isRequesting}>
+            {isRequesting ? 'Sending Request...' : 'Request Unlock'}
+          </Button>
           <Button variant="outline" onClick={logout} className="w-full">
             <LogOut className="mr-2 h-4 w-4" /> Log Out
           </Button>

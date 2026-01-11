@@ -16,11 +16,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (loading) return;
-
-    if (!user) {
+    if (!loading && !user) {
       router.replace('/login');
-    } else if (user.status === 'locked' && pathname !== '/status') {
+    } else if (!loading && user?.status === 'locked') {
       router.replace('/status');
     }
   }, [user, loading, router, pathname]);
@@ -31,7 +29,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="flex items-center space-x-4">
             <Skeleton className="h-12 w-12 rounded-full" />
             <div className="space-y-2">
-                <p className="text-muted-foreground">Verifying status...</p>
+                <p className="text-muted-foreground">Loading...</p>
                 <Skeleton className="h-4 w-[250px]" />
                 <Skeleton className="h-4 w-[200px]" />
             </div>
