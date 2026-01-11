@@ -32,45 +32,6 @@ const feedbackSchema = z.object({
 
 type FeedbackFormValues = z.infer<typeof feedbackSchema>;
 
-const faqs = [
-    {
-      question: "How do I create a new task?",
-      answer: "Navigate to the 'Manage Tasks' page. Click the 'New Task' button, fill in the details like title, description, assignee, priority, and due date, then click 'Create Task'."
-    },
-    {
-      question: "How does task approval work?",
-      answer: "When an assignee marks a task as 'Completed', it is sent to the task creator for approval. The creator can then approve it to finalize it or return it with comments if changes are needed. You can find tasks awaiting your approval in the 'Pending Approvals' dialog on the task board."
-    },
-    {
-      question: "How do I request an item from the store?",
-      answer: "Go to the 'My Requests' page and select the 'Internal Store Requests' tab. Click 'New Store Request', fill out the items you need, and submit. The request will be sent to the store in-charge for approval."
-    },
-    {
-      question: "How do I assign an employee to a bed?",
-      answer: "Navigate to the 'Accommodation' page. Find the building and room you wish to modify. Click the 'Assign' button on an available bed and select an employee from the list. Only employees not currently assigned to a bed will appear."
-    },
-    {
-      question: "How do I track equipment calibration due dates?",
-      answer: "Go to the 'Equipment' page. Any equipment with calibration expiring within the next 30 days will be highlighted in the 'Expiring Calibrations' card at the top. You can also see the due date for each machine in its respective table (e.g., UT Machines, DFT Machines)."
-    },
-    {
-        question: "Where can I see which vehicle documents are expiring?",
-        answer: "On the 'Fleet Management' page, an 'Expiring Documents' card will appear if any vehicle or driver has documentation (like VAP, insurance, license, etc.) that is due to expire within 30 days."
-    },
-    {
-        question: "How do I request a certificate for an inventory item?",
-        answer: "Go to the 'Store Inventory' page. Find the item you need a certificate for in the table. In the 'Actions' column, click the menu button (...) and select 'Request Certificate'. Fill out the form and submit it."
-    },
-    {
-        question: "What is the difference between Job Schedule and the Planner?",
-        answer: "'Job Schedule' is for planning daily work for specific projects, including assigning manpower and vehicles. The 'Planner' is a monthly calendar for organizing personal or team events, meetings, and daily notes."
-    },
-    {
-        question: "How do I update my profile information?",
-        answer: "Go to the 'Account' page. You can edit your name, email, and upload a new profile picture. You can also change your password here."
-    }
-];
-
 const statusVariant: Record<FeedbackStatus, 'default' | 'secondary' | 'success'> = {
     'New': 'default',
     'In Progress': 'secondary',
@@ -79,7 +40,7 @@ const statusVariant: Record<FeedbackStatus, 'default' | 'secondary' | 'success'>
 
 export default function HelpPage() {
   const { toast } = useToast();
-  const { user, addFeedback, feedback, users } = useAppContext();
+  const { user, addFeedback, feedback, users, markFeedbackAsViewed } = useAppContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<FeedbackFormValues>({
@@ -187,7 +148,11 @@ export default function HelpPage() {
                 <CardDescription>Track the status and replies to your submitted feedback.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Accordion type="multiple" className="w-full space-y-2">
+                <Accordion type="multiple" className="w-full space-y-2" onValueChange={(value) => {
+                  if (value.length > 0) {
+                    value.forEach(feedbackId => markFeedbackAsViewed(feedbackId));
+                  }
+                }}>
                     {myFeedback.map(item => {
                         const commentsArray = Array.isArray(item.comments) ? item.comments : (item.comments ? Object.values(item.comments) : []);
                         return (
@@ -234,3 +199,42 @@ export default function HelpPage() {
     </div>
   );
 }
+
+const faqs = [
+    {
+      question: "How do I create a new task?",
+      answer: "Navigate to the 'Manage Tasks' page. Click the 'New Task' button, fill in the details like title, description, assignee, priority, and due date, then click 'Create Task'."
+    },
+    {
+      question: "How does task approval work?",
+      answer: "When an assignee marks a task as 'Completed', it is sent to the task creator for approval. The creator can then approve it to finalize it or return it with comments if changes are needed. You can find tasks awaiting your approval in the 'Pending Approvals' dialog on the task board."
+    },
+    {
+      question: "How do I request an item from the store?",
+      answer: "Go to the 'My Requests' page and select the 'Internal Store Requests' tab. Click 'New Store Request', fill out the items you need, and submit. The request will be sent to the store in-charge for approval."
+    },
+    {
+      question: "How do I assign an employee to a bed?",
+      answer: "Navigate to the 'Accommodation' page. Find the building and room you wish to modify. Click the 'Assign' button on an available bed and select an employee from the list. Only employees not currently assigned to a bed will appear."
+    },
+    {
+      question: "How do I track equipment calibration due dates?",
+      answer: "Go to the 'Equipment' page. Any equipment with calibration expiring within the next 30 days will be highlighted in the 'Expiring Calibrations' card at the top. You can also see the due date for each machine in its respective table (e.g., UT Machines, DFT Machines)."
+    },
+    {
+        question: "Where can I see which vehicle documents are expiring?",
+        answer: "On the 'Fleet Management' page, an 'Expiring Documents' card will appear if any vehicle or driver has documentation (like VAP, insurance, license, etc.) that is due to expire within 30 days."
+    },
+    {
+        question: "How do I request a certificate for an inventory item?",
+        answer: "Go to the 'Store Inventory' page. Find the item you need a certificate for in the table. In the 'Actions' column, click the menu button (...) and select 'Request Certificate'. Fill out the form and submit it."
+    },
+    {
+        question: "What is the difference between Job Schedule and the Planner?",
+        answer: "'Job Schedule' is for planning daily work for specific projects, including assigning manpower and vehicles. The 'Planner' is a monthly calendar for organizing personal or team events, meetings, and daily notes."
+    },
+    {
+        question: "How do I update my profile information?",
+        answer: "Go to the 'Account' page. You can edit your name, email, and upload a new profile picture. You can also change your password here."
+    }
+];
