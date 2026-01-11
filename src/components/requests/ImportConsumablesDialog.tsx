@@ -2,7 +2,7 @@
 'use client';
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { useConsumable } from '@/contexts/consumable-provider';
+import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,7 @@ interface ImportConsumablesDialogProps {
 }
 
 export default function ImportConsumablesDialog({ isOpen, setIsOpen }: ImportConsumablesDialogProps) {
-    const { addMultipleConsumableItems } = useConsumable();
+    const { addMultipleConsumableItems } = useAppContext();
     const { toast } = useToast();
     const [file, setFile] = useState<File | null>(null);
 
@@ -87,3 +87,4 @@ export default function ImportConsumablesDialog({ isOpen, setIsOpen }: ImportCon
         </Dialog>
     );
 }
+

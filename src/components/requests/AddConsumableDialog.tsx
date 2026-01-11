@@ -3,7 +3,7 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useConsumable } from '@/contexts/consumable-provider';
+import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -27,7 +27,7 @@ interface AddConsumableDialogProps {
 }
 
 export default function AddConsumableDialog({ isOpen, setIsOpen }: AddConsumableDialogProps) {
-  const { addConsumableItem } = useConsumable();
+  const { addConsumableItem } = useAppContext();
   const { toast } = useToast();
 
   const form = useForm<FormValues>({
@@ -102,3 +102,4 @@ export default function AddConsumableDialog({ isOpen, setIsOpen }: AddConsumable
     </Dialog>
   );
 }
+

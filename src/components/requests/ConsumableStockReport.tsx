@@ -7,12 +7,12 @@ import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { useConsumable } from '@/contexts/consumable-provider';
+import { useAppContext } from '@/contexts/app-provider';
 
 interface ConsumableStockReportProps {}
 
 export default function ConsumableStockReport({}: ConsumableStockReportProps) {
-  const { consumableItems } = useConsumable();
+  const { consumableItems } = useAppContext();
   
   const handleDownloadExcel = async () => {
     const workbook = new ExcelJS.Workbook();
@@ -78,3 +78,4 @@ export default function ConsumableStockReport({}: ConsumableStockReportProps) {
     </div>
   );
 }
+

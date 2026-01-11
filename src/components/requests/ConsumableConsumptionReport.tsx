@@ -9,14 +9,12 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
-import { useConsumable } from '@/contexts/consumable-provider';
 import { format, parseISO, isValid } from 'date-fns';
 
 interface ConsumableConsumptionReportProps {}
 
 export default function ConsumableConsumptionReport({}: ConsumableConsumptionReportProps) {
-  const { internalRequests, users } = useAppContext();
-  const { consumableItems } = useConsumable();
+  const { internalRequests, users, consumableItems } = useAppContext();
   
   const consumableItemIds = useMemo(() => new Set(consumableItems.map(item => item.id)), [consumableItems]);
 
@@ -115,3 +113,4 @@ export default function ConsumableConsumptionReport({}: ConsumableConsumptionRep
     </div>
   );
 }
+

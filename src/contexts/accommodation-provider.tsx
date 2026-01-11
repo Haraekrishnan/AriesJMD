@@ -5,8 +5,8 @@ import React, { createContext, useContext, ReactNode, useState, useEffect, useMe
 import { Building, Room, Bed } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get, runTransaction } from 'firebase/database';
-import { useAuth } from './auth-provider';
 import { useManpower } from './manpower-provider';
+import { useAppContext } from './app-provider';
 
 type AccommodationContextType = {
   buildings: Building[];
@@ -39,7 +39,7 @@ const createDataListener = <T extends {}>(
 const AccommodationContext = createContext<AccommodationContextType | undefined>(undefined);
 
 export function AccommodationProvider({ children }: { children: ReactNode }) {
-  const { user, addActivityLog } = useAuth();
+  const { user, addActivityLog } = useAppContext();
   const { manpowerProfiles } = useManpower();
   const [buildingsById, setBuildingsById] = useState<Record<string, Building>>({});
   

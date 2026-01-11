@@ -1,6 +1,6 @@
 
 'use client';
-import { createContext, useContext, ReactNode, useCallback, useEffect } from 'react';
+import { createContext, useContext, ReactNode, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { AuthProvider, useAuth } from './auth-provider';
 import { GeneralProvider, useGeneral } from './general-provider';
@@ -16,21 +16,21 @@ import { DecorationContextProvider, useDecorations } from './decoration-provider
 const AppContext = createContext({} as any);
 
 function CombinedProvider({ children }: { children: ReactNode }) {
-  const auth = useAuth();
-  const general = useGeneral();
-  const inventory = useInventory();
-  const manpower = useManpower();
-  const planner = usePlanner();
-  const purchase = usePurchase();
-  const task = useTask();
-  const consumable = useConsumable();
-  const accommodation = useAccommodation();
-  const decorations = useDecorations();
+  const authProps = useAuth();
+  const generalProps = useGeneral();
+  const taskProps = useTask();
+  const plannerProps = usePlanner();
+  const manpowerProps = useManpower();
+  const purchaseProps = usePurchase();
+  const consumableProps = useConsumable();
+  const accommodationProps = useAccommodation();
+  const inventoryProps = useInventory();
+  const decorationsProps = useDecorations();
   
   const router = useRouter();
   const pathname = usePathname();
 
-  const { user, loading } = auth;
+  const { user, loading } = authProps;
 
   useEffect(() => {
     if (loading) return;
@@ -49,16 +49,16 @@ function CombinedProvider({ children }: { children: ReactNode }) {
   }, [user, loading, pathname, router]);
 
   const combinedValue = {
-    ...auth,
-    ...general,
-    ...inventory,
-    ...manpower,
-    ...planner,
-    ...purchase,
-    ...task,
-    ...consumable,
-    ...accommodation,
-    ...decorations,
+    ...authProps,
+    ...generalProps,
+    ...taskProps,
+    ...plannerProps,
+    ...manpowerProps,
+    ...purchaseProps,
+    ...consumableProps,
+    ...accommodationProps,
+    ...inventoryProps,
+    ...decorationsProps,
   };
 
   return (
@@ -75,19 +75,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
         <TaskProvider>
           <PlannerProvider>
             <ManpowerProvider>
-                <PurchaseProvider>
-                    <ConsumableProvider>
-                        <InventoryProvider>
-                            <AccommodationProvider>
-                                <DecorationContextProvider>
-                                    <CombinedProvider>
-                                    {children}
-                                    </CombinedProvider>
-                                </DecorationContextProvider>
-                            </AccommodationProvider>
-                        </InventoryProvider>
-                    </ConsumableProvider>
-                </PurchaseProvider>
+              <PurchaseProvider>
+                <ConsumableProvider>
+                  <AccommodationProvider>
+                    <DecorationContextProvider>
+                      <InventoryProvider>
+                        <CombinedProvider>
+                          {children}
+                        </CombinedProvider>
+                      </InventoryProvider>
+                    </DecorationContextProvider>
+                  </AccommodationProvider>
+                </ConsumableProvider>
+              </PurchaseProvider>
             </ManpowerProvider>
           </PlannerProvider>
         </TaskProvider>
@@ -103,3 +103,5 @@ export const useAppContext = () => {
   }
   return context;
 };
+
+    

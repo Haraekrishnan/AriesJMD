@@ -15,6 +15,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { uploadFile } from '@/lib/storage';
 import { normalizeGoogleDriveLink } from '@/lib/utils';
 
+
 const _addInternalRequestComment = (
     requestId: string,
     commentText: string,
@@ -216,10 +217,8 @@ const createDataListener = <T extends {}>(
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
 
-export function InventoryProvider({ children }: { children: ReactNode }) {
-    const { user, users, can, addActivityLog, projects, notificationSettings, manpowerProfiles } = useAppContext();
+export function InventoryProvider({ children, user, users, can, addActivityLog, projects, notificationSettings, manpowerProfiles, consumableItems, consumableInwardHistory }: { children: ReactNode } & any) {
     const { toast } = useToast();
-    const { consumableItems, consumableInwardHistory } = useConsumable();
 
     // State
     const [inventoryItemsById, setInventoryItemsById] = useState<Record<string, InventoryItem>>({});
@@ -264,13 +263,13 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const igpOgpRecords = useMemo(() => Object.values(igpOgpRecordsById), [igpOgpRecordsById]);
     const damageReports = useMemo(() => Object.values(damageReportsById), [damageReportsById]);
     
-    const consumableItemIds = useMemo(() => new Set(consumableItems.map(item => item.id)), [consumableItems]);
+    const consumableItemIds = useMemo(() => new Set((consumableItems || []).map(item => item.id)), [consumableItems]);
 
     const { 
         pendingConsumableRequestCount, updatedConsumableRequestCount,
         pendingGeneralRequestCount, updatedGeneralRequestCount
     } = useMemo(() => {
-        if (!user) return { pendingConsumableRequestCount: 0, updatedConsumableRequestCount: 0, pendingGeneralRequestCount: 0, updatedGeneralRequestCount: 0 };
+        if (!user || !can) return { pendingConsumableRequestCount: 0, updatedConsumableRequestCount: 0, pendingGeneralRequestCount: 0, updatedGeneralRequestCount: 0 };
         
         let pendingConsumable = 0, updatedConsumable = 0;
         let pendingGeneral = 0, updatedGeneral = 0;
@@ -297,7 +296,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         });
         
         return { pendingConsumableRequestCount: pendingConsumable, updatedConsumableRequestCount: updatedConsumable, pendingGeneralRequestCount: pendingGeneral, updatedGeneralRequestCount: updatedGeneral };
-    }, [user, internalRequests, can.approve_store_requests, consumableItemIds]);
+    }, [user, internalRequests, can, consumableItemIds]);
 
     const { pendingPpeRequestCount, updatedPpeRequestCount } = useMemo(() => {
         if (!user) return { pendingPpeRequestCount: 0, updatedPpeRequestCount: 0 };
@@ -766,7 +765,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
         update(ref(rtdb), updates);
         addActivityLog(user.id, 'Inventory Transfer Rejected', `Request ID: ${requestId}`);
-    }, [user, can.approve_store_requests, addActivityLog]);
+    }, [user, can, addActivityLog]);
     
     const disputeInventoryTransfer = useCallback((requestId: string, comment: string) => {
         if (!user) return;
@@ -1114,7 +1113,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus) => {
         if (!user || !can.approve_store_requests) return;
         update(ref(rtdb, `internalRequests/${requestId}`), { status, approverId: user.id, acknowledgedByRequester: false });
-      }, [user, can.approve_store_requests]);
+      }, [user, can]);
     
       const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment?: string) => {
         if (!user || !can.approve_store_requests) return;
@@ -1185,7 +1184,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
     
         update(ref(rtdb), updates);
-      }, [user, can.approve_store_requests, internalRequestsById, inventoryItems, toast, consumableItems, users, notificationSettings]);
+      }, [user, can, internalRequestsById, inventoryItems, toast, consumableItems, users, notificationSettings]);
     
       const isConsumable = (request: InternalRequest) => {
           return request.items.some(item => item.inventoryItemId && consumableItemIds.has(item.inventoryItemId));
@@ -1244,7 +1243,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 });
             }
         }
-      }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment, users, notificationSettings]);
+      }, [user, can, internalRequestsById, addInternalRequestComment, users, notificationSettings]);
       
     
       const markInternalRequestAsViewed = useCallback((requestId: string) => {
@@ -1575,5 +1574,7 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
+
+    
 
     
