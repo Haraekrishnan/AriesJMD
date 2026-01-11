@@ -16,6 +16,8 @@ export default function StatusPage() {
   const [isRequesting, setIsRequesting] = useState(false);
 
   useEffect(() => {
+    // We still want to redirect away if the user is NOT locked or logged out.
+    // This handles the case where the status might change while they are on the page.
     if (loading) return;
 
     if (!user) {
@@ -26,6 +28,7 @@ export default function StatusPage() {
   }, [user, loading, router]);
 
 
+  // Show loading skeleton until we confirm the user's status.
   if (loading || !user || user.status !== 'locked') {
     return (
        <div className="flex h-screen w-full items-center justify-center bg-background">

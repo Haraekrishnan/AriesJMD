@@ -15,8 +15,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (loading) return;
-    
+    if (loading) {
+      return;
+    }
     if (!user) {
       router.replace('/login');
     } else if (user.status === 'locked') {
