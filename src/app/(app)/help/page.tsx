@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
@@ -251,3 +252,4 @@ const faqs = [
         answer: "Go to the 'Account' page. You can edit your name, email, and upload a new profile picture. You can also change your password here."
     }
 ];
+

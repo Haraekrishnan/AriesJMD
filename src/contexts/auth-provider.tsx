@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, Dispatch, SetStateAction, useMemo } from 'react';
@@ -322,8 +323,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userId: user.id, subject, message, date: new Date().toISOString(), status: 'New', viewedByUser: true, comments: {},
     });
   }, [user]);
-
-    const addFeedbackComment = useCallback((feedbackId: string, text: string) => {
+  
+  const addFeedbackComment = useCallback((feedbackId: string, text: string) => {
     if (!user) return;
     const feedbackItem = feedback.find(f => f.id === feedbackId);
     if (!feedbackItem) return;
@@ -351,15 +352,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             htmlBody: `
                 <p>There's an update on your submitted feedback.</p>
                 <p><strong>Reply from ${user.name}:</strong></p>
-                <p>${text}</p>
+                <div style="padding: 10px; border-left: 3px solid #ccc; margin-top: 10px;">${text}</div>
+                <p>You can view the full conversation in the 'Help' section of the app.</p>
             `,
             notificationSettings: {} as any,
             event: 'onInternalRequestUpdate'
         });
     }
   }, [user, feedback, users]);
-  
-    const updateFeedbackStatus = useCallback((feedbackId: string, status: Feedback['status']) => {
+
+  const updateFeedbackStatus = useCallback((feedbackId: string, status: Feedback['status']) => {
     if (!user) return;
     const feedbackItem = feedback.find(f => f.id === feedbackId);
     if (!feedbackItem) return;
@@ -373,24 +375,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, addFeedbackComment, feedback]);
 
   const markFeedbackAsViewed = useCallback(async (feedbackId?: string) => {
-    if (!user) return;
+    if (!user || !feedbackId) return;
+
+    const feedbackItem = feedback.find(f => f.id === feedbackId);
+    if (!feedbackItem) return;
+
+    // Only requestor can mark as viewed by them
+    if (feedbackItem.userId !== user.id) return;
     
-    if (feedbackId) {
-        const feedbackItem = feedback.find(f => f.id === feedbackId);
-        if (feedbackItem && feedbackItem.userId === user.id) {
-             await update(ref(rtdb, `feedback/${feedbackId}`), { viewedByUser: true });
-        }
-    } else { // This is for admin side to clear all
-        const updates: { [key: string]: any } = {};
-        feedback.forEach(f => {
-            if (!f.viewedBy?.[user.id]) {
-                updates[`feedback/${f.id}/viewedBy/${user.id}`] = true;
-            }
-        });
-        if (Object.keys(updates).length > 0) {
-            await update(ref(rtdb), updates);
-        }
-    }
+    await update(ref(rtdb, `feedback/${feedbackId}`), {
+      viewedByUser: true,
+    });
   }, [user, feedback]);
   
   const updateBranding = useCallback((name: string, logo: string | null) => {
@@ -524,3 +519,4 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+

@@ -1,6 +1,7 @@
 
 
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -369,7 +370,6 @@ export type Comment = {
   text: string;
   date: string; // ISO String
   eventId?: string; 
-  viewedBy?: { [key: string]: boolean };
 };
 
 export type IncidentReport = {
