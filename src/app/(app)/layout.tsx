@@ -8,22 +8,22 @@ import { AppSidebar } from '@/components/shared/app-sidebar';
 import Header from '@/components/shared/header';
 import BroadcastFeed from '@/components/announcements/BroadcastFeed';
 import { DecorationProvider } from '@/components/decorations/DecorationProvider';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAppContext();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.replace('/login');
-      } else if (user.status === 'locked') {
-        router.replace('/status');
-      }
-    }
-  }, [user, loading, router]);
+    if (loading) return;
 
+    if (!user) {
+      router.replace('/login');
+    } else if (user.status === 'locked' && pathname !== '/status') {
+      router.replace('/status');
+    }
+  }, [user, loading, router, pathname]);
 
   if (loading || !user || user.status === 'locked') {
     return (

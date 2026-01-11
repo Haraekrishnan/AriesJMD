@@ -15,13 +15,12 @@ export default function StatusPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // If the user is loaded and NOT locked, or if there's no user, redirect them away.
-    if (!loading) {
-      if (!user) {
-        router.replace('/login');
-      } else if (user.status !== 'locked') {
-        router.replace('/dashboard');
-      }
+    if (loading) return;
+
+    if (!user) {
+      router.replace('/login');
+    } else if (user.status !== 'locked') {
+      router.replace('/dashboard');
     }
   }, [user, loading, router]);
 
@@ -39,7 +38,7 @@ export default function StatusPage() {
       </div>
     );
   }
-
+  
   const handleUnlockRequest = () => {
     if (user) {
         requestUnlock(user.id, user.name);

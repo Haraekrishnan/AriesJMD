@@ -1,7 +1,6 @@
 
 'use client';
-import React, { createContext, useContext, ReactNode, useMemo, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import React, { createContext, useContext, ReactNode, useMemo } from 'react';
 import { AuthProvider, useAuth } from './auth-provider';
 import { GeneralProvider, useGeneral } from './general-provider';
 import { InventoryProvider, useInventory } from './inventory-provider';
@@ -74,7 +73,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     </AuthProvider>
   );
 }
-
 
 export const useAppContext = () => {
   const context = useContext(AppContext);
