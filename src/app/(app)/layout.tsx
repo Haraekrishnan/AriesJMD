@@ -15,13 +15,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && user && user.status === 'locked') {
-      router.replace('/status');
+    if (!loading) {
+      if (!user) {
+        router.replace('/login');
+      } else if (user.status === 'locked') {
+        router.replace('/status');
+      }
     }
   }, [user, loading, router]);
 
 
-  if (loading || !user) {
+  if (loading || !user || user.status === 'locked') {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
@@ -32,16 +36,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <Skeleton className="h-4 w-[200px]" />
             </div>
         </div>
-      </div>
-    );
-  }
-
-  // If user is locked, this component might render briefly before redirect.
-  // We can show a minimal loading state or nothing to prevent flashing the full layout.
-  if (user.status === 'locked') {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-         <p className="text-muted-foreground">Redirecting to status page...</p>
       </div>
     );
   }

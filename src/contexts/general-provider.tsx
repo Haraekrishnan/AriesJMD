@@ -1,16 +1,18 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { Announcement, ActivityLog, IncidentReport, Comment, DownloadableDocument, Project, JobCode, Vehicle, Driver, NotificationSettings, Broadcast, Feedback, PasswordResetRequest, UnlockRequest, Role, ManagementRequest, ManagementRequestStatus } from '@/lib/types';
+import { User, RoleDefinition, Permission, ALL_PERMISSIONS, PasswordResetRequest, UnlockRequest, Feedback, FeedbackStatus } from '@/lib/types';
+import { useRouter, usePathname } from 'next/navigation';
 import { rtdb } from '@/lib/rtdb';
-import { ref, onValue, set, push, remove, update, query, equalTo, get, orderByChild } from 'firebase/database';
+import { ref, onValue, get, query, orderByChild, equalTo, update, push, set, remove } from 'firebase/database';
+import useLocalStorage from '@/hooks/use-local-storage';
+import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
+import { uploadFile } from '@/lib/storage';
+import { useToast } from '@/hooks/use-toast';
+import { Announcement, ActivityLog, IncidentReport, Comment, DownloadableDocument, Project, JobCode, Vehicle, Driver, NotificationSettings, Broadcast, ManagementRequest, ManagementRequestStatus } from '@/lib/types';
 import { JOB_CODES as INITIAL_JOB_CODES } from '@/lib/mock-data';
 import { useAuth } from './auth-provider';
-import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
-import { useToast } from '@/hooks/use-toast';
-import { format, parseISO } from 'date-fns';
 
 
 // --- TYPE DEFINITIONS ---
@@ -174,7 +176,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   
   const markFeedbackAsViewed = useCallback((feedbackId: string) => {
       if(!user) return;
-      update(ref(rtdb, `feedback/${feedbackId}/viewedByUser`), true);
+      update(ref(rtdb, `feedback/${feedbackId}`), { viewedBy: { [user.id]: true } });
   }, [user]);
 
   const addDocument = useCallback((docData: Omit<DownloadableDocument, 'id' | 'uploadedBy' | 'createdAt'>) => {
@@ -282,6 +284,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
     updates[`managementRequests/${requestId}/ccUserIds`] = Array.from(currentParticipants);
 
     // Mark as unread for all participants except the current user
+    const participants = users.filter(u => currentParticipants.has(u.id));
     participants.forEach(p => {
         if (p.id !== user.id) {
             updates[`managementRequests/${requestId}/readBy/${p.id}`] = false;

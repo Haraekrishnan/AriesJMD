@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -69,7 +70,7 @@ export default function FeedbackManagement() {
     
     const handleAccordionToggle = (value: string) => {
       const feedbackItem = feedback.find(f => f.id === value);
-      if (feedbackItem && !feedbackItem.viewedByUser) {
+      if (feedbackItem && feedbackItem.userId === user?.id && !feedbackItem.viewedByUser) {
         markFeedbackAsViewed(value);
       }
     };

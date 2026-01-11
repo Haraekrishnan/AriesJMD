@@ -15,8 +15,12 @@ export default function StatusPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && user?.status !== 'locked') {
-      router.replace('/dashboard');
+    if (!loading) {
+      if (!user) {
+        router.replace('/login');
+      } else if (user.status !== 'locked') {
+        router.replace('/dashboard');
+      }
     }
   }, [user, loading, router]);
 
@@ -36,6 +40,10 @@ export default function StatusPage() {
             </div>
         </div>
     );
+  }
+  
+  if (user.status !== 'locked') {
+    return null; // Don't render anything if the user is not locked, useEffect will redirect.
   }
 
   const handleUnlockRequest = () => {
