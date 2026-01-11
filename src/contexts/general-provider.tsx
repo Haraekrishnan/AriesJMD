@@ -6,7 +6,7 @@ import { Announcement, ActivityLog, IncidentReport, Comment, DownloadableDocumen
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, query, equalTo, get, orderByChild } from 'firebase/database';
 import { JOB_CODES as INITIAL_JOB_CODES } from '@/lib/mock-data';
-import { useAppContext } from './app-provider';
+import { useAuth } from './auth-provider';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
@@ -79,7 +79,7 @@ const createDataListener = <T extends {}>(
 const GeneralContext = createContext<GeneralContextType | undefined>(undefined);
 
 export function GeneralProvider({ children }: { children: ReactNode }) {
-  const { user, addActivityLog, users } = useAppContext();
+  const { user, addActivityLog, users } = useAuth();
   const { toast } = useToast();
 
   const [projectsById, setProjectsById] = useState<Record<string, Project>>({});
@@ -261,6 +261,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
     updates[`managementRequests/${requestId}/ccUserIds`] = Array.from(currentParticipants);
 
     // Mark as unread for all participants except the current user
+    const participants = users.filter(u => currentParticipants.has(u.id));
     participants.forEach(p => {
         if (p.id !== user.id) {
             updates[`managementRequests/${requestId}/readBy/${p.id}`] = false;
@@ -424,5 +425,3 @@ export const useGeneral = (): GeneralContextType => {
   }
   return context;
 };
-
-    

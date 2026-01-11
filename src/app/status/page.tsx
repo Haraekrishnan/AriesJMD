@@ -15,36 +15,24 @@ export default function StatusPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // If the user is loaded and NOT locked, redirect them away from this page.
-    if (!loading && user && user.status !== 'locked') {
-      router.replace('/dashboard');
+    // If the user is loaded and NOT locked, or if there's no user, redirect them away.
+    if (!loading) {
+      if (!user) {
+        router.replace('/login');
+      } else if (user.status !== 'locked') {
+        router.replace('/dashboard');
+      }
     }
   }, [user, loading, router]);
 
 
-  if (loading || !user) {
+  if (loading || !user || user.status !== 'locked') {
     return (
        <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
             <Skeleton className="h-12 w-12 rounded-full" />
             <div className="space-y-2">
                 <p className="text-muted-foreground">Verifying status...</p>
-                <Skeleton className="h-4 w-[250px]" />
-            </div>
-        </div>
-      </div>
-    );
-  }
-
-  // If user is loaded but not locked, show a redirecting message
-  // while the useEffect above does its work. Avoids a flash of the locked screen.
-  if (user.status !== 'locked') {
-     return (
-       <div className="flex h-screen w-full items-center justify-center bg-background">
-        <div className="flex items-center space-x-4">
-            <Skeleton className="h-12 w-12 rounded-full" />
-            <div className="space-y-2">
-                <p className="text-muted-foreground">Redirecting...</p>
                 <Skeleton className="h-4 w-[250px]" />
             </div>
         </div>

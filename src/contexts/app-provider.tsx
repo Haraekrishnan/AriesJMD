@@ -1,7 +1,8 @@
 
 'use client';
-import React, { createContext, useContext, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, ReactNode, useMemo, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { AuthProvider, useAuth } from './auth-provider';
 import { GeneralProvider, useGeneral } from './general-provider';
 import { InventoryProvider, useInventory } from './inventory-provider';
 import { ManpowerProvider, useManpower } from './manpower-provider';
@@ -14,62 +15,8 @@ import { DecorationContextProvider, useDecorations } from './decoration-provider
 
 const AppContext = createContext<any | undefined>(undefined);
 
-function AuthLogicProvider({ children }: { children: ReactNode }) {
-  const contextValue = useAppContext();
-  const { user, loading } = contextValue;
-  const router = useRouter();
-  const pathname = usePathname();
-
-  useEffect(() => {
-    if (loading) return;
-    
-    const isAuthPage = pathname === '/login';
-    const isStatusPage = pathname === '/status';
-
-    if (!user && !isAuthPage && !isStatusPage) {
-      router.replace('/login');
-    } else if (user) {
-      if (user.status === 'locked' && !isStatusPage) {
-        router.replace('/status');
-      } else if (user.status !== 'locked' && (isAuthPage || isStatusPage)) {
-        router.replace('/dashboard');
-      }
-    }
-  }, [user, loading, pathname, router]);
-
-  return <>{children}</>;
-}
-
-
-export function AppProvider({ children }: { children: ReactNode }) {
-  const generalProps = useGeneral();
-
-  return (
-    <AppContext.Provider value={generalProps}>
-      <TaskProvider>
-          <PlannerProvider>
-              <ManpowerProvider>
-                  <PurchaseProvider>
-                      <ConsumableProvider>
-                          <AccommodationProvider>
-                              <InventoryProvider>
-                                  <DecorationContextProvider>
-                                      <CombinedProviderInner>
-                                          {children}
-                                      </CombinedProviderInner>
-                                  </DecorationContextProvider>
-                              </InventoryProvider>
-                          </AccommodationProvider>
-                      </ConsumableProvider>
-                  </PurchaseProvider>
-              </ManpowerProvider>
-          </PlannerProvider>
-      </TaskProvider>
-    </AppContext.Provider>
-  );
-}
-
-function CombinedProviderInner({ children }: { children: ReactNode }) {
+const CombinedProviderInner = ({ children }: { children: ReactNode }) => {
+  const authProps = useAuth();
   const generalProps = useGeneral();
   const taskProps = useTask();
   const plannerProps = usePlanner();
@@ -80,7 +27,8 @@ function CombinedProviderInner({ children }: { children: ReactNode }) {
   const inventoryProps = useInventory();
   const decorationProps = useDecorations();
   
-  const combinedContext = {
+  const combinedContext = useMemo(() => ({
+    ...authProps,
     ...generalProps,
     ...taskProps,
     ...plannerProps,
@@ -90,16 +38,43 @@ function CombinedProviderInner({ children }: { children: ReactNode }) {
     ...accommodationProps,
     ...inventoryProps,
     ...decorationProps,
-  };
+  }), [authProps, generalProps, taskProps, plannerProps, manpowerProps, purchaseProps, consumableProps, accommodationProps, inventoryProps, decorationProps]);
 
   return (
     <AppContext.Provider value={combinedContext}>
-      <AuthLogicProvider>
-          {children}
-      </AuthLogicProvider>
+      {children}
     </AppContext.Provider>
   )
 }
+
+export function AppProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider>
+      <GeneralProvider>
+        <TaskProvider>
+          <PlannerProvider>
+            <ManpowerProvider>
+              <PurchaseProvider>
+                <ConsumableProvider>
+                  <AccommodationProvider>
+                    <InventoryProvider>
+                      <DecorationContextProvider>
+                        <CombinedProviderInner>
+                          {children}
+                        </CombinedProviderInner>
+                      </DecorationContextProvider>
+                    </InventoryProvider>
+                  </AccommodationProvider>
+                </ConsumableProvider>
+              </PurchaseProvider>
+            </ManpowerProvider>
+          </PlannerProvider>
+        </TaskProvider>
+      </GeneralProvider>
+    </AuthProvider>
+  );
+}
+
 
 export const useAppContext = () => {
   const context = useContext(AppContext);
