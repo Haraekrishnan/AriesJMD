@@ -146,7 +146,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const newRef = push(ref(rtdb, 'feedback'));
     set(newRef, {
-      userId: user.id, subject, message, date: new Date().toISOString(), status: 'New', viewedBy: { [user.id]: true },
+      userId: user.id, subject, message, date: new Date().toISOString(), status: 'New', viewedByUser: true
     });
   }, [user]);
 
@@ -170,13 +170,13 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
     // Mark as unread for the original user if someone else comments
     const feedbackItem = feedbackById[feedbackId];
     if (feedbackItem && feedbackItem.userId !== user.id) {
-        update(ref(rtdb, `feedback/${feedbackId}/viewedByUser`), false);
+        update(ref(rtdb, `feedback/${feedbackId}`), { viewedByUser: false });
     }
   }, [user, feedbackById]);
   
   const markFeedbackAsViewed = useCallback((feedbackId: string) => {
       if(!user) return;
-      update(ref(rtdb, `feedback/${feedbackId}`), { viewedBy: { [user.id]: true } });
+      update(ref(rtdb, `feedback/${feedbackId}`), { viewedByUser: true });
   }, [user]);
 
   const addDocument = useCallback((docData: Omit<DownloadableDocument, 'id' | 'uploadedBy' | 'createdAt'>) => {
@@ -448,3 +448,5 @@ export const useGeneral = (): GeneralContextType => {
   }
   return context;
 };
+
+    
