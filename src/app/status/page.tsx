@@ -16,9 +16,11 @@ export default function StatusPage() {
   const [isRequesting, setIsRequesting] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return;
+
+    if (!user) {
       router.replace('/login');
-    } else if (!loading && user && user.status !== 'locked') {
+    } else if (user.status !== 'locked') {
       router.replace('/dashboard');
     }
   }, [user, loading, router]);

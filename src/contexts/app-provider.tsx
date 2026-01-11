@@ -1,5 +1,6 @@
 
 'use client';
+
 import React, { createContext, useContext, ReactNode, useMemo } from 'react';
 import { AuthProvider, useAuth } from './auth-provider';
 import { GeneralProvider, useGeneral } from './general-provider';
@@ -12,8 +13,6 @@ import { ConsumableProvider, useConsumable } from './consumable-provider';
 import { AccommodationProvider, useAccommodation } from './accommodation-provider';
 import { DecorationContextProvider, useDecorations } from './decoration-provider';
 
-// Define a type for the combined context value
-// This will be an intersection of all individual context types
 type AppContextType = 
   ReturnType<typeof useAuth> &
   ReturnType<typeof useGeneral> &

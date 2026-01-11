@@ -8,31 +8,32 @@ import { AppSidebar } from '@/components/shared/app-sidebar';
 import Header from '@/components/shared/header';
 import BroadcastFeed from '@/components/announcements/BroadcastFeed';
 import { DecorationProvider } from '@/components/decorations/DecorationProvider';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAppContext();
   const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return;
+    
+    if (!user) {
       router.replace('/login');
-    } else if (!loading && user?.status === 'locked') {
+    } else if (user.status === 'locked') {
       router.replace('/status');
     }
-  }, [user, loading, router, pathname]);
+  }, [user, loading, router]);
 
   if (loading || !user || user.status === 'locked') {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
-            <Skeleton className="h-12 w-12 rounded-full" />
-            <div className="space-y-2">
-                <p className="text-muted-foreground">Loading...</p>
-                <Skeleton className="h-4 w-[250px]" />
-                <Skeleton className="h-4 w-[200px]" />
-            </div>
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <div className="space-y-2">
+            <p className="text-muted-foreground">Redirecting...</p>
+            <Skeleton className="h-4 w-[250px]" />
+            <Skeleton className="h-4 w-[200px]" />
+          </div>
         </div>
       </div>
     );
