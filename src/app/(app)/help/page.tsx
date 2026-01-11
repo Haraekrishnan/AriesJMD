@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
@@ -11,13 +12,18 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { HelpCircle } from 'lucide-react';
 import { useAppContext } from '@/contexts/app-provider';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
+import type { Feedback, FeedbackStatus } from '@/lib/types';
+import { format, parseISO, isValid, formatDistanceToNow } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const feedbackSchema = z.object({
   subject: z.string().min(5, 'Subject must be at least 5 characters long.'),
@@ -48,12 +54,12 @@ const faqs = [
       answer: "Go to the 'Equipment' page. Any equipment with calibration expiring within the next 30 days will be highlighted in the 'Expiring Calibrations' card at the top. You can also see the due date for each machine in its respective table (e.g., UT Machines, DFT Machines)."
     },
     {
-      question: "Where can I see which vehicle documents are expiring?",
-      answer: "On the 'Fleet Management' page, an 'Expiring Documents' card will appear if any vehicle or driver has documentation (like VAP, insurance, license, etc.) that is due to expire within 30 days."
+        question: "Where can I see which vehicle documents are expiring?",
+        answer: "On the 'Fleet Management' page, an 'Expiring Documents' card will appear if any vehicle or driver has documentation (like VAP, insurance, license, etc.) that is due to expire within 30 days."
     },
     {
-      question: "How do I request a certificate for an inventory item?",
-      answer: "Go to the 'Store Inventory' page. Find the item you need a certificate for in the table. In the 'Actions' column, click the menu button (...) and select 'Request Certificate'. Fill out the form and submit it."
+        question: "How do I request a certificate for an inventory item?",
+        answer: "Go to the 'Store Inventory' page. Find the item you need a certificate for in the table. In the 'Actions' column, click the menu button (...) and select 'Request Certificate'. Fill out the form and submit it."
     },
     {
         question: "What is the difference between Job Schedule and the Planner?",
@@ -65,15 +71,25 @@ const faqs = [
     }
 ];
 
+const statusVariant: Record<FeedbackStatus, 'default' | 'secondary' | 'success'> = {
+    'New': 'default',
+    'In Progress': 'secondary',
+    'Resolved': 'success',
+};
 
 export default function HelpPage() {
   const { toast } = useToast();
-  const { user, addFeedback } = useAppContext();
+  const { user, addFeedback, feedback, users } = useAppContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<FeedbackFormValues>({
     resolver: zodResolver(feedbackSchema),
   });
+  
+  const myFeedback = useMemo(() => {
+    if (!user || !feedback) return [];
+    return feedback.filter(f => f.userId === user.id).sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+  }, [user, feedback]);
 
   const onSubmit = async (data: FeedbackFormValues) => {
     if (!user) {
@@ -102,6 +118,12 @@ export default function HelpPage() {
     } finally {
         setIsSubmitting(false);
     }
+  };
+  
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'No Date';
+    const date = parseISO(dateString);
+    return isValid(date) ? format(date, 'dd MMM, yyyy') : 'Invalid Date';
   };
 
   return (
@@ -157,6 +179,58 @@ export default function HelpPage() {
             </CardFooter>
         </form>
       </Card>
+      
+      {myFeedback.length > 0 && (
+          <Card>
+            <CardHeader>
+                <CardTitle>My Feedback History</CardTitle>
+                <CardDescription>Track the status and replies to your submitted feedback.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Accordion type="multiple" className="w-full space-y-2">
+                    {myFeedback.map(item => {
+                        const commentsArray = Array.isArray(item.comments) ? item.comments : (item.comments ? Object.values(item.comments) : []);
+                        return (
+                             <AccordionItem key={item.id} value={item.id} className="border rounded-lg">
+                                <AccordionTrigger className="p-4 hover:no-underline text-left">
+                                    <div className="flex justify-between w-full items-center">
+                                        <div className="flex-1">
+                                          <p className="font-semibold">{item.subject}</p>
+                                          <p className="text-sm text-muted-foreground">Submitted on {formatDate(item.date)}</p>
+                                        </div>
+                                        <Badge variant={statusVariant[item.status]} className="ml-4">{item.status}</Badge>
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="p-4 pt-0">
+                                    <div className="p-4 bg-muted rounded-md mb-4 whitespace-pre-wrap">{item.message}</div>
+                                    
+                                    {commentsArray.length > 0 && (
+                                        <div className="space-y-2">
+                                            <Label>Conversation</Label>
+                                            <ScrollArea className="h-40 rounded-md border p-2">
+                                                {commentsArray.map(c => {
+                                                    const commentUser = users.find(u => u.id === c.userId);
+                                                    return (
+                                                        <div key={c.id} className="flex items-start gap-2 mb-2">
+                                                            <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
+                                                            <div className="text-xs bg-background p-2 rounded-md w-full border">
+                                                                <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(parseISO(c.date), { addSuffix: true })}</p></div>
+                                                                <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </ScrollArea>
+                                        </div>
+                                    )}
+                                </AccordionContent>
+                             </AccordionItem>
+                        );
+                    })}
+                </Accordion>
+            </CardContent>
+          </Card>
+      )}
     </div>
   );
 }
