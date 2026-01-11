@@ -149,8 +149,11 @@ export default function HelpPage() {
             </CardHeader>
             <CardContent>
                 <Accordion type="multiple" className="w-full space-y-2" onValueChange={(value) => {
+                  // This is called with an array of the currently open accordion item values.
+                  // We can use the last opened item to mark it as read.
                   if (value.length > 0) {
-                    value.forEach(feedbackId => markFeedbackAsViewed(feedbackId));
+                    const latestOpenedId = value[value.length - 1];
+                    markFeedbackAsViewed(latestOpenedId);
                   }
                 }}>
                     {myFeedback.map(item => {

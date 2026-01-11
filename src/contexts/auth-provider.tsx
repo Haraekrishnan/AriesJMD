@@ -381,26 +381,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const markFeedbackAsViewed = useCallback((feedbackId?: string) => {
     if (!user) return;
+    
     const updates: { [key: string]: any } = {};
     const feedbackToUpdate = feedbackId ? feedback.filter(f => f.id === feedbackId) : feedback;
-
+    
     feedbackToUpdate.forEach(f => {
       if (f.userId === user.id) {
-        const hasUnreadStatus = !f.viewedBy?.[user.id];
-        const comments = Array.isArray(f.comments) ? f.comments : Object.values(f.comments || {});
-        const hasUnreadComment = comments.some(c => c && c.userId !== user.id && !c.viewedBy?.[user.id]);
-        
-        if (hasUnreadStatus) {
-            updates[`feedback/${f.id}/viewedBy/${user.id}`] = true;
+        // Mark the main feedback item as viewed if it was unread
+        if (!f.viewedBy?.[user.id]) {
+          updates[`feedback/${f.id}/viewedBy/${user.id}`] = true;
         }
 
-        if (hasUnreadComment) {
-          comments.forEach(c => {
-            if (c && c.userId !== user.id && !c.viewedBy?.[user.id]) {
-              updates[`feedback/${f.id}/comments/${c.id}/viewedBy/${user.id}`] = true;
-            }
-          });
-        }
+        // Mark unread comments as read
+        const comments = Array.isArray(f.comments) ? f.comments : Object.values(f.comments || {});
+        comments.forEach(c => {
+          if (c && c.userId !== user.id && !c.viewedBy?.[user.id]) {
+            updates[`feedback/${f.id}/comments/${c.id}/viewedBy/${user.id}`] = true;
+          }
+        });
       }
     });
 
