@@ -217,7 +217,8 @@ const createDataListener = <T extends {}>(
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
 
-export function InventoryProvider({ children, user, users, can, addActivityLog, projects, notificationSettings, manpowerProfiles, consumableItems, consumableInwardHistory }: { children: ReactNode } & any) {
+export function InventoryProvider({ children }: { children: ReactNode }) {
+    const { user, users, can, addActivityLog, projects, notificationSettings, manpowerProfiles, consumableItems, consumableInwardHistory } = useAppContext();
     const { toast } = useToast();
 
     // State
@@ -1574,7 +1575,3 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
-
-    
-
-    
