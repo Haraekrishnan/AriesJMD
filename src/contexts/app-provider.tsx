@@ -2,7 +2,6 @@
 'use client';
 import { createContext, useContext, ReactNode, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { AuthProvider, useAuth } from './auth-provider';
 import { GeneralProvider, useGeneral } from './general-provider';
 import { InventoryProvider, useInventory } from './inventory-provider';
 import { ManpowerProvider, useManpower } from './manpower-provider';
@@ -16,7 +15,6 @@ import { DecorationContextProvider, useDecorations } from './decoration-provider
 const AppContext = createContext({} as any);
 
 function CombinedProvider({ children }: { children: ReactNode }) {
-  const authProps = useAuth();
   const generalProps = useGeneral();
   const taskProps = useTask();
   const plannerProps = usePlanner();
@@ -26,11 +24,10 @@ function CombinedProvider({ children }: { children: ReactNode }) {
   const accommodationProps = useAccommodation();
   const inventoryProps = useInventory();
   const decorationsProps = useDecorations();
+  const { user, loading, ...authProps } = useAppContext();
   
   const router = useRouter();
   const pathname = usePathname();
-
-  const { user, loading } = authProps;
 
   useEffect(() => {
     if (loading) return;
@@ -49,6 +46,8 @@ function CombinedProvider({ children }: { children: ReactNode }) {
   }, [user, loading, pathname, router]);
 
   const combinedValue = {
+    user,
+    loading,
     ...authProps,
     ...generalProps,
     ...taskProps,
@@ -70,7 +69,6 @@ function CombinedProvider({ children }: { children: ReactNode }) {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   return (
-    <AuthProvider>
       <GeneralProvider>
         <TaskProvider>
           <PlannerProvider>
@@ -92,7 +90,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           </PlannerProvider>
         </TaskProvider>
       </GeneralProvider>
-    </AuthProvider>
   );
 }
 

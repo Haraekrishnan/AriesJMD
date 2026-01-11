@@ -1,8 +1,7 @@
 
 'use client';
 import { useMemo, useState } from 'react';
-import { useAuth } from '@/contexts/auth-provider';
-import { useTask } from '@/contexts/task-provider';
+import { useAppContext } from '@/contexts/app-provider';
 import { KanbanBoard } from '@/components/tasks/kanban-board';
 import CreateTaskDialog from '@/components/tasks/create-task-dialog';
 import TaskFilters, { type TaskFilters as FiltersType } from '@/components/tasks/task-filters';
@@ -23,8 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow, isWithinInterval, startOfMonth, endOfMonth, getMonth, getYear, parseISO } from 'date-fns';
 
 export default function TasksPage() {
-  const { user, users, can, getVisibleUsers } = useAuth();
-  const { tasks, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount } = useTask();
+  const { user, users, can, getVisibleUsers, tasks, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount } = useAppContext();
   
   const [filters, setFilters] = useState<FiltersType>({
     status: 'all',

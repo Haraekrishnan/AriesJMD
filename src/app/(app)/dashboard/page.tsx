@@ -1,11 +1,9 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/contexts/auth-provider';
-import { useTask } from '@/contexts/task-provider';
-import { useManpower } from '@/contexts/manpower-provider';
-import { useGeneral } from '@/contexts/general-provider';
+import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import StatCard from '@/components/dashboard/stat-card';
@@ -19,10 +17,7 @@ import { startOfMonth, formatDistanceToNow, isSameDay, parseISO } from 'date-fns
 import { cn } from '@/lib/utils';
 
 export default function DashboardPage() {
-  const { user, getVisibleUsers } = useAuth();
-  const { tasks: allTasks } = useTask();
-  const { isManpowerUpdatedToday, lastManpowerUpdate, manpowerLogs } = useManpower();
-  const { projects } = useGeneral();
+  const { user, getVisibleUsers, tasks: allTasks, isManpowerUpdatedToday, lastManpowerUpdate, manpowerLogs, projects } = useAppContext();
 
   const [selectedPlannerDate, setSelectedPlannerDate] = useState<Date | undefined>(new Date());
   const [currentPlannerMonth, setCurrentPlannerMonth] = useState(startOfMonth(new Date()));
