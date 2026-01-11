@@ -42,7 +42,8 @@ export default function StatusPage() {
       </div>
     );
   }
-  
+
+  // If we are sure the user is locked, show the page.
   const handleUnlockRequest = async () => {
     if (user) {
         setIsRequesting(true);
@@ -54,7 +55,7 @@ export default function StatusPage() {
         setIsRequesting(false);
     }
   };
-
+  
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-full max-w-md text-center">

@@ -70,17 +70,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           <PlannerProvider>
             <ManpowerProvider>
               <PurchaseProvider>
-                <ConsumableProvider>
-                  <AccommodationProvider>
-                    <InventoryProvider>
-                      <DecorationContextProvider>
-                        <CombinedProviderInner>
-                          {children}
-                        </CombinedProviderInner>
-                      </DecorationContextProvider>
-                    </InventoryProvider>
-                  </AccommodationProvider>
-                </ConsumableProvider>
+                  <InventoryProvider>
+                    <ConsumableProvider>
+                      <AccommodationProvider>
+                        <DecorationContextProvider>
+                          <CombinedProviderInner>
+                            {children}
+                          </CombinedProviderInner>
+                        </DecorationContextProvider>
+                      </AccommodationProvider>
+                    </ConsumableProvider>
+                  </InventoryProvider>
               </PurchaseProvider>
             </ManpowerProvider>
           </PlannerProvider>
