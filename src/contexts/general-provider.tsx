@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -25,7 +26,6 @@ type GeneralContextType = {
   vehicles: Vehicle[];
   drivers: Driver[];
   notificationSettings: NotificationSettings;
-  unlockRequests: UnlockRequest[];
   feedback: Feedback[];
   managementRequests: ManagementRequest[];
   
@@ -35,8 +35,11 @@ type GeneralContextType = {
   addJobCode: (jobCode: Omit<JobCode, 'id'>) => void;
   updateJobCode: (jobCode: JobCode) => void;
   deleteJobCode: (jobCodeId: string) => void;
+  addFeedback: (subject: string, message: string) => void;
   updateFeedbackStatus: (feedbackId: string, status: Feedback['status']) => void;
-  markFeedbackAsViewed: () => void;
+  deleteFeedback: (feedbackId: string) => void;
+  addFeedbackComment: (feedbackId: string, text: string) => void;
+  markFeedbackAsViewed: (feedbackId: string) => void;
   addDocument: (docData: Omit<DownloadableDocument, 'id' | 'uploadedBy' | 'createdAt'>) => void;
   updateDocument: (doc: DownloadableDocument) => void;
   deleteDocument: (docId: string) => void;
@@ -92,7 +95,6 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   const [vehiclesById, setVehiclesById] = useState<Record<string, Vehicle>>({});
   const [driversById, setDriversById] = useState<Record<string, Driver>>({});
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({ events: {}, additionalRecipients: '' });
-  const [unlockRequestsById, setUnlockRequestsById] = useState<Record<string, UnlockRequest>>({});
   const [feedbackById, setFeedbackById] = useState<Record<string, Feedback>>({});
   const [managementRequestsById, setManagementRequestsById] = useState<Record<string, ManagementRequest>>({});
 
@@ -105,7 +107,6 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   const downloadableDocuments = useMemo(() => Object.values(downloadableDocumentsById), [downloadableDocumentsById]);
   const vehicles = useMemo(() => Object.values(vehiclesById), [vehiclesById]);
   const drivers = useMemo(() => Object.values(driversById), [driversById]);
-  const unlockRequests = useMemo(() => Object.values(unlockRequestsById), [unlockRequestsById]);
   const feedback = useMemo(() => Object.values(feedbackById), [feedbackById]);
   const managementRequests = useMemo(() => Object.values(managementRequestsById), [managementRequestsById]);
 
@@ -139,18 +140,42 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
       remove(ref(rtdb, `jobCodes/${jobCodeId}`));
   }, []);
 
+  const addFeedback = useCallback((subject: string, message: string) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'feedback'));
+    set(newRef, {
+      userId: user.id, subject, message, date: new Date().toISOString(), status: 'New', viewedBy: { [user.id]: true },
+    });
+  }, [user]);
+
   const updateFeedbackStatus = useCallback((feedbackId: string, status: Feedback['status']) => {
     update(ref(rtdb, `feedback/${feedbackId}`), { status });
   }, []);
 
-  const markFeedbackAsViewed = useCallback(() => {
+  const deleteFeedback = useCallback((feedbackId: string) => {
+      remove(ref(rtdb, `feedback/${feedbackId}`));
+  }, []);
+
+  const addFeedbackComment = useCallback((feedbackId: string, text: string) => {
     if (!user) return;
-    feedback.forEach(f => {
-      if (!f.viewedBy?.[user.id]) {
-        update(ref(rtdb, `feedback/${f.id}/viewedBy`), { [user.id]: true });
-      }
+    const newCommentRef = push(ref(rtdb, `feedback/${feedbackId}/comments`));
+    set(newCommentRef, {
+      id: newCommentRef.key,
+      userId: user.id,
+      text,
+      date: new Date().toISOString(),
     });
-  }, [user, feedback]);
+    // Mark as unread for the original user if someone else comments
+    const feedbackItem = feedbackById[feedbackId];
+    if (feedbackItem && feedbackItem.userId !== user.id) {
+        update(ref(rtdb, `feedback/${feedbackId}/viewedByUser`), false);
+    }
+  }, [user, feedbackById]);
+  
+  const markFeedbackAsViewed = useCallback((feedbackId: string) => {
+      if(!user) return;
+      update(ref(rtdb, `feedback/${feedbackId}/viewedByUser`), true);
+  }, [user]);
 
   const addDocument = useCallback((docData: Omit<DownloadableDocument, 'id' | 'uploadedBy' | 'createdAt'>) => {
     if (!user) return;
@@ -249,7 +274,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
     const newComment: Omit<Comment, 'id'> = { id: newCommentRef.key!, userId: user.id, text: commentText, date: new Date().toISOString(), eventId: requestId };
     
     const updates: {[key: string]: any} = {};
-    updates[`managementRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment };
+    updates[`managementRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, viewedBy: { [user.id]: true } };
     updates[`managementRequests/${requestId}/lastUpdated`] = new Date().toISOString();
 
     const currentParticipants = new Set([request.creatorId, request.toUserId, ...(request.ccUserIds || [])]);
@@ -382,11 +407,10 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
       createDataListener('vehicles', setVehiclesById),
       createDataListener('drivers', setDriversById),
       createDataListener('managementRequests', setManagementRequestsById),
+      createDataListener('feedback', setFeedbackById),
       onValue(ref(rtdb, 'settings/notificationSettings'), (snapshot) => {
         setNotificationSettings(snapshot.val() || { events: {}, additionalRecipients: '' });
       }),
-      createDataListener('unlockRequests', setUnlockRequestsById),
-      createDataListener('feedback', setFeedbackById),
     ];
 
     onValue(ref(rtdb, 'jobCodes'), (snapshot) => {
@@ -404,8 +428,9 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const contextValue: GeneralContextType = {
-    projects, jobCodes, activityLogs, announcements, broadcasts, incidentReports, downloadableDocuments, vehicles, drivers, notificationSettings, unlockRequests, feedback, managementRequests,
-    addProject, updateProject, deleteProject, addJobCode, updateJobCode, deleteJobCode, updateFeedbackStatus, markFeedbackAsViewed,
+    projects, jobCodes, activityLogs, announcements, broadcasts, incidentReports, downloadableDocuments, vehicles, drivers, notificationSettings, feedback, managementRequests,
+    addProject, updateProject, deleteProject, addJobCode, updateJobCode, deleteJobCode,
+    addFeedback, updateFeedbackStatus, deleteFeedback, addFeedbackComment, markFeedbackAsViewed,
     addDocument, updateDocument, deleteDocument, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addUsersToIncidentReport,
     addManagementRequest, updateManagementRequest, forwardManagementRequest, deleteManagementRequest, addManagementRequestComment, markManagementRequestAsViewed,
   };

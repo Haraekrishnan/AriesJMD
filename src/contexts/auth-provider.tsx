@@ -23,16 +23,15 @@ type AuthContextType = {
   roles: RoleDefinition[];
   passwordResetRequests: PasswordResetRequest[];
   unlockRequests: UnlockRequest[];
-  feedback: Feedback[];
   can: PermissionsObject;
   appName: string;
   appLogo: string | null;
+  activeTheme: 'none' | 'christmas' | 'diwali' | 'new-year';
 
   login: (email: string, pass: string) => Promise<{ success: boolean; user?: User }>;
   logout: () => void;
-  updateProfile: (name: string, email: string, avatarFile: File | null, password?: string) => void;
+  updateProfile: (name: string, email: string, avatarFile: File | null, password?: string, signatureFile?: File | null) => void;
   requestPasswordReset: (email: string) => Promise<boolean>;
-  resolveResetRequest: (requestId: string) => void;
   resetPassword: (email: string, code: string, newPass: string) => Promise<boolean>;
   lockUser: (userId: string) => void;
   unlockUser: (userId: string) => void;
@@ -44,13 +43,12 @@ type AuthContextType = {
   addRole: (role: Omit<RoleDefinition, 'id' | 'isEditable'>) => void;
   updateRole: (role: RoleDefinition) => void;
   deleteRole: (roleId: string) => void;
-  addFeedback: (subject: string, message: string) => void;
-  updateFeedbackStatus: (feedbackId: string, status: Feedback['status']) => void;
-  markFeedbackAsViewed: () => void;
   updateBranding: (name: string, logo: string | null) => void;
+  updateActiveTheme: (theme: 'none' | 'christmas' | 'diwali' | 'new-year') => void;
   addActivityLog: (userId: string, action: string, details?: string) => void;
   getVisibleUsers: () => User[];
   getAssignableUsers: () => User[];
+  clearInventoryTransferHistory: () => void;
 };
 
 // --- HELPER FUNCTIONS ---
@@ -83,15 +81,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [rolesById, setRolesById] = useState<Record<string, RoleDefinition>>({});
   const [passwordResetRequestsById, setPasswordResetRequestsById] = useState<Record<string, PasswordResetRequest>>({});
   const [unlockRequestsById, setUnlockRequestsById] = useState<Record<string, UnlockRequest>>({});
-  const [feedbackById, setFeedbackById] = useState<Record<string, Feedback>>({});
   const [appName, setAppName] = useState('Aries Marine');
   const [appLogo, setAppLogo] = useState<string | null>(null);
+  const [activeTheme, setActiveTheme] = useState<'none' | 'christmas' | 'diwali' | 'new-year'>('none');
 
   const users = useMemo(() => Object.values(usersById), [usersById]);
   const roles = useMemo(() => Object.values(rolesById), [rolesById]);
   const passwordResetRequests = useMemo(() => Object.values(passwordResetRequestsById), [passwordResetRequestsById]);
   const unlockRequests = useMemo(() => Object.values(unlockRequestsById), [unlockRequestsById]);
-  const feedback = useMemo(() => Object.values(feedbackById), [feedbackById]);
   
   const { toast } = useToast();
   const router = useRouter();
@@ -156,20 +153,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user?.id === updatedUser.id) setUser(updatedUser);
   }, [user, addActivityLog]);
   
-  const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string) => {
+ const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string, signatureFile?: File | null) => {
     if (user) {
         const updatedUser: User = { ...user, name, email };
         if (password) updatedUser.password = password;
 
+        const uploadPromises = [];
         if (avatarFile) {
-            try {
-                const avatarUrl = await uploadFile(avatarFile, `avatars/${user.id}/${avatarFile.name}`);
-                updatedUser.avatar = avatarUrl;
-            } catch (error) {
-                console.error("Avatar upload failed:", error);
-                toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload new profile picture." });
-            }
+            uploadPromises.push(
+                uploadFile(avatarFile, `avatars/${user.id}/${avatarFile.name}`)
+                    .then(url => ({ type: 'avatar', url }))
+                    .catch(err => ({ type: 'avatar', error: err }))
+            );
         }
+        if (signatureFile) {
+            uploadPromises.push(
+                uploadFile(signatureFile, `signatures/${user.id}/${signatureFile.name}`)
+                    .then(url => ({ type: 'signature', url }))
+                    .catch(err => ({ type: 'signature', error: err }))
+            );
+        }
+        
+        const results = await Promise.all(uploadPromises);
+
+        results.forEach(result => {
+            if ('error' in result) {
+                 toast({ variant: "destructive", title: "Upload Failed", description: `Could not upload new ${result.type}.` });
+            } else {
+                if (result.type === 'avatar') updatedUser.avatar = result.url;
+                if (result.type === 'signature') updatedUser.signatureUrl = result.url;
+            }
+        });
+        
         updateUser(updatedUser);
     }
   }, [user, updateUser, toast]);
@@ -194,15 +209,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             resetCode: code,
         });
         
-        if (targetUser.email) {
-            sendNotificationEmail({
-                to: [targetUser.email], 
-                subject:`Your Password Reset Code`, 
-                htmlBody: `<p>Your password reset code is: <strong>${code}</strong></p><p>This code will expire. Please use it to reset your password in the app.</p>`,
-                notificationSettings: {} as any, // Placeholder for now
-                event: 'onPasswordReset', // This might need a new event type
-            });
-        }
+        // This feature is currently disabled
+        // if (targetUser.email) {
+        //     sendNotificationEmail({
+        //         to: [targetUser.email], 
+        //         subject:`Your Password Reset Code`, 
+        //         htmlBody: `<p>Your password reset code is: <strong>${code}</strong></p><p>This code will expire. Please use it to reset your password in the app.</p>`,
+        //         notificationSettings: {} as any, // Placeholder for now
+        //         event: 'onPasswordReset', // This might need a new event type
+        //     });
+        // }
         return true;
     }, []);
   
@@ -244,13 +260,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const admins = users.filter(u => u.role === 'Admin' && u.email);
     admins.forEach(admin => {
-        sendNotificationEmail({
-            to: [admin.email!],
-            subject: `Account Unlock Request from ${userName}`,
-            htmlBody: `<p>User <strong>${userName}</strong> (ID: ${userId}) has requested to have their account unlocked. Please log in to the admin panel to review the request.</p>`,
-            notificationSettings: {} as any, // Placeholder
-            event: 'onUnlockRequest',
-        });
+        // Disabled for now
+        // sendNotificationEmail({
+        //     to: [admin.email!],
+        //     subject: `Account Unlock Request from ${userName}`,
+        //     htmlBody: `<p>User <strong>${userName}</strong> (ID: ${userId}) has requested to have their account unlocked. Please log in to the admin panel to review the request.</p>`,
+        //     notificationSettings: {} as any, // Placeholder
+        //     event: 'onUnlockRequest',
+        // });
     });
   }, [users]);
   
@@ -288,27 +305,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     remove(ref(rtdb, `roles/${roleId}`));
   }, []);
   
-  const addFeedback = useCallback((subject: string, message: string) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'feedback'));
-    set(newRef, {
-      userId: user.id, subject, message, date: new Date().toISOString(), status: 'New', viewedBy: { [user.id]: true },
-    });
-  }, [user]);
-
-  const updateFeedbackStatus = useCallback((feedbackId: string, status: Feedback['status']) => {
-    update(ref(rtdb, `feedback/${feedbackId}`), { status });
-  }, []);
-
-  const markFeedbackAsViewed = useCallback(() => {
-    if (!user) return;
-    feedback.forEach(f => {
-      if (!f.viewedBy?.[user.id]) {
-        update(ref(rtdb, `feedback/${f.id}/viewedBy`), { [user.id]: true });
-      }
-    });
-  }, [user, feedback]);
-  
   const updateBranding = useCallback((name: string, logo: string | null) => {
     if (!user || user.role !== 'Admin') {
       toast({ variant: 'destructive', title: 'Permission Denied', description: 'Only administrators can change branding settings.' });
@@ -319,6 +315,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb), updates);
     addActivityLog(user.id, 'Branding Updated', `App name changed to "${name}"`);
   }, [user, addActivityLog, toast]);
+
+  const updateActiveTheme = useCallback((theme: 'none' | 'christmas' | 'diwali' | 'new-year') => {
+    set(ref(rtdb, 'decorations/activeTheme'), theme);
+  }, []);
 
   const getSubordinateChain = useCallback((userId: string, allUsers: User[]): Set<string> => {
     const subordinates = new Set<string>();
@@ -385,19 +385,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return assignableUsers.filter(u => !supervisorChain.has(u.id));
   }, [user, users, getVisibleUsers]);
   
+  const clearInventoryTransferHistory = useCallback(() => {
+    // This is a placeholder now. The real implementation is in useInventory.
+  }, []);
+
   useEffect(() => {
     const unsubscribers = [
       createDataListener('users', setUsersById),
       createDataListener('roles', setRolesById),
       createDataListener('passwordResetRequests', setPasswordResetRequestsById),
       createDataListener('unlockRequests', setUnlockRequestsById),
-      createDataListener('feedback', setFeedbackById),
       onValue(ref(rtdb, 'branding'), (snapshot) => {
         const data = snapshot.val();
         if (data) {
           setAppName(data.appName || 'Aries Marine');
           setAppLogo(data.appLogo || null);
         }
+      }),
+      onValue(ref(rtdb, 'decorations/activeTheme'), (snapshot) => {
+        setActiveTheme(snapshot.val() || 'none');
       })
     ];
 
@@ -424,9 +430,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [storedUserId, users, logout]);
 
   const contextValue: AuthContextType = {
-    user, loading, users, roles, passwordResetRequests, unlockRequests, feedback, can, appName, appLogo,
+    user, loading, users, roles, passwordResetRequests, unlockRequests, can, appName, appLogo, activeTheme,
     login, logout, updateProfile, requestPasswordReset,
-    resolveResetRequest, resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, addFeedback, updateFeedbackStatus, markFeedbackAsViewed, updateBranding, addActivityLog, getVisibleUsers, getAssignableUsers,
+    resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, updateBranding, updateActiveTheme, addActivityLog, getVisibleUsers, getAssignableUsers, clearInventoryTransferHistory,
   };
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;

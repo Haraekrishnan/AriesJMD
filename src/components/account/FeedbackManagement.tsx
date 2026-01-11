@@ -25,7 +25,7 @@ const statusVariant: Record<FeedbackStatus, 'default' | 'secondary' | 'success'>
 const statusOptions: FeedbackStatus[] = ['New', 'In Progress', 'Resolved'];
 
 export default function FeedbackManagement() {
-    const { user, feedback, users, updateFeedbackStatus, addFeedbackComment, deleteFeedback } = useAppContext();
+    const { user, feedback, users, updateFeedbackStatus, addFeedbackComment, deleteFeedback, markFeedbackAsViewed } = useAppContext();
     const [filter, setFilter] = useState<'all' | FeedbackStatus>('all');
     const [newComments, setNewComments] = useState<Record<string, string>>({});
     
@@ -66,6 +66,14 @@ export default function FeedbackManagement() {
         const date = parseISO(dateString);
         return isValid(date) ? format(date, 'dd MMM, yyyy') : 'Invalid Date';
     };
+    
+    const handleAccordionToggle = (value: string) => {
+      const feedbackItem = feedback.find(f => f.id === value);
+      if (feedbackItem && !feedbackItem.viewedByUser) {
+        markFeedbackAsViewed(value);
+      }
+    };
+
 
     return (
         <div className="space-y-4">
@@ -83,6 +91,7 @@ export default function FeedbackManagement() {
              <Accordion 
                 type="multiple"
                 className="w-full space-y-2"
+                onValueChange={(value) => value.forEach(handleAccordionToggle)}
             >
                 {filteredFeedback.map(item => {
                     const submitter = users.find(u => u.id === item.userId);
