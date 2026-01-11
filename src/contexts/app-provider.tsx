@@ -38,13 +38,19 @@ function CombinedProvider({ children }: { children: ReactNode }) {
     const isAuthPage = pathname === '/login';
     const isStatusPage = pathname === '/status';
 
-    if (!user && !isAuthPage && !isStatusPage) {
-      router.replace('/login');
-    } else if (user) {
-      if (user.status === 'locked' && !isStatusPage) {
-        router.replace('/status');
-      } else if (user.status !== 'locked' && (isAuthPage || isStatusPage)) {
-        router.replace('/dashboard');
+    if (!user) {
+      if (!isAuthPage) {
+        router.replace('/login');
+      }
+    } else {
+      if (user.status === 'locked') {
+        if (!isStatusPage) {
+          router.replace('/status');
+        }
+      } else { // user is active
+        if (isAuthPage || isStatusPage) {
+          router.replace('/dashboard');
+        }
       }
     }
   }, [user, loading, pathname, router]);

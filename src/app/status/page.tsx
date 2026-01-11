@@ -13,7 +13,7 @@ export default function StatusPage() {
   const { user, loading, logout, requestUnlock } = useAppContext();
   const { toast } = useToast();
 
-  if (loading || !user) {
+  if (loading) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="text-center space-y-2">

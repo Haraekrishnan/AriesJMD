@@ -29,9 +29,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // The main redirection logic is now in app-provider.
-  // This avoids conflicts and ensures consistent routing behavior.
-  
   return (
       <div className="flex min-h-screen w-full bg-background">
         <DecorationProvider />
