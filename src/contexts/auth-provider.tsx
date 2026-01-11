@@ -96,16 +96,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const myFeedbackUpdates = useMemo(() => {
     if (!user) return 0;
-    return feedback.filter(f => {
-        if (f.userId !== user.id) return false;
-        
-        const hasUnreadComment = (Array.isArray(f.comments) ? f.comments : Object.values(f.comments || {}))
-            .some(c => c && c.userId !== user.id && !c.viewedBy?.[user.id]);
-        
-        const hasUnreadStatus = !f.viewedBy?.[user.id];
-
-        return hasUnreadComment || hasUnreadStatus;
-    }).length;
+    return feedback.filter(f =>
+      f.userId === user.id &&
+      (f.comments && Object.values(f.comments).length > 0) && // Ensure there are comments
+      !f.viewedByUser
+    ).length;
   }, [user, feedback]);
 
   const { toast } = useToast();
@@ -326,10 +321,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const newRef = push(ref(rtdb, 'feedback'));
     set(newRef, {
-      userId: user.id, subject, message, date: new Date().toISOString(), status: 'New', viewedBy: { [user.id]: true }, comments: [],
+      userId: user.id, subject, message, date: new Date().toISOString(), status: 'New', viewedByUser: true, comments: {},
     });
   }, [user]);
-
+  
   const addFeedbackComment = useCallback((feedbackId: string, text: string) => {
     if(!user) return;
     const feedbackItem = feedback.find(f => f.id === feedbackId);
@@ -343,14 +338,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         date: new Date().toISOString(),
         eventId: feedbackId,
     };
-    set(newCommentRef, { ...newComment, viewedBy: { [user.id]: true }});
+    set(newCommentRef, { ...newComment });
     
-    const updates: { [key: string]: any } = {};
-    const feedbackCreatorId = feedbackItem.userId;
-    updates[`feedback/${feedbackId}/viewedBy/${feedbackCreatorId}`] = false;
-    update(ref(rtdb), updates);
+    // Reset viewed flag for the user
+    update(ref(rtdb, `feedback/${feedbackId}`), { viewedByUser: false });
 
-    const feedbackCreator = users.find(u => u.id === feedbackCreatorId);
+    const feedbackCreator = users.find(u => u.id === feedbackItem.userId);
     if(feedbackCreator?.email && feedbackCreator.id !== user.id) {
         sendNotificationEmail({
             to: [feedbackCreator.email],
@@ -361,7 +354,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 <p>${text}</p>
             `,
             notificationSettings: {} as any,
-            event: 'onInternalRequestUpdate' // Re-using an existing event type
+            event: 'onInternalRequestUpdate'
         });
     }
   }, [user, feedback, users]);
@@ -373,37 +366,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const updates: { [key: string]: any } = {
         [`feedback/${feedbackId}/status`]: status,
-        [`feedback/${feedbackId}/viewedBy/${feedbackItem.userId}`]: false,
+        [`feedback/${feedbackId}/viewedByUser`]: false,
     };
     update(ref(rtdb), updates);
     addFeedbackComment(feedbackId, `Status changed to ${status}`);
   }, [user, addFeedbackComment, feedback]);
 
-  const markFeedbackAsViewed = useCallback((feedbackId?: string) => {
+  const markFeedbackAsViewed = useCallback(async (feedbackId: string) => {
     if (!user) return;
-    
-    const updates: { [key: string]: any } = {};
-    const feedbackToUpdate = feedbackId ? feedback.filter(f => f.id === feedbackId) : feedback;
-    
-    feedbackToUpdate.forEach(f => {
-      if (f.userId === user.id) {
-        // Mark the main feedback item as viewed if it was unread
-        if (!f.viewedBy?.[user.id]) {
-          updates[`feedback/${f.id}/viewedBy/${user.id}`] = true;
-        }
-
-        // Mark unread comments as read
-        const comments = Array.isArray(f.comments) ? f.comments : Object.values(f.comments || {});
-        comments.forEach(c => {
-          if (c && c.userId !== user.id && !c.viewedBy?.[user.id]) {
-            updates[`feedback/${f.id}/comments/${c.id}/viewedBy/${user.id}`] = true;
-          }
+    const feedbackItem = feedback.find(f => f.id === feedbackId);
+    if(feedbackItem && feedbackItem.userId === user.id) {
+        await update(ref(rtdb, `feedback/${feedbackId}`), {
+            viewedByUser: true,
         });
-      }
-    });
-
-    if (Object.keys(updates).length > 0) {
-        update(ref(rtdb), updates);
     }
   }, [user, feedback]);
   

@@ -1,5 +1,6 @@
 
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -872,7 +873,7 @@ export type Feedback = {
   message: string;
   date: string; // ISO String
   status: FeedbackStatus;
-  viewedBy?: { [key: string]: boolean };
+  viewedByUser?: boolean;
   comments?: { [key: string]: Comment };
 };
 

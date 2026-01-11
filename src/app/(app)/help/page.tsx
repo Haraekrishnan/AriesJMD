@@ -148,14 +148,16 @@ export default function HelpPage() {
                 <CardDescription>Track the status and replies to your submitted feedback.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Accordion type="multiple" className="w-full space-y-2" onValueChange={(value) => {
-                  // This is called with an array of the currently open accordion item values.
-                  // We can use the last opened item to mark it as read.
-                  if (value.length > 0) {
-                    const latestOpenedId = value[value.length - 1];
-                    markFeedbackAsViewed(latestOpenedId);
-                  }
-                }}>
+                <Accordion 
+                    type="multiple" 
+                    className="w-full space-y-2"
+                    onValueChange={(value) => {
+                        if (value.length > 0) {
+                            const latestOpenedId = value[value.length - 1];
+                            markFeedbackAsViewed(latestOpenedId);
+                        }
+                    }}
+                >
                     {myFeedback.map(item => {
                         const commentsArray = Array.isArray(item.comments) ? item.comments : (item.comments ? Object.values(item.comments) : []);
                         return (
