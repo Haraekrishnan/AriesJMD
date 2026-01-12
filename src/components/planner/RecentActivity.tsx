@@ -1,14 +1,17 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { format, formatDistanceToNow, parseISO, isPast, isToday, isSameDay, startOfDay, subDays, isAfter } from 'date-fns';
-import { MessageSquare, Calendar, CheckCircle, AlertTriangle, Send } from 'lucide-react';
+import { format, formatDistanceToNow, parseISO, isPast, isToday, isSameDay, startOfDay, subDays } from 'date-fns';
+import { MessageSquare, Calendar, CheckCircle, AlertTriangle, Send, Trash2 } from 'lucide-react';
 import type { Comment, PlannerEvent, User } from '@/lib/types';
 import { Button } from '../ui/button';
 import { useRouter } from 'next/navigation';
 import { Textarea } from '../ui/textarea';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 interface UnreadCommentInfo {
   type: 'comment';
@@ -36,9 +39,11 @@ export default function RecentPlannerActivity() {
     getExpandedPlannerEvents,
     dismissPendingUpdate,
     addPlannerEventComment,
+    deletePlannerEvent,
   } = useAppContext();
   
   const router = useRouter();
+  const { toast } = useToast();
   const [newComments, setNewComments] = useState<Record<string, string>>({});
   
   const { unreadComments, pendingUpdates } = useMemo(() => {
@@ -89,7 +94,7 @@ export default function RecentPlannerActivity() {
         const startDate = subDays(today, 30);
         const endDate = subDays(today, 1);
         
-        if (isAfter(parseISO(event.date), endDate)) return;
+        if (parseISO(event.date) > endDate) return;
 
         const expanded = getExpandedPlannerEvents(startDate, endDate, event.userId);
         
@@ -155,7 +160,7 @@ export default function RecentPlannerActivity() {
       markSinglePlannerCommentAsRead(event.userId, day, comment.id);
     }
   };
-  
+
   const handleAddComment = (eventId: string, day: string, eventUserId: string) => {
     const key = `${day}-${eventId}`;
     const text = newComments[key];
@@ -168,6 +173,11 @@ export default function RecentPlannerActivity() {
   
   const handleGoToEvent = (day: string, eventUserId: string) =>
     router.push(`/schedule?userId=${eventUserId}&date=${day}`);
+
+  const handleDeleteEvent = (event: PlannerEvent) => {
+    deletePlannerEvent(event.id);
+    toast({ variant: 'destructive', title: 'Event Deleted' });
+  };
   
   return (
     <Card>
@@ -289,11 +299,31 @@ export default function RecentPlannerActivity() {
                         <Button
                           size="sm"
                           variant="secondary"
-                          className="border-red-400 text-red-600 hover:bg-red-50"
+                          className="border-gray-400 text-gray-600 hover:bg-gray-100"
                           onClick={() => dismissPendingUpdate(event.id, day)}
                         >
                           Dismiss
                         </Button>
+
+                         {isCreatorView && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button size="sm" variant="destructive" className="border-destructive text-destructive-foreground hover:bg-destructive/90">
+                                        <Trash2 className="h-4 w-4"/>
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Event?</AlertDialogTitle>
+                                    <AlertDialogDescription>Are you sure you want to permanently delete "{event.title}"? This will remove it for all users.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteEvent(event)}>Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        )}
                       </div>
                     </div>
                     
