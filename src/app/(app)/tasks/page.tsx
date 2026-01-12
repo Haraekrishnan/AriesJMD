@@ -20,7 +20,7 @@ import EditTaskDialog from '@/components/tasks/edit-task-dialog';
 import type { Task, Role } from '@/lib/types';
 import ReportDownloads from '@/components/reports/report-downloads';
 import { Badge } from '@/components/ui/badge';
-import { formatDistanceToNow, isWithinInterval, startOfMonth, endOfMonth, getMonth, getYear, parseISO } from 'date-fns';
+import { formatDistanceToNow, isWithinInterval, startOfMonth, endOfMonth, getMonth, getYear, parseISO, isSameYear } from 'date-fns';
 
 export default function TasksPage() {
   const { user, users, can, getVisibleUsers } = useAuth();
@@ -33,6 +33,7 @@ export default function TasksPage() {
     dateRange: undefined,
     month: 'all',
     showMyTasksOnly: false,
+    year: new Date().getFullYear().toString(),
   });
 
   const [isPendingApprovalDialogOpen, setIsPendingApprovalDialogOpen] = useState(false);
@@ -85,7 +86,7 @@ export default function TasksPage() {
         return false;
       }
       
-      const { status, priority, dateRange, showMyTasksOnly, assigneeId, month } = filters;
+      const { status, priority, dateRange, showMyTasksOnly, assigneeId, month, year } = filters;
 
       if (assigneeId !== 'all' && !task.assigneeIds?.includes(assigneeId)) {
         return false;
@@ -115,9 +116,7 @@ export default function TasksPage() {
         const taskDate = new Date(task.dueDate);
         const taskMonth = getMonth(taskDate) + 1;
         const taskYear = getYear(taskDate);
-        const currentYear = getYear(new Date());
 
-        // For completed tasks, they must be in the selected month
         if(task.status === 'Done') {
             if(task.completionDate) {
               const completionDate = parseISO(task.completionDate);
@@ -126,23 +125,23 @@ export default function TasksPage() {
                monthMatch = false;
             }
         }
-        // For other tasks, they are always included regardless of month, unless a date range filter is also active
         else if (!dateRange?.from) {
             monthMatch = true;
         } else {
-             monthMatch = (getMonth(taskDate) + 1).toString() === month && taskYear === currentYear;
+             monthMatch = (getMonth(taskDate) + 1).toString() === month && taskYear.toString() === year;
         }
       }
 
-      // Final logic adjustment: if a date range is picked, it overrides the month filter for non-completed tasks
       if (dateRange?.from && task.status !== 'Done') {
-          monthMatch = true; // Date range takes precedence
-      } else if (task.status !== 'Done') {
-          monthMatch = true; // Always show active tasks unless filtered by date range
+          monthMatch = true; 
+      } else if (task.status !== 'Done' && month === 'all') {
+          monthMatch = true; 
       }
+      
+      const yearMatch = year === 'all' || isSameYear(new Date(task.dueDate), new Date(parseInt(year), 0, 1));
 
 
-      return statusMatch && priorityMatch && dateMatch && monthMatch;
+      return statusMatch && priorityMatch && dateMatch && monthMatch && yearMatch;
     });
   }, [visibleTasks, filters, user]);
 

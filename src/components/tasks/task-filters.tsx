@@ -10,7 +10,7 @@ import { DateRangePicker } from '../ui/date-range-picker';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { useAppContext } from '@/contexts/app-provider';
-import { getMonth, format } from 'date-fns';
+import { getMonth, format, getYear } from 'date-fns';
 
 export interface TaskFilters {
   status: 'all' | 'To Do' | 'In Progress' | 'Done' | 'Overdue';
@@ -19,6 +19,7 @@ export interface TaskFilters {
   dateRange?: DateRange;
   showMyTasksOnly: boolean;
   month: string;
+  year: string;
 }
 
 interface TaskFiltersProps {
@@ -32,14 +33,20 @@ const months = Array.from({ length: 12 }, (_, i) => ({
 }));
 
 export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFiltersProps) {
-  const { user, getVisibleUsers } = useAppContext();
+  const { user, getVisibleUsers, tasks } = useAppContext();
   const [filters, setFilters] = useState<TaskFilters>(initialFilters);
 
   const users = useMemo(() => {
     return getVisibleUsers().filter(u => u.role !== 'Manager');
   }, [getVisibleUsers]);
+  
+  const availableYears = useMemo(() => {
+    const years = new Set(tasks.map(t => getYear(new Date(t.dueDate))));
+    const currentYear = new Date().getFullYear();
+    years.add(currentYear);
+    return Array.from(years).sort((a,b) => b - a);
+  }, [tasks]);
 
-  // When a filter changes, call the parent component's update function
   useEffect(() => {
     onFiltersChange(filters);
   }, [filters, onFiltersChange]);
@@ -64,6 +71,7 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
         dateRange: undefined,
         showMyTasksOnly: false,
         month: 'all',
+        year: new Date().getFullYear().toString(),
     } as const;
     setFilters(clearedFilters);
   }
@@ -71,6 +79,12 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
   return (
     <div className="p-4 border rounded-lg bg-card">
         <div className="flex flex-wrap gap-4 items-center">
+            <Select value={filters.year} onValueChange={(value) => handleFilterChange('year', value)}>
+                <SelectTrigger className="w-full sm:w-[120px]"><SelectValue placeholder="All Years" /></SelectTrigger>
+                <SelectContent>
+                    {availableYears.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
+                </SelectContent>
+            </Select>
             <Select value={filters.month} onValueChange={(value) => handleFilterChange('month', value)}>
                 <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="All Months" /></SelectTrigger>
                 <SelectContent>
