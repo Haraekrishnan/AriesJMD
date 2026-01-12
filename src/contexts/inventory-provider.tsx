@@ -695,7 +695,12 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     const updateInventoryTransferRequest = useCallback((request: InventoryTransferRequest) => {
         const { id, ...data } = request;
-        update(ref(rtdb, `inventoryTransferRequests/${id}`), data);
+        const sanitizedItems = data.items.map(item => ({
+            ...item,
+            ariesId: item.ariesId || null,
+        }));
+        const finalData = { ...data, items: sanitizedItems };
+        update(ref(rtdb, `inventoryTransferRequests/${id}`), finalData);
     }, []);
 
     const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
