@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -17,7 +18,7 @@ type PlannerContextType = {
   addPlannerEvent: (eventData: Omit<PlannerEvent, 'id'>) => void;
   updatePlannerEvent: (event: PlannerEvent) => void;
   deletePlannerEvent: (eventId: string) => void;
-  getExpandedPlannerEvents: (month: Date, userId: string) => { eventDate: Date, event: PlannerEvent }[];
+  getExpandedPlannerEvents: (startDate: Date, userId: string) => { eventDate: Date, event: PlannerEvent }[];
   addPlannerEventComment: (plannerUserId: string, day: string, eventId: string, text: string) => void;
   markSinglePlannerCommentAsRead: (plannerUserId: string, day: string, commentId: string) => void;
   dismissPendingUpdate: (eventId: string, day: string) => void;
@@ -84,34 +85,51 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         remove(ref(rtdb, `plannerEvents/${eventId}`));
     }, []);
 
-    const getExpandedPlannerEvents = useCallback((month: Date, userId: string) => {
-      const monthStart = startOfMonth(month);
-      const monthEnd = endOfMonth(month);
-      const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-      const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
-    
-      const userEvents = plannerEvents.filter(e => e.userId === userId);
-      const expanded: { eventDate: Date; event: PlannerEvent }[] = [];
-    
-      eachDayOfInterval({ start: calendarStart, end: calendarEnd }).forEach(day => {
-        userEvents.forEach(event => {
-          const eventDate = new Date(event.date);
-          if (event.frequency === 'once' && isSameDay(day, eventDate)) {
-            expanded.push({ eventDate: day, event });
-          } else if (event.frequency === 'daily' && day >= eventDate) {
-            expanded.push({ eventDate: day, event });
-          } else if (event.frequency === 'daily-except-sundays' && day >= eventDate && getDay(day) !== 0) {
-            expanded.push({ eventDate: day, event });
-          } else if (event.frequency === 'weekly' && day >= eventDate && getDay(day) === getDay(eventDate)) {
-            expanded.push({ eventDate: day, event });
-          } else if (event.frequency === 'weekends' && day >= eventDate && isWeekend(day)) {
-            expanded.push({ eventDate: day, event });
-          } else if (event.frequency === 'monthly' && day >= eventDate && getDate(day) === getDate(eventDate)) {
-            expanded.push({ eventDate: day, event });
-          }
+    const getExpandedPlannerEvents = useCallback((startDate: Date, userId: string): { eventDate: Date; event: PlannerEvent }[] => {
+        const userEvents = plannerEvents.filter(e => e.userId === userId);
+        const expanded: { eventDate: Date; event: PlannerEvent }[] = [];
+        const today = startOfDay(new Date());
+
+        const intervalEnd = isBefore(startDate, today)
+            ? startOfDay(new Date())
+            : endOfWeek(endOfMonth(startDate), { weekStartsOn: 1 });
+        
+        const interval = { start: startDate, end: intervalEnd };
+
+        eachDayOfInterval(interval).forEach(day => {
+            userEvents.forEach(event => {
+                const eventStartDate = startOfDay(parseISO(event.date));
+                
+                if (day < eventStartDate) return;
+
+                let match = false;
+                switch(event.frequency) {
+                    case 'once':
+                        match = isSameDay(day, eventStartDate);
+                        break;
+                    case 'daily':
+                        match = true;
+                        break;
+                    case 'daily-except-sundays':
+                        match = getDay(day) !== 0;
+                        break;
+                    case 'weekly':
+                        match = getDay(day) === getDay(eventStartDate);
+                        break;
+                    case 'weekends':
+                        match = isWeekend(day);
+                        break;
+                    case 'monthly':
+                        match = getDate(day) === getDate(eventStartDate);
+                        break;
+                }
+                
+                if(match) {
+                    expanded.push({ eventDate: day, event });
+                }
+            });
         });
-      });
-      return expanded;
+        return expanded;
     }, [plannerEvents]);
 
     const addPlannerEventComment = useCallback((plannerUserId: string, day: string, eventId: string, text: string) => {
@@ -303,3 +321,5 @@ export const usePlanner = (): PlannerContextType => {
   }
   return context;
 };
+
+    

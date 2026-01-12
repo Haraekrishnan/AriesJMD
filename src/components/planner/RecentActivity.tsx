@@ -1,9 +1,10 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { format, formatDistanceToNow, parseISO, isPast, isToday, isSameDay } from 'date-fns';
+import { format, formatDistanceToNow, parseISO, isPast, isToday, isSameDay, startOfDay } from 'date-fns';
 import { MessageSquare, Calendar, CheckCircle, AlertTriangle, Send } from 'lucide-react';
 import type { Comment, PlannerEvent, User } from '@/lib/types';
 import { Button } from '../ui/button';
@@ -81,115 +82,42 @@ export default function RecentPlannerActivity() {
       });
     });
     
-    // --- DELEGATOR PENDING UPDATES ---
-    const myDelegatedEvents = plannerEvents.filter(
-      (e) =>
-        e.creatorId === user.id &&
-        e.userId !== user.id &&
-        isPast(parseISO(e.date)) &&
-        userMap.has(e.userId)
-    );
-    
-    myDelegatedEvents.forEach((event) => {
-      const eventStart = parseISO(event.date);
-      const expanded = getExpandedPlannerEvents(eventStart, event.userId);
-      
-      const pastInstances = expanded.filter((instance) => {
-        const d = instance.eventDate;
-        // Only check for past dates, not today
-        const isRelevantPastDay = isPast(d) && !isToday(d);
-        if (!isRelevantPastDay) return false;
-        
-        // For 'once' events, only the exact date of the event is relevant
-        if (event.frequency === 'once') {
-            return isSameDay(d, eventStart);
-        }
+    // --- PENDING UPDATES ---
+    const eventsToProcess = plannerEvents.filter(e => e.creatorId === user.id || e.userId === user.id);
 
-        // For recurring events, only check dates from the event's start date onwards
-        return d.getTime() >= eventStart.getTime();
-      });
-      
-      pastInstances.forEach((instance) => {
-        const dayStr = format(instance.eventDate, 'yyyy-MM-dd');
-        
-        const dc = dailyPlannerComments.find(
-          (x) => x.id === `${dayStr}_${event.userId}`
-        );
-        
-        const commentsForEvent = dc
-          ? Object.values(dc.comments || {}).filter((c) => c.eventId === event.id)
-          : [];
-        
-        const assigneeCommented = commentsForEvent.some(
-          (c) => c.userId === event.userId
-        );
-        
-        const isDismissed =
-          user.dismissedPendingUpdates?.[`${event.id}_${dayStr}`];
-          
-        if (!assigneeCommented && !isDismissed) {
-          allPendingUpdates.push({
-            type: 'pending_update',
-            day: dayStr,
-            event,
-            delegatedTo: users.find((u) => u.id === event.userId),
-          });
-        }
-      });
-    });
-    
-    // --- ASSIGNEE PENDING UPDATES (for events delegated TO me) ---
-    const assignedEvents = plannerEvents.filter(
-      (e) =>
-        e.userId === user.id &&
-        e.creatorId !== user.id &&
-        isPast(parseISO(e.date)) &&
-        userMap.has(e.creatorId)
-    );
-    
-    assignedEvents.forEach((event) => {
-      const eventStart = parseISO(event.date);
-      const expanded = getExpandedPlannerEvents(eventStart, event.userId);
-      
-      const pastInstances = expanded.filter((instance) => {
-        const d = instance.eventDate;
-        const isRelevantPastDay = isPast(d) && !isToday(d);
-         if (!isRelevantPastDay) return false;
-        
-        if (event.frequency === 'once') {
-            return isSameDay(d, eventStart);
-        }
+    eventsToProcess.forEach(event => {
+        // We only care about delegated events where the current user is either the creator or assignee
+        if (event.creatorId === event.userId) return;
 
-        return d.getTime() >= eventStart.getTime();
-      });
-      
-      pastInstances.forEach((instance) => {
-        const dayStr = format(instance.eventDate, 'yyyy-MM-dd');
-        
-        const dc = dailyPlannerComments.find(
-          (x) => x.id === `${dayStr}_${event.userId}`
-        );
-        
-        const commentsForEvent = dc
-          ? Object.values(dc.comments || {}).filter((c) => c.eventId === event.id)
-          : [];
-        
-        const assigneeCommented = commentsForEvent.some(
-          (c) => c.userId === event.userId
-        );
-        
-        const isDismissed =
-          user.dismissedPendingUpdates?.[`${event.id}_${dayStr}`];
-          
-        if (!assigneeCommented && !isDismissed) {
-          allPendingUpdates.push({
-            type: 'pending_update',
-            day: dayStr,
-            event,
-            delegatedTo: users.find((u) => u.id === event.userId),
-          });
-        }
-      });
+        const eventStart = startOfDay(parseISO(event.date));
+        const today = startOfDay(new Date());
+
+        // Get all instances of this event up to yesterday
+        const expanded = getExpandedPlannerEvents(eventStart, event.userId)
+            .filter(instance => isPast(instance.eventDate) && !isSameDay(instance.eventDate, today));
+
+        expanded.forEach(instance => {
+            const dayStr = format(instance.eventDate, 'yyyy-MM-dd');
+
+            const isCreatorView = event.creatorId === user.id;
+            const isAssigneeView = event.userId === user.id;
+
+            if (!isCreatorView && !isAssigneeView) return;
+
+            const dc = dailyPlannerComments.find(d => d.id === `${dayStr}_${event.userId}`);
+            const assigneeCommented = dc && Object.values(dc.comments || {}).some(c => c.eventId === event.id && c.userId === event.userId);
+            
+            const isDismissed = user.dismissedPendingUpdates?.[`${event.id}_${dayStr}`];
+
+            if (!assigneeCommented && !isDismissed) {
+                allPendingUpdates.push({
+                    type: 'pending_update',
+                    day: dayStr,
+                    event,
+                    delegatedTo: users.find((u) => u.id === event.userId),
+                });
+            }
+        });
     });
     
     // Sort unread comments (newest first)
@@ -202,7 +130,7 @@ export default function RecentPlannerActivity() {
       ...new Map(
         allPendingUpdates.map((item) => [`${item.day}-${item.event.id}`, item])
       ).values(),
-    ];
+    ].sort((a,b) => parseISO(b.day).getTime() - parseISO(a.day).getTime());
     
     return {
       unreadComments: sortedUnread,
@@ -412,3 +340,5 @@ export default function RecentPlannerActivity() {
     </Card>
   );
 }
+
+    
