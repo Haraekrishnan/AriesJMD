@@ -113,10 +113,11 @@ export default function PlannerCalendar({
     }
   }, [selectedDate, setExternalCurrentMonth, internalCurrentMonth]);
 
-  const expandedEvents = useMemo(
-    () => getExpandedPlannerEvents(internalCurrentMonth, selectedUserId),
-    [getExpandedPlannerEvents, internalCurrentMonth, selectedUserId]
-  );
+  const expandedEvents = useMemo(() => {
+    const monthStart = startOfMonth(internalCurrentMonth);
+    const monthEnd = endOfMonth(internalCurrentMonth);
+    return getExpandedPlannerEvents(monthStart, monthEnd, selectedUserId);
+  }, [getExpandedPlannerEvents, internalCurrentMonth, selectedUserId]);
 
   const viewingUser = useMemo(() => users.find(u => u.id === selectedUserId), [users, selectedUserId]);
 
@@ -164,15 +165,8 @@ export default function PlannerCalendar({
 
   const changeMonth = (amount: number) => {
     const newMonth = addMonths(internalCurrentMonth, amount);
-    const today = startOfMonth(new Date());
-  
-    // ❌ Block future months
-    if (newMonth > today) return;
-  
     setInternalCurrentMonth(newMonth);
     setExternalCurrentMonth(newMonth);
-  
-    // ✅ Always select a valid past date
     setSelectedDate(startOfMonth(newMonth));
   };
    
@@ -446,7 +440,7 @@ export default function PlannerCalendar({
                   );
                 }) : (
                   <div className="flex items-center justify-center h-24">
-                    <p className="text-sm text-muted-foreground">No events scheduled for this day.</p>
+                    <p className="text-sm text-muted-foreground">No events or notes for this day.</p>
                   </div>
                 )}
               </div>
@@ -461,5 +455,3 @@ export default function PlannerCalendar({
     </>
   );
 }
-
-    
