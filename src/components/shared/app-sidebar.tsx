@@ -182,7 +182,7 @@ const plannerNotificationCount =
     { href: '/ppe-stock', icon: Package, label: 'PPE Stock', notificationCount: 0, show: false },
     { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: notificationCounts.equipment || 0, show: true },
     { href: '/vehicle-status', icon: Car, label: 'Fleet Management', notificationCount: 0, show: true },
-    { href: '/schedule', icon: CalendarDays, label: 'Planner', notificationCount: notificationCounts.planner || 0, show: true },
+    { href: '/planner', icon: CalendarDays, label: 'Planner', notificationCount: notificationCounts.planner || 0, show: true },
     { href: '/manpower', icon: Users, label: 'Manpower', notificationCount: notificationCounts.manpower || 0, show: true },
     { href: '/accommodation', icon: Home, label: 'Accommodation', notificationCount: 0, show: true },
     { href: '/downloads', icon: Download, label: 'Forms & Documents', notificationCount: 0, show: true },

@@ -8,7 +8,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Menu, ShieldAlert, History, Ship, LogOut, LayoutDashboard, Send, CheckSquare, CalendarCheck, ShoppingCart, Warehouse, ArrowRightLeft, Package, HardHat, Car, CalendarDays, Home, Users, AlertTriangle, Briefcase, TrendingUp, Trophy, User as UserIcon, HelpCircle, Radio, ClipboardList, FileText, Download, MessageSquare, Hammer } from 'lucide-react';
+import { Menu, ShieldAlert, History, Ship, LogOut, LayoutDashboard, Send, CheckSquare, CalendarCheck, ShoppingCart, Warehouse, ArrowRightLeft, Package, HardHat, Car, Home, CalendarDays, User as UserIcon, Trophy, TrendingUp, Briefcase, HelpCircle, ClipboardList, Download, MessageSquare, Hammer } from 'lucide-react';
 import AnnouncementApprovalDialog from '../announcements/AnnouncementApprovalDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import NewAnnouncementDialog from '../announcements/NewAnnouncementDialog';
@@ -155,7 +155,7 @@ const plannerNotificationCount =
       { href: '/ppe-stock', icon: Package, label: 'PPE Stock', notificationCount: 0, show: false },
       { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: notificationCounts.equipment || 0, show: true },
       { href: '/vehicle-status', icon: Car, label: 'Fleet Management', notificationCount: 0, show: true },
-      { href: '/schedule', icon: CalendarDays, label: 'Planner', notificationCount: notificationCounts.planner || 0, show: true },
+      { href: '/planner', icon: CalendarDays, label: 'Planner', notificationCount: notificationCounts.planner || 0, show: true },
       { href: '/manpower', icon: Users, label: 'Manpower', notificationCount: notificationCounts.manpower || 0, show: true },
       { href: '/accommodation', icon: Home, label: 'Accommodation', notificationCount: 0, show: true },
       { href: '/downloads', icon: Download, label: 'Forms & Documents', notificationCount: 0, show: true },
