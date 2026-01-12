@@ -162,6 +162,7 @@ export default function PendingTransfers({ onEditRequest }: PendingTransfersProp
                                     </p>
                                     <p className="text-xs text-muted-foreground mt-1">
                                         Requested by {requester?.name || 'Unknown'} &middot; {formatDistanceToNow(parseISO(req.requestDate), { addSuffix: true })}
+                                        (ID: ...{req.id.slice(-6)})
                                     </p>
                                 </div>
                             </AccordionTrigger>
@@ -265,6 +266,7 @@ export default function PendingTransfers({ onEditRequest }: PendingTransfersProp
                                     <div>
                                         <p className="font-semibold text-left">Transfer to {toProject?.name}</p>
                                         <p className="text-xs text-muted-foreground text-left">From: {fromProject?.name} &middot; {formatDistanceToNow(parseISO(req.requestDate), { addSuffix: true })}</p>
+                                        <p className="text-xs text-muted-foreground text-left">(ID: ...{req.id.slice(-6)})</p>
                                     </div>
                                     <Badge variant={statusVariant}>{req.status}</Badge>
                                 </div>
@@ -334,7 +336,7 @@ export default function PendingTransfers({ onEditRequest }: PendingTransfersProp
                                                     Transfer from <span className="font-semibold">{fromProject?.name}</span> to <span className="font-semibold">{toProject?.name}</span>
                                                 </p>
                                                 <p className="text-xs text-muted-foreground">
-                                                    {format(parseISO(req.requestDate), 'dd MMM, yyyy')}
+                                                    {format(parseISO(req.requestDate), 'dd MMM, yyyy')} (ID: ...{req.id.slice(-6)})
                                                 </p>
                                             </div>
                                             <Badge variant={statusVariant}>{req.status}</Badge>
