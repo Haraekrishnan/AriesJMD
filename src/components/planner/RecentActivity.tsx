@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { format, formatDistanceToNow, parseISO, isPast, isToday, isSameDay, startOfDay } from 'date-fns';
+import { format, formatDistanceToNow, parseISO, isPast, isToday, isSameDay, startOfDay, subDays } from 'date-fns';
 import { MessageSquare, Calendar, CheckCircle, AlertTriangle, Send } from 'lucide-react';
 import type { Comment, PlannerEvent, User } from '@/lib/types';
 import { Button } from '../ui/button';
@@ -83,22 +83,23 @@ export default function RecentPlannerActivity() {
     });
     
     // --- PENDING UPDATES ---
-    const eventsToProcess = plannerEvents.filter(e => e.creatorId === user.id || e.userId === user.id);
+    const delegatedEvents = plannerEvents.filter(e => e.creatorId !== e.userId && (e.creatorId === user.id || e.userId === user.id));
 
-    eventsToProcess.forEach(event => {
-        // We only care about delegated events where the current user is either the creator or assignee
-        if (event.creatorId === event.userId) return;
-
-        const eventStart = startOfDay(parseISO(event.date));
+    delegatedEvents.forEach(event => {
         const today = startOfDay(new Date());
+        // We only care about events from the past month up to yesterday.
+        const startDate = subDays(today, 30);
+        const endDate = subDays(today, 1);
+        
+        if (isAfter(parseISO(event.date), endDate)) return;
 
-        // Get all instances of this event up to yesterday
-        const expanded = getExpandedPlannerEvents(eventStart, event.userId)
-            .filter(instance => isPast(instance.eventDate) && !isSameDay(instance.eventDate, today));
+        const expanded = getExpandedPlannerEvents(startDate, endDate, event.userId);
+        
+        const relevantInstances = expanded.filter(instance => instance.event.id === event.id);
 
-        expanded.forEach(instance => {
+        relevantInstances.forEach(instance => {
             const dayStr = format(instance.eventDate, 'yyyy-MM-dd');
-
+            
             const isCreatorView = event.creatorId === user.id;
             const isAssigneeView = event.userId === user.id;
 
@@ -340,5 +341,3 @@ export default function RecentPlannerActivity() {
     </Card>
   );
 }
-
-    

@@ -18,7 +18,7 @@ type PlannerContextType = {
   addPlannerEvent: (eventData: Omit<PlannerEvent, 'id'>) => void;
   updatePlannerEvent: (event: PlannerEvent) => void;
   deletePlannerEvent: (eventId: string) => void;
-  getExpandedPlannerEvents: (startDate: Date, userId: string) => { eventDate: Date, event: PlannerEvent }[];
+  getExpandedPlannerEvents: (start: Date, end: Date, userId: string) => { eventDate: Date, event: PlannerEvent }[];
   addPlannerEventComment: (plannerUserId: string, day: string, eventId: string, text: string) => void;
   markSinglePlannerCommentAsRead: (plannerUserId: string, day: string, commentId: string) => void;
   dismissPendingUpdate: (eventId: string, day: string) => void;
@@ -85,22 +85,17 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         remove(ref(rtdb, `plannerEvents/${eventId}`));
     }, []);
 
-    const getExpandedPlannerEvents = useCallback((startDate: Date, userId: string): { eventDate: Date; event: PlannerEvent }[] => {
+    const getExpandedPlannerEvents = useCallback((startDate: Date, endDate: Date, userId: string): { eventDate: Date, event: PlannerEvent }[] => {
         const userEvents = plannerEvents.filter(e => e.userId === userId);
         const expanded: { eventDate: Date; event: PlannerEvent }[] = [];
-        const today = startOfDay(new Date());
-
-        const intervalEnd = isBefore(startDate, today)
-            ? startOfDay(new Date())
-            : endOfWeek(endOfMonth(startDate), { weekStartsOn: 1 });
         
-        const interval = { start: startDate, end: intervalEnd };
+        const interval = { start: startOfDay(startDate), end: startOfDay(endDate) };
 
         eachDayOfInterval(interval).forEach(day => {
             userEvents.forEach(event => {
                 const eventStartDate = startOfDay(parseISO(event.date));
                 
-                if (day < eventStartDate) return;
+                if (isBefore(day, eventStartDate)) return;
 
                 let match = false;
                 switch(event.frequency) {
@@ -111,7 +106,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
                         match = true;
                         break;
                     case 'daily-except-sundays':
-                        match = getDay(day) !== 0;
+                        match = getDay(day) !== 0; // 0 is Sunday
                         break;
                     case 'weekly':
                         match = getDay(day) === getDay(eventStartDate);
@@ -321,5 +316,3 @@ export const usePlanner = (): PlannerContextType => {
   }
   return context;
 };
-
-    
