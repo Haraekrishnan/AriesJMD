@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { format, formatDistanceToNow, parseISO, isPast, isToday, isSameDay, startOfDay, subDays } from 'date-fns';
+import { format, formatDistanceToNow, parseISO, isPast, isToday, isSameDay, startOfDay, subDays, isAfter } from 'date-fns';
 import { MessageSquare, Calendar, CheckCircle, AlertTriangle, Send, Trash2 } from 'lucide-react';
 import type { Comment, PlannerEvent, User } from '@/lib/types';
 import { Button } from '../ui/button';
@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { Textarea } from '../ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 interface UnreadCommentInfo {
   type: 'comment';
@@ -91,10 +92,10 @@ export default function RecentPlannerActivity() {
 
     delegatedEvents.forEach(event => {
         const today = startOfDay(new Date());
-        const startDate = subDays(today, 30);
-        const endDate = subDays(today, 1);
-        
-        if (parseISO(event.date) > endDate) return;
+        const startDate = subDays(today, 30); // Check for the last 30 days
+        const endDate = subDays(today, 1); // Up until yesterday
+
+        if (isAfter(parseISO(event.date), endDate)) return;
 
         const expanded = getExpandedPlannerEvents(startDate, endDate, event.userId);
         
@@ -249,114 +250,117 @@ export default function RecentPlannerActivity() {
           
           {/* PENDING UPDATES */}
           {pendingUpdates.length > 0 && (
-            <div>
-              <h4 className="text-sm font-semibold flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-orange-500" />
-                Pending Event Updates
-              </h4>
-              
-              {pendingUpdates.map(({ day, event, delegatedTo }) => {
-                const key = `${day}-${event.id}`;
-                const isCreatorView = event.creatorId === user.id;
-                
-                return (
-                  <div
-                    key={key}
-                    className="mt-2 p-3 border rounded-lg bg-orange-50 dark:bg-orange-900/30"
-                  >
-                    <div className="flex justify-between items-start w-full">
-                      <div className="flex flex-col">
-                        <p className="font-semibold text-sm">{event.title}</p>
-                        
-                        <p className="text-xs">
-                          {isCreatorView ? (
-                            <>
-                              No update from{' '}
-                              <span className="font-medium">
-                                {delegatedTo?.name}
-                              </span>{' '}
-                              for {format(parseISO(day), 'dd MMM, yyyy')}.
-                            </>
-                          ) : (
-                            <>
-                              You have not updated this event for{' '}
-                              {format(parseISO(day), 'dd MMM, yyyy')}.
-                            </>
-                          )}
-                        </p>
-                      </div>
-                      
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-blue-400 text-blue-600 hover:bg-blue-50"
-                          onClick={() => handleGoToEvent(day, event.userId)}
-                        >
-                          Review
-                        </Button>
-                        
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          className="border-gray-400 text-gray-600 hover:bg-gray-100"
-                          onClick={() => dismissPendingUpdate(event.id, day)}
-                        >
-                          Dismiss
-                        </Button>
+            <Accordion type="multiple" className="w-full space-y-2">
+              <AccordionItem value="pending-updates" className="border-none">
+                <AccordionTrigger className="p-0 hover:no-underline text-sm font-semibold flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-orange-500" />
+                  Pending Event Updates ({pendingUpdates.length})
+                </AccordionTrigger>
+                <AccordionContent className="pt-2">
+                  <div className="space-y-2">
+                    {pendingUpdates.map(({ day, event, delegatedTo }) => {
+                      const key = `${day}-${event.id}`;
+                      const isCreatorView = event.creatorId === user.id;
 
-                         {isCreatorView && (
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button size="sm" variant="destructive" className="border-destructive text-destructive-foreground hover:bg-destructive/90">
-                                        <Trash2 className="h-4 w-4"/>
+                      return (
+                        <div
+                          key={key}
+                          className="p-3 border rounded-lg bg-orange-50 dark:bg-orange-900/30"
+                        >
+                          <div className="flex justify-between items-start w-full">
+                            <div className="flex flex-col">
+                              <p className="font-semibold text-sm">{event.title}</p>
+                              <p className="text-xs">
+                                {isCreatorView ? (
+                                  <>
+                                    No update from{' '}
+                                    <span className="font-medium">{delegatedTo?.name}</span>{' '}
+                                    for {format(parseISO(day), 'dd MMM, yyyy')}.
+                                  </>
+                                ) : (
+                                  <>
+                                    You have not updated this event for{' '}
+                                    {format(parseISO(day), 'dd MMM, yyyy')}.
+                                  </>
+                                )}
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-blue-400 text-blue-600 hover:bg-blue-50"
+                                onClick={() => handleGoToEvent(day, event.userId)}
+                              >
+                                Review
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="border-gray-400 text-gray-600 hover:bg-gray-100"
+                                onClick={() => dismissPendingUpdate(event.id, day)}
+                              >
+                                Dismiss
+                              </Button>
+                            </div>
+                          </div>
+                          
+                          <div className="relative mt-2">
+                            <Textarea
+                              rows={1}
+                              className="text-xs pr-10 bg-white dark:bg-card"
+                              placeholder={
+                                isCreatorView
+                                  ? `Ask ${delegatedTo?.name || 'them'} for an update...`
+                                  : 'Add an update for this event...'
+                              }
+                              value={newComments[key] || ''}
+                              onChange={(e) =>
+                                setNewComments((prev) => ({
+                                  ...prev,
+                                  [key]: e.target.value,
+                                }))
+                              }
+                            />
+                            <Button
+                              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                              size="icon"
+                              onClick={() => handleAddComment(event.id, day, event.userId)}
+                              disabled={!newComments[key]?.trim()}
+                            >
+                              <Send className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          {user?.role === 'Admin' && (
+                              <div className="mt-2 flex justify-end">
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10">
+                                      <Trash2 className="h-4 w-4" />
                                     </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete Event?</AlertDialogTitle>
-                                    <AlertDialogDescription>Are you sure you want to permanently delete "{event.title}"? This will remove it for all users.</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDeleteEvent(event)}>Delete</AlertDialogAction>
-                                </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="relative mt-2">
-                      <Textarea
-                        rows={1}
-                        className="text-xs pr-10 bg-white dark:bg-card"
-                        placeholder={
-                          isCreatorView
-                            ? `Ask ${delegatedTo?.name || 'them'} for an update...`
-                            : 'Add an update for this event...'
-                        }
-                        value={newComments[key] || ''}
-                        onChange={(e) =>
-                          setNewComments((prev) => ({
-                            ...prev,
-                            [key]: e.target.value,
-                          }))
-                        }
-                      />
-                      <Button
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                        size="icon"
-                        onClick={() => handleAddComment(event.id, day, event.userId)}
-                        disabled={!newComments[key]?.trim()}
-                      >
-                        <Send className="h-4 w-4" />
-                      </Button>
-                    </div>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete Event?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to permanently delete "{event.title}"? This will remove it for all users.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => handleDeleteEvent(event)}>Delete</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           )}
         </div>
       </CardContent>
