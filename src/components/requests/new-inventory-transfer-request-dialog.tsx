@@ -46,6 +46,7 @@ import type {
   MobileSim,
   TransferReason,
   Role,
+  InventoryTransferRequest,
 } from "@/lib/types";
 
 import { TRANSFER_REASONS } from "@/lib/types";
@@ -110,11 +111,13 @@ export default function NewInventoryTransferRequestDialog({
   setIsOpen,
   preSelectedItems = [],
   onClearSelection = () => {},
+  existingRequest,
 }: {
   isOpen: boolean;
   setIsOpen: (v: boolean) => void;
   preSelectedItems?: InventoryItem[];
   onClearSelection?: () => void;
+  existingRequest?: InventoryTransferRequest | null;
 }) {
   const {
     user,
@@ -129,6 +132,7 @@ export default function NewInventoryTransferRequestDialog({
     laptopsDesktops,
     mobileSims,
     addInventoryTransferRequest,
+    updateInventoryTransferRequest,
   } = useAppContext();
   const { toast } = useToast();
 
@@ -147,18 +151,25 @@ export default function NewInventoryTransferRequestDialog({
   });
   
   useEffect(() => {
-    if (isOpen && preSelectedItems.length > 0) {
-      const firstItemProjectId = preSelectedItems[0].projectId;
-      form.setValue('fromProjectId', firstItemProjectId);
-      form.setValue('items', preSelectedItems.map(item => ({
-        itemId: item.id,
-        itemType: 'Inventory', // Assuming pre-selected items are always 'Inventory'
-        name: item.name,
-        serialNumber: item.serialNumber,
-        ariesId: item.ariesId,
-      })));
+    if (isOpen) {
+      if (existingRequest) {
+        form.reset({
+          ...existingRequest,
+          items: existingRequest.items.map(item => ({...item, ariesId: item.ariesId || undefined}))
+        });
+      } else if (preSelectedItems.length > 0) {
+        const firstItemProjectId = preSelectedItems[0].projectId;
+        form.setValue('fromProjectId', firstItemProjectId);
+        form.setValue('items', preSelectedItems.map(item => ({
+          itemId: item.id,
+          itemType: 'Inventory', // Assuming pre-selected items are always 'Inventory'
+          name: item.name,
+          serialNumber: item.serialNumber,
+          ariesId: item.ariesId,
+        })));
+      }
     }
-  }, [isOpen, preSelectedItems, form]);
+  }, [isOpen, preSelectedItems, existingRequest, form]);
 
 
   const fromProjectId = form.watch("fromProjectId");
@@ -257,8 +268,13 @@ export default function NewInventoryTransferRequestDialog({
   };
 
   const onSubmit = (data: FormValues) => {
-    addInventoryTransferRequest(data);
-    toast({ title: "Transfer Request Submitted" });
+    if (existingRequest) {
+      updateInventoryTransferRequest({ ...existingRequest, ...data });
+      toast({ title: "Transfer Request Updated" });
+    } else {
+      addInventoryTransferRequest(data);
+      toast({ title: "Transfer Request Submitted" });
+    }
     setIsOpen(false);
   };
 
@@ -289,7 +305,7 @@ export default function NewInventoryTransferRequestDialog({
             onInteractOutside={(e) => e.preventDefault()}
         >
           <DialogHeader>
-            <DialogTitle>New Inventory Transfer Request</DialogTitle>
+            <DialogTitle>{existingRequest ? 'Edit' : 'New'} Inventory Transfer Request</DialogTitle>
           </DialogHeader>
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -301,7 +317,7 @@ export default function NewInventoryTransferRequestDialog({
                   name="fromProjectId"
                   control={form.control}
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange} disabled={preSelectedItems.length > 0}>
+                    <Select value={field.value} onValueChange={field.onChange} disabled={preSelectedItems.length > 0 || !!existingRequest}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select origin..." />
                       </SelectTrigger>
@@ -500,7 +516,7 @@ export default function NewInventoryTransferRequestDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit">Submit Request</Button>
+              <Button type="submit">{existingRequest ? 'Update Request' : 'Submit Request'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

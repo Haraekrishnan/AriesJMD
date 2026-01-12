@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import { ThumbsUp, ThumbsDown, SendToBack, CheckCircle, AlertTriangle, Trash2, FilePlus, UserCheck, FileDown } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, SendToBack, CheckCircle, AlertTriangle, Trash2, FilePlus, UserCheck, FileDown, Edit } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
@@ -17,6 +17,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '..
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import GenerateTpCertDialog from '../inventory/GenerateTpCertDialog';
 import TransferReportDownloads from './TransferReportDownloads';
+import NewInventoryTransferRequestDialog from './new-inventory-transfer-request-dialog';
 
 export default function PendingTransfers() {
   const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, deleteInventoryTransferRequest, addTpCertList, disputeInventoryTransfer, acknowledgeTransfer, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, resolveInternalRequestDispute } = useAppContext();
@@ -25,6 +26,7 @@ export default function PendingTransfers() {
   const [disputeRequestId, setDisputeRequestId] = useState<string | null>(null);
   const [comment, setComment] = useState('');
   const [editingTpList, setEditingTpList] = useState<Partial<TpCertList> | null>(null);
+  const [editingRequest, setEditingRequest] = useState<InventoryTransferRequest | null>(null);
   
     const allItems = useMemo(() => [
       ...inventoryItems, ...utMachines, ...dftMachines, ...digitalCameras, 
@@ -143,6 +145,8 @@ export default function PendingTransfers() {
                   }, {} as Record<string, number>);
                   
                   const sortedItems = [...req.items].sort((a,b) => a.name.localeCompare(b.name));
+                  const canEdit = can.approve_store_requests || user?.role === 'Admin';
+
 
                   return (
                     <AccordionItem value={req.id} key={req.id} className="border rounded-lg bg-muted/50">
@@ -160,6 +164,11 @@ export default function PendingTransfers() {
                             <div className="flex items-center gap-2 pl-4">
                                 {can.approve_store_requests && req.status === 'Pending' && (
                                 <>
+                                    {canEdit && (
+                                        <Button size="sm" variant="outline" onClick={() => setEditingRequest(req)}>
+                                            <Edit className="mr-2 h-4 w-4" /> Edit
+                                        </Button>
+                                    )}
                                     {showTpOption ? (
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
@@ -398,6 +407,13 @@ export default function PendingTransfers() {
         setIsOpen={() => setEditingTpList(null)}
         listToCreate={editingTpList}
       />
+    )}
+    {editingRequest && (
+        <NewInventoryTransferRequestDialog
+            isOpen={!!editingRequest}
+            setIsOpen={() => setEditingRequest(null)}
+            existingRequest={editingRequest}
+        />
     )}
     </>
   );
