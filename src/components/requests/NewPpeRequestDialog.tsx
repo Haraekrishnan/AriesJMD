@@ -1,4 +1,3 @@
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,6 +21,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ScrollArea } from '../ui/scroll-area';
 
 const coverallSizeOptions = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
+const shoeSizeOptions = Array.from({ length: 13 }, (_, i) => (i + 1).toString());
 
 const ppeRequestSchema = z.object({
   manpowerId: z.string().min(1, 'Please select a person'),
@@ -247,12 +247,21 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
                 </div>
                  <div className="space-y-2">
                     <Label>Size</Label>
-                    {ppeType === 'Coverall' ? (
+                     {ppeType === 'Coverall' ? (
                          <Controller name="size" control={form.control} render={({ field }) => (
                             <Select onValueChange={field.onChange} value={field.value}>
                                 <SelectTrigger><SelectValue placeholder="Select size..."/></SelectTrigger>
                                 <SelectContent>
                                     {coverallSizeOptions.map(size => <SelectItem key={size} value={size}>{size}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        )}/>
+                    ) : ppeType === 'Safety Shoes' ? (
+                        <Controller name="size" control={form.control} render={({ field }) => (
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger><SelectValue placeholder="Select Indian size..."/></SelectTrigger>
+                                <SelectContent>
+                                    {shoeSizeOptions.map(size => <SelectItem key={size} value={size}>{size}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         )}/>
