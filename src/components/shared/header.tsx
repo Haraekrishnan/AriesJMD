@@ -8,7 +8,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Menu, ShieldAlert, History, Ship, LogOut, LayoutDashboard, Send, CheckSquare, CalendarCheck, ShoppingCart, Warehouse, ArrowRightLeft, Package, HardHat, Car, Home, CalendarDays, User as UserIcon, Trophy, TrendingUp, Briefcase, HelpCircle, ClipboardList, Download, MessageSquare, Hammer } from 'lucide-react';
+import { Menu, ShieldAlert, History, Ship, LogOut, LayoutDashboard, Send, CheckSquare, CalendarCheck, ShoppingCart, Warehouse, ArrowRightLeft, Package, HardHat, Car, Home, CalendarDays, User as UserIcon, Trophy, TrendingUp, Briefcase, HelpCircle, ClipboardList, Download, MessageSquare, Hammer, Radio } from 'lucide-react';
 import AnnouncementApprovalDialog from '../announcements/AnnouncementApprovalDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import NewAnnouncementDialog from '../announcements/NewAnnouncementDialog';
@@ -227,7 +227,7 @@ export default function Header() {
   }, [damageReports, can.manage_inventory]);
   
   const getPageTitle = () => {
-    if (pathname.startsWith('/schedule')) return 'Planner';
+    if (pathname.startsWith('/planner')) return 'Planner';
     if (pathname.startsWith('/tp-certification')) return 'TP Certification Lists';
     if (pathname.startsWith('/damage-reports')) return 'Damage Reports';
     if (pathname.startsWith('/incident-reporting')) return 'Incident Reporting';
