@@ -21,7 +21,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ScrollArea } from '../ui/scroll-area';
 
 const coverallSizeOptions = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
-const shoeSizeOptions = Array.from({ length: 13 }, (_, i) => (i + 1).toString());
+const shoeSizeOptions = Array.from({ length: 8 }, (_, i) => (i + 6).toString());
 
 const ppeRequestSchema = z.object({
   manpowerId: z.string().min(1, 'Please select a person'),
