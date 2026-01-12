@@ -92,37 +92,37 @@ export default function RecentPlannerActivity() {
 
     delegatedEvents.forEach(event => {
         const today = startOfDay(new Date());
-        const startDate = subDays(today, 30); // Check for the last 30 days
-        const endDate = subDays(today, 1); // Up until yesterday
+        const startDate = subDays(today, 30); 
+        const endDate = subDays(today, 1); 
 
-        if (isAfter(parseISO(event.date), endDate)) return;
-
-        const expanded = getExpandedPlannerEvents(startDate, endDate, event.userId);
-        
-        const relevantInstances = expanded.filter(instance => instance.event.id === event.id);
-
-        relevantInstances.forEach(instance => {
-            const dayStr = format(instance.eventDate, 'yyyy-MM-dd');
+        if (!isAfter(parseISO(event.date), endDate)) {
+            const expanded = getExpandedPlannerEvents(startDate, endDate, event.userId);
             
-            const isCreatorView = event.creatorId === user.id;
-            const isAssigneeView = event.userId === user.id;
+            const relevantInstances = expanded.filter(instance => instance.event.id === event.id);
 
-            if (!isCreatorView && !isAssigneeView) return;
+            relevantInstances.forEach(instance => {
+                const dayStr = format(instance.eventDate, 'yyyy-MM-dd');
+                
+                const isCreatorView = event.creatorId === user.id;
+                const isAssigneeView = event.userId === user.id;
 
-            const dc = dailyPlannerComments.find(d => d.id === `${dayStr}_${event.userId}`);
-            const assigneeCommented = dc && Object.values(dc.comments || {}).some(c => c.eventId === event.id && c.userId === event.userId);
-            
-            const isDismissed = user.dismissedPendingUpdates?.[`${event.id}_${dayStr}`];
+                if (!isCreatorView && !isAssigneeView) return;
 
-            if (!assigneeCommented && !isDismissed) {
-                allPendingUpdates.push({
-                    type: 'pending_update',
-                    day: dayStr,
-                    event,
-                    delegatedTo: users.find((u) => u.id === event.userId),
-                });
-            }
-        });
+                const dc = dailyPlannerComments.find(d => d.id === `${dayStr}_${event.userId}`);
+                const assigneeCommented = dc && Object.values(dc.comments || {}).some(c => c.eventId === event.id && c.userId === event.userId);
+                
+                const isDismissed = user.dismissedPendingUpdates?.[`${event.id}_${dayStr}`];
+
+                if (!assigneeCommented && !isDismissed) {
+                    allPendingUpdates.push({
+                        type: 'pending_update',
+                        day: dayStr,
+                        event,
+                        delegatedTo: users.find((u) => u.id === event.userId),
+                    });
+                }
+            });
+        }
     });
     
     const sortedUnread = allUnread.sort(
@@ -250,89 +250,57 @@ export default function RecentPlannerActivity() {
           
           {/* PENDING UPDATES */}
           {pendingUpdates.length > 0 && (
-            <Accordion type="multiple" className="w-full space-y-2">
-              <AccordionItem value="pending-updates" className="border-none">
-                <AccordionTrigger className="p-0 hover:no-underline text-sm font-semibold flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-orange-500" />
-                  Pending Event Updates ({pendingUpdates.length})
-                </AccordionTrigger>
-                <AccordionContent className="pt-2">
-                  <div className="space-y-2">
-                    {pendingUpdates.map(({ day, event, delegatedTo }) => {
-                      const key = `${day}-${event.id}`;
-                      const isCreatorView = event.creatorId === user.id;
+             <div className="space-y-2">
+                <h4 className="text-sm font-semibold flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-orange-500" />
+                    Pending Event Updates ({pendingUpdates.length})
+                </h4>
+                <div className="space-y-2">
+                {pendingUpdates.map(({ day, event, delegatedTo }) => {
+                    const key = `${day}-${event.id}`;
+                    const isCreatorView = event.creatorId === user.id;
 
-                      return (
-                        <div
-                          key={key}
-                          className="p-3 border rounded-lg bg-orange-50 dark:bg-orange-900/30"
-                        >
-                          <div className="flex justify-between items-start w-full">
-                            <div className="flex flex-col">
-                              <p className="font-semibold text-sm">{event.title}</p>
-                              <p className="text-xs">
-                                {isCreatorView ? (
-                                  <>
-                                    No update from{' '}
-                                    <span className="font-medium">{delegatedTo?.name}</span>{' '}
-                                    for {format(parseISO(day), 'dd MMM, yyyy')}.
-                                  </>
-                                ) : (
-                                  <>
-                                    You have not updated this event for{' '}
-                                    {format(parseISO(day), 'dd MMM, yyyy')}.
-                                  </>
-                                )}
-                              </p>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="border-blue-400 text-blue-600 hover:bg-blue-50"
-                                onClick={() => handleGoToEvent(day, event.userId)}
-                              >
-                                Review
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                className="border-gray-400 text-gray-600 hover:bg-gray-100"
-                                onClick={() => dismissPendingUpdate(event.id, day)}
-                              >
-                                Dismiss
-                              </Button>
-                            </div>
-                          </div>
-                          
-                          <div className="relative mt-2">
-                            <Textarea
-                              rows={1}
-                              className="text-xs pr-10 bg-white dark:bg-card"
-                              placeholder={
-                                isCreatorView
-                                  ? `Ask ${delegatedTo?.name || 'them'} for an update...`
-                                  : 'Add an update for this event...'
-                              }
-                              value={newComments[key] || ''}
-                              onChange={(e) =>
-                                setNewComments((prev) => ({
-                                  ...prev,
-                                  [key]: e.target.value,
-                                }))
-                              }
-                            />
+                    return (
+                    <div
+                        key={key}
+                        className="p-3 border rounded-lg bg-orange-50 dark:bg-orange-900/30"
+                    >
+                        <div className="flex justify-between items-start w-full">
+                        <div className="flex flex-col">
+                            <p className="font-semibold text-sm">{event.title}</p>
+                            <p className="text-xs">
+                            {isCreatorView ? (
+                                <>
+                                No update from{' '}
+                                <span className="font-medium">{delegatedTo?.name}</span>{' '}
+                                for {format(parseISO(day), 'dd MMM, yyyy')}.
+                                </>
+                            ) : (
+                                <>
+                                You have not updated this event for{' '}
+                                {format(parseISO(day), 'dd MMM, yyyy')}.
+                                </>
+                            )}
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2">
                             <Button
-                              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                              size="icon"
-                              onClick={() => handleAddComment(event.id, day, event.userId)}
-                              disabled={!newComments[key]?.trim()}
+                            size="sm"
+                            variant="outline"
+                            className="border-blue-400 text-blue-600 hover:bg-blue-50"
+                            onClick={() => handleGoToEvent(day, event.userId)}
                             >
-                              <Send className="h-4 w-4" />
+                            Review
                             </Button>
-                          </div>
-                          {user?.role === 'Admin' && (
-                              <div className="mt-2 flex justify-end">
+                            <Button
+                            size="sm"
+                            variant="secondary"
+                            className="border-gray-400 text-gray-600 hover:bg-gray-100"
+                            onClick={() => dismissPendingUpdate(event.id, day)}
+                            >
+                            Dismiss
+                            </Button>
+                             {user?.role === 'Admin' && (
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
                                     <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10">
@@ -352,15 +320,41 @@ export default function RecentPlannerActivity() {
                                     </AlertDialogFooter>
                                   </AlertDialogContent>
                                 </AlertDialog>
-                              </div>
-                          )}
+                            )}
                         </div>
-                      );
-                    })}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+                        </div>
+                        
+                        <div className="relative mt-2">
+                        <Textarea
+                            rows={1}
+                            className="text-xs pr-10 bg-white dark:bg-card"
+                            placeholder={
+                            isCreatorView
+                                ? `Ask ${delegatedTo?.name || 'them'} for an update...`
+                                : 'Add an update for this event...'
+                            }
+                            value={newComments[key] || ''}
+                            onChange={(e) =>
+                            setNewComments((prev) => ({
+                                ...prev,
+                                [key]: e.target.value,
+                            }))
+                            }
+                        />
+                        <Button
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                            size="icon"
+                            onClick={() => handleAddComment(event.id, day, event.userId)}
+                            disabled={!newComments[key]?.trim()}
+                        >
+                            <Send className="h-4 w-4" />
+                        </Button>
+                        </div>
+                    </div>
+                    );
+                })}
+                </div>
+            </div>
           )}
         </div>
       </CardContent>
