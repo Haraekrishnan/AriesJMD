@@ -1,10 +1,9 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { format, formatDistanceToNow, parseISO, isPast, isToday, isSameDay, startOfDay, subDays } from 'date-fns';
+import { format, formatDistanceToNow, parseISO, isPast, isToday, isSameDay, startOfDay, subDays, isAfter } from 'date-fns';
 import { MessageSquare, Calendar, CheckCircle, AlertTriangle, Send } from 'lucide-react';
 import type { Comment, PlannerEvent, User } from '@/lib/types';
 import { Button } from '../ui/button';
@@ -87,7 +86,6 @@ export default function RecentPlannerActivity() {
 
     delegatedEvents.forEach(event => {
         const today = startOfDay(new Date());
-        // We only care about events from the past month up to yesterday.
         const startDate = subDays(today, 30);
         const endDate = subDays(today, 1);
         
@@ -121,12 +119,10 @@ export default function RecentPlannerActivity() {
         });
     });
     
-    // Sort unread comments (newest first)
     const sortedUnread = allUnread.sort(
       (a, b) => parseISO(b.comment.date).getTime() - parseISO(a.comment.date).getTime()
     );
     
-    // Remove duplicate pending entries per (day + event)
     const dedupedPending = [
       ...new Map(
         allPendingUpdates.map((item) => [`${item.day}-${item.event.id}`, item])
@@ -258,9 +254,7 @@ export default function RecentPlannerActivity() {
                     key={key}
                     className="mt-2 p-3 border rounded-lg bg-orange-50 dark:bg-orange-900/30"
                   >
-                    {/* TOP ROW: text left, buttons right */}
                     <div className="flex justify-between items-start w-full">
-                      {/* LEFT SIDE: title + message */}
                       <div className="flex flex-col">
                         <p className="font-semibold text-sm">{event.title}</p>
                         
@@ -282,7 +276,6 @@ export default function RecentPlannerActivity() {
                         </p>
                       </div>
                       
-                      {/* RIGHT SIDE: buttons */}
                       <div className="flex gap-2">
                         <Button
                           size="sm"
@@ -304,7 +297,6 @@ export default function RecentPlannerActivity() {
                       </div>
                     </div>
                     
-                    {/* TEXTAREA ROW */}
                     <div className="relative mt-2">
                       <Textarea
                         rows={1}
