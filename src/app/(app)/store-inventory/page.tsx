@@ -10,7 +10,7 @@ import InventoryTable from '@/components/inventory/InventoryTable';
 import AddItemDialog from '@/components/inventory/AddItemDialog';
 import ImportItemsDialog from '@/components/inventory/ImportItemsDialog';
 import InventoryFilters from '@/components/inventory/InventoryFilters';
-import type { InventoryItem, CertificateRequest, Role } from '@/lib/types';
+import type { InventoryItem, CertificateRequest, Role, InventoryTransferRequest } from '@/lib/types';
 import { isAfter, isBefore, addDays, parseISO, isWithinInterval, subDays, format } from 'date-fns';
 import ViewCertificateRequestDialog from '@/components/inventory/ViewCertificateRequestDialog';
 import InventorySummary from '@/components/inventory/InventorySummary';
@@ -39,6 +39,7 @@ export default function StoreInventoryPage() {
     const [isBulkInspectionUpdateOpen, setIsBulkInspectionUpdateOpen] = useState(false);
     const [isGenerateCertOpen, setIsGenerateCertOpen] = useState(false);
     const [isTransferRequestOpen, setIsTransferRequestOpen] = useState(false);
+    const [editingTransferRequest, setEditingTransferRequest] = useState<InventoryTransferRequest | null>(null);
     const [isNewDamageReportOpen, setIsNewDamageReportOpen] = useState(false);
     const [viewingCertRequest, setViewingCertRequest] = useState<CertificateRequest | null>(null);
     const [view, setView] = useState<'list' | 'summary'>('list');
@@ -156,6 +157,19 @@ export default function StoreInventoryPage() {
         req.itemId
       );
     }, [certificateRequests, user]);
+    
+    const openTransferRequestDialog = (request: InventoryTransferRequest | null) => {
+        if(request) {
+            setEditingTransferRequest(request);
+        } else {
+            setIsTransferRequestOpen(true);
+        }
+    }
+    
+    const closeTransferRequestDialog = () => {
+        setIsTransferRequestOpen(false);
+        setEditingTransferRequest(null);
+    }
 
     useEffect(() => {
         if (myFulfilledCertRequests.some(req => !req.viewedByRequester)) {
@@ -217,11 +231,11 @@ export default function StoreInventoryPage() {
 
                     <Button onClick={() => setView(v => v === 'list' ? 'summary' : 'list')} variant="outline"><ChevronsUpDown className="mr-2 h-4 w-4" />{view === 'list' ? 'View Summary' : 'View List'}</Button>
                     {selectedItemsForTransfer.length > 0 ? (
-                        <Button onClick={() => setIsTransferRequestOpen(true)}>
+                        <Button onClick={() => openTransferRequestDialog(null)}>
                             <ArrowRightLeft className="mr-2 h-4 w-4" /> Transfer Selected ({selectedItemsForTransfer.length})
                         </Button>
                     ) : (
-                        <Button variant="outline" onClick={() => setIsTransferRequestOpen(true)}>
+                        <Button variant="outline" onClick={() => openTransferRequestDialog(null)}>
                             <ArrowRightLeft className="mr-2 h-4 w-4" /> Transfer Items
                         </Button>
                     )}
@@ -247,7 +261,7 @@ export default function StoreInventoryPage() {
                         </div>
                     </AccordionTrigger>
                     <AccordionContent>
-                        <PendingTransfers />
+                        <PendingTransfers onEditRequest={openTransferRequestDialog} />
                     </AccordionContent>
                 </AccordionItem>
             </Accordion>
@@ -371,13 +385,16 @@ export default function StoreInventoryPage() {
             <BulkUpdateTpCertDialog isOpen={isBulkUpdateOpen} setIsOpen={setIsBulkUpdateOpen} />
             <BulkUpdateInspectionDialog isOpen={isBulkInspectionUpdateOpen} setIsOpen={setIsBulkInspectionUpdateOpen} />
             <GenerateTpCertDialog isOpen={isGenerateCertOpen} setIsOpen={setIsGenerateCertOpen} />
-            <NewInventoryTransferRequestDialog isOpen={isTransferRequestOpen} setIsOpen={setIsTransferRequestOpen} preSelectedItems={selectedItemsForTransfer} onClearSelection={() => setSelectedItemsForTransfer([])} />
+            <NewInventoryTransferRequestDialog
+                isOpen={isTransferRequestOpen || !!editingTransferRequest}
+                setIsOpen={closeTransferRequestDialog}
+                preSelectedItems={selectedItemsForTransfer}
+                onClearSelection={() => setSelectedItemsForTransfer([])}
+                existingRequest={editingTransferRequest}
+            />
             <NewDamageReportDialog isOpen={isNewDamageReportOpen} setIsOpen={setIsNewDamageReportOpen} />
             {viewingCertRequest && ( <ViewCertificateRequestDialog request={viewingCertRequest} isOpen={!!viewingCertRequest} setIsOpen={() => setViewingCertRequest(null)} /> )}
         </div>
     );
 }
-
-
-
 

@@ -19,14 +19,18 @@ import GenerateTpCertDialog from '../inventory/GenerateTpCertDialog';
 import TransferReportDownloads from './TransferReportDownloads';
 import NewInventoryTransferRequestDialog from './new-inventory-transfer-request-dialog';
 
-export default function PendingTransfers() {
+interface PendingTransfersProps {
+  onEditRequest: (request: InventoryTransferRequest) => void;
+}
+
+
+export default function PendingTransfers({ onEditRequest }: PendingTransfersProps) {
   const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, deleteInventoryTransferRequest, addTpCertList, disputeInventoryTransfer, acknowledgeTransfer, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, resolveInternalRequestDispute } = useAppContext();
   const { toast } = useToast();
   const [rejectionRequestId, setRejectionRequestId] = useState<string | null>(null);
   const [disputeRequestId, setDisputeRequestId] = useState<string | null>(null);
   const [comment, setComment] = useState('');
   const [editingTpList, setEditingTpList] = useState<Partial<TpCertList> | null>(null);
-  const [editingRequest, setEditingRequest] = useState<InventoryTransferRequest | null>(null);
   
     const allItems = useMemo(() => [
       ...inventoryItems, ...utMachines, ...dftMachines, ...digitalCameras, 
@@ -165,7 +169,7 @@ export default function PendingTransfers() {
                                 {can.approve_store_requests && req.status === 'Pending' && (
                                 <>
                                     {canEdit && (
-                                        <Button size="sm" variant="outline" onClick={() => setEditingRequest(req)}>
+                                        <Button size="sm" variant="outline" onClick={() => onEditRequest(req)}>
                                             <Edit className="mr-2 h-4 w-4" /> Edit
                                         </Button>
                                     )}
@@ -407,13 +411,6 @@ export default function PendingTransfers() {
         setIsOpen={() => setEditingTpList(null)}
         listToCreate={editingTpList}
       />
-    )}
-    {editingRequest && (
-        <NewInventoryTransferRequestDialog
-            isOpen={!!editingRequest}
-            setIsOpen={() => setEditingRequest(null)}
-            existingRequest={editingRequest}
-        />
     )}
     </>
   );
