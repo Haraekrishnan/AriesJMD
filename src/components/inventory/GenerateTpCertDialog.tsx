@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -114,7 +115,8 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
         }
         const term = searchTerm.toLowerCase();
         return itemsOfSelectedName.filter(item => 
-            ((item as any).serialNumber && (item as any).serialNumber.toLowerCase().includes(term))
+            ((item as any).serialNumber && (item as any).serialNumber.toLowerCase().includes(term)) ||
+            (item.ariesId && item.ariesId.toLowerCase().includes(term))
         );
       }, [searchTerm, itemsOfSelectedName]);
 
@@ -213,7 +215,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                     </Select>
                 </div>
                  <div className="space-y-2">
-                    <Label>2. Search & Add (by Serial No.)</Label>
+                    <Label>2. Search & Add (by Serial No. or Aries ID)</Label>
                      <Command className="rounded-lg border shadow-md">
                         <CommandInput
                           placeholder="Search within selected item..."
@@ -231,7 +233,8 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                                       onSelect={() => handleSelect(item)}
                                       className="cursor-pointer"
                                   >
-                                      {(item as any).serialNumber || 'N/A'}
+                                      <span>{item.serialNumber || 'N/A'}</span>
+                                      {item.ariesId && <span className="ml-auto text-xs text-muted-foreground">(ID: {item.ariesId})</span>}
                                   </CommandItem>
                                   ))}
                               </CommandGroup>
