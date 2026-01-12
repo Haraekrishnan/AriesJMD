@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -37,20 +38,15 @@ export default function SchedulePage() {
 
     useEffect(() => {
         const urlUserId = searchParams.get('userId');
-        const urlDate = searchParams.get('date');
-        
-        if (urlUserId) setSelectedUserId(urlUserId);
-        if (urlDate) {
-            const newDate = parseISO(urlDate);
-            setSelectedDate(newDate);
-            setCurrentMonth(startOfMonth(newDate));
+        if (urlUserId && urlUserId !== selectedUserId) {
+            setSelectedUserId(urlUserId);
         }
+    }, [searchParams, selectedUserId]);
 
-        // Clean up URL after initial load
-        if (urlUserId || urlDate) {
-            router.replace('/schedule', { scroll: false });
-        }
-    }, [searchParams, router]);
+    const handleUserChange = (userId: string) => {
+        setSelectedUserId(userId);
+        router.push(`/schedule?userId=${userId}`, { scroll: false });
+    };
 
     return (
         <div className="space-y-8 h-full flex flex-col">
@@ -63,7 +59,7 @@ export default function SchedulePage() {
                     {canViewOthers && (
                         <div className="flex items-center gap-2">
                             <Label htmlFor="user-select" className="text-sm font-medium">View Planning of:</Label>
-                            <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                            <Select value={selectedUserId} onValueChange={handleUserChange}>
                                 <SelectTrigger className="w-[200px]" id="user-select">
                                     <SelectValue placeholder="Select an employee" />
                                 </SelectTrigger>
