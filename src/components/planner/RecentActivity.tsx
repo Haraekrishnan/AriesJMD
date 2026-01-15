@@ -182,6 +182,12 @@ export default function RecentPlannerActivity() {
     toast({ variant: 'destructive', title: 'Event Deleted' });
   };
   
+  const filteredUnreadComments = unreadComments.filter(uc => !justReplied.has(uc.event.id));
+
+  if (filteredUnreadComments.length === 0 && pendingUpdates.length === 0) {
+    return null;
+  }
+  
   return (
     <Card className="border-orange-500 dark:border-orange-400">
       <CardHeader className="pb-2">
@@ -194,7 +200,7 @@ export default function RecentPlannerActivity() {
       <CardContent>
         <div className="space-y-4">
           {/* UNREAD COMMENTS */}
-          {unreadComments.filter(uc => !justReplied.has(uc.event.id)).map(({ day, event, comment, delegatedBy, delegatedTo }) => {
+          {filteredUnreadComments.map(({ day, event, comment, delegatedBy, delegatedTo }) => {
             const commentUser = users.find((u) => u.id === comment.userId);
             const isMyUpdate = user.id === comment.userId;
             const key = `${day}-${event.id}`;
@@ -386,4 +392,3 @@ export default function RecentPlannerActivity() {
     </Card>
   );
 }
-
