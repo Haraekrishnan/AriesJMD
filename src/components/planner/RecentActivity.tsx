@@ -152,10 +152,6 @@ export default function RecentPlannerActivity() {
     unreadComments.filter(uc => !actionedItems.has(uc.comment.id))
   , [unreadComments, actionedItems]);
 
-  if (!user || (filteredUnreadComments.length === 0 && pendingUpdates.length === 0)) {
-    return null;
-  }
-  
   const handleMarkAsRead = (comment: Comment) => {
     const event = plannerEvents.find((e) => e.id === comment.eventId);
     const day = dailyPlannerComments.find((dc) =>
@@ -168,14 +164,17 @@ export default function RecentPlannerActivity() {
     }
   };
 
-  const handleAddComment = (eventId: string, day: string, eventUserId: string) => {
+  const handleAddComment = (eventId: string, day: string, eventUserId: string, originalCommentId?: string) => {
     const key = `${day}-${eventId}`;
     const text = newComments[key];
     if (!text?.trim()) return;
     
     addPlannerEventComment(eventUserId, day, eventId, text);
-    const tempCommentId = `temp-${Date.now()}`;
-    setActionedItems(prev => new Set(prev).add(tempCommentId));
+    
+    if (originalCommentId) {
+        setActionedItems(prev => new Set(prev).add(originalCommentId));
+    }
+
     setNewComments((prev) => ({ ...prev, [key]: '' }));
   };
   
@@ -186,6 +185,10 @@ export default function RecentPlannerActivity() {
     deletePlannerEvent(event.id);
     toast({ variant: 'destructive', title: 'Event Deleted' });
   };
+
+  if (!user || (filteredUnreadComments.length === 0 && pendingUpdates.length === 0)) {
+    return null;
+  }
   
   return (
     <Card className="border-orange-500 dark:border-orange-400">
@@ -257,7 +260,7 @@ export default function RecentPlannerActivity() {
                                           size="icon"
                                           variant="ghost"
                                           className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                                          onClick={() => handleAddComment(event.id, day, event.userId)}
+                                          onClick={() => handleAddComment(event.id, day, event.userId, comment.id)}
                                           disabled={!newComments[key]?.trim()}
                                       >
                                           <Send className="h-4 w-4" />
@@ -277,7 +280,7 @@ export default function RecentPlannerActivity() {
                           rows={1}
                       />
                       <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleAddComment(event.id, day, event.userId)} disabled={!newComments[key]?.trim()}>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleAddComment(event.id, day, event.userId, comment.id)} disabled={!newComments[key]?.trim()}>
                               <Send className="h-4 w-4" />
                           </Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleMarkAsRead(comment)}>
