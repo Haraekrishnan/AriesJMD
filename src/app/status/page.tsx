@@ -24,44 +24,39 @@ export default function StatusPage() {
     }
   }, [user, loading, router]);
 
-
-  if (loading || !user) {
-    return (
-        <div className="flex h-screen w-full items-center justify-center bg-background">
-            <div className="text-center space-y-2">
-                <p className="text-muted-foreground">Redirecting...</p>
-                <div className="flex items-center space-x-4">
-                    <Skeleton className="h-12 w-12 rounded-full" />
-                    <div className="space-y-2">
-                        <Skeleton className="h-4 w-[250px]" />
-                        <Skeleton className="h-4 w-[200px]" />
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-  }
-  
-  if (user.status !== 'locked') {
-    return null; // Don't render anything if the user is not locked, useEffect will redirect.
-  }
-
   const handleUnlockRequest = () => {
     if (user) {
-        requestUnlock(user.id, user.name);
-        toast({
-            title: 'Unlock Request Sent',
-            description: 'Your request has been sent to the administrator for review.',
-        });
+      requestUnlock(user.id, user.name);
+      toast({
+        title: 'Unlock Request Sent',
+        description: 'Your request has been sent to the administrator for review.',
+      });
     }
   };
+
+  if (loading || !user || user.status !== 'locked') {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="text-center space-y-2">
+          <p className="text-muted-foreground">Redirecting...</p>
+          <div className="flex items-center space-x-4">
+            <Skeleton className="h-12 w-12 rounded-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-[250px]" />
+              <Skeleton className="h-4 w-[200px]" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-full max-w-md text-center">
         <CardHeader>
           <div className="mx-auto bg-destructive/10 p-4 rounded-full w-fit mb-4">
-              <ShieldAlert className="h-12 w-12 text-destructive" />
+            <ShieldAlert className="h-12 w-12 text-destructive" />
           </div>
           <CardTitle>Account Locked</CardTitle>
           <CardDescription>
