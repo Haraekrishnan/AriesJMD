@@ -199,8 +199,8 @@ export default function RecentPlannerActivity() {
           {filteredUnreadComments.map(({ day, event, comment, delegatedBy, delegatedTo }) => {
             const commentUser = users.find((u) => u.id === comment.userId);
             const key = `${day}-${event.id}`;
-            const isDelegatorView = event.creatorId === user.id && event.creatorId !== event.userId;
-            
+            const isMyDelegatedEvent = event.creatorId === user.id && event.creatorId !== event.userId;
+
             return (
               <div key={comment.id} className="p-4 border rounded-lg bg-muted/50">
                 <p className="font-semibold text-sm">{event.title}</p>
@@ -234,7 +234,7 @@ export default function RecentPlannerActivity() {
                 </div>
                 
                 <div className="mt-2">
-                  {isDelegatorView ? (
+                  {isMyDelegatedEvent ? (
                     <Accordion type="single" collapsible>
                         <AccordionItem value="reply" className="border-none">
                             <div className="flex justify-end items-center gap-2">
@@ -270,7 +270,7 @@ export default function RecentPlannerActivity() {
                           value={newComments[key] || ''}
                           onChange={(e) => setNewComments((prev) => ({ ...prev, [key]: e.target.value }))}
                           placeholder={`Reply to ${commentUser?.name}...`}
-                          className="pr-10 text-sm bg-background"
+                          className="pr-20 text-sm bg-background"
                           rows={1}
                       />
                       <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
@@ -284,7 +284,6 @@ export default function RecentPlannerActivity() {
                     </div>
                   )}
                 </div>
-
               </div>
             );
           })}
@@ -401,3 +400,4 @@ export default function RecentPlannerActivity() {
     </Card>
   );
 }
+
