@@ -232,52 +232,34 @@ export default function RecentPlannerActivity() {
                   </div>
                 </div>
                 
-                {isMyUpdate ? (
-                  <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="reply" className="border-none">
-                      <AccordionTrigger className="p-0 pt-2 text-xs text-blue-600 hover:no-underline justify-start gap-1">
-                        <MessageSquare className="h-3 w-3" /> Reply...
-                      </AccordionTrigger>
-                      <AccordionContent>
+                <div className="mt-2">
+                    {isMyUpdate ? (
+                        <div className="flex justify-end mt-2 gap-2">
+                            <Button size="sm" variant="outline" onClick={() => handleGoToEvent(day, event.userId)}><Calendar className="mr-2 h-4 w-4" /> Go to Event</Button>
+                            <Button size="sm" variant="secondary" onClick={() => handleMarkAsRead(comment)}><CheckCircle className="mr-2 h-4 w-4" /> Mark as Read</Button>
+                        </div>
+                    ) : (
                         <div className="relative mt-2">
                           <Textarea
-                            value={newComments[key] || ''}
-                            onChange={(e) => setNewComments((prev) => ({ ...prev, [key]: e.target.value }))}
-                            placeholder={`Reply to ${delegatedBy?.name}...`}
-                            className="pr-10 text-sm bg-background"
-                            rows={1}
+                              value={newComments[key] || ''}
+                              onChange={(e) => setNewComments((prev) => ({ ...prev, [key]: e.target.value }))}
+                              placeholder={`Reply to ${commentUser?.name}...`}
+                              className="pr-10 text-sm bg-background"
+                              rows={1}
                           />
                           <Button
-                            size="icon"
-                            variant="ghost"
-                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                            onClick={() => handleAddComment(event.id, day, event.userId)}
-                            disabled={!newComments[key]?.trim()}
+                              size="icon"
+                              variant="ghost"
+                              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                              onClick={() => handleAddComment(event.id, day, event.userId)}
+                              disabled={!newComments[key]?.trim()}
                           >
-                            <Send className="h-4 w-4" />
+                              <Send className="h-4 w-4" />
                           </Button>
                         </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                ) : (
-                  <div className="flex justify-end mt-2 gap-2">
-                     <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleGoToEvent(day, event.userId)}
-                      >
-                        <Calendar className="mr-2 h-4 w-4" /> Go to Event
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => handleMarkAsRead(comment)}
-                      >
-                        <CheckCircle className="mr-2 h-4 w-4" /> Mark as Read
-                      </Button>
-                  </div>
-                )}
+                    )}
+                </div>
+
               </div>
             );
           })}
