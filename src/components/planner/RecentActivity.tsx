@@ -148,9 +148,7 @@ export default function RecentPlannerActivity() {
     getExpandedPlannerEvents,
   ]);
   
-  const filteredUnreadComments = unreadComments.filter(uc => !justReplied.has(uc.event.id + uc.day));
-
-  if (!user || (filteredUnreadComments.length === 0 && pendingUpdates.length === 0)) {
+  if (!user || (unreadComments.length === 0 && pendingUpdates.length === 0)) {
     return null;
   }
   
@@ -184,6 +182,12 @@ export default function RecentPlannerActivity() {
     toast({ variant: 'destructive', title: 'Event Deleted' });
   };
   
+  const filteredUnreadComments = unreadComments.filter(uc => !justReplied.has(uc.event.id + uc.day));
+
+  if (filteredUnreadComments.length === 0 && pendingUpdates.length === 0) {
+      return null;
+  }
+
   return (
     <Card className="border-orange-500 dark:border-orange-400">
       <CardHeader className="pb-2">
@@ -400,4 +404,3 @@ export default function RecentPlannerActivity() {
     </Card>
   );
 }
-
