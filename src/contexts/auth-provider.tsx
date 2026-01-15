@@ -1,8 +1,7 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, Dispatch, SetStateAction, useMemo } from 'react';
-import { User, RoleDefinition, Permission, ALL_PERMISSIONS, PasswordResetRequest, UnlockRequest, Feedback } from '@/lib/types';
+import { User, RoleDefinition, Permission, ALL_PERMISSIONS, PasswordResetRequest, UnlockRequest, Feedback, DailyPlannerComment, PlannerEvent } from '@/lib/types';
 import { useRouter, usePathname } from 'next/navigation';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, get, query, orderByChild, equalTo, update, push, set, remove } from 'firebase/database';
@@ -10,6 +9,7 @@ import useLocalStorage from '@/hooks/use-local-storage';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { uploadFile } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
+import { isSameDay, parseISO } from 'date-fns';
 
 // --- TYPE DEFINITIONS ---
 
@@ -26,6 +26,7 @@ type AuthContextType = {
   appName: string;
   appLogo: string | null;
   activeTheme: 'none' | 'christmas' | 'diwali' | 'new-year';
+  plannerNotificationCount: number;
 
   login: (email: string, pass: string) => Promise<{ success: boolean; user?: User }>;
   logout: () => void;
@@ -83,11 +84,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [appName, setAppName] = useState('Aries Marine');
   const [appLogo, setAppLogo] = useState<string | null>(null);
   const [activeTheme, setActiveTheme] = useState<'none' | 'christmas' | 'diwali' | 'new-year'>('none');
+  const [plannerEventsById, setPlannerEventsById] = useState<Record<string, PlannerEvent>>({});
+  const [dailyPlannerCommentsById, setDailyPlannerCommentsById] = useState<Record<string, DailyPlannerComment>>({});
 
   const users = useMemo(() => Object.values(usersById), [usersById]);
   const roles = useMemo(() => Object.values(rolesById), [rolesById]);
   const passwordResetRequests = useMemo(() => Object.values(passwordResetRequestsById), [passwordResetRequestsById]);
   const unlockRequests = useMemo(() => Object.values(unlockRequestsById), [unlockRequestsById]);
+  const plannerEvents = useMemo(() => Object.values(plannerEventsById), [plannerEventsById]);
+  const dailyPlannerComments = useMemo(() => Object.values(dailyPlannerCommentsById), [dailyPlannerCommentsById]);
   
   const { toast } = useToast();
   const router = useRouter();
@@ -102,6 +107,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     return canObject;
   }, [user, roles]);
+
+  const plannerNotificationCount = useMemo(() => {
+    if (!user) return 0;
+
+    const newDelegatedEvents = plannerEvents.filter(e =>
+      e.userId === user.id &&
+      e.creatorId !== user.id &&
+      !e.viewedBy?.[user.id]
+    );
+
+    const unreadComments = dailyPlannerComments.filter(dayComment => {
+      if (!dayComment.day || !dayComment.comments) return false;
+      
+      const comments = Array.isArray(dayComment.comments)
+        ? dayComment.comments
+        : Object.values(dayComment.comments || {});
+      
+      return comments.some(c => {
+        if (!c) return false;
+        const event = plannerEvents.find(e => e.id === c.eventId);
+        if (!event) return false;
+        const isParticipant = event.userId === user.id || event.creatorId === user.id;
+        return isParticipant && c.userId !== user.id && !c.viewedBy?.[user.id];
+      });
+    });
+
+    return newDelegatedEvents.length + unreadComments.length;
+  }, [user, plannerEvents, dailyPlannerComments]);
 
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
     if (!userId) return;
@@ -410,7 +443,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }),
       onValue(ref(rtdb, 'decorations/activeTheme'), (snapshot) => {
         setActiveTheme(snapshot.val() || 'none');
-      })
+      }),
+      createDataListener('plannerEvents', setPlannerEventsById),
+      onValue(ref(rtdb, 'dailyPlannerComments'), (snapshot) => {
+          const data = snapshot.val() || {};
+          setDailyPlannerCommentsById(data);
+      }),
     ];
 
     if (!storedUserId) {
@@ -424,19 +462,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (storedUserId && users.length > 0) {
       const foundUser = users.find(u => u.id === storedUserId);
       if (foundUser) {
+        if (foundUser.status === 'locked') {
+          router.replace('/status');
+        }
         setUser(foundUser);
       } else {
-        // This case handles when a user is deleted from the DB
         logout();
       }
        setLoading(false);
     } else if (!storedUserId) {
       setLoading(false);
     }
-  }, [storedUserId, users, logout]);
+  }, [storedUserId, users, logout, router]);
 
   const contextValue: AuthContextType = {
-    user, loading, users, roles, passwordResetRequests, unlockRequests, can, appName, appLogo, activeTheme,
+    user, loading, users, roles, passwordResetRequests, unlockRequests, can, appName, appLogo, activeTheme, plannerNotificationCount,
     login, logout, updateProfile, requestPasswordReset,
     resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, updateBranding, updateActiveTheme, addActivityLog, getVisibleUsers, getAssignableUsers, clearInventoryTransferHistory,
   };

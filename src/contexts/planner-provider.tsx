@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -21,6 +20,7 @@ type PlannerContextType = {
   getExpandedPlannerEvents: (start: Date, end: Date, userId: string) => { eventDate: Date, event: PlannerEvent }[];
   addPlannerEventComment: (plannerUserId: string, day: string, eventId: string, text: string) => void;
   markSinglePlannerCommentAsRead: (plannerUserId: string, day: string, commentId: string) => void;
+  markPlannerEventAsViewed: (eventId: string) => void;
   dismissPendingUpdate: (eventId: string, day: string) => void;
   saveJobSchedule: (schedule: Omit<JobSchedule, 'id'> & { id?: string }) => void;
   savePlantOrder: (monthKey: string, plantName: string, orderedProfileIds: string[]) => void;
@@ -177,6 +177,11 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const path = `dailyPlannerComments/${day}_${plannerUserId}/comments/${commentId}/viewedBy/${user.id}`;
         set(ref(rtdb, path), true);
     }, [user]);
+
+    const markPlannerEventAsViewed = useCallback((eventId: string) => {
+        if (!user) return;
+        update(ref(rtdb, `plannerEvents/${eventId}/viewedBy`), { [user.id]: true });
+    }, [user]);
     
     const dismissPendingUpdate = useCallback((eventId: string, day: string) => {
       if(!user) return;
@@ -314,7 +319,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         plannerEvents, dailyPlannerComments, jobSchedules, jobRecords, jobRecordPlants, vehicleUsageRecords,
         addPlannerEvent, updatePlannerEvent, deletePlannerEvent,
         getExpandedPlannerEvents, addPlannerEventComment,
-        markSinglePlannerCommentAsRead, dismissPendingUpdate,
+        markSinglePlannerCommentAsRead, dismissPendingUpdate, markPlannerEventAsViewed,
         saveJobSchedule, savePlantOrder, saveJobRecord,
         lockJobRecordSheet, unlockJobRecordSheet, addJobRecordPlant,
         deleteJobRecordPlant, carryForwardPlantAssignments,

@@ -17,6 +17,7 @@ import NewAnnouncementDialog from '@/components/announcements/NewAnnouncementDia
 import RecentPlannerActivity from '@/components/planner/RecentActivity';
 import { startOfMonth, formatDistanceToNow, isSameDay, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+import DelegatedEventFeed from '@/components/planner/DelegatedEventFeed';
 
 export default function DashboardPage() {
   const { user, getVisibleUsers } = useAuth();
@@ -94,8 +95,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      <DelegatedEventFeed />
       <AnnouncementFeed />
-      
       <RecentPlannerActivity />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
