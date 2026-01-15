@@ -46,6 +46,7 @@ export default function RecentPlannerActivity() {
   const router = useRouter();
   const { toast } = useToast();
   const [newComments, setNewComments] = useState<Record<string, string>>({});
+  const [justReplied, setJustReplied] = useState<Set<string>>(new Set());
   
   const { unreadComments, pendingUpdates } = useMemo(() => {
     if (!user) return { unreadComments: [], pendingUpdates: [] };
@@ -170,6 +171,7 @@ export default function RecentPlannerActivity() {
     addPlannerEventComment(eventUserId, day, eventId, text);
     dismissPendingUpdate(eventId, day);
     setNewComments((prev) => ({ ...prev, [key]: '' }));
+    setJustReplied(prev => new Set(prev).add(eventId));
   };
   
   const handleGoToEvent = (day: string, eventUserId: string) =>
@@ -192,7 +194,7 @@ export default function RecentPlannerActivity() {
       <CardContent>
         <div className="space-y-4">
           {/* UNREAD COMMENTS */}
-          {unreadComments.map(({ day, event, comment, delegatedBy, delegatedTo }) => {
+          {unreadComments.filter(uc => !justReplied.has(uc.event.id)).map(({ day, event, comment, delegatedBy, delegatedTo }) => {
             const commentUser = users.find((u) => u.id === comment.userId);
             const isMyUpdate = user.id === comment.userId;
             const key = `${day}-${event.id}`;
@@ -384,3 +386,4 @@ export default function RecentPlannerActivity() {
     </Card>
   );
 }
+
