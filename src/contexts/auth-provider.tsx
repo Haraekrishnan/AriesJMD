@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, Dispatch, SetStateAction, useMemo } from 'react';
@@ -124,6 +123,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const foundUser = { id: userId, ...usersData[userId] };
 
       if (foundUser.password === pass) {
+        if (foundUser.status === 'locked' || foundUser.status === 'deactivated') {
+            setStoredUserId(foundUser.id);
+            setUser(foundUser);
+            setLoading(false);
+            router.replace('/status');
+            return { success: true, user: foundUser };
+        }
         setStoredUserId(foundUser.id);
         setUser(foundUser);
         addActivityLog(foundUser.id, 'User Logged In');
@@ -133,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setLoading(false);
     return { success: false };
-  }, [setStoredUserId, addActivityLog]);
+  }, [setStoredUserId, addActivityLog, router]);
 
   const logout = useCallback(() => {
     if (user) addActivityLog(user.id, 'User Logged Out');

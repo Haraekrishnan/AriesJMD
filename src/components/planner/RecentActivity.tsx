@@ -151,6 +151,10 @@ export default function RecentPlannerActivity() {
   const filteredUnreadComments = useMemo(() => 
     unreadComments.filter(uc => !actionedItems.has(uc.comment.id))
   , [unreadComments, actionedItems]);
+  
+  const filteredPendingUpdates = useMemo(() =>
+    pendingUpdates.filter(pu => !actionedItems.has(`${pu.day}-${pu.event.id}`))
+  , [pendingUpdates, actionedItems]);
 
   const handleMarkAsRead = (comment: Comment) => {
     const event = plannerEvents.find((e) => e.id === comment.eventId);
@@ -173,6 +177,8 @@ export default function RecentPlannerActivity() {
     
     if (originalCommentId) {
         setActionedItems(prev => new Set(prev).add(originalCommentId));
+    } else {
+        setActionedItems(prev => new Set(prev).add(`${day}-${eventId}`));
     }
 
     setNewComments((prev) => ({ ...prev, [key]: '' }));
@@ -186,7 +192,7 @@ export default function RecentPlannerActivity() {
     toast({ variant: 'destructive', title: 'Event Deleted' });
   };
 
-  if (!user || (filteredUnreadComments.length === 0 && pendingUpdates.length === 0)) {
+  if (!user || (filteredUnreadComments.length === 0 && filteredPendingUpdates.length === 0)) {
     return null;
   }
   
@@ -295,18 +301,18 @@ export default function RecentPlannerActivity() {
           })}
           
           {/* PENDING UPDATES */}
-          {pendingUpdates.length > 0 && (
+          {filteredPendingUpdates.length > 0 && (
             <div className="space-y-2">
                 <Accordion type="single" collapsible>
                     <AccordionItem value="pending-updates">
                         <AccordionTrigger className="font-semibold text-sm">
                             <div className="flex items-center gap-2">
                                 <AlertTriangle className="h-4 w-4 text-orange-500" />
-                                Pending Event Updates ({pendingUpdates.length})
+                                Pending Event Updates ({filteredPendingUpdates.length})
                             </div>
                         </AccordionTrigger>
                         <AccordionContent className="pt-2 space-y-2">
-                        {pendingUpdates.map(({ day, event, delegatedTo }) => {
+                        {filteredPendingUpdates.map(({ day, event, delegatedTo }) => {
                             const key = `${day}-${event.id}`;
                             const isCreatorView = event.creatorId === user.id;
 

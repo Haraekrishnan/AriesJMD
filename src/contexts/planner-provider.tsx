@@ -6,7 +6,7 @@ import { PlannerEvent, DailyPlannerComment, Comment, JobSchedule, JobScheduleIte
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, update, get, remove } from 'firebase/database';
 import { useAuth } from './auth-provider';
-import { eachDayOfInterval, endOfMonth, startOfMonth, format, isSameDay, getDay, isWeekend, parseISO, getDate, endOfWeek, startOfWeek, startOfDay, isBefore, subMonths } from 'date-fns';
+import { eachDayOfInterval, endOfMonth, startOfMonth, format, isSameDay, getDay, isWeekend, parseISO, getDate, endOfWeek, startOfWeek, startOfDay, isBefore, subMonths, isSameMonth } from 'date-fns';
 
 type PlannerContextType = {
   plannerEvents: PlannerEvent[];
@@ -71,10 +71,19 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
 
     const addPlannerEvent = useCallback((eventData: Omit<PlannerEvent, 'id'>) => {
         const newRef = push(ref(rtdb, 'plannerEvents'));
-        set(newRef, eventData);
-        // Add viewedBy for creator automatically
+        const eventWithId = { ...eventData, id: newRef.key! };
+        set(newRef, eventWithId);
+        
+        // Mark as read for creator
         update(ref(rtdb, `plannerEvents/${newRef.key}/viewedBy`), { [eventData.creatorId]: true });
-    }, []);
+
+        // Add a comment if it's a delegation
+        if (eventData.creatorId !== eventData.userId) {
+            const dayStr = format(new Date(eventData.date), 'yyyy-MM-dd');
+            const commentText = `Event "${eventData.title}" delegated by ${users.find(u => u.id === eventData.creatorId)?.name || 'Unknown'}`;
+            addPlannerEventComment(eventData.userId, dayStr, newRef.key!, commentText);
+        }
+    }, [users]);
 
     const updatePlannerEvent = useCallback((event: PlannerEvent) => {
         const { id, ...data } = event;
@@ -141,23 +150,26 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         };
         set(newCommentRef, newComment);
 
-        update(ref(rtdb, `dailyPlannerComments/${dayCommentId}`), {
-            id: dayCommentId,
-            plannerUserId,
-            day,
-            lastUpdated: new Date().toISOString()
-        });
-    
+        const updates: { [key: string]: any } = {};
+        updates[`dailyPlannerComments/${dayCommentId}/id`] = dayCommentId;
+        updates[`dailyPlannerComments/${dayCommentId}/plannerUserId`] = plannerUserId;
+        updates[`dailyPlannerComments/${dayCommentId}/day`] = day;
+        updates[`dailyPlannerComments/${dayCommentId}/lastUpdated`] = new Date().toISOString();
+        
         // Mark as unread for other participants
         const event = plannerEvents.find(e => e.id === eventId);
         if (event) {
             const participants = new Set([event.creatorId, event.userId]);
             participants.forEach(pId => {
                 if (pId !== user.id) {
-                    update(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments/${newCommentRef.key}/viewedBy`), { [pId]: false });
+                    updates[`plannerEvents/${eventId}/viewedBy/${pId}`] = false;
+                    updates[`dailyPlannerComments/${dayCommentId}/comments/${newComment.id}/viewedBy/${pId}`] = false;
                 }
             });
         }
+    
+        update(ref(rtdb), updates);
+
     }, [user, plannerEvents]);
 
     const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: string, commentId: string) => {
@@ -277,7 +289,10 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const unsubscribers = [
             createDataListener('plannerEvents', setPlannerEventsById),
-            createDataListener('dailyPlannerComments', setDailyPlannerCommentsById),
+            onValue(ref(rtdb, 'dailyPlannerComments'), (snapshot) => {
+                const data = snapshot.val() || {};
+                setDailyPlannerCommentsById(data);
+            }),
             createDataListener('jobSchedules', setJobSchedulesById),
             createDataListener('jobRecordPlants', setJobRecordPlantsById),
             onValue(ref(rtdb, 'jobRecords'), (snapshot) => {
