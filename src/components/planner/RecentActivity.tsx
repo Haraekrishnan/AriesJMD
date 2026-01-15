@@ -181,10 +181,10 @@ export default function RecentPlannerActivity() {
   };
   
   return (
-    <Card>
+    <Card className="border-orange-500 dark:border-orange-400">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <MessageSquare className="h-5 w-5 text-primary" />
+        <CardTitle className="text-lg flex items-center gap-2 text-orange-600 dark:text-orange-400">
+          <MessageSquare className="h-5 w-5" />
           Delegated Event Report/Review
         </CardTitle>
       </CardHeader>
@@ -229,7 +229,24 @@ export default function RecentPlannerActivity() {
                   </div>
                 </div>
                 
-                 {!isMyUpdate ? (
+                {isMyUpdate ? (
+                  <div className="flex justify-end mt-2 gap-2">
+                     <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleGoToEvent(day, event.userId)}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" /> Go to Event
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleMarkAsRead(comment)}
+                      >
+                        <CheckCircle className="mr-2 h-4 w-4" /> Mark as Read
+                      </Button>
+                  </div>
+                ) : (
                   <div className="relative mt-2">
                     <Textarea
                       value={newComments[key] || ''}
@@ -249,23 +266,6 @@ export default function RecentPlannerActivity() {
                     >
                       <Send className="h-4 w-4" />
                     </Button>
-                  </div>
-                ) : (
-                  <div className="flex justify-end mt-2 gap-2">
-                     <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleGoToEvent(day, event.userId)}
-                      >
-                        <Calendar className="mr-2 h-4 w-4" /> Go to Event
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => handleMarkAsRead(comment)}
-                      >
-                        <CheckCircle className="mr-2 h-4 w-4" /> Mark as Read
-                      </Button>
                   </div>
                 )}
               </div>
