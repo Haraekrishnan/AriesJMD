@@ -148,7 +148,9 @@ export default function RecentPlannerActivity() {
     getExpandedPlannerEvents,
   ]);
   
-  if (!user || (unreadComments.length === 0 && pendingUpdates.length === 0)) {
+  const filteredUnreadComments = unreadComments.filter(uc => !justReplied.has(uc.event.id + uc.day));
+
+  if (!user || (filteredUnreadComments.length === 0 && pendingUpdates.length === 0)) {
     return null;
   }
   
@@ -169,9 +171,8 @@ export default function RecentPlannerActivity() {
     if (!text?.trim()) return;
     
     addPlannerEventComment(eventUserId, day, eventId, text);
-    dismissPendingUpdate(eventId, day);
+    setJustReplied(prev => new Set(prev).add(eventId + day));
     setNewComments((prev) => ({ ...prev, [key]: '' }));
-    setJustReplied(prev => new Set(prev).add(eventId));
   };
   
   const handleGoToEvent = (day: string, eventUserId: string) =>
@@ -181,12 +182,6 @@ export default function RecentPlannerActivity() {
     deletePlannerEvent(event.id);
     toast({ variant: 'destructive', title: 'Event Deleted' });
   };
-  
-  const filteredUnreadComments = unreadComments.filter(uc => !justReplied.has(uc.event.id));
-
-  if (filteredUnreadComments.length === 0 && pendingUpdates.length === 0) {
-    return null;
-  }
   
   return (
     <Card className="border-orange-500 dark:border-orange-400">
@@ -238,6 +233,34 @@ export default function RecentPlannerActivity() {
                 </div>
                 
                 {isMyUpdate ? (
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="reply" className="border-none">
+                      <AccordionTrigger className="p-0 pt-2 text-xs text-blue-600 hover:no-underline justify-start gap-1">
+                        <MessageSquare className="h-3 w-3" /> Reply...
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="relative mt-2">
+                          <Textarea
+                            value={newComments[key] || ''}
+                            onChange={(e) => setNewComments((prev) => ({ ...prev, [key]: e.target.value }))}
+                            placeholder={`Reply to ${delegatedBy?.name}...`}
+                            className="pr-10 text-sm bg-background"
+                            rows={1}
+                          />
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                            onClick={() => handleAddComment(event.id, day, event.userId)}
+                            disabled={!newComments[key]?.trim()}
+                          >
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                ) : (
                   <div className="flex justify-end mt-2 gap-2">
                      <Button
                         size="sm"
@@ -253,27 +276,6 @@ export default function RecentPlannerActivity() {
                       >
                         <CheckCircle className="mr-2 h-4 w-4" /> Mark as Read
                       </Button>
-                  </div>
-                ) : (
-                  <div className="relative mt-2">
-                    <Textarea
-                      value={newComments[key] || ''}
-                      onChange={(e) =>
-                        setNewComments((prev) => ({ ...prev, [key]: e.target.value }))
-                      }
-                      placeholder={`Reply to ${commentUser?.name}...`}
-                      className="pr-10 text-sm bg-background"
-                      rows={1}
-                    />
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                      onClick={() => handleAddComment(event.id, day, event.userId)}
-                      disabled={!newComments[key]?.trim()}
-                    >
-                      <Send className="h-4 w-4" />
-                    </Button>
                   </div>
                 )}
               </div>
