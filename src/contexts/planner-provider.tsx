@@ -20,7 +20,6 @@ type PlannerContextType = {
   getExpandedPlannerEvents: (start: Date, end: Date, userId: string) => { eventDate: Date, event: PlannerEvent }[];
   addPlannerEventComment: (plannerUserId: string, day: string, eventId: string, text: string) => void;
   markSinglePlannerCommentAsRead: (plannerUserId: string, day: string, commentId: string) => void;
-  markPlannerEventAsViewed: (eventId: string) => void;
   dismissPendingUpdate: (eventId: string, day: string) => void;
   saveJobSchedule: (schedule: Omit<JobSchedule, 'id'> & { id?: string }) => void;
   savePlantOrder: (monthKey: string, plantName: string, orderedProfileIds: string[]) => void;
@@ -177,11 +176,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const path = `dailyPlannerComments/${day}_${plannerUserId}/comments/${commentId}/viewedBy/${user.id}`;
         set(ref(rtdb, path), true);
     }, [user]);
-
-    const markPlannerEventAsViewed = useCallback((eventId: string) => {
-        if (!user) return;
-        update(ref(rtdb, `plannerEvents/${eventId}/viewedBy`), { [user.id]: true });
-    }, [user]);
     
     const dismissPendingUpdate = useCallback((eventId: string, day: string) => {
       if(!user) return;
@@ -315,18 +309,18 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         return () => unsubscribers.forEach(unsubscribe => unsubscribe());
     }, []);
 
-    const contextValue: PlannerContextType = {
+    const contextValue: Omit<PlannerContextType, 'markPlannerEventAsViewed'> & { markPlannerEventAsViewed?: (eventId: string) => void } = {
         plannerEvents, dailyPlannerComments, jobSchedules, jobRecords, jobRecordPlants, vehicleUsageRecords,
         addPlannerEvent, updatePlannerEvent, deletePlannerEvent,
         getExpandedPlannerEvents, addPlannerEventComment,
-        markSinglePlannerCommentAsRead, dismissPendingUpdate, markPlannerEventAsViewed,
+        markSinglePlannerCommentAsRead, dismissPendingUpdate,
         saveJobSchedule, savePlantOrder, saveJobRecord,
         lockJobRecordSheet, unlockJobRecordSheet, addJobRecordPlant,
         deleteJobRecordPlant, carryForwardPlantAssignments,
         saveVehicleUsageRecord, lockVehicleUsageSheet, unlockVehicleUsageSheet,
     };
 
-    return <PlannerContext.Provider value={contextValue}>{children}</PlannerContext.Provider>;
+    return <PlannerContext.Provider value={contextValue as PlannerContextType}>{children}</PlannerContext.Provider>;
 }
 
 export const usePlanner = (): PlannerContextType => {

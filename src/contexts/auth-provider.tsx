@@ -49,6 +49,7 @@ type AuthContextType = {
   getVisibleUsers: () => User[];
   getAssignableUsers: () => User[];
   clearInventoryTransferHistory: () => void;
+  markPlannerEventAsViewed: (eventId: string) => void;
 };
 
 // --- HELPER FUNCTIONS ---
@@ -427,6 +428,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearInventoryTransferHistory = useCallback(() => {
     // This is a placeholder now. The real implementation is in useInventory.
   }, []);
+  
+  const markPlannerEventAsViewed = useCallback((eventId: string) => {
+    if (!user) return;
+    update(ref(rtdb, `plannerEvents/${eventId}/viewedBy`), { [user.id]: true });
+  }, [user]);
 
   useEffect(() => {
     const unsubscribers = [
@@ -478,7 +484,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const contextValue: AuthContextType = {
     user, loading, users, roles, passwordResetRequests, unlockRequests, can, appName, appLogo, activeTheme, plannerNotificationCount,
     login, logout, updateProfile, requestPasswordReset,
-    resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, updateBranding, updateActiveTheme, addActivityLog, getVisibleUsers, getAssignableUsers, clearInventoryTransferHistory,
+    resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, updateBranding, updateActiveTheme, addActivityLog, getVisibleUsers, getAssignableUsers, clearInventoryTransferHistory, markPlannerEventAsViewed,
   };
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
