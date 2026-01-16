@@ -13,6 +13,7 @@ import { Textarea } from '../ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Separator } from '../ui/separator';
 
 interface UnreadCommentInfo {
   type: 'comment';
@@ -156,7 +157,7 @@ export default function RecentPlannerActivity() {
     pendingUpdates.filter(pu => !actionedItems.has(`${pu.day}-${pu.event.id}`))
   , [pendingUpdates, actionedItems]);
 
-  const handleMarkAsRead = (comment: Comment) => {
+  const handleMarkAsRead = useCallback((comment: Comment) => {
     const event = plannerEvents.find((e) => e.id === comment.eventId);
     const day = dailyPlannerComments.find((dc) =>
       Object.values(dc.comments || {}).some((c) => c?.id === comment.id)
@@ -166,23 +167,18 @@ export default function RecentPlannerActivity() {
       markSinglePlannerCommentAsRead(event.userId, day, comment.id);
       setActionedItems(prev => new Set(prev).add(comment.id));
     }
-  };
+  }, [plannerEvents, dailyPlannerComments, markSinglePlannerCommentAsRead]);
 
-  const handleAddComment = (eventId: string, day: string, eventUserId: string, originalCommentId?: string) => {
-    const key = `${day}-${eventId}`;
+  const handleAddComment = useCallback((eventId: string, day: string, eventUserId: string, originalCommentId?: string) => {
+    const key = originalCommentId || `${day}-${eventId}`;
     const text = newComments[key];
     if (!text?.trim()) return;
     
     addPlannerEventComment(eventUserId, day, eventId, text);
     
-    if (originalCommentId) {
-        setActionedItems(prev => new Set(prev).add(originalCommentId));
-    } else {
-        setActionedItems(prev => new Set(prev).add(`${day}-${eventId}`));
-    }
-
+    setActionedItems(prev => new Set(prev).add(key));
     setNewComments((prev) => ({ ...prev, [key]: '' }));
-  };
+  }, [newComments, addPlannerEventComment]);
   
   const handleGoToEvent = (day: string, eventUserId: string) =>
     router.push(`/planner?userId=${eventUserId}&date=${day}`);
@@ -197,9 +193,9 @@ export default function RecentPlannerActivity() {
   }
   
   return (
-    <Card className="border-orange-500 dark:border-orange-400">
+    <Card className="border-purple-500 dark:border-purple-400">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center gap-2 text-orange-600 dark:text-orange-400">
+        <CardTitle className="text-lg flex items-center gap-2 text-purple-600 dark:text-purple-400">
           <MessageSquare className="h-5 w-5" />
           Delegated Event Report/Review
         </CardTitle>
@@ -208,203 +204,205 @@ export default function RecentPlannerActivity() {
       <CardContent>
         <div className="space-y-4">
           {/* UNREAD COMMENTS */}
-          {filteredUnreadComments.map(({ day, event, comment, delegatedBy, delegatedTo }) => {
-            const commentUser = users.find((u) => u.id === comment.userId);
-            const key = `${day}-${event.id}`;
-            const isCreatorViewingReply = event.creatorId === user.id && comment.userId !== user.id;
+          {filteredUnreadComments.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="font-semibold text-sm">New Replies</h4>
+              {filteredUnreadComments.map(({ day, event, comment, delegatedBy, delegatedTo }) => {
+                const commentUser = users.find((u) => u.id === comment.userId);
+                const key = comment.id;
+                const isCreatorViewingReply = event.creatorId === user.id && comment.userId !== user.id;
 
-            return (
-              <div key={comment.id} className="p-4 border rounded-lg bg-muted/50">
-                <p className="font-semibold text-sm">{event.title}</p>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Event on {format(parseISO(day), 'dd MMM yyyy')} ·{' '}
-                  {event.creatorId === event.userId
-                    ? `Personal planning for ${delegatedTo?.name}`
-                    : `Delegated to ${delegatedTo?.name} by ${delegatedBy?.name}`}
-                </p>
-                
-                <div className="flex items-start gap-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={commentUser?.avatar} />
-                    <AvatarFallback>
-                      {commentUser?.name?.charAt(0) || '?'}
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  <div className="text-sm bg-background p-3 rounded-md w-full">
-                    <div className="flex justify-between text-xs">
-                      <strong>{commentUser?.name}</strong>
-                      <span>
-                        {formatDistanceToNow(parseISO(comment.date), {
-                          addSuffix: true,
-                        })}
-                      </span>
-                    </div>
+                return (
+                  <div key={comment.id} className="p-4 border rounded-lg bg-muted/50">
+                    <p className="font-semibold text-sm">{event.title}</p>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Event on {format(parseISO(day), 'dd MMM yyyy')} ·{' '}
+                      {event.creatorId === event.userId
+                        ? `Personal planning for ${delegatedTo?.name}`
+                        : `Delegated to ${delegatedTo?.name} by ${delegatedBy?.name}`}
+                    </p>
                     
-                    <p className="mt-1 whitespace-pre-wrap">{comment.text}</p>
-                  </div>
-                </div>
-                
-                 <div className="mt-2">
-                  {isCreatorViewingReply ? (
-                    <div className="flex justify-end items-center gap-2">
-                        <Button size="sm" variant="outline" onClick={() => handleGoToEvent(day, event.userId)}><Calendar className="mr-2 h-4 w-4" /> Go to Event</Button>
-                        <Button size="sm" variant="secondary" onClick={() => handleMarkAsRead(comment)}><CheckCircle className="mr-2 h-4 w-4" /> Mark as Read</Button>
-                        <Accordion type="single" collapsible className="w-auto">
-                            <AccordionItem value="reply" className="border-none">
-                               <AccordionTrigger className="p-2 text-xs hover:no-underline rounded-sm hover:bg-muted">Reply</AccordionTrigger>
-                               <AccordionContent className="pt-2">
-                                  <div className="relative">
-                                      <Textarea
-                                          value={newComments[key] || ''}
-                                          onChange={(e) => setNewComments((prev) => ({ ...prev, [key]: e.target.value }))}
-                                          placeholder={`Reply to ${commentUser?.name}...`}
-                                          className="pr-10 text-sm bg-background"
-                                          rows={1}
-                                      />
-                                      <Button
-                                          size="icon"
-                                          variant="ghost"
-                                          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                                          onClick={() => handleAddComment(event.id, day, event.userId, comment.id)}
-                                          disabled={!newComments[key]?.trim()}
-                                      >
-                                          <Send className="h-4 w-4" />
-                                      </Button>
-                                  </div>
-                               </AccordionContent>
-                            </AccordionItem>
-                        </Accordion>
-                    </div>
-                  ) : (
-                    <div className="relative mt-2">
-                      <Textarea
-                          value={newComments[key] || ''}
-                          onChange={(e) => setNewComments((prev) => ({ ...prev, [key]: e.target.value }))}
-                          placeholder={`Reply to ${commentUser?.name}...`}
-                          className="pr-20 text-sm bg-background"
-                          rows={1}
-                      />
-                      <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleAddComment(event.id, day, event.userId, comment.id)} disabled={!newComments[key]?.trim()}>
-                              <Send className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleMarkAsRead(comment)}>
-                              <CheckCircle className="h-4 w-4"/>
-                          </Button>
+                    <div className="flex items-start gap-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={commentUser?.avatar} />
+                        <AvatarFallback>
+                          {commentUser?.name?.charAt(0) || '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                      
+                      <div className="text-sm bg-background p-3 rounded-md w-full">
+                        <div className="flex justify-between text-xs">
+                          <strong>{commentUser?.name}</strong>
+                          <span>
+                            {formatDistanceToNow(parseISO(comment.date), {
+                              addSuffix: true,
+                            })}
+                          </span>
+                        </div>
+                        
+                        <p className="mt-1 whitespace-pre-wrap">{comment.text}</p>
                       </div>
                     </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                    
+                     <div className="mt-2">
+                      {isCreatorViewingReply ? (
+                        <div className="flex justify-end items-center gap-2">
+                            <Button size="sm" variant="outline" onClick={() => handleGoToEvent(day, event.userId)}><Calendar className="mr-2 h-4 w-4" /> Go to Event</Button>
+                            <Button size="sm" variant="secondary" onClick={() => handleMarkAsRead(comment)}><CheckCircle className="mr-2 h-4 w-4" /> Mark as Read</Button>
+                            <Accordion type="single" collapsible className="w-auto">
+                                <AccordionItem value="reply" className="border-none">
+                                  <AccordionTrigger className="p-2 text-xs hover:no-underline rounded-sm hover:bg-muted">Reply</AccordionTrigger>
+                                  <AccordionContent className="pt-2">
+                                      <div className="relative">
+                                          <Textarea
+                                              value={newComments[key] || ''}
+                                              onChange={(e) => setNewComments((prev) => ({ ...prev, [key]: e.target.value }))}
+                                              placeholder={`Reply to ${commentUser?.name}...`}
+                                              className="pr-10 text-sm bg-background"
+                                              rows={1}
+                                          />
+                                          <Button
+                                              size="icon"
+                                              variant="ghost"
+                                              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                                              onClick={() => handleAddComment(event.id, day, event.userId, comment.id)}
+                                              disabled={!newComments[key]?.trim()}
+                                          >
+                                              <Send className="h-4 w-4" />
+                                          </Button>
+                                      </div>
+                                  </AccordionContent>
+                                </AccordionItem>
+                            </Accordion>
+                        </div>
+                      ) : (
+                        <div className="relative mt-2">
+                          <Textarea
+                              value={newComments[key] || ''}
+                              onChange={(e) => setNewComments((prev) => ({ ...prev, [key]: e.target.value }))}
+                              placeholder={`Reply to ${commentUser?.name}...`}
+                              className="pr-20 text-sm bg-background"
+                              rows={1}
+                          />
+                          <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
+                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleAddComment(event.id, day, event.userId, comment.id)} disabled={!newComments[key]?.trim()}>
+                                  <Send className="h-4 w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleMarkAsRead(comment)}>
+                                  <CheckCircle className="h-4 w-4"/>
+                              </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           
+          {filteredUnreadComments.length > 0 && filteredPendingUpdates.length > 0 && <Separator className="my-4" />}
+
           {/* PENDING UPDATES */}
           {filteredPendingUpdates.length > 0 && (
             <div className="space-y-2">
-                <Accordion type="single" collapsible>
-                    <AccordionItem value="pending-updates">
-                        <AccordionTrigger className="font-semibold text-sm">
-                            <div className="flex items-center gap-2">
-                                <AlertTriangle className="h-4 w-4 text-orange-500" />
-                                Pending Event Updates ({filteredPendingUpdates.length})
-                            </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="pt-2 space-y-2">
-                        {filteredPendingUpdates.map(({ day, event, delegatedTo }) => {
-                            const key = `${day}-${event.id}`;
-                            const isCreatorView = event.creatorId === user.id;
+              <h4 className="font-semibold text-sm flex items-center gap-2">
+                  <AlertTriangle className="text-yellow-500" />
+                  Pending Event Updates ({filteredPendingUpdates.length})
+              </h4>
+              <p className="text-xs text-muted-foreground">The following delegated events from past days are awaiting your update.</p>
+              <div className="space-y-2 pt-2">
+                {filteredPendingUpdates.map(({ day, event, delegatedTo }) => {
+                    const key = `${day}-${event.id}`;
+                    const isCreatorView = event.creatorId === user.id;
 
-                            return (
-                            <div
-                                key={key}
-                                className="p-3 border rounded-lg bg-orange-50 dark:bg-orange-900/30"
-                            >
-                                <div className="flex justify-between items-start w-full">
-                                    <div className="flex flex-col">
-                                        <p className="font-semibold text-sm">{event.title}</p>
-                                        <p className="text-xs">
-                                        {isCreatorView ? (
-                                            <>
-                                            No update from{' '}
-                                            <span className="font-medium">{delegatedTo?.name}</span>{' '}
-                                            for {format(parseISO(day), 'dd MMM, yyyy')}.
-                                            </>
-                                        ) : (
-                                            <>
-                                            You have not updated this event for{' '}
-                                            {format(parseISO(day), 'dd MMM, yyyy')}.
-                                            </>
-                                        )}
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                        size="sm"
-                                        variant="secondary"
-                                        className="border-gray-400 text-gray-600 hover:bg-gray-100"
-                                        onClick={() => dismissPendingUpdate(event.id, day)}
-                                        >
-                                        Dismiss
-                                        </Button>
-                                        {user?.role === 'Admin' && (
-                                            <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10">
-                                                <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                <AlertDialogTitle>Delete Event?</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    Are you sure you want to permanently delete "{event.title}"? This will remove it for all users.
-                                                </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleDeleteEvent(event)}>Delete</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                            </AlertDialog>
-                                        )}
-                                    </div>
-                                </div>
-                                
-                                <div className="relative mt-2">
-                                <Textarea
-                                    rows={1}
-                                    className="text-xs pr-10 bg-white dark:bg-card"
-                                    placeholder={
-                                    isCreatorView
-                                        ? `Ask ${delegatedTo?.name || 'them'} for an update...`
-                                        : 'Add an update for this event...'
-                                    }
-                                    value={newComments[key] || ''}
-                                    onChange={(e) =>
-                                    setNewComments((prev) => ({
-                                        ...prev,
-                                        [key]: e.target.value,
-                                    }))
-                                    }
-                                />
-                                <Button
-                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                                    size="icon"
-                                    variant="ghost"
-                                    onClick={() => handleAddComment(event.id, day, event.userId)}
-                                    disabled={!newComments[key]?.trim()}
-                                >
-                                    <Send className="h-4 w-4" />
-                                </Button>
-                                </div>
+                    return (
+                    <div
+                        key={key}
+                        className="p-3 border rounded-lg bg-yellow-50 dark:bg-yellow-900/30"
+                    >
+                        <div className="flex justify-between items-start w-full">
+                            <div className="flex flex-col">
+                                <p className="font-semibold text-sm">{event.title}</p>
+                                <p className="text-xs">
+                                {isCreatorView ? (
+                                    <>
+                                    No update from{' '}
+                                    <span className="font-medium">{delegatedTo?.name}</span>{' '}
+                                    for {format(parseISO(day), 'dd MMM, yyyy')}.
+                                    </>
+                                ) : (
+                                    <>
+                                    You have not updated this event for{' '}
+                                    {format(parseISO(day), 'dd MMM, yyyy')}.
+                                    </>
+                                )}
+                                </p>
                             </div>
-                            );
-                        })}
-                        </AccordionContent>
-                    </AccordionItem>
-                </Accordion>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                size="sm"
+                                variant="secondary"
+                                className="border-gray-400 text-gray-600 hover:bg-gray-100"
+                                onClick={() => dismissPendingUpdate(event.id, day)}
+                                >
+                                Dismiss
+                                </Button>
+                                {user?.role === 'Admin' && (
+                                    <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10">
+                                        <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete Event?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Are you sure you want to permanently delete "{event.title}"? This will remove it for all users.
+                                        </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDeleteEvent(event)}>Delete</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                    </AlertDialog>
+                                )}
+                            </div>
+                        </div>
+                        
+                        <div className="relative mt-2">
+                        <Textarea
+                            rows={1}
+                            className="text-xs pr-10 bg-white dark:bg-card"
+                            placeholder={
+                            isCreatorView
+                                ? `Ask ${delegatedTo?.name || 'them'} for an update...`
+                                : 'Add an update for this event...'
+                            }
+                            value={newComments[key] || ''}
+                            onChange={(e) =>
+                            setNewComments((prev) => ({
+                                ...prev,
+                                [key]: e.target.value,
+                            }))
+                            }
+                        />
+                        <Button
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleAddComment(event.id, day, event.userId)}
+                            disabled={!newComments[key]?.trim()}
+                        >
+                            <Send className="h-4 w-4" />
+                        </Button>
+                        </div>
+                    </div>
+                    );
+                })}
+              </div>
             </div>
           )}
         </div>
