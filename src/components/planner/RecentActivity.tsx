@@ -1,5 +1,6 @@
+
 'use client';
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
@@ -44,8 +45,8 @@ export default function RecentPlannerActivity() {
   
   const router = useRouter();
   const { toast } = useToast();
-  const [newComments, setNewComments] = useState<Record<string, string>>({});
   const [actionedItems, setActionedItems] = useState<Set<string>>(new Set());
+  const [newComments, setNewComments] = useState<Record<string, string>>({});
   
   const { unreadComments, pendingUpdates } = useMemo(() => {
     if (!user) return { unreadComments: [], pendingUpdates: [] };
@@ -144,7 +145,7 @@ export default function RecentPlannerActivity() {
     users,
     getExpandedPlannerEvents,
   ]);
-  
+
   const filteredUnreadComments = useMemo(() => 
     unreadComments.filter(uc => !actionedItems.has(uc.comment.id))
   , [unreadComments, actionedItems]);
@@ -334,3 +335,4 @@ export default function RecentPlannerActivity() {
     </Card>
   );
 }
+
