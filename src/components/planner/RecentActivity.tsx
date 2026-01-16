@@ -1,10 +1,11 @@
+
 'use client';
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { format, formatDistanceToNow, parseISO, isAfter, subDays, startOfDay } from 'date-fns';
-import { MessageSquare, AlertTriangle, Send } from 'lucide-react';
+import { format, formatDistanceToNow, parseISO, isAfter, subDays } from 'date-fns';
+import { MessageSquare, AlertTriangle, Send, Trash2 } from 'lucide-react';
 import type { Comment, PlannerEvent, User } from '@/lib/types';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
@@ -37,6 +38,7 @@ export default function RecentPlannerActivity() {
     getExpandedPlannerEvents,
     dismissPendingUpdate,
     addPlannerEventComment,
+    deletePlannerEvent,
   } = useAppContext();
   
   const [actionedItems, setActionedItems] = useState<Set<string>>(new Set());
@@ -84,7 +86,7 @@ export default function RecentPlannerActivity() {
     const delegatedEvents = plannerEvents.filter(e => e.creatorId !== e.userId && (e.creatorId === user.id || e.userId === user.id));
 
     delegatedEvents.forEach(event => {
-        const today = startOfDay(new Date());
+        const today = new Date();
         const startDate = subDays(today, 30); 
         const endDate = subDays(today, 1); 
 
@@ -187,10 +189,6 @@ export default function RecentPlannerActivity() {
       <CardContent className="p-4 space-y-4">
         {filteredUnreadComments.length > 0 && (
           <div className="space-y-3">
-            <h4 className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-              <MessageSquare className="h-4 w-4 text-blue-500" />
-              New Replies ({filteredUnreadComments.length})
-            </h4>
             {filteredUnreadComments.map(({ day, event, comment, delegatedTo }) => {
               const commentUser = users.find((u) => u.id === comment.userId);
               const key = comment.id;
@@ -274,10 +272,10 @@ export default function RecentPlannerActivity() {
                         </div>
                         <div className="flex items-center">
                             <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-xs text-muted-foreground hover:text-foreground"
-                            onClick={() => dismissPendingUpdate(event.id, day)}
+                                size="sm"
+                                variant="ghost"
+                                className="text-xs text-muted-foreground hover:text-foreground"
+                                onClick={() => dismissPendingUpdate(event.id, day)}
                             >
                             Dismiss
                             </Button>
