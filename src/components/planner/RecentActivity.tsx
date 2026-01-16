@@ -1,10 +1,9 @@
-
 'use client';
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { format, formatDistanceToNow, parseISO, isAfter, subDays } from 'date-fns';
+import { format, formatDistanceToNow, parseISO, isAfter, subDays, startOfDay, isSameMonth } from 'date-fns';
 import { MessageSquare, AlertTriangle, Send, Trash2 } from 'lucide-react';
 import type { Comment, PlannerEvent, User } from '@/lib/types';
 import { Button } from '../ui/button';
@@ -13,6 +12,7 @@ import { Textarea } from '../ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 
 interface UnreadCommentInfo {
   type: 'comment';
@@ -90,7 +90,7 @@ export default function RecentPlannerActivity() {
     const delegatedEvents = plannerEvents.filter(e => e.creatorId !== e.userId && (e.creatorId === user.id || e.userId === user.id));
 
     delegatedEvents.forEach(event => {
-        const today = new Date();
+        const today = startOfDay(new Date());
         const startDate = subDays(today, 30); 
         const endDate = subDays(today, 1); 
 
@@ -238,6 +238,25 @@ export default function RecentPlannerActivity() {
                                 <p className="whitespace-pre-wrap">{comment.text}</p>
                             </div>
                         </div>
+
+                        <div className="relative mt-2">
+                            <Textarea
+                                rows={1}
+                                className="resize-none rounded-md bg-muted pl-3 pr-9 py-2 text-sm"
+                                placeholder="Reply..."
+                                value={newComments[key] || ''}
+                                onChange={(e) => setNewComments((prev) => ({ ...prev, [key]: e.target.value }))}
+                            />
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                className="absolute right-1 top-1/2 -translate-y-1/2"
+                                onClick={() => handleAddComment(event.id, day, event.userId, comment.id)}
+                                disabled={!newComments[key]?.trim()}
+                            >
+                                <Send className="h-4 w-4" />
+                            </Button>
+                        </div>
                     </div>
                   );
                 })}
@@ -247,61 +266,68 @@ export default function RecentPlannerActivity() {
             {filteredUnreadComments.length > 0 && filteredPendingUpdates.length > 0 && <Separator />}
             
             {filteredPendingUpdates.length > 0 && (
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-                  <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                  Pending follow-ups ({filteredPendingUpdates.length})
-                </h4>
-                {filteredPendingUpdates.map(({ day, event, delegatedTo }) => {
-                  const key = `${day}-${event.id}`;
-                  const isCreatorView = event.creatorId === user.id;
+              <Accordion type="single" collapsible defaultValue="pending" className="w-full">
+                <AccordionItem value="pending" className="border-none">
+                  <AccordionTrigger className="px-0 py-2 text-sm font-medium hover:no-underline data-[state=open]:text-foreground">
+                    <h4 className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                      <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                      Pending follow-ups ({filteredPendingUpdates.length})
+                    </h4>
+                  </AccordionTrigger>
+                  <AccordionContent className="pt-2 space-y-3">
+                    {filteredPendingUpdates.map(({ day, event, delegatedTo }) => {
+                      const key = `${day}-${event.id}`;
+                      const isCreatorView = event.creatorId === user.id;
 
-                  return (
-                     <div key={key} className="rounded-lg border bg-card px-4 py-3 space-y-2">
-                       <div className="flex justify-between items-center">
-                          <div>
-                            <p className="text-sm font-medium">{event.title}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {isCreatorView ? (
-                                <>No update from <span className="font-medium">{delegatedTo?.name}</span></>
-                              ) : (
-                                <>You have not updated this event</>
-                              )}
-                               · {format(parseISO(day), 'dd MMM yyyy')}
-                            </p>
+                      return (
+                        <div
+                          key={key}
+                          className="relative p-4 rounded-lg bg-background border border-muted shadow-sm before:absolute before:left-0 before:top-3 before:h-[calc(100%-1.5rem)] before:w-0.5 before:rounded-full before:bg-yellow-400/70"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-1">
+                                <p className="text-sm font-medium">{event.title}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                No update from <span className="font-medium">{delegatedTo?.name}</span> · {format(parseISO(day), 'dd MMM yyyy')}
+                                </p>
+                            </div>
+                            <div className="flex items-center">
+                                <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-xs text-muted-foreground hover:text-foreground"
+                                onClick={() => dismissPendingUpdate(event.id, day)}
+                                >
+                                Dismiss
+                                </Button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                             <Button size="sm" variant="ghost" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => dismissPendingUpdate(event.id, day)}>
-                               Dismiss
-                             </Button>
-                          </div>
-                       </div>
-                        <div className="flex items-center gap-2 text-xs text-yellow-700">
-                          <AlertTriangle className="h-3.5 w-3.5" />
-                          Pending follow-up
-                        </div>
-                       <div className="relative mt-2">
-                           <Textarea
-                               rows={1}
-                               className="resize-none rounded-md bg-muted pl-3 pr-9 py-2 text-sm"
-                               placeholder={isCreatorView ? `Ask for an update...` : 'Add an update for this event...'}
-                               value={newComments[key] || ''}
+                          <div className="mt-3 rounded-lg bg-muted/40 p-2">
+                            <div className="relative">
+                              <Textarea
+                                rows={1}
+                                className="text-sm resize-none rounded-full pl-4 pr-10 py-2 bg-background focus:bg-background transition-colors"
+                                placeholder={isCreatorView ? 'Ask for an update…' : 'Add an update for this event…'}
+                                value={newComments[key] || ''}
                                 onChange={(e) => setNewComments((prev) => ({ ...prev, [key]: e.target.value }))}
-                            />
-                            <Button
+                              />
+                              <Button
                                 size="icon"
                                 variant="ghost"
-                                className="absolute right-1 top-1/2 -translate-y-1/2"
+                                className="absolute right-2 top-1/2 -translate-y-1/2"
                                 onClick={() => handleAddComment(event.id, day, event.userId)}
                                 disabled={!newComments[key]?.trim()}
-                            >
+                              >
                                 <Send className="h-4 w-4" />
-                            </Button>
-                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             )}
           </>
         )}
@@ -309,4 +335,3 @@ export default function RecentPlannerActivity() {
     </Card>
   );
 }
-
