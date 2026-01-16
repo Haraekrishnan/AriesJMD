@@ -3,7 +3,7 @@ import { useMemo, useState, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { format, formatDistanceToNow, parseISO } from 'date-fns';
+import { format, formatDistanceToNow, parseISO, isAfter, subDays, startOfDay } from 'date-fns';
 import { MessageSquare, Calendar, CheckCircle, AlertTriangle, Send, Trash2 } from 'lucide-react';
 import type { Comment, PlannerEvent, User } from '@/lib/types';
 import { Button } from '../ui/button';
@@ -197,14 +197,14 @@ export default function RecentPlannerActivity() {
         </CardTitle>
       </CardHeader>
       
-      <CardContent className="p-4 space-y-4">
+      <CardContent className="px-4 py-4 space-y-4">
         {filteredUnreadComments.length > 0 && (
           <div className="space-y-3">
             <h4 className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
               <MessageSquare className="h-4 w-4 text-blue-500" />
               New Replies ({filteredUnreadComments.length})
             </h4>
-            {filteredUnreadComments.map(({ day, event, comment, delegatedBy, delegatedTo }) => {
+            {filteredUnreadComments.map(({ day, event, comment, delegatedTo }) => {
               const commentUser = users.find((u) => u.id === comment.userId);
               const key = comment.id;
               
@@ -263,7 +263,7 @@ export default function RecentPlannerActivity() {
           <div className="space-y-3">
             <h4 className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
               <AlertTriangle className="h-4 w-4 text-yellow-500" />
-              Pending Follow-ups ({filteredPendingUpdates.length})
+              Pending follow-ups ({filteredPendingUpdates.length})
             </h4>
             {filteredPendingUpdates.map(({ day, event, delegatedTo }) => {
               const key = `${day}-${event.id}`;
