@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -281,23 +280,6 @@ export default function RecentPlannerActivity() {
                            <Button size="sm" variant="ghost" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => dismissPendingUpdate(event.id, day)}>
                              Dismiss
                            </Button>
-                           {user?.role === 'Admin' && (
-                             <AlertDialog>
-                               <AlertDialogTrigger asChild>
-                                 <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive/70 hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                               </AlertDialogTrigger>
-                               <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete Event?</AlertDialogTitle>
-                                    <AlertDialogDescription>Are you sure you want to permanently delete "{event.title}"? This will remove it for all users.</AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDeleteEvent(event)}>Delete</AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                           )}
                         </div>
                     </div>
 
@@ -335,4 +317,3 @@ export default function RecentPlannerActivity() {
     </Card>
   );
 }
-
