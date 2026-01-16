@@ -1,15 +1,15 @@
+
 'use client';
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { format, formatDistanceToNow, parseISO, isAfter, subDays, startOfDay, isSameMonth } from 'date-fns';
-import { MessageSquare, AlertTriangle, Send, Trash2 } from 'lucide-react';
+import { format, formatDistanceToNow, parseISO, isAfter, subDays } from 'date-fns';
+import { MessageSquare, AlertTriangle, Send } from 'lucide-react';
 import type { Comment, PlannerEvent, User } from '@/lib/types';
 import { Button } from '../ui/button';
 import { useRouter } from 'next/navigation';
 import { Textarea } from '../ui/textarea';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -40,7 +40,6 @@ export default function RecentPlannerActivity() {
     getExpandedPlannerEvents,
     dismissPendingUpdate,
     addPlannerEventComment,
-    deletePlannerEvent,
   } = useAppContext();
   
   const router = useRouter();
@@ -90,7 +89,7 @@ export default function RecentPlannerActivity() {
     const delegatedEvents = plannerEvents.filter(e => e.creatorId !== e.userId && (e.creatorId === user.id || e.userId === user.id));
 
     delegatedEvents.forEach(event => {
-        const today = startOfDay(new Date());
+        const today = new Date();
         const startDate = subDays(today, 30); 
         const endDate = subDays(today, 1); 
 
@@ -177,18 +176,10 @@ export default function RecentPlannerActivity() {
     setNewComments((prev) => ({ ...prev, [key]: '' }));
   }, [newComments, addPlannerEventComment]);
   
-  const handleGoToEvent = (day: string, eventUserId: string) =>
-    router.push(`/planner?userId=${eventUserId}&date=${day}`);
-
-  const handleDeleteEvent = (event: PlannerEvent) => {
-    deletePlannerEvent(event.id);
-    toast({ variant: 'destructive', title: 'Event Deleted' });
-  };
-
   if (!user || (unreadComments.length === 0 && pendingUpdates.length === 0)) {
     return null;
   }
-  
+
   return (
     <Card className="rounded-xl border bg-background shadow-sm">
       <CardHeader className="px-4 py-3 border-b">
@@ -288,7 +279,8 @@ export default function RecentPlannerActivity() {
                             <div className="space-y-1">
                                 <p className="text-sm font-medium">{event.title}</p>
                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                No update from <span className="font-medium">{delegatedTo?.name}</span> · {format(parseISO(day), 'dd MMM yyyy')}
+                                No update from <span className="font-medium">{delegatedTo?.name}</span> ·
+                                {format(parseISO(day), 'dd MMM yyyy')}
                                 </p>
                             </div>
                             <div className="flex items-center">
