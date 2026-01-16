@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -194,10 +193,10 @@ export default function RecentActivity() {
   }
   
   return (
-    <Card className="rounded-xl border border-muted bg-card shadow-sm hover:shadow-md transition-shadow">
-      <CardHeader className="px-4 py-3 border-b">
-        <CardTitle className="text-base font-semibold flex items-center gap-2">
-          <MessageSquare className="h-4 w-4 text-purple-500" />
+    <Card className="rounded-xl border border-border bg-background shadow-md">
+      <CardHeader className="px-4 py-3 border-b bg-muted/40">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+          <span className="inline-block h-2 w-2 rounded-full bg-purple-500" />
           Delegated activity
         </CardTitle>
       </CardHeader>
@@ -217,7 +216,7 @@ export default function RecentActivity() {
                     const isCreatorViewingReply = event.creatorId === user.id && comment.userId !== user.id;
 
                     return (
-                      <div key={comment.id} className="bg-background border rounded-lg p-4 relative">
+                        <div key={comment.id} className="relative p-4 rounded-lg bg-background border border-blue-500/30 shadow-sm before:absolute before:left-0 before:top-3 before:h-[calc(100%-1.5rem)] before:w-0.5 before:rounded-full before:bg-blue-400/70">
                         <p className="text-sm font-medium">{event.title}</p>
                         <p className="text-xs text-muted-foreground mb-2">
                           Event on {format(parseISO(day), 'dd MMM yyyy')} ·{' '}
@@ -326,63 +325,35 @@ export default function RecentActivity() {
                         const isCreatorView = event.creatorId === user.id;
 
                         return (
-                        <div
-                            key={key}
-                            className="relative p-4 rounded-lg bg-background border border-muted shadow-sm before:absolute before:left-0 before:top-3 before:h-[calc(100%-1.5rem)] before:w-0.5 before:rounded-full before:bg-yellow-400/70"
-                        >
-                            <div className="flex justify-between items-start w-full">
-                                <div>
-                                    <p className="text-sm font-medium">{event.title}</p>
-                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                    {isCreatorView ? (
-                                        <>
-                                        No update from <span className="font-medium">{delegatedTo?.name}</span> · {format(parseISO(day), 'dd MMM yyyy')}
-                                        </>
-                                    ) : (
-                                        <>
-                                        You have not updated this event for {format(parseISO(day), 'dd MMM yyyy')}
-                                        </>
-                                    )}
-                                    </p>
+                        <div key={key} className="relative rounded-xl bg-white dark:bg-card border border-yellow-400/40 shadow">
+                           <div className="flex items-center justify-between px-4 py-2 rounded-t-xl bg-yellow-50 dark:bg-yellow-900/40 border-b">
+                                <div className="flex items-center gap-2 text-xs font-medium text-yellow-700 dark:text-yellow-300">
+                                    <AlertTriangle className="h-4 w-4" />
+                                    Pending follow-up
                                 </div>
-                                <div className="flex items-center">
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="text-xs text-muted-foreground hover:text-foreground"
-                                      onClick={() => dismissPendingUpdate(event.id, day)}
-                                    >
-                                      Dismiss
-                                    </Button>
-                                    {user?.role === 'Admin' && (
-                                        <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive/70 hover:text-destructive">
-                                            <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                            <AlertDialogTitle>Delete Event?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                Are you sure you want to permanently delete "{event.title}"? This will remove it for all users.
-                                            </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleDeleteEvent(event)}>Delete</AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                        </AlertDialog>
-                                    )}
+                                <div className="flex items-center gap-2">
+                                    <Button size="sm" variant="ghost" className="text-xs h-auto py-1 text-muted-foreground hover:text-foreground" onClick={() => dismissPendingUpdate(event.id, day)}>Dismiss</Button>
                                 </div>
                             </div>
-                            
-                            <div className="mt-3 rounded-lg bg-muted/40 p-2">
+                            <div className="px-4 py-3 space-y-1">
+                                <p className="text-sm font-semibold">{event.title}</p>
+                                <p className="text-xs text-muted-foreground">
+                                {isCreatorView ? (
+                                    <>
+                                    No update from <span className="font-medium">{delegatedTo?.name}</span> · {format(parseISO(day), 'dd MMM yyyy')}
+                                    </>
+                                ) : (
+                                    <>
+                                    You have not updated this event for {format(parseISO(day), 'dd MMM yyyy')}
+                                    </>
+                                )}
+                                </p>
+                            </div>
+                            <div className="px-3 py-3 border-t bg-muted/30 rounded-b-xl">
                               <div className="relative">
                                 <Textarea
                                     rows={1}
-                                    className="text-sm resize-none rounded-full pl-4 pr-10 py-2 bg-background focus:bg-background transition-colors"
+                                    className="rounded-full bg-background pl-4 pr-10 py-2 text-sm border focus:ring-2 focus:ring-yellow-400/40"
                                     placeholder={
                                       isCreatorView
                                           ? `Ask for an update…`
@@ -399,7 +370,7 @@ export default function RecentActivity() {
                                 <Button
                                     size="icon"
                                     variant="ghost"
-                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2"
                                     onClick={() => handleAddComment(event.id, day, event.userId)}
                                     disabled={!newComments[key]?.trim()}
                                 >
