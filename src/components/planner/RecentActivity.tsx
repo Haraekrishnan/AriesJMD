@@ -1,10 +1,11 @@
+
 'use client';
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { format, formatDistanceToNow, parseISO, isAfter, subDays, startOfDay } from 'date-fns';
-import { MessageSquare, Calendar, CheckCircle, AlertTriangle, Send, Trash2 } from 'lucide-react';
+import { format, formatDistanceToNow, parseISO, isAfter, subDays } from 'date-fns';
+import { MessageSquare, AlertTriangle, Send, Trash2 } from 'lucide-react';
 import type { Comment, PlannerEvent, User } from '@/lib/types';
 import { Button } from '../ui/button';
 import { useRouter } from 'next/navigation';
@@ -89,7 +90,7 @@ export default function RecentPlannerActivity() {
     const delegatedEvents = plannerEvents.filter(e => e.creatorId !== e.userId && (e.creatorId === user.id || e.userId === user.id));
 
     delegatedEvents.forEach(event => {
-        const today = startOfDay(new Date());
+        const today = new Date();
         const startDate = subDays(today, 30); 
         const endDate = subDays(today, 1); 
 
@@ -156,7 +157,7 @@ export default function RecentPlannerActivity() {
   const handleMarkAsRead = useCallback((comment: Comment) => {
     const event = plannerEvents.find((e) => e.id === comment.eventId);
     const day = dailyPlannerComments.find((dc) =>
-      Object.values(dc.comments || {}).some((c) => c?.id === comment.id)
+      dc.comments && Object.values(dc.comments).some((c) => c?.id === comment.id)
     )?.day;
     
     if (event && day) {
@@ -184,136 +185,128 @@ export default function RecentPlannerActivity() {
     toast({ variant: 'destructive', title: 'Event Deleted' });
   };
 
-  if (!user || (filteredUnreadComments.length === 0 && filteredPendingUpdates.length === 0)) {
+  if (!user || (unreadComments.length === 0 && pendingUpdates.length === 0)) {
     return null;
   }
   
   return (
-    <Card className="rounded-xl border border-border bg-background shadow-md">
-      <CardHeader className="px-4 py-3 border-b bg-muted/40">
+    <Card className="rounded-xl border bg-background shadow-sm">
+      <CardHeader className="px-4 py-3 border-b">
         <CardTitle className="text-sm font-semibold flex items-center gap-2">
-          <span className="inline-block h-2 w-2 rounded-full bg-purple-500" />
-          Delegated activity
+          <MessageSquare className="h-4 w-4 text-muted-foreground" />
+          Recent delegated activity
         </CardTitle>
       </CardHeader>
       
-      <CardContent className="px-4 py-4 space-y-4">
-        {filteredUnreadComments.length > 0 && (
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-              <MessageSquare className="h-4 w-4 text-blue-500" />
-              New Replies ({filteredUnreadComments.length})
-            </h4>
-            {filteredUnreadComments.map(({ day, event, comment, delegatedTo }) => {
-              const commentUser = users.find((u) => u.id === comment.userId);
-              const key = comment.id;
-              
-              return (
-                <div key={comment.id} className="relative rounded-xl bg-white dark:bg-card border border-blue-400/40 shadow">
-                   <div className="flex items-center justify-between px-4 py-2 rounded-t-xl bg-blue-50 dark:bg-blue-900/40 border-b">
-                      <div className="flex items-center gap-2 text-xs font-medium text-blue-700 dark:text-blue-300">
-                          <MessageSquare className="h-4 w-4" />
-                          New Reply from {commentUser?.name}
-                      </div>
-                       <div className="flex items-center gap-2">
-                          <Button size="sm" variant="ghost" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => handleGoToEvent(day, event.userId)}>Go to Event</Button>
-                          <Button size="sm" variant="ghost" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => handleMarkAsRead(comment)}>Mark as Read</Button>
-                       </div>
-                   </div>
-                   <div className="px-4 py-3 space-y-1">
-                        <p className="text-sm font-semibold">{event.title}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Event on {format(parseISO(day), 'dd MMM yyyy')} · Delegated to <span className="font-medium">{delegatedTo?.name}</span>
-                        </p>
-                        <div className="pt-2">
-                           <div className="flex items-start gap-2">
-                              <Avatar className="h-6 w-6">
+      <CardContent className="p-4 space-y-4">
+        {filteredUnreadComments.length === 0 && filteredPendingUpdates.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-6">
+            No delegated activity right now.
+          </p>
+        ) : (
+          <>
+            {filteredUnreadComments.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                  <MessageSquare className="h-4 w-4 text-blue-500" />
+                  New Replies ({filteredUnreadComments.length})
+                </h4>
+                {filteredUnreadComments.map(({ day, event, comment, delegatedTo }) => {
+                  const commentUser = users.find((u) => u.id === comment.userId);
+                  const key = comment.id;
+                  
+                  return (
+                    <div key={comment.id} className="rounded-lg border bg-card px-4 py-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium">{event.title}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    Reply from <span className="font-medium">{commentUser?.name}</span> · {formatDistanceToNow(parseISO(comment.date), { addSuffix: true })}
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button size="sm" variant="ghost" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => handleMarkAsRead(comment)}>Mark as Read</Button>
+                            </div>
+                        </div>
+
+                        <div className="flex items-start gap-2">
+                            <Avatar className="h-6 w-6">
                                 <AvatarImage src={commentUser?.avatar} />
                                 <AvatarFallback>{commentUser?.name?.charAt(0) || '?'}</AvatarFallback>
-                              </Avatar>
-                              <div className="text-sm bg-muted/50 p-2 rounded-md w-full">
-                                  <p className="whitespace-pre-wrap">{comment.text}</p>
-                              </div>
-                           </div>
+                            </Avatar>
+                            <div className="text-sm bg-muted/50 p-2 rounded-md w-full">
+                                <p className="whitespace-pre-wrap">{comment.text}</p>
+                            </div>
                         </div>
                     </div>
-                    <div className="px-3 py-3 border-t bg-muted/30">
-                        <div className="relative">
-                            <Textarea
-                                rows={1}
-                                className="rounded-full bg-background pl-4 pr-10 py-2 text-sm border focus:ring-2 focus:ring-blue-400/40"
-                                placeholder={`Reply to ${commentUser?.name}...`}
-                                value={newComments[key] || ''}
+                  );
+                })}
+              </div>
+            )}
+            
+            {filteredUnreadComments.length > 0 && filteredPendingUpdates.length > 0 && <Separator />}
+            
+            {filteredPendingUpdates.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                  <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                  Pending follow-ups ({filteredPendingUpdates.length})
+                </h4>
+                {filteredPendingUpdates.map(({ day, event, delegatedTo }) => {
+                  const key = `${day}-${event.id}`;
+                  const isCreatorView = event.creatorId === user.id;
+
+                  return (
+                     <div key={key} className="rounded-lg border bg-card px-4 py-3 space-y-2">
+                       <div className="flex justify-between items-center">
+                          <div>
+                            <p className="text-sm font-medium">{event.title}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {isCreatorView ? (
+                                <>No update from <span className="font-medium">{delegatedTo?.name}</span></>
+                              ) : (
+                                <>You have not updated this event</>
+                              )}
+                               · {format(parseISO(day), 'dd MMM yyyy')}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                             <Button size="sm" variant="ghost" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => dismissPendingUpdate(event.id, day)}>
+                               Dismiss
+                             </Button>
+                          </div>
+                       </div>
+                        <div className="flex items-center gap-2 text-xs text-yellow-700">
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                          Pending follow-up
+                        </div>
+                       <div className="relative mt-2">
+                           <Textarea
+                               rows={1}
+                               className="resize-none rounded-md bg-muted pl-3 pr-9 py-2 text-sm"
+                               placeholder={isCreatorView ? `Ask for an update...` : 'Add an update for this event...'}
+                               value={newComments[key] || ''}
                                 onChange={(e) => setNewComments((prev) => ({ ...prev, [key]: e.target.value }))}
                             />
-                            <Button size="icon" variant="ghost" className="absolute right-2 top-1/2 -translate-y-1/2" onClick={() => handleAddComment(event.id, day, event.userId, comment.id)} disabled={!newComments[key]?.trim()}>
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                className="absolute right-1 top-1/2 -translate-y-1/2"
+                                onClick={() => handleAddComment(event.id, day, event.userId)}
+                                disabled={!newComments[key]?.trim()}
+                            >
                                 <Send className="h-4 w-4" />
                             </Button>
-                        </div>
+                       </div>
                     </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        
-        {filteredUnreadComments.length > 0 && filteredPendingUpdates.length > 0 && <Separator />}
-        
-        {filteredPendingUpdates.length > 0 && (
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-              <AlertTriangle className="h-4 w-4 text-yellow-500" />
-              Pending follow-ups ({filteredPendingUpdates.length})
-            </h4>
-            {filteredPendingUpdates.map(({ day, event, delegatedTo }) => {
-              const key = `${day}-${event.id}`;
-              const isCreatorView = event.creatorId === user.id;
-
-              return (
-                 <div key={key} className="relative rounded-xl bg-white dark:bg-card border border-yellow-400/40 shadow">
-                    <div className="flex items-center justify-between px-4 py-2 rounded-t-xl bg-yellow-50 dark:bg-yellow-900/40 border-b">
-                        <div className="flex items-center gap-2 text-xs font-medium text-yellow-700 dark:text-yellow-300">
-                            <AlertTriangle className="h-4 w-4" />
-                            Pending follow-up
-                        </div>
-                        <div className="flex items-center gap-2">
-                           <Button size="sm" variant="ghost" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => dismissPendingUpdate(event.id, day)}>
-                             Dismiss
-                           </Button>
-                        </div>
-                    </div>
-
-                    <div className="px-4 py-3 space-y-1">
-                        <p className="text-sm font-semibold">{event.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                            {isCreatorView ? (
-                                <>No update from <span className="font-medium">{delegatedTo?.name}</span> · {format(parseISO(day), 'dd MMM yyyy')}</>
-                            ) : (
-                                <>You have not updated this event for {format(parseISO(day), 'dd MMM yyyy')}</>
-                            )}
-                        </p>
-                    </div>
-
-                    <div className="px-3 py-3 border-t bg-muted/30">
-                        <div className="relative">
-                            <Textarea
-                                rows={1}
-                                className="rounded-full bg-background pl-4 pr-10 py-2 text-sm border focus:ring-2 focus:ring-yellow-400/40"
-                                placeholder={isCreatorView ? `Ask for an update...` : 'Add an update for this event...'}
-                                value={newComments[key] || ''}
-                                onChange={(e) => setNewComments((prev) => ({ ...prev, [key]: e.target.value }))}
-                            />
-                            <Button size="icon" variant="ghost" className="absolute right-2 top-1/2 -translate-y-1/2" onClick={() => handleAddComment(event.id, day, event.userId)} disabled={!newComments[key]?.trim()}>
-                                <Send className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </div>
-                 </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
       </CardContent>
     </Card>
   );
 }
+
