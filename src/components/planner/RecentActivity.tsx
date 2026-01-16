@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -13,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '../ui/separator';
+import { cn } from '@/lib/utils';
 
 interface UnreadCommentInfo {
   type: 'comment';
@@ -30,7 +32,7 @@ interface PendingUpdateInfo {
   delegatedTo?: User;
 }
 
-export default function RecentPlannerActivity() {
+export default function RecentActivity() {
   const {
     user,
     dailyPlannerComments,
@@ -159,7 +161,7 @@ export default function RecentPlannerActivity() {
   const handleMarkAsRead = useCallback((comment: Comment) => {
     const event = plannerEvents.find((e) => e.id === comment.eventId);
     const day = dailyPlannerComments.find((dc) =>
-      Object.values(dc.comments || {}).some((c) => c?.id === comment.id)
+      dc.comments && Object.values(dc.comments).some((c) => c?.id === comment.id)
     )?.day;
     
     if (event && day) {
@@ -193,19 +195,19 @@ export default function RecentPlannerActivity() {
   
   return (
     <Card className="rounded-xl border border-muted bg-card shadow-sm hover:shadow-md transition-shadow">
-      <CardHeader className="pb-3 border-b">
+      <CardHeader className="px-4 py-3 border-b">
         <CardTitle className="text-base font-semibold flex items-center gap-2">
           <MessageSquare className="h-4 w-4 text-purple-500" />
-          Delegated Event Review
+          Delegated activity
         </CardTitle>
       </CardHeader>
       
-      <CardContent className="p-4">
+      <CardContent className="px-4 py-4">
         <div className="space-y-4">
           {filteredUnreadComments.length > 0 && (
             <Accordion type="single" collapsible defaultValue="new-replies">
               <AccordionItem value="new-replies" className="border-none">
-                <AccordionTrigger className="text-sm font-medium">
+                <AccordionTrigger className="px-0 py-2 text-sm font-medium hover:no-underline data-[state=open]:text-foreground">
                   New Replies ({filteredUnreadComments.length})
                 </AccordionTrigger>
                 <AccordionContent className="space-y-3">
@@ -247,50 +249,54 @@ export default function RecentPlannerActivity() {
                         <div className="mt-3">
                           {isCreatorViewingReply ? (
                             <div className="flex justify-end items-center gap-2">
-                                <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-foreground" onClick={() => handleGoToEvent(day, event.userId)}><Calendar className="mr-2 h-4 w-4" /> Go to Event</Button>
-                                <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-foreground" onClick={() => handleMarkAsRead(comment)}><CheckCircle className="mr-2 h-4 w-4" /> Mark as Read</Button>
+                                <Button size="sm" variant="ghost" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => handleGoToEvent(day, event.userId)}><Calendar className="mr-2 h-4 w-4" /> Go to Event</Button>
+                                <Button size="sm" variant="ghost" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => handleMarkAsRead(comment)}><CheckCircle className="mr-2 h-4 w-4" /> Mark as Read</Button>
                                 <Accordion type="single" collapsible className="w-auto">
                                     <AccordionItem value="reply" className="border-none">
                                       <AccordionTrigger className="p-2 text-xs hover:no-underline rounded-sm hover:bg-muted">Reply</AccordionTrigger>
                                       <AccordionContent className="pt-2">
+                                        <div className="mt-3 rounded-lg bg-muted/40 p-2">
                                           <div className="relative">
-                                              <Textarea
-                                                  value={newComments[key] || ''}
-                                                  onChange={(e) => setNewComments((prev) => ({ ...prev, [key]: e.target.value }))}
-                                                  placeholder={`Reply to ${commentUser?.name}...`}
-                                                  className="pr-10 text-sm bg-background"
-                                                  rows={1}
-                                              />
-                                              <Button
-                                                  size="icon"
-                                                  variant="ghost"
-                                                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                                                  onClick={() => handleAddComment(event.id, day, event.userId, comment.id)}
-                                                  disabled={!newComments[key]?.trim()}
-                                              >
-                                                  <Send className="h-4 w-4" />
-                                              </Button>
+                                            <Textarea
+                                                value={newComments[key] || ''}
+                                                onChange={(e) => setNewComments((prev) => ({ ...prev, [key]: e.target.value }))}
+                                                placeholder={`Reply to ${commentUser?.name}...`}
+                                                className="text-sm resize-none rounded-full pl-4 pr-10 py-2 bg-background focus:bg-background transition-colors"
+                                                rows={1}
+                                            />
+                                            <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                                                onClick={() => handleAddComment(event.id, day, event.userId, comment.id)}
+                                                disabled={!newComments[key]?.trim()}
+                                            >
+                                                <Send className="h-4 w-4" />
+                                            </Button>
                                           </div>
+                                        </div>
                                       </AccordionContent>
                                     </AccordionItem>
                                 </Accordion>
                             </div>
                           ) : (
-                            <div className="relative mt-2">
-                              <Textarea
-                                  value={newComments[key] || ''}
-                                  onChange={(e) => setNewComments((prev) => ({ ...prev, [key]: e.target.value }))}
-                                  placeholder={`Reply to ${commentUser?.name}...`}
-                                  className="pr-20 text-sm bg-background rounded-full pl-4 py-2 resize-none"
-                                  rows={1}
-                              />
-                              <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
-                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleAddComment(event.id, day, event.userId, comment.id)} disabled={!newComments[key]?.trim()}>
-                                      <Send className="h-4 w-4" />
-                                  </Button>
-                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleMarkAsRead(comment)}>
-                                      <CheckCircle className="h-4 w-4"/>
-                                  </Button>
+                            <div className="mt-3 rounded-lg bg-muted/40 p-2">
+                              <div className="relative">
+                                <Textarea
+                                    value={newComments[key] || ''}
+                                    onChange={(e) => setNewComments((prev) => ({ ...prev, [key]: e.target.value }))}
+                                    placeholder={`Reply to ${commentUser?.name}...`}
+                                    className="text-sm resize-none rounded-full pl-4 pr-10 py-2 bg-background focus:bg-background transition-colors"
+                                    rows={1}
+                                />
+                                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
+                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleAddComment(event.id, day, event.userId, comment.id)} disabled={!newComments[key]?.trim()}>
+                                        <Send className="h-4 w-4" />
+                                    </Button>
+                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleMarkAsRead(comment)}>
+                                        <CheckCircle className="h-4 w-4"/>
+                                    </Button>
+                                </div>
                               </div>
                             </div>
                           )}
@@ -308,10 +314,10 @@ export default function RecentPlannerActivity() {
           {filteredPendingUpdates.length > 0 && (
              <Accordion type="single" collapsible defaultValue="pending-updates">
                 <AccordionItem value="pending-updates" className="border-none">
-                  <AccordionTrigger className="text-sm font-medium">
-                    <div className="flex items-center gap-2">
+                  <AccordionTrigger className="px-0 py-2 text-sm font-medium hover:no-underline data-[state=open]:text-foreground">
+                    <div className="flex items-center gap-2 text-muted-foreground">
                         <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                        Pending Updates ({filteredPendingUpdates.length})
+                        Pending follow-ups ({filteredPendingUpdates.length})
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-3">
@@ -322,7 +328,7 @@ export default function RecentPlannerActivity() {
                         return (
                         <div
                             key={key}
-                            className="relative p-4 rounded-lg bg-background border border-muted shadow-sm before:absolute before:left-0 before:top-0 before:h-full before:w-1 before:bg-yellow-400"
+                            className="relative p-4 rounded-lg bg-background border border-muted shadow-sm before:absolute before:left-0 before:top-3 before:h-[calc(100%-1.5rem)] before:w-0.5 before:rounded-full before:bg-yellow-400/70"
                         >
                             <div className="flex justify-between items-start w-full">
                                 <div>
@@ -330,25 +336,23 @@ export default function RecentPlannerActivity() {
                                     <p className="text-xs text-muted-foreground mt-0.5">
                                     {isCreatorView ? (
                                         <>
-                                        No update from <span className="font-medium">{delegatedTo?.name}</span>{' '}
-                                        · {format(parseISO(day), 'dd MMM yyyy')}
+                                        No update from <span className="font-medium">{delegatedTo?.name}</span> · {format(parseISO(day), 'dd MMM yyyy')}
                                         </>
                                     ) : (
                                         <>
-                                        You have not updated this event for{' '}
-                                        {format(parseISO(day), 'dd MMM yyyy')}
+                                        You have not updated this event for {format(parseISO(day), 'dd MMM yyyy')}
                                         </>
                                     )}
                                     </p>
                                 </div>
                                 <div className="flex items-center">
                                     <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="text-muted-foreground hover:text-foreground"
-                                    onClick={() => dismissPendingUpdate(event.id, day)}
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-xs text-muted-foreground hover:text-foreground"
+                                      onClick={() => dismissPendingUpdate(event.id, day)}
                                     >
-                                    Dismiss
+                                      Dismiss
                                     </Button>
                                     {user?.role === 'Admin' && (
                                         <AlertDialog>
@@ -374,32 +378,34 @@ export default function RecentPlannerActivity() {
                                 </div>
                             </div>
                             
-                            <div className="relative mt-3">
-                            <Textarea
-                                rows={1}
-                                className="text-sm resize-none rounded-full pl-4 pr-10 py-2 bg-muted focus:bg-background transition-colors"
-                                placeholder={
-                                isCreatorView
-                                    ? `Ask ${delegatedTo?.name || 'them'} for an update...`
-                                    : 'Add an update for this event...'
-                                }
-                                value={newComments[key] || ''}
-                                onChange={(e) =>
-                                setNewComments((prev) => ({
-                                    ...prev,
-                                    [key]: e.target.value,
-                                }))
-                                }
-                            />
-                            <Button
-                                size="icon"
-                                variant="ghost"
-                                className="absolute right-2 top-1/2 -translate-y-1/2"
-                                onClick={() => handleAddComment(event.id, day, event.userId)}
-                                disabled={!newComments[key]?.trim()}
-                            >
-                                <Send className="h-4 w-4" />
-                            </Button>
+                            <div className="mt-3 rounded-lg bg-muted/40 p-2">
+                              <div className="relative">
+                                <Textarea
+                                    rows={1}
+                                    className="text-sm resize-none rounded-full pl-4 pr-10 py-2 bg-background focus:bg-background transition-colors"
+                                    placeholder={
+                                      isCreatorView
+                                          ? `Ask for an update…`
+                                          : 'Add an update for this event…'
+                                    }
+                                    value={newComments[key] || ''}
+                                    onChange={(e) =>
+                                    setNewComments((prev) => ({
+                                        ...prev,
+                                        [key]: e.target.value,
+                                    }))
+                                    }
+                                />
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                                    onClick={() => handleAddComment(event.id, day, event.userId)}
+                                    disabled={!newComments[key]?.trim()}
+                                >
+                                    <Send className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                         </div>
                         );
