@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -96,7 +95,17 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
                 <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" className="w-full justify-between">
-                      {field.value ? availableManpower.find(mp => mp.id === field.value)?.name : "Select person..."}
+                      {field.value ? (
+                          (() => {
+                              const profile = availableManpower.find(mp => mp.id === field.value);
+                              return profile ? (
+                                  <div className="flex items-baseline gap-2">
+                                      <span>{profile.name}</span>
+                                      <span className="text-muted-foreground text-xs">({profile.trade})</span>
+                                  </div>
+                              ) : "Select person...";
+                          })()
+                      ) : "Select person..."}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
@@ -115,7 +124,10 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
                                 setIsPopoverOpen(false);
                               }}
                             >
-                              {mp.name}
+                                <div className="flex justify-between items-center w-full">
+                                    <span>{mp.name}</span>
+                                    <span className="text-muted-foreground text-xs">({mp.trade})</span>
+                                </div>
                             </CommandItem>
                           ))}
                         </CommandGroup>

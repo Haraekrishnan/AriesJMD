@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -101,7 +100,12 @@ export default function LogbookHistoryDialog({ isOpen, setIsOpen }: LogbookHisto
             <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                 <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" className="w-full justify-between">
-                        {selectedProfile ? selectedProfile.name : "Select employee..."}
+                        {selectedProfile ? (
+                            <div className="flex items-baseline gap-2">
+                                <span>{selectedProfile.name}</span>
+                                <span className="text-muted-foreground text-xs">({selectedProfile.trade})</span>
+                            </div>
+                        ) : "Select employee..."}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                 </PopoverTrigger>
@@ -116,7 +120,10 @@ export default function LogbookHistoryDialog({ isOpen, setIsOpen }: LogbookHisto
                                         setSelectedProfileId(p.id);
                                         setIsPopoverOpen(false);
                                     }}>
-                                        {p.name}
+                                        <div className="flex justify-between items-center w-full">
+                                            <span>{p.name}</span>
+                                            <span className="text-muted-foreground text-xs">({p.trade})</span>
+                                        </div>
                                     </CommandItem>
                                 ))}
                             </CommandGroup>

@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -12,7 +10,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { ChevronsUpDown, CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
-import type { ManpowerProfile } from '@/lib/types';
+import type { ManpowerProfile, LeaveRecord } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
@@ -84,7 +82,12 @@ export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
                  <Popover open={isManpowerPopoverOpen} onOpenChange={setIsManpowerPopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" className="w-full justify-between">
-                      {selectedProfile ? selectedProfile.name : "Select employee..."}
+                      {selectedProfile ? (
+                          <div className="flex items-baseline gap-2">
+                              <span>{selectedProfile.name}</span>
+                              <span className="text-muted-foreground text-xs">({selectedProfile.trade})</span>
+                          </div>
+                      ) : "Select employee..."}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
@@ -103,7 +106,10 @@ export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
                                 setIsManpowerPopoverOpen(false);
                               }}
                             >
-                              {p.name}
+                                <div className="flex justify-between items-center w-full">
+                                    <span>{p.name}</span>
+                                    <span className="text-muted-foreground text-xs">({p.trade})</span>
+                                </div>
                             </CommandItem>
                           ))}
                         </CommandGroup>
@@ -137,5 +143,3 @@ export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
     </Dialog>
   );
 }
-
-

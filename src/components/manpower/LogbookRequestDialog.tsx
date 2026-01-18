@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, Controller } from 'react-hook-form';
@@ -67,7 +66,17 @@ export default function LogbookRequestDialog({ isOpen, setIsOpen }: LogbookReque
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" className="w-full justify-between">
-                      {field.value ? availableProfiles.find(p => p.id === field.value)?.name : "Select employee..."}
+                      {field.value ? (
+                          (() => {
+                              const profile = availableProfiles.find(p => p.id === field.value);
+                              return profile ? (
+                                  <div className="flex items-baseline gap-2">
+                                      <span>{profile.name}</span>
+                                      <span className="text-muted-foreground text-xs">({profile.trade})</span>
+                                  </div>
+                              ) : "Select employee...";
+                          })()
+                      ) : "Select employee..."}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
@@ -83,7 +92,10 @@ export default function LogbookRequestDialog({ isOpen, setIsOpen }: LogbookReque
                               value={p.name}
                               onSelect={() => form.setValue("manpowerId", p.id)}
                             >
-                              {p.name}
+                                <div className="flex justify-between items-center w-full">
+                                    <span>{p.name}</span>
+                                    <span className="text-muted-foreground text-xs">({p.trade})</span>
+                                </div>
                             </CommandItem>
                           ))}
                         </CommandGroup>

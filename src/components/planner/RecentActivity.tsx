@@ -1,16 +1,18 @@
 
 'use client';
-import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { format, formatDistanceToNow, parseISO, isAfter, subDays } from 'date-fns';
-import { MessageSquare, AlertTriangle, Send, Trash2 } from 'lucide-react';
+import { format, formatDistanceToNow, parseISO, isPast, isToday, startOfDay, subDays, isAfter } from 'date-fns';
+import { MessageSquare, Calendar, CheckCircle, AlertTriangle, Send, Trash2 } from 'lucide-react';
 import type { Comment, PlannerEvent, User } from '@/lib/types';
 import { Button } from '../ui/button';
+import { useRouter } from 'next/navigation';
 import { Textarea } from '../ui/textarea';
-import { Separator } from '../ui/separator';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 interface UnreadCommentInfo {
   type: 'comment';
@@ -41,8 +43,10 @@ export default function RecentPlannerActivity() {
     deletePlannerEvent,
   } = useAppContext();
   
-  const [actionedItems, setActionedItems] = useState<Set<string>>(new Set());
+  const router = useRouter();
+  const { toast } = useToast();
   const [newComments, setNewComments] = useState<Record<string, string>>({});
+  const [actionedItems, setActionedItems] = useState<Set<string>>(new Set());
   
   const { unreadComments, pendingUpdates } = useMemo(() => {
     if (!user) return { unreadComments: [], pendingUpdates: [] };
@@ -51,6 +55,7 @@ export default function RecentPlannerActivity() {
     const allPendingUpdates: PendingUpdateInfo[] = [];
     const userMap = new Map(users.map((u) => [u.id, u]));
     
+    // --- UNREAD COMMENTS ---
     (dailyPlannerComments || []).forEach((dayComment) => {
       if (!dayComment?.day || !dayComment.comments) return;
       
@@ -83,10 +88,11 @@ export default function RecentPlannerActivity() {
       });
     });
     
+    // --- PENDING UPDATES ---
     const delegatedEvents = plannerEvents.filter(e => e.creatorId !== e.userId && (e.creatorId === user.id || e.userId === user.id));
 
     delegatedEvents.forEach(event => {
-        const today = new Date();
+        const today = startOfDay(new Date());
         const startDate = subDays(today, 30); 
         const endDate = subDays(today, 1); 
 
@@ -141,7 +147,7 @@ export default function RecentPlannerActivity() {
     users,
     getExpandedPlannerEvents,
   ]);
-
+  
   const filteredUnreadComments = useMemo(() => 
     unreadComments.filter(uc => !actionedItems.has(uc.comment.id))
   , [unreadComments, actionedItems]);
@@ -150,164 +156,258 @@ export default function RecentPlannerActivity() {
     pendingUpdates.filter(pu => !actionedItems.has(`${pu.day}-${pu.event.id}`))
   , [pendingUpdates, actionedItems]);
 
-  const handleMarkAsRead = useCallback((comment: Comment) => {
+  const handleMarkAsRead = (comment: Comment) => {
     const event = plannerEvents.find((e) => e.id === comment.eventId);
     const day = dailyPlannerComments.find((dc) =>
-      dc.comments && Object.values(dc.comments).some((c) => c?.id === comment.id)
+      Object.values(dc.comments || {}).some((c) => c?.id === comment.id)
     )?.day;
     
     if (event && day) {
       markSinglePlannerCommentAsRead(event.userId, day, comment.id);
       setActionedItems(prev => new Set(prev).add(comment.id));
     }
-  }, [plannerEvents, dailyPlannerComments, markSinglePlannerCommentAsRead]);
+  };
 
-  const handleAddComment = useCallback((eventId: string, day: string, eventUserId: string, originalCommentId?: string) => {
-    const key = originalCommentId || `${day}-${eventId}`;
+  const handleAddComment = (eventId: string, day: string, eventUserId: string, originalCommentId?: string) => {
+    const key = `${day}-${eventId}`;
     const text = newComments[key];
     if (!text?.trim()) return;
     
     addPlannerEventComment(eventUserId, day, eventId, text);
     
-    setActionedItems(prev => new Set(prev).add(key));
+    if (originalCommentId) {
+        setActionedItems(prev => new Set(prev).add(originalCommentId));
+    } else {
+        setActionedItems(prev => new Set(prev).add(`${day}-${eventId}`));
+    }
+
     setNewComments((prev) => ({ ...prev, [key]: '' }));
-  }, [newComments, addPlannerEventComment]);
+  };
   
-  if (!user || (unreadComments.length === 0 && pendingUpdates.length === 0)) {
+  const handleGoToEvent = (day: string, eventUserId: string) =>
+    router.push(`/planner?userId=${eventUserId}&date=${day}`);
+
+  const handleDeleteEvent = (event: PlannerEvent) => {
+    deletePlannerEvent(event.id);
+    toast({ variant: 'destructive', title: 'Event Deleted' });
+  };
+
+  if (!user || (filteredUnreadComments.length === 0 && filteredPendingUpdates.length === 0)) {
     return null;
   }
-
+  
   return (
-    <Card className="rounded-xl border bg-background shadow-sm">
-      <CardHeader className="px-4 py-3 border-b">
-        <CardTitle className="text-sm font-semibold flex items-center gap-2">
-          <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          Recent delegated activity
+    <Card className="border-orange-500 dark:border-orange-400">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg flex items-center gap-2 text-orange-600 dark:text-orange-400">
+          <MessageSquare className="h-5 w-5" />
+          Delegated Event Report/Review
         </CardTitle>
       </CardHeader>
       
-      <CardContent className="p-4 space-y-4">
-        {filteredUnreadComments.length > 0 && (
-          <div className="space-y-3">
-            {filteredUnreadComments.map(({ day, event, comment, delegatedTo }) => {
-              const commentUser = users.find((u) => u.id === comment.userId);
-              const key = comment.id;
-              
-              return (
-                <div key={comment.id} className="rounded-lg border bg-card px-4 py-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium">{event.title}</p>
-                            <p className="text-xs text-muted-foreground">
-                                Reply from <span className="font-medium">{commentUser?.name}</span> · {formatDistanceToNow(parseISO(comment.date), { addSuffix: true })}
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Button size="sm" variant="ghost" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => handleMarkAsRead(comment)}>Mark as Read</Button>
-                        </div>
-                    </div>
+      <CardContent>
+        <div className="space-y-4">
+          {/* UNREAD COMMENTS */}
+          {filteredUnreadComments.map(({ day, event, comment, delegatedBy, delegatedTo }) => {
+            const commentUser = users.find((u) => u.id === comment.userId);
+            const key = `${day}-${event.id}`;
+            const isCreatorViewingReply = event.creatorId === user.id && comment.userId !== user.id;
 
-                    <div className="flex items-start gap-2">
-                        <Avatar className="h-6 w-6">
-                            <AvatarImage src={commentUser?.avatar} />
-                            <AvatarFallback>{commentUser?.name?.charAt(0) || '?'}</AvatarFallback>
-                        </Avatar>
-                        <div className="text-sm bg-muted/50 p-2 rounded-md w-full">
-                            <p className="whitespace-pre-wrap">{comment.text}</p>
-                        </div>
+            return (
+              <div key={comment.id} className="p-4 border rounded-lg bg-muted/50">
+                <p className="font-semibold text-sm">{event.title}</p>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Event on {format(parseISO(day), 'dd MMM yyyy')} ·{' '}
+                  {event.creatorId === event.userId
+                    ? `Personal planning for ${delegatedTo?.name}`
+                    : `Delegated to ${delegatedTo?.name} by ${delegatedBy?.name}`}
+                </p>
+                
+                <div className="flex items-start gap-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={commentUser?.avatar} />
+                    <AvatarFallback>
+                      {commentUser?.name?.charAt(0) || '?'}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  <div className="text-sm bg-background p-3 rounded-md w-full">
+                    <div className="flex justify-between text-xs">
+                      <strong>{commentUser?.name}</strong>
+                      <span>
+                        {formatDistanceToNow(parseISO(comment.date), {
+                          addSuffix: true,
+                        })}
+                      </span>
                     </div>
-
-                    <div className="relative mt-2">
-                        <Textarea
-                            rows={1}
-                            className="resize-none rounded-md bg-muted pl-3 pr-9 py-2 text-sm"
-                            placeholder="Reply..."
-                            value={newComments[key] || ''}
-                            onChange={(e) => setNewComments((prev) => ({ ...prev, [key]: e.target.value }))}
-                        />
-                        <Button
-                            size="icon"
-                            variant="ghost"
-                            className="absolute right-1 top-1/2 -translate-y-1/2"
-                            onClick={() => handleAddComment(event.id, day, event.userId, comment.id)}
-                            disabled={!newComments[key]?.trim()}
-                        >
-                            <Send className="h-4 w-4" />
-                        </Button>
-                    </div>
+                    
+                    <p className="mt-1 whitespace-pre-wrap">{comment.text}</p>
+                  </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-        
-        {filteredUnreadComments.length > 0 && filteredPendingUpdates.length > 0 && <Separator />}
-        
-        {filteredPendingUpdates.length > 0 && (
-          <Accordion type="single" collapsible defaultValue="pending" className="w-full">
-            <AccordionItem value="pending" className="border-none">
-              <AccordionTrigger className="px-0 py-2 text-sm font-medium hover:no-underline data-[state=open]:text-foreground">
-                 <h4 className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-                  <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                  Pending follow-ups ({filteredPendingUpdates.length})
-                </h4>
-              </AccordionTrigger>
-              <AccordionContent className="pt-2 space-y-3">
-                {filteredPendingUpdates.map(({ day, event, delegatedTo }) => {
-                  const key = `${day}-${event.id}`;
-                  const isCreatorView = event.creatorId === user?.id;
-
-                  return (
-                    <div
-                      key={key}
-                      className="relative p-4 rounded-lg bg-background border border-muted shadow-sm before:absolute before:left-0 before:top-3 before:h-[calc(100%-1.5rem)] before:w-0.5 before:rounded-full before:bg-yellow-400/70"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className="space-y-1">
-                            <p className="text-sm font-medium">{event.title}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                            No update from <span className="font-medium">{delegatedTo?.name}</span> ·
-                            {format(parseISO(day), 'dd MMM yyyy')}
-                            </p>
-                        </div>
-                        <div className="flex items-center">
-                            <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-xs text-muted-foreground hover:text-foreground"
-                                onClick={() => dismissPendingUpdate(event.id, day)}
-                            >
-                            Dismiss
-                            </Button>
-                        </div>
-                      </div>
-                      <div className="mt-3 rounded-lg bg-muted/40 p-2">
-                        <div className="relative">
-                          <Textarea
-                            rows={1}
-                            className="text-sm resize-none rounded-full pl-4 pr-10 py-2 bg-background focus:bg-background transition-colors"
-                            placeholder={isCreatorView ? 'Ask for an update…' : 'Add an update for this event…'}
-                            value={newComments[key] || ''}
-                            onChange={(e) => setNewComments((prev) => ({ ...prev, [key]: e.target.value }))}
-                          />
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="absolute right-2 top-1/2 -translate-y-1/2"
-                            onClick={() => handleAddComment(event.id, day, event.userId)}
-                            disabled={!newComments[key]?.trim()}
-                          >
-                            <Send className="h-4 w-4" />
+                
+                 <div className="mt-2">
+                  {isCreatorViewingReply ? (
+                    <div className="flex justify-end items-center gap-2">
+                        <Button size="sm" variant="outline" onClick={() => handleGoToEvent(day, event.userId)}><Calendar className="mr-2 h-4 w-4" /> Go to Event</Button>
+                        <Button size="sm" variant="secondary" onClick={() => handleMarkAsRead(comment)}><CheckCircle className="mr-2 h-4 w-4" /> Mark as Read</Button>
+                        <Accordion type="single" collapsible className="w-auto">
+                            <AccordionItem value="reply" className="border-none">
+                               <AccordionTrigger className="p-2 text-xs hover:no-underline rounded-sm hover:bg-muted">Reply</AccordionTrigger>
+                               <AccordionContent className="pt-2">
+                                  <div className="relative">
+                                      <Textarea
+                                          value={newComments[key] || ''}
+                                          onChange={(e) => setNewComments((prev) => ({ ...prev, [key]: e.target.value }))}
+                                          placeholder={`Reply to ${commentUser?.name}...`}
+                                          className="pr-10 text-sm bg-background"
+                                          rows={1}
+                                      />
+                                      <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                                          onClick={() => handleAddComment(event.id, day, event.userId, comment.id)}
+                                          disabled={!newComments[key]?.trim()}
+                                      >
+                                          <Send className="h-4 w-4" />
+                                      </Button>
+                                  </div>
+                               </AccordionContent>
+                            </AccordionItem>
+                        </Accordion>
+                    </div>
+                  ) : (
+                    <div className="relative mt-2">
+                      <Textarea
+                          value={newComments[key] || ''}
+                          onChange={(e) => setNewComments((prev) => ({ ...prev, [key]: e.target.value }))}
+                          placeholder={`Reply to ${commentUser?.name}...`}
+                          className="pr-20 text-sm bg-background"
+                          rows={1}
+                      />
+                      <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleAddComment(event.id, day, event.userId, comment.id)} disabled={!newComments[key]?.trim()}>
+                              <Send className="h-4 w-4" />
                           </Button>
-                        </div>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleMarkAsRead(comment)}>
+                              <CheckCircle className="h-4 w-4"/>
+                          </Button>
                       </div>
                     </div>
-                  );
-                })}
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        )}
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          
+          {/* PENDING UPDATES */}
+          {filteredPendingUpdates.length > 0 && (
+            <div className="space-y-2">
+                <Accordion type="single" collapsible>
+                    <AccordionItem value="pending-updates">
+                        <AccordionTrigger className="font-semibold text-sm">
+                            <div className="flex items-center gap-2">
+                                <AlertTriangle className="h-4 w-4 text-orange-500" />
+                                Pending Event Updates ({filteredPendingUpdates.length})
+                            </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="pt-2 space-y-2">
+                        {filteredPendingUpdates.map(({ day, event, delegatedTo }) => {
+                            const key = `${day}-${event.id}`;
+                            const isCreatorView = event.creatorId === user.id;
+
+                            return (
+                            <div
+                                key={key}
+                                className="p-3 border rounded-lg bg-orange-50 dark:bg-orange-900/30"
+                            >
+                                <div className="flex justify-between items-start w-full">
+                                    <div className="flex flex-col">
+                                        <p className="font-semibold text-sm">{event.title}</p>
+                                        <p className="text-xs">
+                                        {isCreatorView ? (
+                                            <>
+                                            No update from{' '}
+                                            <span className="font-medium">{delegatedTo?.name}</span>{' '}
+                                            for {format(parseISO(day), 'dd MMM, yyyy')}.
+                                            </>
+                                        ) : (
+                                            <>
+                                            You have not updated this event for{' '}
+                                            {format(parseISO(day), 'dd MMM, yyyy')}.
+                                            </>
+                                        )}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        className="border-gray-400 text-gray-600 hover:bg-gray-100"
+                                        onClick={() => dismissPendingUpdate(event.id, day)}
+                                        >
+                                        Dismiss
+                                        </Button>
+                                        {user?.role === 'Admin' && (
+                                            <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10">
+                                                <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                <AlertDialogTitle>Delete Event?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    Are you sure you want to permanently delete "{event.title}"? This will remove it for all users.
+                                                </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDeleteEvent(event)}>Delete</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                            </AlertDialog>
+                                        )}
+                                    </div>
+                                </div>
+                                
+                                <div className="relative mt-2">
+                                <Textarea
+                                    rows={1}
+                                    className="text-xs pr-10 bg-white dark:bg-card"
+                                    placeholder={
+                                    isCreatorView
+                                        ? `Ask ${delegatedTo?.name || 'them'} for an update...`
+                                        : 'Add an update for this event...'
+                                    }
+                                    value={newComments[key] || ''}
+                                    onChange={(e) =>
+                                    setNewComments((prev) => ({
+                                        ...prev,
+                                        [key]: e.target.value,
+                                    }))
+                                    }
+                                />
+                                <Button
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                                    size="icon"
+                                    variant="ghost"
+                                    onClick={() => handleAddComment(event.id, day, event.userId)}
+                                    disabled={!newComments[key]?.trim()}
+                                >
+                                    <Send className="h-4 w-4" />
+                                </Button>
+                                </div>
+                            </div>
+                            );
+                        })}
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
