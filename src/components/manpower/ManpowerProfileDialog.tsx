@@ -543,10 +543,10 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                             control={form.control}
                             name="eic"
                             render={({ field }) => (
-                                <Select onValueChange={field.onChange} value={field.value}>
+                                <Select onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} value={field.value || 'none'}>
                                     <SelectTrigger><SelectValue placeholder="Select project..."/></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">None</SelectItem>
+                                        <SelectItem value="none">None</SelectItem>
                                         {projects.filter(p => p.isPlant).map(p => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
@@ -922,3 +922,4 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   );
 }
 
+    
