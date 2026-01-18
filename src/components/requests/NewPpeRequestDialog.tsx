@@ -46,7 +46,7 @@ interface NewPpeRequestDialogProps {
 }
 
 export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequestDialogProps) {
-  const { addPpeRequest, manpowerProfiles } = useAppContext();
+  const { addPpeRequest, manpowerProfiles, projects } = useAppContext();
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [isManpowerPopoverOpen, setIsManpowerPopoverOpen] = useState(false);
@@ -206,12 +206,15 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
                             {field.value ? (
                                 (() => {
                                     const profile = manpowerProfiles.find(mp => mp.id === field.value);
-                                    return profile ? (
+                                    if (!profile) return "Select person...";
+                                    const project = projects.find(p => p.id === profile.projectId);
+                                    const projectText = project ? `, ${project.name}` : '';
+                                    return (
                                         <div className="flex items-baseline gap-2">
                                             <span>{profile.name}</span>
-                                            <span className="text-muted-foreground text-xs">({profile.trade}{profile.eic ? `, ${profile.eic}` : ''})</span>
+                                            <span className="text-muted-foreground text-xs">({profile.trade}{projectText})</span>
                                         </div>
-                                    ) : "Select person...";
+                                    )
                                 })()
                             ) : "Select person..."}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -223,21 +226,25 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
                           <CommandList>
                             <CommandEmpty>No one found.</CommandEmpty>
                             <CommandGroup>
-                              {manpowerProfiles.map(mp => (
-                                <CommandItem
-                                  key={mp.id}
-                                  value={mp.name}
-                                  onSelect={() => {
-                                    form.setValue("manpowerId", mp.id);
-                                    setIsManpowerPopoverOpen(false);
-                                  }}
-                                >
-                                  <div className="flex justify-between items-center w-full">
-                                    <span>{mp.name}</span>
-                                    <span className="text-muted-foreground text-xs">({mp.trade}{mp.eic ? `, ${mp.eic}` : ''})</span>
-                                  </div>
-                                </CommandItem>
-                              ))}
+                              {manpowerProfiles.map(p => {
+                                const project = projects.find(proj => proj.id === p.projectId);
+                                const projectText = project ? `, ${project.name}` : '';
+                                return (
+                                    <CommandItem
+                                    key={p.id}
+                                    value={p.name}
+                                    onSelect={() => {
+                                        form.setValue("manpowerId", p.id);
+                                        setIsManpowerPopoverOpen(false);
+                                    }}
+                                    >
+                                    <div className="flex justify-between items-center w-full">
+                                        <span>{p.name}</span>
+                                        <span className="text-muted-foreground text-xs">({p.trade}{projectText})</span>
+                                    </div>
+                                    </CommandItem>
+                                )
+                              })}
                             </CommandGroup>
                           </CommandList>
                         </Command>

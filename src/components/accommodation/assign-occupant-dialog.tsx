@@ -26,7 +26,7 @@ interface AssignOccupantDialogProps {
 }
 
 export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: AssignOccupantDialogProps) {
-  const { assignOccupant, manpowerProfiles, buildings } = useAppContext();
+  const { assignOccupant, manpowerProfiles, buildings, projects } = useAppContext();
   const { toast } = useToast();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
@@ -99,12 +99,15 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
                       {field.value ? (
                           (() => {
                               const profile = availableManpower.find(mp => mp.id === field.value);
-                              return profile ? (
+                              if (!profile) return "Select person...";
+                              const project = projects.find(p => p.id === profile.projectId);
+                              const projectText = project ? `, ${project.name}` : '';
+                              return (
                                   <div className="flex items-baseline gap-2">
                                       <span>{profile.name}</span>
-                                      <span className="text-muted-foreground text-xs">({profile.trade}{profile.eic ? `, ${profile.eic}` : ''})</span>
+                                      <span className="text-muted-foreground text-xs">({profile.trade}{projectText})</span>
                                   </div>
-                              ) : "Select person...";
+                              )
                           })()
                       ) : "Select person..."}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -116,21 +119,25 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
                       <CommandList>
                         <CommandEmpty>No one available.</CommandEmpty>
                         <CommandGroup>
-                          {availableManpower.map(mp => (
-                            <CommandItem
-                              key={mp.id}
-                              value={mp.name}
-                              onSelect={() => {
-                                form.setValue("occupantId", mp.id);
-                                setIsPopoverOpen(false);
-                              }}
-                            >
-                                <div className="flex justify-between items-center w-full">
-                                    <span>{mp.name}</span>
-                                    <span className="text-muted-foreground text-xs">({mp.trade}{mp.eic ? `, ${mp.eic}` : ''})</span>
-                                </div>
-                            </CommandItem>
-                          ))}
+                          {availableManpower.map(mp => {
+                            const project = projects.find(proj => proj.id === mp.projectId);
+                            const projectText = project ? `, ${project.name}` : '';
+                            return (
+                                <CommandItem
+                                key={mp.id}
+                                value={mp.name}
+                                onSelect={() => {
+                                    form.setValue("occupantId", mp.id);
+                                    setIsPopoverOpen(false);
+                                }}
+                                >
+                                    <div className="flex justify-between items-center w-full">
+                                        <span>{mp.name}</span>
+                                        <span className="text-muted-foreground text-xs">({mp.trade}{projectText})</span>
+                                    </div>
+                                </CommandItem>
+                            )
+                          })}
                         </CommandGroup>
                       </CommandList>
                     </Command>

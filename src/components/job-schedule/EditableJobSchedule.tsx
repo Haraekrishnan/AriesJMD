@@ -68,7 +68,11 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
   const manpowerOptions = useMemo(() => {
     const regularManpower = manpowerProfiles
         .filter(p => p.status === 'Working')
-        .map(p => ({ value: p.id, label: `${p.name} (${p.trade}${p.eic ? `, ${p.eic}` : ''})`}));
+        .map(p => {
+            const project = projects.find(proj => proj.id === p.projectId);
+            const projectText = project ? `, ${project.name}` : '';
+            return { value: p.id, label: `${p.name} (${p.trade}${projectText})` };
+        });
 
     const adminAndManagers = users
         .filter(u => (u.role === 'Admin' || u.role === 'Manager') && u.status === 'active')

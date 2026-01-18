@@ -22,7 +22,7 @@ interface RejoinDialogProps {
 }
 
 export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
-  const { manpowerProfiles, rejoinFromLeave } = useAppContext();
+  const { manpowerProfiles, rejoinFromLeave, projects } = useAppContext();
   const { toast } = useToast();
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [rejoinDate, setRejoinDate] = useState<Date | undefined>(new Date());
@@ -84,10 +84,16 @@ export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
                   <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" className="w-full justify-between">
                       {selectedProfile ? (
-                          <div className="flex items-baseline gap-2">
-                              <span>{selectedProfile.name}</span>
-                              <span className="text-muted-foreground text-xs">({selectedProfile.trade}{selectedProfile.eic ? `, ${selectedProfile.eic}` : ''})</span>
-                          </div>
+                          (() => {
+                              const project = projects.find(p => p.id === selectedProfile.projectId);
+                              const projectText = project ? `, ${project.name}` : '';
+                              return (
+                                  <div className="flex items-baseline gap-2">
+                                      <span>{selectedProfile.name}</span>
+                                      <span className="text-muted-foreground text-xs">({selectedProfile.trade}{projectText})</span>
+                                  </div>
+                              )
+                          })()
                       ) : "Select employee..."}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
@@ -98,21 +104,25 @@ export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
                       <CommandList>
                         <CommandEmpty>No employees on leave.</CommandEmpty>
                         <CommandGroup>
-                          {onLeaveProfiles.map(p => (
-                            <CommandItem
-                              key={p.id}
-                              value={p.name}
-                              onSelect={() => {
-                                setSelectedProfileId(p.id);
-                                setIsManpowerPopoverOpen(false);
-                              }}
-                            >
-                                <div className="flex justify-between items-center w-full">
-                                    <span>{p.name}</span>
-                                    <span className="text-muted-foreground text-xs">({p.trade}{p.eic ? `, ${p.eic}` : ''})</span>
-                                </div>
-                            </CommandItem>
-                          ))}
+                          {onLeaveProfiles.map(p => {
+                            const project = projects.find(proj => proj.id === p.projectId);
+                            const projectText = project ? `, ${project.name}` : '';
+                            return (
+                                <CommandItem
+                                key={p.id}
+                                value={p.name}
+                                onSelect={() => {
+                                    setSelectedProfileId(p.id);
+                                    setIsManpowerPopoverOpen(false);
+                                }}
+                                >
+                                    <div className="flex justify-between items-center w-full">
+                                        <span>{p.name}</span>
+                                        <span className="text-muted-foreground text-xs">({p.trade}{projectText})</span>
+                                    </div>
+                                </CommandItem>
+                            )
+                          })}
                         </CommandGroup>
                       </CommandList>
                     </Command>

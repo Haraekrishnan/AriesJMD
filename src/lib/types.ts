@@ -2,6 +2,7 @@
 
 
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -474,6 +475,7 @@ export type ManpowerProfile = {
   workOrderNumber?: string;
   labourLicenseNo?: string;
   eic?: string; 
+  projectId?: string;
   joiningDate?: string | null; // ISO
   plantName?: string; 
 
@@ -1073,4 +1075,5 @@ export type VehicleUsageRecord = {
     };
   };
 };
+
 

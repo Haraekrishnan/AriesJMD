@@ -34,7 +34,7 @@ interface IssueMemoDialogProps {
 }
 
 export default function IssueMemoDialog({ isOpen, setIsOpen }: IssueMemoDialogProps) {
-  const { manpowerProfiles, addMemoOrWarning } = useAppContext();
+  const { manpowerProfiles, addMemoOrWarning, projects } = useAppContext();
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [isManpowerPopoverOpen, setIsManpowerPopoverOpen] = useState(false);
@@ -124,21 +124,25 @@ export default function IssueMemoDialog({ isOpen, setIsOpen }: IssueMemoDialogPr
                       <CommandList>
                         <CommandEmpty>No employee found.</CommandEmpty>
                         <CommandGroup>
-                          {manpowerProfiles.map(p => (
-                            <CommandItem
-                              key={p.id}
-                              value={p.name}
-                              onSelect={() => {
-                                form.setValue("manpowerId", p.id);
-                                setIsManpowerPopoverOpen(false);
-                              }}
-                            >
-                               <div className="flex justify-between items-center w-full">
-                                  <span>{p.name}</span>
-                                  <span className="text-muted-foreground text-xs">({p.trade}{p.eic ? `, ${p.eic}` : ''})</span>
-                               </div>
-                            </CommandItem>
-                          ))}
+                          {manpowerProfiles.map(p => {
+                            const project = projects.find(proj => proj.id === p.projectId);
+                            const projectText = project ? `, ${project.name}` : '';
+                            return (
+                                <CommandItem
+                                key={p.id}
+                                value={p.name}
+                                onSelect={() => {
+                                    form.setValue("manpowerId", p.id);
+                                    setIsManpowerPopoverOpen(false);
+                                }}
+                                >
+                                <div className="flex justify-between items-center w-full">
+                                    <span>{p.name}</span>
+                                    <span className="text-muted-foreground text-xs">({p.trade}{projectText})</span>
+                                </div>
+                                </CommandItem>
+                            )
+                          })}
                         </CommandGroup>
                       </CommandList>
                     </Command>

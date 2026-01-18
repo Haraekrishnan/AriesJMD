@@ -52,6 +52,7 @@ const profileSchema = z.object({
   workOrderNumber: z.string().optional(),
   labourLicenseNo: z.string().optional(),
   eic: z.string().optional(),
+  projectId: z.string().optional(),
   joiningDate: z.date().optional().nullable(),
   passIssueDate: z.date().optional().nullable(),
   workOrderExpiryDate: z.date().optional().nullable(),
@@ -318,6 +319,8 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
         }
         dataToSubmit.epNumberHistory = epHistory;
         delete dataToSubmit.newEpNumber;
+        
+        dataToSubmit.projectId = data.projectId || null;
 
         if (isBecomingOnLeave && data.currentLeave?.leaveStartDate) {
             const leaveHistory = liveProfile?.leaveHistory || {};
@@ -509,6 +512,23 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                               </Select>
                           )}/>
                       </div>
+                      <div><Label>EIC</Label><Input {...form.register('eic')} /></div>
+                      <div>
+                        <Label>Project Location</Label>
+                        <Controller
+                            control={form.control}
+                            name="projectId"
+                            render={({ field }) => (
+                                <Select onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} value={field.value || 'none'}>
+                                    <SelectTrigger><SelectValue placeholder="Select project..."/></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">None</SelectItem>
+                                        {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                        />
+                      </div>
                       <div><Label>Mobile Number</Label><Input {...form.register('mobileNumber')} /></div>
                       <div><Label>Emergency Contact Number</Label><Input {...form.register('emergencyContactNumber')} /></div>
                       <div><Label>Relationship</Label><Input {...form.register('emergencyContactRelation')} /></div>
@@ -537,22 +557,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                       <h3 className="text-lg font-semibold border-b pb-2">Contract & Policy Details</h3>
                       <div><Label>Work Order Number</Label><Input {...form.register('workOrderNumber')} /></div>
                       <div><Label>Labour License No</Label><Input {...form.register('labourLicenseNo')} /></div>
-                      <div>
-                        <Label>Project Location (EIC)</Label>
-                        <Controller
-                            control={form.control}
-                            name="eic"
-                            render={({ field }) => (
-                                <Select onValueChange={(value) => field.onChange(value === 'none' ? '' : value)} value={field.value || 'none'}>
-                                    <SelectTrigger><SelectValue placeholder="Select project..."/></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">None</SelectItem>
-                                        {projects.filter(p => p.isPlant).map(p => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            )}
-                        />
-                      </div>
+                      
                       <div className="space-y-2">
                           <Label>EP Number</Label>
                            <Input {...form.register('epNumber')} disabled={!!profile && !isChangingEp} />

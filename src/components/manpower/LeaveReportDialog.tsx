@@ -36,7 +36,7 @@ interface LeaveReportDialogProps {
 }
 
 export default function LeaveReportDialog({ isOpen, setIsOpen }: LeaveReportDialogProps) {
-  const { manpowerProfiles, addLeaveForManpower } = useAppContext();
+  const { manpowerProfiles, addLeaveForManpower, projects } = useAppContext();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -60,11 +60,15 @@ export default function LeaveReportDialog({ isOpen, setIsOpen }: LeaveReportDial
   const manpowerOptions = useMemo(() => {
     return manpowerProfiles
       .filter(p => p.status === 'Working')
-      .map(p => ({ 
-          value: p.id, 
-          label: `${p.name} (${p.trade}${p.eic ? `, ${p.eic}` : ''})`
-      }));
-  }, [manpowerProfiles]);
+      .map(p => {
+          const project = projects.find(proj => proj.id === p.projectId);
+          const projectText = project ? `, ${project.name}` : '';
+          return { 
+            value: p.id, 
+            label: `${p.name} (${p.trade}${projectText})`
+        };
+    });
+  }, [manpowerProfiles, projects]);
 
   const filteredManpowerOptions = useMemo(() => {
     if (!searchTerm) {
