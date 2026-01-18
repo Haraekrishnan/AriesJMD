@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -85,7 +86,7 @@ export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
                       {selectedProfile ? (
                           <div className="flex items-baseline gap-2">
                               <span>{selectedProfile.name}</span>
-                              <span className="text-muted-foreground text-xs">({selectedProfile.trade})</span>
+                              <span className="text-muted-foreground text-xs">({selectedProfile.trade}{selectedProfile.eic ? `, ${selectedProfile.eic}` : ''})</span>
                           </div>
                       ) : "Select employee..."}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -108,7 +109,7 @@ export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
                             >
                                 <div className="flex justify-between items-center w-full">
                                     <span>{p.name}</span>
-                                    <span className="text-muted-foreground text-xs">({p.trade})</span>
+                                    <span className="text-muted-foreground text-xs">({p.trade}{p.eic ? `, ${p.eic}` : ''})</span>
                                 </div>
                             </CommandItem>
                           ))}

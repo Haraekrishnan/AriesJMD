@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -61,7 +60,10 @@ export default function LeaveReportDialog({ isOpen, setIsOpen }: LeaveReportDial
   const manpowerOptions = useMemo(() => {
     return manpowerProfiles
       .filter(p => p.status === 'Working')
-      .map(p => ({ value: p.id, label: `${p.name} (${p.trade})`}));
+      .map(p => ({ 
+          value: p.id, 
+          label: `${p.name} (${p.trade}${p.eic ? `, ${p.eic}` : ''})`
+      }));
   }, [manpowerProfiles]);
 
   const filteredManpowerOptions = useMemo(() => {

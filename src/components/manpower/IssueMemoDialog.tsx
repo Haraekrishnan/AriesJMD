@@ -37,11 +37,14 @@ export default function IssueMemoDialog({ isOpen, setIsOpen }: IssueMemoDialogPr
   const { manpowerProfiles, addMemoOrWarning } = useAppContext();
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
+  const [isManpowerPopoverOpen, setIsManpowerPopoverOpen] = useState(false);
 
   const form = useForm<MemoFormValues>({
     resolver: zodResolver(memoSchema),
     defaultValues: { type: 'Memo', date: new Date() },
   });
+  
+  const selectedManpowerId = form.watch('manpowerId');
 
   const onSubmit = (data: MemoFormValues) => {
     addMemoOrWarning(data.manpowerId, {
@@ -93,13 +96,7 @@ export default function IssueMemoDialog({ isOpen, setIsOpen }: IssueMemoDialogPr
     }
     setIsOpen(open);
   };
-
-  const manpowerOptions = useMemo(() => {
-    return manpowerProfiles.map(p => ({ value: p.id, label: `${p.name} (${p.trade})` }));
-  }, [manpowerProfiles]);
-
-  const selectedManpowerId = form.watch('manpowerId');
-
+  
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
@@ -114,10 +111,10 @@ export default function IssueMemoDialog({ isOpen, setIsOpen }: IssueMemoDialogPr
               name="manpowerId"
               control={form.control}
               render={({ field }) => (
-                <Popover>
+                <Popover open={isManpowerPopoverOpen} onOpenChange={setIsManpowerPopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" className="w-full justify-between">
-                      {selectedManpowerId ? manpowerOptions.find(o => o.value === selectedManpowerId)?.label : "Select employee..."}
+                      {selectedManpowerId ? manpowerProfiles.find(p => p.id === selectedManpowerId)?.name : "Select employee..."}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
@@ -127,15 +124,19 @@ export default function IssueMemoDialog({ isOpen, setIsOpen }: IssueMemoDialogPr
                       <CommandList>
                         <CommandEmpty>No employee found.</CommandEmpty>
                         <CommandGroup>
-                          {manpowerOptions.map(option => (
+                          {manpowerProfiles.map(p => (
                             <CommandItem
-                              key={option.value}
-                              value={option.label}
+                              key={p.id}
+                              value={p.name}
                               onSelect={() => {
-                                form.setValue("manpowerId", option.value);
+                                form.setValue("manpowerId", p.id);
+                                setIsManpowerPopoverOpen(false);
                               }}
                             >
-                              {option.label}
+                               <div className="flex justify-between items-center w-full">
+                                  <span>{p.name}</span>
+                                  <span className="text-muted-foreground text-xs">({p.trade}{p.eic ? `, ${p.eic}` : ''})</span>
+                               </div>
                             </CommandItem>
                           ))}
                         </CommandGroup>

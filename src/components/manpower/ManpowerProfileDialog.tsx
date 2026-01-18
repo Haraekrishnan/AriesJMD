@@ -164,7 +164,7 @@ const getInitialDocs = (profileData?: ManpowerProfile) => {
 };
 
 export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: ManpowerProfileDialogProps) {
-  const { user, users, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles, deleteMemoRecord, updateMemoRecord, deletePpeHistoryRecord, deleteLogbookRecord } = useAppContext();
+  const { user, users, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles, deleteMemoRecord, updateMemoRecord, deletePpeHistoryRecord, deleteLogbookRecord, projects } = useAppContext();
   const { toast } = useToast();
   const [editingMemo, setEditingMemo] = useState<MemoRecord | null>(null);
   const [editingPpeRecord, setEditingPpeRecord] = useState<PpeHistoryRecord | null>(null);
@@ -537,7 +537,22 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                       <h3 className="text-lg font-semibold border-b pb-2">Contract & Policy Details</h3>
                       <div><Label>Work Order Number</Label><Input {...form.register('workOrderNumber')} /></div>
                       <div><Label>Labour License No</Label><Input {...form.register('labourLicenseNo')} /></div>
-                      <div><Label>EIC</Label><Input {...form.register('eic')} /></div>
+                      <div>
+                        <Label>Project Location (EIC)</Label>
+                        <Controller
+                            control={form.control}
+                            name="eic"
+                            render={({ field }) => (
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <SelectTrigger><SelectValue placeholder="Select project..."/></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="">None</SelectItem>
+                                        {projects.filter(p => p.isPlant).map(p => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                        />
+                      </div>
                       <div className="space-y-2">
                           <Label>EP Number</Label>
                            <Input {...form.register('epNumber')} disabled={!!profile && !isChangingEp} />
@@ -907,4 +922,3 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   );
 }
 
-    

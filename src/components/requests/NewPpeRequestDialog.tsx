@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -208,7 +209,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
                                     return profile ? (
                                         <div className="flex items-baseline gap-2">
                                             <span>{profile.name}</span>
-                                            <span className="text-muted-foreground text-xs">({profile.trade})</span>
+                                            <span className="text-muted-foreground text-xs">({profile.trade}{profile.eic ? `, ${profile.eic}` : ''})</span>
                                         </div>
                                     ) : "Select person...";
                                 })()
@@ -233,7 +234,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
                                 >
                                   <div className="flex justify-between items-center w-full">
                                     <span>{mp.name}</span>
-                                    <span className="text-muted-foreground text-xs">({mp.trade})</span>
+                                    <span className="text-muted-foreground text-xs">({mp.trade}{mp.eic ? `, ${mp.eic}` : ''})</span>
                                   </div>
                                 </CommandItem>
                               ))}

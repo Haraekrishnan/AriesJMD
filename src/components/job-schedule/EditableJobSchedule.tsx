@@ -68,11 +68,16 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
   const manpowerOptions = useMemo(() => {
     const regularManpower = manpowerProfiles
         .filter(p => p.status === 'Working')
-        .map(p => ({ value: p.id, label: `${p.name} (${p.trade})`, projectId: p.eic }));
+        .map(p => ({ value: p.id, label: `${p.name} (${p.trade}${p.eic ? `, ${p.eic}` : ''})`}));
 
     const adminAndManagers = users
         .filter(u => (u.role === 'Admin' || u.role === 'Manager') && u.status === 'active')
-        .map(u => ({ value: u.id, label: `${u.name} (${u.role})`, projectId: u.projectId }));
+        .map(u => {
+            const projectName = u.projectIds && u.projectIds.length > 0
+                ? projects.find(p => p.id === u.projectIds[0])?.name
+                : '';
+            return { value: u.id, label: `${u.name} (${u.role}${projectName ? `, ${projectName}`: ''})` };
+        });
     
     const combinedMap = new Map();
     regularManpower.forEach(u => combinedMap.set(u.value, u));
@@ -82,7 +87,7 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
         }
     });
     return Array.from(combinedMap.values());
-  }, [manpowerProfiles, users]);
+  }, [manpowerProfiles, users, projects]);
 
 
   const watchedItems = form.watch('items');
