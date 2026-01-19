@@ -1,16 +1,15 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '../ui/label';
-import { ManpowerProfile, LogbookRecord, LogbookStatus } from '@/lib/types';
+import { ManpowerProfile, LogbookStatus, LogbookRecord, Comment } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
-import { ChevronsUpDown, Trash2, MessageSquare } from 'lucide-react';
+import { ChevronsUpDown, Trash2, MessageSquare, FileDown } from 'lucide-react';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -23,6 +22,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 import LogbookSummary from './LogbookSummary';
+import * as ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 interface LogbookRegisterDialogProps {
   isOpen: boolean;
@@ -110,9 +111,70 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
     }
   };
 
+  const handleExportExcel = async () => {
+    if (manpowerProfiles.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "No Data to Export",
+        description: "There are no manpower profiles to generate a history report from.",
+      });
+      return;
+    }
+
+    const allHistoryRecords = manpowerProfiles.flatMap(profile => {
+        const history = profile.logbookHistory ? (Array.isArray(profile.logbookHistory) ? profile.logbookHistory : Object.values(profile.logbookHistory)) : [];
+        return history.map(record => {
+            const enteredBy = users.find(u => u.id === record.enteredById);
+            const requestedBy = record.requestedById ? users.find(u => u.id === record.requestedById) : null;
+            return {
+                'Employee Name': profile.name,
+                'Trade': profile.trade,
+                'Status': record.status || 'N/A',
+                'In Date': record.inDate ? format(parseISO(record.inDate), 'dd-MM-yyyy') : '',
+                'Out Date': record.outDate ? format(parseISO(record.outDate), 'dd-MM-yyyy') : '',
+                'Remarks': record.remarks || '',
+                'Entry Date': record.entryDate ? format(parseISO(record.entryDate), 'dd-MM-yyyy p') : '',
+                'Entered By': enteredBy?.name || 'Unknown',
+                'Requested By': requestedBy?.name || 'N/A',
+            };
+        });
+    });
+
+    if (allHistoryRecords.length === 0) {
+        toast({ title: 'No History Found', description: 'No logbook history records to export.' });
+        return;
+    }
+    
+    allHistoryRecords.sort((a, b) => {
+        const dateA = a['Entry Date'] ? parseISO(a['Entry Date']) : new Date(0);
+        const dateB = b['Entry Date'] ? parseISO(b['Entry Date']) : new Date(0);
+        return dateB.getTime() - dateA.getTime();
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Logbook History');
+
+    worksheet.columns = [
+      { header: 'Employee Name', key: 'Employee Name', width: 25 },
+      { header: 'Trade', key: 'Trade', width: 20 },
+      { header: 'Status', key: 'Status', width: 20 },
+      { header: 'In Date', key: 'In Date', width: 15 },
+      { header: 'Out Date', key: 'Out Date', width: 15 },
+      { header: 'Remarks', key: 'Remarks', width: 40 },
+      { header: 'Entry Date', key: 'Entry Date', width: 20 },
+      { header: 'Entered By', key: 'Entered By', width: 20 },
+      { header: 'Requested By', key: 'Requested By', width: 20 },
+    ];
+    
+    worksheet.addRows(allHistoryRecords);
+    
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), 'Logbook_History_Report.xlsx');
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-4xl h-full max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-4xl h-full max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Logbook Register</DialogTitle>
           <DialogDescription>Update logbook status for multiple employees.</DialogDescription>
@@ -212,7 +274,10 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
           </ScrollArea>
         </div>
 
-        <DialogFooter className="mt-auto">
+        <DialogFooter className="mt-auto flex justify-between w-full">
+          <Button variant="secondary" onClick={handleExportExcel} type="button">
+              <FileDown className="mr-2 h-4 w-4"/> Export History
+          </Button>
           <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
         </DialogFooter>
       </DialogContent>
