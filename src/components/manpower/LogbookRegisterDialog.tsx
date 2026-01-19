@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -113,16 +112,17 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
   };
 
   const handleExportExcel = async () => {
-    if (manpowerProfiles.length === 0) {
+    const profilesToExport = filteredProfilesForStatus;
+    if (profilesToExport.length === 0) {
       toast({
         variant: "destructive",
         title: "No Data to Export",
-        description: "There are no manpower profiles to generate a history report from.",
+        description: "There are no manpower profiles to generate a history report from for the selected filter.",
       });
       return;
     }
 
-    const allRecords = manpowerProfiles.flatMap(profile => {
+    const allRecords = profilesToExport.flatMap(profile => {
         const history = profile.logbookHistory ? (Array.isArray(profile.logbookHistory) ? Object.values(profile.logbookHistory) : Object.values(profile.logbookHistory || {})) : [];
 
         if (history.length > 0) {
@@ -166,18 +166,18 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
     });
 
     if (allRecords.length === 0) {
-        toast({ title: 'No History Found', description: 'No logbook history or pending records to export.' });
+        toast({ title: 'No History Found', description: 'No logbook history or pending records to export for the selected filter.' });
         return;
     }
     
     allRecords.sort((a, b) => {
         const dateA = a['Entry Date'] ? parseISO(a['Entry Date']) : null;
         const dateB = b['Entry Date'] ? parseISO(b['Entry Date']) : null;
-        if (!dateA && !dateB) return a['Employee Name'].localeCompare(b['Employee Name']);
+        if (!dateA && !dateB) return (a['Employee Name'] || '').localeCompare(b['Employee Name'] || '');
         if (!dateA) return 1;
         if (!dateB) return -1;
         if (dateB.getTime() === dateA.getTime()) {
-            return a['Employee Name'].localeCompare(b['Employee Name']);
+            return (a['Employee Name'] || '').localeCompare(b['Employee Name'] || '');
         }
         return dateB.getTime() - dateA.getTime();
     });
@@ -310,7 +310,7 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
 
         <DialogFooter className="mt-auto flex justify-between w-full">
           <Button variant="secondary" onClick={handleExportExcel} type="button">
-              <FileDown className="mr-2 h-4 w-4"/> Export History
+              <FileDown className="mr-2 h-4 w-4"/> Excel Report
           </Button>
           <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
         </DialogFooter>
