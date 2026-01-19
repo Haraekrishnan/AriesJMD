@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -10,7 +11,7 @@ import { Badge } from '../ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { ChevronsUpDown, Trash2, MessageSquare, FileDown } from 'lucide-react';
-import { format, parseISO, formatDistanceToNow } from 'date-fns';
+import { format, parseISO, formatDistanceToNow, isValid } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -121,33 +122,63 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
       return;
     }
 
-    const allHistoryRecords = manpowerProfiles.flatMap(profile => {
-        const history = profile.logbookHistory ? (Array.isArray(profile.logbookHistory) ? profile.logbookHistory : Object.values(profile.logbookHistory)) : [];
-        return history.map(record => {
-            const enteredBy = users.find(u => u.id === record.enteredById);
-            const requestedBy = record.requestedById ? users.find(u => u.id === record.requestedById) : null;
-            return {
+    const allRecords = manpowerProfiles.flatMap(profile => {
+        const history = profile.logbookHistory ? (Array.isArray(profile.logbookHistory) ? Object.values(profile.logbookHistory) : Object.values(profile.logbookHistory || {})) : [];
+
+        if (history.length > 0) {
+            return history.map(record => {
+                const enteredBy = users.find(u => u.id === record.enteredById);
+                const requestedBy = record.requestedById ? users.find(u => u.id === record.requestedById) : null;
+                const approver = record.approverId ? users.find(u => u.id === record.approverId) : null;
+                
+                return {
+                    'Employee Name': profile.name,
+                    'Trade': profile.trade,
+                    'Status': record.status || 'N/A',
+                    'In Date': record.inDate ? format(parseISO(record.inDate), 'dd-MM-yyyy') : '',
+                    'Out Date': record.outDate ? format(parseISO(record.outDate), 'dd-MM-yyyy') : '',
+                    'Request Remarks': record.requestRemarks || '',
+                    'Approver Remarks': record.approverComment || '',
+                    'Manual Entry Remarks': record.remarks || '',
+                    'Entry Date': record.entryDate ? format(parseISO(record.entryDate), 'dd-MM-yyyy p') : '',
+                    'Entered By': enteredBy?.name || 'Unknown',
+                    'Requested By': requestedBy?.name || 'N/A',
+                    'Approved/Rejected By': approver?.name || 'N/A',
+                };
+            });
+        } else if (!profile.logbook || profile.logbook.status === 'Pending') {
+            return [{
                 'Employee Name': profile.name,
                 'Trade': profile.trade,
-                'Status': record.status || 'N/A',
-                'In Date': record.inDate ? format(parseISO(record.inDate), 'dd-MM-yyyy') : '',
-                'Out Date': record.outDate ? format(parseISO(record.outDate), 'dd-MM-yyyy') : '',
-                'Remarks': record.remarks || '',
-                'Entry Date': record.entryDate ? format(parseISO(record.entryDate), 'dd-MM-yyyy p') : '',
-                'Entered By': enteredBy?.name || 'Unknown',
-                'Requested By': requestedBy?.name || 'N/A',
-            };
-        });
+                'Status': 'Pending',
+                'In Date': '',
+                'Out Date': '',
+                'Request Remarks': '',
+                'Approver Remarks': '',
+                'Manual Entry Remarks': '',
+                'Entry Date': '',
+                'Entered By': '',
+                'Requested By': '',
+                'Approved/Rejected By': '',
+            }];
+        }
+        return [];
     });
 
-    if (allHistoryRecords.length === 0) {
-        toast({ title: 'No History Found', description: 'No logbook history records to export.' });
+    if (allRecords.length === 0) {
+        toast({ title: 'No History Found', description: 'No logbook history or pending records to export.' });
         return;
     }
     
-    allHistoryRecords.sort((a, b) => {
-        const dateA = a['Entry Date'] ? parseISO(a['Entry Date']) : new Date(0);
-        const dateB = b['Entry Date'] ? parseISO(b['Entry Date']) : new Date(0);
+    allRecords.sort((a, b) => {
+        const dateA = a['Entry Date'] ? parseISO(a['Entry Date']) : null;
+        const dateB = b['Entry Date'] ? parseISO(b['Entry Date']) : null;
+        if (!dateA && !dateB) return a['Employee Name'].localeCompare(b['Employee Name']);
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        if (dateB.getTime() === dateA.getTime()) {
+            return a['Employee Name'].localeCompare(b['Employee Name']);
+        }
         return dateB.getTime() - dateA.getTime();
     });
 
@@ -160,13 +191,16 @@ export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegi
       { header: 'Status', key: 'Status', width: 20 },
       { header: 'In Date', key: 'In Date', width: 15 },
       { header: 'Out Date', key: 'Out Date', width: 15 },
-      { header: 'Remarks', key: 'Remarks', width: 40 },
+      { header: 'Request Remarks', key: 'Request Remarks', width: 40 },
+      { header: 'Approver Remarks', key: 'Approver Remarks', width: 40 },
+      { header: 'Manual Entry Remarks', key: 'Manual Entry Remarks', width: 40 },
       { header: 'Entry Date', key: 'Entry Date', width: 20 },
       { header: 'Entered By', key: 'Entered By', width: 20 },
       { header: 'Requested By', key: 'Requested By', width: 20 },
+      { header: 'Approved/Rejected By', key: 'Approved/Rejected By', width: 20 },
     ];
     
-    worksheet.addRows(allHistoryRecords);
+    worksheet.addRows(allRecords);
     
     const buffer = await workbook.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), 'Logbook_History_Report.xlsx');
