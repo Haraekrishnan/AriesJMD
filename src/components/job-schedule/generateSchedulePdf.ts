@@ -37,7 +37,12 @@ export async function generateSchedulePdf(
 ) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
+  
   const margin = 28;
+  const usableWidth = pageWidth - margin * 2;
+  const headerBoxHeight = 42;
+  const headerStartY = margin;
+  const headerBottomY = headerStartY + headerBoxHeight;
 
   const formattedDate = format(selectedDate, 'dd-MM-yyyy');
   const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
@@ -60,14 +65,19 @@ export async function generateSchedulePdf(
     item.remarks || '',
   ]);
 
-  const headerBoxHeight = 42;
-  const tableStartY = margin + headerBoxHeight + 5; // Fixed start position for the table
+  const tableStartY = headerBottomY;
 
   doc.autoTable({
+    startY: tableStartY,
+    tableWidth: usableWidth,
+    margin: {
+        left: margin,
+        right: margin,
+        top: tableStartY,
+    },
     head: [headRow],
     body: bodyRows,
     theme: 'grid',
-    margin: { top: tableStartY },
     styles: {
         fontSize: 7,
         lineWidth: 0.2,
@@ -84,26 +94,25 @@ export async function generateSchedulePdf(
     },
     columnStyles: {
         0: { cellWidth: 25 },
-        1: { cellWidth: 65 },
+        1: { cellWidth: 75 },
         2: { cellWidth: 35 },
-        3: { cellWidth: 35 },
-        4: { cellWidth: 70 },
-        5: { cellWidth: 50 },
-        6: { cellWidth: 35, halign: 'center' },
-        7: { cellWidth: 55 },
-        8: { cellWidth: 30, halign: 'center' },
-        9: { cellWidth: 'auto' },
+        3: { cellWidth: 40 },
+        4: { cellWidth: 80 },
+        5: { cellWidth: 55 },
+        6: { cellWidth: 45, halign: 'center' },
+        7: { cellWidth: 65 },
+        8: { cellWidth: 40, halign: 'center' },
+        9: { cellWidth: usableWidth - 460 },
     },
     didDrawPage: (data) => {
       // === HEADER SECTION ======================================================
-      const headerStartY = margin;
       const contentStartY = headerStartY + 2;
       
       doc.setLineWidth(0.2);
       doc.setDrawColor(0);
 
       // Outer box
-      doc.rect(margin, headerStartY, pageWidth - margin * 2, headerBoxHeight); 
+      doc.rect(margin, headerStartY, usableWidth, headerBoxHeight); 
       
       // Divider line
       const lineY = contentStartY + 20;
