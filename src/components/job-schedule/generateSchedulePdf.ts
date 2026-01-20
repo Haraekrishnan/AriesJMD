@@ -2,7 +2,7 @@
 
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import type { JobSchedule } from '@/lib/types';
 
 declare module 'jspdf' {
@@ -31,13 +31,14 @@ async function fetchImageAsBase64(url: string): Promise<string> {
 
 export async function generateSchedulePdf(
   schedule: JobSchedule | undefined,
-  projectName: string,
-  selectedDate: Date
+  scheduleDate: Date,
+  reportDate: Date
 ) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   
-  const formattedDate = format(selectedDate, 'dd-MM-yyyy');
+  const formattedScheduleDate = format(scheduleDate, 'dd-MM-yyyy');
+  const formattedReportDate = format(reportDate, 'dd-MM-yyyy');
   const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
 
   const headRow = [
@@ -132,13 +133,13 @@ export async function generateSchedulePdf(
       doc.setFont('helvetica', 'normal');
       doc.text('Division/Branch: I & M / Jamnagar', margin + 5, lineY + 12);
       doc.text('Sub-Div.: R.A', pageWidth / 2, lineY + 12, { align: 'center' });
-      doc.text(formattedDate, pageWidth - margin - 5, lineY + 12, { align: 'right' });
+      doc.text(formattedScheduleDate, pageWidth - margin - 5, lineY + 12, { align: 'right' });
       
       // === FOOTER SECTION =======================================================
       const footerHeight = 50;
       const footerMidX = margin + usableWidth / 2;
 
-      // Start footer EXACTLY at table bottom
+      // Start footer immediately after table
       let footerStartY = data.cursor.y;
 
       // Page overflow check
@@ -183,7 +184,7 @@ export async function generateSchedulePdf(
 
       // ---- RIGHT COLUMN BOTTOM ----
       doc.text(
-        `Date: ${formattedDate}`,
+        `Date: ${formattedReportDate}`,
         footerMidX + 6,
         footerStartY + footerHeight / 2 + 15
       );
@@ -196,7 +197,7 @@ export async function generateSchedulePdf(
         footerStartY + footerHeight + 10
       );
 
-      // ---- PAGE NUMBER ----
+      // ---- PAGE NUMBER (RIGHT SIDE, SAME LINE AS REF) ----
       const pageCount = (doc as any).internal.getNumberOfPages();
       doc.text(
         `Page ${data.pageNumber} of ${pageCount}`,
@@ -207,5 +208,5 @@ export async function generateSchedulePdf(
     }
   });
 
-  doc.save(`JobSchedule_${format(selectedDate, 'yyyy-MM-dd')}.pdf`);
+  doc.save(`JobSchedule_${format(scheduleDate, 'yyyy-MM-dd')}.pdf`);
 }

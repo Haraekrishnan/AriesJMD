@@ -1,4 +1,3 @@
-
 import ExcelJS from 'exceljs';
 import { format } from 'date-fns';
 import { saveAs } from 'file-saver';
@@ -15,15 +14,15 @@ async function fetchImageAsArrayBuffer(url: string) {
 
 export async function generateScheduleExcel(
   schedule: JobSchedule | undefined,
-  projectName: string,
-  selectedDate: Date
+  scheduleDate: Date,
+  reportDate: Date
 ) {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Job Schedule');
 
   ws.pageSetup.orientation = 'landscape';
 
-  const formattedDate = format(selectedDate, 'dd-MM-yyyy');
+  const formattedReportDate = format(reportDate, 'dd-MM-yyyy');
 
   // === LOGO =============================================================
   try {
@@ -62,7 +61,7 @@ export async function generateScheduleExcel(
   const row3 = ws.addRow([]);
   ws.mergeCells(3, 1, 3, totalCols);
   const cell3 = ws.getCell(3, 1);
-  cell3.value = `Project/ Vessel’s name: ${projectName}`;
+  cell3.value = `Project/ Vessel’s name: Daily Schedule for ${format(scheduleDate, 'dd-MM-yyyy')}`;
   cell3.alignment = { vertical: "middle" };
   
   ws.getRow(1).height = 35;
@@ -155,7 +154,7 @@ export async function generateScheduleExcel(
   ws.mergeCells(`G${rowIndex}:J${rowIndex}`);
 
   ws.getCell(`A${rowIndex}`).value = 'Scheduled by:';
-  ws.getCell(`G${rowIndex}`).value = `Date: ${formattedDate}`;
+  ws.getCell(`G${rowIndex}`).value = `Date: ${formattedReportDate}`;
   ws.getCell(`G${rowIndex}`).alignment = { horizontal: 'right' };
 
   rowIndex += 2;
@@ -168,5 +167,5 @@ export async function generateScheduleExcel(
   ws.getCell(`G${rowIndex}`).alignment = { horizontal: 'right' };
 
   const buffer = await wb.xlsx.writeBuffer();
-  saveAs(new Blob([buffer]), `JobSchedule_${format(selectedDate, 'yyyy-MM-dd')}.xlsx`);
+  saveAs(new Blob([buffer]), `JobSchedule_${format(scheduleDate, 'yyyy-MM-dd')}.xlsx`);
 }

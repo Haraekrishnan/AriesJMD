@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -45,12 +44,10 @@ export default function JobSchedulePage() {
             }))
         };
 
-        const projectName = `Daily Schedule for ${format(selectedDate, 'dd-MM-yyyy')}`;
-
         if (type === 'excel') {
-            await generateScheduleExcel(scheduleWithNames, projectName, footerDate);
+            await generateScheduleExcel(scheduleWithNames, selectedDate, footerDate);
         } else {
-            await generateSchedulePdf(scheduleWithNames, projectName, footerDate);
+            await generateSchedulePdf(scheduleWithNames, selectedDate, footerDate);
         }
     };
 
