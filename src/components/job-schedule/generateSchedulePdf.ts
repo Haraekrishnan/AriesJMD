@@ -107,6 +107,7 @@ export async function generateSchedulePdf(
     didDrawPage: (data) => {
       // === HEADER SECTION ======================================================
       const contentStartY = headerStartY + 2;
+      const lineY = contentStartY + 20;
       
       doc.setLineWidth(0.2);
       doc.setDrawColor(0);
@@ -115,7 +116,6 @@ export async function generateSchedulePdf(
       doc.rect(margin, headerStartY, usableWidth, headerBoxHeight); 
       
       // Divider line
-      const lineY = contentStartY + 20;
       doc.line(margin, lineY, pageWidth - margin, lineY);
 
       // Logo
@@ -136,62 +136,71 @@ export async function generateSchedulePdf(
       doc.text(formattedDate, pageWidth - margin - 5, lineY + 12, { align: 'right' });
       
       // === FOOTER SECTION =======================================================
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const footerHeight = 50;
-      const footerStartY = pageHeight - footerHeight - 25;
-      const footerMidX = margin + usableWidth / 2;
+        const footerHeight = 50;
+        const footerTopGap = 8;
+        const footerMidX = margin + usableWidth / 2;
 
-      doc.setLineWidth(0.2);
-      doc.setDrawColor(0);
+        // Start footer immediately after table
+        let footerStartY = data.cursor.y + footerTopGap;
 
-      // Outer footer box
-      doc.rect(margin, footerStartY, usableWidth, footerHeight);
+        // Page overflow check
+        const pageHeight = doc.internal.pageSize.getHeight();
+        if (footerStartY + footerHeight + 20 > pageHeight) {
+        doc.addPage();
+        footerStartY = margin;
+        }
 
-      // Vertical divider (between columns)
-      doc.line(footerMidX, footerStartY, footerMidX, footerStartY + footerHeight);
+        doc.setLineWidth(0.2);
+        doc.setDrawColor(0);
 
-      // Horizontal divider ONLY on right column
-      doc.line(
+        // Outer footer box
+        doc.rect(margin, footerStartY, usableWidth, footerHeight);
+
+        // Vertical divider (between columns)
+        doc.line(footerMidX, footerStartY, footerMidX, footerStartY + footerHeight);
+
+        // Horizontal divider ONLY on right column
+        doc.line(
         footerMidX,
         footerStartY + footerHeight / 2,
         margin + usableWidth,
         footerStartY + footerHeight / 2
-      );
+        );
 
-      // ---- LEFT COLUMN (merged cell) ----
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-      doc.text(
+        // ---- LEFT COLUMN (merged cell) ----
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text(
         'Scheduled by Rakhi Raj',
         margin + 6,
         footerStartY + footerHeight / 2 + 3
-      );
+        );
 
-      // ---- RIGHT COLUMN TOP ----
-      doc.text(
+        // ---- RIGHT COLUMN TOP ----
+        doc.text(
         'Signature:',
         footerMidX + 6,
         footerStartY + 15
-      );
+        );
 
-      // ---- RIGHT COLUMN BOTTOM ----
-      doc.text(
+        // ---- RIGHT COLUMN BOTTOM ----
+        doc.text(
         `Date: ${formattedDate}`,
         footerMidX + 6,
         footerStartY + footerHeight / 2 + 15
-      );
+        );
 
-      // ---- REFERENCE (OUTSIDE BOX) ----
-      doc.setFontSize(7);
-      doc.text(
+        // ---- REFERENCE (OUTSIDE BOX, JUST BELOW FOOTER) ----
+        doc.setFontSize(7);
+        doc.text(
         'Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020',
         margin,
         footerStartY + footerHeight + 12
-      );
+        );
 
-      // ---- PAGE NUMBER (BOTTOM RIGHT) ----
-      const pageCount = (doc as any).internal.getNumberOfPages();
-      doc.text(
+        // ---- PAGE NUMBER (RIGHT SIDE, SAME LINE AS REF) ----
+        const pageCount = (doc as any).internal.getNumberOfPages();
+        doc.text(
         `Page ${data.pageNumber} of ${pageCount}`,
         pageWidth - margin,
         footerStartY + footerHeight + 12,
