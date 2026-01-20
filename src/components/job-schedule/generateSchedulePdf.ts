@@ -138,28 +138,67 @@ export async function generateSchedulePdf(
       
       // === FOOTER SECTION =======================================================
       const pageHeight = doc.internal.pageSize.getHeight();
-      const footerTop = pageHeight - 40;
-      const bottomRowY = pageHeight - 20;
-      doc.setLineWidth(0.2);
+      const footerHeight = 50;
+      const footerStartY = pageHeight - footerHeight - 20;
+      const footerMidX = margin + usableWidth / 2;
+      const rowMidY = footerStartY + footerHeight / 2;
 
+      doc.setLineWidth(0.2);
+      doc.setDrawColor(0);
+
+      // Outer footer box
+      doc.rect(margin, footerStartY, usableWidth, footerHeight);
+
+      // Horizontal divider (between rows)
+      doc.line(margin, rowMidY, margin + usableWidth, rowMidY);
+
+      // Vertical divider (between columns)
+      doc.line(footerMidX, footerStartY, footerMidX, footerStartY + footerHeight);
+
+      // ---- Row 1 ----
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
-      doc.text('Scheduled by:', margin, footerTop);
 
-      doc.text('Signature:', pageWidth / 2 - 20, footerTop);
-      doc.line(pageWidth / 2 + 20, footerTop, pageWidth / 2 + 80, footerTop);
+      // Scheduled by (left)
+      doc.text(
+        'Scheduled by Rakhi Raj',
+        margin + 6,
+        footerStartY + 15
+      );
 
-      doc.text(`Date: ${formattedDate}`, pageWidth - margin, footerTop, { align: 'right' });
+      // Signature label (right)
+      doc.text(
+        'Signature:',
+        footerMidX + 6,
+        footerStartY + 15
+      );
 
+      // Optional: signature image
+      // doc.addImage(signatureBase64, 'PNG', footerMidX + 60, footerStartY + 5, 60, 18);
+
+      // ---- Row 2 ----
       doc.setFontSize(7);
-      doc.line(margin, bottomRowY - 5, pageWidth - margin, bottomRowY - 5);
-      doc.text('Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020', margin, bottomRowY);
-      
+
+      // Reference (left)
+      doc.text(
+        'Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020',
+        margin + 6,
+        rowMidY + 15
+      );
+
+      // Date (right)
+      doc.text(
+        `Date: ${formattedDate}`,
+        footerMidX + 6,
+        rowMidY + 15
+      );
+
+      // ---- Page Number (bottom-right, outside box) ----
       const pageCount = (doc as any).internal.getNumberOfPages();
       doc.text(
         `Page ${data.pageNumber} of ${pageCount}`,
         pageWidth - margin,
-        bottomRowY,
+        pageHeight - 10,
         { align: 'right' }
       );
     }
