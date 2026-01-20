@@ -79,7 +79,7 @@ export async function generateSchedulePdf(
     body: bodyRows,
     theme: 'grid',
     styles: {
-        fontSize: 7,
+        fontSize: 6,
         lineWidth: 0.2,
         lineColor: [0, 0, 0],
         textColor: [0, 0, 0],
@@ -91,6 +91,7 @@ export async function generateSchedulePdf(
         textColor: [0, 0, 0],
         fontStyle: 'bold',
         halign: 'center',
+        fontSize: 6.5,
     },
     columnStyles: {
         0: { cellWidth: 25 },
@@ -129,7 +130,7 @@ export async function generateSchedulePdf(
       doc.text('Job Schedule', pageWidth / 2, contentStartY + 12, { align: 'center' });
       
       // Sub-header text
-      doc.setFontSize(9);
+      doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.text('Division/Branch: I & M / Jamnagar', margin + 5, lineY + 12);
       doc.text('Sub-Div.: R.A', pageWidth / 2, lineY + 12, { align: 'center' });
@@ -141,7 +142,7 @@ export async function generateSchedulePdf(
       const bottomRowY = pageHeight - 20;
       doc.setLineWidth(0.2);
 
-      doc.setFontSize(9);
+      doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.text('Scheduled by:', margin, footerTop);
 
@@ -150,7 +151,7 @@ export async function generateSchedulePdf(
 
       doc.text(`Date: ${formattedDate}`, pageWidth - margin, footerTop, { align: 'right' });
 
-      doc.setFontSize(8);
+      doc.setFontSize(7);
       doc.line(margin, bottomRowY - 5, pageWidth - margin, bottomRowY - 5);
       doc.text('Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020', margin, bottomRowY);
       
