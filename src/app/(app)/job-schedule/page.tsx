@@ -14,10 +14,13 @@ import { generateScheduleExcel } from '@/components/job-schedule/generateSchedul
 import { generateSchedulePdf } from '@/components/job-schedule/generateSchedulePdf';
 import { useToast } from '@/hooks/use-toast';
 import type { JobSchedule } from '@/lib/types';
+import { Label } from '@/components/ui/label';
+import { DatePickerInput } from '@/components/ui/date-picker-input';
 
 export default function JobSchedulePage() {
     const { user, users, jobSchedules, can, manpowerProfiles, vehicles } = useAppContext();
     const [selectedDate, setSelectedDate] = useState<Date>(addDays(new Date(), 1));
+    const [footerDate, setFooterDate] = useState<Date>(new Date());
 
     const scheduleForDate: JobSchedule | undefined = useMemo(() => {
         if (!jobSchedules) return undefined;
@@ -45,9 +48,9 @@ export default function JobSchedulePage() {
         const projectName = `Daily Schedule for ${format(selectedDate, 'dd-MM-yyyy')}`;
 
         if (type === 'excel') {
-            await generateScheduleExcel(scheduleWithNames, projectName, selectedDate);
+            await generateScheduleExcel(scheduleWithNames, projectName, footerDate);
         } else {
-            await generateSchedulePdf(scheduleWithNames, projectName, selectedDate);
+            await generateSchedulePdf(scheduleWithNames, projectName, footerDate);
         }
     };
 
@@ -90,12 +93,20 @@ export default function JobSchedulePage() {
                           <Calendar mode="single" selected={selectedDate} onSelect={(day) => day && setSelectedDate(day)} initialFocus />
                         </PopoverContent>
                     </Popover>
-                    {scheduleForDate && scheduleForDate.items.length > 0 && (
-                        <div className="flex items-center gap-2">
-                            <Button onClick={() => handleExport('excel')}><FileDown className="mr-2 h-4 w-4"/> Export Excel</Button>
-                            <Button onClick={() => handleExport('pdf')}><FileDown className="mr-2 h-4 w-4"/> Export PDF</Button>
-                        </div>
-                    )}
+                    <div className="flex flex-col sm:flex-row items-end gap-2">
+                        {scheduleForDate && scheduleForDate.items.length > 0 && (
+                            <>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="footer-date" className="text-sm">Report Date</Label>
+                                    <DatePickerInput value={footerDate} onChange={(d) => d && setFooterDate(d)} />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button onClick={() => handleExport('excel')}><FileDown className="mr-2 h-4 w-4"/> Export Excel</Button>
+                                    <Button onClick={() => handleExport('pdf')}><FileDown className="mr-2 h-4 w-4"/> Export PDF</Button>
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <JobScheduleTable 
