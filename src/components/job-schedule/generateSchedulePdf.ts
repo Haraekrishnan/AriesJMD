@@ -54,7 +54,7 @@ export async function generateSchedulePdf(
 
   const bodyRows = (schedule?.items || []).map((item, i) => [
     i + 1,
-    Array.isArray(item.manpowerIds) ? item.manpowerIds.join(',\n') : '',
+    Array.isArray(item.manpowerIds) ? item.manpowerIds.join(', ') : '',
     item.jobType || '',
     item.jobNo || '',
     item.projectVesselName || '',
@@ -95,15 +95,15 @@ export async function generateSchedulePdf(
     },
     columnStyles: {
         0: { cellWidth: 25 },
-        1: { cellWidth: 75 },
-        2: { cellWidth: 35 },
-        3: { cellWidth: 40 },
-        4: { cellWidth: 80 },
-        5: { cellWidth: 55 },
-        6: { cellWidth: 45, halign: 'center' },
-        7: { cellWidth: 65 },
-        8: { cellWidth: 40, halign: 'center' },
-        9: { cellWidth: usableWidth - 460 },
+        1: { cellWidth: 120 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 35 },
+        4: { cellWidth: 75 },
+        5: { cellWidth: 50 },
+        6: { cellWidth: 40, halign: 'center' },
+        7: { cellWidth: 60 },
+        8: { cellWidth: 35, halign: 'center' },
+        9: { cellWidth: usableWidth - 470 },
     },
     didDrawPage: (data) => {
       // === HEADER SECTION ======================================================
