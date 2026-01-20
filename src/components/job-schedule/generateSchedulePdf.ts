@@ -1,4 +1,3 @@
-
 'use client';
 
 import jsPDF from 'jspdf';
@@ -136,74 +135,73 @@ export async function generateSchedulePdf(
       doc.text(formattedDate, pageWidth - margin - 5, lineY + 12, { align: 'right' });
       
       // === FOOTER SECTION =======================================================
-        const footerHeight = 50;
-        const footerTopGap = 8;
-        const footerMidX = margin + usableWidth / 2;
+      const footerHeight = 50;
+      const footerMidX = margin + usableWidth / 2;
 
-        // Start footer immediately after table
-        let footerStartY = data.cursor.y + footerTopGap;
+      // Start footer EXACTLY at table bottom
+      let footerStartY = data.cursor.y;
 
-        // Page overflow check
-        const pageHeight = doc.internal.pageSize.getHeight();
-        if (footerStartY + footerHeight + 20 > pageHeight) {
+      // Page overflow check
+      const pageHeight = doc.internal.pageSize.getHeight();
+      if (footerStartY + footerHeight + 20 > pageHeight) {
         doc.addPage();
         footerStartY = margin;
-        }
+      }
 
-        doc.setLineWidth(0.2);
-        doc.setDrawColor(0);
+      doc.setLineWidth(0.2);
+      doc.setDrawColor(0);
 
-        // Outer footer box
-        doc.rect(margin, footerStartY, usableWidth, footerHeight);
+      // Outer footer box
+      doc.rect(margin, footerStartY, usableWidth, footerHeight);
 
-        // Vertical divider (between columns)
-        doc.line(footerMidX, footerStartY, footerMidX, footerStartY + footerHeight);
+      // Vertical divider (between columns)
+      doc.line(footerMidX, footerStartY, footerMidX, footerStartY + footerHeight);
 
-        // Horizontal divider ONLY on right column
-        doc.line(
+      // Horizontal divider ONLY on right column
+      doc.line(
         footerMidX,
         footerStartY + footerHeight / 2,
         margin + usableWidth,
         footerStartY + footerHeight / 2
-        );
+      );
 
-        // ---- LEFT COLUMN (merged cell) ----
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.text(
+      // ---- LEFT COLUMN (merged cell) ----
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(
         'Scheduled by Rakhi Raj',
         margin + 6,
         footerStartY + footerHeight / 2 + 3
-        );
+      );
 
-        // ---- RIGHT COLUMN TOP ----
-        doc.text(
+      // ---- RIGHT COLUMN TOP ----
+      doc.text(
         'Signature:',
         footerMidX + 6,
         footerStartY + 15
-        );
+      );
 
-        // ---- RIGHT COLUMN BOTTOM ----
-        doc.text(
+      // ---- RIGHT COLUMN BOTTOM ----
+      doc.text(
         `Date: ${formattedDate}`,
         footerMidX + 6,
         footerStartY + footerHeight / 2 + 15
-        );
+      );
 
-        // ---- REFERENCE (OUTSIDE BOX, JUST BELOW FOOTER) ----
-        doc.setFontSize(7);
-        doc.text(
+      // ---- REFERENCE (OUTSIDE BOX, TOUCHING FOOTER) ----
+      doc.setFontSize(7);
+      doc.text(
         'Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020',
         margin,
-        footerStartY + footerHeight + 12
-        );
+        footerStartY + footerHeight + 10
+      );
 
-        // ---- PAGE NUMBER (RIGHT SIDE, SAME LINE AS REF) ----
-        const pageCount = (doc as any).internal.getNumberOfPages();
-        doc.text(
+      // ---- PAGE NUMBER ----
+      const pageCount = (doc as any).internal.getNumberOfPages();
+      doc.text(
         `Page ${data.pageNumber} of ${pageCount}`,
         pageWidth - margin,
-        footerStartY + footerHeight + 12,
+        footerStartY + footerHeight + 10,
         { align: 'right' }
       );
     }
