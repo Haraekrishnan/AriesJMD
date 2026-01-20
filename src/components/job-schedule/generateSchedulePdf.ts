@@ -38,12 +38,6 @@ export async function generateSchedulePdf(
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   
-  const margin = 28;
-  const usableWidth = pageWidth - margin * 2;
-  const headerBoxHeight = 42;
-  const headerStartY = margin;
-  const headerBottomY = headerStartY + headerBoxHeight;
-
   const formattedDate = format(selectedDate, 'dd-MM-yyyy');
   const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
 
@@ -65,6 +59,11 @@ export async function generateSchedulePdf(
     item.remarks || '',
   ]);
 
+  const margin = 28;
+  const usableWidth = pageWidth - margin * 2;
+  const headerBoxHeight = 42;
+  const headerStartY = margin;
+  const headerBottomY = headerStartY + headerBoxHeight;
   const tableStartY = headerBottomY;
 
   doc.autoTable({
@@ -139,9 +138,8 @@ export async function generateSchedulePdf(
       // === FOOTER SECTION =======================================================
       const pageHeight = doc.internal.pageSize.getHeight();
       const footerHeight = 50;
-      const footerStartY = pageHeight - footerHeight - 20;
+      const footerStartY = pageHeight - footerHeight - 25;
       const footerMidX = margin + usableWidth / 2;
-      const rowMidY = footerStartY + footerHeight / 2;
 
       doc.setLineWidth(0.2);
       doc.setDrawColor(0);
@@ -149,56 +147,54 @@ export async function generateSchedulePdf(
       // Outer footer box
       doc.rect(margin, footerStartY, usableWidth, footerHeight);
 
-      // Horizontal divider (between rows)
-      doc.line(margin, rowMidY, margin + usableWidth, rowMidY);
-
       // Vertical divider (between columns)
       doc.line(footerMidX, footerStartY, footerMidX, footerStartY + footerHeight);
 
-      // ---- Row 1 ----
+      // Horizontal divider ONLY on right column
+      doc.line(
+        footerMidX,
+        footerStartY + footerHeight / 2,
+        margin + usableWidth,
+        footerStartY + footerHeight / 2
+      );
+
+      // ---- LEFT COLUMN (merged cell) ----
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
-
-      // Scheduled by (left)
       doc.text(
         'Scheduled by Rakhi Raj',
         margin + 6,
-        footerStartY + 15
+        footerStartY + footerHeight / 2 + 3
       );
 
-      // Signature label (right)
+      // ---- RIGHT COLUMN TOP ----
       doc.text(
         'Signature:',
         footerMidX + 6,
         footerStartY + 15
       );
 
-      // Optional: signature image
-      // doc.addImage(signatureBase64, 'PNG', footerMidX + 60, footerStartY + 5, 60, 18);
-
-      // ---- Row 2 ----
-      doc.setFontSize(7);
-
-      // Reference (left)
-      doc.text(
-        'Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020',
-        margin + 6,
-        rowMidY + 15
-      );
-
-      // Date (right)
+      // ---- RIGHT COLUMN BOTTOM ----
       doc.text(
         `Date: ${formattedDate}`,
         footerMidX + 6,
-        rowMidY + 15
+        footerStartY + footerHeight / 2 + 15
       );
 
-      // ---- Page Number (bottom-right, outside box) ----
+      // ---- REFERENCE (OUTSIDE BOX) ----
+      doc.setFontSize(7);
+      doc.text(
+        'Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020',
+        margin,
+        footerStartY + footerHeight + 12
+      );
+
+      // ---- PAGE NUMBER (BOTTOM RIGHT) ----
       const pageCount = (doc as any).internal.getNumberOfPages();
       doc.text(
         `Page ${data.pageNumber} of ${pageCount}`,
         pageWidth - margin,
-        pageHeight - 10,
+        footerStartY + footerHeight + 12,
         { align: 'right' }
       );
     }
