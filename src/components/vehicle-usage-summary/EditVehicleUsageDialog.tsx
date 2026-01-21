@@ -187,7 +187,7 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="max-w-7xl h-[95vh] flex flex-col">
+            <DialogContent className="max-w-7xl h-[95vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
                 <DialogHeader>
                     <DialogTitle>Edit Vehicle Usage: {vehicle.vehicleNumber}</DialogTitle>
                     <DialogDescription>
