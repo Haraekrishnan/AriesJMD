@@ -912,6 +912,7 @@ export type TpCertList = {
     items: TpCertListItem[];
     checklist?: TpCertChecklist;
     isLocked?: boolean;
+    checklistMaxIndex?: number;
 };
 
 export const TRANSFER_REASONS = [
@@ -936,7 +937,7 @@ export type InventoryTransferRequest = {
     remarks?: string;
     items: {
       itemId: string;
-      itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment';
+      itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim';
       name: string;
       serialNumber: string;
       ariesId?: string;

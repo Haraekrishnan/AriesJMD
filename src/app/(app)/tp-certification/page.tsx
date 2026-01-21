@@ -113,12 +113,20 @@ export default function TpCertificationPage() {
             [itemKey]: checked ? { userId: user.id, date: new Date().toISOString() } : null
         };
         
+        const currentIndex = checklistItems.findIndex(item => item.key === itemKey);
+        let newMaxIndex = list.checklistMaxIndex ?? -1;
+
+        if (checked && currentIndex > newMaxIndex) {
+            newMaxIndex = currentIndex;
+        }
+        
         const isLockingAction = itemKey === 'sentForTesting' && checked;
         
         updateTpCertList({ 
             ...list, 
             checklist: updatedChecklist,
             isLocked: list.isLocked || isLockingAction,
+            checklistMaxIndex: newMaxIndex,
         });
     };
     
@@ -236,13 +244,8 @@ export default function TpCertificationPage() {
                                                 const checkedByUser = isChecked ? users.find(u => u.id === checkData.userId) : null;
                                                 const canCheck = user && permissions.includes(user.role);
                                                 
-                                                let lastCheckedIndex = -1;
-                                                checklistItems.forEach((item, i) => {
-                                                    if (list.checklist?.[item.key]) {
-                                                        lastCheckedIndex = i;
-                                                    }
-                                                });
-                                                const isDisabled = !canCheck || (index < lastCheckedIndex);
+                                                const maxIndexAchieved = list.checklistMaxIndex ?? -1;
+                                                const isDisabled = !canCheck || index < maxIndexAchieved;
                                                 
                                                 return (
                                                     <div key={key} className={cn("flex items-start space-x-2", isDisabled && "opacity-60")}>
@@ -257,9 +260,10 @@ export default function TpCertificationPage() {
                                                                 {label}
                                                             </Label>
                                                             {isChecked && checkData.date && (
-                                                                <p className="text-xs text-muted-foreground">
-                                                                    by {checkedByUser?.name || 'Unknown'} on {format(parseISO(checkData.date), 'dd MMM, h:mm a')}
-                                                                </p>
+                                                                <div className="text-xs text-muted-foreground">
+                                                                    <p>by {checkedByUser?.name || 'Unknown'}</p>
+                                                                    <p>{format(parseISO(checkData.date), 'dd MMM, h:mm a')}</p>
+                                                                </div>
                                                             )}
                                                         </div>
                                                     </div>
