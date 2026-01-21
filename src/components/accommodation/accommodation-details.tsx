@@ -109,6 +109,7 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding, onEdit
                                 <div className="flex items-center gap-2 pr-4">
                                      <Badge variant="secondary">Rooms: {buildingSummary.totalRooms}</Badge>
                                      <Badge variant="success">Total Beds: {buildingSummary.totalBeds}</Badge>
+                                     <Badge variant="warning">Occupied: {buildingSummary.occupiedBeds}</Badge>
                                      <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">Vacant: {buildingSummary.vacantBeds}</Badge>
                                 </div>
                            </div>
