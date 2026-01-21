@@ -249,19 +249,10 @@ export default function TpCertificationPage() {
                                                             <Label htmlFor={`${list.id}-${key}`} className={cn("text-sm font-medium leading-none", !isDisabled && "cursor-pointer", isDisabled && "cursor-not-allowed")}>
                                                                 {label}
                                                             </Label>
-                                                            {isChecked && (
-                                                                <TooltipProvider>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <p className="text-xs text-muted-foreground cursor-pointer">
-                                                                            {format(parseISO(checkData.date), 'dd MMM, h:mm a')}
-                                                                        </p>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>
-                                                                        <p>by {checkedByUser?.name || 'Unknown'}</p>
-                                                                    </TooltipContent>
-                                                                </Tooltip>
-                                                                </TooltipProvider>
+                                                            {isChecked && checkData.date && (
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    by {checkedByUser?.name || 'Unknown'} on {format(parseISO(checkData.date), 'dd MMM, h:mm a')}
+                                                                </p>
                                                             )}
                                                         </div>
                                                     </div>
@@ -317,4 +308,5 @@ export default function TpCertificationPage() {
         </>
     );
 }
+
 
