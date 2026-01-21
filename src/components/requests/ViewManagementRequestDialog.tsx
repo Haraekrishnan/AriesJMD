@@ -121,7 +121,7 @@ export default function ViewManagementRequestDialog({ isOpen, setIsOpen, request
   return (
     <>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-3xl grid-rows-[auto,1fr,auto] max-h-[90vh]">
+        <DialogContent className="sm:max-w-3xl grid-rows-[auto,1fr,auto] max-h-[90vh]" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <div className="flex justify-between items-start">
               <div>
@@ -282,5 +282,3 @@ export default function ViewManagementRequestDialog({ isOpen, setIsOpen, request
     </>
   );
 }
-
-    

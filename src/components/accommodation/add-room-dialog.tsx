@@ -47,7 +47,7 @@ export default function AddRoomDialog({ isOpen, setIsOpen, buildingId }: AddRoom
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Add New Room</DialogTitle>
           <DialogDescription>Add a new room to the selected building.</DialogDescription>

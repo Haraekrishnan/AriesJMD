@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -62,7 +63,7 @@ export default function EditRoleDialog({ isOpen, setIsOpen, role }: EditRoleDial
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit Role: {role.name}</DialogTitle>
           <DialogDescription>Modify the role's name and permissions.</DialogDescription>

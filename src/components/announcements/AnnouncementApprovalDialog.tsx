@@ -74,7 +74,7 @@ export default function AnnouncementApprovalDialog() {
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Pending Announcements</DialogTitle>
           <DialogDescription>Review, approve, or reject the announcements below.</DialogDescription>

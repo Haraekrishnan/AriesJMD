@@ -48,7 +48,7 @@ export default function EditRoomDialog({ isOpen, setIsOpen, buildingId, room }: 
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit Room</DialogTitle>
           <DialogDescription>Update the number/name for this room.</DialogDescription>

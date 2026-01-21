@@ -78,7 +78,7 @@ export default function EditDftMachineDialog({ isOpen, setIsOpen, machine }: Edi
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit DFT Machine</DialogTitle>
           <DialogDescription>Update details for {machine.machineName} (SN: {machine.serialNumber}).</DialogDescription>

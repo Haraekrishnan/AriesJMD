@@ -81,7 +81,7 @@ export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: Ass
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Assign Bed</DialogTitle>
           <DialogDescription>Select a person from the manpower list to assign to this bed.</DialogDescription>

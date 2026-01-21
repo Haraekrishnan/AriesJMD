@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -145,7 +146,7 @@ export function LoginForm() {
     </form>
 
     <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
-      <DialogContent>
+      <DialogContent onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Reset Your Password</DialogTitle>
           <DialogDescription>

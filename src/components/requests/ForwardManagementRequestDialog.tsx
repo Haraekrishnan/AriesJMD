@@ -51,7 +51,7 @@ export default function ForwardManagementRequestDialog({ isOpen, setIsOpen, orig
     if (!user) return [];
     return users.filter(u => u.id !== user.id && SUPERVISORY_ROLES.includes(u.role));
   }, [users, user]);
-
+  
   const ccRecipients = useMemo(() => {
     if (!user) return [];
     return users.filter(u => u.id !== user.id && u.id !== toUserId && SUPERVISORY_ROLES.includes(u.role));
@@ -72,12 +72,12 @@ export default function ForwardManagementRequestDialog({ isOpen, setIsOpen, orig
     }
     setIsOpen(open);
   };
-
+  
   const selectedCcUserIds = form.watch('ccUserIds') || [];
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Forward Request</DialogTitle>
           <DialogDescription>Forward this request to a new set of recipients.</DialogDescription>
@@ -171,5 +171,3 @@ export default function ForwardManagementRequestDialog({ isOpen, setIsOpen, orig
     </Dialog>
   );
 }
-
-    

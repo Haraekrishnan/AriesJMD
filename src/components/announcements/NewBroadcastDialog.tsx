@@ -102,7 +102,7 @@ export default function NewBroadcastDialog({ isOpen, setIsOpen }: NewBroadcastDi
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-xl" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>New Broadcast</DialogTitle>
           <DialogDescription>Send a scrolling message and an email to selected users.</DialogDescription>

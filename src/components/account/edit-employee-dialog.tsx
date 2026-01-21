@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -94,7 +93,7 @@ export default function EditEmployeeDialog({ isOpen, setIsOpen, user: userToEdit
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit User</DialogTitle>
           <DialogDescription>Update the details for {userToEdit.name}.</DialogDescription>

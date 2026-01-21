@@ -112,7 +112,7 @@ export default function EditInternalRequestItemDialog({ isOpen, setIsOpen, reque
   return (
     <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent>
+      <DialogContent onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit Request Item</DialogTitle>
           <DialogDescription>Modify the item details for this request.</DialogDescription>

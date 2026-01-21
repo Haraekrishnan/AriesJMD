@@ -171,7 +171,7 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
   return (
     <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-4xl" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Usage Log Manager: {machine.machineName}</DialogTitle>
           <DialogDescription>Add new usage logs and view past entries for this machine.</DialogDescription>
@@ -309,7 +309,7 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
       </DialogContent>
     </Dialog>
     <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); setNumPages(null); setPageNumber(1); }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
             <DialogHeader>
                 <DialogTitle>Attachment Viewer</DialogTitle>
                 <div className="flex items-center gap-2">
@@ -368,5 +368,3 @@ export default function DftMachineLogManagerDialog({ isOpen, setIsOpen, machine 
     </>
   );
 }
-
-    

@@ -63,7 +63,7 @@ export default function AddAchievementDialog() {
           Award Achievement
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Award Manual Achievement</DialogTitle>
           <DialogDescription>Select a user and define the achievement details. This will be approved and visible immediately.</DialogDescription>

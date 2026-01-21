@@ -181,7 +181,7 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-lg h-full sm:h-auto sm:max-h-[90vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>New Damage Report</DialogTitle>
           <DialogDescription>Submit a report for a damaged item.</DialogDescription>

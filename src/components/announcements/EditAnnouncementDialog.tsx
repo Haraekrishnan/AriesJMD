@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -54,7 +55,7 @@ export default function EditAnnouncementDialog({ isOpen, setIsOpen, announcement
   
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit Announcement</DialogTitle>
           <DialogDescription>Make changes and approve the announcement for publishing.</DialogDescription>

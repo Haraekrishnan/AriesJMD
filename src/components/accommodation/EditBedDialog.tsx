@@ -49,7 +49,7 @@ export default function EditBedDialog({ isOpen, setIsOpen, buildingId, roomId, b
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit Bed</DialogTitle>
           <DialogDescription>Update the number/name for this bed.</DialogDescription>

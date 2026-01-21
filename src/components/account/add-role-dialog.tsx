@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -62,7 +63,7 @@ export default function AddRoleDialog({ isOpen, setIsOpen }: AddRoleDialogProps)
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Add New Role</DialogTitle>
           <DialogDescription>Create a new role and assign permissions.</DialogDescription>

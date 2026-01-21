@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { ChevronsUpDown, Paperclip, Upload, X, AlertCircle } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import type { PpeRequest } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -30,6 +31,10 @@ const ppeRequestSchema = z.object({
   requestType: z.enum(['New', 'Replacement']),
   remarks: z.string().optional(),
   attachmentUrl: z.string().optional(),
+  newRequestJustification: z.string().optional(),
+}).refine(data => {
+    // This custom refinement will be handled in the component logic
+    return true;
 });
 
 type PpeRequestFormValues = z.infer<typeof ppeRequestSchema>;
@@ -80,6 +85,66 @@ export default function EditPpeRequestDialog({ isOpen, setIsOpen, request }: Edi
         }
     }
   }, [manpowerId, ppeType, manpowerProfiles, form]);
+
+  const isNewEmployee = useMemo(() => {
+    if (!manpowerId) return false;
+    const profile = manpowerProfiles.find(p => p.id === manpowerId);
+    if (!profile?.joiningDate) return true; // Default to new if no joining date
+    const joiningDate = parseISO(profile.joiningDate);
+    return isToday(joiningDate) || isFuture(joiningDate);
+  }, [manpowerId, manpowerProfiles]);
+
+  const eligibility = useMemo(() => {
+    if (!manpowerId || !ppeType) return null;
+
+    const profile = manpowerProfiles.find(p => p.id === manpowerId);
+    if (!profile) return null;
+
+    const historyArray = Array.isArray(profile.ppeHistory) ? profile.ppeHistory : Object.values(profile.ppeHistory || {});
+    const lastIssue = historyArray
+      .filter(h => h && h.ppeType === ppeType)
+      .sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime())[0];
+
+    if (requestType === 'New') {
+        if (!lastIssue) {
+            return { eligible: true, reason: 'Eligible for new issue as there is no prior record.' };
+        } else {
+             const baselineDate = parseISO(lastIssue.issueDate);
+             const nextEligibleDate = addYears(baselineDate, 1);
+             if (isAfter(new Date(), nextEligibleDate)) {
+                 return { eligible: true, reason: 'Eligible for new issue. Last issue was over a year ago.' };
+             }
+             return { eligible: false, reason: `Not eligible for new issue. Last issue was on ${format(baselineDate, 'dd MMM, yyyy')}.` };
+        }
+    }
+
+    if (requestType === 'Replacement') {
+        if (!lastIssue) {
+            return { eligible: false, reason: 'No prior issue record found to be replaced. Please select "New" request type.' };
+        }
+        const baselineDate = parseISO(lastIssue.issueDate);
+        const nextEligibleDate = addYears(baselineDate, 1);
+        if (isAfter(new Date(), nextEligibleDate)) {
+            return { eligible: true, reason: `Eligible for replacement. Last issue was on ${format(baselineDate, 'dd MMM, yyyy')}.` };
+        } else {
+            return { eligible: false, reason: `Not eligible for replacement until ${format(nextEligibleDate, 'dd MMM, yyyy')}.` };
+        }
+    }
+    
+    return null;
+
+  }, [manpowerId, ppeType, requestType, manpowerProfiles]);
+  
+  const showJustificationField = useMemo(() => {
+    if (eligibility?.eligible === false) return true;
+    if (!isNewEmployee && requestType === 'New' && eligibility?.eligible) {
+        // If it's a "New" request for an existing employee, but they ARE eligible (e.g. >1yr since last issue), justification is not needed
+        return false;
+    }
+    if (!isNewEmployee && requestType === 'New') return true;
+    return false;
+  }, [eligibility, isNewEmployee, requestType]);
+
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -153,13 +218,13 @@ export default function EditPpeRequestDialog({ isOpen, setIsOpen, request }: Edi
   return (
     <>
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md flex flex-col h-full sm:h-auto sm:max-h-[90vh]">
+      <DialogContent className="sm:max-w-md flex flex-col h-full sm:h-auto sm:max-h-[90vh]" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit PPE Request</DialogTitle>
           <DialogDescription>Update the details for this PPE request.</DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto pr-2">
-            <form onSubmit={form.handleSubmit(handleSaveChanges)} className="space-y-4 px-1">
+            <form onSubmit={(e) => { e.preventDefault(); form.handleSubmit(handleSaveChanges)(); }} className="space-y-4 px-1">
               <div className="space-y-2">
                 <Label>Employee</Label>
                 <Controller

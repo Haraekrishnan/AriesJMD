@@ -44,7 +44,7 @@ export default function AddBuildingDialog({ isOpen, setIsOpen }: AddBuildingDial
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Add New Building</DialogTitle>
           <DialogDescription>Enter the details for the new building.</DialogDescription>

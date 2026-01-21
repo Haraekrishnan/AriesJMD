@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -74,7 +73,7 @@ export default function NewAnnouncementDialog() {
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>New Announcement</DialogTitle>
           <DialogDescription>Create an announcement. It will be sent for approval before being published.</DialogDescription>

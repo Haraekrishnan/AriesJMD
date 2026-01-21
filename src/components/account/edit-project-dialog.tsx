@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -45,7 +46,7 @@ export default function EditProjectDialog({ isOpen, setIsOpen, project }: EditPr
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit Project: {project.name}</DialogTitle>
           <DialogDescription>Update the name of the project.</DialogDescription>

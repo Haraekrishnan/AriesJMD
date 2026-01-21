@@ -77,7 +77,7 @@ export default function NewManagementRequestDialog({ isOpen, setIsOpen }: NewMan
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>New Management Request</DialogTitle>
           <DialogDescription>Compose and send a new internal request.</DialogDescription>

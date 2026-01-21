@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -87,7 +86,7 @@ export default function AddEmployeeDialog({ isOpen, setIsOpen }: AddEmployeeDial
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Add New User</DialogTitle>
           <DialogDescription>Fill in the details to add a new member to the team.</DialogDescription>

@@ -49,7 +49,7 @@ export default function EditBuildingDialog({ isOpen, setIsOpen, building }: Edit
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit Building</DialogTitle>
           <DialogDescription>Update the building number/name.</DialogDescription>

@@ -56,7 +56,7 @@ export default function ViewDamageReportDialog({ isOpen, setIsOpen, report }: Vi
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Damage Report Details</DialogTitle>
           <div className="flex justify-between items-start pt-2">
