@@ -190,6 +190,9 @@ export default function TpCertificationPage() {
                                 const totalQuantity = list.items.length;
                                 const isLocked = list.isLocked;
                                 const canUserUnlock = user && (user.role === 'Admin' || user.role === 'Project Coordinator');
+                                
+                                const isFinalized = list.checklistMaxIndex === checklistItems.length - 1;
+                                const isAdmin = user?.role === 'Admin';
 
                                 return (
                                     <AccordionItem key={list.id} value={list.id} className="border rounded-lg">
@@ -245,7 +248,8 @@ export default function TpCertificationPage() {
                                                 const canCheck = user && permissions.includes(user.role);
                                                 
                                                 const maxIndexAchieved = list.checklistMaxIndex ?? -1;
-                                                const isDisabled = !canCheck || index < maxIndexAchieved;
+                                                
+                                                const isDisabled = !canCheck || index < maxIndexAchieved || (isFinalized && !isAdmin);
                                                 
                                                 return (
                                                     <div key={key} className={cn("flex items-start space-x-2", isDisabled && "opacity-60")}>
@@ -259,9 +263,9 @@ export default function TpCertificationPage() {
                                                             <Label htmlFor={`${list.id}-${key}`} className={cn("text-sm font-medium leading-none", !isDisabled && "cursor-pointer", isDisabled && "cursor-not-allowed")}>
                                                                 {label}
                                                             </Label>
-                                                            {isChecked && checkData.date && (
+                                                            {checkedByUser && (
                                                                 <div className="text-xs text-muted-foreground">
-                                                                    <p>by {checkedByUser?.name || 'Unknown'}</p>
+                                                                    <p>by {checkedByUser.name}</p>
                                                                     <p>{format(parseISO(checkData.date), 'dd MMM, h:mm a')}</p>
                                                                 </div>
                                                             )}
@@ -320,6 +324,3 @@ export default function TpCertificationPage() {
     );
 }
 
-  
-
-    
