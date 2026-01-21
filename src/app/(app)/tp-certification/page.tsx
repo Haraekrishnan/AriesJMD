@@ -236,11 +236,13 @@ export default function TpCertificationPage() {
                                                 const checkedByUser = isChecked ? users.find(u => u.id === checkData.userId) : null;
                                                 const canCheck = user && permissions.includes(user.role);
                                                 
-                                                const isFutureStepChecked = checklistItems.slice(index + 1).some(futureItem => 
-                                                    list.checklist?.[futureItem.key]
-                                                );
-
-                                                const isDisabled = !canCheck || isFutureStepChecked;
+                                                let lastCheckedIndex = -1;
+                                                checklistItems.forEach((item, i) => {
+                                                    if (list.checklist?.[item.key]) {
+                                                        lastCheckedIndex = i;
+                                                    }
+                                                });
+                                                const isDisabled = !canCheck || (index < lastCheckedIndex);
                                                 
                                                 return (
                                                     <div key={key} className={cn("flex items-start space-x-2", isDisabled && "opacity-60")}>
@@ -315,3 +317,5 @@ export default function TpCertificationPage() {
 }
 
   
+
+    
