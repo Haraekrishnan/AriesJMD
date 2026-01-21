@@ -230,12 +230,18 @@ export default function TpCertificationPage() {
                                             </div>
                                         </div>
                                          <div className="p-4 pt-2 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 border-t">
-                                            {checklistItems.map(({ key, label, permissions }) => {
+                                            {checklistItems.map(({ key, label, permissions }, index) => {
                                                 const checkData = list.checklist?.[key];
                                                 const isChecked = !!checkData;
                                                 const checkedByUser = isChecked ? users.find(u => u.id === checkData.userId) : null;
                                                 const canCheck = user && permissions.includes(user.role);
-                                                const isDisabled = !canCheck;
+                                                
+                                                const isFutureStepChecked = checklistItems.slice(index + 1).some(futureItem => 
+                                                    list.checklist?.[futureItem.key]
+                                                );
+
+                                                const isDisabled = !canCheck || isFutureStepChecked;
+                                                
                                                 return (
                                                     <div key={key} className={cn("flex items-start space-x-2", isDisabled && "opacity-60")}>
                                                         <Checkbox
@@ -307,3 +313,5 @@ export default function TpCertificationPage() {
         </>
     );
 }
+
+  
