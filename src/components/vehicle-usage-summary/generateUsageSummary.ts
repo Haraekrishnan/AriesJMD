@@ -1,3 +1,4 @@
+
 'use client';
 
 import ExcelJS from 'exceljs';
@@ -182,17 +183,19 @@ totalKmValueCell.fill = {
   dayHeaders.forEach(day => {
     const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
   
-    const startKm = Number(cellStates[`${day}-startKm`] || 0);
-    const endKm = Number(cellStates[`${day}-endKm`] || 0);
-    const total = endKm > startKm ? endKm - startKm : 0;
+    const startKmVal = cellStates[`${day}-startKm`];
+    const endKmVal = cellStates[`${day}-endKm`];
+    const startKmNum = Number(startKmVal || 0);
+    const endKmNum = Number(endKmVal || 0);
+    const total = endKmNum > startKmNum ? endKmNum - startKmNum : 0;
   
     const isHoliday = cellStates[`${day}-isHoliday`] || getDay(date) === 0;
   
     const row = sheet.addRow([
       format(date, 'dd-MMM-yyyy'),
-      startKm || '',
-      endKm || '',
-      total || '',
+      startKmVal || '',
+      endKmVal || '',
+      (startKmVal || endKmVal) ? total : '',
       cellStates[`${day}-overtime`] || '',
       cellStates[`${day}-remarks`] || '',
     ]);
@@ -375,7 +378,7 @@ dayHeaders.forEach(day => {
 
   
   /* 🔴 MUST BE IMMEDIATELY AFTER THE BOX */
-  currentY = (doc as any).lastAutoTable.finalY + 10;
+  currentY = (doc as any).lastAutoTable.finalY + 12;
   
   const rightHeaderX = pageWidth - margin - 200;
   
@@ -413,8 +416,11 @@ dayHeaders.forEach(day => {
 
    const body = dayHeaders.map(day => {
     const d = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-    const s = Number(cellStates[`${day}-startKm`] || 0);
-    const e = Number(cellStates[`${day}-endKm`] || 0);
+    
+    const startKmVal = cellStates[`${day}-startKm`];
+    const endKmVal = cellStates[`${day}-endKm`];
+    const s = Number(startKmVal || 0);
+    const e = Number(endKmVal || 0);
     const t = e > s ? e - s : 0;
    
     const isHoliday = cellStates[`${day}-isHoliday`] || getDay(d) === 0;
@@ -422,9 +428,9 @@ dayHeaders.forEach(day => {
 
     return [
       { content: format(d, 'dd-MMM-yyyy'), styles: { fillColor: fill } },
-      { content: s || '', styles: { fillColor: fill } },
-      { content: e || '', styles: { fillColor: fill } },
-      { content: t || '', styles: { fillColor: fill } },
+      { content: startKmVal || '', styles: { fillColor: fill } },
+      { content: endKmVal || '', styles: { fillColor: fill } },
+      { content: (startKmVal || endKmVal) ? t : '', styles: { fillColor: fill } },
       { content: cellStates[`${day}-overtime`] || '', styles: { fillColor: fill } },
       { content: cellStates[`${day}-remarks`] || '', styles: { fillColor: fill, halign: 'left' } },
     ];
