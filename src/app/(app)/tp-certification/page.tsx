@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -236,7 +235,7 @@ export default function TpCertificationPage() {
                                                 const isChecked = !!checkData;
                                                 const checkedByUser = isChecked ? users.find(u => u.id === checkData.userId) : null;
                                                 const canCheck = user && permissions.includes(user.role);
-                                                const isDisabled = !canCheck || (isLocked && !canUserUnlock);
+                                                const isDisabled = !canCheck;
                                                 return (
                                                     <div key={key} className={cn("flex items-start space-x-2", isDisabled && "opacity-60")}>
                                                         <Checkbox
@@ -308,5 +307,3 @@ export default function TpCertificationPage() {
         </>
     );
 }
-
-
