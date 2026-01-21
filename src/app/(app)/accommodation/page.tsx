@@ -4,9 +4,8 @@ import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, PlusCircle, Search, UserCog, Check, ChevronsUpDown } from 'lucide-react';
+import { AlertTriangle, PlusCircle, Search, UserCog, Check, ChevronsUpDown, BedDouble, BedSingle, Building, Users } from 'lucide-react';
 import StatCard from '@/components/dashboard/stat-card';
-import { BedDouble, BedSingle, Building } from 'lucide-react';
 import AccommodationDetails from '@/components/accommodation/accommodation-details';
 import AddBuildingDialog from '@/components/accommodation/add-building-dialog';
 import AddRoomDialog from '@/components/accommodation/add-room-dialog';
@@ -80,7 +79,7 @@ export default function AccommodationPage() {
 
     const summary = useMemo(() => {
         if (!buildings) {
-          return { totalBeds: 0, occupiedBeds: 0, availableBeds: 0 };
+          return { totalBeds: 0, occupiedBeds: 0, availableBeds: 0, totalOccupants: 0 };
         }
         let totalBeds = 0;
         let occupiedBeds = 0;
@@ -93,8 +92,9 @@ export default function AccommodationPage() {
                 occupiedBeds += bedsArray.filter(bed => bed && bed.occupantId).length;
             });
         });
-        return { totalBeds, occupiedBeds, availableBeds: totalBeds - occupiedBeds };
-    }, [buildings]);
+        const totalOccupants = manpowerProfiles.filter(p => p.accommodation).length;
+        return { totalBeds, occupiedBeds, availableBeds: totalBeds - occupiedBeds, totalOccupants };
+    }, [buildings, manpowerProfiles]);
 
     const handleAddRoomClick = (building: BuildingType) => {
         setSelectedBuilding(building);
@@ -144,7 +144,7 @@ export default function AccommodationPage() {
                 </div>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-4">
                 <StatCard 
                     title="Total Beds" 
                     value={summary.totalBeds.toString()} 
@@ -156,6 +156,12 @@ export default function AccommodationPage() {
                     value={summary.occupiedBeds.toString()} 
                     icon={BedSingle}
                     description="Beds currently assigned to manpower"
+                />
+                <StatCard 
+                    title="Total Occupants" 
+                    value={summary.totalOccupants.toString()} 
+                    icon={Users}
+                    description="Manpower with an accommodation record"
                 />
                 <StatCard 
                     title="Available Beds" 
