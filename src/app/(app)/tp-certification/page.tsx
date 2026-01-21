@@ -203,7 +203,9 @@ export default function TpCertificationPage() {
 
                                             <div className="flex items-center gap-2">
                                                 <Button size="sm" variant="outline" onClick={() => setUpdatingValidityList(list)}><BookOpen className="mr-2 h-4 w-4"/> Update Validity</Button>
-                                                <Button size="sm" variant="secondary" onClick={() => setEditingList(list)} disabled={isLocked && !canUserUnlock}><Edit className="mr-2 h-4 w-4"/> Edit List</Button>
+                                                {!isLocked && (
+                                                    <Button size="sm" variant="secondary" onClick={() => setEditingList(list)}><Edit className="mr-2 h-4 w-4"/> Edit List</Button>
+                                                )}
                                                 {isLocked && canUserUnlock && (
                                                     <Button size="sm" variant="outline" onClick={() => handleUnlock(list)}><Unlock className="mr-2 h-4 w-4" /> Unlock</Button>
                                                 )}
@@ -315,3 +317,4 @@ export default function TpCertificationPage() {
         </>
     );
 }
+
