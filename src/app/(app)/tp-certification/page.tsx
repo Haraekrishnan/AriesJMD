@@ -1,17 +1,18 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileDown, Trash2, FileSpreadsheet, Edit, BookOpen, Search, AlertTriangle } from 'lucide-react';
+import { FileDown, Trash2, FileSpreadsheet, Edit, BookOpen, Search, Unlock, Lock } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { generateTpCertExcel, generateTpCertPdf } from '@/components/tp-certification/generateTpCertReport';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import type { TpCertList, TpCertChecklist } from '@/lib/types';
+import type { TpCertList, TpCertChecklist, Role } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import {
   Accordion,
@@ -26,6 +27,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function TpCertificationPage() {
     const { 
@@ -94,26 +97,37 @@ export default function TpCertificationPage() {
         toast({ title: 'List Deleted', variant: 'destructive' });
     };
 
-    const handleChecklistChange = (listId: string, item: keyof TpCertChecklist, checked: boolean) => {
-      const list = tpCertLists.find(l => l.id === listId);
-      if (!list) return;
-  
-      const updatedChecklist = {
-          ...list.checklist,
-          [item]: checked ? new Date().toISOString() : null
-      };
-  
-      updateTpCertList({ ...list, checklist: updatedChecklist });
+    const checklistItems: { key: keyof TpCertChecklist; label: string; permissions: Role[] }[] = [
+      { key: 'sentForTesting', label: 'Sent for Testing', permissions: ['Admin', 'Project Coordinator', 'Document Controller', 'Store in Charge', 'Assistant Store Incharge'] },
+      { key: 'itemsReceived', label: 'Received Items After Testing', permissions: ['Admin', 'Project Coordinator', 'Document Controller', 'Store in Charge', 'Assistant Store Incharge'] },
+      { key: 'proformaReceived', label: 'Proforma Received', permissions: ['Admin', 'Project Coordinator', 'Document Controller'] },
+      { key: 'poSent', label: 'PO Sent', permissions: ['Admin', 'Project Coordinator', 'Document Controller'] },
+      { key: 'certsReceived', label: 'Received Certificates After Testing', permissions: ['Admin', 'Project Coordinator', 'Document Controller', 'Store in Charge', 'Assistant Store Incharge'] },
+      { key: 'validityUpdated', label: 'Certificates Scanned & Validity Updated', permissions: ['Admin', 'Project Coordinator', 'Document Controller', 'Store in Charge', 'Assistant Store Incharge'] },
+    ];
+    
+    const handleChecklistChange = (list: TpCertList, itemKey: keyof TpCertChecklist, checked: boolean) => {
+        if (!user) return;
+    
+        const updatedChecklist = {
+            ...(list.checklist || {}),
+            [itemKey]: checked ? { userId: user.id, date: new Date().toISOString() } : null
+        };
+        
+        const isLockingAction = itemKey === 'sentForTesting' && checked;
+        
+        updateTpCertList({ 
+            ...list, 
+            checklist: updatedChecklist,
+            isLocked: list.isLocked || isLockingAction,
+        });
+    };
+    
+    const handleUnlock = (list: TpCertList) => {
+        updateTpCertList({ ...list, isLocked: false });
+        toast({ title: "List Unlocked", description: "The list can now be edited." });
     };
 
-    const checklistItems: { key: keyof TpCertChecklist; label: string }[] = [
-      { key: 'sentForTesting', label: 'Sent for Testing' },
-      { key: 'itemsReceived', label: 'Received Items After Testing' },
-      { key: 'proformaReceived', label: 'Proforma Received' },
-      { key: 'poSent', label: 'PO Sent' },
-      { key: 'certsReceived', label: 'Received Certificates After Testing' },
-      { key: 'validityUpdated', label: 'Certificates Scanned & Validity Updated' },
-    ];
 
     if (!can.manage_tp_certification) {
         return (
@@ -167,16 +181,21 @@ export default function TpCertificationPage() {
                                     return acc;
                                 }, {} as Record<string, number>);
                                 const totalQuantity = list.items.length;
+                                const isLocked = list.isLocked;
+                                const canUserUnlock = user && (user.role === 'Admin' || user.role === 'Project Coordinator');
 
                                 return (
                                     <AccordionItem key={list.id} value={list.id} className="border rounded-lg">
                                         <div className="flex justify-between items-center p-4">
                                             <AccordionTrigger className="p-0 hover:no-underline flex-1">
-                                                <div>
-                                                    <p className="font-semibold text-lg">{list.name}</p>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        Created by {creator?.name || 'Unknown'} on {list.createdAt ? format(parseISO(list.createdAt), 'dd MMM, yyyy') : 'N/A'} at {list.createdAt ? format(parseISO(list.createdAt), 'p') : 'N/A'}
-                                                    </p>
+                                                <div className="flex items-center gap-3">
+                                                    {isLocked && <Lock className="h-4 w-4 text-muted-foreground"/>}
+                                                    <div>
+                                                        <p className="font-semibold text-lg">{list.name}</p>
+                                                        <p className="text-sm text-muted-foreground">
+                                                            Created by {creator?.name || 'Unknown'} on {list.createdAt ? format(parseISO(list.createdAt), 'dd MMM, yyyy') : 'N/A'} at {list.createdAt ? format(parseISO(list.createdAt), 'p') : 'N/A'}
+                                                        </p>
+                                                    </div>
                                                 </div>
                                             </AccordionTrigger>
 
@@ -184,7 +203,10 @@ export default function TpCertificationPage() {
 
                                             <div className="flex items-center gap-2">
                                                 <Button size="sm" variant="outline" onClick={() => setUpdatingValidityList(list)}><BookOpen className="mr-2 h-4 w-4"/> Update Validity</Button>
-                                                <Button size="sm" variant="secondary" onClick={() => setEditingList(list)}><Edit className="mr-2 h-4 w-4"/> Edit List</Button>
+                                                <Button size="sm" variant="secondary" onClick={() => setEditingList(list)} disabled={isLocked && !canUserUnlock}><Edit className="mr-2 h-4 w-4"/> Edit List</Button>
+                                                {isLocked && canUserUnlock && (
+                                                    <Button size="sm" variant="outline" onClick={() => handleUnlock(list)}><Unlock className="mr-2 h-4 w-4" /> Unlock</Button>
+                                                )}
                                                 <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); handleGenerateSingleFile(list, 'excel')}}><FileDown className="mr-2 h-4 w-4"/> Excel</Button>
                                                 <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); handleGenerateSingleFile(list, 'pdf')}}><FileDown className="mr-2 h-4 w-4"/> PDF</Button>
                                                 {user?.role === 'Admin' && (
@@ -207,25 +229,37 @@ export default function TpCertificationPage() {
                                             </div>
                                         </div>
                                          <div className="p-4 pt-2 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 border-t">
-                                            {checklistItems.map(({ key, label }) => {
-                                                const timestamp = list.checklist?.[key];
-                                                const isChecked = !!timestamp;
+                                            {checklistItems.map(({ key, label, permissions }) => {
+                                                const checkData = list.checklist?.[key];
+                                                const isChecked = !!checkData;
+                                                const checkedByUser = isChecked ? users.find(u => u.id === checkData.userId) : null;
+                                                const canCheck = user && permissions.includes(user.role);
+                                                const isDisabled = !canCheck || (isLocked && !canUserUnlock);
                                                 return (
-                                                    <div key={key} className="flex items-start space-x-2">
+                                                    <div key={key} className={cn("flex items-start space-x-2", isDisabled && "opacity-60")}>
                                                         <Checkbox
                                                             id={`${list.id}-${key}`}
                                                             checked={isChecked}
-                                                            onCheckedChange={(checked) => handleChecklistChange(list.id, key, !!checked)}
-                                                            disabled={!can.manage_tp_certification}
+                                                            onCheckedChange={(checked) => handleChecklistChange(list, key, !!checked)}
+                                                            disabled={isDisabled}
                                                         />
                                                         <div className="grid gap-1.5 leading-none">
-                                                            <Label htmlFor={`${list.id}-${key}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                            <Label htmlFor={`${list.id}-${key}`} className={cn("text-sm font-medium leading-none", !isDisabled && "cursor-pointer", isDisabled && "cursor-not-allowed")}>
                                                                 {label}
                                                             </Label>
                                                             {isChecked && (
-                                                                <p className="text-xs text-muted-foreground">
-                                                                    {format(parseISO(timestamp!), 'dd MMM, h:mm a')}
-                                                                </p>
+                                                                <TooltipProvider>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <p className="text-xs text-muted-foreground cursor-pointer">
+                                                                            {format(parseISO(checkData.date), 'dd MMM, h:mm a')}
+                                                                        </p>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        <p>by {checkedByUser?.name || 'Unknown'}</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                                </TooltipProvider>
                                                             )}
                                                         </div>
                                                     </div>

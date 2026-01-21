@@ -1,9 +1,4 @@
 
-
-
-
-
-
 export type Broadcast = {
   id: string;
   message: string;
@@ -364,7 +359,7 @@ export type Driver = {
   licenseExpiry?: string;
 };
 
-export type IncidentStatus = 'New' | 'Under Investigation' | 'Action Pending' | 'Resolved' | 'Closed';
+export type IncidentStatus = 'New' | 'Under Investigation' | 'Action Taken' | 'Resolved' | 'Closed';
 
 export type Comment = {
   id: string;
@@ -894,13 +889,18 @@ export type TpCertListItem = {
   ariesId?: string | null;
 };
 
+export type ChecklistItemStatus = {
+  userId: string;
+  date: string; // ISO String
+};
+
 export type TpCertChecklist = {
-  sentForTesting?: string | null;
-  itemsReceived?: string | null;
-  proformaReceived?: string | null;
-  poSent?: string | null;
-  certsReceived?: string | null;
-  validityUpdated?: string | null;
+  sentForTesting?: ChecklistItemStatus | null;
+  itemsReceived?: ChecklistItemStatus | null;
+  proformaReceived?: ChecklistItemStatus | null;
+  poSent?: ChecklistItemStatus | null;
+  certsReceived?: ChecklistItemStatus | null;
+  validityUpdated?: ChecklistItemStatus | null;
 };
 
 export type TpCertList = {
@@ -911,6 +911,7 @@ export type TpCertList = {
     createdAt: string; // ISO String
     items: TpCertListItem[];
     checklist?: TpCertChecklist;
+    isLocked?: boolean;
 };
 
 export const TRANSFER_REASONS = [
@@ -1086,6 +1087,3 @@ export type VehicleUsageRecord = {
     };
   };
 };
-
-
-
