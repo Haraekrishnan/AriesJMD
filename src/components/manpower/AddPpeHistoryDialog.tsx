@@ -65,7 +65,7 @@ export default function AddPpeHistoryDialog({ isOpen, setIsOpen, profile }: AddP
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent>
+            <DialogContent onInteractOutside={(e) => e.preventDefault()}>
                 <DialogHeader>
                     <DialogTitle>Add PPE Issue History</DialogTitle>
                 </DialogHeader>

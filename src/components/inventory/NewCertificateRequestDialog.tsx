@@ -49,7 +49,7 @@ export default function NewCertificateRequestDialog({ isOpen, setIsOpen, item, u
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Request Certificate</DialogTitle>
           <DialogDescription>
@@ -64,7 +64,8 @@ export default function NewCertificateRequestDialog({ isOpen, setIsOpen, item, u
                     <SelectTrigger><SelectValue placeholder="Select type..."/></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="Calibration Certificate">Calibration Certificate</SelectItem>
-                        <SelectItem value="TP Inspection Certificate">TP Inspection Certificate</SelectItem>
+                        <SelectItem value="TP Certificate">TP Certificate</SelectItem>
+                        <SelectItem value="Inspection Certificate">Inspection Certificate</SelectItem>
                     </SelectContent>
                 </Select>
             )}/>

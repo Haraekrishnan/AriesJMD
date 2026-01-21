@@ -187,7 +187,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
   return (
     <>
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md flex flex-col h-full sm:h-auto sm:max-h-[90vh]">
+      <DialogContent className="sm:max-w-md flex flex-col h-full sm:h-auto sm:max-h-[90vh]" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>New PPE Request</DialogTitle>
           <DialogDescription>Request a coverall or safety shoes for an employee.</DialogDescription>
@@ -361,7 +361,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
               <AlertDialogTrigger asChild>
                   <Button type="button">Submit Request</Button>
               </AlertDialogTrigger>
-              <AlertDialogContent>
+              <AlertDialogContent onInteractOutside={(e) => e.preventDefault()}>
                   <AlertDialogHeader>
                       <AlertDialogTitle>Confirm Submission</AlertDialogTitle>
                       <AlertDialogDescription>

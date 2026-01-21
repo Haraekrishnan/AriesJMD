@@ -60,7 +60,7 @@ export default function EditManpowerLogDialog({ isOpen, setIsOpen, log }: EditMa
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit Manpower Log</DialogTitle>
           <DialogDescription>

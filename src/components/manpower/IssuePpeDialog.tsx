@@ -37,7 +37,7 @@ export default function IssuePpeDialog({ isOpen, setIsOpen }: IssuePpeDialogProp
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] grid grid-rows-[auto_1fr_auto]">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] grid grid-rows-[auto_1fr_auto]" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>PPE Issuance Status</DialogTitle>
           <DialogDescription>A list of active employees with no recorded PPE history.</DialogDescription>

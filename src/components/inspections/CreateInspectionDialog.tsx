@@ -131,7 +131,7 @@ export default function CreateInspectionDialog({ isOpen, setIsOpen }: CreateInsp
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-4xl h-full flex flex-col">
+      <DialogContent className="max-w-4xl h-full flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>New Inspection Checklist</DialogTitle>
           <DialogDescription>Fill out the inspection details for the selected equipment.</DialogDescription>

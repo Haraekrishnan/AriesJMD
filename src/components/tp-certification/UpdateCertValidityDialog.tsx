@@ -195,7 +195,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+      <DialogContent className="max-w-4xl h-[90vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Update TP Validity &amp; Certificate</DialogTitle>
           <DialogDescription>Update details for items in list: {certList.name}</DialogDescription>

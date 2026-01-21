@@ -66,7 +66,7 @@ export default function EditPpeHistoryDialog({ isOpen, setIsOpen, record, profil
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit PPE Issue Record</DialogTitle>
           <DialogDescription>Update the details for this PPE issue for {profile.name}.</DialogDescription>
@@ -112,4 +112,3 @@ export default function EditPpeHistoryDialog({ isOpen, setIsOpen, record, profil
     </Dialog>
   );
 }
-

@@ -65,7 +65,7 @@ export default function EditLaptopDesktopDialog({ isOpen, setIsOpen, item }: Edi
   
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit Laptop/Desktop</DialogTitle>
           <DialogDescription>Update the details for this item.</DialogDescription>

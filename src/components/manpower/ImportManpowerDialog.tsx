@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
@@ -54,7 +55,7 @@ export default function ImportManpowerDialog({ isOpen, setIsOpen }: ImportManpow
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
+        <DialogContent onInteractOutside={(e) => e.preventDefault()}>
             <DialogHeader>
                 <DialogTitle>Import Manpower from Excel</DialogTitle>
                 <DialogDescription>

@@ -60,7 +60,7 @@ export default function EditDocumentDialog({ isOpen, setIsOpen, document: doc }:
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit Document Details</DialogTitle>
           <DialogDescription>Modify the information for this document.</DialogDescription>

@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -73,7 +74,7 @@ export default function MemoReportDialog({ isOpen, setIsOpen }: MemoReportDialog
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-4xl h-full max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-4xl h-full max-h-[90vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Memo & Warning Letter Report</DialogTitle>
           <DialogDescription>A complete log of all memos and warning letters issued to employees.</DialogDescription>

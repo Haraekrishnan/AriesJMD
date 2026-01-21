@@ -65,7 +65,7 @@ export default function EditAnemometerDialog({ isOpen, setIsOpen, item }: EditAn
   
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit Anemometer</DialogTitle>
           <DialogDescription>Update the details for this item.</DialogDescription>

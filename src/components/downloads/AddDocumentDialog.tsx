@@ -52,7 +52,7 @@ export default function AddDocumentDialog({ isOpen, setIsOpen }: AddDocumentDial
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Add New Document</DialogTitle>
           <DialogDescription>Provide the document details and a link to the file.</DialogDescription>

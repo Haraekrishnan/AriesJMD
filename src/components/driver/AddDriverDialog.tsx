@@ -100,7 +100,7 @@ export default function AddDriverDialog({ isOpen, setIsOpen, driver }: AddDriver
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>{driver ? `Edit Driver: ${driver.name}` : 'Add New Driver'}</DialogTitle>
         </DialogHeader>
@@ -142,5 +142,3 @@ export default function AddDriverDialog({ isOpen, setIsOpen, driver }: AddDriver
     </Dialog>
   );
 }
-
-    

@@ -44,7 +44,7 @@ export default function ExtendLeaveDialog({ isOpen, setIsOpen, profile, leave }:
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent>
+      <DialogContent onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Extend Leave for {profile.name}</DialogTitle>
           <DialogDescription>

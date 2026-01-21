@@ -45,7 +45,7 @@ export default function AddJobCodeDialog({ isOpen, setIsOpen }: AddJobCodeDialog
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Add New Job Code</DialogTitle>
           <DialogDescription>Create a new code for use in the job record sheet.</DialogDescription>

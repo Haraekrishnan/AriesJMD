@@ -175,7 +175,7 @@ export default function VehicleLogManagerDialog({ isOpen, setIsOpen, vehicle }: 
   return (
     <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-4xl" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Vehicle Log Manager: {vehicle.vehicleNumber}</DialogTitle>
           <DialogDescription>Add new usage logs and view past entries for this vehicle.</DialogDescription>
@@ -325,9 +325,8 @@ export default function VehicleLogManagerDialog({ isOpen, setIsOpen, vehicle }: 
         </div>
       </DialogContent>
     </Dialog>
-
     <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); setNumPages(null); setPageNumber(1); }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
             <DialogHeader>
                 <DialogTitle>Attachment Viewer</DialogTitle>
                 <div className="flex items-center gap-2">
@@ -337,7 +336,7 @@ export default function VehicleLogManagerDialog({ isOpen, setIsOpen, vehicle }: 
                           <Button variant="outline" size="icon" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
                         </>
                     )}
-                     {isPdf && numPages && (
+                    {isPdf && numPages && (
                         <div className="flex items-center gap-2 text-sm">
                             <Button variant="outline" size="icon" onClick={() => setPageNumber(p => Math.max(1, p - 1))} disabled={pageNumber <= 1}><ChevronLeft className="h-4 w-4" /></Button>
                             <span>Page {pageNumber} of {numPages}</span>
@@ -386,5 +385,3 @@ export default function VehicleLogManagerDialog({ isOpen, setIsOpen, vehicle }: 
     </>
   );
 }
-
-    

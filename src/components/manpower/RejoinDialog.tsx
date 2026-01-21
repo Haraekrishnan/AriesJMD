@@ -72,7 +72,7 @@ export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md h-full max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-md h-full max-h-[90vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Update Rejoin Status</DialogTitle>
           <DialogDescription>Select an employee who has returned from leave to update their status.</DialogDescription>

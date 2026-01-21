@@ -81,7 +81,7 @@ export default function LeaveReportDialog({ isOpen, setIsOpen }: LeaveReportDial
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent className="sm:max-w-3xl" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Plan Manpower Leave</DialogTitle>
           <DialogDescription>Select employees and specify their leave period.</DialogDescription>

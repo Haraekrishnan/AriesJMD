@@ -114,7 +114,7 @@ export default function EditMobileSimDialog({ isOpen, setIsOpen, item }: EditMob
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit Mobile/SIM</DialogTitle>
           <DialogDescription>Update the details for this item.</DialogDescription>

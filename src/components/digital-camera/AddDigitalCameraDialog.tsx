@@ -57,7 +57,7 @@ export default function AddDigitalCameraDialog({ isOpen, setIsOpen }: AddDigital
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Add New Digital Camera</DialogTitle>
           <DialogDescription>Fill in the details for the new equipment.</DialogDescription>

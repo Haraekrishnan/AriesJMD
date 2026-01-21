@@ -59,7 +59,7 @@ export default function EditJobCodeDialog({ isOpen, setIsOpen, jobCode }: EditJo
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit Job Code</DialogTitle>
           <DialogDescription>Update the details for this job code.</DialogDescription>

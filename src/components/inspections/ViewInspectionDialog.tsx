@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -41,7 +42,7 @@ export default function ViewInspectionDialog({ isOpen, setIsOpen, checklist }: V
   if (!item || !inspector || !reviewer) {
     return (
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
+        <DialogContent onInteractOutside={(e) => e.preventDefault()}>
             <DialogHeader><DialogTitle>Error</DialogTitle></DialogHeader>
             <p>Could not load all necessary data for this checklist. The associated item, inspector, or reviewer may have been deleted.</p>
             <DialogFooter><Button onClick={() => setIsOpen(false)}>Close</Button></DialogFooter>
@@ -52,7 +53,7 @@ export default function ViewInspectionDialog({ isOpen, setIsOpen, checklist }: V
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-4xl h-full flex flex-col">
+      <DialogContent className="max-w-4xl h-full flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Inspection Checklist</DialogTitle>
           <DialogDescription>
