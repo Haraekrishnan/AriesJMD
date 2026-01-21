@@ -3,6 +3,7 @@
 
 
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -893,6 +894,15 @@ export type TpCertListItem = {
   ariesId?: string | null;
 };
 
+export type TpCertChecklist = {
+  sentForTesting?: string | null;
+  itemsReceived?: string | null;
+  proformaReceived?: string | null;
+  poSent?: string | null;
+  certsReceived?: string | null;
+  validityUpdated?: string | null;
+};
+
 export type TpCertList = {
     id: string;
     name: string;
@@ -900,6 +910,7 @@ export type TpCertList = {
     creatorId: string;
     createdAt: string; // ISO String
     items: TpCertListItem[];
+    checklist?: TpCertChecklist;
 };
 
 export const TRANSFER_REASONS = [
@@ -1075,5 +1086,6 @@ export type VehicleUsageRecord = {
     };
   };
 };
+
 
 

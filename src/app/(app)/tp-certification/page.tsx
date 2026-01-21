@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { generateTpCertExcel, generateTpCertPdf } from '@/components/tp-certification/generateTpCertReport';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import type { TpCertList } from '@/lib/types';
+import type { TpCertList, TpCertChecklist } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import {
   Accordion,
@@ -24,11 +24,14 @@ import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
 import UpdateCertValidityDialog from '@/components/tp-certification/UpdateCertValidityDialog';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 export default function TpCertificationPage() {
     const { 
         user, users, tpCertLists, deleteTpCertList,
-        inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, can
+        inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, can,
+        updateTpCertList
      } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
@@ -90,6 +93,27 @@ export default function TpCertificationPage() {
         deleteTpCertList(listId);
         toast({ title: 'List Deleted', variant: 'destructive' });
     };
+
+    const handleChecklistChange = (listId: string, item: keyof TpCertChecklist, checked: boolean) => {
+      const list = tpCertLists.find(l => l.id === listId);
+      if (!list) return;
+  
+      const updatedChecklist = {
+          ...list.checklist,
+          [item]: checked ? new Date().toISOString() : null
+      };
+  
+      updateTpCertList({ ...list, checklist: updatedChecklist });
+    };
+
+    const checklistItems: { key: keyof TpCertChecklist; label: string }[] = [
+      { key: 'sentForTesting', label: 'Sent for Testing' },
+      { key: 'itemsReceived', label: 'Received Items After Testing' },
+      { key: 'proformaReceived', label: 'Proforma Received' },
+      { key: 'poSent', label: 'PO Sent' },
+      { key: 'certsReceived', label: 'Received Certificates After Testing' },
+      { key: 'validityUpdated', label: 'Certificates Scanned & Validity Updated' },
+    ];
 
     if (!can.manage_tp_certification) {
         return (
@@ -181,6 +205,32 @@ export default function TpCertificationPage() {
                                                     </AlertDialog>
                                                 )}
                                             </div>
+                                        </div>
+                                         <div className="p-4 pt-2 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 border-t">
+                                            {checklistItems.map(({ key, label }) => {
+                                                const timestamp = list.checklist?.[key];
+                                                const isChecked = !!timestamp;
+                                                return (
+                                                    <div key={key} className="flex items-start space-x-2">
+                                                        <Checkbox
+                                                            id={`${list.id}-${key}`}
+                                                            checked={isChecked}
+                                                            onCheckedChange={(checked) => handleChecklistChange(list.id, key, !!checked)}
+                                                            disabled={!can.manage_tp_certification}
+                                                        />
+                                                        <div className="grid gap-1.5 leading-none">
+                                                            <Label htmlFor={`${list.id}-${key}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                                {label}
+                                                            </Label>
+                                                            {isChecked && (
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {format(parseISO(timestamp!), 'dd MMM, h:mm a')}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                         <AccordionContent className="p-4 pt-0 max-h-[450px] overflow-y-auto">
                                             <Table>
