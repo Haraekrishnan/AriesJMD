@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -121,22 +120,12 @@ export default function TpCertificationPage() {
             ...(list.checklist || {}),
             [itemKey]: checked ? { userId: user.id, date: new Date().toISOString() } : null
         };
-
+        
         const currentMaxIndex = list.checklistMaxIndex ?? -1;
         let newMaxIndex = currentMaxIndex;
 
         if (checked) {
             newMaxIndex = Math.max(currentMaxIndex, currentIndex);
-        } else {
-            if (user.role === 'Admin') {
-                let highestCheckedIndex = -1;
-                checklistItems.forEach((item, index) => {
-                    if (updatedChecklist[item.key]) {
-                        highestCheckedIndex = Math.max(highestCheckedIndex, index);
-                    }
-                });
-                newMaxIndex = highestCheckedIndex;
-            }
         }
 
         updateTpCertList({
@@ -148,8 +137,8 @@ export default function TpCertificationPage() {
     };
     
     const handleUnlock = (list: TpCertList) => {
-        updateTpCertList({ ...list, isLocked: false });
-        toast({ title: "List Unlocked", description: "The list can now be edited." });
+        updateTpCertList({ ...list, isLocked: false, checklistMaxIndex: -1 });
+        toast({ title: "List & Checklist Unlocked", description: "The list items can be edited and checklist progress is reset." });
     };
 
 
@@ -205,20 +194,19 @@ export default function TpCertificationPage() {
                                     return acc;
                                 }, {} as Record<string, number>);
                                 const totalQuantity = list.items.length;
-                                const isLocked = list.isLocked;
+                                const isLockedForEdit = list.isLocked;
                                 const canUserUnlock = user && (user.role === 'Admin' || user.role === 'Project Coordinator');
                                 
                                 const isAdmin = user?.role === 'Admin';
                                 const checklist = list.checklist || {};
                                 const maxIndex = list.checklistMaxIndex ?? -1;
-                                const isFinalized = !!checklist[checklistItems[checklistItems.length - 1].key];
-
+                                
                                 return (
                                     <AccordionItem key={list.id} value={list.id} className="border rounded-lg">
                                         <div className="flex justify-between items-center p-4">
                                             <AccordionTrigger className="p-0 hover:no-underline flex-1">
                                                 <div className="flex items-center gap-3">
-                                                    {isLocked && <Lock className="h-4 w-4 text-muted-foreground"/>}
+                                                    {isLockedForEdit && <Lock className="h-4 w-4 text-muted-foreground"/>}
                                                     <div>
                                                         <p className="font-semibold text-lg">{list.name}</p>
                                                         <p className="text-sm text-muted-foreground">
@@ -232,10 +220,10 @@ export default function TpCertificationPage() {
 
                                             <div className="flex items-center gap-2">
                                                 <Button size="sm" variant="outline" onClick={() => setUpdatingValidityList(list)}><BookOpen className="mr-2 h-4 w-4"/> Update Validity</Button>
-                                                {!isLocked && (
+                                                {!isLockedForEdit && (
                                                     <Button size="sm" variant="secondary" onClick={() => setEditingList(list)}><Edit className="mr-2 h-4 w-4"/> Edit List</Button>
                                                 )}
-                                                {isLocked && canUserUnlock && (
+                                                {isLockedForEdit && canUserUnlock && (
                                                     <Button size="sm" variant="outline" onClick={() => handleUnlock(list)}><Unlock className="mr-2 h-4 w-4" /> Unlock</Button>
                                                 )}
                                                 <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); handleGenerateSingleFile(list, 'excel')}}><FileDown className="mr-2 h-4 w-4"/> Excel</Button>
@@ -265,27 +253,23 @@ export default function TpCertificationPage() {
                                                 const isChecked = !!checkData;
                                                 const checkedByUser = isChecked ? users.find(u => u.id === checkData.userId) : null;
                                                 const canCheckPermission = user && permissions.includes(user.role);
-                                                
-                                                let isDisabled = false;
-                                                if (!isAdmin) {
-                                                    if (isFinalized) {
-                                                        isDisabled = true;
-                                                    } else if (isChecked && index < maxIndex) {
-                                                        isDisabled = true;
-                                                    }
-                                                }
+
+                                                const isFinalized = !!checklist[checklistItems[checklistItems.length - 1].key];
+                                                const isLockedByProgress = index < maxIndex;
+                                                const isDisabledForNonAdminFinalized = isFinalized && !isAdmin;
+                                                const isDisabled = isLockedByProgress || isDisabledForNonAdminFinalized;
 
                                                 return (
-                                                    <div key={key} className={cn("flex items-start space-x-2", (isDisabled && !canCheckPermission) && "opacity-60", isDisabled && "cursor-not-allowed")}>
+                                                    <div key={key} className={cn("flex items-start space-x-2", isDisabled && "opacity-60")}>
                                                         <Checkbox
                                                             id={`${list.id}-${key}`}
                                                             checked={isChecked}
                                                             onCheckedChange={(checked) => handleChecklistChange(list, key, !!checked)}
-                                                            disabled={(isDisabled && !isAdmin) || !canCheckPermission}
-                                                            className={cn((isDisabled || !canCheckPermission) && !isAdmin ? "cursor-not-allowed" : "cursor-pointer")}
+                                                            disabled={isDisabled || !canCheckPermission}
+                                                            className={cn((isDisabled || !canCheckPermission) && "cursor-not-allowed")}
                                                         />
                                                         <div className="grid gap-1.5 leading-none">
-                                                            <Label htmlFor={`${list.id}-${key}`} className={cn("text-sm font-medium leading-none", (isDisabled || !canCheckPermission) && !isAdmin ? "cursor-not-allowed" : "cursor-pointer")}>
+                                                            <Label htmlFor={`${list.id}-${key}`} className={cn("text-sm font-medium leading-none", (isDisabled || !canCheckPermission) ? "cursor-not-allowed" : "cursor-pointer")}>
                                                                 {label}
                                                             </Label>
                                                             {checkedByUser && (
@@ -348,4 +332,3 @@ export default function TpCertificationPage() {
         </>
     );
 }
-
