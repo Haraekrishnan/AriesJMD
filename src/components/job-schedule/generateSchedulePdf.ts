@@ -1,4 +1,3 @@
-
 'use client';
 
 import jsPDF from 'jspdf';
@@ -67,36 +66,42 @@ export async function generateSchedulePdf(
   const headerBottomY = headerStartY + headerBoxHeight;
   const tableStartY = headerBottomY;
 
-  // ---------- DYNAMIC TABLE SCALING ----------
+  // ---------- SMART AUTO-FIT TABLE SCALING ----------
   const pageHeight = doc.internal.pageSize.getHeight();
   
-  const footerReserve = 90;   // footer + ref + page no
+  const footerReserve = 90;
   const headerReserve = headerBoxHeight + margin + 10;
   
   const availableTableHeight =
     pageHeight - headerReserve - footerReserve;
   
-  // Base values
-  let fontSize = 6;
+  // Font limits (professional range)
+  const MAX_FONT = 8;      // looks good when few rows
+  const MIN_FONT = 4.5;    // still readable
+  
+  let fontSize = MAX_FONT;
   let cellPadding = 2;
   
-  // Rough row height estimate formula
+  // Row height estimation
   const estimateRowHeight = (font: number, padding: number) =>
-    font * 1.4 + padding * 2;
-  
-  const headerHeight = estimateRowHeight(fontSize + 0.5, cellPadding);
-  let rowHeight = estimateRowHeight(fontSize, cellPadding);
+    font * 1.35 + padding * 2;
   
   const totalRows = bodyRows.length;
+  
+  let headerHeight = estimateRowHeight(fontSize + 0.5, cellPadding);
+  let rowHeight = estimateRowHeight(fontSize, cellPadding);
+  
   let estimatedTableHeight =
     headerHeight + totalRows * rowHeight;
   
-  // Dynamically reduce until it fits (safe limits applied)
-  while (estimatedTableHeight > availableTableHeight && fontSize > 4.5) {
+  // 🔁 Reduce only if overflow
+  while (estimatedTableHeight > availableTableHeight && fontSize > MIN_FONT) {
     fontSize -= 0.2;
     cellPadding = Math.max(1, cellPadding - 0.1);
   
+    headerHeight = estimateRowHeight(fontSize + 0.5, cellPadding);
     rowHeight = estimateRowHeight(fontSize, cellPadding);
+  
     estimatedTableHeight =
       headerHeight + totalRows * rowHeight;
   }
