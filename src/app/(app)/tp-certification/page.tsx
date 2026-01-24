@@ -107,18 +107,39 @@ export default function TpCertificationPage() {
     
     const handleChecklistChange = (list: TpCertList, itemKey: keyof TpCertChecklist, checked: boolean) => {
         if (!user) return;
+
+        const currentIndex = checklistItems.findIndex(item => item.key === itemKey);
+
+        // Prevent checking an item if the previous one isn't checked.
+        if (checked && currentIndex > 0) {
+            const prevItemKey = checklistItems[currentIndex - 1].key;
+            if (!list.checklist?.[prevItemKey]) {
+                toast({
+                    title: 'Prerequisite Step Missing',
+                    description: `Please complete "${checklistItems[currentIndex - 1].label}" before proceeding.`,
+                    variant: 'destructive',
+                });
+                return; 
+            }
+        }
+        
+        // Prevent unchecking an item if a later one is still checked.
+        if (!checked && currentIndex < checklistItems.length - 1) {
+            const nextItemKey = checklistItems[currentIndex + 1].key;
+            if (list.checklist?.[nextItemKey]) {
+                toast({
+                    title: 'Invalid Action',
+                    description: `Please uncheck later steps before unchecking this one.`,
+                    variant: 'destructive',
+                });
+                return;
+            }
+        }
     
         const updatedChecklist = {
             ...(list.checklist || {}),
             [itemKey]: checked ? { userId: user.id, date: new Date().toISOString() } : null
         };
-        
-        const currentIndex = checklistItems.findIndex(item => item.key === itemKey);
-        let newMaxIndex = list.checklistMaxIndex ?? -1;
-
-        if (checked && currentIndex > newMaxIndex) {
-            newMaxIndex = currentIndex;
-        }
         
         const isLockingAction = itemKey === 'sentForTesting' && checked;
         
@@ -126,7 +147,6 @@ export default function TpCertificationPage() {
             ...list, 
             checklist: updatedChecklist,
             isLocked: list.isLocked || isLockingAction,
-            checklistMaxIndex: newMaxIndex,
         });
     };
     
@@ -191,7 +211,7 @@ export default function TpCertificationPage() {
                                 const isLocked = list.isLocked;
                                 const canUserUnlock = user && (user.role === 'Admin' || user.role === 'Project Coordinator');
                                 
-                                const isFinalized = list.checklistMaxIndex === checklistItems.length - 1;
+                                const isFinalized = !!list.checklist?.[checklistItems[checklistItems.length - 1].key];
                                 const isAdmin = user?.role === 'Admin';
 
                                 return (
@@ -246,11 +266,12 @@ export default function TpCertificationPage() {
                                                 const isChecked = !!checkData;
                                                 const checkedByUser = isChecked ? users.find(u => u.id === checkData.userId) : null;
                                                 const canCheck = user && permissions.includes(user.role);
-                                                
-                                                const maxIndexAchieved = list.checklistMaxIndex ?? -1;
-                                                
-                                                const isDisabled = !canCheck || index < maxIndexAchieved || (isFinalized && !isAdmin);
-                                                
+
+                                                let isDisabled = !canCheck;
+                                                if (isFinalized && !isAdmin) {
+                                                    isDisabled = true;
+                                                }
+
                                                 return (
                                                     <div key={key} className={cn("flex items-start space-x-2", isDisabled && "opacity-60")}>
                                                         <Checkbox
@@ -323,4 +344,3 @@ export default function TpCertificationPage() {
         </>
     );
 }
-
