@@ -1,3 +1,4 @@
+
 'use client';
 
 import jsPDF from 'jspdf';
@@ -66,6 +67,40 @@ export async function generateSchedulePdf(
   const headerBottomY = headerStartY + headerBoxHeight;
   const tableStartY = headerBottomY;
 
+  // ---------- DYNAMIC TABLE SCALING ----------
+  const pageHeight = doc.internal.pageSize.getHeight();
+  
+  const footerReserve = 90;   // footer + ref + page no
+  const headerReserve = headerBoxHeight + margin + 10;
+  
+  const availableTableHeight =
+    pageHeight - headerReserve - footerReserve;
+  
+  // Base values
+  let fontSize = 6;
+  let cellPadding = 2;
+  
+  // Rough row height estimate formula
+  const estimateRowHeight = (font: number, padding: number) =>
+    font * 1.4 + padding * 2;
+  
+  const headerHeight = estimateRowHeight(fontSize + 0.5, cellPadding);
+  let rowHeight = estimateRowHeight(fontSize, cellPadding);
+  
+  const totalRows = bodyRows.length;
+  let estimatedTableHeight =
+    headerHeight + totalRows * rowHeight;
+  
+  // Dynamically reduce until it fits (safe limits applied)
+  while (estimatedTableHeight > availableTableHeight && fontSize > 4.5) {
+    fontSize -= 0.2;
+    cellPadding = Math.max(1, cellPadding - 0.1);
+  
+    rowHeight = estimateRowHeight(fontSize, cellPadding);
+    estimatedTableHeight =
+      headerHeight + totalRows * rowHeight;
+  }
+
   doc.autoTable({
     startY: tableStartY,
     tableWidth: usableWidth,
@@ -74,24 +109,32 @@ export async function generateSchedulePdf(
         right: margin,
         top: tableStartY,
     },
+
+    pageBreak: 'avoid',   // 🚫 NEVER go to next page
+    rowPageBreak: 'avoid',
+
     head: [headRow],
     body: bodyRows,
+
     theme: 'grid',
+
     styles: {
-        fontSize: 6,
+        fontSize,
+        cellPadding,
         lineWidth: 0.2,
         lineColor: [0, 0, 0],
         textColor: [0, 0, 0],
         valign: 'middle',
-        cellPadding: 2,
     },
+
     headStyles: {
         fillColor: [255, 255, 255],
         textColor: [0, 0, 0],
         fontStyle: 'bold',
         halign: 'center',
-        fontSize: 6.5,
+        fontSize: fontSize + 0.5,
     },
+
     columnStyles: {
         0: { cellWidth: 25 },
         1: { cellWidth: 120 },
@@ -104,6 +147,7 @@ export async function generateSchedulePdf(
         8: { cellWidth: 35, halign: 'center' },
         9: { cellWidth: usableWidth - 470 },
     },
+
     didDrawPage: (data) => {
       // === HEADER SECTION ======================================================
       const contentStartY = headerStartY + 2;
