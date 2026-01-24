@@ -1,4 +1,5 @@
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -1088,4 +1089,5 @@ export type VehicleUsageRecord = {
     };
   };
 };
+
 

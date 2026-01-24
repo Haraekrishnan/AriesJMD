@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -107,46 +108,42 @@ export default function TpCertificationPage() {
     
     const handleChecklistChange = (list: TpCertList, itemKey: keyof TpCertChecklist, checked: boolean) => {
         if (!user) return;
-
-        const currentIndex = checklistItems.findIndex(item => item.key === itemKey);
-
-        // Prevent checking an item if the previous one isn't checked.
-        if (checked && currentIndex > 0) {
-            const prevItemKey = checklistItems[currentIndex - 1].key;
-            if (!list.checklist?.[prevItemKey]) {
-                toast({
-                    title: 'Prerequisite Step Missing',
-                    description: `Please complete "${checklistItems[currentIndex - 1].label}" before proceeding.`,
-                    variant: 'destructive',
-                });
-                return; 
-            }
-        }
         
-        // Prevent unchecking an item if a later one is still checked.
-        if (!checked && currentIndex < checklistItems.length - 1) {
-            const nextItemKey = checklistItems[currentIndex + 1].key;
-            if (list.checklist?.[nextItemKey]) {
-                toast({
-                    title: 'Invalid Action',
-                    description: `Please uncheck later steps before unchecking this one.`,
-                    variant: 'destructive',
-                });
-                return;
-            }
+        const currentIndex = checklistItems.findIndex(item => item.key === itemKey);
+        
+        const canPerformAction = user.role === 'Admin' || checklistItems[currentIndex].permissions.includes(user.role);
+        if (!canPerformAction) {
+            toast({ title: "Permission Denied", description: "You cannot modify this step.", variant: 'destructive' });
+            return;
         }
-    
+
         const updatedChecklist = {
             ...(list.checklist || {}),
             [itemKey]: checked ? { userId: user.id, date: new Date().toISOString() } : null
         };
-        
-        const isLockingAction = itemKey === 'sentForTesting' && checked;
-        
-        updateTpCertList({ 
-            ...list, 
+
+        const currentMaxIndex = list.checklistMaxIndex ?? -1;
+        let newMaxIndex = currentMaxIndex;
+
+        if (checked) {
+            newMaxIndex = Math.max(currentMaxIndex, currentIndex);
+        } else {
+            if (user.role === 'Admin') {
+                let highestCheckedIndex = -1;
+                checklistItems.forEach((item, index) => {
+                    if (updatedChecklist[item.key]) {
+                        highestCheckedIndex = Math.max(highestCheckedIndex, index);
+                    }
+                });
+                newMaxIndex = highestCheckedIndex;
+            }
+        }
+
+        updateTpCertList({
+            ...list,
             checklist: updatedChecklist,
-            isLocked: list.isLocked || isLockingAction,
+            checklistMaxIndex: newMaxIndex,
+            isLocked: list.isLocked || (itemKey === 'sentForTesting' && checked),
         });
     };
     
@@ -211,8 +208,10 @@ export default function TpCertificationPage() {
                                 const isLocked = list.isLocked;
                                 const canUserUnlock = user && (user.role === 'Admin' || user.role === 'Project Coordinator');
                                 
-                                const isFinalized = !!list.checklist?.[checklistItems[checklistItems.length - 1].key];
                                 const isAdmin = user?.role === 'Admin';
+                                const checklist = list.checklist || {};
+                                const maxIndex = list.checklistMaxIndex ?? -1;
+                                const isFinalized = !!checklist[checklistItems[checklistItems.length - 1].key];
 
                                 return (
                                     <AccordionItem key={list.id} value={list.id} className="border rounded-lg">
@@ -262,26 +261,31 @@ export default function TpCertificationPage() {
                                         </div>
                                          <div className="p-4 pt-2 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 border-t">
                                             {checklistItems.map(({ key, label, permissions }, index) => {
-                                                const checkData = list.checklist?.[key];
+                                                const checkData = checklist[key];
                                                 const isChecked = !!checkData;
                                                 const checkedByUser = isChecked ? users.find(u => u.id === checkData.userId) : null;
-                                                const canCheck = user && permissions.includes(user.role);
-
-                                                let isDisabled = !canCheck;
-                                                if (isFinalized && !isAdmin) {
-                                                    isDisabled = true;
+                                                const canCheckPermission = user && permissions.includes(user.role);
+                                                
+                                                let isDisabled = false;
+                                                if (!isAdmin) {
+                                                    if (isFinalized) {
+                                                        isDisabled = true;
+                                                    } else if (isChecked && index < maxIndex) {
+                                                        isDisabled = true;
+                                                    }
                                                 }
 
                                                 return (
-                                                    <div key={key} className={cn("flex items-start space-x-2", isDisabled && "opacity-60")}>
+                                                    <div key={key} className={cn("flex items-start space-x-2", (isDisabled && !canCheckPermission) && "opacity-60", isDisabled && "cursor-not-allowed")}>
                                                         <Checkbox
                                                             id={`${list.id}-${key}`}
                                                             checked={isChecked}
                                                             onCheckedChange={(checked) => handleChecklistChange(list, key, !!checked)}
-                                                            disabled={isDisabled}
+                                                            disabled={(isDisabled && !isAdmin) || !canCheckPermission}
+                                                            className={cn((isDisabled || !canCheckPermission) && !isAdmin ? "cursor-not-allowed" : "cursor-pointer")}
                                                         />
                                                         <div className="grid gap-1.5 leading-none">
-                                                            <Label htmlFor={`${list.id}-${key}`} className={cn("text-sm font-medium leading-none", !isDisabled && "cursor-pointer", isDisabled && "cursor-not-allowed")}>
+                                                            <Label htmlFor={`${list.id}-${key}`} className={cn("text-sm font-medium leading-none", (isDisabled || !canCheckPermission) && !isAdmin ? "cursor-not-allowed" : "cursor-pointer")}>
                                                                 {label}
                                                             </Label>
                                                             {checkedByUser && (
@@ -344,3 +348,4 @@ export default function TpCertificationPage() {
         </>
     );
 }
+
