@@ -39,6 +39,7 @@ export default function TpCertificationPage() {
     const { toast } = useToast();
     const [editingList, setEditingList] = useState<TpCertList | null>(null);
     const [updatingValidityList, setUpdatingValidityList] = useState<TpCertList | null>(null);
+    const [adminUnlockedLists, setAdminUnlockedLists] = useState<Set<string>>(new Set());
     
     const allItems = useMemo(() => [
       ...inventoryItems, ...utMachines, ...dftMachines, ...digitalCameras, 
@@ -109,8 +110,16 @@ export default function TpCertificationPage() {
         if (!user) return;
         
         const currentIndex = checklistItems.findIndex(item => item.key === itemKey);
-        
+        const currentMaxIndex = list.checklistMaxIndex ?? -1;
+
         const canPerformAction = user.role === 'Admin' || checklistItems[currentIndex].permissions.includes(user.role);
+        
+        const isStepLocked = currentIndex < currentMaxIndex;
+        if (isStepLocked && user.role !== 'Admin') {
+            toast({ title: "Step Locked", description: "A later step has already been completed.", variant: 'destructive' });
+            return;
+        }
+        
         if (!canPerformAction) {
             toast({ title: "Permission Denied", description: "You cannot modify this step.", variant: 'destructive' });
             return;
@@ -121,11 +130,14 @@ export default function TpCertificationPage() {
             [itemKey]: checked ? { userId: user.id, date: new Date().toISOString() } : null
         };
         
-        const currentMaxIndex = list.checklistMaxIndex ?? -1;
         let newMaxIndex = currentMaxIndex;
-
         if (checked) {
             newMaxIndex = Math.max(currentMaxIndex, currentIndex);
+        } else if (user.role === 'Admin') { // Only admins can reduce the max index by unchecking
+            const checkedIndices = Object.keys(updatedChecklist)
+                .map(key => checklistItems.findIndex(item => item.key === key))
+                .filter(index => index > -1 && updatedChecklist[checklistItems[index].key as keyof TpCertChecklist]);
+            newMaxIndex = checkedIndices.length > 0 ? Math.max(...checkedIndices) : -1;
         }
 
         updateTpCertList({
@@ -137,8 +149,20 @@ export default function TpCertificationPage() {
     };
     
     const handleUnlock = (list: TpCertList) => {
-        updateTpCertList({ ...list, isLocked: false, checklistMaxIndex: -1 });
-        toast({ title: "List & Checklist Unlocked", description: "The list items can be edited and checklist progress is reset." });
+        updateTpCertList({ ...list, isLocked: false });
+        toast({ title: "List Unlocked", description: "The list items can now be edited." });
+    };
+
+    const toggleAdminChecklistLock = (listId: string) => {
+      setAdminUnlockedLists(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(listId)) {
+          newSet.delete(listId);
+        } else {
+          newSet.add(listId);
+        }
+        return newSet;
+      });
     };
 
 
@@ -198,6 +222,7 @@ export default function TpCertificationPage() {
                                 const canUserUnlock = user && (user.role === 'Admin' || user.role === 'Project Coordinator');
                                 
                                 const isAdmin = user?.role === 'Admin';
+                                const isAdminOverrideActive = isAdmin && adminUnlockedLists.has(list.id);
                                 const checklist = list.checklist || {};
                                 const maxIndex = list.checklistMaxIndex ?? -1;
                                 
@@ -224,7 +249,13 @@ export default function TpCertificationPage() {
                                                     <Button size="sm" variant="secondary" onClick={() => setEditingList(list)}><Edit className="mr-2 h-4 w-4"/> Edit List</Button>
                                                 )}
                                                 {isLockedForEdit && canUserUnlock && (
-                                                    <Button size="sm" variant="outline" onClick={() => handleUnlock(list)}><Unlock className="mr-2 h-4 w-4" /> Unlock</Button>
+                                                    <Button size="sm" variant="outline" onClick={() => handleUnlock(list)}><Unlock className="mr-2 h-4 w-4" /> Unlock List</Button>
+                                                )}
+                                                {isAdmin && maxIndex > -1 && (
+                                                    <Button size="sm" variant={adminUnlockedLists.has(list.id) ? "secondary" : "outline"} onClick={() => toggleAdminChecklistLock(list.id)}>
+                                                        {adminUnlockedLists.has(list.id) ? <Lock className="mr-2 h-4 w-4"/> : <Unlock className="mr-2 h-4 w-4"/>}
+                                                        Checklist
+                                                    </Button>
                                                 )}
                                                 <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); handleGenerateSingleFile(list, 'excel')}}><FileDown className="mr-2 h-4 w-4"/> Excel</Button>
                                                 <Button size="sm" variant="outline" onClick={(e) => {e.stopPropagation(); handleGenerateSingleFile(list, 'pdf')}}><FileDown className="mr-2 h-4 w-4"/> PDF</Button>
@@ -252,12 +283,13 @@ export default function TpCertificationPage() {
                                                 const checkData = checklist[key];
                                                 const isChecked = !!checkData;
                                                 const checkedByUser = isChecked ? users.find(u => u.id === checkData.userId) : null;
-                                                const canCheckPermission = user && permissions.includes(user.role);
+                                                const canCheckPermission = user && (user.role === 'Admin' || permissions.includes(user.role));
 
-                                                const isFinalized = !!checklist[checklistItems[checklistItems.length - 1].key];
                                                 const isLockedByProgress = index < maxIndex;
+                                                const isFinalized = !!checklist[checklistItems[checklistItems.length - 1].key];
                                                 const isDisabledForNonAdminFinalized = isFinalized && !isAdmin;
-                                                const isDisabled = isLockedByProgress || isDisabledForNonAdminFinalized;
+                                                
+                                                const isDisabled = !isAdminOverrideActive && (isLockedByProgress || isDisabledForNonAdminFinalized);
 
                                                 return (
                                                     <div key={key} className={cn("flex items-start space-x-2", isDisabled && "opacity-60")}>
