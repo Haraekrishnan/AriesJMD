@@ -3,7 +3,7 @@ import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar as CalendarIcon, FileDown, AlertTriangle, Unlock } from 'lucide-react';
+import { Calendar as CalendarIcon, FileDown, AlertTriangle, Unlock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
@@ -18,7 +18,7 @@ import { DatePickerInput } from '@/components/ui/date-picker-input';
 
 export default function JobSchedulePage() {
     const { user, users, jobSchedules, can, manpowerProfiles, vehicles } = useAppContext();
-    const [selectedDate, setSelectedDate] = useState<Date>(addDays(new Date(), 1));
+    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [footerDate, setFooterDate] = useState<Date>(new Date());
 
     const scheduleForDate: JobSchedule | undefined = useMemo(() => {
@@ -26,6 +26,10 @@ export default function JobSchedulePage() {
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
         return jobSchedules.find(s => s.date === dateStr);
     }, [jobSchedules, selectedDate]);
+
+    const changeDay = (amount: number) => {
+        setSelectedDate(prev => addDays(prev, amount));
+    };
 
     const handleExport = async (type: 'excel' | 'pdf') => {
         if (!scheduleForDate || !scheduleForDate.items || scheduleForDate.items.length === 0 || !vehicles) return;
@@ -76,20 +80,28 @@ export default function JobSchedulePage() {
             
             <Card>
                 <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant={'outline'}
-                            className={cn('w-full sm:w-[280px] justify-start text-left font-normal text-lg py-6')}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {format(selectedDate, 'PPP')}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar mode="single" selected={selectedDate} onSelect={(day) => day && setSelectedDate(day)} initialFocus />
-                        </PopoverContent>
-                    </Popover>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="icon" onClick={() => changeDay(-1)}>
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant={'outline'}
+                                className={cn('w-full sm:w-[240px] justify-start text-left font-normal text-lg py-6')}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {format(selectedDate, 'PPP')}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar mode="single" selected={selectedDate} onSelect={(day) => day && setSelectedDate(day)} initialFocus />
+                            </PopoverContent>
+                        </Popover>
+                        <Button variant="outline" size="icon" onClick={() => changeDay(1)}>
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
                     <div className="flex flex-col sm:flex-row items-end gap-2">
                         {scheduleForDate && scheduleForDate.items.length > 0 && (
                             <>
