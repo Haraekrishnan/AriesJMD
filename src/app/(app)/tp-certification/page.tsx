@@ -111,14 +111,8 @@ export default function TpCertificationPage() {
         
         const currentIndex = checklistItems.findIndex(item => item.key === itemKey);
         const currentMaxIndex = list.checklistMaxIndex ?? -1;
-
-        const canPerformAction = user.role === 'Admin' || checklistItems[currentIndex].permissions.includes(user.role);
         
-        const isStepLocked = currentIndex < currentMaxIndex;
-        if (isStepLocked && user.role !== 'Admin') {
-            toast({ title: "Step Locked", description: "A later step has already been completed.", variant: 'destructive' });
-            return;
-        }
+        const canPerformAction = user.role === 'Admin' || checklistItems[currentIndex].permissions.includes(user.role);
         
         if (!canPerformAction) {
             toast({ title: "Permission Denied", description: "You cannot modify this step.", variant: 'destructive' });
@@ -135,7 +129,10 @@ export default function TpCertificationPage() {
             newMaxIndex = Math.max(currentMaxIndex, currentIndex);
         } else if (user.role === 'Admin') { // Only admins can reduce the max index by unchecking
             const checkedIndices = Object.keys(updatedChecklist)
-                .map(key => checklistItems.findIndex(item => item.key === key))
+                .map(key => {
+                    const item = checklistItems.find(item => item.key === key);
+                    return item ? checklistItems.indexOf(item) : -1;
+                })
                 .filter(index => index > -1 && updatedChecklist[checklistItems[index].key as keyof TpCertChecklist]);
             newMaxIndex = checkedIndices.length > 0 ? Math.max(...checkedIndices) : -1;
         }
@@ -149,8 +146,8 @@ export default function TpCertificationPage() {
     };
     
     const handleUnlock = (list: TpCertList) => {
-        updateTpCertList({ ...list, isLocked: false });
-        toast({ title: "List Unlocked", description: "The list items can now be edited." });
+        updateTpCertList({ ...list, isLocked: false, checklist: {}, checklistMaxIndex: -1 });
+        toast({ title: "List & Checklist Unlocked", description: "The list items can be edited and checklist has been reset." });
     };
 
     const toggleAdminChecklistLock = (listId: string) => {
@@ -249,7 +246,7 @@ export default function TpCertificationPage() {
                                                     <Button size="sm" variant="secondary" onClick={() => setEditingList(list)}><Edit className="mr-2 h-4 w-4"/> Edit List</Button>
                                                 )}
                                                 {isLockedForEdit && canUserUnlock && (
-                                                    <Button size="sm" variant="outline" onClick={() => handleUnlock(list)}><Unlock className="mr-2 h-4 w-4" /> Unlock List</Button>
+                                                    <Button size="sm" variant="outline" onClick={() => handleUnlock(list)}><Unlock className="mr-2 h-4 w-4" /> Unlock & Reset</Button>
                                                 )}
                                                 {isAdmin && maxIndex > -1 && (
                                                     <Button size="sm" variant={adminUnlockedLists.has(list.id) ? "secondary" : "outline"} onClick={() => toggleAdminChecklistLock(list.id)}>
@@ -284,24 +281,24 @@ export default function TpCertificationPage() {
                                                 const isChecked = !!checkData;
                                                 const checkedByUser = isChecked ? users.find(u => u.id === checkData.userId) : null;
                                                 const canCheckPermission = user && (user.role === 'Admin' || permissions.includes(user.role));
-
-                                                const isLockedByProgress = index < maxIndex;
+                                                
                                                 const isFinalized = !!checklist[checklistItems[checklistItems.length - 1].key];
+                                                const isLockedByProgress = isChecked && index < maxIndex;
                                                 const isDisabledForNonAdminFinalized = isFinalized && !isAdmin;
                                                 
                                                 const isDisabled = !isAdminOverrideActive && (isLockedByProgress || isDisabledForNonAdminFinalized);
 
                                                 return (
-                                                    <div key={key} className={cn("flex items-start space-x-2", isDisabled && "opacity-60")}>
+                                                    <div key={key} className={cn("flex items-start space-x-2", (isDisabled && !isChecked) && "opacity-60")}>
                                                         <Checkbox
                                                             id={`${list.id}-${key}`}
                                                             checked={isChecked}
                                                             onCheckedChange={(checked) => handleChecklistChange(list, key, !!checked)}
-                                                            disabled={isDisabled || !canCheckPermission}
-                                                            className={cn((isDisabled || !canCheckPermission) && "cursor-not-allowed")}
+                                                            disabled={isDisabled}
+                                                            className={cn(isDisabled && "cursor-not-allowed")}
                                                         />
                                                         <div className="grid gap-1.5 leading-none">
-                                                            <Label htmlFor={`${list.id}-${key}`} className={cn("text-sm font-medium leading-none", (isDisabled || !canCheckPermission) ? "cursor-not-allowed" : "cursor-pointer")}>
+                                                            <Label htmlFor={`${list.id}-${key}`} className={cn("text-sm font-medium leading-none", isDisabled ? "cursor-not-allowed" : "cursor-pointer")}>
                                                                 {label}
                                                             </Label>
                                                             {checkedByUser && (
@@ -364,3 +361,4 @@ export default function TpCertificationPage() {
         </>
     );
 }
+
