@@ -25,7 +25,7 @@ interface PendingTransfersProps {
 
 
 export default function PendingTransfers({ onEditRequest }: PendingTransfersProps) {
-  const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, deleteInventoryTransferRequest, addTpCertList, disputeInventoryTransfer, acknowledgeTransfer, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, resolveInternalRequestDispute } = useAppContext();
+  const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, deleteInventoryTransferRequest, addTpCertList, disputeInventoryTransfer, acknowledgeTransfer, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims } = useAppContext();
   const { toast } = useToast();
   const [rejectionRequestId, setRejectionRequestId] = useState<string | null>(null);
   const [disputeRequestId, setDisputeRequestId] = useState<string | null>(null);
@@ -149,7 +149,7 @@ export default function PendingTransfers({ onEditRequest }: PendingTransfersProp
                   }, {} as Record<string, number>);
                   
                   const sortedItems = [...req.items].sort((a,b) => a.name.localeCompare(b.name));
-                  const canEdit = can.approve_store_requests || user?.role === 'Admin';
+                  const canEdit = can.approve_store_requests || user?.role === 'Admin' || user?.role === 'Assistant Store Incharge';
 
 
                   return (
@@ -277,7 +277,10 @@ export default function PendingTransfers({ onEditRequest }: PendingTransfersProp
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive ml-2"><Trash2 className="h-4 w-4"/></Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>
-                                        <AlertDialogHeader><AlertDialogTitle>Delete this transfer request?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Delete this transfer request?</AlertDialogTitle>
+                                            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                                        </AlertDialogHeader>
                                         <AlertDialogFooter>
                                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                                             <AlertDialogAction onClick={() => handleDelete(req.id)}>Delete</AlertDialogAction>
@@ -417,3 +420,5 @@ export default function PendingTransfers({ onEditRequest }: PendingTransfersProp
     </>
   );
 }
+
+    
