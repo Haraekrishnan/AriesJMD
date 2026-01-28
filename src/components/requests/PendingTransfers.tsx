@@ -25,7 +25,7 @@ interface PendingTransfersProps {
 
 
 export default function PendingTransfers({ onEditRequest }: PendingTransfersProps) {
-  const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, deleteInventoryTransferRequest, addTpCertList, disputeInventoryTransfer, acknowledgeTransfer, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims } = useAppContext();
+  const { user, inventoryTransferRequests, approveInventoryTransferRequest, rejectInventoryTransferRequest, users, projects, can, deleteInventoryTransferRequest, addTpCertList, disputeInventoryTransfer, acknowledgeTransfer, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, resolveInternalRequestDispute } = useAppContext();
   const { toast } = useToast();
   const [rejectionRequestId, setRejectionRequestId] = useState<string | null>(null);
   const [disputeRequestId, setDisputeRequestId] = useState<string | null>(null);
@@ -167,7 +167,7 @@ export default function PendingTransfers({ onEditRequest }: PendingTransfersProp
                                 </div>
                             </AccordionTrigger>
                             <div className="flex items-center gap-2 pl-4">
-                                {can.approve_store_requests && req.status === 'Pending' && (
+                                {(can.approve_store_requests || user?.role === 'Assistant Store Incharge') && req.status === 'Pending' && (
                                 <>
                                     {canEdit && (
                                         <Button size="sm" variant="outline" onClick={() => onEditRequest(req)}>
@@ -206,7 +206,7 @@ export default function PendingTransfers({ onEditRequest }: PendingTransfersProp
                                     </AlertDialog>
                                 </>
                                 )}
-                                {req.status === 'Disputed' && can.approve_store_requests && (
+                                {req.status === 'Disputed' && (can.approve_store_requests || user?.role === 'Assistant Store Incharge') && (
                                      <div className="flex gap-2">
                                         <Button size="sm" onClick={() => resolveInternalRequestDispute(req.id, 'reissue', 'Dispute accepted. Items will be re-issued.')}>Re-issue</Button>
                                         <Button size="sm" variant="outline" onClick={() => resolveInternalRequestDispute(req.id, 'reverse', 'Dispute rejected. Items confirmed as issued.')}>Confirm Issued</Button>
