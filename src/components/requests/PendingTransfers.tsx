@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -38,7 +37,13 @@ const RequestCard = ({ req, onEditRequest }: { req: InventoryTransferRequest; on
 
     const canEdit = useMemo(() => {
         if (!user) return false;
-        return can.approve_store_requests || user.role === 'Admin' || user.role === 'Assistant Store Incharge';
+        const canEditRoles: Role[] = ['Admin', 'Project Coordinator', 'Store in Charge', 'Assistant Store Incharge'];
+        return canEditRoles.includes(user.role);
+    }, [user]);
+
+    const canApprove = useMemo(() => {
+        if (!user) return false;
+        return can.approve_store_requests;
     }, [user, can.approve_store_requests]);
 
     const handleReject = () => {
@@ -84,7 +89,7 @@ const RequestCard = ({ req, onEditRequest }: { req: InventoryTransferRequest; on
                             <Edit className="mr-2 h-4 w-4" /> Edit
                         </Button>
                     )}
-                    {can.approve_store_requests && req.status === 'Pending' && (
+                    {canApprove && req.status === 'Pending' && (
                     <>
                         {showTpOption ? (
                             <DropdownMenu>
@@ -176,7 +181,8 @@ export default function PendingTransfers({ onEditRequest }: PendingTransfersProp
       const isMyProject = user.projectIds?.includes(req.fromProjectId) || user.projectIds?.includes(req.toProjectId);
       const isRequester = req.requesterId === user.id;
 
-      if (can.approve_store_requests && (req.status === 'Pending' || req.status === 'Disputed')) {
+      const canViewPending = can.approve_store_requests || user.role === 'Assistant Store Incharge';
+      if (canViewPending && (req.status === 'Pending' || req.status === 'Disputed')) {
         forApproval.push(req);
       }
       
