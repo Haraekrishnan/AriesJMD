@@ -135,7 +135,29 @@ const RequestCard = ({ req, onEditRequest }: { req: InventoryTransferRequest; on
                  <div className="text-xs space-y-2 mt-2 pt-2 border-t">
                     <div className="flex justify-between items-center">
                         <p><strong>Reason:</strong> {req.reason.replace(' as requested by', '')} {requestedBy ? ` by ${requestedBy.name}` : ''}</p>
-                        <TransferReportDownloads request={req} />
+                        <div className="flex items-center gap-2">
+                            <TransferReportDownloads request={req} />
+                            {canApprove && (req.status === 'Completed' || req.status === 'Issued') && showTpOption && (
+                                <Button size="sm" variant="secondary" onClick={() => {
+                                    const listData = {
+                                        name: `From Transfer ${req.id.slice(-6)}`,
+                                        date: new Date().toISOString().split('T')[0],
+                                        items: req.items.map(item => ({
+                                            materialName: item.name,
+                                            manufacturerSrNo: item.serialNumber,
+                                            itemId: item.itemId,
+                                            itemType: item.itemType,
+                                            ariesId: item.ariesId || null,
+                                            chestCrollNo: (allItems.find(i => i.id === item.itemId) as any)?.chestCrollNo || null,
+                                        })),
+                                    };
+                                    addTpCertList(listData);
+                                    toast({ title: 'TP Certification List Created' });
+                                }}>
+                                    <FilePlus className="mr-2 h-4 w-4" /> Create TP List
+                                </Button>
+                            )}
+                        </div>
                     </div>
                     {req.remarks && <p><strong>Remarks:</strong> {req.remarks}</p>}
                     <div className="pt-1">
@@ -247,7 +269,9 @@ export default function PendingTransfers({ onEditRequest }: PendingTransfersProp
                       </AccordionTrigger>
                   </div>
               <AccordionContent className="p-2 space-y-2">
-                {allCompletedRequests.map(req => <RequestCard key={req.id} req={req} onEditRequest={onEditRequest} />)}
+                <Accordion type="multiple" className="w-full space-y-2">
+                    {allCompletedRequests.map(req => <RequestCard key={req.id} req={req} onEditRequest={onEditRequest} />)}
+                </Accordion>
               </AccordionContent>
             </AccordionItem>
           </Accordion>
