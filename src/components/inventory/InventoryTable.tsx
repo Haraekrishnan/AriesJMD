@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, Edit, Trash2, ShieldQuestion, Pencil, ArrowUpDown, CheckCircle, Link as LinkIcon, Download } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import EditItemDialog from './EditItemDialog';
 import { format, isPast, parseISO, differenceInDays, formatDistanceToNow } from 'date-fns';
@@ -30,15 +30,25 @@ interface InventoryTableProps {
 const ItemCard = ({ item, onEdit, onRequest, onDelete, onVerify }: { item: InventoryItem; onEdit: () => void; onRequest: () => void; onDelete: () => void; onVerify: () => void; }) => {
     const { can, user, projects } = useAppContext();
     
-    const getProjectName = (projectId: string) => {
-        const project = projects.find(p => p.id === projectId);
+    const getProjectName = (item: InventoryItem) => {
+        if (item.status === 'Moved to another project') {
+            return item.movedToProjectId || 'N/A';
+        }
+        const project = projects.find(p => p.id === item.projectId);
         if (!project) return 'N/A';
         return item.plantUnit ? `${project.name} / ${item.plantUnit}` : project.name;
     };
 
-    const formatDate = (dateString?: string) => dateString ? format(parseISO(dateString), 'dd-MM-yyyy') : 'N/A';
+    const formatDate = (dateString?: string | null) => {
+        if (!dateString) return 'N/A';
+        try {
+            return format(new Date(dateString), 'dd-MM-yyyy');
+        } catch (error) {
+            return 'Invalid Date';
+        }
+    };
 
-    const getDateStyles = (dateString?: string): string => {
+    const getDateStyles = (dateString?: string) => {
         if (!dateString) return '';
         const date = parseISO(dateString);
         if (isPast(date)) return 'text-destructive font-bold';
@@ -79,8 +89,14 @@ const ItemCard = ({ item, onEdit, onRequest, onDelete, onVerify }: { item: Inven
                 )}
                 <div>
                     <div className="text-muted-foreground">Location</div>
-                    <div>{getProjectName(item.projectId)}</div>
+                    <div>{getProjectName(item)}</div>
                 </div>
+                 {item.status === 'Moved to another project' && (
+                    <div>
+                        <div className="text-muted-foreground">Transfer Date</div>
+                        <div>{formatDate(item.transferDate)}</div>
+                    </div>
+                )}
                  <div>
                     <div className="text-muted-foreground">Insp. Due</div>
                     <div className={cn(getDateStyles(item.inspectionDueDate))}>{formatDate(item.inspectionDueDate)}</div>
@@ -162,6 +178,9 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
     }, [user, roles]);
     
     const getProjectName = (item: InventoryItem) => {
+        if (item.status === 'Moved to another project') {
+          return item.movedToProjectId || 'N/A';
+        }
         const project = projects.find(p => p.id === item.projectId);
         if (!project) return 'N/A';
         return item.plantUnit ? `${project.name} / ${item.plantUnit}` : project.name;
@@ -233,7 +252,7 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
         toast({ variant: 'destructive', title: 'Item Group Deleted', description: `All items named "${itemName}" have been deleted.` });
     }
     
-    const getDateStyles = (dateString?: string): string => {
+    const getDateStyles = (dateString?: string | null): string => {
         if (!dateString) return '';
         const date = parseISO(dateString);
         if (isPast(date)) {
@@ -245,7 +264,7 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
         return '';
     };
 
-    const formatDate = (dateString?: string) => {
+    const formatDate = (dateString?: string | null) => {
         if (!dateString) return 'N/A';
         try {
             return format(new Date(dateString), 'dd-MM-yyyy');
@@ -367,6 +386,7 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
                                                         {itemName.toLowerCase() === 'harness' && <TableHead>Chest Croll No.</TableHead>}
                                                         <TableHead>Status</TableHead>
                                                         <TableHead>Location</TableHead>
+                                                        <TableHead>Transfer Date</TableHead>
                                                         <TableHead>Insp. Due</TableHead>
                                                         <TableHead>TP Insp. Due</TableHead>
                                                         <TableHead>
@@ -399,6 +419,7 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
                                                             {itemName.toLowerCase() === 'harness' && <TableCell>{item.chestCrollNo || 'N/A'}</TableCell>}
                                                             <TableCell><Badge variant={getStatusVariant(displayStatus)}>{displayStatus}</Badge></TableCell>
                                                             <TableCell>{getProjectName(item)}</TableCell>
+                                                            <TableCell>{item.status === 'Moved to another project' ? formatDate(item.transferDate) : 'N/A'}</TableCell>
                                                             <TableCell className={cn(getDateStyles(item.inspectionDueDate))}>{formatDate(item.inspectionDueDate)}</TableCell>
                                                             <TableCell className={cn(getDateStyles(item.tpInspectionDueDate))}>{formatDate(item.tpInspectionDueDate)}</TableCell>
                                                             <TableCell className="text-xs text-muted-foreground">
