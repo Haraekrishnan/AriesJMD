@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -27,8 +26,9 @@ const itemSchema = z.object({
   purchaseDate: z.date().optional().nullable(),
   chestCrollNo: z.string().optional(),
   status: z.enum(['In Use', 'In Store', 'Damaged', 'Expired', 'Moved to another project', 'Quarantine']),
-  projectId: z.string().min(1, 'Location is required'),
+  projectId: z.string().optional(),
   movedToProjectId: z.string().optional(),
+  transferDate: z.date().optional().nullable(),
   plantUnit: z.string().optional(),
   inspectionDate: z.date().optional().nullable(),
   inspectionDueDate: z.date().optional().nullable(),
@@ -47,6 +47,13 @@ const itemSchema = z.object({
             path: ['serialNumber'],
         });
     }
+    if (data.status !== 'Moved to another project' && !data.projectId) {
+      ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Location is required.',
+          path: ['projectId'],
+      });
+  }
 });
 
 type ItemFormValues = z.infer<typeof itemSchema>;
@@ -90,6 +97,15 @@ export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDial
       form.setValue('plantUnit', '');
     }
   }, [showPlantUnit, form]);
+  
+  useEffect(() => {
+    if (status !== 'Moved to another project') {
+      form.setValue('movedToProjectId', '');
+      form.setValue('transferDate', null);
+    } else {
+      form.setValue('projectId', '');
+    }
+  }, [status, form]);
 
 
   useEffect(() => {
@@ -107,6 +123,7 @@ export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDial
             inspectionDate: item.inspectionDate ? new Date(item.inspectionDate) : undefined,
             inspectionDueDate: item.inspectionDueDate ? new Date(item.inspectionDueDate) : undefined,
             tpInspectionDueDate: item.tpInspectionDueDate ? new Date(item.tpInspectionDueDate) : undefined,
+            transferDate: item.transferDate ? new Date(item.transferDate) : undefined,
             category: item.category || 'General',
         });
     }
@@ -121,6 +138,7 @@ export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDial
         inspectionDueDate: data.inspectionDueDate ? data.inspectionDueDate.toISOString() : '',
         tpInspectionDueDate: data.tpInspectionDueDate ? data.tpInspectionDueDate.toISOString() : '',
         purchaseDate: data.purchaseDate ? data.purchaseDate.toISOString() : null,
+        transferDate: data.transferDate ? data.transferDate.toISOString() : null,
         movedToProjectId: data.movedToProjectId,
         chestCrollNo: data.chestCrollNo,
     });
@@ -203,19 +221,26 @@ export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDial
                         <Label>Status</Label>
                         <Controller control={form.control} name="status" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>)}/>
                     </div>
-                    <div>
-                        <Label>Location</Label>
-                        <Controller control={form.control} name="projectId" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select location..."/></SelectTrigger><SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>)}/>
-                        {form.formState.errors.projectId && <p className="text-xs text-destructive">{form.formState.errors.projectId.message}</p>}
-                    </div>
+                     {status !== 'Moved to another project' ? (
+                        <div>
+                            <Label>Location</Label>
+                            <Controller control={form.control} name="projectId" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select location..."/></SelectTrigger><SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>)}/>
+                            {form.formState.errors.projectId && <p className="text-xs text-destructive">{form.formState.errors.projectId.message}</p>}
+                        </div>
+                    ) : (
+                        <div>
+                            <Label>Transferred Date</Label>
+                            <Controller name="transferDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
+                        </div>
+                    )}
                 </div>
                  {status === 'Moved to another project' && (
                     <div>
-                        <Label>Moved To Project (Optional)</Label>
-                        <Input {...form.register('movedToProjectId')} placeholder="Enter destination project..." />
+                        <Label>Moved To Project</Label>
+                        <Input {...form.register('movedToProjectId')} placeholder="Enter destination project name..." />
                     </div>
                 )}
-                {showPlantUnit && (
+                {showPlantUnit && status !== 'Moved to another project' && (
                 <div>
                     <Label htmlFor="plantUnit">Plant/Unit</Label>
                     <Input id="plantUnit" {...form.register('plantUnit')} placeholder="e.g., Unit A" />
@@ -256,5 +281,3 @@ export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDial
     </Dialog>
   );
 }
-
-    

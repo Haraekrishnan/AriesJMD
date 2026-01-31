@@ -633,6 +633,7 @@ export type InventoryItem = {
   quantity?: number;
   unit?: string;
   movedToProjectId?: string | null;
+  transferDate?: string | null;
 };
 
 export type UTMachine = {
@@ -1089,5 +1090,3 @@ export type VehicleUsageRecord = {
     };
   };
 };
-
-
