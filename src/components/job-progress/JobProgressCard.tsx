@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -10,6 +9,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { CheckCircle, Clock, Circle, Send } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
+import { Label } from '../ui/label';
 
 const statusConfig: { [key in JobStepStatus]: { icon: React.ElementType, color: string, label: string } } = {
   'Pending': { icon: Clock, color: 'text-gray-500', label: 'Pending' },
@@ -51,6 +51,7 @@ export default function JobProgressCard({ job }: { job: JobProgress }) {
           {job.steps.map((step, index) => {
             const assignee = users.find(u => u.id === step.assigneeId);
             const canAct = user?.id === step.assigneeId;
+            const Icon = statusConfig[step.status].icon;
 
             return (
               <div key={step.id} className="p-3 border rounded-md bg-muted/50">
@@ -64,7 +65,7 @@ export default function JobProgressCard({ job }: { job: JobProgress }) {
                         </div>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
-                        <statusConfig[step.status].icon className={`h-4 w-4 ${statusConfig[step.status].color}`} />
+                        <Icon className={`h-4 w-4 ${statusConfig[step.status].color}`} />
                         <span className={statusConfig[step.status].color}>{statusConfig[step.status].label}</span>
                     </div>
                 </div>
