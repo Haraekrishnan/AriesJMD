@@ -883,20 +883,7 @@ export type JobRecordPlant = {
   name: string;
 };
 
-export type CustomFieldType = 'text' | 'textarea' | 'date' | 'time' | 'url' | 'checkbox';
-
-export type CustomFieldDefinition = {
-  id: string; 
-  label: string;
-  type: CustomFieldType;
-};
-
-export type CustomFieldValue = {
-  fieldId: string; 
-  value: any;
-};
-
-export type JobStepStatus = 'Pending' | 'Acknowledged' | 'Completed' | 'Skipped';
+export type JobStepStatus = 'Not Started' | 'Pending' | 'Acknowledged' | 'Completed' | 'Skipped';
 
 export type JobStep = {
   id: string;
@@ -906,17 +893,16 @@ export type JobStep = {
   description?: string;
   dueDate?: string; // ISO string
   requiresAttachment?: boolean;
-  customFields?: CustomFieldDefinition[];
-  completedBy?: string;
-  completedAt?: string; // ISO
+  
   acknowledgedAt?: string; // ISO
+  completedAt?: string; // ISO
+  completedBy?: string; // userId
   comments?: Comment[];
   completionDetails?: {
       date?: string;
       attachmentUrl?: string;
       notes?: string;
-      customFieldValues?: CustomFieldValue[];
-  }
+  };
 };
 
 
@@ -927,10 +913,10 @@ export type JobProgress = {
   title: string;
   creatorId: string;
   createdAt: string; // ISO
+  lastUpdated: string; // ISO
   status: JobProgressStatus;
   steps: JobStep[];
 };
-
 
 export type TpCertListItem = {
   itemId: string;

@@ -3,7 +3,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { Task, TaskStatus, ApprovalState, Comment, Subtask, NotificationEventKey, JobProgress, JobStep, JobStepStatus, CustomFieldValue } from '@/lib/types';
+import { Task, TaskStatus, ApprovalState, Comment, Subtask, NotificationEventKey, JobProgress, JobStep, JobStepStatus } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { format, isPast } from 'date-fns';
 import { useGeneral } from './general-provider';
+import { uploadFile } from '@/lib/storage';
 
 type TaskContextType = {
   tasks: Task[];
@@ -28,8 +29,8 @@ type TaskContextType = {
   requestTaskReassignment: (taskId: string, newAssigneeId: string, comment: string) => void;
   markTaskAsViewed: (taskId: string) => void;
   acknowledgeReturnedTask: (taskId: string) => void;
-  createJobProgress: (data: { title: string; steps: Omit<JobStep, 'id' | 'status' | 'acknowledgedAt' | 'completedAt' | 'completedBy' | 'comments' | 'completionDetails'>[] }) => void;
-  updateJobStepStatus: (jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string, completionDetails?: { attachmentUrl?: string; customFieldValues?: CustomFieldValue[] }) => void;
+  createJobProgress: (data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[] }) => void;
+  updateJobStepStatus: (jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string, completionDetails?: { attachmentUrl?: string; }) => void;
   addJobStepComment: (jobId: string, stepId: string, commentText: string) => void;
 };
 
@@ -360,7 +361,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb, `tasks/${taskId}`), { approvalState: 'none' });
     }, [user]);
 
-    const createJobProgress = useCallback((data: { title: string; steps: Omit<JobStep, 'id' | 'status' | 'acknowledgedAt' | 'completedAt' | 'completedBy' | 'comments' | 'completionDetails'>[] }) => {
+    const createJobProgress = useCallback((data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[] }) => {
         if (!user) return;
         const newRef = push(ref(rtdb, 'jobProgress'));
         const now = new Date().toISOString();
@@ -368,14 +369,15 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         const initialSteps: JobStep[] = data.steps.map((step, index) => ({
             ...step,
             id: `step-${index}`,
-            status: 'Pending',
-            customFields: (step.customFields || []).map(cf => ({...cf, id: cf.id || `cf-${Date.now()}-${Math.random()}`}))
+            status: index === 0 ? 'Pending' : 'Not Started',
+            comments: [],
         }));
     
         const newJob: Omit<JobProgress, 'id'> = {
           title: data.title,
           creatorId: user.id,
           createdAt: now,
+          lastUpdated: now,
           status: 'Not Started',
           steps: initialSteps,
         };
@@ -383,54 +385,72 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         set(newRef, newJob);
     }, [user]);
 
-  const addJobStepComment = useCallback((jobId: string, stepId: string, commentText: string) => {
-      if (!user) return;
-      const newCommentRef = push(ref(rtdb, `jobProgress/${jobId}/steps/${stepId}/comments`));
-      const newComment = { id: newCommentRef.key, userId: user.id, text: commentText, date: new Date().toISOString() };
-      set(newCommentRef, newComment);
-  }, [user]);
+    const addJobStepComment = useCallback((jobId: string, stepId: string, commentText: string) => {
+        if (!user) return;
+        const job = jobProgressById[jobId];
+        if (!job) return;
+        
+        const stepIndex = job.steps.findIndex(s => s.id === stepId);
+        if (stepIndex === -1) return;
 
-  const updateJobStepStatus = useCallback((jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string, completionDetails?: { attachmentUrl?: string; customFieldValues?: CustomFieldValue[] }) => {
-    const job = jobProgress.find(j => j.id === jobId);
-    if (!job || !user) return;
-
-    const stepIndex = job.steps.findIndex(s => s.id === stepId);
-    if (stepIndex === -1) return;
-
-    const updates: { [key: string]: any } = {};
-    const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
-
-    updates[`${stepPath}/status`] = newStatus;
-    
-    if (newStatus === 'Acknowledged') {
-        updates[`${stepPath}/acknowledgedAt`] = new Date().toISOString();
-    } else if (newStatus === 'Completed') {
-        updates[`${stepPath}/completedAt`] = new Date().toISOString();
-        updates[`${stepPath}/completedBy`] = user.id;
-        updates[`${stepPath}/completionDetails`] = {
+        const newCommentRef = push(ref(rtdb, `jobProgress/${jobId}/steps/${stepIndex}/comments`));
+        const newComment: Omit<Comment, 'id'> & {id: string} = {
+            id: newCommentRef.key!,
+            userId: user.id,
+            text: commentText,
             date: new Date().toISOString(),
-            notes: comment || '',
-            attachmentUrl: completionDetails?.attachmentUrl || null,
-            customFieldValues: completionDetails?.customFieldValues || [],
+            eventId: jobId
         };
-    }
-    
-    const allStepsCompleted = job.steps.every((step, index) => 
-        index === stepIndex ? newStatus === 'Completed' : step.status === 'Completed'
-    );
+        set(newCommentRef, newComment);
+    }, [user, jobProgressById]);
 
-    if (allStepsCompleted) {
-        updates[`jobProgress/${jobId}/status`] = 'Completed';
-    } else if (job.status === 'Not Started' && (newStatus === 'Acknowledged' || newStatus === 'Completed')) {
-        updates[`jobProgress/${jobId}/status`] = 'In Progress';
-    }
+    const updateJobStepStatus = useCallback((jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string, completionDetails?: { attachmentUrl?: string }) => {
+        const job = jobProgressById[jobId];
+        if (!job || !user) return;
 
-    update(ref(rtdb), updates);
+        const stepIndex = job.steps.findIndex(s => s.id === stepId);
+        if (stepIndex === -1) return;
 
-    if (comment) {
-        addJobStepComment(jobId, stepId, comment);
-    }
-}, [user, jobProgress, addJobStepComment]);
+        const updates: { [key: string]: any } = {};
+        const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
+
+        updates[`${stepPath}/status`] = newStatus;
+        updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
+        
+        if (newStatus === 'Acknowledged') {
+            updates[`${stepPath}/acknowledgedAt`] = new Date().toISOString();
+        } else if (newStatus === 'Completed') {
+            updates[`${stepPath}/completedAt`] = new Date().toISOString();
+            updates[`${stepPath}/completedBy`] = user.id;
+            updates[`${stepPath}/completionDetails`] = {
+                date: new Date().toISOString(),
+                notes: comment || '',
+                attachmentUrl: completionDetails?.attachmentUrl || null,
+            };
+
+            // If this is not the last step, update the next step's status to 'Pending'
+            if (stepIndex < job.steps.length - 1) {
+                updates[`jobProgress/${jobId}/steps/${stepIndex + 1}/status`] = 'Pending';
+            }
+        }
+        
+        // Update overall job status
+        const allStepsCompleted = job.steps.every((step, index) => 
+            index === stepIndex ? newStatus === 'Completed' : step.status === 'Completed'
+        );
+
+        if (allStepsCompleted) {
+            updates[`jobProgress/${jobId}/status`] = 'Completed';
+        } else if (job.status === 'Not Started' && (newStatus === 'Acknowledged' || newStatus === 'Completed')) {
+            updates[`jobProgress/${jobId}/status`] = 'In Progress';
+        }
+
+        update(ref(rtdb), updates);
+
+        if (comment) {
+            addJobStepComment(jobId, stepId, comment);
+        }
+    }, [user, jobProgressById, addJobStepComment]);
 
     useEffect(() => {
         const unsubscribers = [
