@@ -4,9 +4,9 @@
     ".read": false,
     ".write": false,
     "users": {
+      ".read": "auth != null",
       ".indexOn": "email",
       "$uid": {
-        ".read": "$uid === auth.uid",
         ".write": "$uid === auth.uid"
       }
     },
@@ -106,7 +106,11 @@
       ".read": true,
       ".write": true
     },
-    "directives": {
+    "managementRequests": {
+      ".read": true,
+      ".write": true
+    },
+    "jobProgress": {
       ".read": "auth != null",
       ".write": "auth != null"
     },
@@ -133,10 +137,6 @@
     "branding": {
       ".read": true,
       ".write": true
-    },
-    "decorations": {
-      ".read": true,
-      ".write": "auth != null"
     },
     "jobSchedules": {
       ".read": true,

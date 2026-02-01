@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { Task, TaskStatus, ApprovalState, Comment, Subtask, NotificationEventKey } from '@/lib/types';
+import { Task, TaskStatus, ApprovalState, Comment, Subtask, NotificationEventKey, JobProgress, JobStep, JobStepStatus } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -13,6 +13,7 @@ import { useGeneral } from './general-provider';
 
 type TaskContextType = {
   tasks: Task[];
+  jobProgress: JobProgress[];
   myNewTaskCount: number;
   pendingTaskApprovalCount: number;
   myPendingTaskRequestCount: number;
@@ -26,6 +27,9 @@ type TaskContextType = {
   requestTaskReassignment: (taskId: string, newAssigneeId: string, comment: string) => void;
   markTaskAsViewed: (taskId: string) => void;
   acknowledgeReturnedTask: (taskId: string) => void;
+  createJobProgress: (data: { title: string; steps: Omit<JobStep, 'id' | 'status' | 'acknowledgedAt' | 'completedAt' | 'completedBy' | 'comments'>[] }) => void;
+  updateJobStepStatus: (jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string) => void;
+  addJobStepComment: (jobId: string, stepId: string, commentText: string) => void;
 };
 
 const createDataListener = <T extends {}>(
@@ -53,8 +57,10 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   const { notificationSettings } = useGeneral();
   const { toast } = useToast();
   const [tasksById, setTasksById] = useState<Record<string, Task>>({});
+  const [jobProgressById, setJobProgressById] = useState<Record<string, JobProgress>>({});
   
   const tasks = useMemo(() => Object.values(tasksById), [tasksById]);
+  const jobProgress = useMemo(() => Object.values(jobProgressById), [jobProgressById]);
 
   const { myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount } = useMemo(() => {
     if (!user) return { myNewTaskCount: 0, pendingTaskApprovalCount: 0, myPendingTaskRequestCount: 0 };
@@ -353,13 +359,43 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb, `tasks/${taskId}`), { approvalState: 'none' });
     }, [user]);
 
+  const createJobProgress = useCallback((data: { title: string; steps: Omit<JobStep, 'id' | 'status' | 'acknowledgedAt' | 'completedAt' | 'completedBy' | 'comments'>[] }) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'jobProgress'));
+    const now = new Date().toISOString();
+
+    const initialSteps: JobStep[] = data.steps.map((step, index) => ({
+      ...step,
+      id: `step-${index}`,
+      status: 'Pending',
+    }));
+
+    const newJob: Omit<JobProgress, 'id'> = {
+      title: data.title,
+      creatorId: user.id,
+      createdAt: now,
+      status: 'Not Started',
+      steps: initialSteps
+    };
+
+    set(newRef, newJob);
+    // TODO: Notify first assignee
+  }, [user]);
+
+  const addJobStepComment = useCallback(() => {}, []);
+  const updateJobStepStatus = useCallback(() => {}, []);
+
     useEffect(() => {
-        const unsubscribe = createDataListener('tasks', setTasksById);
-        return () => unsubscribe();
+        const unsubscribers = [
+            createDataListener('tasks', setTasksById),
+            createDataListener('jobProgress', setJobProgressById)
+        ];
+        return () => unsubscribers.forEach(unsubscribe => unsubscribe());
     }, []);
 
     const contextValue: TaskContextType = {
         tasks,
+        jobProgress,
         myNewTaskCount,
         pendingTaskApprovalCount,
         myPendingTaskRequestCount,
@@ -372,7 +408,10 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         returnTaskStatusChange,
         requestTaskReassignment,
         markTaskAsViewed,
-        acknowledgeReturnedTask
+        acknowledgeReturnedTask,
+        createJobProgress,
+        updateJobStepStatus,
+        addJobStepComment,
     };
 
     return <TaskContext.Provider value={contextValue}>{children}</TaskContext.Provider>;

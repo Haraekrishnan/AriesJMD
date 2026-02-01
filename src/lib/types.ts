@@ -298,6 +298,7 @@ export const ALL_PERMISSIONS = [
   'manage_directives',
   'manage_vehicle_usage',
   'manage_signatures',
+  'manage_job_progress',
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -881,6 +882,31 @@ export type JobRecordPlant = {
   id: string;
   name: string;
 };
+
+export type JobStepStatus = 'Pending' | 'Acknowledged' | 'Completed' | 'Skipped';
+
+export type JobStep = {
+  id: string;
+  name: string;
+  assigneeId: string;
+  status: JobStepStatus;
+  completedBy?: string;
+  completedAt?: string; // ISO
+  acknowledgedAt?: string; // ISO
+  comments?: Comment[];
+};
+
+export type JobProgressStatus = 'Not Started' | 'In Progress' | 'Completed' | 'On Hold';
+
+export type JobProgress = {
+  id: string;
+  title: string;
+  creatorId: string;
+  createdAt: string; // ISO
+  status: JobProgressStatus;
+  steps: JobStep[];
+};
+
 
 export type TpCertListItem = {
   itemId: string;
