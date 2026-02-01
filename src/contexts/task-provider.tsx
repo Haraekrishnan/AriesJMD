@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -30,7 +29,8 @@ type TaskContextType = {
   markTaskAsViewed: (taskId: string) => void;
   acknowledgeReturnedTask: (taskId: string) => void;
   createJobProgress: (data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[] }) => void;
-  updateJobStepStatus: (jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string, completionDetails?: { attachmentUrl?: string; }) => void;
+  updateJobStepStatus: (jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string, completionDetails?: { attachmentUrl?: string; customFields?: Record<string, any> }) => void;
+  addAndCompleteStep: (jobId: string, currentStepId: string, completionComment: string | undefined, completionAttachment: Task['attachment'] | undefined, completionCustomFields: Record<string, any> | undefined, nextStepData: Omit<JobStep, 'id'|'status'>) => void;
   addJobStepComment: (jobId: string, stepId: string, commentText: string) => void;
 };
 
@@ -370,7 +370,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
             ...step,
             id: `step-${index}`,
             status: index === 0 ? 'Pending' : 'Not Started',
-            comments: [],
+            dueDate: step.dueDate || null,
         }));
     
         const newJob: Omit<JobProgress, 'id'> = {
@@ -404,7 +404,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         set(newCommentRef, newComment);
     }, [user, jobProgressById]);
 
-    const updateJobStepStatus = useCallback((jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string, completionDetails?: { attachmentUrl?: string }) => {
+    const updateJobStepStatus = useCallback((jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string, completionDetails?: { attachmentUrl?: string, customFields?: Record<string, any> }) => {
         const job = jobProgressById[jobId];
         if (!job || !user) return;
 
@@ -426,15 +426,16 @@ export function TaskProvider({ children }: { children: ReactNode }) {
                 date: new Date().toISOString(),
                 notes: comment || '',
                 attachmentUrl: completionDetails?.attachmentUrl || null,
+                customFields: completionDetails?.customFields || null,
             };
 
-            // If this is not the last step, update the next step's status to 'Pending'
             if (stepIndex < job.steps.length - 1) {
                 updates[`jobProgress/${jobId}/steps/${stepIndex + 1}/status`] = 'Pending';
+            } else {
+                 updates[`jobProgress/${jobId}/status`] = 'Completed';
             }
         }
         
-        // Update overall job status
         const allStepsCompleted = job.steps.every((step, index) => 
             index === stepIndex ? newStatus === 'Completed' : step.status === 'Completed'
         );
@@ -451,6 +452,71 @@ export function TaskProvider({ children }: { children: ReactNode }) {
             addJobStepComment(jobId, stepId, comment);
         }
     }, [user, jobProgressById, addJobStepComment]);
+    
+    const addAndCompleteStep = useCallback((jobId: string, currentStepId: string, completionComment: string | undefined, completionAttachment: Task['attachment'] | undefined, completionCustomFields: Record<string, any> | undefined, nextStepData: Omit<JobStep, 'id'|'status'>) => {
+        if (!user) return;
+        const job = jobProgressById[jobId];
+        if (!job) return;
+    
+        const stepIndex = job.steps.findIndex(s => s.id === currentStepId);
+        if (stepIndex === -1) return;
+    
+        const updates: { [key: string]: any } = {};
+        const currentStepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
+    
+        // 1. Update current step
+        updates[`${currentStepPath}/status`] = 'Completed';
+        updates[`${currentStepPath}/completedAt`] = new Date().toISOString();
+        updates[`${currentStepPath}/completedBy`] = user.id;
+        updates[`${currentStepPath}/completionDetails`] = {
+            date: new Date().toISOString(),
+            notes: completionComment || '',
+            attachmentUrl: completionAttachment?.url || null,
+            customFields: completionCustomFields || null,
+        };
+    
+        // 2. Create and add new step
+        const newStep: JobStep = {
+            ...nextStepData,
+            dueDate: nextStepData.dueDate || null,
+            id: `step-${job.steps.length}`,
+            status: 'Pending',
+        };
+        updates[`jobProgress/${jobId}/steps/${job.steps.length}`] = newStep;
+    
+        // 3. Update job metadata
+        updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
+        updates[`jobProgress/${jobId}/status`] = 'In Progress';
+    
+        update(ref(rtdb), updates);
+    
+        if (completionComment) {
+            addJobStepComment(jobId, currentStepId, completionComment);
+        }
+        
+        // 4. Notify new assignee
+        const newAssignee = users.find(u => u.id === newStep.assigneeId);
+        if (newAssignee?.email) {
+            const htmlBody = `
+                <p>A new step in the job "${job.title}" has been assigned to you by <strong>${user.name}</strong>.</p>
+                <hr>
+                <h3>Step: ${newStep.name}</h3>
+                <p>${newStep.description}</p>
+                ${newStep.dueDate ? `<p><strong>Due Date:</strong> ${format(new Date(newStep.dueDate), 'PPP')}</p>` : ''}
+                <p>Please review the job in the app.</p>
+                <a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Job</a>
+            `;
+            sendNotificationEmail({
+                to: [newAssignee.email],
+                subject: `New Job Step Assigned: ${job.title}`,
+                htmlBody: htmlBody,
+                notificationSettings,
+                event: 'onNewTask',
+                involvedUser: newAssignee,
+                creatorUser: user,
+            });
+        }
+    }, [user, jobProgressById, users, addJobStepComment, notificationSettings]);
 
     useEffect(() => {
         const unsubscribers = [
@@ -478,6 +544,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         acknowledgeReturnedTask,
         createJobProgress,
         updateJobStepStatus,
+        addAndCompleteStep,
         addJobStepComment,
     };
 
