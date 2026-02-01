@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -15,6 +14,7 @@ import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { uploadFile } from '@/lib/storage';
+import { Badge } from '@/components/ui/badge';
 
 interface ViewJobProgressDialogProps {
     isOpen: boolean;
