@@ -883,6 +883,19 @@ export type JobRecordPlant = {
   name: string;
 };
 
+export type CustomFieldType = 'text' | 'textarea' | 'date' | 'time' | 'url' | 'checkbox';
+
+export type CustomFieldDefinition = {
+  id: string; 
+  label: string;
+  type: CustomFieldType;
+};
+
+export type CustomFieldValue = {
+  fieldId: string; 
+  value: any;
+};
+
 export type JobStepStatus = 'Pending' | 'Acknowledged' | 'Completed' | 'Skipped';
 
 export type JobStep = {
@@ -893,6 +906,7 @@ export type JobStep = {
   description?: string;
   dueDate?: string; // ISO string
   requiresAttachment?: boolean;
+  customFields?: CustomFieldDefinition[];
   completedBy?: string;
   completedAt?: string; // ISO
   acknowledgedAt?: string; // ISO
@@ -901,8 +915,10 @@ export type JobStep = {
       date?: string;
       attachmentUrl?: string;
       notes?: string;
+      customFieldValues?: CustomFieldValue[];
   }
 };
+
 
 export type JobProgressStatus = 'Not Started' | 'In Progress' | 'Completed' | 'On Hold';
 

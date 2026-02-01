@@ -1,8 +1,9 @@
 
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
-import type { JobProgress, JobStep, JobStepStatus } from '@/lib/types';
+import type { JobProgress, JobStep, JobStepStatus, CustomFieldValue } from '@/lib/types';
 import { AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,9 @@ import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { CheckCircle, Clock, Circle, Send } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
+import { Input } from '../ui/input';
+import { Checkbox } from '../ui/checkbox';
+import { DatePickerInput } from '../ui/date-picker-input';
 
 const statusConfig: { [key in JobStepStatus]: { icon: React.ElementType, color: string, label: string } } = {
   'Pending': { icon: Clock, color: 'text-gray-500', label: 'Pending' },
@@ -19,11 +23,35 @@ const statusConfig: { [key in JobStepStatus]: { icon: React.ElementType, color: 
   'Skipped': { icon: Circle, color: 'text-gray-400', label: 'Skipped' },
 };
 
+const CustomFieldInput = ({ field, value, onChange }: { field: any, value: any, onChange: (val: any) => void }) => {
+    switch (field.type) {
+        case 'textarea': return <Textarea value={value || ''} onChange={e => onChange(e.target.value)} />;
+        case 'date': return <DatePickerInput value={value ? parseISO(value) : undefined} onChange={onChange} />;
+        case 'time': return <Input type="time" value={value || ''} onChange={e => onChange(e.target.value)} />;
+        case 'url': return <Input type="url" value={value || ''} onChange={e => onChange(e.target.value)} placeholder="https://" />;
+        case 'checkbox': return <Checkbox checked={!!value} onCheckedChange={onChange} />;
+        case 'text':
+        default: return <Input type="text" value={value || ''} onChange={e => onChange(e.target.value)} />;
+    }
+}
+
 export default function JobProgressCard({ job }: { job: JobProgress }) {
   const { user, users, updateJobStepStatus, addJobStepComment } = useAppContext();
   const [comments, setComments] = useState<Record<string, string>>({});
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
 
   const creator = users.find(u => u.id === job.creatorId);
+  
+  const handleCompleteStep = (step: JobStep) => {
+    const customFieldsToSubmit: CustomFieldValue[] = (step.customFields || []).map(cf => ({
+      fieldId: cf.id,
+      value: customFieldValues[cf.id] || (cf.type === 'checkbox' ? false : ''),
+    }));
+
+    updateJobStepStatus(job.id, step.id, 'Completed', comments[step.id], { customFieldValues: customFieldsToSubmit });
+    setComments(prev => ({...prev, [step.id]: ''}));
+    setCustomFieldValues({});
+  };
 
   const handleStatusUpdate = (stepId: string, status: JobStepStatus) => {
     updateJobStepStatus(job.id, stepId, status);
@@ -76,24 +104,63 @@ export default function JobProgressCard({ job }: { job: JobProgress }) {
                 {step.acknowledgedAt && <p className="text-xs text-muted-foreground mt-1">Acknowledged: {formatDistanceToNow(parseISO(step.acknowledgedAt), { addSuffix: true })}</p>}
                 {step.completedAt && <p className="text-xs text-muted-foreground mt-1">Completed: {formatDistanceToNow(parseISO(step.completedAt), { addSuffix: true })} by {users.find(u => u.id === step.completedBy)?.name}</p>}
 
+                 {step.status === 'Completed' && step.completionDetails?.customFieldValues && step.completionDetails.customFieldValues.length > 0 && (
+                    <div className="mt-2 text-xs space-y-1 border-t pt-2">
+                        <h5 className="font-semibold text-muted-foreground">Additional Details:</h5>
+                        {step.completionDetails.customFieldValues.map(cfv => {
+                            const definition = step.customFields?.find(cfd => cfd.id === cfv.fieldId);
+                            if (!definition) return null;
+                            const value = cfv.value;
+                            let displayValue = String(value);
+                             if (definition.type === 'checkbox') {
+                                displayValue = value ? 'Yes' : 'No';
+                            } else if (definition.type === 'date' && value) {
+                                displayValue = format(parseISO(value), 'PPP');
+                            }
+                            return (
+                                <div key={cfv.fieldId} className="grid grid-cols-2">
+                                    <span className="font-medium">{definition.label}:</span>
+                                    <span>{displayValue}</span>
+                                </div>
+                            )
+                        })}
+                    </div>
+                )}
+
                 {canAct && (
                     <div className="mt-3 space-y-2">
                         {step.status === 'Pending' && (
                             <Button size="sm" onClick={() => handleStatusUpdate(step.id, 'Acknowledged')}>Acknowledge</Button>
                         )}
-                         {step.status === 'Acknowledged' && (
-                            <div className="space-y-2">
-                                <Label className="text-xs">Add a completion comment (Optional)</Label>
-                                <div className="relative">
-                                    <Textarea 
-                                        value={comments[step.id] || ''}
-                                        onChange={e => setComments(prev => ({...prev, [step.id]: e.target.value}))}
-                                        placeholder="Add notes about your work..." 
-                                        className="pr-10"
-                                        rows={2}
-                                    />
-                                    <Button size="icon" className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => handleStatusUpdate(step.id, 'Completed')}><Send className="h-4 w-4"/></Button>
+                        {step.status === 'Acknowledged' && (
+                            <div className="space-y-4 pt-3 border-t">
+                                <h5 className="text-sm font-semibold">Complete Step</h5>
+                                <div className="space-y-2">
+                                    <Label className="text-xs">Add a completion comment (Optional)</Label>
+                                    <div className="relative">
+                                        <Textarea 
+                                            value={comments[step.id] || ''}
+                                            onChange={e => setComments(prev => ({...prev, [step.id]: e.target.value}))}
+                                            placeholder="Add notes about your work..." 
+                                            className="pr-10"
+                                            rows={2}
+                                        />
+                                        <Button size="icon" className="absolute right-1.5 top-1.5 h-7 w-7" onClick={() => handleAddComment(step.id)} disabled={!comments[step.id]?.trim()}><Send className="h-4 w-4"/></Button>
+                                    </div>
                                 </div>
+
+                                {(step.customFields || []).map(cf => (
+                                    <div key={cf.id} className="space-y-1.5">
+                                        <Label className="text-xs">{cf.label}</Label>
+                                        <CustomFieldInput 
+                                            field={cf}
+                                            value={customFieldValues[cf.id]}
+                                            onChange={(val) => setCustomFieldValues(prev => ({...prev, [cf.id]: val}))}
+                                        />
+                                    </div>
+                                ))}
+
+                                <Button size="sm" onClick={() => handleCompleteStep(step)}>Mark as Completed</Button>
                             </div>
                         )}
                     </div>

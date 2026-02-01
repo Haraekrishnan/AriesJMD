@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,8 +18,14 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/colla
 import { Textarea } from '../ui/textarea';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Checkbox } from '../ui/checkbox';
-import { JobStep } from '@/lib/types';
+import { JobStep, CustomFieldDefinition } from '@/lib/types';
 
+
+const customFieldSchema = z.object({
+  id: z.string(),
+  label: z.string().min(1, 'Label is required'),
+  type: z.enum(['text', 'textarea', 'date', 'time', 'url', 'checkbox']),
+});
 
 const jobStepSchema = z.object({
   name: z.string().min(1, 'Step name is required'),
@@ -26,6 +33,7 @@ const jobStepSchema = z.object({
   description: z.string().optional(),
   dueDate: z.date().optional().nullable(),
   requiresAttachment: z.boolean().optional(),
+  customFields: z.array(customFieldSchema).optional(),
 });
 
 const jobProgressSchema = z.object({
@@ -48,7 +56,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: CreateJobDialogPr
     resolver: zodResolver(jobProgressSchema),
     defaultValues: {
       title: '',
-      steps: [{ name: '', assigneeId: '', description: '', requiresAttachment: false }],
+      steps: [{ name: '', assigneeId: '', description: '', requiresAttachment: false, customFields: [] }],
     },
   });
 
@@ -69,9 +77,10 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: CreateJobDialogPr
             dueDate: step.dueDate ? step.dueDate.toISOString() : undefined,
             description: step.description || '',
             requiresAttachment: step.requiresAttachment || false,
+            customFields: (step.customFields || []).map(cf => ({...cf, id: cf.id || `cf-${Date.now()}`}))
         })),
     };
-    createJobProgress(processedData as { title: string; steps: Omit<JobStep, 'id' | 'status'>[] });
+    createJobProgress(processedData as any);
     toast({
       title: 'Job Created',
       description: `The job "${data.title}" has been created.`,
@@ -81,10 +90,55 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: CreateJobDialogPr
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      form.reset({ title: '', steps: [{ name: '', assigneeId: '', description: '', requiresAttachment: false }] });
+      form.reset({ title: '', steps: [{ name: '', assigneeId: '', description: '', requiresAttachment: false, customFields: [] }] });
     }
     setIsOpen(open);
   };
+  
+  const StepCustomFields = ({ stepIndex }: { stepIndex: number }) => {
+      const { fields: customFields, append, remove } = useFieldArray({
+          control: form.control,
+          name: `steps.${stepIndex}.customFields`
+      });
+
+      return (
+          <div className="space-y-2 mt-4 pt-4 border-t">
+              <h4 className="text-sm font-medium">Custom Fields</h4>
+              <div className="space-y-2">
+                  {customFields.map((field, cfIndex) => (
+                      <div key={field.id} className="flex items-end gap-2 bg-muted/30 p-2 rounded-md">
+                          <div className="flex-1 grid grid-cols-2 gap-2">
+                              <Input placeholder="Field Label" {...form.register(`steps.${stepIndex}.customFields.${cfIndex}.label`)} />
+                              <Controller
+                                  control={form.control}
+                                  name={`steps.${stepIndex}.customFields.${cfIndex}.type`}
+                                  render={({ field: typeField }) => (
+                                      <Select onValueChange={typeField.onChange} value={typeField.value}>
+                                          <SelectTrigger><SelectValue placeholder="Field Type" /></SelectTrigger>
+                                          <SelectContent>
+                                              <SelectItem value="text">Text</SelectItem>
+                                              <SelectItem value="textarea">Text Area</SelectItem>
+                                              <SelectItem value="date">Date</SelectItem>
+                                              <SelectItem value="time">Time</SelectItem>
+                                              <SelectItem value="url">URL</SelectItem>
+                                              <SelectItem value="checkbox">Checkbox</SelectItem>
+                                          </SelectContent>
+                                      </Select>
+                                  )}
+                              />
+                          </div>
+                          <Button type="button" variant="ghost" size="icon" onClick={() => remove(cfIndex)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                      </div>
+                  ))}
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `cf-${Date.now()}`, label: '', type: 'text' })}>
+                  <PlusCircle className="mr-2 h-4 w-4"/>Add Field
+              </Button>
+          </div>
+      )
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -152,10 +206,11 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: CreateJobDialogPr
                                 <Controller name={`steps.${index}.requiresAttachment`} control={form.control} render={({ field }) => <Checkbox id={`req-attach-${index}`} checked={field.value} onCheckedChange={field.onChange} />} />
                                 <Label htmlFor={`req-attach-${index}`} className="text-xs font-normal">Requires Attachment on Completion</Label>
                             </div>
+                            <StepCustomFields stepIndex={index} />
                         </CollapsibleContent>
                     </Collapsible>
                     ))}
-                    <Button type="button" variant="outline" size="sm" onClick={() => append({ name: '', assigneeId: '', description: '', requiresAttachment: false })}>
+                    <Button type="button" variant="outline" size="sm" onClick={() => append({ name: '', assigneeId: '', description: '', requiresAttachment: false, customFields: [] })}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Step
                     </Button>
                      {form.formState.errors.steps && <p className="text-xs text-destructive">{form.formState.errors.steps.message}</p>}
