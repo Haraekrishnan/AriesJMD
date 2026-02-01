@@ -29,12 +29,14 @@ import {
 } from '@/components/ui/select';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from '../ui/checkbox';
 
 const jobStepSchema = z.object({
   name: z.string().min(1, 'Step name is required'),
   assigneeId: z.string().min(1, 'Assignee is required'),
   description: z.string().optional(),
   dueDate: z.date().optional().nullable(),
+  requiresAttachment: z.boolean().optional(),
 });
 
 const jobSchema = z.object({
@@ -57,7 +59,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
     resolver: zodResolver(jobSchema),
     defaultValues: {
       title: '',
-      steps: [{ name: '', assigneeId: '', description: '', dueDate: null }],
+      steps: [{ name: '', assigneeId: '', description: '', dueDate: null, requiresAttachment: false }],
     },
   });
 
@@ -71,7 +73,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
   const onSubmit = (data: JobFormValues) => {
     createJobProgress({
       ...data,
-      steps: data.steps.map(s => ({ ...s, dueDate: s.dueDate?.toISOString() })),
+      steps: data.steps.map(s => ({ ...s, dueDate: s.dueDate?.toISOString() || null })),
     });
     toast({ title: 'Job Created', description: data.title });
     setIsOpen(false);
@@ -133,14 +135,34 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
                       <Label htmlFor={`steps.${index}.description`}>Description (Optional)</Label>
                       <Textarea id={`steps.${index}.description`} {...form.register(`steps.${index}.description`)} rows={2} placeholder="Instructions for this step..."/>
                   </div>
-                   <div className="space-y-1">
-                      <Label>Due Date (Optional)</Label>
-                      <Controller
-                        control={form.control}
-                        name={`steps.${index}.dueDate`}
-                        render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />}
-                      />
-                  </div>
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <Label>Due Date (Optional)</Label>
+                          <Controller
+                            control={form.control}
+                            name={`steps.${index}.dueDate`}
+                            render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />}
+                          />
+                        </div>
+                        <div className="flex items-end pb-1">
+                            <div className="flex items-center space-x-2">
+                                <Controller
+                                    name={`steps.${index}.requiresAttachment`}
+                                    control={form.control}
+                                    render={({ field }) => (
+                                        <Checkbox
+                                            id={`steps.${index}.requiresAttachment`}
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                        />
+                                    )}
+                                />
+                                <Label htmlFor={`steps.${index}.requiresAttachment`} className="text-sm font-medium leading-none">
+                                    Requires attachment to complete
+                                </Label>
+                            </div>
+                        </div>
+                   </div>
                   {index > 0 && (
                     <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2" onClick={() => remove(index)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
@@ -148,7 +170,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
                   )}
                 </div>
               ))}
-              <Button type="button" variant="outline" size="sm" onClick={() => append({ name: '', assigneeId: '', description: '', dueDate: null })}>
+              <Button type="button" variant="outline" size="sm" onClick={() => append({ name: '', assigneeId: '', description: '', dueDate: null, requiresAttachment: false })}>
                 <PlusCircle className="h-4 w-4 mr-2" />Add Step
               </Button>
                {form.formState.errors.steps && <p className="text-xs text-destructive pt-2">{form.formState.errors.steps.message || form.formState.errors.steps.root?.message}</p>}
