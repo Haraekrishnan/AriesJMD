@@ -404,7 +404,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         set(newCommentRef, newComment);
     }, [user, jobProgressById]);
 
-    const updateJobStepStatus = useCallback((jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string, completionDetails?: { attachmentUrl?: string, customFields?: Record<string, any> }) => {
+    const updateJobStepStatus = useCallback((jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string, completionDetails?: { attachmentUrl?: string; customFields?: Record<string, any> }) => {
         const job = jobProgressById[jobId];
         if (!job || !user) return;
 
@@ -460,6 +460,11 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     
         const stepIndex = job.steps.findIndex(s => s.id === currentStepId);
         if (stepIndex === -1) return;
+
+        if (job.steps[stepIndex].assigneeId !== user.id) {
+            toast({ variant: 'destructive', title: 'Not authorized to complete this step.' });
+            return;
+        }
     
         const updates: { [key: string]: any } = {};
         const currentStepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
@@ -516,7 +521,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
                 creatorUser: user,
             });
         }
-    }, [user, jobProgressById, users, addJobStepComment, notificationSettings]);
+    }, [user, jobProgressById, users, addJobStepComment, notificationSettings, toast]);
 
     useEffect(() => {
         const unsubscribers = [

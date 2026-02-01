@@ -1,20 +1,38 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useAppContext } from '@/contexts/app-provider';
-import type { JobProgress, JobStep, JobStepStatus } from '@/lib/types';
+import type { JobProgress, JobStep, JobStepStatus, Task } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { format, parseISO } from 'date-fns';
-import { CheckCircle, Clock, Circle, XCircle, MoreHorizontal, Send, Paperclip, Upload } from 'lucide-react';
+import { format, parseISO, formatDistanceToNow, isValid } from 'date-fns';
+import { CheckCircle, Clock, Circle, XCircle, Send, PlusCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { DatePickerInput } from '../ui/date-picker-input';
+import { Checkbox } from '../ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { uploadFile } from '@/lib/storage';
-import { Badge } from '@/components/ui/badge';
+
+const nextStepSchema = z.object({
+  name: z.string().min(1, 'Step name is required'),
+  assigneeId: z.string().min(1, 'Assignee is required'),
+  description: z.string().optional(),
+  dueDate: z.date().optional().nullable(),
+  requiresAttachment: z.boolean().optional(),
+  customFields: z.array(z.object({ label: z.string(), type: z.enum(['text', 'date', 'number', 'url', 'time']), value: z.any() })).optional(),
+});
+
+type NextStepFormValues = z.infer<typeof nextStepSchema>;
+
 
 interface ViewJobProgressDialogProps {
     isOpen: boolean;
@@ -30,14 +48,89 @@ const statusConfig: { [key in JobStepStatus]: { icon: React.ElementType, color: 
   'Skipped': { icon: XCircle, color: 'text-gray-500', label: 'Skipped' },
 };
 
+
+const NextStepForm = ({
+  job,
+  currentStep,
+  onCancel,
+}: {
+  job: JobProgress;
+  currentStep: JobStep;
+  onCancel: () => void;
+}) => {
+  const { user, users, addAndCompleteStep, updateJobStepStatus } = useAppContext();
+  const { toast } = useToast();
+
+  const form = useForm<NextStepFormValues>({
+    resolver: zodResolver(nextStepSchema),
+    defaultValues: { name: '', assigneeId: '', description: '', dueDate: null, requiresAttachment: false, customFields: [] },
+  });
+
+  const assignableUsers = useMemo(() => users.filter(u => u.role !== 'Manager'), [users]);
+  
+  const handleFinalCompletion = () => {
+    updateJobStepStatus(job.id, currentStep.id, 'Completed', "Final step completed.");
+    onCancel();
+    toast({ title: 'Job Completed!' });
+  };
+
+  const onNextStepSubmit = (data: NextStepFormValues) => {
+    addAndCompleteStep(
+      job.id,
+      currentStep.id,
+      undefined, // completionComment - can be added if needed
+      undefined, // completionAttachment - can be added if needed
+      undefined, // completionCustomFields - can be added if needed
+      { ...data, dueDate: data.dueDate?.toISOString() }
+    );
+    onCancel();
+    toast({ title: `Step completed, next step assigned.` });
+  };
+
+  return (
+    <form onSubmit={form.handleSubmit(onNextStepSubmit)} className="space-y-4 p-4 border-t mt-4">
+      <h4 className="font-semibold">Define Next Step</h4>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <Label>Step Name</Label>
+          <Input {...form.register('name')} />
+          {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
+        </div>
+        <div className="space-y-1">
+          <Label>Assign To</Label>
+          <Controller
+            control={form.control}
+            name="assigneeId"
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger><SelectValue placeholder="Select assignee" /></SelectTrigger>
+                <SelectContent>
+                  {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          {form.formState.errors.assigneeId && <p className="text-xs text-destructive">{form.formState.errors.assigneeId.message}</p>}
+        </div>
+      </div>
+      <div className="space-y-1">
+        <Label>Description (Optional)</Label>
+        <Textarea {...form.register('description')} rows={2}/>
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
+        <Button type="button" variant="secondary" onClick={handleFinalCompletion}>Complete as Final Step</Button>
+        <Button type="submit">Complete & Assign Next Step</Button>
+      </div>
+    </form>
+  );
+};
+
+
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
     const { user, users, jobProgress, updateJobStepStatus, addJobStepComment } = useAppContext();
-    const { toast } = useToast();
-    const [newComments, setNewComments] = useState<Record<string, string>>({});
-    const [attachments, setAttachments] = useState<Record<string, File | null>>({});
-    const [isUploading, setIsUploading] = useState(false);
-    
-    // Use the live job from context to get real-time updates
+    const [completingStepId, setCompletingStepId] = useState<string | null>(null);
+
     const job = useMemo(() => {
         return jobProgress.find(j => j.id === initialJob.id) || initialJob;
     }, [jobProgress, initialJob]);
@@ -46,47 +139,6 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
 
     const handleAcknowledge = (stepId: string) => {
         updateJobStepStatus(job.id, stepId, 'Acknowledged');
-    };
-
-    const handleComplete = async (step: JobStep) => {
-        const file = attachments[step.id];
-        let attachmentUrl: string | undefined = undefined;
-
-        if (step.requiresAttachment && !file) {
-            toast({ variant: 'destructive', title: 'Attachment Required', description: 'Please upload a file to complete this step.' });
-            return;
-        }
-
-        if (file) {
-            setIsUploading(true);
-            try {
-                attachmentUrl = await uploadFile(file, `job-progress/${job.id}/${step.id}/${file.name}`);
-                toast({ title: 'Attachment uploaded' });
-            } catch (error) {
-                toast({ variant: 'destructive', title: 'Upload Failed', description: (error as Error).message });
-                setIsUploading(false);
-                return;
-            } finally {
-                setIsUploading(false);
-            }
-        }
-        
-        updateJobStepStatus(job.id, step.id, 'Completed', newComments[step.id], { attachmentUrl });
-        setNewComments(prev => ({...prev, [step.id]: ''}));
-        setAttachments(prev => ({...prev, [step.id]: null}));
-    };
-    
-    const handleFileChange = (stepId: string, e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            setAttachments(prev => ({ ...prev, [stepId]: e.target.files![0] }));
-        }
-    };
-    
-    const handleAddComment = (stepId: string) => {
-        const text = newComments[stepId];
-        if (!text?.trim()) return;
-        addJobStepComment(job.id, stepId, text);
-        setNewComments(prev => ({...prev, [stepId]: ''}));
     };
 
     return (
@@ -98,7 +150,6 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                 </DialogHeader>
                 <ScrollArea className="flex-1 -mx-6 px-6">
                     <div className="relative pl-6">
-                        {/* Timeline line */}
                         <div className="absolute left-10 top-2 bottom-2 w-0.5 bg-border -translate-x-1/2"></div>
                         
                         <div className="space-y-8">
@@ -130,36 +181,13 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                             {step.description && <p className="text-sm text-muted-foreground p-2 bg-muted/50 rounded-md">{step.description}</p>}
                                             
                                             {canAct && step.status === 'Pending' && <Button size="sm" onClick={() => handleAcknowledge(step.id)}>Acknowledge</Button>}
-                                            {canAct && step.status === 'Acknowledged' && (
-                                                <div className="p-3 border rounded-md bg-background space-y-3">
-                                                    {step.requiresAttachment && (
-                                                        <div className="space-y-1">
-                                                            <Label className="text-xs">Attachment</Label>
-                                                            {attachments[step.id] ? (
-                                                              <div className="flex items-center justify-between p-1 rounded-md border text-sm">
-                                                                <div className="flex items-center gap-2 truncate"><Paperclip className="h-4 w-4"/> <span className="truncate">{attachments[step.id]?.name}</span></div>
-                                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAttachments(p => ({...p, [step.id]: null}))}><X className="h-4 w-4"/></Button>
-                                                              </div>
-                                                            ) : (
-                                                              <Button asChild variant="outline" size="sm"><Label htmlFor={`attach-${step.id}`}><Upload className="mr-2 h-3 w-3"/> Upload File</Label></Button>
-                                                            )}
-                                                            <Input id={`attach-${step.id}`} type="file" onChange={(e) => handleFileChange(step.id, e)} className="hidden"/>
-                                                        </div>
-                                                    )}
-                                                    <div className="relative">
-                                                      <Textarea value={newComments[step.id] || ''} onChange={e => setNewComments(p => ({...p, [step.id]: e.target.value}))} placeholder="Add completion notes..." rows={2} className="pr-10" />
-                                                      <Button variant="ghost" size="icon" className="absolute right-1 top-1 h-7 w-7" disabled={!newComments[step.id]} onClick={() => handleAddComment(step.id)}><Send className="h-4 w-4"/></Button>
-                                                    </div>
-                                                    <Button size="sm" onClick={() => handleComplete(step)} disabled={isUploading}>Mark as Completed</Button>
-                                                </div>
+                                            
+                                            {canAct && step.status === 'Acknowledged' && !completingStepId && (
+                                              <Button size="sm" onClick={() => setCompletingStepId(step.id)}>Complete Step</Button>
                                             )}
 
-                                            {step.status === 'Completed' && step.completionDetails && (
-                                                <div className="text-xs space-y-2 p-2 border rounded-md bg-green-50 dark:bg-green-900/30">
-                                                    <p>Completed by {users.find(u => u.id === step.completedBy)?.name} on {format(parseISO(step.completionDetails.date!), 'PPP p')}</p>
-                                                    {step.completionDetails.notes && <p className="italic">"{step.completionDetails.notes}"</p>}
-                                                    {step.completionDetails.attachmentUrl && <Button asChild size="sm" variant="link" className="p-0 h-auto"><a href={step.completionDetails.attachmentUrl} target="_blank" rel="noopener noreferrer"><Paperclip className="h-3 w-3 mr-1"/>View Attachment</a></Button>}
-                                                </div>
+                                            {completingStepId === step.id && (
+                                              <NextStepForm job={job} currentStep={step} onCancel={() => setCompletingStepId(null)} />
                                             )}
                                         </div>
                                     </div>
