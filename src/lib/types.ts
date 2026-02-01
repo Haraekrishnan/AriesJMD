@@ -890,10 +890,18 @@ export type JobStep = {
   name: string;
   assigneeId: string;
   status: JobStepStatus;
+  description?: string;
+  dueDate?: string; // ISO string
+  requiresAttachment?: boolean;
   completedBy?: string;
   completedAt?: string; // ISO
   acknowledgedAt?: string; // ISO
   comments?: Comment[];
+  completionDetails?: {
+      date?: string;
+      attachmentUrl?: string;
+      notes?: string;
+  }
 };
 
 export type JobProgressStatus = 'Not Started' | 'In Progress' | 'Completed' | 'On Hold';

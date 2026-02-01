@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -58,11 +59,13 @@ export default function JobProgressCard({ job }: { job: JobProgress }) {
                 <div className="flex justify-between items-start">
                     <div>
                         <h4 className="font-semibold">{index + 1}. {step.name}</h4>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        {step.description && <p className="text-sm text-muted-foreground mt-1">{step.description}</p>}
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
                             <span>Assigned to:</span>
                             <Avatar className="h-5 w-5"><AvatarImage src={assignee?.avatar} /><AvatarFallback>{assignee?.name.charAt(0)}</AvatarFallback></Avatar>
                             <span>{assignee?.name}</span>
                         </div>
+                        {step.dueDate && <p className="text-xs text-muted-foreground mt-1">Due: {format(parseISO(step.dueDate), 'dd MMM, yyyy')}</p>}
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                         <Icon className={`h-4 w-4 ${statusConfig[step.status].color}`} />

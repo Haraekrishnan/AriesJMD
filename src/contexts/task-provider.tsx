@@ -27,7 +27,7 @@ type TaskContextType = {
   requestTaskReassignment: (taskId: string, newAssigneeId: string, comment: string) => void;
   markTaskAsViewed: (taskId: string) => void;
   acknowledgeReturnedTask: (taskId: string) => void;
-  createJobProgress: (data: { title: string; steps: Omit<JobStep, 'id' | 'status' | 'acknowledgedAt' | 'completedAt' | 'completedBy' | 'comments'>[] }) => void;
+  createJobProgress: (data: { title: string; steps: Omit<JobStep, 'id' | 'status' | 'acknowledgedAt' | 'completedAt' | 'completedBy' | 'comments' | 'completionDetails'>[] }) => void;
   updateJobStepStatus: (jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string) => void;
   addJobStepComment: (jobId: string, stepId: string, commentText: string) => void;
 };
@@ -359,28 +359,27 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb, `tasks/${taskId}`), { approvalState: 'none' });
     }, [user]);
 
-  const createJobProgress = useCallback((data: { title: string; steps: Omit<JobStep, 'id' | 'status' | 'acknowledgedAt' | 'completedAt' | 'completedBy' | 'comments'>[] }) => {
-    if (!user) return;
-    const newRef = push(ref(rtdb, 'jobProgress'));
-    const now = new Date().toISOString();
-
-    const initialSteps: JobStep[] = data.steps.map((step, index) => ({
-      ...step,
-      id: `step-${index}`,
-      status: 'Pending',
-    }));
-
-    const newJob: Omit<JobProgress, 'id'> = {
-      title: data.title,
-      creatorId: user.id,
-      createdAt: now,
-      status: 'Not Started',
-      steps: initialSteps
-    };
-
-    set(newRef, newJob);
-    // TODO: Notify first assignee
-  }, [user]);
+    const createJobProgress = useCallback((data: { title: string; steps: Omit<JobStep, 'id' | 'status' | 'acknowledgedAt' | 'completedAt' | 'completedBy' | 'comments' | 'completionDetails'>[] }) => {
+        if (!user) return;
+        const newRef = push(ref(rtdb, 'jobProgress'));
+        const now = new Date().toISOString();
+    
+        const initialSteps: JobStep[] = data.steps.map((step, index) => ({
+          ...step,
+          id: `step-${index}`,
+          status: 'Pending',
+        }));
+    
+        const newJob: Omit<JobProgress, 'id'> = {
+          title: data.title,
+          creatorId: user.id,
+          createdAt: now,
+          status: 'Not Started',
+          steps: initialSteps,
+        };
+    
+        set(newRef, newJob);
+    }, [user]);
 
   const addJobStepComment = useCallback(() => {}, []);
   const updateJobStepStatus = useCallback(() => {}, []);
