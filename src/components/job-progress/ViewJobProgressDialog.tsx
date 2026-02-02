@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { format, parseISO, formatDistanceToNow, isValid } from 'date-fns';
-import { CheckCircle, Clock, Circle, XCircle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown } from 'lucide-react';
+import { CheckCircle, Clock, Circle, XCircle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
@@ -27,24 +27,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 
 
-const nextStepSchema = z.object({
-  name: z.string().min(1, 'Step name is required'),
-  assigneeId: z.string().min(1, 'Assignee is required'),
-  description: z.string().optional(),
-  dueDate: z.date().optional().nullable(),
-  requiresAttachment: z.boolean().optional(),
-  customFields: z.array(z.object({ label: z.string(), type: z.enum(['text', 'date', 'number', 'url', 'time']), value: z.any() })).optional(),
-});
-
-type NextStepFormValues = z.infer<typeof nextStepSchema>;
-
-
-interface ViewJobProgressDialogProps {
-    isOpen: boolean;
-    setIsOpen: (open: boolean) => void;
-    job: JobProgress;
-}
-
 const statusConfig: { [key in JobStepStatus]: { icon: React.ElementType, color: string, label: string } } = {
   'Not Started': { icon: Circle, color: 'text-gray-400', label: 'Not Started' },
   'Pending': { icon: Clock, color: 'text-yellow-500', label: 'Pending' },
@@ -54,90 +36,6 @@ const statusConfig: { [key in JobStepStatus]: { icon: React.ElementType, color: 
 };
 
 
-const NextStepForm = ({
-  job,
-  currentStep,
-  onCancel,
-}: {
-  job: JobProgress;
-  currentStep: JobStep;
-  onCancel: () => void;
-}) => {
-  const { user, users, addAndCompleteStep, updateJobStepStatus } = useAppContext();
-  const { toast } = useToast();
-
-  const form = useForm<NextStepFormValues>({
-    resolver: zodResolver(nextStepSchema),
-    defaultValues: { name: '', assigneeId: '', description: '', dueDate: null, requiresAttachment: false, customFields: [] },
-  });
-
-  const assignableUsers = useMemo(() => users.filter(u => u.role !== 'Manager'), [users]);
-  
-  const handleFinalCompletion = () => {
-    updateJobStepStatus(job.id, currentStep.id, 'Completed', "Final step completed.");
-    onCancel();
-    toast({ title: 'Job Completed!' });
-  };
-
-  const onNextStepSubmit = (data: NextStepFormValues) => {
-    addAndCompleteStep(
-      job.id,
-      currentStep.id,
-      undefined, 
-      undefined, 
-      undefined, 
-      { ...data, dueDate: data.dueDate?.toISOString() }
-    );
-    onCancel();
-    toast({ title: `Step completed, next step assigned.` });
-  };
-
-  return (
-    <form onSubmit={form.handleSubmit(onNextStepSubmit)} className="space-y-4 p-4 border-t mt-4">
-      <h4 className="font-semibold">Define Next Step</h4>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1">
-          <Label>Step Name</Label>
-          <Input {...form.register('name')} />
-          {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
-        </div>
-        <div className="space-y-1">
-          <Label>Assign To</Label>
-          <Controller
-            control={form.control}
-            name="assigneeId"
-            render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger><SelectValue placeholder="Select assignee" /></SelectTrigger>
-                <SelectContent>
-                  {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            )}
-          />
-          {form.formState.errors.assigneeId && <p className="text-xs text-destructive">{form.formState.errors.assigneeId.message}</p>}
-        </div>
-      </div>
-      <div className="space-y-1">
-        <Label>Description (Optional)</Label>
-        <Textarea {...form.register('description')} rows={2}/>
-      </div>
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
-        <Button type="button" variant="secondary" onClick={handleFinalCompletion}>Complete as Final Step</Button>
-        <Button type="submit">Complete & Assign Next Step</Button>
-      </div>
-    </form>
-  );
-};
-
-const reassignSchema = z.object({
-  newAssigneeId: z.string().min(1, 'Please select a new assignee.'),
-  comment: z.string().min(1, 'A reason for reassignment is required.'),
-});
-
-type ReassignFormValues = z.infer<typeof reassignSchema>;
-
 const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean; setIsOpen: (open: boolean) => void; job: JobProgress; step: JobStep; }) => {
     const { reassignJobStep, getAssignableUsers } = useAppContext();
     const [popoverOpen, setPopoverOpen] = useState(false);
@@ -146,12 +44,15 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
         return getAssignableUsers().filter(u => u.id !== step.assigneeId);
     }, [getAssignableUsers, step.assigneeId]);
 
-    const form = useForm<ReassignFormValues>({
-        resolver: zodResolver(reassignSchema),
+    const form = useForm<{newAssigneeId: string; comment: string;}>({
+        resolver: zodResolver(z.object({
+            newAssigneeId: z.string().min(1, 'Please select a new assignee.'),
+            comment: z.string().min(1, 'A reason for reassignment is required.'),
+        })),
         defaultValues: { newAssigneeId: '', comment: '' },
     });
 
-    const onSubmit = (data: ReassignFormValues) => {
+    const onSubmit = (data: {newAssigneeId: string; comment: string;}) => {
         reassignJobStep(job.id, step.id, data.newAssigneeId, data.comment);
         setIsOpen(false);
     };
@@ -220,9 +121,15 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
 };
 
 
+interface ViewJobProgressDialogProps {
+    isOpen: boolean;
+    setIsOpen: (open: boolean) => void;
+    job: JobProgress;
+}
+
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
     const { user, users, jobProgress, updateJobStepStatus, addJobStepComment } = useAppContext();
-    const [completingStepId, setCompletingStepId] = useState<string | null>(null);
+    const [comment, setComment] = useState('');
     const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
 
     const job = useMemo(() => {
@@ -233,6 +140,11 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
 
     const handleAcknowledge = (stepId: string) => {
         updateJobStepStatus(job.id, stepId, 'Acknowledged');
+    };
+    
+    const handleComplete = (stepId: string) => {
+        updateJobStepStatus(job.id, stepId, 'Completed', comment);
+        setComment('');
     };
 
     return (
@@ -264,7 +176,10 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                         <div className="ml-10 w-full pl-6 space-y-3">
                                             <div className="flex justify-between items-start">
                                                 <div>
-                                                    <p className="font-semibold">{step.name}</p>
+                                                    <p className="font-semibold flex items-center gap-2">
+                                                        {step.name}
+                                                        {step.milestone && <Badge variant="outline"><Milestone className="h-3 w-3 mr-1"/>{step.milestone}%</Badge>}
+                                                    </p>
                                                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                                                         <span>Assigned to:</span>
                                                         <Avatar className="h-5 w-5"><AvatarImage src={assignee?.avatar}/><AvatarFallback>{assignee?.name?.[0]}</AvatarFallback></Avatar>
@@ -277,24 +192,31 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                             
                                             {step.description && <p className="text-sm text-muted-foreground p-2 bg-muted/50 rounded-md">{step.description}</p>}
                                             
-                                            {step.acknowledgedAt && !step.completedAt && <p className="text-xs text-muted-foreground mt-1">Acknowledged: {formatDistanceToNow(parseISO(step.acknowledgedAt), { addSuffix: true })}</p>}
+                                            {step.acknowledgedAt && !step.completedAt && <p className="text-xs text-blue-600">Acknowledged: {formatDistanceToNow(parseISO(step.acknowledgedAt), { addSuffix: true })}</p>}
                                             {step.completedAt && <p className="text-xs text-green-600">Completed: {formatDistanceToNow(parseISO(step.completedAt), { addSuffix: true })} by {users.find(u => u.id === step.completedBy)?.name}</p>}
 
-                                            <div className="flex items-center gap-2">
-                                                {canAct && step.status === 'Pending' && <Button size="sm" onClick={() => handleAcknowledge(step.id)}>Acknowledge</Button>}
-                                                {canAct && step.status === 'Acknowledged' && !completingStepId && (
-                                                  <Button size="sm" onClick={() => setCompletingStepId(step.id)}>Complete Step</Button>
-                                                )}
-                                                {canReassign && (
-                                                    <Button size="sm" variant="outline" onClick={() => setReassigningStep(step)}>
-                                                        <UserRoundCog className="h-4 w-4 mr-2" />
-                                                        Reassign
-                                                    </Button>
-                                                )}
-                                            </div>
+                                            {canAct && step.status === 'Pending' && (
+                                                <Button size="sm" onClick={() => handleAcknowledge(step.id)}>Acknowledge</Button>
+                                            )}
 
-                                            {completingStepId === step.id && (
-                                              <NextStepForm job={job} currentStep={step} onCancel={() => setCompletingStepId(null)} />
+                                            {canAct && step.status === 'Acknowledged' && (
+                                                <div className="space-y-2 pt-2 border-t">
+                                                     <div className="relative">
+                                                        <Textarea 
+                                                            value={comment}
+                                                            onChange={e => setComment(e.target.value)}
+                                                            placeholder="Add completion notes (optional)..." 
+                                                            className="pr-10 text-sm"
+                                                            rows={2}
+                                                        />
+                                                     </div>
+                                                     <div className="flex justify-between">
+                                                        <Button size="sm" variant="outline" onClick={() => setReassigningStep(step)}>
+                                                          <UserRoundCog className="h-4 w-4 mr-2"/> Reassign
+                                                        </Button>
+                                                        <Button size="sm" onClick={() => handleComplete(step.id)}>Complete Step</Button>
+                                                     </div>
+                                                </div>
                                             )}
                                         </div>
                                     </div>

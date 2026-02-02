@@ -1,10 +1,10 @@
 
 'use client';
 
-import { useForm, Controller, useFieldArray } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,18 +28,21 @@ import {
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '../ui/checkbox';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 
-const jobStepSchema = z.object({
+const stepSchema = z.object({
   name: z.string().min(1, 'Step name is required'),
   assigneeId: z.string().min(1, 'Assignee is required'),
   description: z.string().optional(),
   dueDate: z.date().optional().nullable(),
-  requiresAttachment: z.boolean().optional(),
 });
 
 const jobSchema = z.object({
   title: z.string().min(3, 'Job title is required'),
-  steps: z.array(jobStepSchema).min(1, 'The first step is required.').max(1, 'Only the first step can be defined here.'),
+  initialStep: stepSchema,
+  milestone50: stepSchema.optional(),
+  milestone100: stepSchema,
+  useMilestone50: z.boolean().optional(),
 });
 
 type JobFormValues = z.infer<typeof jobSchema>;
@@ -55,45 +58,82 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
 
   const form = useForm<JobFormValues>({
     resolver: zodResolver(jobSchema),
-    defaultValues: {
-      title: '',
-      steps: [{ name: '', assigneeId: '', description: '', dueDate: null, requiresAttachment: false }],
-    },
-  });
-  
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
-    name: 'steps',
   });
 
   const assignableUsers = useMemo(() => users.filter(u => u.role !== 'Manager'), [users]);
+  const useMilestone50 = form.watch('useMilestone50');
 
   const onSubmit = (data: JobFormValues) => {
+    const steps = [
+        { ...data.initialStep, milestone: undefined },
+    ];
+    if (data.useMilestone50 && data.milestone50) {
+        steps.push({ ...data.milestone50, milestone: 50 as const });
+    }
+    steps.push({ ...data.milestone100, milestone: 100 as const });
+
     createJobProgress({
-      ...data,
-      steps: data.steps.map(s => ({ ...s, dueDate: s.dueDate?.toISOString() || null })),
+      title: data.title,
+      steps: steps.map(s => ({ ...s, dueDate: s.dueDate?.toISOString() || null })),
     });
     toast({ title: 'Job Created', description: data.title });
     setIsOpen(false);
-    form.reset();
   };
   
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      form.reset({
-          title: '',
-          steps: [{ name: '', assigneeId: '', description: '', dueDate: null, requiresAttachment: false }],
-      });
+      form.reset();
     }
     setIsOpen(open);
   };
+
+  const StepFields = ({ fieldName, title }: { fieldName: 'initialStep' | 'milestone50' | 'milestone100', title: string }) => (
+    <div className="border p-4 rounded-md space-y-3 bg-muted/50">
+        <h4 className="font-semibold text-sm">{title}</h4>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <Label htmlFor={`${fieldName}.name`}>Step Name</Label>
+          <Input id={`${fieldName}.name`} {...form.register(`${fieldName}.name`)} />
+          {form.formState.errors[fieldName]?.name && <p className="text-xs text-destructive">{form.formState.errors[fieldName]?.name?.message}</p>}
+        </div>
+        <div className="space-y-1">
+          <Label>Assign To</Label>
+          <Controller
+            control={form.control}
+            name={`${fieldName}.assigneeId`}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger><SelectValue placeholder="Select assignee" /></SelectTrigger>
+                <SelectContent>
+                  {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          {form.formState.errors[fieldName]?.assigneeId && <p className="text-xs text-destructive">{form.formState.errors[fieldName]?.assigneeId?.message}</p>}
+        </div>
+      </div>
+        <div className="space-y-1">
+            <Label>Description (Optional)</Label>
+            <Textarea {...form.register(`${fieldName}.description`)} rows={2}/>
+        </div>
+        <div className="space-y-1">
+            <Label>Due Date (Optional)</Label>
+            <Controller
+            control={form.control}
+            name={`${fieldName}.dueDate`}
+            render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />}
+            />
+        </div>
+    </div>
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Create New Job</DialogTitle>
-          <DialogDescription>Define the job title and the initial step. Subsequent steps can be added by assignees.</DialogDescription>
+          <DialogDescription>Define the job title and its key milestone steps.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -102,66 +142,24 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
             <Input id="job-title" {...form.register('title')} />
              {form.formState.errors.title && <p className="text-xs text-destructive mt-1">{form.formState.errors.title.message}</p>}
           </div>
+          
+          <div className="space-y-4">
+            <StepFields fieldName="initialStep" title="Initial Step" />
 
-          <div className="space-y-2">
-            <Label className="font-semibold">First Step</Label>
-            <div className="border p-4 rounded-md space-y-3 bg-muted/50">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label htmlFor="steps.0.name">Step Name</Label>
-                  <Input id="steps.0.name" {...form.register(`steps.0.name`)} placeholder="e.g., 'Prepare Documentation'"/>
-                   {form.formState.errors.steps?.[0]?.name && <p className="text-xs text-destructive">{form.formState.errors.steps[0]?.name?.message}</p>}
-                </div>
-                <div className="space-y-1">
-                  <Label>Assign To</Label>
-                  <Controller
+            <div className="flex items-center space-x-2">
+                <Controller
+                    name="useMilestone50"
                     control={form.control}
-                    name={`steps.0.assigneeId`}
                     render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger><SelectValue placeholder="Select assignee" /></SelectTrigger>
-                        <SelectContent>
-                          {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                        <Checkbox id="useMilestone50" checked={field.value} onCheckedChange={field.onChange} />
                     )}
-                  />
-                   {form.formState.errors.steps?.[0]?.assigneeId && <p className="text-xs text-destructive">{form.formState.errors.steps[0]?.assigneeId?.message}</p>}
-                </div>
-              </div>
-               <div className="space-y-1">
-                  <Label htmlFor="steps.0.description">Description (Optional)</Label>
-                  <Textarea id="steps.0.description" {...form.register(`steps.0.description`)} rows={2} placeholder="Instructions for this step..."/>
-              </div>
-               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <Label>Due Date (Optional)</Label>
-                      <Controller
-                        control={form.control}
-                        name={`steps.0.dueDate`}
-                        render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />}
-                      />
-                    </div>
-                    <div className="flex items-end pb-1">
-                        <div className="flex items-center space-x-2">
-                            <Controller
-                                name={`steps.0.requiresAttachment`}
-                                control={form.control}
-                                render={({ field }) => (
-                                    <Checkbox
-                                        id="steps.0.requiresAttachment"
-                                        checked={field.value}
-                                        onCheckedChange={field.onChange}
-                                    />
-                                )}
-                            />
-                            <Label htmlFor="steps.0.requiresAttachment" className="text-sm font-medium leading-none">
-                                Requires attachment to complete
-                            </Label>
-                        </div>
-                    </div>
-               </div>
+                />
+                <Label htmlFor="useMilestone50" className="font-semibold">Include 50% Milestone Step (Optional)</Label>
             </div>
+
+            {useMilestone50 && <StepFields fieldName="milestone50" title="50% Milestone Step" />}
+
+            <StepFields fieldName="milestone100" title="Final Step (100% Completion)" />
           </div>
           
           <DialogFooter className="pt-4">

@@ -891,8 +891,9 @@ export type JobStep = {
   assigneeId: string;
   status: JobStepStatus;
   description?: string;
-  dueDate?: string; // ISO string
+  dueDate?: string | null; // ISO string
   requiresAttachment?: boolean;
+  milestone?: 50 | 100;
   
   acknowledgedAt?: string; // ISO
   completedAt?: string; // ISO

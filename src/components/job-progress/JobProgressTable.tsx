@@ -34,6 +34,23 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
     return <p className="text-center text-muted-foreground py-8">No jobs created yet.</p>;
   }
 
+  const calculateProgress = (job: JobProgress): number => {
+    const completedSteps = job.steps.filter(s => s.status === 'Completed');
+    if (completedSteps.length === 0) return 0;
+  
+    const lastCompletedStep = completedSteps[completedSteps.length - 1];
+  
+    if (lastCompletedStep.milestone === 100) return 100;
+    if (lastCompletedStep.milestone === 50) return 50;
+  
+    // For intermediate steps, we'll keep progress at 0 until a milestone is hit
+    // to make the bar represent major achievements.
+    const has50MilestoneCompleted = completedSteps.some(s => s.milestone === 50);
+    if(has50MilestoneCompleted) return 50;
+
+    return 0;
+  };
+
   return (
     <div className="border rounded-lg">
       <Table>
@@ -50,9 +67,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
         <TableBody>
           {sortedJobs.map(job => {
             const creator = users.find(u => u.id === job.creatorId);
-            const totalSteps = job.steps.length;
-            const completedSteps = job.steps.filter(s => s.status === 'Completed').length;
-            const progress = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
+            const progress = calculateProgress(job);
 
             return (
               <TableRow key={job.id} className="cursor-pointer" onClick={() => onViewJob(job)}>
