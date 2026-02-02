@@ -36,7 +36,6 @@ const statusConfig: { [key in JobStepStatus]: { icon: React.ElementType, color: 
   'Skipped': { icon: XCircle, color: 'text-gray-500', label: 'Skipped' },
 };
 
-
 const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean; setIsOpen: (open: boolean) => void; job: JobProgress; step: JobStep; }) => {
     const { reassignJobStep, getAssignableUsers } = useAppContext();
     const [popoverOpen, setPopoverOpen] = useState(false);
@@ -129,12 +128,13 @@ interface ViewJobProgressDialogProps {
 }
 
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
-    const { user, users, jobProgress, updateJobStepStatus, addJobStepComment, assignJobStep } = useAppContext();
+    const { user, users, jobProgress, updateJobStepStatus, addJobStepComment, assignJobStep, addAndCompleteStep, getAssignableUsers } = useAppContext();
     const [comment, setComment] = useState('');
     const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
     const [assigningStepId, setAssigningStepId] = useState<string | null>(null);
     const [newAssigneeId, setNewAssigneeId] = useState<string>('');
-
+    const [showNextStepForm, setShowNextStepForm] = useState<string | null>(null);
+    const { toast } = useToast();
 
     const job = useMemo(() => {
         return jobProgress.find(j => j.id === initialJob.id) || initialJob;
@@ -146,7 +146,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         updateJobStepStatus(job.id, stepId, 'Acknowledged');
     };
     
-    const handleComplete = (stepId: string) => {
+    const handleFinalStepComplete = (stepId: string) => {
         updateJobStepStatus(job.id, stepId, 'Completed', comment);
         setComment('');
     };
@@ -184,10 +184,10 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                         <div className="ml-10 w-full pl-6 space-y-3">
                                             <div className="flex justify-between items-start">
                                                 <div>
-                                                    <p className="font-semibold flex items-center gap-2">
+                                                    <div className="font-semibold flex items-center gap-2">
                                                         {step.name}
                                                         {step.milestone && <Badge variant="outline"><Milestone className="h-3 w-3 mr-1"/>{step.milestone}%</Badge>}
-                                                    </p>
+                                                    </div>
                                                      {assignee ? (
                                                         <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                                                             <span>Assigned to:</span>
@@ -234,7 +234,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                             )}
 
                                             {canAct && step.status === 'Acknowledged' && (
-                                                <div className="space-y-2 pt-2 border-t">
+                                                <div className="space-y-4 pt-3 border-t">
                                                      <div className="relative">
                                                         <Textarea 
                                                             value={comment}
@@ -248,7 +248,10 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                         <Button size="sm" variant="outline" onClick={() => setReassigningStep(step)}>
                                                           <UserRoundCog className="h-4 w-4 mr-2"/> Reassign
                                                         </Button>
-                                                        <Button size="sm" onClick={() => handleComplete(step.id)}>Complete Step</Button>
+                                                        <div className="flex gap-2">
+                                                            <Button size="sm" variant="secondary" onClick={() => setShowNextStepForm(step.id)}>Add Next Step</Button>
+                                                            <Button size="sm" onClick={() => handleFinalStepComplete(step.id)}>Mark as Final Step</Button>
+                                                        </div>
                                                      </div>
                                                 </div>
                                             )}
