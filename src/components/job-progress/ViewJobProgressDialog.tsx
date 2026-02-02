@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { format, parseISO, formatDistanceToNow, isValid } from 'date-fns';
-import { CheckCircle, Clock, Circle, XCircle, Send, PlusCircle, UserRoundCog } from 'lucide-react';
+import { CheckCircle, Clock, Circle, XCircle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
@@ -23,8 +23,9 @@ import { Checkbox } from '../ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
-import { ChevronsUpDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+
 
 const nextStepSchema = z.object({
   name: z.string().min(1, 'Step name is required'),
