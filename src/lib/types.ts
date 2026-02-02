@@ -893,7 +893,7 @@ export type JobStep = {
   description?: string;
   dueDate?: string | null; // ISO string
   requiresAttachment?: boolean;
-  milestone?: 50 | 100;
+  isFinalStep?: boolean;
   
   acknowledgedAt?: string; // ISO
   completedAt?: string; // ISO
@@ -1127,3 +1127,5 @@ export type VehicleUsageRecord = {
     };
   };
 };
+
+

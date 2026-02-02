@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useMemo } from 'react';
@@ -35,20 +36,9 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   }
 
   const calculateProgress = (job: JobProgress): number => {
-    const completedSteps = job.steps.filter(s => s.status === 'Completed');
-    if (completedSteps.length === 0) return 0;
-  
-    const lastCompletedStep = completedSteps[completedSteps.length - 1];
-  
-    if (lastCompletedStep.milestone === 100) return 100;
-    if (lastCompletedStep.milestone === 50) return 50;
-  
-    // For intermediate steps, we'll keep progress at 0 until a milestone is hit
-    // to make the bar represent major achievements.
-    const has50MilestoneCompleted = completedSteps.some(s => s.milestone === 50);
-    if(has50MilestoneCompleted) return 50;
-
-    return 0;
+    const completedSteps = job.steps.filter(s => s.status === 'Completed').length;
+    if (job.steps.length === 0) return 0;
+    return (completedSteps / job.steps.length) * 100;
   };
 
   return (
@@ -77,7 +67,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                 <TableCell><Badge variant={statusVariantMap[job.status]}>{job.status}</Badge></TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <Progress value={progress} className="w-full" />
+                    <Progress value={progress} />
                     <span className="text-xs text-muted-foreground">{Math.round(progress)}%</span>
                   </div>
                 </TableCell>
@@ -92,3 +82,5 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
     </div>
   );
 }
+
+
