@@ -32,6 +32,7 @@ type TaskContextType = {
   updateJobStepStatus: (jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string, completionDetails?: { attachmentUrl?: string; customFields?: Record<string, any> }) => void;
   addAndCompleteStep: (jobId: string, currentStepId: string, completionComment: string | undefined, completionAttachment: Task['attachment'] | undefined, completionCustomFields: Record<string, any> | undefined, nextStepData: Omit<JobStep, 'id'|'status'>) => void;
   addJobStepComment: (jobId: string, stepId: string, commentText: string) => void;
+  reassignJobStep: (jobId: string, stepId: string, newAssigneeId: string, comment: string) => void;
 };
 
 const createDataListener = <T extends {}>(
@@ -523,6 +524,71 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         }
     }, [user, jobProgressById, users, addJobStepComment, notificationSettings, toast]);
 
+    const reassignJobStep = useCallback((jobId: string, stepId: string, newAssigneeId: string, comment: string) => {
+      if (!user) return;
+      const job = jobProgressById[jobId];
+      if (!job) return;
+  
+      const stepIndex = job.steps.findIndex(s => s.id === stepId);
+      if (stepIndex === -1) return;
+  
+      const currentStep = job.steps[stepIndex];
+      if (currentStep.assigneeId !== user.id && user.role !== 'Admin') {
+          toast({ title: 'Not authorized', variant: 'destructive' });
+          return;
+      }
+  
+      const oldAssignee = users.find(u => u.id === currentStep.assigneeId);
+      const newAssignee = users.find(u => u.id === newAssigneeId);
+      if (!newAssignee) return;
+      
+      const reassignComment = `${user.name} reassigned this step from ${oldAssignee?.name || 'Previous Assignee'} to ${newAssignee.name}. Reason: ${comment}`;
+  
+      const updates: { [key: string]: any } = {};
+      const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
+  
+      updates[`${stepPath}/assigneeId`] = newAssigneeId;
+      updates[`${stepPath}/status`] = 'Pending';
+      updates[`${stepPath}/acknowledgedAt`] = null; // Reset acknowledgment
+  
+      const newCommentRef = push(ref(rtdb, `${stepPath}/comments`));
+      const newComment: Omit<Comment, 'id'> = {
+          id: newCommentRef.key!,
+          userId: user.id,
+          text: reassignComment,
+          date: new Date().toISOString(),
+          eventId: jobId,
+      };
+      updates[`${stepPath}/comments/${newCommentRef.key}`] = newComment;
+      
+      updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
+  
+      update(ref(rtdb), updates);
+  
+      toast({ title: "Step Reassigned", description: `Assigned to ${newAssignee.name}.` });
+  
+      // Notify new assignee
+      if (newAssignee.email) {
+          const htmlBody = `
+              <p>A job step in "${job.title}" has been reassigned to you by <strong>${user.name}</strong>.</p>
+              <hr>
+              <h3>Step: ${currentStep.name}</h3>
+              <p><strong>Reason:</strong> ${comment}</p>
+              <p>Please review the job in the app and acknowledge the step.</p>
+              <a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Job</a>
+          `;
+          sendNotificationEmail({
+              to: [newAssignee.email],
+              subject: `Job Step Reassigned: ${job.title}`,
+              htmlBody: htmlBody,
+              notificationSettings,
+              event: 'onNewTask',
+              involvedUser: newAssignee,
+              creatorUser: user,
+          });
+      }
+    }, [user, jobProgressById, users, toast, notificationSettings]);
+
     useEffect(() => {
         const unsubscribers = [
             createDataListener('tasks', setTasksById),
@@ -551,6 +617,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         updateJobStepStatus,
         addAndCompleteStep,
         addJobStepComment,
+        reassignJobStep,
     };
 
     return <TaskContext.Provider value={contextValue}>{children}</TaskContext.Provider>;

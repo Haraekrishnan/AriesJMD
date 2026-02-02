@@ -6,13 +6,13 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAppContext } from '@/contexts/app-provider';
-import type { JobProgress, JobStep, JobStepStatus, Task } from '@/lib/types';
+import type { JobProgress, JobStep, JobStepStatus, Task, User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { format, parseISO, formatDistanceToNow, isValid } from 'date-fns';
-import { CheckCircle, Clock, Circle, XCircle, Send, PlusCircle } from 'lucide-react';
+import { CheckCircle, Clock, Circle, XCircle, Send, PlusCircle, UserRoundCog } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
@@ -22,6 +22,9 @@ import { DatePickerInput } from '../ui/date-picker-input';
 import { Checkbox } from '../ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { ChevronsUpDown } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 
 const nextStepSchema = z.object({
   name: z.string().min(1, 'Step name is required'),
@@ -79,9 +82,9 @@ const NextStepForm = ({
     addAndCompleteStep(
       job.id,
       currentStep.id,
-      undefined, // completionComment - can be added if needed
-      undefined, // completionAttachment - can be added if needed
-      undefined, // completionCustomFields - can be added if needed
+      undefined, 
+      undefined, 
+      undefined, 
       { ...data, dueDate: data.dueDate?.toISOString() }
     );
     onCancel();
@@ -127,10 +130,99 @@ const NextStepForm = ({
   );
 };
 
+const reassignSchema = z.object({
+  newAssigneeId: z.string().min(1, 'Please select a new assignee.'),
+  comment: z.string().min(1, 'A reason for reassignment is required.'),
+});
+
+type ReassignFormValues = z.infer<typeof reassignSchema>;
+
+const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean; setIsOpen: (open: boolean) => void; job: JobProgress; step: JobStep; }) => {
+    const { reassignJobStep, getAssignableUsers } = useAppContext();
+    const [popoverOpen, setPopoverOpen] = useState(false);
+
+    const assignableUsers = useMemo(() => {
+        return getAssignableUsers().filter(u => u.id !== step.assigneeId);
+    }, [getAssignableUsers, step.assigneeId]);
+
+    const form = useForm<ReassignFormValues>({
+        resolver: zodResolver(reassignSchema),
+        defaultValues: { newAssigneeId: '', comment: '' },
+    });
+
+    const onSubmit = (data: ReassignFormValues) => {
+        reassignJobStep(job.id, step.id, data.newAssigneeId, data.comment);
+        setIsOpen(false);
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Reassign Step: {step.name}</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label>New Assignee</Label>
+                        <Controller
+                            name="newAssigneeId"
+                            control={form.control}
+                            render={({ field }) => (
+                                <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" role="combobox" className="w-full justify-between">
+                                            {field.value ? assignableUsers.find(u => u.id === field.value)?.name : "Select new assignee..."}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Search users..." />
+                                            <CommandList>
+                                                <CommandEmpty>No users found.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {assignableUsers.map(user => (
+                                                        <CommandItem
+                                                            key={user.id}
+                                                            value={user.name}
+                                                            onSelect={() => {
+                                                                form.setValue('newAssigneeId', user.id);
+                                                                setPopoverOpen(false);
+                                                            }}
+                                                        >
+                                                            <Check className={cn("mr-2 h-4 w-4", user.id === field.value ? "opacity-100" : "opacity-0")} />
+                                                            {user.name}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            )}
+                        />
+                        {form.formState.errors.newAssigneeId && <p className="text-xs text-destructive">{form.formState.errors.newAssigneeId.message}</p>}
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="comment">Reason for Reassignment</Label>
+                        <Textarea id="comment" {...form.register('comment')} />
+                        {form.formState.errors.comment && <p className="text-xs text-destructive">{form.formState.errors.comment.message}</p>}
+                    </div>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+                        <Button type="submit">Confirm Reassignment</Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
 
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
     const { user, users, jobProgress, updateJobStepStatus, addJobStepComment } = useAppContext();
     const [completingStepId, setCompletingStepId] = useState<string | null>(null);
+    const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
 
     const job = useMemo(() => {
         return jobProgress.find(j => j.id === initialJob.id) || initialJob;
@@ -143,6 +235,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
     };
 
     return (
+        <>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
                 <DialogHeader>
@@ -159,6 +252,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const isCurrentUserAssignee = user?.id === step.assigneeId;
                                 const isPreviousStepCompleted = index === 0 || job.steps[index - 1].status === 'Completed';
                                 const canAct = isCurrentUserAssignee && isPreviousStepCompleted;
+                                const canReassign = canAct && (step.status === 'Pending' || step.status === 'Acknowledged');
                                 const StatusIcon = statusConfig[step.status].icon;
                                 
                                 return (
@@ -185,11 +279,18 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                             {step.acknowledgedAt && !step.completedAt && <p className="text-xs text-muted-foreground mt-1">Acknowledged: {formatDistanceToNow(parseISO(step.acknowledgedAt), { addSuffix: true })}</p>}
                                             {step.completedAt && <p className="text-xs text-green-600">Completed: {formatDistanceToNow(parseISO(step.completedAt), { addSuffix: true })} by {users.find(u => u.id === step.completedBy)?.name}</p>}
 
-                                            {canAct && step.status === 'Pending' && <Button size="sm" onClick={() => handleAcknowledge(step.id)}>Acknowledge</Button>}
-                                            
-                                            {canAct && step.status === 'Acknowledged' && !completingStepId && (
-                                              <Button size="sm" onClick={() => setCompletingStepId(step.id)}>Complete Step</Button>
-                                            )}
+                                            <div className="flex items-center gap-2">
+                                                {canAct && step.status === 'Pending' && <Button size="sm" onClick={() => handleAcknowledge(step.id)}>Acknowledge</Button>}
+                                                {canAct && step.status === 'Acknowledged' && !completingStepId && (
+                                                  <Button size="sm" onClick={() => setCompletingStepId(step.id)}>Complete Step</Button>
+                                                )}
+                                                {canReassign && (
+                                                    <Button size="sm" variant="outline" onClick={() => setReassigningStep(step)}>
+                                                        <UserRoundCog className="h-4 w-4 mr-2" />
+                                                        Reassign
+                                                    </Button>
+                                                )}
+                                            </div>
 
                                             {completingStepId === step.id && (
                                               <NextStepForm job={job} currentStep={step} onCancel={() => setCompletingStepId(null)} />
@@ -206,5 +307,14 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+        {reassigningStep && (
+            <ReassignStepDialog
+                isOpen={!!reassigningStep}
+                setIsOpen={() => setReassigningStep(null)}
+                job={job}
+                step={reassigningStep}
+            />
+        )}
+        </>
     )
 }
