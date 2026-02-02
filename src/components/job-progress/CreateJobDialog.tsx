@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useForm, Controller } from 'react-hook-form';
@@ -28,21 +29,27 @@ import {
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '../ui/checkbox';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 
-const stepSchema = z.object({
-  name: z.string().min(1, 'Step name is required'),
-  assigneeId: z.string().min(1, 'Assignee is required'),
-  description: z.string().optional(),
-  dueDate: z.date().optional().nullable(),
+const initialStepSchema = z.object({
+    name: z.string().min(1, 'Step name is required'),
+    assigneeId: z.string().min(1, 'Assignee is required'),
+    description: z.string().optional(),
+    dueDate: z.date().optional().nullable(),
 });
-
+  
+const milestoneStepSchema = z.object({
+    name: z.string().min(1, 'Step name is required'),
+    assigneeId: z.string().optional(),
+    description: z.string().optional(),
+    dueDate: z.date().optional().nullable(),
+});
+  
 const jobSchema = z.object({
-  title: z.string().min(3, 'Job title is required'),
-  initialStep: stepSchema,
-  milestone50: stepSchema.optional(),
-  milestone100: stepSchema,
-  useMilestone50: z.boolean().optional(),
+    title: z.string().min(3, 'Job title is required'),
+    initialStep: initialStepSchema,
+    milestone50: milestoneStepSchema.optional(),
+    milestone100: milestoneStepSchema,
+    useMilestone50: z.boolean().optional(),
 });
 
 type JobFormValues = z.infer<typeof jobSchema>;
@@ -68,9 +75,9 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
         { ...data.initialStep, milestone: undefined },
     ];
     if (data.useMilestone50 && data.milestone50) {
-        steps.push({ ...data.milestone50, milestone: 50 as const });
+        steps.push({ ...data.milestone50, assigneeId: data.milestone50.assigneeId || '', milestone: 50 as const });
     }
-    steps.push({ ...data.milestone100, milestone: 100 as const });
+    steps.push({ ...data.milestone100, assigneeId: data.milestone100.assigneeId || '', milestone: 100 as const });
 
     createJobProgress({
       title: data.title,
@@ -87,46 +94,49 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
     setIsOpen(open);
   };
 
-  const StepFields = ({ fieldName, title }: { fieldName: 'initialStep' | 'milestone50' | 'milestone100', title: string }) => (
-    <div className="border p-4 rounded-md space-y-3 bg-muted/50">
-        <h4 className="font-semibold text-sm">{title}</h4>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1">
-          <Label htmlFor={`${fieldName}.name`}>Step Name</Label>
-          <Input id={`${fieldName}.name`} {...form.register(`${fieldName}.name`)} />
-          {form.formState.errors[fieldName]?.name && <p className="text-xs text-destructive">{form.formState.errors[fieldName]?.name?.message}</p>}
-        </div>
-        <div className="space-y-1">
-          <Label>Assign To</Label>
-          <Controller
-            control={form.control}
-            name={`${fieldName}.assigneeId`}
-            render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger><SelectValue placeholder="Select assignee" /></SelectTrigger>
-                <SelectContent>
-                  {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            )}
-          />
-          {form.formState.errors[fieldName]?.assigneeId && <p className="text-xs text-destructive">{form.formState.errors[fieldName]?.assigneeId?.message}</p>}
-        </div>
-      </div>
-        <div className="space-y-1">
-            <Label>Description (Optional)</Label>
-            <Textarea {...form.register(`${fieldName}.description`)} rows={2}/>
-        </div>
-        <div className="space-y-1">
-            <Label>Due Date (Optional)</Label>
+  const StepFields = ({ fieldName, title }: { fieldName: 'initialStep' | 'milestone50' | 'milestone100', title: string }) => {
+    const errors = form.formState.errors[fieldName] as any;
+    return (
+        <div className="border p-4 rounded-md space-y-3 bg-muted/50">
+            <h4 className="font-semibold text-sm">{title}</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+            <Label htmlFor={`${fieldName}.name`}>Step Name</Label>
+            <Input id={`${fieldName}.name`} {...form.register(`${fieldName}.name`)} />
+            {errors?.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+            </div>
+            <div className="space-y-1">
+            <Label>Assign To {fieldName === 'initialStep' && <span className="text-destructive">*</span>}</Label>
             <Controller
-            control={form.control}
-            name={`${fieldName}.dueDate`}
-            render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />}
+                control={form.control}
+                name={`${fieldName}.assigneeId`}
+                render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger><SelectValue placeholder="Select assignee" /></SelectTrigger>
+                    <SelectContent>
+                    {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+                )}
             />
+            {errors?.assigneeId && <p className="text-xs text-destructive">{errors.assigneeId.message}</p>}
+            </div>
         </div>
-    </div>
-  );
+            <div className="space-y-1">
+                <Label>Description (Optional)</Label>
+                <Textarea {...form.register(`${fieldName}.description`)} rows={2}/>
+            </div>
+            <div className="space-y-1">
+                <Label>Due Date (Optional)</Label>
+                <Controller
+                control={form.control}
+                name={`${fieldName}.dueDate`}
+                render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />}
+                />
+            </div>
+        </div>
+    )
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>

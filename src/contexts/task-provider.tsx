@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -33,6 +34,7 @@ type TaskContextType = {
   addAndCompleteStep: (jobId: string, currentStepId: string, completionComment: string | undefined, completionAttachment: Task['attachment'] | undefined, completionCustomFields: Record<string, any> | undefined, nextStepData: Omit<JobStep, 'id'|'status'>) => void;
   addJobStepComment: (jobId: string, stepId: string, commentText: string) => void;
   reassignJobStep: (jobId: string, stepId: string, newAssigneeId: string, comment: string) => void;
+  assignJobStep: (jobId: string, stepId: string, assigneeId: string) => void;
 };
 
 const createDataListener = <T extends {}>(
@@ -589,6 +591,47 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       }
     }, [user, jobProgressById, users, toast, notificationSettings]);
 
+    const assignJobStep = useCallback((jobId: string, stepId: string, assigneeId: string) => {
+        if (!user) return;
+        const job = jobProgressById[jobId];
+        if (!job) return;
+
+        const stepIndex = job.steps.findIndex(s => s.id === stepId);
+        if (stepIndex === -1) return;
+
+        const updates: { [key: string]: any } = {};
+        const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
+
+        updates[`${stepPath}/assigneeId`] = assigneeId;
+        updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
+
+        update(ref(rtdb), updates);
+
+        const assignee = users.find(u => u.id === assigneeId);
+        if (assignee?.email) {
+            const assignComment = `${user.name} assigned this step to ${assignee.name}.`;
+            addJobStepComment(jobId, stepId, assignComment);
+            const htmlBody = `
+                <p>A job step in "${job.title}" has been assigned to you by <strong>${user.name}</strong>.</p>
+                <hr>
+                <h3>Step: ${job.steps[stepIndex].name}</h3>
+                <p>${job.steps[stepIndex].description || ''}</p>
+                ${job.steps[stepIndex].dueDate ? `<p><strong>Due Date:</strong> ${format(new Date(job.steps[stepIndex].dueDate!), 'PPP')}</p>` : ''}
+                <p>Please review the job in the app and acknowledge the step.</p>
+                <a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Job</a>
+            `;
+            sendNotificationEmail({
+                to: [assignee.email],
+                subject: `Job Step Assigned: ${job.title}`,
+                htmlBody: htmlBody,
+                notificationSettings,
+                event: 'onNewTask',
+                involvedUser: assignee,
+                creatorUser: user,
+            });
+        }
+    }, [user, jobProgressById, users, addJobStepComment, notificationSettings]);
+
     useEffect(() => {
         const unsubscribers = [
             createDataListener('tasks', setTasksById),
@@ -618,6 +661,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         addAndCompleteStep,
         addJobStepComment,
         reassignJobStep,
+        assignJobStep,
     };
 
     return <TaskContext.Provider value={contextValue}>{children}</TaskContext.Provider>;

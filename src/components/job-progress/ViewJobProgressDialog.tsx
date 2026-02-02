@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -128,9 +129,12 @@ interface ViewJobProgressDialogProps {
 }
 
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
-    const { user, users, jobProgress, updateJobStepStatus, addJobStepComment } = useAppContext();
+    const { user, users, jobProgress, updateJobStepStatus, addJobStepComment, assignJobStep } = useAppContext();
     const [comment, setComment] = useState('');
     const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
+    const [assigningStepId, setAssigningStepId] = useState<string | null>(null);
+    const [newAssigneeId, setNewAssigneeId] = useState<string>('');
+
 
     const job = useMemo(() => {
         return jobProgress.find(j => j.id === initialJob.id) || initialJob;
@@ -168,6 +172,10 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const canReassign = canAct && (step.status === 'Pending' || step.status === 'Acknowledged');
                                 const StatusIcon = statusConfig[step.status].icon;
                                 
+                                const isCreator = user?.id === job.creatorId;
+                                const isStepUnassigned = !step.assigneeId;
+                                const canAssign = isCreator && isStepUnassigned && step.status === 'Pending';
+                                
                                 return (
                                     <div key={step.id} className="relative flex items-start">
                                         <div className={cn("absolute left-10 top-2 w-5 h-5 rounded-full flex items-center justify-center -translate-x-1/2", statusConfig[step.status].color.replace('text-', 'bg-').replace('-500', '-100 dark:bg-opacity-30'))}>
@@ -180,12 +188,18 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                         {step.name}
                                                         {step.milestone && <Badge variant="outline"><Milestone className="h-3 w-3 mr-1"/>{step.milestone}%</Badge>}
                                                     </p>
-                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                                                        <span>Assigned to:</span>
-                                                        <Avatar className="h-5 w-5"><AvatarImage src={assignee?.avatar}/><AvatarFallback>{assignee?.name?.[0]}</AvatarFallback></Avatar>
-                                                        <span>{assignee?.name}</span>
-                                                        {step.dueDate && <span>&middot; Due {format(parseISO(step.dueDate), 'dd MMM')}</span>}
-                                                    </div>
+                                                     {assignee ? (
+                                                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                                                            <span>Assigned to:</span>
+                                                            <Avatar className="h-5 w-5"><AvatarImage src={assignee?.avatar}/><AvatarFallback>{assignee?.name?.[0]}</AvatarFallback></Avatar>
+                                                            <span>{assignee?.name}</span>
+                                                            {step.dueDate && <span>&middot; Due {format(parseISO(step.dueDate), 'dd MMM')}</span>}
+                                                        </div>
+                                                     ) : (
+                                                        <div className="text-xs text-muted-foreground mt-1">
+                                                            Unassigned
+                                                        </div>
+                                                     )}
                                                 </div>
                                                 <Badge variant="outline" className="capitalize">{statusConfig[step.status].label}</Badge>
                                             </div>
@@ -194,6 +208,26 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                             
                                             {step.acknowledgedAt && !step.completedAt && <p className="text-xs text-blue-600">Acknowledged: {formatDistanceToNow(parseISO(step.acknowledgedAt), { addSuffix: true })}</p>}
                                             {step.completedAt && <p className="text-xs text-green-600">Completed: {formatDistanceToNow(parseISO(step.completedAt), { addSuffix: true })} by {users.find(u => u.id === step.completedBy)?.name}</p>}
+                                            
+                                            {canAssign && (
+                                                <div className="mt-3 p-3 bg-background border rounded-md space-y-2">
+                                                    <Label>Assign this step</Label>
+                                                    <div className="flex gap-2">
+                                                        <Select onValueChange={setNewAssigneeId} value={newAssigneeId}>
+                                                            <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
+                                                            <SelectContent>
+                                                                {users.filter(u => u.role !== 'Manager').map(u => (
+                                                                    <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <Button size="sm" disabled={!newAssigneeId} onClick={() => {
+                                                            assignJobStep(job.id, step.id, newAssigneeId);
+                                                            setNewAssigneeId('');
+                                                        }}>Assign</Button>
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             {canAct && step.status === 'Pending' && (
                                                 <Button size="sm" onClick={() => handleAcknowledge(step.id)}>Acknowledge</Button>

@@ -888,7 +888,7 @@ export type JobStepStatus = 'Not Started' | 'Pending' | 'Acknowledged' | 'Comple
 export type JobStep = {
   id: string;
   name: string;
-  assigneeId: string;
+  assigneeId?: string;
   status: JobStepStatus;
   description?: string;
   dueDate?: string | null; // ISO string
