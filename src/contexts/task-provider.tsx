@@ -374,6 +374,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
             id: `step-${index}`,
             status: index === 0 ? 'Pending' : 'Not Started',
             dueDate: step.dueDate || null,
+            milestone: step.milestone || null,
         }));
     
         const newJob: Omit<JobProgress, 'id'> = {
