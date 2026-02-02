@@ -185,9 +185,9 @@ totalKmValueCell.fill = {
   
     const startKmVal = cellStates[`${day}-startKm`];
     const endKmVal = cellStates[`${day}-endKm`];
-    const startKmNum = Number(startKmVal || 0);
-    const endKmNum = Number(endKmVal || 0);
-    const total = endKmNum > startKmNum ? endKmNum - startKmNum : 0;
+    const s = Number(startKmVal || 0);
+    const e = Number(endKmVal || 0);
+    const t = e > s ? e - s : 0;
   
     const isHoliday = cellStates[`${day}-isHoliday`] || getDay(date) === 0;
   
@@ -195,7 +195,7 @@ totalKmValueCell.fill = {
       format(date, 'dd-MMM-yyyy'),
       startKmVal || '',
       endKmVal || '',
-      (startKmVal || endKmVal) ? total : '',
+      (startKmVal || endKmVal) ? t : '',
       cellStates[`${day}-overtime`] || '',
       cellStates[`${day}-remarks`] || '',
     ]);
@@ -295,14 +295,14 @@ export async function exportToPdf(
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 25;
   let currentY = margin;
-/* -------- PRE-CALCULATE TOTAL KM (ONCE) -------- */
-let totalKm = 0;
+  /* -------- PRE-CALCULATE TOTAL KM (ONCE) -------- */
+  let totalKm = 0;
 
-dayHeaders.forEach(day => {
-  const s = Number(cellStates[`${day}-startKm`] || 0);
-  const e = Number(cellStates[`${day}-endKm`] || 0);
-  if (e > s) totalKm += (e - s);
-});
+  dayHeaders.forEach(day => {
+    const s = Number(cellStates[`${day}-startKm`] || 0);
+    const e = Number(cellStates[`${day}-endKm`] || 0);
+    if (e > s) totalKm += (e - s);
+  });
 
   /* ---------------- HEADER ---------------- */
   try {
@@ -330,6 +330,8 @@ dayHeaders.forEach(day => {
     fontSize: 11,
     cellPadding: 5,
     valign: 'middle',
+    lineColor: [180, 180, 180],
+    lineWidth: 0.5,
   },
   columnStyles: {
     0: { cellWidth: 90 },
@@ -367,6 +369,8 @@ dayHeaders.forEach(day => {
     fontSize: 10,
     cellPadding: 5,
     valign: 'middle',
+    lineColor: [180, 180, 180],
+    lineWidth: 0.5,
   },
   columnStyles: {
     0: { cellWidth: 90 },
@@ -443,7 +447,6 @@ dayHeaders.forEach(day => {
     '',
   ]);
 
-  /* -------- FOOTER POSITION (MOVED UP) -------- */
   const footerY = pageHeight - 110; // 🔴 KEY FIX
 
   (doc as any).autoTable({
@@ -458,12 +461,16 @@ dayHeaders.forEach(day => {
       halign: 'center',
       valign: 'middle',
       overflow: 'linebreak',
+      lineColor: [180, 180, 180],
+      lineWidth: 0.5,
     },
     headStyles: {
       fillColor: [2, 179, 150],
       textColor: 255,
       fontStyle: 'bold',
       minCellHeight: 20,     // ⬅ taller header
+      lineColor: [180, 180, 180],
+      lineWidth: 0.5,
     },
     columnStyles: {
       0: { cellWidth: 72 },
@@ -484,7 +491,6 @@ dayHeaders.forEach(day => {
   
 
   /* ---------------- FOOTER ---------------- */
- /* ---------------- FOOTER ---------------- */
  (doc as any).autoTable({
   startY: footerY,
   body: [
@@ -515,6 +521,8 @@ dayHeaders.forEach(day => {
     fontSize: 9,
     cellPadding: 5,
     valign: 'top',
+    lineColor: [180, 180, 180],
+    lineWidth: 0.5,
   },
   columnStyles: {
     0: { cellWidth: (pageWidth - margin * 2) / 3 },
