@@ -883,16 +883,30 @@ export type JobRecordPlant = {
   name: string;
 };
 
+export const JOB_PROGRESS_STEPS = [
+    'Timesheets Pending',
+    'Timesheets Submitted',
+    'Timesheets Received',
+    'JMS created',
+    'JMS sent for Endorsement',
+    'JMS Handed Over to JMS Endorsed',
+    'JMS sent back to Office',
+    'JMS No created',
+    'JMS Hard copy sent back to SIte',
+    'Hard Copy submitted',
+] as const;
+
+export type JobProgressStepName = typeof JOB_PROGRESS_STEPS[number];
+
 export type JobStepStatus = 'Not Started' | 'Pending' | 'Acknowledged' | 'Completed' | 'Skipped';
 
 export type JobStep = {
   id: string;
-  name: string;
-  assigneeId?: string;
+  name: JobProgressStepName;
+  assigneeId?: string | null;
   status: JobStepStatus;
   description?: string;
   dueDate?: string | null; // ISO string
-  requiresAttachment?: boolean;
   isFinalStep?: boolean;
   
   acknowledgedAt?: string; // ISO

@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { format, parseISO, formatDistanceToNow, isValid } from 'date-fns';
-import { CheckCircle, Clock, Circle, XCircle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone } from 'lucide-react';
+import { CheckCircle, Clock, Circle, XCircle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
@@ -26,6 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { JOB_PROGRESS_STEPS, JobProgressStepName } from '@/lib/types';
 
 
 const statusConfig: { [key in JobStepStatus]: { icon: React.ElementType, color: string, label: string } } = {
@@ -35,6 +36,13 @@ const statusConfig: { [key in JobStepStatus]: { icon: React.ElementType, color: 
   'Completed': { icon: CheckCircle, color: 'text-green-500', label: 'Completed' },
   'Skipped': { icon: XCircle, color: 'text-gray-500', label: 'Skipped' },
 };
+
+const nextStepSchema = z.object({
+  name: z.enum(JOB_PROGRESS_STEPS, { required_error: 'Step name is required' }),
+  assigneeId: z.string().min(1, 'Assignee is required'),
+  description: z.string().optional(),
+  dueDate: z.date().optional().nullable(),
+});
 
 const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean; setIsOpen: (open: boolean) => void; job: JobProgress; step: JobStep; }) => {
     const { reassignJobStep, getAssignableUsers } = useAppContext();
@@ -120,6 +128,84 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
     );
 };
 
+const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
+    const { getAssignableUsers, addAndCompleteStep } = useAppContext();
+    const [completionComment, setCompletionComment] = useState('');
+    const form = useForm<z.infer<typeof nextStepSchema>>({
+        resolver: zodResolver(nextStepSchema),
+    });
+
+    const assignableUsers = useMemo(() => getAssignableUsers(), [getAssignableUsers]);
+
+    const handleSave = (data: z.infer<typeof nextStepSchema>) => {
+        addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, undefined, {
+            ...data,
+            dueDate: data.dueDate?.toISOString() || null,
+        });
+        onSave();
+    };
+
+    return (
+        <div className="p-4 border rounded-md mt-2 bg-muted/20">
+            <h5 className="font-semibold text-sm mb-2">Create Next Step</h5>
+            <form onSubmit={form.handleSubmit(handleSave)} className="space-y-3">
+                <div className="space-y-1">
+                    <Label className="text-xs">Completion Notes (Optional)</Label>
+                    <Textarea value={completionComment} onChange={e => setCompletionComment(e.target.value)} rows={2} />
+                </div>
+                 <div className="space-y-1">
+                    <Label className="text-xs">Next Step Name</Label>
+                     <Controller
+                        name="name"
+                        control={form.control}
+                        render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger>
+                            <SelectValue placeholder="Select next step" />
+                            </SelectTrigger>
+                            <SelectContent>
+                            {JOB_PROGRESS_STEPS.map(step => (
+                                <SelectItem key={step} value={step}>{step}</SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        )}
+                    />
+                     {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
+                </div>
+                <div className="space-y-1">
+                    <Label className="text-xs">Assign To</Label>
+                    <Controller
+                        name="assigneeId"
+                        control={form.control}
+                        render={({ field }) => (
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
+                                <SelectContent>
+                                    {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        )}
+                    />
+                    {form.formState.errors.assigneeId && <p className="text-xs text-destructive">{form.formState.errors.assigneeId.message}</p>}
+                </div>
+                 <div className="space-y-1">
+                    <Label className="text-xs">Description (Optional)</Label>
+                    <Textarea {...form.register('description')} rows={2}/>
+                </div>
+                <div className="space-y-1">
+                    <Label className="text-xs">Due Date (Optional)</Label>
+                    <Controller name="dueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
+                </div>
+                <div className="flex justify-end gap-2">
+                    <Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
+                    <Button type="submit" size="sm">Add & Assign Step</Button>
+                </div>
+            </form>
+        </div>
+    );
+};
+
 
 interface ViewJobProgressDialogProps {
     isOpen: boolean;
@@ -128,7 +214,7 @@ interface ViewJobProgressDialogProps {
 }
 
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
-    const { user, users, jobProgress, updateJobStepStatus, addJobStepComment, assignJobStep, addAndCompleteStep, getAssignableUsers } = useAppContext();
+    const { user, users, jobProgress, updateJobStepStatus, addJobStepComment, assignJobStep, addAndCompleteStep, getAssignableUsers, reopenJob } = useAppContext();
     const [comment, setComment] = useState('');
     const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
     const [assigningStepId, setAssigningStepId] = useState<string | null>(null);
@@ -150,14 +236,24 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         updateJobStepStatus(job.id, stepId, 'Completed', comment);
         setComment('');
     };
+    
+    const canReopenJob = useMemo(() => {
+        if (!user || !job) return false;
+        return job.creatorId === user.id && job.status === 'Completed';
+    }, [user, job]);
 
     return (
         <>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+            <DialogContent className="max-w-4xl h-[90vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
                 <DialogHeader>
-                    <DialogTitle>{job.title}</DialogTitle>
-                    <DialogDescription>Created by {creator?.name} on {format(parseISO(job.createdAt), 'PPP')}</DialogDescription>
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <DialogTitle>{job.title}</DialogTitle>
+                            <DialogDescription>Created by {creator?.name} on {format(parseISO(job.createdAt), 'PPP')}</DialogDescription>
+                        </div>
+                        <Badge variant={job.status === 'Completed' ? 'success' : 'secondary'}>{job.status}</Badge>
+                    </div>
                 </DialogHeader>
                 <ScrollArea className="flex-1 -mx-6 px-6">
                     <div className="relative pl-6">
@@ -169,7 +265,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const isCurrentUserAssignee = user?.id === step.assigneeId;
                                 const isPreviousStepCompleted = index === 0 || job.steps[index - 1].status === 'Completed';
                                 const canAct = isCurrentUserAssignee && isPreviousStepCompleted;
-                                const canReassign = canAct && (step.status === 'Pending' || step.status === 'Acknowledged');
+                                const canReassign = (canAct || user?.role === 'Admin') && (step.status === 'Pending' || step.status === 'Acknowledged');
                                 const StatusIcon = statusConfig[step.status].icon;
                                 
                                 const isCreator = user?.id === job.creatorId;
@@ -186,7 +282,6 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                 <div>
                                                     <div className="font-semibold flex items-center gap-2">
                                                         {step.name}
-                                                        {step.milestone && <Badge variant="outline"><Milestone className="h-3 w-3 mr-1"/>{step.milestone}%</Badge>}
                                                     </div>
                                                      {assignee ? (
                                                         <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
@@ -201,7 +296,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                         </div>
                                                      )}
                                                 </div>
-                                                <Badge variant="outline" className="capitalize">{statusConfig[step.status].label}</Badge>
+                                                 <Badge variant="outline" className="capitalize">{statusConfig[step.status].label}</Badge>
                                             </div>
                                             
                                             {step.description && <p className="text-sm text-muted-foreground p-2 bg-muted/50 rounded-md">{step.description}</p>}
@@ -233,27 +328,27 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                 <Button size="sm" onClick={() => handleAcknowledge(step.id)}>Acknowledge</Button>
                                             )}
 
-                                            {canAct && step.status === 'Acknowledged' && (
-                                                <div className="space-y-4 pt-3 border-t">
-                                                     <div className="relative">
-                                                        <Textarea 
-                                                            value={comment}
-                                                            onChange={e => setComment(e.target.value)}
-                                                            placeholder="Add completion notes (optional)..." 
-                                                            className="pr-10 text-sm"
-                                                            rows={2}
-                                                        />
-                                                     </div>
-                                                     <div className="flex justify-between">
-                                                        <Button size="sm" variant="outline" onClick={() => setReassigningStep(step)}>
-                                                          <UserRoundCog className="h-4 w-4 mr-2"/> Reassign
-                                                        </Button>
-                                                        <div className="flex gap-2">
-                                                            <Button size="sm" variant="secondary" onClick={() => setShowNextStepForm(step.id)}>Add Next Step</Button>
-                                                            <Button size="sm" onClick={() => handleFinalStepComplete(step.id)}>Mark as Final Step</Button>
-                                                        </div>
-                                                     </div>
-                                                </div>
+                                            {canAct && step.status === 'Acknowledged' && showNextStepForm !== step.id && (
+                                                 <div className="flex justify-between">
+                                                    <Button size="sm" variant="outline" onClick={() => setReassigningStep(step)}>
+                                                      <UserRoundCog className="h-4 w-4 mr-2"/> Reassign
+                                                    </Button>
+                                                    <div className="flex gap-2">
+                                                        <Button size="sm" variant="secondary" onClick={() => setShowNextStepForm(step.id)}>Add Next Step</Button>
+                                                        <Button size="sm" onClick={() => handleFinalStepComplete(step.id)}>Mark as Final Step</Button>
+                                                    </div>
+                                                 </div>
+                                            )}
+                                            {showNextStepForm === step.id && (
+                                                <AddNextStepForm 
+                                                    job={job}
+                                                    currentStep={step}
+                                                    onCancel={() => setShowNextStepForm(null)}
+                                                    onSave={() => {
+                                                        setShowNextStepForm(null);
+                                                        setIsOpen(false);
+                                                    }}
+                                                />
                                             )}
                                         </div>
                                     </div>
@@ -262,8 +357,11 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                         </div>
                     </div>
                 </ScrollArea>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
+                <DialogFooter className="justify-between">
+                    {canReopenJob && (
+                        <Button variant="outline" onClick={() => reopenJob(job.id)}><Undo2 className="mr-2 h-4 w-4"/>Reopen Job</Button>
+                    )}
+                    <Button variant="secondary" onClick={() => setIsOpen(false)}>Close</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
