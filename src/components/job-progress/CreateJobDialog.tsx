@@ -28,7 +28,6 @@ import {
 } from '@/components/ui/select';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { useToast } from '@/hooks/use-toast';
-import { useFieldArray } from 'react-hook-form';
 
 const jobStepSchema = z.object({
     name: z.string().min(1, 'Step name is required'),
@@ -62,10 +61,10 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
   const onSubmit = (data: JobFormValues) => {
     createJobProgress({
       title: data.title,
-      initialStep: {
+      steps: [{
           ...data.initialStep,
           dueDate: data.initialStep.dueDate?.toISOString() || null,
-      },
+      }],
     });
     toast({ title: 'Job Created', description: data.title });
     setIsOpen(false);
@@ -150,5 +149,3 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
     </Dialog>
   );
 }
-
-
