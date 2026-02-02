@@ -171,6 +171,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                 <div>
                                                     <p className="font-semibold">{step.name}</p>
                                                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                                                        <span>Assigned to:</span>
                                                         <Avatar className="h-5 w-5"><AvatarImage src={assignee?.avatar}/><AvatarFallback>{assignee?.name?.[0]}</AvatarFallback></Avatar>
                                                         <span>{assignee?.name}</span>
                                                         {step.dueDate && <span>&middot; Due {format(parseISO(step.dueDate), 'dd MMM')}</span>}
@@ -181,6 +182,9 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                             
                                             {step.description && <p className="text-sm text-muted-foreground p-2 bg-muted/50 rounded-md">{step.description}</p>}
                                             
+                                            {step.acknowledgedAt && !step.completedAt && <p className="text-xs text-muted-foreground mt-1">Acknowledged: {formatDistanceToNow(parseISO(step.acknowledgedAt), { addSuffix: true })}</p>}
+                                            {step.completedAt && <p className="text-xs text-green-600">Completed: {formatDistanceToNow(parseISO(step.completedAt), { addSuffix: true })} by {users.find(u => u.id === step.completedBy)?.name}</p>}
+
                                             {canAct && step.status === 'Pending' && <Button size="sm" onClick={() => handleAcknowledge(step.id)}>Acknowledge</Button>}
                                             
                                             {canAct && step.status === 'Acknowledged' && !completingStepId && (
