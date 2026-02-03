@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -10,7 +9,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import type { JobProgress, JobStep, JobStepStatus, Task, User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { format, parseISO, formatDistanceToNow, isValid } from 'date-fns';
 import { CheckCircle, Clock, Circle, XCircle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2 } from 'lucide-react';
@@ -328,27 +327,41 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                 <Button size="sm" onClick={() => handleAcknowledge(step.id)}>Acknowledge</Button>
                                             )}
 
-                                            {canAct && step.status === 'Acknowledged' && showNextStepForm !== step.id && (
-                                                 <div className="flex justify-between">
-                                                    <Button size="sm" variant="outline" onClick={() => setReassigningStep(step)}>
-                                                      <UserRoundCog className="h-4 w-4 mr-2"/> Reassign
+                                            {canAct && step.status === 'Acknowledged' && (
+                                                <>
+                                                {step.name === 'Hard Copy submitted' ? (
+                                                  <div className="mt-3 space-y-2 pt-3 border-t">
+                                                    <Label className="text-xs">Final Completion Notes (Optional)</Label>
+                                                    <Textarea
+                                                      value={comment}
+                                                      onChange={(e) => setComment(e.target.value)}
+                                                      placeholder="Add final notes..."
+                                                      rows={2}
+                                                    />
+                                                    <Button size="sm" onClick={() => handleFinalStepComplete(step.id)} className="w-full">
+                                                      Complete Job
                                                     </Button>
-                                                    <div className="flex gap-2">
-                                                        <Button size="sm" variant="secondary" onClick={() => setShowNextStepForm(step.id)}>Add Next Step</Button>
-                                                        <Button size="sm" onClick={() => handleFinalStepComplete(step.id)}>Mark as Final Step</Button>
-                                                    </div>
-                                                 </div>
-                                            )}
-                                            {showNextStepForm === step.id && (
-                                                <AddNextStepForm 
-                                                    job={job}
-                                                    currentStep={step}
-                                                    onCancel={() => setShowNextStepForm(null)}
-                                                    onSave={() => {
-                                                        setShowNextStepForm(null);
-                                                        setIsOpen(false);
-                                                    }}
-                                                />
+                                                  </div>
+                                                ) : (
+                                                    showNextStepForm === step.id ? (
+                                                        <AddNextStepForm 
+                                                            job={job}
+                                                            currentStep={step}
+                                                            onCancel={() => setShowNextStepForm(null)}
+                                                            onSave={() => setShowNextStepForm(null)}
+                                                        />
+                                                    ) : (
+                                                        <div className="flex justify-between pt-3 border-t">
+                                                            <Button size="sm" variant="outline" onClick={() => setReassigningStep(step)}>
+                                                              <UserRoundCog className="h-4 w-4 mr-2"/> Reassign
+                                                            </Button>
+                                                            <Button size="sm" onClick={() => setShowNextStepForm(step.id)}>
+                                                                <CheckCircle className="mr-2 h-4 w-4"/> Complete & Add Next Step
+                                                            </Button>
+                                                        </div>
+                                                    )
+                                                )}
+                                              </>
                                             )}
                                         </div>
                                     </div>
