@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useForm, Controller } from 'react-hook-form';
@@ -29,17 +28,19 @@ import {
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { useToast } from '@/hooks/use-toast';
 import { JOB_PROGRESS_STEPS, JobProgressStepName } from '@/lib/types';
+import { Checkbox } from '../ui/checkbox';
 
 const jobStepSchema = z.object({
   name: z.enum(JOB_PROGRESS_STEPS, { required_error: 'Step name is required' }),
   assigneeId: z.string().min(1, 'Assignee is required'),
   description: z.string().optional(),
   dueDate: z.date().optional().nullable(),
+  isFinalStep: z.boolean().default(false),
 });
 
 const jobSchema = z.object({
   title: z.string().min(3, 'Job title is required'),
-  initialStep: jobStepSchema,
+  steps: z.array(jobStepSchema).min(1),
 });
 
 type JobFormValues = z.infer<typeof jobSchema>;
@@ -50,24 +51,27 @@ interface Props {
 }
 
 export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
-  const { users, createJobProgress, getAssignableUsers } = useAppContext();
+  const { users, createJobProgress } = useAppContext();
   const { toast } = useToast();
 
   const form = useForm<JobFormValues>({
     resolver: zodResolver(jobSchema),
+    defaultValues: {
+        steps: [{ name: 'Timesheets Pending', assigneeId: '', description: '', dueDate: null, isFinalStep: false }]
+    }
   });
 
-  const assignableUsers = useMemo(() => getAssignableUsers(), [getAssignableUsers]);
+  const assignableUsers = useMemo(() => {
+    return users.filter(u => u.role !== 'Manager');
+  }, [users]);
 
   const onSubmit = (data: JobFormValues) => {
     createJobProgress({
       title: data.title,
-      steps: [
-        {
-          ...data.initialStep,
-          dueDate: data.initialStep.dueDate?.toISOString() || null,
-        },
-      ],
+      steps: data.steps.map(step => ({
+        ...step,
+        dueDate: step.dueDate?.toISOString() || null,
+      })),
     });
     toast({ title: 'Job Created', description: data.title });
     setIsOpen(false);
@@ -75,13 +79,15 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      form.reset();
+      form.reset({
+        steps: [{ name: 'Timesheets Pending', assigneeId: '', description: '', dueDate: null, isFinalStep: false }]
+      });
     }
     setIsOpen(open);
   };
 
-  const StepFields = ({ fieldName, title }: { fieldName: 'initialStep'; title: string }) => {
-    const errors = form.formState.errors[fieldName] as any;
+  const StepFields = ({ fieldName, title }: { fieldName: `steps.0`; title: string }) => {
+    const errors = form.formState.errors.steps?.[0] as any;
     return (
       <div className="border p-4 rounded-md space-y-3 bg-muted/50">
         <h4 className="font-semibold text-sm">{title}</h4>
@@ -163,7 +169,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
           </div>
 
           <div className="space-y-4">
-            <StepFields fieldName="initialStep" title="Initial Step" />
+            <StepFields fieldName="steps.0" title="Initial Step" />
           </div>
 
           <DialogFooter className="pt-4">

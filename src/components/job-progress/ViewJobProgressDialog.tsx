@@ -128,13 +128,15 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
 };
 
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
-    const { getAssignableUsers, addAndCompleteStep } = useAppContext();
+    const { users, addAndCompleteStep } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
     const form = useForm<z.infer<typeof nextStepSchema>>({
         resolver: zodResolver(nextStepSchema),
     });
 
-    const assignableUsers = useMemo(() => getAssignableUsers(), [getAssignableUsers]);
+    const assignableUsers = useMemo(() => {
+        return users.filter(u => u.role !== 'Manager');
+    }, [users]);
 
     const handleSave = (data: z.infer<typeof nextStepSchema>) => {
         addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, undefined, {
@@ -295,7 +297,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                         </div>
                                                      )}
                                                 </div>
-                                                 <Badge variant="outline" className="capitalize">{statusConfig[step.status].label}</Badge>
+                                                <Badge variant="outline" className="capitalize">{statusConfig[step.status].label}</Badge>
                                             </div>
                                             
                                             {step.description && <p className="text-sm text-muted-foreground p-2 bg-muted/50 rounded-md">{step.description}</p>}
@@ -329,7 +331,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
 
                                             {canAct && step.status === 'Acknowledged' && (
                                                 <>
-                                                {step.name === 'Hard Copy submitted' ? (
+                                                {step.name === 'Hard Copy submitted' || step.isFinalStep ? (
                                                   <div className="mt-3 space-y-2 pt-3 border-t">
                                                     <Label className="text-xs">Final Completion Notes (Optional)</Label>
                                                     <Textarea
