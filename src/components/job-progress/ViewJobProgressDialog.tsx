@@ -37,9 +37,17 @@ const statusConfig: { [key in JobStepStatus]: { icon: React.ElementType, color: 
 
 const nextStepSchema = z.object({
   name: z.enum(JOB_PROGRESS_STEPS, { required_error: 'Step name is required' }),
-  assigneeId: z.string().min(1, 'Assignee is required'),
+  assigneeId: z.string().optional(),
   description: z.string().optional(),
   dueDate: z.date().optional().nullable(),
+}).refine(data => {
+    if (data.name !== 'Hard Copy submitted') {
+        return !!data.assigneeId;
+    }
+    return true;
+}, {
+    message: 'Assignee is required for this step.',
+    path: ['assigneeId'],
 });
 
 const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean; setIsOpen: (open: boolean) => void; job: JobProgress; step: JobStep; }) => {
@@ -127,28 +135,34 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
 };
 
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
-    const { addAndCompleteStep, users } = useAppContext();
+    const { addAndCompleteStep, completeJobAsFinalStep, users, getAssignableUsers } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
     const form = useForm<z.infer<typeof nextStepSchema>>({
         resolver: zodResolver(nextStepSchema),
     });
-
+    
     const assignableUsers = useMemo(() => {
-        return users.filter(u => u.role !== 'Manager');
-    }, [users]);
+        return getAssignableUsers();
+    }, [getAssignableUsers]);
 
-    const handleSave = (data: z.infer<typeof nextStepSchema>) => {
-        addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, undefined, {
-            ...data,
-            dueDate: data.dueDate?.toISOString() || null,
-        });
+    const watchedStepName = form.watch('name');
+
+    const handleFormSubmit = (data: z.infer<typeof nextStepSchema>) => {
+        if (data.name === 'Hard Copy submitted') {
+            completeJobAsFinalStep(job.id, currentStep.id, completionComment);
+        } else {
+            addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, undefined, {
+                ...data,
+                dueDate: data.dueDate?.toISOString() || null,
+            });
+        }
         onSave();
     };
 
     return (
         <div className="p-4 border rounded-md mt-2 bg-muted/20">
-            <h5 className="font-semibold text-sm mb-2">Create Next Step</h5>
-            <form onSubmit={form.handleSubmit(handleSave)} className="space-y-3">
+            <h5 className="font-semibold text-sm mb-2">Complete This Step</h5>
+            <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-3">
                 <div className="space-y-1">
                     <Label className="text-xs">Completion Notes (Optional)</Label>
                     <Textarea value={completionComment} onChange={e => setCompletionComment(e.target.value)} rows={2} />
@@ -173,33 +187,39 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                     />
                      {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
                 </div>
-                <div className="space-y-1">
-                    <Label className="text-xs">Assign To</Label>
-                    <Controller
-                        name="assigneeId"
-                        control={form.control}
-                        render={({ field }) => (
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
-                                <SelectContent>
-                                    {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        )}
-                    />
-                    {form.formState.errors.assigneeId && <p className="text-xs text-destructive">{form.formState.errors.assigneeId.message}</p>}
-                </div>
-                 <div className="space-y-1">
-                    <Label className="text-xs">Description (Optional)</Label>
-                    <Textarea {...form.register('description')} rows={2}/>
-                </div>
-                <div className="space-y-1">
-                    <Label className="text-xs">Due Date (Optional)</Label>
-                    <Controller name="dueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
-                </div>
+                {watchedStepName !== 'Hard Copy submitted' && (
+                    <>
+                        <div className="space-y-1">
+                            <Label className="text-xs">Assign To</Label>
+                            <Controller
+                                name="assigneeId"
+                                control={form.control}
+                                render={({ field }) => (
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
+                                        <SelectContent>
+                                            {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            />
+                            {form.formState.errors.assigneeId && <p className="text-xs text-destructive">{form.formState.errors.assigneeId.message}</p>}
+                        </div>
+                         <div className="space-y-1">
+                            <Label className="text-xs">Description (Optional)</Label>
+                            <Textarea {...form.register('description')} rows={2}/>
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-xs">Due Date (Optional)</Label>
+                            <Controller name="dueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
+                        </div>
+                    </>
+                )}
                 <div className="flex justify-end gap-2">
                     <Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
-                    <Button type="submit" size="sm">Add & Assign Step</Button>
+                    <Button type="submit" size="sm">
+                        {watchedStepName === 'Hard Copy submitted' ? 'Finalize & Complete Job' : 'Complete & Assign Next Step'}
+                    </Button>
                 </div>
             </form>
         </div>
@@ -214,12 +234,10 @@ interface ViewJobProgressDialogProps {
 }
 
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
-    const { user, users, jobProgress, updateJobStepStatus, addJobStepComment, addAndCompleteStep, reopenJob, completeJobAsFinalStep, assignJobStep } = useAppContext();
+    const { user, users, jobProgress, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep } = useAppContext();
     const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
-    const [assigningStepId, setAssigningStepId] = useState<string | null>(null);
     const [newAssigneeId, setNewAssigneeId] = useState<string>('');
     const [showNextStepForm, setShowNextStepForm] = useState<string | null>(null);
-    const [finalComment, setFinalComment] = useState('');
     const { toast } = useToast();
 
     const job = useMemo(() => {
@@ -234,12 +252,6 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         return (canReopenRoles.includes(user.role) || user.id === job.creatorId) && job.status === 'Completed';
     }, [user, job]);
     
-    const canFinalize = useMemo(() => {
-        if (!user || !job) return false;
-        const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
-        return canFinalizeRoles.includes(user.role) || user.id === job.creatorId;
-    }, [user, job]);
-
     return (
         <>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -338,31 +350,9 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                         <Button size="sm" variant="outline" onClick={() => setReassigningStep(step)}>
                                                           <UserRoundCog className="h-4 w-4 mr-2"/> Reassign
                                                         </Button>
-                                                        <div className="flex items-center gap-2">
-                                                            {step.name !== 'Hard Copy submitted' && (
-                                                                <Button size="sm" onClick={() => setShowNextStepForm(step.id)}>
-                                                                    <CheckCircle className="mr-2 h-4 w-4"/> Complete & Add Next Step
-                                                                </Button>
-                                                            )}
-                                                            {(canFinalize || step.name === 'Hard Copy submitted') && (
-                                                                <AlertDialog>
-                                                                    <AlertDialogTrigger asChild>
-                                                                        <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700">Finalize & Complete</Button>
-                                                                    </AlertDialogTrigger>
-                                                                    <AlertDialogContent>
-                                                                        <AlertDialogHeader>
-                                                                            <AlertDialogTitle>Finalize and Complete Job?</AlertDialogTitle>
-                                                                            <AlertDialogDescription>This will mark the entire JMS as completed. Add any final comments below.</AlertDialogDescription>
-                                                                        </AlertDialogHeader>
-                                                                        <Textarea placeholder="Final comments..." onChange={(e) => setFinalComment(e.target.value)} />
-                                                                        <AlertDialogFooter>
-                                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                            <AlertDialogAction onClick={() => completeJobAsFinalStep(job.id, step.id, finalComment)}>Confirm Completion</AlertDialogAction>
-                                                                        </AlertDialogFooter>
-                                                                    </AlertDialogContent>
-                                                                </AlertDialog>
-                                                            )}
-                                                        </div>
+                                                         <Button size="sm" onClick={() => setShowNextStepForm(step.id)}>
+                                                            <CheckCircle className="mr-2 h-4 w-4"/> Complete This Step
+                                                        </Button>
                                                     </div>
                                                 )
                                             )}
