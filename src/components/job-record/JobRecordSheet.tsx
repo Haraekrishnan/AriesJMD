@@ -819,14 +819,14 @@ export default function JobRecordSheet() {
                 <div className="p-4 border-b bg-card shrink-0 space-y-4">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth}>
+                            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} disabled={!canGoToPreviousMonth}>
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
                             <span className="text-lg font-semibold flex items-center gap-2">
                                 {format(currentMonth, 'MMMM yyyy')}
                                 {isCurrentSheetLocked && <Lock className="h-4 w-4 text-muted-foreground" />}
                             </span>
-                            <Button variant="outline" size="icon" onClick={() => changeMonth(1)} disabled={!canGoToNextMonth}>
+                            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={!canGoToNextMonth}>
                                 <ChevronRight className="h-4 w-4" />
                             </Button>
                             <div className="relative ml-4">
@@ -1197,4 +1197,3 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-

@@ -9,7 +9,7 @@ import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress } from '@/lib/types';
 import { JobProgressTable } from '@/components/job-progress/JobProgressTable';
-import { format, startOfMonth, addMonths, subMonths, isSameMonth, parseISO, isBefore, startOfToday } from 'date-fns';
+import { format, startOfMonth, addMonths, subMonths, isSameMonth, parseISO, isBefore, isAfter, startOfToday } from 'date-fns';
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
 
@@ -29,7 +29,7 @@ export default function JobProgressPage() {
   }, [currentMonth]);
 
   const canGoToNextMonth = useMemo(() => {
-    return isBefore(startOfMonth(currentMonth), startOfMonth(new Date()));
+    return isBefore(startOfMonth(currentMonth), startOfToday());
   }, [currentMonth]);
 
   const filteredJobs = useMemo(() => {
