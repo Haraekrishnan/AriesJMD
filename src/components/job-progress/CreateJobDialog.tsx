@@ -35,11 +35,10 @@ const jobStepSchema = z.object({
   assigneeId: z.string().min(1, 'Assignee is required'),
   description: z.string().optional(),
   dueDate: z.date().optional().nullable(),
-  isFinalStep: z.boolean().default(false),
 });
 
 const jobSchema = z.object({
-  title: z.string().min(3, 'Job title is required'),
+  title: z.string().min(3, 'JMS title is required'),
   steps: z.array(jobStepSchema).min(1),
 });
 
@@ -51,36 +50,33 @@ interface Props {
 }
 
 export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
-  const { users, createJobProgress } = useAppContext();
+  const { user, users, createJobProgress, getAssignableUsers } = useAppContext();
   const { toast } = useToast();
 
   const form = useForm<JobFormValues>({
     resolver: zodResolver(jobSchema),
     defaultValues: {
-        steps: [{ name: 'Timesheets Pending', assigneeId: '', description: '', dueDate: null, isFinalStep: false }]
+        steps: [{ name: 'Timesheets Pending', assigneeId: '', description: '', dueDate: null }]
     }
   });
 
   const assignableUsers = useMemo(() => {
-    return users.filter(u => u.role !== 'Manager');
-  }, [users]);
+    return getAssignableUsers();
+  }, [getAssignableUsers]);
 
   const onSubmit = (data: JobFormValues) => {
     createJobProgress({
       title: data.title,
-      steps: data.steps.map(step => ({
-        ...step,
-        dueDate: step.dueDate?.toISOString() || null,
-      })),
+      steps: data.steps,
     });
-    toast({ title: 'Job Created', description: data.title });
+    toast({ title: 'JMS Created', description: data.title });
     setIsOpen(false);
   };
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       form.reset({
-        steps: [{ name: 'Timesheets Pending', assigneeId: '', description: '', dueDate: null, isFinalStep: false }]
+        steps: [{ name: 'Timesheets Pending', assigneeId: '', description: '', dueDate: null }]
       });
     }
     setIsOpen(open);
@@ -157,13 +153,13 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Create New Job</DialogTitle>
-          <DialogDescription>Define the job title and its first step to begin the workflow.</DialogDescription>
+          <DialogTitle>Create New JMS</DialogTitle>
+          <DialogDescription>Define the JMS title and its first step to begin the workflow.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <Label htmlFor="job-title" className="font-semibold">Job Title</Label>
+            <Label htmlFor="job-title" className="font-semibold">JMS Title</Label>
             <Input id="job-title" {...form.register('title')} />
             {form.formState.errors.title && <p className="text-xs text-destructive mt-1">{form.formState.errors.title.message}</p>}
           </div>
@@ -174,7 +170,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
 
           <DialogFooter className="pt-4">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit">Create Job</Button>
+            <Button type="submit">Create JMS</Button>
           </DialogFooter>
         </form>
       </DialogContent>

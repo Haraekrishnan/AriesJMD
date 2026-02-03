@@ -32,7 +32,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   }, [jobs]);
   
   if (sortedJobs.length === 0) {
-    return <p className="text-center text-muted-foreground py-8">No jobs created yet.</p>;
+    return <p className="text-center text-muted-foreground py-8">No JMS created yet for this month.</p>;
   }
 
   const calculateProgress = (job: JobProgress): number => {
@@ -46,7 +46,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Job Title</TableHead>
+            <TableHead>JMS Title</TableHead>
             <TableHead>Created By</TableHead>
             <TableHead>Date Created</TableHead>
             <TableHead>Status</TableHead>

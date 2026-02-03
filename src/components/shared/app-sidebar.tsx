@@ -176,7 +176,7 @@ const plannerNotificationCount =
     { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: notificationCounts.manageTasks || 0, show: true },
     { href: '/job-schedule', icon: CalendarCheck, label: 'Job Schedule', notificationCount: 0, show: can.manage_job_schedule },
     { href: '/job-record', icon: ClipboardList, label: 'Job Record', notificationCount: 0, show: true },
-    { href: '/job-progress', icon: ClipboardList, label: 'Job Progress', notificationCount: 0, show: can.manage_job_progress },
+    { href: '/job-progress', icon: ClipboardList, label: 'JMS Tracker', notificationCount: 0, show: can.manage_job_progress },
     { href: '/purchase-register', icon: ShoppingCart, label: 'Purchase Register', notificationCount: 0, show: true },
     { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: notificationCounts.storeInventory || 0, show: true },
     { href: '/consumables', icon: Package, label: 'Consumables', notificationCount: 0, show: false },

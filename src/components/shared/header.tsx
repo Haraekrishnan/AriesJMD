@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -148,6 +149,7 @@ const plannerNotificationCount =
       { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: notificationCounts.manageTasks || 0, show: true },
       { href: '/job-schedule', icon: CalendarCheck, label: 'Job Schedule', notificationCount: 0, show: can.manage_job_schedule },
       { href: '/job-record', icon: ClipboardList, label: 'Job Record', notificationCount: 0, show: true },
+      { href: '/job-progress', icon: ClipboardList, label: 'JMS Tracker', notificationCount: 0, show: can.manage_job_progress },
       { href: '/purchase-register', icon: ShoppingCart, label: 'Purchase Register', notificationCount: 0, show: true },
       { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: notificationCounts.storeInventory || 0, show: true },
       { href: '/consumables', icon: Package, label: 'Consumables', notificationCount: 0, show: false },
@@ -231,6 +233,7 @@ export default function Header() {
     if (pathname.startsWith('/tp-certification')) return 'TP Certification Lists';
     if (pathname.startsWith('/damage-reports')) return 'Damage Reports';
     if (pathname.startsWith('/incident-reporting')) return 'Incident Reporting';
+    if (pathname.startsWith('/job-progress')) return 'JMS Tracker';
     const name = pathname.split('/').pop()?.replace(/-/g, ' ');
     if (!name || name === 'app') return 'Dashboard';
     if (name === 'downloads') return 'Forms & Documents';

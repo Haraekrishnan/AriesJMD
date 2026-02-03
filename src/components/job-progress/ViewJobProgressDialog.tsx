@@ -44,12 +44,12 @@ const nextStepSchema = z.object({
 });
 
 const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean; setIsOpen: (open: boolean) => void; job: JobProgress; step: JobStep; }) => {
-    const { reassignJobStep, getAssignableUsers } = useAppContext();
+    const { reassignJobStep, getVisibleUsers } = useAppContext();
     const [popoverOpen, setPopoverOpen] = useState(false);
 
     const assignableUsers = useMemo(() => {
-        return getAssignableUsers().filter(u => u.id !== step.assigneeId);
-    }, [getAssignableUsers, step.assigneeId]);
+        return getVisibleUsers().filter(u => u.id !== step.assigneeId);
+    }, [getVisibleUsers, step.assigneeId]);
 
     const form = useForm<{newAssigneeId: string; comment: string;}>({
         resolver: zodResolver(z.object({
@@ -128,15 +128,15 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
 };
 
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
-    const { users, addAndCompleteStep } = useAppContext();
+    const { users, addAndCompleteStep, getAssignableUsers } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
     const form = useForm<z.infer<typeof nextStepSchema>>({
         resolver: zodResolver(nextStepSchema),
     });
 
     const assignableUsers = useMemo(() => {
-        return users.filter(u => u.role !== 'Manager');
-    }, [users]);
+        return getAssignableUsers();
+    }, [getAssignableUsers]);
 
     const handleSave = (data: z.infer<typeof nextStepSchema>) => {
         addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, undefined, {
@@ -250,7 +250,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                 <DialogHeader>
                     <div className="flex justify-between items-start">
                         <div>
-                            <DialogTitle>{job.title}</DialogTitle>
+                            <DialogTitle>JMS Details: {job.title}</DialogTitle>
                             <DialogDescription>Created by {creator?.name} on {format(parseISO(job.createdAt), 'PPP')}</DialogDescription>
                         </div>
                         <Badge variant={job.status === 'Completed' ? 'success' : 'secondary'}>{job.status}</Badge>
@@ -266,7 +266,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const isCurrentUserAssignee = user?.id === step.assigneeId;
                                 const isPreviousStepCompleted = index === 0 || job.steps[index - 1].status === 'Completed';
                                 const canAct = isCurrentUserAssignee && isPreviousStepCompleted;
-                                const canReassign = (canAct || user?.role === 'Admin') && (step.status === 'Pending' || step.status === 'Acknowledged');
+                                const canReassign = (isCurrentUserAssignee || user?.role === 'Admin') && (step.status === 'Pending' || step.status === 'Acknowledged');
                                 const StatusIcon = statusConfig[step.status].icon;
                                 
                                 const isCreator = user?.id === job.creatorId;
@@ -331,7 +331,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
 
                                             {canAct && step.status === 'Acknowledged' && (
                                                 <>
-                                                {step.name === 'Hard Copy submitted' || step.isFinalStep ? (
+                                                {step.name === 'Hard Copy submitted' ? (
                                                   <div className="mt-3 space-y-2 pt-3 border-t">
                                                     <Label className="text-xs">Final Completion Notes (Optional)</Label>
                                                     <Textarea
