@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -9,7 +10,7 @@ import type { JobProgress, JobStep, JobStepStatus, Task, User, Role } from '@/li
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '../ui/scroll-area';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { format, parseISO, formatDistanceToNow, isValid } from 'date-fns';
 import { CheckCircle, Clock, Circle, XCircle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -135,15 +136,15 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
 };
 
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
-    const { addAndCompleteStep, completeJobAsFinalStep, users, getAssignableUsers } = useAppContext();
+    const { addAndCompleteStep, completeJobAsFinalStep, users } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
     const form = useForm<z.infer<typeof nextStepSchema>>({
         resolver: zodResolver(nextStepSchema),
     });
     
     const assignableUsers = useMemo(() => {
-        return getAssignableUsers();
-    }, [getAssignableUsers]);
+        return users.filter(u => u.role !== 'Manager');
+    }, [users]);
 
     const watchedStepName = form.watch('name');
 
@@ -234,7 +235,7 @@ interface ViewJobProgressDialogProps {
 }
 
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
-    const { user, users, jobProgress, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep } = useAppContext();
+    const { user, users, jobProgress, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, completeJobAsFinalStep } = useAppContext();
     const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
     const [newAssigneeId, setNewAssigneeId] = useState<string>('');
     const [showNextStepForm, setShowNextStepForm] = useState<string | null>(null);
@@ -278,9 +279,11 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const canReassign = (isCurrentUserAssignee || user?.role === 'Admin') && (step.status === 'Pending' || step.status === 'Acknowledged');
                                 const StatusIcon = statusConfig[step.status].icon;
                                 
-                                const isCreator = user?.id === job.creatorId;
+                                const isCreatorOrAdmin = user?.id === job.creatorId || user?.role === 'Admin';
+                                const canMarkAsFinal = isCreatorOrAdmin && step.status !== 'Completed' && job.status !== 'Completed';
+
                                 const isStepUnassigned = !step.assigneeId;
-                                const canAssign = isCreator && isStepUnassigned && step.status === 'Pending';
+                                const canAssign = isCreatorOrAdmin && isStepUnassigned && step.status === 'Pending';
                                 
                                 return (
                                     <div key={step.id} className="relative flex items-start">
@@ -291,6 +294,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                             <div className="flex justify-between items-start">
                                                 <div className="font-semibold flex items-center gap-2">
                                                     {step.name}
+                                                    {step.isFinalStep && <Badge variant="destructive">Final Step</Badge>}
                                                 </div>
                                                 <Badge variant="outline" className="capitalize">{statusConfig[step.status].label}</Badge>
                                             </div>
@@ -350,9 +354,16 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                         <Button size="sm" variant="outline" onClick={() => setReassigningStep(step)}>
                                                           <UserRoundCog className="h-4 w-4 mr-2"/> Reassign
                                                         </Button>
-                                                         <Button size="sm" onClick={() => setShowNextStepForm(step.id)}>
-                                                            <CheckCircle className="mr-2 h-4 w-4"/> Complete This Step
-                                                        </Button>
+                                                         <div className="flex gap-2 items-center">
+                                                            {canMarkAsFinal && !step.isFinalStep && (
+                                                                <Button size="sm" variant="outline" onClick={() => markJobStepAsFinal(job.id, step.id)}>
+                                                                    <Milestone className="mr-2 h-4 w-4" /> Mark as Final Step
+                                                                </Button>
+                                                            )}
+                                                            <Button size="sm" onClick={() => setShowNextStepForm(step.id)}>
+                                                                <CheckCircle className="mr-2 h-4 w-4"/> Complete This Step
+                                                            </Button>
+                                                        </div>
                                                     </div>
                                                 )
                                             )}
