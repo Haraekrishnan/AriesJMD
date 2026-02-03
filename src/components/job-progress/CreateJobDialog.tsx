@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, Controller } from 'react-hook-form';
@@ -50,7 +49,7 @@ interface Props {
 }
 
 export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
-  const { user, users, createJobProgress, getAssignableUsers } = useAppContext();
+  const { user, users, createJobProgress } = useAppContext();
   const { toast } = useToast();
 
   const form = useForm<JobFormValues>({
@@ -61,8 +60,8 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
   });
 
   const assignableUsers = useMemo(() => {
-    return getAssignableUsers();
-  }, [getAssignableUsers]);
+    return users.filter(u => u.role !== 'Manager');
+  }, [users]);
 
   const onSubmit = (data: JobFormValues) => {
     createJobProgress({

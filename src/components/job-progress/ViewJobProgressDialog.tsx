@@ -127,15 +127,15 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
 };
 
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
-    const { addAndCompleteStep, getAssignableUsers } = useAppContext();
+    const { addAndCompleteStep, users } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
     const form = useForm<z.infer<typeof nextStepSchema>>({
         resolver: zodResolver(nextStepSchema),
     });
 
     const assignableUsers = useMemo(() => {
-        return getAssignableUsers();
-    }, [getAssignableUsers]);
+        return users.filter(u => u.role !== 'Manager');
+    }, [users]);
 
     const handleSave = (data: z.infer<typeof nextStepSchema>) => {
         addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, undefined, {
@@ -214,7 +214,7 @@ interface ViewJobProgressDialogProps {
 }
 
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
-    const { user, users, jobProgress, updateJobStepStatus, addJobStepComment, addAndCompleteStep, reopenJob, completeJobAsFinalStep } = useAppContext();
+    const { user, users, jobProgress, updateJobStepStatus, addJobStepComment, addAndCompleteStep, reopenJob, completeJobAsFinalStep, assignJobStep } = useAppContext();
     const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
     const [assigningStepId, setAssigningStepId] = useState<string | null>(null);
     const [newAssigneeId, setNewAssigneeId] = useState<string>('');
@@ -277,26 +277,25 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                         </div>
                                         <div className="ml-10 w-full pl-6 space-y-3">
                                             <div className="flex justify-between items-start">
-                                                <div>
-                                                    <div className="font-semibold flex items-center gap-2">
-                                                        {step.name}
-                                                    </div>
-                                                     {assignee ? (
-                                                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                                                            <span>Assigned to:</span>
-                                                            <Avatar className="h-5 w-5"><AvatarImage src={assignee?.avatar}/><AvatarFallback>{assignee?.name?.[0]}</AvatarFallback></Avatar>
-                                                            <span>{assignee?.name}</span>
-                                                            {step.dueDate && <span>&middot; Due {format(parseISO(step.dueDate), 'dd MMM')}</span>}
-                                                        </div>
-                                                     ) : (
-                                                        <div className="text-xs text-muted-foreground mt-1">
-                                                            Unassigned
-                                                        </div>
-                                                     )}
+                                                <div className="font-semibold flex items-center gap-2">
+                                                    {step.name}
                                                 </div>
                                                 <Badge variant="outline" className="capitalize">{statusConfig[step.status].label}</Badge>
                                             </div>
                                             
+                                            {assignee ? (
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                                                    <span>Assigned to:</span>
+                                                    <Avatar className="h-5 w-5"><AvatarImage src={assignee?.avatar}/><AvatarFallback>{assignee?.name?.[0]}</AvatarFallback></Avatar>
+                                                    <span>{assignee?.name}</span>
+                                                    {step.dueDate && <span>&middot; Due {format(parseISO(step.dueDate), 'dd MMM')}</span>}
+                                                </div>
+                                             ) : (
+                                                <div className="text-xs text-muted-foreground mt-1">
+                                                    Unassigned
+                                                </div>
+                                             )}
+
                                             {step.description && <p className="text-sm text-muted-foreground p-2 bg-muted/50 rounded-md">{step.description}</p>}
                                             
                                             {step.acknowledgedAt && !step.completedAt && <p className="text-xs text-blue-600">Acknowledged: {formatDistanceToNow(parseISO(step.acknowledgedAt), { addSuffix: true })}</p>}
@@ -340,10 +339,12 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                           <UserRoundCog className="h-4 w-4 mr-2"/> Reassign
                                                         </Button>
                                                         <div className="flex items-center gap-2">
-                                                            <Button size="sm" onClick={() => setShowNextStepForm(step.id)}>
-                                                                <CheckCircle className="mr-2 h-4 w-4"/> Complete & Add Next Step
-                                                            </Button>
-                                                            {canFinalize && (
+                                                            {step.name !== 'Hard Copy submitted' && (
+                                                                <Button size="sm" onClick={() => setShowNextStepForm(step.id)}>
+                                                                    <CheckCircle className="mr-2 h-4 w-4"/> Complete & Add Next Step
+                                                                </Button>
+                                                            )}
+                                                            {(canFinalize || step.name === 'Hard Copy submitted') && (
                                                                 <AlertDialog>
                                                                     <AlertDialogTrigger asChild>
                                                                         <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700">Finalize & Complete</Button>
