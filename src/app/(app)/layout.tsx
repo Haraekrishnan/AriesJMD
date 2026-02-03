@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect } from 'react';
@@ -13,19 +12,19 @@ import { DecorationProvider } from '@/components/decorations/DecorationProvider'
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAppContext();
   const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.replace('/login');
-      } else if (user.status === 'locked' && pathname !== '/status') {
-        router.replace('/status');
-      }
+    if (loading) {
+      return;
     }
-  }, [user, loading, router, pathname]);
+    if (!user) {
+      router.replace('/login');
+    } else if (user.status === 'locked') {
+      router.replace('/status');
+    }
+  }, [user, loading, router]);
 
-  if (loading || !user || (user.status === 'locked' && pathname !== '/status')) {
+  if (loading || !user || user.status === 'locked') {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
@@ -38,17 +37,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     );
-  }
-
-  // If the user is locked, we want to show the /status page, which doesn't use this layout.
-  // But if they somehow land on another app page, the useEffect will redirect them.
-  // This prevents rendering the main app layout for a locked user.
-  if (user.status === 'locked') {
-      return (
-          <div className="flex h-screen w-full items-center justify-center bg-background">
-              <p>Redirecting to status page...</p>
-          </div>
-      );
   }
 
   return (
