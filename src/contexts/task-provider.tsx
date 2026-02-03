@@ -3,7 +3,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { Task, TaskStatus, ApprovalState, Comment, Subtask, NotificationEventKey, JobProgress, JobStep, JobStepStatus } from '@/lib/types';
+import { Task, TaskStatus, ApprovalState, Comment, Subtask, NotificationEventKey, JobProgress, JobStep, JobStepStatus, Role } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -35,6 +35,8 @@ type TaskContextType = {
   addJobStepComment: (jobId: string, stepId: string, commentText: string) => void;
   reassignJobStep: (jobId: string, stepId: string, newAssigneeId: string, comment: string) => void;
   assignJobStep: (jobId: string, stepId: string, assigneeId: string) => void;
+  completeJobAsFinalStep: (jobId: string, stepId: string, comment: string) => void;
+  reopenJob: (jobId: string) => void;
 };
 
 const createDataListener = <T extends {}>(
@@ -369,12 +371,11 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         const newRef = push(ref(rtdb, 'jobProgress'));
         const now = new Date().toISOString();
     
-        const initialSteps: JobStep[] = data.steps.map((step, index) => ({
+        const initialSteps: JobStep[] = (data.steps || []).map((step, index) => ({
             ...step,
             id: `step-${index}`,
             status: index === 0 ? 'Pending' : 'Not Started',
             dueDate: step.dueDate || null,
-            milestone: step.milestone || null,
         }));
     
         const newJob: Omit<JobProgress, 'id'> = {
@@ -435,8 +436,6 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
             if (stepIndex < job.steps.length - 1) {
                 updates[`jobProgress/${jobId}/steps/${stepIndex + 1}/status`] = 'Pending';
-            } else {
-                 updates[`jobProgress/${jobId}/status`] = 'Completed';
             }
         }
         
@@ -444,9 +443,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
             index === stepIndex ? newStatus === 'Completed' : step.status === 'Completed'
         );
 
-        if (allStepsCompleted) {
-            updates[`jobProgress/${jobId}/status`] = 'Completed';
-        } else if (job.status === 'Not Started' && (newStatus === 'Acknowledged' || newStatus === 'Completed')) {
+        if (job.status === 'Not Started' && (newStatus === 'Acknowledged' || newStatus === 'Completed')) {
             updates[`jobProgress/${jobId}/status`] = 'In Progress';
         }
 
@@ -633,6 +630,70 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         }
     }, [user, jobProgressById, users, addJobStepComment, notificationSettings]);
 
+    const completeJobAsFinalStep = useCallback((jobId: string, stepId: string, comment: string) => {
+        if (!user) return;
+        const job = jobProgressById[jobId];
+        if (!job) return;
+
+        const stepIndex = job.steps.findIndex(s => s.id === stepId);
+        if (stepIndex === -1) return;
+
+        const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+        const canFinalize = canFinalizeRoles.includes(user.role) || user.id === job.creatorId;
+
+        if (!canFinalize) {
+            toast({ title: "Permission Denied", variant: 'destructive' });
+            return;
+        }
+
+        const updates: { [key: string]: any } = {};
+        const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
+
+        updates[`${stepPath}/status`] = 'Completed';
+        updates[`${stepPath}/completedAt`] = new Date().toISOString();
+        updates[`${stepPath}/completedBy`] = user.id;
+        updates[`jobProgress/${jobId}/status`] = 'Completed';
+        updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
+
+        update(ref(rtdb), updates);
+
+        if (comment) {
+            addJobStepComment(jobId, stepId, comment);
+        }
+
+        toast({ title: "Job Completed", description: "This JMS has been marked as complete." });
+
+    }, [user, jobProgressById, addJobStepComment, toast]);
+
+    const reopenJob = useCallback((jobId: string) => {
+        if (!user) return;
+        const job = jobProgressById[jobId];
+        if (!job) return;
+        
+        const canReopenRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+        const canReopen = canReopenRoles.includes(user.role) || user.id === job.creatorId;
+        if (!canReopen) {
+            toast({ title: "Permission Denied", variant: "destructive" });
+            return;
+        }
+
+        const lastStepIndex = job.steps.length - 1;
+        if (lastStepIndex < 0) return;
+
+        const updates: { [key: string]: any } = {};
+        updates[`jobProgress/${jobId}/status`] = 'In Progress';
+        updates[`jobProgress/${jobId}/steps/${lastStepIndex}/status`] = 'Acknowledged';
+        updates[`jobProgress/${jobId}/steps/${lastStepIndex}/completedAt`] = null;
+        updates[`jobProgress/${jobId}/steps/${lastStepIndex}/completedBy`] = null;
+        updates[`jobProgress/${jobId}/steps/${lastStepIndex}/completionDetails`] = null;
+
+        update(ref(rtdb), updates);
+
+        addJobStepComment(jobId, job.steps[lastStepIndex].id, `${user.name} reopened the job.`);
+        toast({ title: "Job Reopened", description: "The job is now back in progress." });
+
+    }, [user, jobProgressById, addJobStepComment, toast]);
+
     useEffect(() => {
         const unsubscribers = [
             createDataListener('tasks', setTasksById),
@@ -663,6 +724,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         addJobStepComment,
         reassignJobStep,
         assignJobStep,
+        completeJobAsFinalStep,
+        reopenJob
     };
 
     return <TaskContext.Provider value={contextValue}>{children}</TaskContext.Provider>;

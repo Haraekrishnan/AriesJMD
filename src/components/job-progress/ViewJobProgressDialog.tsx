@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -6,7 +5,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAppContext } from '@/contexts/app-provider';
-import type { JobProgress, JobStep, JobStepStatus, Task, User } from '@/lib/types';
+import type { JobProgress, JobStep, JobStepStatus, Task, User, Role } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '../ui/scroll-area';
@@ -44,12 +43,12 @@ const nextStepSchema = z.object({
 });
 
 const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean; setIsOpen: (open: boolean) => void; job: JobProgress; step: JobStep; }) => {
-    const { reassignJobStep, getVisibleUsers } = useAppContext();
+    const { reassignJobStep, getAssignableUsers } = useAppContext();
     const [popoverOpen, setPopoverOpen] = useState(false);
 
     const assignableUsers = useMemo(() => {
-        return getVisibleUsers().filter(u => u.id !== step.assigneeId);
-    }, [getVisibleUsers, step.assigneeId]);
+        return getAssignableUsers().filter(u => u.id !== step.assigneeId);
+    }, [getAssignableUsers, step.assigneeId]);
 
     const form = useForm<{newAssigneeId: string; comment: string;}>({
         resolver: zodResolver(z.object({
@@ -128,7 +127,7 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
 };
 
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
-    const { users, addAndCompleteStep, getAssignableUsers } = useAppContext();
+    const { addAndCompleteStep, getAssignableUsers } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
     const form = useForm<z.infer<typeof nextStepSchema>>({
         resolver: zodResolver(nextStepSchema),
@@ -215,12 +214,12 @@ interface ViewJobProgressDialogProps {
 }
 
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
-    const { user, users, jobProgress, updateJobStepStatus, addJobStepComment, assignJobStep, addAndCompleteStep, getAssignableUsers, reopenJob } = useAppContext();
-    const [comment, setComment] = useState('');
+    const { user, users, jobProgress, updateJobStepStatus, addJobStepComment, addAndCompleteStep, reopenJob, completeJobAsFinalStep } = useAppContext();
     const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
     const [assigningStepId, setAssigningStepId] = useState<string | null>(null);
     const [newAssigneeId, setNewAssigneeId] = useState<string>('');
     const [showNextStepForm, setShowNextStepForm] = useState<string | null>(null);
+    const [finalComment, setFinalComment] = useState('');
     const { toast } = useToast();
 
     const job = useMemo(() => {
@@ -229,18 +228,16 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
 
     const creator = users.find(u => u.id === job.creatorId);
 
-    const handleAcknowledge = (stepId: string) => {
-        updateJobStepStatus(job.id, stepId, 'Acknowledged');
-    };
-    
-    const handleFinalStepComplete = (stepId: string) => {
-        updateJobStepStatus(job.id, stepId, 'Completed', comment);
-        setComment('');
-    };
-    
     const canReopenJob = useMemo(() => {
         if (!user || !job) return false;
-        return job.creatorId === user.id && job.status === 'Completed';
+        const canReopenRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+        return (canReopenRoles.includes(user.role) || user.id === job.creatorId) && job.status === 'Completed';
+    }, [user, job]);
+    
+    const canFinalize = useMemo(() => {
+        if (!user || !job) return false;
+        const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+        return canFinalizeRoles.includes(user.role) || user.id === job.creatorId;
     }, [user, job]);
 
     return (
@@ -326,44 +323,47 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                             )}
 
                                             {canAct && step.status === 'Pending' && (
-                                                <Button size="sm" onClick={() => handleAcknowledge(step.id)}>Acknowledge</Button>
+                                                <Button size="sm" onClick={() => updateJobStepStatus(job.id, step.id, 'Acknowledged')}>Acknowledge</Button>
                                             )}
 
                                             {canAct && step.status === 'Acknowledged' && (
-                                                <>
-                                                {step.name === 'Hard Copy submitted' ? (
-                                                  <div className="mt-3 space-y-2 pt-3 border-t">
-                                                    <Label className="text-xs">Final Completion Notes (Optional)</Label>
-                                                    <Textarea
-                                                      value={comment}
-                                                      onChange={(e) => setComment(e.target.value)}
-                                                      placeholder="Add final notes..."
-                                                      rows={2}
+                                                showNextStepForm === step.id ? (
+                                                    <AddNextStepForm 
+                                                        job={job}
+                                                        currentStep={step}
+                                                        onCancel={() => setShowNextStepForm(null)}
+                                                        onSave={() => setShowNextStepForm(null)}
                                                     />
-                                                    <Button size="sm" onClick={() => handleFinalStepComplete(step.id)} className="w-full">
-                                                      Complete Job
-                                                    </Button>
-                                                  </div>
                                                 ) : (
-                                                    showNextStepForm === step.id ? (
-                                                        <AddNextStepForm 
-                                                            job={job}
-                                                            currentStep={step}
-                                                            onCancel={() => setShowNextStepForm(null)}
-                                                            onSave={() => setShowNextStepForm(null)}
-                                                        />
-                                                    ) : (
-                                                        <div className="flex justify-between pt-3 border-t">
-                                                            <Button size="sm" variant="outline" onClick={() => setReassigningStep(step)}>
-                                                              <UserRoundCog className="h-4 w-4 mr-2"/> Reassign
-                                                            </Button>
+                                                    <div className="flex justify-between items-center pt-3 border-t">
+                                                        <Button size="sm" variant="outline" onClick={() => setReassigningStep(step)}>
+                                                          <UserRoundCog className="h-4 w-4 mr-2"/> Reassign
+                                                        </Button>
+                                                        <div className="flex items-center gap-2">
                                                             <Button size="sm" onClick={() => setShowNextStepForm(step.id)}>
                                                                 <CheckCircle className="mr-2 h-4 w-4"/> Complete & Add Next Step
                                                             </Button>
+                                                            {canFinalize && (
+                                                                <AlertDialog>
+                                                                    <AlertDialogTrigger asChild>
+                                                                        <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700">Finalize & Complete</Button>
+                                                                    </AlertDialogTrigger>
+                                                                    <AlertDialogContent>
+                                                                        <AlertDialogHeader>
+                                                                            <AlertDialogTitle>Finalize and Complete Job?</AlertDialogTitle>
+                                                                            <AlertDialogDescription>This will mark the entire JMS as completed. Add any final comments below.</AlertDialogDescription>
+                                                                        </AlertDialogHeader>
+                                                                        <Textarea placeholder="Final comments..." onChange={(e) => setFinalComment(e.target.value)} />
+                                                                        <AlertDialogFooter>
+                                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                            <AlertDialogAction onClick={() => completeJobAsFinalStep(job.id, step.id, finalComment)}>Confirm Completion</AlertDialogAction>
+                                                                        </AlertDialogFooter>
+                                                                    </AlertDialogContent>
+                                                                </AlertDialog>
+                                                            )}
                                                         </div>
-                                                    )
-                                                )}
-                                              </>
+                                                    </div>
+                                                )
                                             )}
                                         </div>
                                     </div>
@@ -374,7 +374,21 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                 </ScrollArea>
                 <DialogFooter className="justify-between">
                     {canReopenJob && (
-                        <Button variant="outline" onClick={() => reopenJob(job.id)}><Undo2 className="mr-2 h-4 w-4"/>Reopen Job</Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="outline"><Undo2 className="mr-2 h-4 w-4"/>Reopen Job</Button>
+                            </AlertDialogTrigger>
+                             <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Reopen this JMS?</AlertDialogTitle>
+                                    <AlertDialogDescription>This will set the job back to "In Progress" and reactivate the final step. Are you sure?</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => reopenJob(job.id)}>Confirm Reopen</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     )}
                     <Button variant="secondary" onClick={() => setIsOpen(false)}>Close</Button>
                 </DialogFooter>
