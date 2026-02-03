@@ -60,7 +60,7 @@ const createDataListener = <T extends {}>(
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
 export function TaskProvider({ children }: { children: ReactNode }) {
-  const { user, users, addActivityLog } = useAuth();
+  const { user, users, addActivityLog, getAssignableUsers } = useAuth();
   const { notificationSettings } = useGeneral();
   const { toast } = useToast();
   const [tasksById, setTasksById] = useState<Record<string, Task>>({});
@@ -533,6 +533,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       if (stepIndex === -1) return;
   
       const currentStep = job.steps[stepIndex];
+      const assignableUsers = getAssignableUsers();
+
       if (currentStep.assigneeId !== user.id && user.role !== 'Admin') {
           toast({ title: 'Not authorized', variant: 'destructive' });
           return;
@@ -587,7 +589,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
               creatorUser: user,
           });
       }
-    }, [user, jobProgressById, users, toast, notificationSettings]);
+    }, [user, jobProgressById, users, toast, notificationSettings, getAssignableUsers]);
 
     const assignJobStep = useCallback((jobId: string, stepId: string, assigneeId: string) => {
         if (!user) return;
@@ -637,14 +639,6 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
         const stepIndex = job.steps.findIndex(s => s.id === stepId);
         if (stepIndex === -1) return;
-
-        const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
-        const canFinalize = canFinalizeRoles.includes(user.role) || user.id === job.creatorId;
-
-        if (!canFinalize) {
-            toast({ title: "Permission Denied", variant: 'destructive' });
-            return;
-        }
 
         const updates: { [key: string]: any } = {};
         const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
