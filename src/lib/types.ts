@@ -1,5 +1,4 @@
 
-
 export type Broadcast = {
   id: string;
   message: string;
@@ -361,7 +360,7 @@ export type Driver = {
   licenseExpiry?: string;
 };
 
-export type IncidentStatus = 'New' | 'Under Investigation' | 'Action Taken' | 'Resolved' | 'Closed';
+export type IncidentStatus = 'New' | 'Under Investigation' | 'Action Pending' | 'Resolved' | 'Closed';
 
 export type Comment = {
   id: string;
@@ -902,7 +901,7 @@ export type JobStepStatus = 'Not Started' | 'Pending' | 'Acknowledged' | 'Comple
 
 export type JobStep = {
   id: string;
-  name: JobProgressStepName;
+  name: string;
   assigneeId?: string | null;
   status: JobStepStatus;
   description?: string;
@@ -1141,5 +1140,4 @@ export type VehicleUsageRecord = {
     };
   };
 };
-
 

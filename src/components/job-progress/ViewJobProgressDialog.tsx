@@ -25,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import { JOB_PROGRESS_STEPS, JobProgressStepName } from '@/lib/types';
+import { JOB_PROGRESS_STEPS } from '@/lib/types';
 
 
 const statusConfig: { [key in JobStepStatus]: { icon: React.ElementType, color: string, label: string } } = {
@@ -36,53 +36,54 @@ const statusConfig: { [key in JobStepStatus]: { icon: React.ElementType, color: 
   'Skipped': { icon: XCircle, color: 'text-gray-500', label: 'Skipped' },
 };
 
-const nextStepSchema = z.object({
-  name: z.enum(JOB_PROGRESS_STEPS, { required_error: 'Step name is required' }),
-  assigneeId: z.string().optional(),
-  description: z.string().optional(),
-  dueDate: z.date().optional().nullable(),
-}).refine(data => {
-    if (data.name !== 'Hard Copy submitted') {
-        return !!data.assigneeId;
-    }
-    return true;
-}, {
-    message: 'Assignee is required for this step.',
-    path: ['assigneeId'],
+const reopenSchema = z.object({
+  reason: z.string().min(10, "A detailed reason for reopening is required."),
+  newStepName: z.string().min(3, "A name for the new step is required."),
+  newStepAssigneeId: z.string().min(1, "An assignee for the new step is required."),
 });
 
-const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean; setIsOpen: (open: boolean) => void; job: JobProgress; step: JobStep; }) => {
-    const { reassignJobStep, getAssignableUsers } = useAppContext();
+type ReopenFormValues = z.infer<typeof reopenSchema>;
+
+const ReopenJobDialog = ({ isOpen, setIsOpen, job, reopenJob }: { isOpen: boolean; setIsOpen: (open: boolean) => void; job: JobProgress; reopenJob: (jobId: string, reason: string, newStepName: string, newStepAssigneeId: string) => void; }) => {
+    const { getAssignableUsers } = useAppContext();
     const [popoverOpen, setPopoverOpen] = useState(false);
 
     const assignableUsers = useMemo(() => {
-        return getAssignableUsers().filter(u => u.id !== step.assigneeId);
-    }, [getAssignableUsers, step.assigneeId]);
+        return getAssignableUsers().filter(u => u.role !== 'Manager');
+    }, [getAssignableUsers]);
 
-    const form = useForm<{newAssigneeId: string; comment: string;}>({
-        resolver: zodResolver(z.object({
-            newAssigneeId: z.string().min(1, 'Please select a new assignee.'),
-            comment: z.string().min(1, 'A reason for reassignment is required.'),
-        })),
-        defaultValues: { newAssigneeId: '', comment: '' },
+    const form = useForm<ReopenFormValues>({
+        resolver: zodResolver(reopenSchema),
+        defaultValues: { reason: '', newStepName: '', newStepAssigneeId: '' }
     });
 
-    const onSubmit = (data: {newAssigneeId: string; comment: string;}) => {
-        reassignJobStep(job.id, step.id, data.newAssigneeId, data.comment);
+    const onSubmit = (data: ReopenFormValues) => {
+        reopenJob(job.id, data.reason, data.newStepName, data.newStepAssigneeId);
         setIsOpen(false);
     };
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent>
+            <DialogContent onInteractOutside={(e) => e.preventDefault()}>
                 <DialogHeader>
-                    <DialogTitle>Reassign Step: {step.name}</DialogTitle>
+                    <DialogTitle>Reopen JMS: {job.title}</DialogTitle>
+                    <DialogDescription>Provide a reason for reopening and create a new initial step.</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
                     <div className="space-y-2">
-                        <Label>New Assignee</Label>
+                        <Label htmlFor="reason">Reason for Reopening</Label>
+                        <Textarea id="reason" {...form.register('reason')} />
+                        {form.formState.errors.reason && <p className="text-xs text-destructive">{form.formState.errors.reason.message}</p>}
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="newStepName">New Step Name</Label>
+                        <Input id="newStepName" {...form.register('newStepName')} />
+                        {form.formState.errors.newStepName && <p className="text-xs text-destructive">{form.formState.errors.newStepName.message}</p>}
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Assign New Step To</Label>
                         <Controller
-                            name="newAssigneeId"
+                            name="newStepAssigneeId"
                             control={form.control}
                             render={({ field }) => (
                                 <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
@@ -103,7 +104,7 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
                                                             key={user.id}
                                                             value={user.name}
                                                             onSelect={() => {
-                                                                form.setValue('newAssigneeId', user.id);
+                                                                form.setValue('newStepAssigneeId', user.id);
                                                                 setPopoverOpen(false);
                                                             }}
                                                         >
@@ -118,22 +119,33 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
                                 </Popover>
                             )}
                         />
-                        {form.formState.errors.newAssigneeId && <p className="text-xs text-destructive">{form.formState.errors.newAssigneeId.message}</p>}
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="comment">Reason for Reassignment</Label>
-                        <Textarea id="comment" {...form.register('comment')} />
-                        {form.formState.errors.comment && <p className="text-xs text-destructive">{form.formState.errors.comment.message}</p>}
+                         {form.formState.errors.newStepAssigneeId && <p className="text-xs text-destructive">{form.formState.errors.newStepAssigneeId.message}</p>}
                     </div>
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                        <Button type="submit">Confirm Reassignment</Button>
+                        <Button type="submit">Reopen and Add Step</Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
         </Dialog>
     );
 };
+
+
+const nextStepSchema = z.object({
+  name: z.enum(JOB_PROGRESS_STEPS, { required_error: 'Step name is required' }),
+  assigneeId: z.string().optional(),
+  description: z.string().optional(),
+  dueDate: z.date().optional().nullable(),
+}).refine(data => {
+    if (data.name !== 'Hard Copy submitted') {
+        return !!data.assigneeId;
+    }
+    return true;
+}, {
+    message: 'Assignee is required for this step.',
+    path: ['assigneeId'],
+});
 
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
     const { addAndCompleteStep, completeJobAsFinalStep, users } = useAppContext();
@@ -239,6 +251,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
     const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
     const [newAssigneeId, setNewAssigneeId] = useState<string>('');
     const [showNextStepForm, setShowNextStepForm] = useState<string | null>(null);
+    const [isReopenDialogOpen, setIsReopenDialogOpen] = useState(false);
     const { toast } = useToast();
 
     const job = useMemo(() => {
@@ -279,11 +292,14 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const canReassign = (isCurrentUserAssignee || user?.role === 'Admin') && (step.status === 'Pending' || step.status === 'Acknowledged');
                                 const StatusIcon = statusConfig[step.status].icon;
                                 
-                                const isCreatorOrAdmin = user?.id === job.creatorId || user?.role === 'Admin';
-                                const canMarkAsFinal = isCreatorOrAdmin && step.status !== 'Completed' && job.status !== 'Completed';
+                                const canFinalize = useMemo(() => {
+                                    if (!user || job.status === 'Completed') return false;
+                                    const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+                                    return canFinalizeRoles.includes(user.role) || user.id === job.creatorId;
+                                }, [user, job]);
 
                                 const isStepUnassigned = !step.assigneeId;
-                                const canAssign = isCreatorOrAdmin && isStepUnassigned && step.status === 'Pending';
+                                const canAssign = (user?.id === job.creatorId || user?.role === 'Admin') && isStepUnassigned && step.status === 'Pending';
                                 
                                 return (
                                     <div key={step.id} className="relative flex items-start">
@@ -294,7 +310,6 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                             <div className="flex justify-between items-start">
                                                 <div className="font-semibold flex items-center gap-2">
                                                     {step.name}
-                                                    {step.isFinalStep && <Badge variant="destructive">Final Step</Badge>}
                                                 </div>
                                                 <Badge variant="outline" className="capitalize">{statusConfig[step.status].label}</Badge>
                                             </div>
@@ -355,13 +370,29 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                           <UserRoundCog className="h-4 w-4 mr-2"/> Reassign
                                                         </Button>
                                                          <div className="flex gap-2 items-center">
-                                                            {canMarkAsFinal && !step.isFinalStep && (
-                                                                <Button size="sm" variant="outline" onClick={() => markJobStepAsFinal(job.id, step.id)}>
-                                                                    <Milestone className="mr-2 h-4 w-4" /> Mark as Final Step
-                                                                </Button>
+                                                            {canFinalize && !step.isFinalStep && (
+                                                                <AlertDialog>
+                                                                    <AlertDialogTrigger asChild>
+                                                                        <Button size="sm" variant="secondary">Mark as Final & Complete</Button>
+                                                                    </AlertDialogTrigger>
+                                                                    <AlertDialogContent>
+                                                                        <AlertDialogHeader>
+                                                                            <AlertDialogTitle>Complete this Job?</AlertDialogTitle>
+                                                                            <AlertDialogDescription>
+                                                                                This will mark this step and the entire JMS as completed. This is the final action for this workflow.
+                                                                            </AlertDialogDescription>
+                                                                        </AlertDialogHeader>
+                                                                        <AlertDialogFooter>
+                                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                            <AlertDialogAction onClick={() => completeJobAsFinalStep(job.id, step.id, `Manually finalized by ${user?.name}`)}>
+                                                                                Confirm Completion
+                                                                            </AlertDialogAction>
+                                                                        </AlertDialogFooter>
+                                                                    </AlertDialogContent>
+                                                                </AlertDialog>
                                                             )}
                                                             <Button size="sm" onClick={() => setShowNextStepForm(step.id)}>
-                                                                <CheckCircle className="mr-2 h-4 w-4"/> Complete This Step
+                                                                <CheckCircle className="mr-2 h-4 w-4"/> Complete & Add Next Step
                                                             </Button>
                                                         </div>
                                                     </div>
@@ -376,21 +407,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                 </ScrollArea>
                 <DialogFooter className="justify-between">
                     {canReopenJob && (
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="outline"><Undo2 className="mr-2 h-4 w-4"/>Reopen Job</Button>
-                            </AlertDialogTrigger>
-                             <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Reopen this JMS?</AlertDialogTitle>
-                                    <AlertDialogDescription>This will set the job back to "In Progress" and reactivate the final step. Are you sure?</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => reopenJob(job.id)}>Confirm Reopen</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
+                        <Button variant="outline" onClick={() => setIsReopenDialogOpen(true)}><Undo2 className="mr-2 h-4 w-4"/>Reopen Job</Button>
                     )}
                     <Button variant="secondary" onClick={() => setIsOpen(false)}>Close</Button>
                 </DialogFooter>
@@ -402,6 +419,14 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                 setIsOpen={() => setReassigningStep(null)}
                 job={job}
                 step={reassigningStep}
+            />
+        )}
+        {isReopenDialogOpen && (
+            <ReopenJobDialog
+                isOpen={isReopenDialogOpen}
+                setIsOpen={setIsReopenDialogOpen}
+                job={job}
+                reopenJob={reopenJob}
             />
         )}
         </>
