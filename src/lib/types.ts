@@ -895,6 +895,12 @@ export const JOB_PROGRESS_STEPS = [
     'Hard Copy submitted',
 ] as const;
 
+export const REOPEN_JOB_STEPS = [
+    'JMS returned by client',
+    'JMS Rejected',
+    'JMS Deleted'
+] as const;
+
 export type JobProgressStepName = typeof JOB_PROGRESS_STEPS[number];
 
 export type JobStepStatus = 'Not Started' | 'Pending' | 'Acknowledged' | 'Completed' | 'Skipped';

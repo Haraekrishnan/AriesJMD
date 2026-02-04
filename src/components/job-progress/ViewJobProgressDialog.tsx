@@ -25,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import { JOB_PROGRESS_STEPS } from '@/lib/types';
+import { JOB_PROGRESS_STEPS, REOPEN_JOB_STEPS } from '@/lib/types';
 
 
 const statusConfig: { [key in JobStepStatus]: { icon: React.ElementType, color: string, label: string } } = {
@@ -38,9 +38,19 @@ const statusConfig: { [key in JobStepStatus]: { icon: React.ElementType, color: 
 
 const reopenSchema = z.object({
   reason: z.string().min(10, "A detailed reason for reopening is required."),
-  newStepName: z.string().min(3, "A name for the new step is required."),
+  newStepName: z.string().min(1, "A name for the new step is required."),
+  otherStepName: z.string().optional(),
   newStepAssigneeId: z.string().min(1, "An assignee for the new step is required."),
+}).refine(data => {
+    if (data.newStepName === 'Others') {
+        return data.otherStepName && data.otherStepName.length > 0;
+    }
+    return true;
+}, {
+    message: "Please specify the step name when selecting 'Others'.",
+    path: ["otherStepName"],
 });
+
 
 type ReopenFormValues = z.infer<typeof reopenSchema>;
 
@@ -54,11 +64,14 @@ const ReopenJobDialog = ({ isOpen, setIsOpen, job, reopenJob }: { isOpen: boolea
 
     const form = useForm<ReopenFormValues>({
         resolver: zodResolver(reopenSchema),
-        defaultValues: { reason: '', newStepName: '', newStepAssigneeId: '' }
+        defaultValues: { reason: '', newStepName: '', otherStepName: '', newStepAssigneeId: '' }
     });
 
+    const watchedStepName = form.watch('newStepName');
+
     const onSubmit = (data: ReopenFormValues) => {
-        reopenJob(job.id, data.reason, data.newStepName, data.newStepAssigneeId);
+        const stepName = data.newStepName === 'Others' ? data.otherStepName! : data.newStepName;
+        reopenJob(job.id, data.reason, stepName, data.newStepAssigneeId);
         setIsOpen(false);
     };
 
@@ -77,9 +90,33 @@ const ReopenJobDialog = ({ isOpen, setIsOpen, job, reopenJob }: { isOpen: boolea
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="newStepName">New Step Name</Label>
-                        <Input id="newStepName" {...form.register('newStepName')} />
+                        <Controller
+                            name="newStepName"
+                            control={form.control}
+                            render={({ field }) => (
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a step..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {REOPEN_JOB_STEPS.map(step => (
+                                            <SelectItem key={step} value={step}>{step}</SelectItem>
+                                        ))}
+                                        <SelectItem value="Others">Others (Specify)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            )}
+                        />
                         {form.formState.errors.newStepName && <p className="text-xs text-destructive">{form.formState.errors.newStepName.message}</p>}
                     </div>
+
+                    {watchedStepName === 'Others' && (
+                         <div className="space-y-2">
+                            <Label htmlFor="otherStepName">Specify Step Name</Label>
+                            <Input id="otherStepName" {...form.register('otherStepName')} />
+                            {form.formState.errors.otherStepName && <p className="text-xs text-destructive">{form.formState.errors.otherStepName.message}</p>}
+                        </div>
+                    )}
                     <div className="space-y-2">
                         <Label>Assign New Step To</Label>
                         <Controller
@@ -222,9 +259,8 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
     );
 };
 
-
 const nextStepSchema = z.object({
-  name: z.enum(JOB_PROGRESS_STEPS, { required_error: 'Step name is required' }),
+  name: z.string({ required_error: 'Step name is required' }).min(1, 'Step name is required'),
   assigneeId: z.string().optional(),
   description: z.string().optional(),
   dueDate: z.date().optional().nullable(),
@@ -239,21 +275,21 @@ const nextStepSchema = z.object({
 });
 
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
-    const { addAndCompleteStep, completeJobAsFinalStep, users } = useAppContext();
+    const { addAndCompleteStep, completeJobAsFinalStep, getAssignableUsers, users } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
     const form = useForm<z.infer<typeof nextStepSchema>>({
         resolver: zodResolver(nextStepSchema),
     });
     
     const assignableUsers = useMemo(() => {
-        return users.filter(u => u.role !== 'Manager');
-    }, [users]);
+        return getAssignableUsers().filter(u => u.role !== 'Manager');
+    }, [getAssignableUsers]);
 
     const watchedStepName = form.watch('name');
 
     const handleFormSubmit = (data: z.infer<typeof nextStepSchema>) => {
         if (data.name === 'Hard Copy submitted') {
-            completeJobAsFinalStep(job.id, currentStep.id, completionComment);
+            completeJobAsFinalStep(job.id, currentStep.id, completionComment || 'Hard copy submitted and job finalized.');
         } else {
             addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, undefined, {
                 ...data,
@@ -356,7 +392,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         const canReopenRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
         return (canReopenRoles.includes(user.role) || user.id === job.creatorId) && job.status === 'Completed';
     }, [user, job]);
-
+    
     const isAuthorizedToFinalize = useMemo(() => {
         if (!user || job.status === 'Completed') return false;
         const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
@@ -389,7 +425,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const canReassign = (isCurrentUserAssignee || user?.role === 'Admin') && (step.status === 'Pending' || step.status === 'Acknowledged');
                                 const StatusIcon = statusConfig[step.status].icon;
                                 
-                                const canFinalize = isAuthorizedToFinalize || isCurrentUserAssignee;
+                                const canFinalize = (isAuthorizedToFinalize || isCurrentUserAssignee) && step.status === 'Acknowledged';
 
                                 const isStepUnassigned = !step.assigneeId;
                                 const canAssign = (user?.id === job.creatorId || user?.role === 'Admin') && isStepUnassigned && step.status === 'Pending';
@@ -410,7 +446,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                             {assignee ? (
                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                                                     <span>Assigned to:</span>
-                                                    <Avatar className="h-5 w-5"><AvatarImage src={assignee?.avatar}/><AvatarFallback>{assignee?.name?.[0]}</AvatarFallback></Avatar>
+                                                    <Avatar className="h-5 w-5"><AvatarImage src={assignee?.avatar} /><AvatarFallback>{assignee?.name?.[0]}</AvatarFallback></Avatar>
                                                     <span>{assignee?.name}</span>
                                                     {step.dueDate && <span>&middot; Due {format(parseISO(step.dueDate), 'dd MMM')}</span>}
                                                 </div>
@@ -525,5 +561,3 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         </>
     )
 }
-
-    
