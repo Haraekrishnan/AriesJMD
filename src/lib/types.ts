@@ -896,7 +896,6 @@ export const JOB_PROGRESS_STEPS = [
 ] as const;
 
 export const REOPEN_JOB_STEPS = [
-    'JMS returned by client',
     'JMS Rejected',
     'JMS Deleted'
 ] as const;
