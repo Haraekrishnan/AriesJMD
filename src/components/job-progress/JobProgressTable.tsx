@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useMemo } from 'react';
@@ -59,11 +57,12 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
           {sortedJobs.map(job => {
             const creator = users.find(u => u.id === job.creatorId);
             const progress = calculateProgress(job);
+            const currentStep = job.steps.find(s => s.status === 'Pending' || s.status === 'Acknowledged');
 
             return (
               <TableRow 
                 key={job.id} 
-                className={cn("cursor-pointer", job.isReopened && "bg-orange-50 dark:bg-orange-900/20")}
+                className={cn("cursor-pointer", job.isReopened && "bg-orange-100 dark:bg-orange-900/40 border-l-4 border-orange-500")}
                 onClick={() => onViewJob(job)}
               >
                 <TableCell className="font-medium">{job.title}</TableCell>
@@ -71,7 +70,9 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                 <TableCell>{format(parseISO(job.createdAt), 'dd MMM, yyyy')}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <Badge variant={statusVariantMap[job.status]}>{job.status}</Badge>
+                    <Badge variant={statusVariantMap[job.status]}>
+                        {currentStep ? currentStep.name : job.status}
+                    </Badge>
                     {job.isReopened && <Badge variant="warning">Reopened</Badge>}
                   </div>
                 </TableCell>
