@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -356,6 +356,12 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         const canReopenRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
         return (canReopenRoles.includes(user.role) || user.id === job.creatorId) && job.status === 'Completed';
     }, [user, job]);
+
+    const isAuthorizedToFinalize = useMemo(() => {
+        if (!user || job.status === 'Completed') return false;
+        const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+        return canFinalizeRoles.includes(user.role) || user.id === job.creatorId;
+    }, [user, job]);
     
     return (
         <>
@@ -383,11 +389,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const canReassign = (isCurrentUserAssignee || user?.role === 'Admin') && (step.status === 'Pending' || step.status === 'Acknowledged');
                                 const StatusIcon = statusConfig[step.status].icon;
                                 
-                                const canFinalize = useMemo(() => {
-                                    if (!user || job.status === 'Completed') return false;
-                                    const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
-                                    return canFinalizeRoles.includes(user.role) || user.id === job.creatorId || isCurrentUserAssignee;
-                                }, [user, job, isCurrentUserAssignee]);
+                                const canFinalize = isAuthorizedToFinalize || isCurrentUserAssignee;
 
                                 const isStepUnassigned = !step.assigneeId;
                                 const canAssign = (user?.id === job.creatorId || user?.role === 'Admin') && isStepUnassigned && step.status === 'Pending';
@@ -523,3 +525,5 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         </>
     )
 }
+
+    
