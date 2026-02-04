@@ -896,8 +896,9 @@ export const JOB_PROGRESS_STEPS = [
 ] as const;
 
 export const REOPEN_JOB_STEPS = [
+    'JMS Returned',
     'JMS Rejected',
-    'JMS Deleted'
+    'JMS Deleted',
 ] as const;
 
 export type JobProgressStepName = typeof JOB_PROGRESS_STEPS[number];
