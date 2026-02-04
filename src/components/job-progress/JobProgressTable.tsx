@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useAppContext } from '@/contexts/app-provider';
 import type { JobProgress, JobProgressStatus } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface JobProgressTableProps {
   jobs: JobProgress[];
@@ -60,11 +61,20 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             const progress = calculateProgress(job);
 
             return (
-              <TableRow key={job.id} className="cursor-pointer" onClick={() => onViewJob(job)}>
+              <TableRow 
+                key={job.id} 
+                className={cn("cursor-pointer", job.isReopened && "bg-orange-50 dark:bg-orange-900/20")}
+                onClick={() => onViewJob(job)}
+              >
                 <TableCell className="font-medium">{job.title}</TableCell>
                 <TableCell>{creator?.name || 'Unknown'}</TableCell>
                 <TableCell>{format(parseISO(job.createdAt), 'dd MMM, yyyy')}</TableCell>
-                <TableCell><Badge variant={statusVariantMap[job.status]}>{job.status}</Badge></TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={statusVariantMap[job.status]}>{job.status}</Badge>
+                    {job.isReopened && <Badge variant="warning">Reopened</Badge>}
+                  </div>
+                </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Progress value={progress} />
@@ -82,5 +92,3 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
     </div>
   );
 }
-
-

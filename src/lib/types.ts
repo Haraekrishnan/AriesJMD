@@ -930,6 +930,7 @@ export type JobProgress = {
   lastUpdated: string; // ISO
   status: JobProgressStatus;
   steps: JobStep[];
+  isReopened?: boolean;
 };
 
 export type TpCertListItem = {
@@ -1140,4 +1141,3 @@ export type VehicleUsageRecord = {
     };
   };
 };
-

@@ -690,6 +690,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     
         const updates: { [key: string]: any } = {};
         updates[`jobProgress/${jobId}/status`] = 'In Progress';
+        updates[`jobProgress/${jobId}/isReopened`] = true;
         updates[`jobProgress/${jobId}/steps/${job.steps.length}`] = newStep;
         updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
     
