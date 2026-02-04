@@ -636,16 +636,19 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         const job = jobProgressById[jobId];
         if (!job) return;
 
-        const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
-        const canFinalize = canFinalizeRoles.includes(user.role) || user.id === job.creatorId;
+        const stepIndex = job.steps.findIndex(s => s.id === stepId);
+        if (stepIndex === -1) return;
+        const currentStep = job.steps[stepIndex];
 
-        if (!canFinalize) {
+        const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+        const isAuthorizedRole = canFinalizeRoles.includes(user.role);
+        const isCreator = user.id === job.creatorId;
+        const isAssignee = user.id === currentStep.assigneeId;
+
+        if (!isAuthorizedRole && !isCreator && !isAssignee) {
              toast({ title: "Permission Denied", variant: "destructive" });
              return;
         }
-
-        const stepIndex = job.steps.findIndex(s => s.id === stepId);
-        if (stepIndex === -1) return;
 
         const updates: { [key: string]: any } = {};
         const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
