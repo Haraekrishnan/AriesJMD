@@ -394,12 +394,6 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         return (canReopenRoles.includes(user.role) || user.id === job.creatorId) && job.status === 'Completed';
     }, [user, job]);
     
-    const isAuthorizedToFinalize = useMemo(() => {
-        if (!user || job.status === 'Completed') return false;
-        const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
-        return canFinalizeRoles.includes(user.role) || user.id === job.creatorId;
-    }, [user, job]);
-
     return (
         <>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -430,12 +424,23 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const assignee = users.find(u => u.id === step.assigneeId);
                                 const isCurrentUserAssignee = user?.id === step.assigneeId;
                                 const isPreviousStepCompleted = index === 0 || job.steps[index - 1].status === 'Completed';
-                                const canAct = isCurrentUserAssignee && isPreviousStepCompleted;
+
+                                const isCurrentUserInProject = user?.projectIds?.includes(job.projectId || '');
+                                const canActOnUnassigned = !step.assigneeId && isCurrentUserInProject;
+                                const canAct = (isCurrentUserAssignee || canActOnUnassigned) && isPreviousStepCompleted;
+                                
                                 const canReassign = (isCurrentUserAssignee || user?.role === 'Admin') && (step.status === 'Pending' || step.status === 'Acknowledged');
-                                const StatusIcon = statusConfig[step.status].icon;
-                                const canFinalize = (isAuthorizedToFinalize || isCurrentUserAssignee) && step.status === 'Acknowledged';
+                                
+                                const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+                                const isAuthorizedRole = user ? canFinalizeRoles.includes(user.role) : false;
+                                const isCreator = user?.id === job.creatorId;
+                                const isAuthorizedToFinalize = isAuthorizedRole || isCreator || isCurrentUserAssignee;
+                                const canFinalize = isAuthorizedToFinalize && step.status === 'Acknowledged';
+                                
                                 const isStepUnassigned = !step.assigneeId;
                                 const canAssign = (user?.id === job.creatorId || user?.role === 'Admin') && isStepUnassigned && step.status === 'Pending';
+                                
+                                const StatusIcon = statusConfig[step.status].icon;
                                 
                                 return (
                                     <div key={step.id} className="relative flex items-start">
