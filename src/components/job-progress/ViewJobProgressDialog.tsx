@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -12,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { format, parseISO, formatDistanceToNow, isValid } from 'date-fns';
-import { CheckCircle, Clock, Circle, XCircle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2 } from 'lucide-react';
+import { CheckCircle, Clock, Circle, XCircle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
@@ -290,7 +289,7 @@ const nextStepSchema = z.object({
 
 
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
-    const { addAndCompleteStep, completeJobAsFinalStep, getAssignableUsers, users } = useAppContext();
+    const { addAndCompleteStep, getAssignableUsers } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
     const form = useForm<z.infer<typeof nextStepSchema>>({
         resolver: zodResolver(nextStepSchema),
@@ -381,11 +380,13 @@ interface ViewJobProgressDialogProps {
 }
 
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
-    const { user, users, projects, jobProgress, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, completeJobAsFinalStep, reassignJobStep, getAssignableUsers } = useAppContext();
+    const { user, users, projects, jobProgress, updateJobStep, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, completeJobAsFinalStep, reassignJobStep, getAssignableUsers } = useAppContext();
     const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
     const [newAssigneeId, setNewAssigneeId] = useState<string>('');
     const [showNextStepForm, setShowNextStepForm] = useState<string | null>(null);
     const [isReopenDialogOpen, setIsReopenDialogOpen] = useState(false);
+    const [editingStepId, setEditingStepId] = useState<string | null>(null);
+    const [editingStepName, setEditingStepName] = useState('');
     const { toast } = useToast();
 
     const job = useMemo(() => {
@@ -402,6 +403,24 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         const canReopenRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
         return (canReopenRoles.includes(user.role) || user.id === job.creatorId) && job.status === 'Completed';
     }, [user, job]);
+
+    const handleEditStepClick = (step: JobStep) => {
+        setEditingStepId(step.id);
+        setEditingStepName(step.name);
+    };
+
+    const handleSaveStepName = (step: JobStep) => {
+        if (editingStepName.trim() === '') {
+            toast({ title: "Step name cannot be empty.", variant: "destructive" });
+            return;
+        }
+        if (editingStepName !== step.name) {
+            updateJobStep(job.id, step.id, { name: editingStepName });
+            toast({ title: "Step name updated." });
+        }
+        setEditingStepId(null);
+        setEditingStepName('');
+    };
     
     return (
         <>
@@ -435,14 +454,17 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const isCurrentUserAssignee = user?.id === step.assigneeId;
                                 const isProjectMember = viewingUser?.projectIds?.includes(job.projectId || '');
                                 
+                                const isCreator = user?.id === job.creatorId;
+                                const isAdmin = user?.role === 'Admin';
+                                const canEditRoles: Role[] = ['Project Coordinator', 'Document Controller'];
+                                const canEditStep = isCreator || isAdmin || isCurrentUserAssignee || (user && canEditRoles.includes(user.role));
+                                
                                 let canActOnUnassigned = false;
-                                if (!step.assigneeId) {
-                                    if (step.name === 'JMS sent back to Office') {
-                                        const allowedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
-                                        canActOnUnassigned = (user && allowedRoles.includes(user.role)) || user?.id === job.creatorId;
-                                    } else if (['Timesheets Pending', 'JMS Hard copy sent back to Site', 'JMS Hard copy submitted'].includes(step.name)) {
-                                        canActOnUnassigned = isProjectMember || user?.role === 'Admin';
-                                    }
+                                if (!step.assigneeId && (step.name === 'Timesheets Pending' || step.name === 'JMS Hard copy sent back to Site' || step.name === 'JMS Hard copy submitted')) {
+                                    canActOnUnassigned = isProjectMember || user?.role === 'Admin';
+                                } else if (!step.assigneeId && step.name === 'JMS sent back to Office') {
+                                    const allowedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+                                    canActOnUnassigned = (user && allowedRoles.includes(user.role)) || user?.id === job.creatorId;
                                 }
                                 
                                 const canAct = (isCurrentUserAssignee || canActOnUnassigned) && isPreviousStepCompleted;
@@ -453,7 +475,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                     const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
                                     const isStepAssignee = step.assigneeId === user.id;
                                     return canFinalizeRoles.includes(user.role) || user.id === job.creatorId || isStepAssignee;
-                                }, [user, job.status, job.creatorId, step.assigneeId]);
+                                }, [user, job, step.assigneeId]);
 
                                 const isStepUnassigned = !step.assigneeId;
                                 const canAssign = (user?.id === job.creatorId || user?.role === 'Admin') && isStepUnassigned && step.status === 'Pending';
@@ -467,8 +489,30 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                         </div>
                                         <div className="ml-10 w-full pl-6 space-y-3">
                                             <div className="flex justify-between items-start">
-                                                <div className="font-semibold flex items-center gap-2">
-                                                    {step.name}
+                                                 <div className="font-semibold flex items-center gap-2">
+                                                    {editingStepId === step.id ? (
+                                                        <Input 
+                                                            value={editingStepName}
+                                                            onChange={(e) => setEditingStepName(e.target.value)}
+                                                            className="h-8"
+                                                            autoFocus
+                                                        />
+                                                    ) : (
+                                                        step.name
+                                                    )}
+                                                    
+                                                    {editingStepId === step.id ? (
+                                                        <div className="flex">
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleSaveStepName(step)}><Check className="h-4 w-4 text-green-600" /></Button>
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingStepId(null)}><X className="h-4 w-4 text-red-600" /></Button>
+                                                        </div>
+                                                    ) : (
+                                                        canEditStep && (
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditStepClick(step)}>
+                                                                <Edit className="h-3 w-3" />
+                                                            </Button>
+                                                        )
+                                                    )}
                                                 </div>
                                                 <Badge variant="outline" className="capitalize">{statusConfig[step.status].label}</Badge>
                                             </div>

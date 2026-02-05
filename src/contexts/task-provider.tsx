@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -29,6 +28,7 @@ type TaskContextType = {
   markTaskAsViewed: (taskId: string) => void;
   acknowledgeReturnedTask: (taskId: string) => void;
   createJobProgress: (data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[]; projectId?: string; workOrderNo?: string; foNo?: string; amount?: number; dateFrom?: string | null; dateTo?: string | null; }) => void;
+  updateJobStep: (jobId: string, stepId: string, newStepData: Partial<JobStep>) => void;
   updateJobStepStatus: (jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string, completionDetails?: { attachmentUrl?: string; customFields?: Record<string, any> }) => void;
   addAndCompleteStep: (jobId: string, currentStepId: string, completionComment: string | undefined, completionAttachment: Task['attachment'] | undefined, completionCustomFields: Record<string, any> | undefined, nextStepData: Omit<JobStep, 'id'|'status'>) => void;
   addJobStepComment: (jobId: string, stepId: string, commentText: string) => void;
@@ -415,6 +415,36 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         set(newCommentRef, newComment);
     }, [user, jobProgressById]);
 
+    const updateJobStep = useCallback((jobId: string, stepId: string, newStepData: Partial<JobStep>) => {
+        if (!user) return;
+        const job = jobProgressById[jobId];
+        if (!job) return;
+    
+        const stepIndex = job.steps.findIndex(s => s.id === stepId);
+        if (stepIndex === -1) return;
+    
+        const updates: { [key: string]: any } = {};
+        const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
+    
+        const changes: string[] = [];
+        Object.entries(newStepData).forEach(([key, value]) => {
+            if (job.steps[stepIndex][key as keyof JobStep] !== value) {
+                changes.push(`${key} changed`);
+            }
+            updates[`${stepPath}/${key}`] = value;
+        });
+    
+        if (changes.length === 0) return;
+    
+        updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
+    
+        update(ref(rtdb), updates);
+    
+        const commentText = `Step "${job.steps[stepIndex].name}" was modified by ${user.name}.`;
+        addJobStepComment(jobId, stepId, commentText);
+    
+    }, [user, jobProgressById, addJobStepComment]);
+
     const updateJobStepStatus = useCallback((jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string, completionDetails?: { attachmentUrl?: string; customFields?: Record<string, any> }) => {
         const job = jobProgressById[jobId];
         if (!job || !user) return;
@@ -473,7 +503,11 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         const stepIndex = job.steps.findIndex(s => s.id === currentStepId);
         if (stepIndex === -1) return;
 
-        if (job.steps[stepIndex].assigneeId !== user.id) {
+        const currentStep = job.steps[stepIndex];
+        const isProjectMember = user.projectIds?.includes(job.projectId || '');
+        const canActOnUnassigned = !currentStep.assigneeId && isProjectMember;
+
+        if (currentStep.assigneeId !== user.id && !canActOnUnassigned && user.role !== 'Admin') {
             toast({ variant: 'destructive', title: 'Not authorized to complete this step.' });
             return;
         }
@@ -652,13 +686,15 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         const stepIndex = job.steps.findIndex(s => s.id === stepId);
         if (stepIndex === -1) return;
         const currentStep = job.steps[stepIndex];
+        const isProjectMember = user.projectIds?.includes(job.projectId || '');
+        const canActOnUnassigned = !currentStep.assigneeId && isProjectMember;
         const isCurrentUserAssignee = user.id === currentStep.assigneeId;
 
         const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
         const isAuthorizedRole = canFinalizeRoles.includes(user.role);
         const isCreator = user.id === job.creatorId;
 
-        if (!isAuthorizedRole && !isCreator && !isCurrentUserAssignee) {
+        if (!isAuthorizedRole && !isCreator && !isCurrentUserAssignee && !canActOnUnassigned) {
              toast({ title: "Permission Denied", variant: "destructive" });
              return;
         }
@@ -763,6 +799,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         markTaskAsViewed,
         acknowledgeReturnedTask,
         createJobProgress,
+        updateJobStep,
         updateJobStepStatus,
         addAndCompleteStep,
         addJobStepComment,
