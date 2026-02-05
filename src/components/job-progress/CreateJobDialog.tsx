@@ -66,7 +66,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
   const form = useForm<JobFormValues>({
     resolver: zodResolver(jobSchema),
     defaultValues: {
-        steps: [{ name: 'Timesheets Pending', assigneeId: '', description: '', dueDate: null }]
+        steps: [{ name: 'Timesheets Pending', assigneeId: undefined, description: '', dueDate: null }]
     }
   });
 
@@ -92,7 +92,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       form.reset({
-        steps: [{ name: 'Timesheets Pending', assigneeId: '', description: '', dueDate: null }]
+        steps: [{ name: 'Timesheets Pending', assigneeId: undefined, description: '', dueDate: null }]
       });
     }
     setIsOpen(open);
@@ -132,10 +132,9 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
               render={({ field }) => (
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select assignee" />
+                    <SelectValue placeholder="Unassigned" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Unassigned</SelectItem>
                     {assignableUsers.map((u) => (
                       <SelectItem key={u.id} value={u.id}>
                         {u.name}
