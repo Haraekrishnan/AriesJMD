@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -294,19 +295,16 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
         return getAssignableUsers().filter(u => u.role !== 'Manager');
     }, [getAssignableUsers]);
 
-    const watchedStepName = form.watch('name');
-
     const handleFormSubmit = (data: z.infer<typeof nextStepSchema>) => {
-        if (data.name === 'Hard Copy submitted') {
-            completeJobAsFinalStep(job.id, currentStep.id, completionComment || 'Hard copy submitted and job finalized.');
-        } else {
-            addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, undefined, {
-                ...data,
-                dueDate: data.dueDate?.toISOString() || null,
-            });
-        }
+        addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, undefined, {
+            ...data,
+            dueDate: data.dueDate?.toISOString() || null,
+        });
         onSave();
     };
+    
+    const availableNextSteps = JOB_PROGRESS_STEPS.filter(step => step !== 'Hard Copy submitted');
+
 
     return (
         <div className="p-4 border rounded-md mt-2 bg-muted/20">
@@ -327,7 +325,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                             <SelectValue placeholder="Select next step" />
                             </SelectTrigger>
                             <SelectContent>
-                            {JOB_PROGRESS_STEPS.map(step => (
+                            {availableNextSteps.map(step => (
                                 <SelectItem key={step} value={step}>{step}</SelectItem>
                             ))}
                             </SelectContent>
@@ -336,39 +334,34 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                     />
                      {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
                 </div>
-                {watchedStepName !== 'Hard Copy submitted' && (
-                    <>
-                        <div className="space-y-1">
-                            <Label className="text-xs">Assign To</Label>
-                            <Controller
-                                name="assigneeId"
-                                control={form.control}
-                                render={({ field }) => (
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
-                                        <SelectContent>
-                                            {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                )}
-                            />
-                            {form.formState.errors.assigneeId && <p className="text-xs text-destructive">{form.formState.errors.assigneeId.message}</p>}
-                        </div>
-                         <div className="space-y-1">
-                            <Label className="text-xs">Description (Optional)</Label>
-                            <Textarea {...form.register('description')} rows={2}/>
-                        </div>
-                        <div className="space-y-1">
-                            <Label className="text-xs">Due Date (Optional)</Label>
-                            <Controller name="dueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
-                        </div>
-                    </>
-                )}
+                
+                <div className="space-y-1">
+                    <Label className="text-xs">Assign To</Label>
+                    <Controller
+                        name="assigneeId"
+                        control={form.control}
+                        render={({ field }) => (
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
+                                <SelectContent>
+                                    {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        )}
+                    />
+                    {form.formState.errors.assigneeId && <p className="text-xs text-destructive">{form.formState.errors.assigneeId.message}</p>}
+                </div>
+                 <div className="space-y-1">
+                    <Label className="text-xs">Description (Optional)</Label>
+                    <Textarea {...form.register('description')} rows={2}/>
+                </div>
+                <div className="space-y-1">
+                    <Label className="text-xs">Due Date (Optional)</Label>
+                    <Controller name="dueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
+                </div>
                 <div className="flex justify-end gap-2">
                     <Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
-                    <Button type="submit" size="sm">
-                        {watchedStepName === 'Hard Copy submitted' ? 'Finalize & Complete Job' : 'Complete & Assign Next Step'}
-                    </Button>
+                    <Button type="submit" size="sm">Complete & Assign Next Step</Button>
                 </div>
             </form>
         </div>
@@ -383,7 +376,7 @@ interface ViewJobProgressDialogProps {
 }
 
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
-    const { user, users, projects, jobProgress, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, completeJobAsFinalStep, reassignJobStep } = useAppContext();
+    const { user, users, projects, jobProgress, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, completeJobAsFinalStep, reassignJobStep, getAssignableUsers } = useAppContext();
     const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
     const [newAssigneeId, setNewAssigneeId] = useState<string>('');
     const [showNextStepForm, setShowNextStepForm] = useState<string | null>(null);
@@ -393,6 +386,8 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
     const job = useMemo(() => {
         return jobProgress.find(j => j.id === initialJob.id) || initialJob;
     }, [jobProgress, initialJob]);
+    
+    const viewingUser = useMemo(() => users.find(u => u.id === user?.id), [users, user]);
 
     const creator = users.find(u => u.id === job.creatorId);
     const project = projects.find(p => p.id === job.projectId);
@@ -431,18 +426,20 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                         <div className="space-y-8">
                             {job.steps.map((step, index) => {
                                 const assignee = users.find(u => u.id === step.assigneeId);
-                                const isCurrentUserAssignee = user?.id === step.assigneeId;
                                 const isPreviousStepCompleted = index === 0 || job.steps[index - 1].status === 'Completed';
-                                const canActOnUnassigned = !step.assigneeId && user?.projectIds?.includes(job.projectId || '');
+                                const isCurrentUserAssignee = user?.id === step.assigneeId;
+                                const isProjectMember = viewingUser?.projectIds?.includes(job.projectId || '');
+                                const canActOnUnassigned = !step.assigneeId && (isProjectMember || user?.role === 'Admin');
                                 const canAct = (isCurrentUserAssignee || canActOnUnassigned) && isPreviousStepCompleted;
                                 const canReassign = (isCurrentUserAssignee || user?.role === 'Admin') && (step.status === 'Pending' || step.status === 'Acknowledged');
                                 
                                 const canFinalize = useMemo(() => {
                                     if (!user || job.status === 'Completed') return false;
                                     const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
-                                    return canFinalizeRoles.includes(user.role) || user.id === job.creatorId || isCurrentUserAssignee;
-                                }, [user, job, isCurrentUserAssignee]);
-                                
+                                    const isStepAssignee = step.assigneeId === user.id;
+                                    return canFinalizeRoles.includes(user.role) || user.id === job.creatorId || isStepAssignee;
+                                }, [user, job.status, job.creatorId, step.assigneeId]);
+
                                 const isStepUnassigned = !step.assigneeId;
                                 const canAssign = (user?.id === job.creatorId || user?.role === 'Admin') && isStepUnassigned && step.status === 'Pending';
                                 
@@ -504,46 +501,49 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                             )}
 
                                             {canAct && step.status === 'Acknowledged' && (
-                                                showNextStepForm === step.id ? (
-                                                    <AddNextStepForm 
-                                                        job={job}
-                                                        currentStep={step}
-                                                        onCancel={() => setShowNextStepForm(null)}
-                                                        onSave={() => setShowNextStepForm(null)}
-                                                    />
-                                                ) : (
-                                                    <div className="flex justify-between items-center pt-3 border-t">
-                                                        <Button size="sm" variant="outline" onClick={() => setReassigningStep(step)}>
-                                                          <UserRoundCog className="h-4 w-4 mr-2"/> Reassign
-                                                        </Button>
-                                                         <div className="flex gap-2 items-center">
-                                                            {canFinalize && !step.isFinalStep && (
-                                                                <AlertDialog>
-                                                                    <AlertDialogTrigger asChild>
-                                                                        <Button size="sm" variant="secondary">Mark as Final & Complete</Button>
-                                                                    </AlertDialogTrigger>
-                                                                    <AlertDialogContent>
-                                                                        <AlertDialogHeader>
-                                                                            <AlertDialogTitle>Complete this Job?</AlertDialogTitle>
-                                                                            <AlertDialogDescription>
-                                                                                This will mark this step and the entire JMS as completed. This is the final action for this workflow.
-                                                                            </AlertDialogDescription>
-                                                                        </AlertDialogHeader>
-                                                                        <AlertDialogFooter>
-                                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                            <AlertDialogAction onClick={() => completeJobAsFinalStep(job.id, step.id, `Manually finalized by ${user?.name}`)}>
-                                                                                Confirm Completion
-                                                                            </AlertDialogAction>
-                                                                        </AlertDialogFooter>
-                                                                    </AlertDialogContent>
-                                                                </AlertDialog>
-                                                            )}
-                                                            <Button size="sm" onClick={() => setShowNextStepForm(step.id)}>
-                                                                <CheckCircle className="mr-2 h-4 w-4"/> Complete & Add Next Step
-                                                            </Button>
+                                                <>
+                                                    {step.name === 'Hard Copy submitted' ? (
+                                                        <div className="flex justify-end pt-3 border-t">
+                                                            <AlertDialog>
+                                                                <AlertDialogTrigger asChild>
+                                                                    <Button size="sm">Finalize & Complete Job</Button>
+                                                                </AlertDialogTrigger>
+                                                                <AlertDialogContent>
+                                                                    <AlertDialogHeader>
+                                                                        <AlertDialogTitle>Complete this Job?</AlertDialogTitle>
+                                                                        <AlertDialogDescription>
+                                                                            This will mark this step and the entire JMS as completed. This is the final action for this workflow.
+                                                                        </AlertDialogDescription>
+                                                                    </AlertDialogHeader>
+                                                                    <AlertDialogFooter>
+                                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                        <AlertDialogAction onClick={() => completeJobAsFinalStep(job.id, step.id, `Manually finalized by ${user?.name}`)}>
+                                                                            Confirm Completion
+                                                                        </AlertDialogAction>
+                                                                    </AlertDialogFooter>
+                                                                </AlertDialogContent>
+                                                            </AlertDialog>
                                                         </div>
-                                                    </div>
-                                                )
+                                                    ) : (
+                                                        showNextStepForm === step.id ? (
+                                                            <AddNextStepForm 
+                                                                job={job}
+                                                                currentStep={step}
+                                                                onCancel={() => setShowNextStepForm(null)}
+                                                                onSave={() => setShowNextStepForm(null)}
+                                                            />
+                                                        ) : (
+                                                            <div className="flex justify-between items-center pt-3 border-t">
+                                                                <Button size="sm" variant="outline" onClick={() => setReassigningStep(step)}>
+                                                                    <UserRoundCog className="h-4 w-4 mr-2"/> Reassign
+                                                                </Button>
+                                                                <Button size="sm" onClick={() => setShowNextStepForm(step.id)}>
+                                                                    <CheckCircle className="mr-2 h-4 w-4"/> Complete & Add Next Step
+                                                                </Button>
+                                                            </div>
+                                                        )
+                                                    )}
+                                                </>
                                             )}
                                         </div>
                                     </div>
