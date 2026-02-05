@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, Dispatch, SetStateAction, useMemo } from 'react';
@@ -411,19 +412,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const getAssignableUsers = useCallback(() => {
     if (!user) return [];
-    
-    let assignableUsers = getVisibleUsers();
-    assignableUsers = assignableUsers.filter(u => u.role !== 'Manager');
-  
-    const supervisorChain = new Set<string>();
-    let currentUser: User | undefined = user;
-    while(currentUser?.supervisorId) {
-        supervisorChain.add(currentUser.supervisorId);
-        currentUser = users.find(u => u.id === currentUser?.supervisorId);
-        if (!currentUser) break;
-    }
-    return assignableUsers.filter(u => !supervisorChain.has(u.id));
-  }, [user, users, getVisibleUsers]);
+    // The user wants to be able to assign tasks to anyone in the app, except for Managers.
+    return users.filter(u => u.role !== 'Manager');
+  }, [user, users]);
   
   const clearInventoryTransferHistory = useCallback(() => {
     // This is a placeholder now. The real implementation is in useInventory.

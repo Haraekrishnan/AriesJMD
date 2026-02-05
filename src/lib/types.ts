@@ -888,17 +888,18 @@ export const JOB_PROGRESS_STEPS = [
     'Timesheets Received',
     'JMS created',
     'JMS sent for Endorsement',
-    'JMS Handed Over to JMS Endorsed',
+    'JMS Handed Over',
+    'JMS Endorsed',
     'JMS sent back to Office',
     'JMS No created',
-    'JMS Hard copy sent back to SIte',
+    'JMS Hard copy sent back to Site',
     'Hard Copy submitted',
 ] as const;
 
 export const REOPEN_JOB_STEPS = [
-    'JMS Returned',
     'JMS Rejected',
     'JMS Deleted',
+    'JMS Returned',
 ] as const;
 
 export type JobProgressStepName = typeof JOB_PROGRESS_STEPS[number];
