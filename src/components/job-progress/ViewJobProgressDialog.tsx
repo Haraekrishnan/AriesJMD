@@ -269,20 +269,25 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
     );
 };
 
+const unassignedSteps = ['Timesheets Pending', 'JMS sent back to Office', 'JMS Hard copy sent back to Site', 'JMS Hard copy submitted'];
+
 const nextStepSchema = z.object({
   name: z.string({ required_error: 'Step name is required' }).min(1, 'Step name is required'),
   assigneeId: z.string().optional(),
   description: z.string().optional(),
   dueDate: z.date().optional().nullable(),
 }).refine(data => {
-    if (data.name !== 'Hard Copy submitted') {
-        return !!data.assigneeId;
+    // If the step name is in the list of steps that can be unassigned, it's valid without an assignee.
+    if (unassignedSteps.includes(data.name)) {
+        return true;
     }
-    return true;
+    // Otherwise, an assignee is required.
+    return !!data.assigneeId;
 }, {
     message: 'Assignee is required for this step.',
     path: ['assigneeId'],
 });
+
 
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
     const { addAndCompleteStep, completeJobAsFinalStep, getAssignableUsers, users } = useAppContext();
@@ -429,7 +434,17 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const isPreviousStepCompleted = index === 0 || job.steps[index - 1].status === 'Completed';
                                 const isCurrentUserAssignee = user?.id === step.assigneeId;
                                 const isProjectMember = viewingUser?.projectIds?.includes(job.projectId || '');
-                                const canActOnUnassigned = !step.assigneeId && (isProjectMember || user?.role === 'Admin');
+                                
+                                let canActOnUnassigned = false;
+                                if (!step.assigneeId) {
+                                    if (step.name === 'JMS sent back to Office') {
+                                        const allowedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+                                        canActOnUnassigned = (user && allowedRoles.includes(user.role)) || user?.id === job.creatorId;
+                                    } else if (['Timesheets Pending', 'JMS Hard copy sent back to Site', 'JMS Hard copy submitted'].includes(step.name)) {
+                                        canActOnUnassigned = isProjectMember || user?.role === 'Admin';
+                                    }
+                                }
+                                
                                 const canAct = (isCurrentUserAssignee || canActOnUnassigned) && isPreviousStepCompleted;
                                 const canReassign = (isCurrentUserAssignee || user?.role === 'Admin') && (step.status === 'Pending' || step.status === 'Acknowledged');
                                 
@@ -483,7 +498,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                         <Select onValueChange={setNewAssigneeId} value={newAssigneeId}>
                                                             <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
                                                             <SelectContent>
-                                                                {users.filter(u => u.role !== 'Manager').map(u => (
+                                                                {getAssignableUsers().filter(u => u.role !== 'Manager').map(u => (
                                                                     <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                                                                 ))}
                                                             </SelectContent>
@@ -502,7 +517,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
 
                                             {canAct && step.status === 'Acknowledged' && (
                                                 <>
-                                                    {step.name === 'Hard Copy submitted' ? (
+                                                     {step.name === 'JMS Hard copy submitted' ? (
                                                         <div className="flex justify-end pt-3 border-t">
                                                             <AlertDialog>
                                                                 <AlertDialogTrigger asChild>

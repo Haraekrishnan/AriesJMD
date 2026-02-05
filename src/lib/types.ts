@@ -893,7 +893,7 @@ export const JOB_PROGRESS_STEPS = [
     'JMS sent back to Office',
     'JMS No created',
     'JMS Hard copy sent back to Site',
-    'Hard Copy submitted',
+    'JMS Hard copy submitted',
 ] as const;
 
 export const REOPEN_JOB_STEPS = [
