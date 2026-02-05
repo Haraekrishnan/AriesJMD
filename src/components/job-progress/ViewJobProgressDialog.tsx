@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -24,7 +23,17 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '../ui/alert-dialog';
 import { JOB_PROGRESS_STEPS, REOPEN_JOB_STEPS } from '@/lib/types';
 
 
@@ -171,7 +180,7 @@ const ReopenJobDialog = ({ isOpen, setIsOpen, job, reopenJob }: { isOpen: boolea
 const reassignSchema = z.object({
     newAssigneeId: z.string().min(1, "Please select a new assignee."),
     comment: z.string().min(10, "A comment is required for reassignment."),
-  });
+});
   
 type ReassignFormValues = z.infer<typeof reassignSchema>;
   
@@ -424,18 +433,15 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const assignee = users.find(u => u.id === step.assigneeId);
                                 const isCurrentUserAssignee = user?.id === step.assigneeId;
                                 const isPreviousStepCompleted = index === 0 || job.steps[index - 1].status === 'Completed';
-
-                                const isCurrentUserInProject = user?.projectIds?.includes(job.projectId || '');
-                                const canActOnUnassigned = !step.assigneeId && isCurrentUserInProject;
+                                const canActOnUnassigned = !step.assigneeId && user?.projectIds?.includes(job.projectId || '');
                                 const canAct = (isCurrentUserAssignee || canActOnUnassigned) && isPreviousStepCompleted;
-                                
                                 const canReassign = (isCurrentUserAssignee || user?.role === 'Admin') && (step.status === 'Pending' || step.status === 'Acknowledged');
                                 
-                                const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
-                                const isAuthorizedRole = user ? canFinalizeRoles.includes(user.role) : false;
-                                const isCreator = user?.id === job.creatorId;
-                                const isAuthorizedToFinalize = isAuthorizedRole || isCreator || isCurrentUserAssignee;
-                                const canFinalize = isAuthorizedToFinalize && step.status === 'Acknowledged';
+                                const canFinalize = useMemo(() => {
+                                    if (!user || job.status === 'Completed') return false;
+                                    const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+                                    return canFinalizeRoles.includes(user.role) || user.id === job.creatorId || isCurrentUserAssignee;
+                                }, [user, job, isCurrentUserAssignee]);
                                 
                                 const isStepUnassigned = !step.assigneeId;
                                 const canAssign = (user?.id === job.creatorId || user?.role === 'Admin') && isStepUnassigned && step.status === 'Pending';
