@@ -28,7 +28,7 @@ type TaskContextType = {
   requestTaskReassignment: (taskId: string, newAssigneeId: string, comment: string) => void;
   markTaskAsViewed: (taskId: string) => void;
   acknowledgeReturnedTask: (taskId: string) => void;
-  createJobProgress: (data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[] }) => void;
+  createJobProgress: (data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[]; projectId?: string; workOrderNo?: string; foNo?: string; amount?: number; dateFrom?: string | null; dateTo?: string | null; }) => void;
   updateJobStepStatus: (jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string, completionDetails?: { attachmentUrl?: string; customFields?: Record<string, any> }) => void;
   addAndCompleteStep: (jobId: string, currentStepId: string, completionComment: string | undefined, completionAttachment: Task['attachment'] | undefined, completionCustomFields: Record<string, any> | undefined, nextStepData: Omit<JobStep, 'id'|'status'>) => void;
   addJobStepComment: (jobId: string, stepId: string, commentText: string) => void;
@@ -365,18 +365,19 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb, `tasks/${taskId}`), { approvalState: 'none' });
     }, [user]);
 
-    const createJobProgress = useCallback((data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[] }) => {
+    const createJobProgress = useCallback((data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[], projectId?: string, workOrderNo?: string, foNo?: string, amount?: number, dateFrom?: string | null, dateTo?: string | null }) => {
         if (!user) return;
         const newRef = push(ref(rtdb, 'jobProgress'));
         const now = new Date().toISOString();
-    
+
         const initialSteps: JobStep[] = (data.steps || []).map((step, index) => ({
             ...step,
             id: `step-${index}`,
             status: index === 0 ? 'Pending' : 'Not Started',
+            assigneeId: step.assigneeId || null,
             dueDate: step.dueDate || null,
         }));
-    
+
         const newJob: Omit<JobProgress, 'id'> = {
           title: data.title,
           creatorId: user.id,
@@ -384,6 +385,12 @@ export function TaskProvider({ children }: { children: ReactNode }) {
           lastUpdated: now,
           status: 'Not Started',
           steps: initialSteps,
+          projectId: data.projectId,
+          workOrderNo: data.workOrderNo,
+          foNo: data.foNo,
+          amount: data.amount,
+          dateFrom: data.dateFrom,
+          dateTo: data.dateTo,
         };
     
         set(newRef, newJob);
@@ -414,9 +421,14 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
         const stepIndex = job.steps.findIndex(s => s.id === stepId);
         if (stepIndex === -1) return;
+        const currentStep = job.steps[stepIndex];
 
         const updates: { [key: string]: any } = {};
         const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
+
+        if (!currentStep.assigneeId && (newStatus === 'Acknowledged' || newStatus === 'Completed')) {
+            updates[`${stepPath}/assigneeId`] = user.id;
+        }
 
         updates[`${stepPath}/status`] = newStatus;
         updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
@@ -484,6 +496,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         const newStep: JobStep = {
             ...nextStepData,
             dueDate: nextStepData.dueDate || null,
+            assigneeId: nextStepData.assigneeId || null,
             id: `step-${job.steps.length}`,
             status: 'Pending',
         };
@@ -639,13 +652,13 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         const stepIndex = job.steps.findIndex(s => s.id === stepId);
         if (stepIndex === -1) return;
         const currentStep = job.steps[stepIndex];
+        const isCurrentUserAssignee = user.id === currentStep.assigneeId;
 
         const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
         const isAuthorizedRole = canFinalizeRoles.includes(user.role);
         const isCreator = user.id === job.creatorId;
-        const isAssignee = user.id === currentStep.assigneeId;
 
-        if (!isAuthorizedRole && !isCreator && !isAssignee) {
+        if (!isAuthorizedRole && !isCreator && !isCurrentUserAssignee) {
              toast({ title: "Permission Denied", variant: "destructive" });
              return;
         }

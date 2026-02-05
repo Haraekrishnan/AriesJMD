@@ -14,7 +14,7 @@ import { format, startOfMonth, addMonths, subMonths, isSameMonth, parseISO, isBe
 const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
 
 export default function JobProgressPage() {
-  const { can, jobProgress } = useAppContext();
+  const { can, jobProgress, user } = useAppContext();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [viewingJob, setViewingJob] = useState<JobProgress | null>(null);
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
@@ -33,10 +33,23 @@ export default function JobProgressPage() {
   }, [currentMonth]);
 
   const filteredJobs = useMemo(() => {
-    return jobProgress.filter(job => 
-      job.createdAt && isSameMonth(parseISO(job.createdAt), currentMonth)
-    );
-  }, [jobProgress, currentMonth]);
+    return jobProgress.filter(job => {
+      if (!job.createdAt || !isSameMonth(parseISO(job.createdAt), currentMonth)) {
+        return false;
+      }
+      if (can.manage_job_progress || user?.role === 'Admin') {
+        return true;
+      }
+      if (job.projectId && user?.projectIds?.includes(job.projectId)) {
+        return true;
+      }
+      // If user has no project but is the creator, show it.
+      if (job.creatorId === user?.id) {
+          return true;
+      }
+      return false;
+    });
+  }, [jobProgress, currentMonth, user, can.manage_job_progress]);
 
   if (!can.manage_job_progress) {
     return (

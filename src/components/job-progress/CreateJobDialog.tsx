@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm, Controller } from 'react-hook-form';
@@ -26,20 +27,30 @@ import {
 } from '@/components/ui/select';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { useToast } from '@/hooks/use-toast';
-import { JOB_PROGRESS_STEPS, JobProgressStepName } from '@/lib/types';
-import { Checkbox } from '../ui/checkbox';
+import { JOB_PROGRESS_STEPS } from '@/lib/types';
+import { DateRangePicker } from '../ui/date-range-picker';
+import type { DateRange } from 'react-day-picker';
 
 const jobStepSchema = z.object({
   name: z.enum(JOB_PROGRESS_STEPS, { required_error: 'Step name is required' }),
-  assigneeId: z.string().min(1, 'Assignee is required'),
+  assigneeId: z.string().optional(),
   description: z.string().optional(),
   dueDate: z.date().optional().nullable(),
 });
 
 const jobSchema = z.object({
   title: z.string().min(3, 'JMS title is required'),
+  projectId: z.string().min(1, 'Project is required'),
+  workOrderNo: z.string().optional(),
+  foNo: z.string().optional(),
+  amount: z.coerce.number().optional(),
+  dateRange: z.object({
+    from: z.date().optional(),
+    to: z.date().optional(),
+  }).optional(),
   steps: z.array(jobStepSchema).min(1),
 });
+
 
 type JobFormValues = z.infer<typeof jobSchema>;
 
@@ -49,7 +60,7 @@ interface Props {
 }
 
 export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
-  const { user, users, createJobProgress } = useAppContext();
+  const { user, users, projects, createJobProgress } = useAppContext();
   const { toast } = useToast();
 
   const form = useForm<JobFormValues>({
@@ -66,6 +77,12 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
   const onSubmit = (data: JobFormValues) => {
     createJobProgress({
       title: data.title,
+      projectId: data.projectId,
+      workOrderNo: data.workOrderNo,
+      foNo: data.foNo,
+      amount: data.amount,
+      dateFrom: data.dateRange?.from?.toISOString() ?? null,
+      dateTo: data.dateRange?.to?.toISOString() ?? null,
       steps: data.steps,
     });
     toast({ title: 'JMS Created', description: data.title });
@@ -82,7 +99,6 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
   };
 
   const StepFields = ({ fieldName, title }: { fieldName: `steps.0`; title: string }) => {
-    const errors = form.formState.errors.steps?.[0] as any;
     return (
       <div className="border p-4 rounded-md space-y-3 bg-muted/50">
         <h4 className="font-semibold text-sm">{title}</h4>
@@ -107,10 +123,9 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
                 </Select>
               )}
             />
-            {errors?.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
           </div>
           <div className="space-y-1">
-            <Label>Assign To <span className="text-destructive">*</span></Label>
+            <Label>Assign To (Optional)</Label>
             <Controller
               control={form.control}
               name={`${fieldName}.assigneeId`}
@@ -120,6 +135,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
                     <SelectValue placeholder="Select assignee" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="">Unassigned</SelectItem>
                     {assignableUsers.map((u) => (
                       <SelectItem key={u.id} value={u.id}>
                         {u.name}
@@ -129,7 +145,6 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
                 </Select>
               )}
             />
-            {errors?.assigneeId && <p className="text-xs text-destructive">{errors.assigneeId.message}</p>}
           </div>
         </div>
         <div className="space-y-1">
@@ -157,10 +172,54 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <Label htmlFor="job-title" className="font-semibold">JMS Title</Label>
-            <Input id="job-title" {...form.register('title')} />
-            {form.formState.errors.title && <p className="text-xs text-destructive mt-1">{form.formState.errors.title.message}</p>}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1 col-span-2">
+                <Label htmlFor="job-title" className="font-semibold">JMS Title</Label>
+                <Input id="job-title" {...form.register('title')} />
+                {form.formState.errors.title && <p className="text-xs text-destructive mt-1">{form.formState.errors.title.message}</p>}
+            </div>
+            <div className="space-y-1">
+                <Label>Project</Label>
+                <Controller
+                  control={form.control}
+                  name="projectId"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select project" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {projects.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {form.formState.errors.projectId && <p className="text-xs text-destructive mt-1">{form.formState.errors.projectId.message}</p>}
+            </div>
+            <div className="space-y-1">
+                <Label>Date Range</Label>
+                <Controller
+                  name="dateRange"
+                  control={form.control}
+                  render={({ field }) => <DateRangePicker date={field.value as DateRange} onDateChange={field.onChange} />}
+                />
+            </div>
+            <div className="space-y-1">
+                <Label>Work Order No.</Label>
+                <Input {...form.register('workOrderNo')} />
+            </div>
+             <div className="space-y-1">
+                <Label>F.O No.</Label>
+                <Input {...form.register('foNo')} />
+            </div>
+             <div className="space-y-1">
+                <Label>Amount</Label>
+                <Input type="number" {...form.register('amount')} />
+            </div>
           </div>
 
           <div className="space-y-4">

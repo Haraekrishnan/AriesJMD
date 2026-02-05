@@ -24,7 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { JOB_PROGRESS_STEPS, REOPEN_JOB_STEPS } from '@/lib/types';
 
 
@@ -374,7 +374,7 @@ interface ViewJobProgressDialogProps {
 }
 
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
-    const { user, users, jobProgress, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, completeJobAsFinalStep, reassignJobStep } = useAppContext();
+    const { user, users, projects, jobProgress, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, completeJobAsFinalStep, reassignJobStep } = useAppContext();
     const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
     const [newAssigneeId, setNewAssigneeId] = useState<string>('');
     const [showNextStepForm, setShowNextStepForm] = useState<string | null>(null);
@@ -386,6 +386,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
     }, [jobProgress, initialJob]);
 
     const creator = users.find(u => u.id === job.creatorId);
+    const project = projects.find(p => p.id === job.projectId);
 
     const canReopenJob = useMemo(() => {
         if (!user || !job) return false;
@@ -398,7 +399,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
         return canFinalizeRoles.includes(user.role) || user.id === job.creatorId;
     }, [user, job]);
-    
+
     return (
         <>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -410,6 +411,14 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                             <DialogDescription>Created by {creator?.name} on {format(parseISO(job.createdAt), 'PPP')}</DialogDescription>
                         </div>
                         <Badge variant={job.status === 'Completed' ? 'success' : 'secondary'}>{job.status}</Badge>
+                    </div>
+                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm pt-2">
+                        <div><span className="font-semibold">Project:</span> {project?.name || 'N/A'}</div>
+                        <div><span className="font-semibold">WO No:</span> {job.workOrderNo || 'N/A'}</div>
+                        <div><span className="font-semibold">FO No:</span> {job.foNo || 'N/A'}</div>
+                        <div><span className="font-semibold">Amount:</span> {job.amount ? new Intl.NumberFormat('en-IN').format(job.amount) : 'N/A'}</div>
+                        <div><span className="font-semibold">From:</span> {job.dateFrom ? format(parseISO(job.dateFrom), 'dd-MM-yy') : 'N/A'}</div>
+                        <div><span className="font-semibold">To:</span> {job.dateTo ? format(parseISO(job.dateTo), 'dd-MM-yy') : 'N/A'}</div>
                     </div>
                 </DialogHeader>
                 <ScrollArea className="flex-1 -mx-6 px-6">
@@ -424,9 +433,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const canAct = isCurrentUserAssignee && isPreviousStepCompleted;
                                 const canReassign = (isCurrentUserAssignee || user?.role === 'Admin') && (step.status === 'Pending' || step.status === 'Acknowledged');
                                 const StatusIcon = statusConfig[step.status].icon;
-                                
                                 const canFinalize = (isAuthorizedToFinalize || isCurrentUserAssignee) && step.status === 'Acknowledged';
-
                                 const isStepUnassigned = !step.assigneeId;
                                 const canAssign = (user?.id === job.creatorId || user?.role === 'Admin') && isStepUnassigned && step.status === 'Pending';
                                 

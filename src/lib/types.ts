@@ -937,6 +937,12 @@ export type JobProgress = {
   status: JobProgressStatus;
   steps: JobStep[];
   isReopened?: boolean;
+  projectId?: string;
+  workOrderNo?: string;
+  foNo?: string;
+  amount?: number;
+  dateFrom?: string | null;
+  dateTo?: string | null;
 };
 
 export type TpCertListItem = {
