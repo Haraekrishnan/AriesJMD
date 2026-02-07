@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -207,6 +208,8 @@ const InventorySheet = ({ category }: { category: string }) => {
       }, 500)
   ).current;
 
+  const statusOptions: InventoryItemStatus[] = ['In Use', 'In Store', 'Damaged', 'Expired', 'Moved to another project', 'Quarantine'];
+
   const columns = useMemo<ColumnDef<InventoryItem>[]>(() => {
     const projectOptions = projects.map(p => ({ value: p.id, label: p.name }));
     const statusOptionsMapped = statusOptions.map(s => ({ value: s, label: s }));
@@ -294,7 +297,7 @@ const InventorySheet = ({ category }: { category: string }) => {
       baseColumns.splice(3, 0, { accessorKey: 'chestCrollNo', header: ({column}) => <FilterableHeader title="Chest Croll No." column={column} />, cell: EditableCell, size: 150 });
     }
     return baseColumns;
-  }, [category, projects]);
+  }, [category, projects, statusOptions]);
 
   const table = useReactTable({
     data: localData,
@@ -522,8 +525,8 @@ const InventorySheet = ({ category }: { category: string }) => {
                             onKeyDown={(e) => handleCellKeyDown(e, row.index, colIndex)}
                             className={cn(
                                 "p-0",
-                                { 'sticky left-0 bg-background z-10': cell.column.id === 'select' },
-                                { 'sticky left-[60px] bg-background z-10': cell.column.id === 'serialNumber' },
+                                { 'sticky left-0 bg-card z-10': cell.column.id === 'select' },
+                                { 'sticky left-[60px] bg-card z-10': cell.column.id === 'serialNumber' },
                                 activeCell?.row === row.index && activeCell?.columnId === cell.column.id && "ring-2 ring-ring ring-offset-2 z-10",
                                 isCellSelected(rowIndex, colIndex) && "bg-blue-100 dark:bg-blue-800/50"
                             )}
