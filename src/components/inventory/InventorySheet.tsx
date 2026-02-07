@@ -108,10 +108,10 @@ const InventorySheet = ({ category }: { category: Category }) => {
 
   const { data, addAction, updateAction, deleteAction } = useMemo(() => {
     switch (category) {
-      case 'harness': return { data: harnesses.filter(i => !i.isArchived), addAction: addHarness, updateAction: updateHarness, deleteAction: deleteHarness };
-      case 'tripod': return { data: tripods.filter(i => !i.isArchived), addAction: addTripod, updateAction: updateTripod, deleteAction: deleteTripod };
-      case 'lifeline': return { data: lifelines.filter(i => !i.isArchived), addAction: addLifeline, updateAction: updateLifeline, deleteAction: deleteLifeline };
-      case 'gas_detectors': return { data: gasDetectors.filter(i => !i.isArchived), addAction: addGasDetector, updateAction: updateGasDetector, deleteAction: deleteGasDetector };
+      case 'harness': return { data: (harnesses || []).filter(i => !i.isArchived), addAction: addHarness, updateAction: updateHarness, deleteAction: deleteHarness };
+      case 'tripod': return { data: (tripods || []).filter(i => !i.isArchived), addAction: addTripod, updateAction: updateTripod, deleteAction: deleteTripod };
+      case 'lifeline': return { data: (lifelines || []).filter(i => !i.isArchived), addAction: addLifeline, updateAction: updateLifeline, deleteAction: deleteLifeline };
+      case 'gas_detectors': return { data: (gasDetectors || []).filter(i => !i.isArchived), addAction: addGasDetector, updateAction: updateGasDetector, deleteAction: deleteGasDetector };
       default: return { data: [], addAction: () => {}, updateAction: () => {}, deleteAction: () => {} };
     }
   }, [category, harnesses, tripods, lifelines, gasDetectors, addHarness, updateHarness, deleteHarness, addTripod, updateTripod, deleteTripod, addLifeline, updateLifeline, deleteLifeline, addGasDetector, updateGasDetector, deleteGasDetector]);
