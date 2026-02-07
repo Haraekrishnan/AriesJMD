@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { PlusCircle, Trash2, CheckCircle, Settings, Save, ArrowUp, ArrowDown } from 'lucide-react';
+import { PlusCircle, Trash2, CheckCircle, Settings, Save, ArrowUp, ArrowDown, Download } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import type { InventoryItem, InventoryItemStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardContent } from '../ui/card';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
+
 
 // --- DEBOUNCE UTILITY ---
 function debounce<T extends (...args: any[]) => void>(func: T, delay: number): (...args: Parameters<T>) => void {
@@ -35,7 +38,15 @@ function debounce<T extends (...args: any[]) => void>(func: T, delay: number): (
     };
 }
 
-const statusOptions: InventoryItemStatus[] = ['In Use', 'In Store', 'Damaged', 'Expired', 'Moved to another project', 'Quarantine'];
+const statusOptions: {value: InventoryItemStatus | 'Inspection Expired' | 'TP Expired' | 'Not Verified', label: string}[] = [
+    { value: 'In Use', label: 'In Use' },
+    { value: 'In Store', label: 'In Store' },
+    { value: 'Damaged', label: 'Damaged' },
+    { value: 'Quarantine', label: 'Quarantine' },
+    { value: 'Expired', label: 'Expired' },
+    { value: 'Moved to another project', label: 'Moved' },
+];
+
 
 const statusColorMap: Record<InventoryItemStatus, string> = {
     'In Use': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
@@ -210,7 +221,7 @@ const InventorySheet = ({ category }: { category: string }) => {
 
   const columns = useMemo<ColumnDef<InventoryItem>[]>(() => {
     const projectOptions = projects.map(p => ({ value: p.id, label: p.name }));
-    const statusOptionsMapped = statusOptions.map(s => ({ value: s, label: s }));
+    const statusOptionsMapped = statusOptions.map(s => ({ value: s.value, label: s.label }));
     
     const FilterableHeader = ({ title, column }: { title: string, column: any }) => (
       <div className="flex flex-col gap-1">
@@ -316,7 +327,7 @@ const InventorySheet = ({ category }: { category: string }) => {
         setLocalData(old =>
             old.map((row, index) => {
                 if (index === rowIndex) {
-                    const updatedRow = { ...row, [columnId]: value };
+                    const updatedRow = { ...row, [columnId]: value, lastUpdated: new Date().toISOString() };
                     debouncedUpdate(updatedRow);
                     return updatedRow;
                 }
@@ -390,7 +401,7 @@ const InventorySheet = ({ category }: { category: string }) => {
                         if (column.id === 'projectId') {
                             const project = projects.find(p => p.name.toLowerCase() === processedValue.toLowerCase());
                             processedValue = project ? project.id : null;
-                        } else if (column.id?.includes('Date')) {
+                        } else if (column.id?.toLowerCase().includes('date')) {
                              const parsedDate = parse(processedValue, 'dd-MM-yyyy', new Date());
                              processedValue = isValid(parsedDate) ? parsedDate.toISOString() : null;
                         }
@@ -462,13 +473,80 @@ const InventorySheet = ({ category }: { category: string }) => {
     const cellId = `cell-${rows[nextRow].id}-${cols[nextCol].id}`;
     const element = document.getElementById(cellId)?.querySelector('input, button, select');
     (element as HTMLElement)?.focus();
-};
+  };
+
+  const handleExport = async () => {
+    const rows = table.getRowModel().rows;
+    if (rows.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "No data to export",
+        description: "The current view is empty.",
+      });
+      return;
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const sheetName = category.replace(/[\\/*?:]/g, "").substring(0, 31);
+    const worksheet = workbook.addWorksheet(sheetName);
+
+    const visibleColumns = table
+      .getVisibleLeafColumns()
+      .filter((col) => col.id !== "select");
+
+    worksheet.columns = visibleColumns.map((col) => {
+        let headerText = col.id
+          .replace(/([A-Z])/g, ' $1')
+          .replace(/_/g, ' ')
+          .replace(/^./, (str) => str.toUpperCase());
+        return { header: headerText, key: col.id, width: 25 };
+    });
+
+    const dataToExport = rows.map(row => {
+        const rowData: {[key: string]: any} = {};
+        visibleColumns.forEach(col => {
+            const columnId = col.id as keyof InventoryItem;
+            let value = row.original[columnId];
+
+            if (columnId === 'projectId') {
+                value = projects.find(p => p.id === value)?.name || value;
+            } else if (String(columnId).toLowerCase().includes('date') && typeof value === 'string') {
+                try {
+                    value = format(parseISO(value), 'dd-MM-yyyy');
+                } catch (e) {
+                    // keep original value if parsing fails
+                }
+            }
+            
+            rowData[col.id] = value ?? '';
+        });
+        return rowData;
+    });
+
+    worksheet.addRows(dataToExport);
+
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFD3D3D3' }
+    };
+    worksheet.getRow(1).border = {
+        bottom: { style: 'thin' }
+    };
+
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `${category}_Inventory.xlsx`);
+    toast({ title: "Export Complete" });
+  };
 
   return (
     <Card>
       <CardHeader className="flex flex-row justify-between items-center">
         <div/>
         <div className="flex items-center gap-2">
+            <Button size="sm" onClick={handleExport} variant="outline"><Download className="mr-2 h-4 w-4"/> Export Excel</Button>
             <span className="text-xs text-muted-foreground flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" /> All changes are saved automatically.
             </span>
