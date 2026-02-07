@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -20,6 +21,8 @@ import { isPast, parseISO, isValid } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import type { Harness, Tripod, Lifeline, GasDetector } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { Card, CardHeader, CardContent } from '../ui/card';
+
 
 type Item = Harness | Tripod | Lifeline | GasDetector;
 type Category = 'harness' | 'tripod' | 'lifeline' | 'gas_detectors';
