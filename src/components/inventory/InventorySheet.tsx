@@ -62,7 +62,7 @@ const SelectCell = ({ getValue, row, column, table, options, placeholder }: any)
 
   return (
     <Select
-      value={initialValue}
+      value={initialValue || ''}
       onValueChange={value => table.options.meta?.updateData(row.index, column.id, value)}
       disabled={!isEditable}
     >
@@ -163,10 +163,10 @@ const InventorySheet = ({ category }: { category: string }) => {
     const SelectFilterHeader = ({ title, column, options }: { title: string, column: any, options: {value: string, label: string}[]}) => (
        <div className="flex flex-col gap-1">
           <span>{title}</span>
-          <Select value={column.getFilterValue() as string ?? ''} onValueChange={value => column.setFilterValue(value || undefined)}>
+          <Select value={(column.getFilterValue() as string) ?? 'all'} onValueChange={value => column.setFilterValue(value === 'all' ? undefined : value)}>
             <SelectTrigger className="h-7 w-full"><SelectValue placeholder="All" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All</SelectItem>
+              <SelectItem value="all">All</SelectItem>
               {options.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -334,5 +334,3 @@ const InventorySheet = ({ category }: { category: string }) => {
 };
 
 export default InventorySheet;
-
-    
