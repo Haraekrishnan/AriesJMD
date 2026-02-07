@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Upload, AlertTriangle, ChevronsUpDown, X, FilePen, FilePlus, FileText, ArrowRightLeft, Package, Hammer, CheckCircle } from 'lucide-react';
+import { PlusCircle, Upload, ChevronsUpDown, FilePen, FilePlus, FileText, ArrowRightLeft, Package, Hammer, CheckCircle } from 'lucide-react';
 import InventoryTable from '@/components/inventory/InventoryTable';
 import AddItemDialog from '@/components/inventory/AddItemDialog';
 import ImportItemsDialog from '@/components/inventory/ImportItemsDialog';
@@ -95,7 +95,7 @@ export default function StoreInventoryPage() {
             const now = new Date();
             const inspectionDueDate = item.inspectionDueDate ? parseISO(item.inspectionDueDate) : null;
             const tpInspectionDueDate = item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : null;
-            const isItemExpired = inspectionDueDate && isAfter(now, inspectionDueDate) || tpInspectionDueDate && isAfter(now, tpInspectionDueDate);
+            const isItemExpired = (inspectionDueDate && isAfter(now, inspectionDueDate)) || (tpInspectionDueDate && isAfter(now, tpInspectionDueDate));
             const itemEffectiveStatus = isItemExpired ? 'Expired' : item.status;
 
             if (status !== 'all') {
@@ -144,18 +144,6 @@ export default function StoreInventoryPage() {
         });
         return Object.entries(data).map(([name, counts]) => ({ name, ...counts }));
     }, [filteredItems, projects]);
-
-    const pendingCertRequestsForMe = useMemo(() => canManageInventory ? certificateRequests.filter(req => req.status === 'Pending' && req.itemId) : [], [certificateRequests, canManageInventory]);
-    const myCertRequests = useMemo(() => certificateRequests.filter(req => req.requesterId === user?.id && req.itemId), [certificateRequests, user]);
-    
-    const myFulfilledCertRequests = useMemo(() => {
-      if (!user) return [];
-      return certificateRequests.filter(req => 
-        req.requesterId === user.id && 
-        req.status === 'Completed' && 
-        req.itemId
-      );
-    }, [certificateRequests, user]);
     
     const openTransferRequestDialog = (request: InventoryTransferRequest | null) => {
         if(request) {
@@ -169,47 +157,6 @@ export default function StoreInventoryPage() {
         setIsTransferRequestOpen(false);
         setEditingTransferRequest(null);
     }
-
-    useEffect(() => {
-        if (myFulfilledCertRequests.some(req => !req.viewedByRequester)) {
-            markFulfilledRequestsAsViewed('store');
-        }
-    }, [myFulfilledCertRequests, markFulfilledRequestsAsViewed]);
-
-
-    const inventoryNotifications = useMemo(() => {
-        const now = new Date();
-        const thirtyDaysFromNow = addDays(now, 30);
-        const notifications: { message: string, item: InventoryItem }[] = [];
-        
-        let userInventoryItems = inventoryItems;
-        if (user && !can.manage_inventory) {
-            const userProjectIds = new Set(user.projectIds);
-            userInventoryItems = inventoryItems.filter(item => item.projectId && userProjectIds.has(item.projectId));
-        }
-
-        userInventoryItems.forEach(item => {
-            if (item.category === 'Daily Consumable' || item.category === 'Job Consumable') return;
-            if (item.inspectionDueDate) {
-                const inspectionDueDate = parseISO(item.inspectionDueDate);
-                if (isBefore(inspectionDueDate, now)) {
-                    notifications.push({ message: `Inspection expired on ${format(inspectionDueDate, 'dd-MM-yyyy')}`, item });
-                } else if (isBefore(inspectionDueDate, thirtyDaysFromNow)) {
-                    notifications.push({ message: `Inspection due on ${format(inspectionDueDate, 'dd-MM-yyyy')}`, item });
-                }
-            }
-            if (item.tpInspectionDueDate) {
-                 const tpInspectionDueDate = parseISO(item.tpInspectionDueDate);
-                 if (isBefore(tpInspectionDueDate, now)) {
-                    notifications.push({ message: `TP Inspection expired on ${format(tpInspectionDueDate, 'dd-MM-yyyy')}`, item });
-                } else if (isBefore(tpInspectionDueDate, thirtyDaysFromNow)) {
-                    notifications.push({ message: `TP Inspection due on ${format(tpInspectionDueDate, 'dd-MM-yyyy')}`, item });
-                }
-            }
-        });
-
-        return notifications;
-    }, [inventoryItems, user, can.manage_inventory]);
 
     return (
         <div className="space-y-8">
@@ -264,118 +211,31 @@ export default function StoreInventoryPage() {
                     </AccordionContent>
                 </AccordionItem>
             </Accordion>
-
-            {inventoryNotifications.length > 0 && (
-                 <Card>
-                    <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                        <div>
-                            <CardTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive"/>Action Required</CardTitle>
-                            <CardDescription>The following items require attention for upcoming or past due dates.</CardDescription>
-                        </div>
-                        <ActionRequiredReport notifications={inventoryNotifications} />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-2 max-h-40 overflow-y-auto">
-                            {inventoryNotifications.map((n, i) => (
-                                <div key={i} className="text-sm p-2 bg-amber-50 dark:bg-amber-900/20 rounded-md">
-                                    <span className="font-semibold">{n.item.name} (SN: {n.item.serialNumber}{n.item.name.toLowerCase() === 'harness' && n.item.chestCrollNo ? `, Croll: ${n.item.chestCrollNo}`: ''})</span>: {n.message}
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
             
-            {canManageInventory && pendingCertRequestsForMe.length > 0 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Pending Certificate Requests</CardTitle>
-                        <CardDescription>Review and action these certificate requests.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                         {pendingCertRequestsForMe.map(req => {
-                            const requester = users.find(u => u.id === req.requesterId);
-                            const item = inventoryItems.find(i => i.id === req.itemId);
-                            const subject = item ? `${item.name} (SN: ${item.serialNumber})` : 'Unknown';
-
-                            return (
-                                <div key={req.id} className="p-4 border rounded-lg flex justify-between items-center">
-                                    <div><p><span className="font-semibold">{requester?.name}</span> requests a <span className="font-semibold">{req.requestType}</span></p><p className="text-sm text-muted-foreground">For: {subject}</p></div>
-                                    <Button size="sm" onClick={() => setViewingCertRequest(req)}>Review Request</Button>
-                                </div>
-                            )
-                        })}
-                    </CardContent>
-                </Card>
-            )}
-            
-             {myCertRequests.length > 0 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>My Certificate Requests</CardTitle>
-                        <CardDescription>Status of your submitted certificate requests for store items.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {myCertRequests.map(req => {
-                            const item = inventoryItems.find(i => i.id === req.itemId);
-                            const subject = item ? `${item.name} (SN: ${item.serialNumber})` : 'Unknown';
-                            const commentsArray = Array.isArray(req.comments) ? req.comments : Object.values(req.comments || {});
-                            return (
-                                <div key={req.id} className="p-3 border rounded-lg bg-muted/50">
-                                    <Accordion type="single" collapsible>
-                                        <AccordionItem value="item-1" className="border-b-0">
-                                            <div className="flex justify-between items-start">
-                                                <AccordionTrigger className="p-0 hover:no-underline flex-1 text-left">
-                                                    <div>
-                                                      <p className="font-semibold">{req.requestType} for {subject}</p>
-                                                      <p className="text-sm text-muted-foreground">Submitted {formatDistanceToNow(new Date(req.requestDate), { addSuffix: true })}</p>
-                                                    </div>
-                                                </AccordionTrigger>
-                                                <div className="flex items-center gap-2 pl-4">
-                                                  <Badge variant={req.status === 'Completed' ? 'default' : req.status === 'Rejected' ? 'destructive' : 'secondary'}>{req.status}</Badge>
-                                                  {req.status === 'Completed' && (
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => acknowledgeFulfilledRequest(req.id)}><X className="h-4 w-4"/></Button>
-                                                  )}
-                                                </div>
-                                            </div>
-                                            <AccordionContent className="pt-2">
-                                                <div className="space-y-2 mt-2 pt-2 border-t">
-                                                    {commentsArray.length > 0 ? commentsArray.map((c, i) => {
-                                                        const commentUser = users.find(u => u.id === c.userId);
-                                                        return (
-                                                            <div key={i} className="flex items-start gap-2">
-                                                                <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
-                                                                <div className="text-xs bg-background p-2 rounded-md w-full">
-                                                                    <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
-                                                                    <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    }) : <p className="text-xs text-muted-foreground">No comments yet.</p>}
-                                                </div>
-                                            </AccordionContent>
-                                        </AccordionItem>
-                                    </Accordion>
-                                </div>
-                            )
-                        })}
-                    </CardContent>
-                </Card>
-            )}
-
-            <Card>
-                <CardHeader>
-                    <div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-4'>
-                    {view === 'list' ? (
-                        <InventoryFilters onApplyFilters={setFilters} />
-                    ) : <CardTitle>General Inventory Summary</CardTitle>}
-                    <InventoryReportDownloads items={filteredItems} isSummary={view === 'summary'} summaryData={summaryData} />
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    {view === 'list' ? <InventoryTable items={filteredItems} selectedItems={selectedItemsForTransfer} onSelectionChange={setSelectedItemsForTransfer} /> : <InventorySummary items={filteredItems} />}
-                </CardContent>
-            </Card>
+            <Tabs defaultValue="list-view" className="w-full">
+                <TabsList>
+                    <TabsTrigger value="list-view">Inventory List</TabsTrigger>
+                    <TabsTrigger value="db-view">Inventory Database</TabsTrigger>
+                </TabsList>
+                <TabsContent value="list-view" className="mt-4">
+                    <Card>
+                        <CardHeader>
+                            <div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-4'>
+                            {view === 'list' ? (
+                                <InventoryFilters onApplyFilters={setFilters} />
+                            ) : <CardTitle>General Inventory Summary</CardTitle>}
+                            <InventoryReportDownloads items={filteredItems} isSummary={view === 'summary'} summaryData={summaryData} />
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            {view === 'list' ? <InventoryTable items={filteredItems} selectedItems={selectedItemsForTransfer} onSelectionChange={setSelectedItemsForTransfer} /> : <InventorySummary items={filteredItems} />}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                <TabsContent value="db-view" className="mt-4">
+                     <p className="text-center text-muted-foreground">The Inventory Database feature has been moved to its own page. Please navigate to "Inventory DB" from the sidebar.</p>
+                </TabsContent>
+            </Tabs>
 
 
             <AddItemDialog isOpen={isAddItemOpen} setIsOpen={setIsAddItemOpen} />

@@ -1,5 +1,3 @@
-
-
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -98,15 +96,32 @@ const DateCell = ({ getValue, row, column, table }: any) => {
 };
 
 const InventorySheet = ({ category }: { category: Category }) => {
-  const { inventoryItems, projects, can, addInventoryItem, updateInventoryItem, deleteInventoryItem } = useAppContext();
+  const { 
+    inventoryItems, 
+    projects, 
+    can, 
+    addInventoryItem,
+    updateInventoryItem,
+    deleteInventoryItem: archiveInventoryItem // Renaming for clarity
+  } = useAppContext();
   
   const { toast } = useToast();
   const [rowSelection, setRowSelection] = useState({});
 
   const data = useMemo(() => {
     if (!inventoryItems) return [];
+    
+    // Map the category from URL to the 'name' in the data model
+    const categoryNameMapping = {
+      harness: 'Harness',
+      tripod: 'Tripod',
+      lifeline: 'Lifeline',
+      gas_detectors: 'Gas Detector',
+    };
+    const targetName = categoryNameMapping[category];
+
     return inventoryItems.filter(
-        (i) => i.name.toLowerCase() === category.toLowerCase() && !i.isArchived
+        (i) => i.name === targetName && !i.isArchived
     );
   }, [inventoryItems, category]);
 
@@ -169,12 +184,7 @@ const InventorySheet = ({ category }: { category: Category }) => {
     meta: {
       updateData: (rowIndex: number, columnId: string, value: any) => {
         const itemToUpdate = data[rowIndex];
-        if (columnId === 'projectId') {
-            const projectName = projects.find(p => p.id === value)?.name;
-            updateInventoryItem({ ...itemToUpdate, [columnId]: value, plantUnit: projectName });
-        } else {
-            updateInventoryItem({ ...itemToUpdate, [columnId]: value });
-        }
+        updateInventoryItem({ ...itemToUpdate, [columnId]: value });
       },
     },
   });
@@ -195,7 +205,7 @@ const InventorySheet = ({ category }: { category: Category }) => {
         toast({ title: "No rows selected", variant: 'destructive'});
         return;
     }
-    selectedIds.forEach(id => deleteInventoryItem(id));
+    selectedIds.forEach(id => archiveInventoryItem(id));
     setRowSelection({});
     toast({ title: `${selectedIds.length} rows deleted` });
   };
