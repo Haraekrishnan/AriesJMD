@@ -102,28 +102,23 @@ const InventorySheet = ({ category }: { category: Category }) => {
     can, 
     addInventoryItem,
     updateInventoryItem,
-    deleteInventoryItem: archiveInventoryItem // Renaming for clarity
+    deleteInventoryItem,
   } = useAppContext();
   
   const { toast } = useToast();
   const [rowSelection, setRowSelection] = useState({});
 
-  const data = useMemo(() => {
-    if (!inventoryItems) return [];
-    
-    // Map the category from URL to the 'name' in the data model
-    const categoryNameMapping = {
+  const { data, categoryName } = useMemo(() => {
+    const categoryNameMapping: Record<Category, string> = {
       harness: 'Harness',
       tripod: 'Tripod',
       lifeline: 'Lifeline',
       gas_detectors: 'Gas Detector',
     };
     const targetName = categoryNameMapping[category];
-
-    return inventoryItems.filter(
-        (i) => i.name === targetName && !i.isArchived
-    );
-  }, [inventoryItems, category]);
+    const filteredData = (inventoryItems || []).filter(i => i.name === targetName && !i.isArchived);
+    return { data: filteredData, categoryName: targetName };
+  }, [category, inventoryItems]);
 
   const columns = useMemo<ColumnDef<InventoryItem>[]>(() => {
     const projectOptions = projects.map(p => ({ value: p.id, label: p.name }));
@@ -191,7 +186,7 @@ const InventorySheet = ({ category }: { category: Category }) => {
   
   const handleAddRow = () => {
     addInventoryItem({
-      name: category.charAt(0).toUpperCase() + category.slice(1).replace('_', ' '),
+      name: categoryName,
       serialNumber: `NEW-${Math.floor(Math.random() * 10000)}`,
       status: 'In Store',
       projectId: projects[0]?.id || '',
@@ -205,7 +200,7 @@ const InventorySheet = ({ category }: { category: Category }) => {
         toast({ title: "No rows selected", variant: 'destructive'});
         return;
     }
-    selectedIds.forEach(id => archiveInventoryItem(id));
+    selectedIds.forEach(id => deleteInventoryItem(id));
     setRowSelection({});
     toast({ title: `${selectedIds.length} rows deleted` });
   };
