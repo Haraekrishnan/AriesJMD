@@ -159,6 +159,11 @@ const InventorySheet = ({ category }: { category: string }) => {
   const [rowSelection, setRowSelection] = useState({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [activeCell, setActiveCell] = useState<{row: number, columnId: string} | null>(null);
+  const [selection, setSelection] = useState<{
+    start: { row: number, col: number } | null;
+    end: { row: number, col: number } | null;
+  }>({ start: null, end: null });
+  const [isSelecting, setIsSelecting] = useState(false);
 
   const data = useMemo(() => {
     return (inventoryItems || []).filter(i => i.name === category && !i.isArchived);
@@ -350,6 +355,36 @@ const InventorySheet = ({ category }: { category: string }) => {
     }
   }, [activeCell, table, batchUpdateInventoryItems, toast, projects, isEditable]);
 
+  const handleMouseDown = (rowIndex: number, colIndex: number) => {
+    setIsSelecting(true);
+    setSelection({ start: { row: rowIndex, col: colIndex }, end: { row: rowIndex, col: colIndex } });
+  };
+
+  const handleMouseEnter = (rowIndex: number, colIndex: number) => {
+    if (isSelecting) {
+      setSelection(prev => ({ ...prev, end: { row: rowIndex, col: colIndex } }));
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsSelecting(false);
+  };
+
+  const isCellSelected = (rowIndex: number, colIndex: number) => {
+    if (!selection.start || !selection.end) return false;
+    
+    const visibleColumns = table.getVisibleLeafColumns();
+    const startCol = selection.start.col < 0 ? 0 : selection.start.col;
+    const endCol = selection.end.col < 0 ? 0 : selection.end.col;
+    
+    const minRow = Math.min(selection.start.row, selection.end.row);
+    const maxRow = Math.max(selection.start.row, selection.end.row);
+    const minCol = Math.min(startCol, endCol);
+    const maxCol = Math.max(startCol, endCol);
+
+    return rowIndex >= minRow && rowIndex <= maxRow && colIndex >= minCol && colIndex <= maxCol;
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row justify-between items-center">
@@ -378,7 +413,7 @@ const InventorySheet = ({ category }: { category: string }) => {
         </div>
       </CardHeader>
       <CardContent>
-        <div onPaste={handlePaste}>
+        <div onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onPaste={handlePaste}>
             <ScrollArea className="h-[60vh] border rounded-md">
                 <Table>
                 <TableHeader>
@@ -393,14 +428,17 @@ const InventorySheet = ({ category }: { category: string }) => {
                     ))}
                 </TableHeader>
                 <TableBody>
-                    {table.getRowModel().rows.map(row => (
+                    {table.getRowModel().rows.map((row, rowIndex) => (
                     <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-                        {row.getVisibleCells().map(cell => (
+                        {row.getVisibleCells().map((cell, colIndex) => (
                         <TableCell 
                             key={cell.id} 
+                            onMouseDown={() => handleMouseDown(row.index, colIndex)}
+                            onMouseEnter={() => handleMouseEnter(row.index, colIndex)}
                             className={cn(
                                 "p-0",
-                                activeCell?.row === row.index && activeCell?.columnId === cell.column.id && "ring-2 ring-ring ring-offset-2 z-10"
+                                activeCell?.row === row.index && activeCell?.columnId === cell.column.id && "ring-2 ring-ring ring-offset-2 z-10",
+                                isCellSelected(rowIndex, colIndex) && "bg-blue-100 dark:bg-blue-800/50"
                             )}
                         >
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
