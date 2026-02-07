@@ -8,7 +8,7 @@ import { AlertTriangle } from 'lucide-react';
 
 export default function InventoryDatabasePage() {
     const { can } = useAppContext();
-    const [activeTab, setActiveTab] = useState('harness');
+    const [activeTab, setActiveTab] = useState('Harness');
 
     if (!can.view_inventory_database) {
         return (
@@ -24,7 +24,7 @@ export default function InventoryDatabasePage() {
         )
     }
 
-    const inventoryCategories = ['harness', 'tripod', 'lifeline', 'gas_detectors'];
+    const inventoryCategories = ['Harness', 'Tripod', 'Lifeline', 'Gas Detector'];
 
     return (
         <div className="h-full flex flex-col space-y-4">
@@ -37,7 +37,7 @@ export default function InventoryDatabasePage() {
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
                 <TabsList>
                     {inventoryCategories.map(cat => (
-                        <TabsTrigger key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1).replace('_', ' ')}</TabsTrigger>
+                        <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
                     ))}
                 </TabsList>
                 {inventoryCategories.map(cat => (

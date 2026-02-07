@@ -16,13 +16,13 @@ import { PlusCircle, Trash2, CheckCircle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { isPast, parseISO, isValid } from 'date-fns';
+import { isPast, parseISO, isValid, format } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import type { InventoryItem, InventoryItemStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardContent } from '../ui/card';
 
-type Category = 'harness' | 'tripod' | 'lifeline' | 'gas_detectors';
+type Category = 'Harness' | 'Tripod' | 'Lifeline' | 'Gas Detector';
 
 const statusOptions: InventoryItemStatus[] = ['In Use', 'In Store', 'Damaged', 'Expired', 'Moved to another project', 'Quarantine'];
 
@@ -108,23 +108,16 @@ const InventorySheet = ({ category }: { category: Category }) => {
   const { toast } = useToast();
   const [rowSelection, setRowSelection] = useState({});
 
-  const { data, categoryName } = useMemo(() => {
-    const categoryNameMapping: Record<Category, string> = {
-      harness: 'Harness',
-      tripod: 'Tripod',
-      lifeline: 'Lifeline',
-      gas_detectors: 'Gas Detector',
-    };
-    const targetName = categoryNameMapping[category];
-    const filteredData = (inventoryItems || []).filter(i => i.name === targetName && !i.isArchived);
-    return { data: filteredData, categoryName: targetName };
+  const { data } = useMemo(() => {
+    const filteredData = (inventoryItems || []).filter(i => i.name === category && !i.isArchived);
+    return { data: filteredData };
   }, [category, inventoryItems]);
 
   const columns = useMemo<ColumnDef<InventoryItem>[]>(() => {
     const projectOptions = projects.map(p => ({ value: p.id, label: p.name }));
     const statusOptionsMapped = statusOptions.map(s => ({ value: s, label: s }));
 
-    const baseColumns: ColumnDef<InventoryItem>[] = [
+    let baseColumns: ColumnDef<InventoryItem>[] = [
       {
         id: 'select',
         header: ({ table }) => (
@@ -146,23 +139,36 @@ const InventorySheet = ({ category }: { category: Category }) => {
       },
       { accessorKey: 'serialNumber', header: 'Serial No.', cell: EditableCell },
       { accessorKey: 'ariesId', header: 'Aries ID', cell: EditableCell },
+      { accessorKey: 'erpId', header: 'ERP ID', cell: EditableCell },
+      { accessorKey: 'certification', header: 'Certification', cell: EditableCell },
       { 
         accessorKey: 'projectId', 
         header: 'Project', 
         cell: (props) => <SelectCell {...props} options={projectOptions} placeholder="Select Project" />
       },
+      { accessorKey: 'plantUnit', header: 'Plant/Unit', cell: EditableCell },
       { 
         accessorKey: 'status', 
         header: 'Status', 
         cell: (props) => <SelectCell {...props} options={statusOptionsMapped} />
       },
+      { accessorKey: 'purchaseDate', header: 'Purchase Date', cell: DateCell },
       { accessorKey: 'inspectionDueDate', header: 'Insp. Due', cell: DateCell },
       { accessorKey: 'tpInspectionDueDate', header: 'TP Insp. Due', cell: DateCell },
       { accessorKey: 'certificateUrl', header: 'TP Cert Link', cell: EditableCell },
       { accessorKey: 'inspectionCertificateUrl', header: 'Insp Cert Link', cell: EditableCell },
       { accessorKey: 'remarks', header: 'Remarks', cell: EditableCell },
+      { accessorKey: 'lastUpdated', header: 'Last Updated', cell: ({ getValue }) => {
+          const value = getValue() as string;
+          if (!value) return 'N/A';
+          try {
+              return format(parseISO(value), 'dd-MM-yy HH:mm');
+          } catch {
+              return 'Invalid Date';
+          }
+      }},
     ];
-    if (category === 'harness') {
+    if (category === 'Harness') {
       baseColumns.splice(3, 0, { accessorKey: 'chestCrollNo', header: 'Chest Croll No.', cell: EditableCell });
     }
     return baseColumns;
@@ -186,7 +192,7 @@ const InventorySheet = ({ category }: { category: Category }) => {
   
   const handleAddRow = () => {
     addInventoryItem({
-      name: categoryName,
+      name: category,
       serialNumber: `NEW-${Math.floor(Math.random() * 10000)}`,
       status: 'In Store',
       projectId: projects[0]?.id || '',
