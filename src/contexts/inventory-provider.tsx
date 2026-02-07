@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -239,7 +240,7 @@ const createDataListenerRTDB = <T extends {}>(
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
 
 export function InventoryProvider({ children }: { children: ReactNode }) {
-    const { user, addActivityLog } = useAuth();
+    const { user, addActivityLog, can } = useAuth();
     const { projects, notificationSettings, managementRequests, users } = useGeneral();
     const { manpowerProfiles } = useManpower();
     const { toast } = useToast();
@@ -326,13 +327,13 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         });
         
         return { pendingConsumableRequestCount: pendingConsumable, updatedConsumableRequestCount: updatedConsumable, pendingGeneralRequestCount: pendingGeneral, updatedGeneralRequestCount: updatedGeneral };
-    }, [user, internalRequests, can.approve_store_requests, consumableItemIds]);
+    }, [user, internalRequests, can, consumableItemIds]);
 
     const { pendingPpeRequestCount, updatedPpeRequestCount } = useMemo(() => {
         if (!user) return { pendingPpeRequestCount: 0, updatedPpeRequestCount: 0 };
     
-        const canApprove = ['Admin', 'Manager'].includes(user.role);
-        const canIssue = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Project Coordinator'].includes(user.role);
+        const canApprove = can.manage_ppe_request;
+        const canIssue = can.manage_ppe_stock;
     
         const pendingApproval = canApprove ? ppeRequests.filter(r => r.status === 'Pending').length : 0;
         const pendingIssuance = canIssue ? ppeRequests.filter(r => r.status === 'Approved').length : 0;
@@ -353,7 +354,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             pendingPpeRequestCount: pendingApproval + pendingIssuance + pendingDisputes,
             updatedPpeRequestCount: myUpdates + myQueries
         };
-    }, [user, ppeRequests]);
+    }, [user, ppeRequests, can]);
     
     const addInternalRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean, subject?: string) => {
         if (!user) return;
@@ -445,7 +446,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       });
       await batch.commit();
       toast({ title: `${itemIds.length} item(s) deleted.` });
-    }, [user, can.manage_inventory_database, toast]);
+    }, [user, can, toast]);
 
     const updateInventoryItem = useCallback(async (item: Partial<InventoryItem> & { id: string }, category: string) => {
       if (!user || !can.manage_inventory_database) return;
@@ -453,7 +454,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       const { id, ...data } = item;
       const docRef = doc(db, collectionName, id);
       await updateDoc(docRef, { ...data, lastUpdated: serverTimestamp() });
-    }, [user, can.manage_inventory_database]);
+    }, [user, can]);
 
     // Dummy implementations for RTDB functions to avoid breaking changes
     const addInventoryItem = () => {};
@@ -513,7 +514,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const acknowledgeInternalRequest = () => {};
     const addPpeRequest = () => {};
     const updatePpeRequest = () => {};
-    const updatePpeRequestStatus = () => {};
     const resolvePpeDispute = () => {};
     const deletePpeRequest = () => {};
     const deletePpeAttachment = () => {};
@@ -603,3 +603,5 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
+
+    
