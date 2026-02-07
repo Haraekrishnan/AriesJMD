@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -19,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { PlusCircle, Trash2, CheckCircle, Settings, Save, ArrowUp, ArrowDown } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ScrollArea } from '../ui/scroll-area';
+import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { isPast, parseISO, isValid, format, parse } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -36,6 +35,7 @@ function debounce<T extends (...args: any[]) => void>(func: T, delay: number): (
     };
 }
 
+const statusOptions: InventoryItemStatus[] = ['In Use', 'In Store', 'Damaged', 'Expired', 'Moved to another project', 'Quarantine'];
 
 const statusColorMap: Record<InventoryItemStatus, string> = {
     'In Use': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
@@ -76,7 +76,7 @@ const EditableCell = React.memo(({ getValue, row, column, table }: any) => {
         onFocus={onFocus}
         disabled={!isEditable}
         className={cn(
-            "w-full h-full border-transparent bg-transparent focus:bg-white focus:border focus:ring-1 focus:ring-ring p-1",
+            "w-full h-full border-transparent bg-transparent focus:bg-white dark:focus:bg-slate-800 focus:border focus:ring-1 focus:ring-ring p-1",
             !isEditable && "opacity-60 cursor-not-allowed"
         )}
       />
@@ -208,8 +208,6 @@ const InventorySheet = ({ category }: { category: string }) => {
       }, 500)
   ).current;
 
-  const statusOptions: InventoryItemStatus[] = ['In Use', 'In Store', 'Damaged', 'Expired', 'Moved to another project', 'Quarantine'];
-
   const columns = useMemo<ColumnDef<InventoryItem>[]>(() => {
     const projectOptions = projects.map(p => ({ value: p.id, label: p.name }));
     const statusOptionsMapped = statusOptions.map(s => ({ value: s, label: s }));
@@ -297,7 +295,7 @@ const InventorySheet = ({ category }: { category: string }) => {
       baseColumns.splice(3, 0, { accessorKey: 'chestCrollNo', header: ({column}) => <FilterableHeader title="Chest Croll No." column={column} />, cell: EditableCell, size: 150 });
     }
     return baseColumns;
-  }, [category, projects, statusOptions]);
+  }, [category, projects]);
 
   const table = useReactTable({
     data: localData,
@@ -495,50 +493,55 @@ const InventorySheet = ({ category }: { category: string }) => {
       </CardHeader>
       <CardContent>
         <div onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onPaste={handlePaste}>
-            <ScrollArea className="h-[60vh] border rounded-md">
-                <Table style={{width: table.getCenterTotalSize()}}>
-                <TableHeader className="sticky top-0 z-20 bg-card">
-                    {table.getHeaderGroups().map(headerGroup => (
-                    <TableRow key={headerGroup.id}>
-                        {headerGroup.headers.map(header => (
-                        <TableHead key={header.id} className="relative p-1 align-top bg-card" style={{width: header.getSize()}}>
-                            {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                            <div
-                                onMouseDown={header.getResizeHandler()}
-                                onTouchStart={header.getResizeHandler()}
-                                className="absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none"
-                            />
-                        </TableHead>
+            <ScrollArea className="h-[60vh] w-full border rounded-md">
+                <div className="relative" style={{ width: table.getCenterTotalSize() }}>
+                    <Table>
+                    <TableHeader className="sticky top-0 z-20 bg-card">
+                        {table.getHeaderGroups().map(headerGroup => (
+                        <TableRow key={headerGroup.id}>
+                            {headerGroup.headers.map(header => (
+                            <TableHead key={header.id} className={cn("relative p-1 align-top bg-card", header.column.id === 'select' && 'sticky left-0 z-10', header.column.id === 'serialNumber' && 'sticky left-[60px] z-10')} style={{width: header.getSize()}}>
+                                {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                                <div
+                                    onMouseDown={header.getResizeHandler()}
+                                    onTouchStart={header.getResizeHandler()}
+                                    className="absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none"
+                                />
+                            </TableHead>
+                            ))}
+                        </TableRow>
                         ))}
-                    </TableRow>
-                    ))}
-                </TableHeader>
-                <TableBody>
-                    {table.getRowModel().rows.map((row, rowIndex) => (
-                    <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className={cn(rowIndex % 2 === 0 ? "bg-muted/30" : "bg-background")}>
-                        {row.getVisibleCells().map((cell, colIndex) => (
-                        <TableCell 
-                            key={cell.id}
-                            id={`cell-${row.id}-${cell.column.id}`}
-                            onMouseDown={() => handleMouseDown(row.index, colIndex)}
-                            onMouseEnter={() => handleMouseEnter(row.index, colIndex)}
-                            onKeyDown={(e) => handleCellKeyDown(e, row.index, colIndex)}
-                            className={cn(
-                                "p-0",
-                                { 'sticky left-0 bg-card z-10': cell.column.id === 'select' },
-                                { 'sticky left-[60px] bg-card z-10': cell.column.id === 'serialNumber' },
-                                activeCell?.row === row.index && activeCell?.columnId === cell.column.id && "ring-2 ring-ring ring-offset-2 z-10",
-                                isCellSelected(rowIndex, colIndex) && "bg-blue-100 dark:bg-blue-800/50"
-                            )}
-                            style={{width: cell.column.getSize()}}
-                        >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </TableCell>
+                    </TableHeader>
+                    <TableBody>
+                        {table.getRowModel().rows.map((row, rowIndex) => (
+                        <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className={cn(rowIndex % 2 === 0 ? "bg-muted/30" : "")}>
+                            {row.getVisibleCells().map((cell, colIndex) => (
+                            <TableCell 
+                                key={cell.id}
+                                id={`cell-${row.id}-${cell.column.id}`}
+                                onMouseDown={() => handleMouseDown(row.index, colIndex)}
+                                onMouseEnter={() => handleMouseEnter(row.index, colIndex)}
+                                onKeyDown={(e) => handleCellKeyDown(e, row.index, colIndex)}
+                                className={cn(
+                                    "p-0 h-10",
+                                    { 'sticky left-0 z-10': cell.column.id === 'select' },
+                                    { 'sticky left-[60px] z-10': cell.column.id === 'serialNumber' },
+                                    cell.column.id === 'select' && (rowIndex % 2 === 0 ? 'bg-muted/30' : 'bg-card'),
+                                    cell.column.id === 'serialNumber' && (rowIndex % 2 === 0 ? 'bg-muted/30' : 'bg-card'),
+                                    activeCell?.row === row.index && activeCell?.columnId === cell.column.id && "ring-2 ring-ring ring-offset-2 z-20",
+                                    isCellSelected(rowIndex, colIndex) && "bg-blue-100 dark:bg-blue-900/50"
+                                )}
+                                style={{width: cell.column.getSize()}}
+                            >
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </TableCell>
+                            ))}
+                        </TableRow>
                         ))}
-                    </TableRow>
-                    ))}
-                </TableBody>
-                </Table>
+                    </TableBody>
+                    </Table>
+                </div>
+                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
         </div>
       </CardContent>

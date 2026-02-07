@@ -1,10 +1,12 @@
 'use client';
+
 import { useState, useMemo, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import InventorySheet from '@/components/inventory/InventorySheet';
 import { useAppContext } from '@/contexts/app-provider';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import InventorySheet from '@/components/inventory/InventorySheet';
 import { AlertTriangle } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 export default function InventoryDatabasePage() {
     const { can, inventoryItems } = useAppContext();
@@ -19,10 +21,10 @@ export default function InventoryDatabasePage() {
         return Array.from(categories).sort();
     }, [inventoryItems]);
 
-    const [activeTab, setActiveTab] = useState<string | undefined>(inventoryCategories[0]);
+    const [activeTab, setActiveTab] = useState<string | undefined>();
 
     useEffect(() => {
-        if (inventoryCategories.length > 0 && (!activeTab || !inventoryCategories.includes(activeTab))) {
+        if (inventoryCategories.length > 0 && !activeTab) {
             setActiveTab(inventoryCategories[0]);
         }
     }, [inventoryCategories, activeTab]);
@@ -51,11 +53,14 @@ export default function InventoryDatabasePage() {
                 </p>
             </div>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-                <TabsList>
-                    {inventoryCategories.map(cat => (
-                        <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
-                    ))}
-                </TabsList>
+                <ScrollArea className="w-full whitespace-nowrap rounded-md border">
+                    <TabsList className="inline-flex h-auto p-1">
+                        {inventoryCategories.map(cat => (
+                            <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
+                        ))}
+                    </TabsList>
+                    <ScrollBar orientation="horizontal" />
+                </ScrollArea>
                 {inventoryCategories.map(cat => (
                     <TabsContent key={cat} value={cat} className="flex-1 mt-4">
                         <InventorySheet category={cat} />
