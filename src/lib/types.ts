@@ -1,4 +1,5 @@
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -268,7 +269,6 @@ export const ALL_PERMISSIONS = [
   'manage_manpower_list',
   'approve_store_requests',
   'manage_inventory',
-  'manage_inventory_database',
   'manage_equipment_status',
   'manage_announcements',
   'view_performance_reports',
@@ -299,6 +299,8 @@ export const ALL_PERMISSIONS = [
   'manage_vehicle_usage',
   'manage_signatures',
   'manage_job_progress',
+  'manage_inventory_database',
+  'view_inventory_database',
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -361,7 +363,7 @@ export type Driver = {
   licenseExpiry?: string;
 };
 
-export type IncidentStatus = 'New' | 'Under Investigation' | 'Action Pending' | 'Resolved' | 'Closed';
+export type IncidentStatus = 'New' | 'Under Investigation' | 'Action Taken' | 'Resolved' | 'Closed';
 
 export type Comment = {
   id: string;
@@ -635,8 +637,26 @@ export type InventoryItem = {
   unit?: string;
   movedToProjectId?: string | null;
   transferDate?: string | null;
-  isArchived?: boolean; // For soft delete
 };
+
+type DbItem = {
+    id: string;
+    serialNo: string;
+    itemName: string;
+    ariesId?: string;
+    status: 'In Use' | 'Expired' | 'Repair' | 'Idle' | 'In Store';
+    projectId: string;
+    inspectionDueDate?: string; // ISO
+    tpInspectionDueDate?: string; // ISO
+    lastUpdated: string; // ISO
+    createdBy: string; // userId
+    isArchived: boolean;
+}
+
+export type Harness = DbItem & { chestCrollNo?: string; };
+export type Tripod = DbItem;
+export type Lifeline = DbItem;
+export type GasDetector = DbItem;
 
 export type UTMachine = {
   id: string;
@@ -884,38 +904,16 @@ export type JobRecordPlant = {
   name: string;
 };
 
-export const JOB_PROGRESS_STEPS = [
-    'Timesheets Pending',
-    'Timesheets Submitted',
-    'Timesheets Received',
-    'JMS created',
-    'JMS sent for Endorsement',
-    'JMS Handed Over',
-    'JMS Endorsed',
-    'JMS sent back to Office',
-    'JMS No created',
-    'JMS Hard copy sent back to Site',
-    'JMS Hard copy submitted',
-] as const;
-
-export const REOPEN_JOB_STEPS = [
-    'JMS Rejected',
-    'JMS Deleted',
-    'JMS Returned',
-] as const;
-
-export type JobProgressStepName = typeof JOB_PROGRESS_STEPS[number];
-
 export type JobStepStatus = 'Not Started' | 'Pending' | 'Acknowledged' | 'Completed' | 'Skipped';
 
 export type JobStep = {
   id: string;
   name: string;
-  assigneeId?: string | null;
+  assigneeId: string;
   status: JobStepStatus;
   description?: string;
-  dueDate?: string | null; // ISO string
-  isFinalStep?: boolean;
+  dueDate?: string; // ISO string
+  requiresAttachment?: boolean;
   
   acknowledgedAt?: string; // ISO
   completedAt?: string; // ISO
@@ -939,13 +937,6 @@ export type JobProgress = {
   lastUpdated: string; // ISO
   status: JobProgressStatus;
   steps: JobStep[];
-  isReopened?: boolean;
-  projectId?: string;
-  workOrderNo?: string;
-  foNo?: string;
-  amount?: number;
-  dateFrom?: string | null;
-  dateTo?: string | null;
 };
 
 export type TpCertListItem = {
