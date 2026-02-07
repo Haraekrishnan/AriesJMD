@@ -26,7 +26,6 @@ import BulkUpdateInspectionDialog from '@/components/inventory/BulkUpdateInspect
 import UpdateItemsDialog from '@/components/inventory/UpdateItemsDialog';
 import ActionRequiredReport from '@/components/inventory/ActionRequiredReport';
 import NewDamageReportDialog from '@/components/damage-reports/NewDamageReportDialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 
 export default function StoreInventoryPage() {
@@ -63,6 +62,7 @@ export default function StoreInventoryPage() {
         const userCanManage = can.manage_inventory || user?.role === 'Admin';
         
         return inventoryItems.filter(item => {
+            if (item.isArchived) return false;
             if (item.category === 'Daily Consumable' || item.category === 'Job Consumable') {
                 return false;
             }
@@ -212,30 +212,19 @@ export default function StoreInventoryPage() {
                 </AccordionItem>
             </Accordion>
             
-            <Tabs defaultValue="list-view" className="w-full">
-                <TabsList>
-                    <TabsTrigger value="list-view">Inventory List</TabsTrigger>
-                    <TabsTrigger value="db-view">Inventory Database</TabsTrigger>
-                </TabsList>
-                <TabsContent value="list-view" className="mt-4">
-                    <Card>
-                        <CardHeader>
-                            <div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-4'>
-                            {view === 'list' ? (
-                                <InventoryFilters onApplyFilters={setFilters} />
-                            ) : <CardTitle>General Inventory Summary</CardTitle>}
-                            <InventoryReportDownloads items={filteredItems} isSummary={view === 'summary'} summaryData={summaryData} />
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            {view === 'list' ? <InventoryTable items={filteredItems} selectedItems={selectedItemsForTransfer} onSelectionChange={setSelectedItemsForTransfer} /> : <InventorySummary items={filteredItems} />}
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-                <TabsContent value="db-view" className="mt-4">
-                     <p className="text-center text-muted-foreground">The Inventory Database feature has been moved to its own page. Please navigate to "Inventory DB" from the sidebar.</p>
-                </TabsContent>
-            </Tabs>
+            <Card>
+                <CardHeader>
+                    <div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-4'>
+                    {view === 'list' ? (
+                        <InventoryFilters onApplyFilters={setFilters} />
+                    ) : <CardTitle>General Inventory Summary</CardTitle>}
+                    <InventoryReportDownloads items={filteredItems} isSummary={view === 'summary'} summaryData={summaryData} />
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {view === 'list' ? <InventoryTable items={filteredItems} selectedItems={selectedItemsForTransfer} onSelectionChange={setSelectedItemsForTransfer} /> : <InventorySummary items={filteredItems} />}
+                </CardContent>
+            </Card>
 
 
             <AddItemDialog isOpen={isAddItemOpen} setIsOpen={setIsAddItemOpen} />
