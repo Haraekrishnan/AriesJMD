@@ -46,6 +46,22 @@
       ".read": true,
       ".write": true
     },
+    "inventory_harness": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "inventory_tripod": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "inventory_lifeline": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "inventory_gas_detectors": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
     "utMachines": {
       ".read": true,
       ".write": true
@@ -110,30 +126,6 @@
       ".read": true,
       ".write": true
     },
-    "ppeRequests": {
-      ".read": true,
-      ".write": true
-    },
-    "ppeStock": {
-      ".read": true,
-      ".write": true
-    },
-    "ppeInwardHistory": {
-      ".read": true,
-      ".write": true
-    },
-    "vehicles": {
-      ".read": true,
-      ".write": true
-    },
-    "drivers": {
-      ".read": true,
-      ".write": true
-    },
-    "branding": {
-      ".read": true,
-      ".write": true
-    },
     "jobSchedules": {
       ".read": true,
       ".write": true
@@ -189,3 +181,6 @@
     }
   }
 }
+
+
+    

@@ -4,8 +4,7 @@
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
 import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, PpeRequestStatus, Role, ConsumableInwardRecord, Directive, DirectiveStatus, DamageReport, User, NotificationSettings, DamageReportStatus } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
-import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
-import { getFirestore, collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc, serverTimestamp, query, where, writeBatch } from 'firebase/firestore';
+import { ref, onValue, set, push, remove, update, get, serverTimestamp } from 'firebase/database';
 import { useAuth } from './auth-provider';
 import { useGeneral } from './general-provider';
 import { useToast } from '@/hooks/use-toast';
@@ -19,16 +18,19 @@ import { v4 as uuidv4 } from 'uuid';
 import { uploadFile } from '@/lib/storage';
 import { normalizeGoogleDriveLink } from '@/lib/utils';
 
-const db = getFirestore();
-
-const createFirestoreListener = <T extends {}>(
+const createRtdbListener = <T extends {}>(
     path: string,
     setData: React.Dispatch<React.SetStateAction<T[]>>,
 ) => {
-    return onSnapshot(query(collection(db, path), where("isArchived", "==", false)), (snapshot) => {
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
-        setData(data);
+    const dbRef = ref(rtdb, path);
+    const unsubscribe = onValue(dbRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        const dataArray = Object.keys(data)
+          .map(key => ({ id: key, ...data[key] }))
+          .filter(item => !(item as any).isArchived);
+        setData(dataArray as T[]);
     });
+    return unsubscribe;
 };
 
 const _addInternalRequestComment = (
@@ -246,13 +248,11 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const { toast } = useToast();
     const { consumableItems, consumableInwardHistory } = useConsumable();
 
-    // Firestore states
-    const [harnesses, setHarnesses] = useState<InventoryItem[]>([]);
-    const [tripods, setTripods] = useState<InventoryItem[]>([]);
-    const [lifelines, setLifelines] = useState<InventoryItem[]>([]);
-    const [gasDetectors, setGasDetectors] = useState<InventoryItem[]>([]);
-    
     // RTDB states
+    const [harnessesById, setHarnessesById] = useState<Record<string, InventoryItem>>({});
+    const [tripodsById, setTripodsById] = useState<Record<string, InventoryItem>>({});
+    const [lifelinesById, setLifelinesById] = useState<Record<string, InventoryItem>>({});
+    const [gasDetectorsById, setGasDetectorsById] = useState<Record<string, InventoryItem>>({});
     const [utMachinesById, setUtMachinesById] = useState<Record<string, UTMachine>>({});
     const [dftMachinesById, setDftMachinesById] = useState<Record<string, DftMachine>>({});
     const [mobileSimsById, setMobileSimsById] = useState<Record<string, MobileSim>>({});
@@ -274,6 +274,11 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const [directives, setDirectives] = useState<Directive[]>([]);
     
     // Memos
+    const harnesses = useMemo(() => Object.values(harnessesById).filter(item => !item.isArchived), [harnessesById]);
+    const tripods = useMemo(() => Object.values(tripodsById).filter(item => !item.isArchived), [tripodsById]);
+    const lifelines = useMemo(() => Object.values(lifelinesById).filter(item => !item.isArchived), [lifelinesById]);
+    const gasDetectors = useMemo(() => Object.values(gasDetectorsById).filter(item => !item.isArchived), [gasDetectorsById]);
+    
     const inventoryItems = useMemo(() => [...harnesses, ...tripods, ...lifelines, ...gasDetectors], [harnesses, tripods, lifelines, gasDetectors]);
     const utMachines = useMemo(() => Object.values(utMachinesById), [utMachinesById]);
     const dftMachines = useMemo(() => Object.values(dftMachinesById), [dftMachinesById]);
@@ -414,12 +419,13 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         addPpeRequestComment(requestId, `Status changed to ${status}. ${comment}`, true);
     }, [user, ppeRequestsById, addPpeRequestComment]);
     
-    // Firestore Functions
+    // RTDB Functions
     const addInventoryRow = useCallback(async (category: string) => {
       if (!user) return;
       const collectionName = `inventory_${category.toLowerCase().replace(' ', '_')}`;
       try {
-        await addDoc(collection(db, collectionName), {
+        const newDocRef = push(ref(rtdb, collectionName));
+        await set(newDocRef, {
           name: category,
           serialNumber: 'Double-click to add',
           ariesId: '',
@@ -437,24 +443,23 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, [user]);
 
     const deleteInventoryItems = useCallback(async (itemIds: string[], category: string) => {
-      if (!user || !can.manage_inventory_database) return;
-      const collectionName = `inventory_${category.toLowerCase().replace(' ', '_')}`;
-      const batch = writeBatch(db);
-      itemIds.forEach(id => {
-        const docRef = doc(db, collectionName, id);
-        batch.update(docRef, { isArchived: true });
-      });
-      await batch.commit();
-      toast({ title: `${itemIds.length} item(s) deleted.` });
-    }, [user, can, toast]);
-
-    const updateInventoryItem = useCallback(async (item: Partial<InventoryItem> & { id: string }, category: string) => {
-      if (!user || !can.manage_inventory_database) return;
-      const collectionName = `inventory_${category.toLowerCase().replace(' ', '_')}`;
-      const { id, ...data } = item;
-      const docRef = doc(db, collectionName, id);
-      await updateDoc(docRef, { ...data, lastUpdated: serverTimestamp() });
-    }, [user, can]);
+        if (!user || !can.manage_inventory_database) return;
+        const collectionName = `inventory_${category.toLowerCase().replace(' ', '_')}`;
+        const updates: { [key: string]: boolean } = {};
+        itemIds.forEach(id => {
+          updates[`${collectionName}/${id}/isArchived`] = true;
+        });
+        await update(ref(rtdb), updates);
+        toast({ title: `${itemIds.length} item(s) deleted.` });
+      }, [user, can, toast]);
+  
+      const updateInventoryItem = useCallback(async (item: Partial<InventoryItem> & { id: string }, category: string) => {
+        if (!user || !can.manage_inventory_database) return;
+        const collectionName = `inventory_${category.toLowerCase().replace(' ', '_')}`;
+        const { id, ...data } = item;
+        const docRef = ref(rtdb, `${collectionName}/${id}`);
+        await update(docRef, { ...data, lastUpdated: serverTimestamp() });
+      }, [user, can]);
 
     // Dummy implementations for RTDB functions to avoid breaking changes
     const addInventoryItem = () => {};
@@ -537,12 +542,11 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
     useEffect(() => {
         const unsubs: (()=>void)[] = [];
-        // Firestore Listeners
-        unsubs.push(createFirestoreListener('inventory_harness', setHarnesses));
-        unsubs.push(createFirestoreListener('inventory_tripod', setTripods));
-        unsubs.push(createFirestoreListener('inventory_lifeline', setLifelines));
-        unsubs.push(createFirestoreListener('inventory_gas_detectors', setGasDetectors));
         // RTDB Listeners
+        unsubs.push(createRtdbListener('inventory_harness', setHarnesses));
+        unsubs.push(createRtdbListener('inventory_tripod', setTripods));
+        unsubs.push(createRtdbListener('inventory_lifeline', setLifelines));
+        unsubs.push(createRtdbListener('inventory_gas_detectors', setGasDetectors));
         unsubs.push(createDataListenerRTDB('utMachines', setUtMachinesById));
         unsubs.push(createDataListenerRTDB('dftMachines', setDftMachinesById));
         unsubs.push(createDataListenerRTDB('mobileSims', setMobileSimsById));
@@ -603,5 +607,7 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
+
+    
 
     
