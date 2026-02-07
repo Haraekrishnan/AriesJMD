@@ -135,7 +135,7 @@ const plannerNotificationCount =
       return lastComment && lastComment.userId !== user.id && !req.viewedByRequester;
     }).length;
 
-    const updatedPpeRequestCount = myPpeRequests.filter(r => (r.status === 'Approved' || r.status === 'Rejected' || r.status === 'Issued') && !req.viewedByRequester).length + ppeQueries;
+    const updatedPpeRequestCount = myPpeRequests.filter(r => (r.status === 'Approved' || r.status === 'Rejected' || r.status === 'Issued') && !r.viewedByRequester).length + ppeQueries;
     
     const canApprovePayments = user.role === 'Admin' || user.role === 'Manager';
     const pendingPaymentApprovalCount = canApprovePayments ? (payments || []).filter(p => p.status === 'Pending').length : 0;
