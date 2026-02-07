@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useEffect, forwardRef, ComponentProps } from 'react';
 import Link from 'next/link';
@@ -35,6 +36,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 
 // #region Editable Cell Components
 const EditableCell = ({
@@ -245,11 +247,11 @@ const InventorySheet = ({ category }: { category: string }) => {
             <CardHeader>
                 <CardTitle>{category} Inventory Database</CardTitle>
                 <div className="flex justify-between items-center">
-                    <p className="text-sm text-muted-foreground">
+                    <div className="text-sm text-muted-foreground">
                         <Badge variant={canManageDb ? "success" : "secondary"}>
                             {canManageDb ? "Editing enabled - All changes saved automatically" : "Read-only mode"}
                         </Badge>
-                    </p>
+                    </div>
                     <div className="flex gap-2">
                         {canManageDb && (
                            <>
