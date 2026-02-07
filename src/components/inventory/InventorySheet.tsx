@@ -22,8 +22,6 @@ import type { InventoryItem, InventoryItemStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardContent } from '../ui/card';
 
-type Category = 'Harness' | 'Tripod' | 'Lifeline' | 'Gas Detector';
-
 const statusOptions: InventoryItemStatus[] = ['In Use', 'In Store', 'Damaged', 'Expired', 'Moved to another project', 'Quarantine'];
 
 const EditableCell = ({ getValue, row, column, table }: any) => {
@@ -95,7 +93,7 @@ const DateCell = ({ getValue, row, column, table }: any) => {
   );
 };
 
-const InventorySheet = ({ category }: { category: Category }) => {
+const InventorySheet = ({ category }: { category: string }) => {
   const { 
     inventoryItems, 
     projects, 
@@ -168,7 +166,7 @@ const InventorySheet = ({ category }: { category: Category }) => {
           }
       }},
     ];
-    if (category === 'Harness') {
+    if (category.toLowerCase() === 'harness') {
       baseColumns.splice(3, 0, { accessorKey: 'chestCrollNo', header: 'Chest Croll No.', cell: EditableCell });
     }
     return baseColumns;
