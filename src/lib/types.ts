@@ -268,6 +268,7 @@ export const ALL_PERMISSIONS = [
   'manage_manpower_list',
   'approve_store_requests',
   'manage_inventory',
+  'manage_inventory_database',
   'manage_equipment_status',
   'manage_announcements',
   'view_performance_reports',
@@ -634,6 +635,7 @@ export type InventoryItem = {
   unit?: string;
   movedToProjectId?: string | null;
   transferDate?: string | null;
+  isArchived?: boolean; // For soft delete
 };
 
 export type UTMachine = {

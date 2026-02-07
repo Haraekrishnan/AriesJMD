@@ -1,25 +1,25 @@
+
 'use client';
-import { useState, useMemo, useEffect } from 'react';
-import type { InventoryItem, Task } from '@/lib/types';
-import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Edit, Trash2, ShieldQuestion, Pencil, ArrowUpDown, CheckCircle, Link as LinkIcon, Download, ChevronDown, ChevronRight, AlertCircle } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { Badge } from '../ui/badge';
+import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
-import { useToast } from '@/hooks/use-toast';
+import type { InventoryItem } from '@/lib/types';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { MoreHorizontal, Edit, Trash2, ShieldQuestion, Pencil, ArrowUpDown, CheckCircle, Link as LinkIcon, Download } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import Link from 'next/link';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { format, isPast, parseISO, differenceInDays, formatDistanceToNow, isValid } from 'date-fns';
-import React from 'react';
-import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 import EditItemDialog from './EditItemDialog';
+import { format, isPast, parseISO, differenceInDays, formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
 import NewCertificateRequestDialog from './NewCertificateRequestDialog';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import RenameItemGroupDialog from './RenameItemGroupDialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Checkbox } from '../ui/checkbox';
+import React from 'react';
 import { ScrollArea } from '../ui/scroll-area';
-import { Card, CardContent } from '../ui/card';
 
 interface InventoryTableProps {
   items: InventoryItem[];
@@ -160,7 +160,7 @@ const ItemCard = ({ item, onEdit, onRequest, onDelete, onVerify }: { item: Inven
     );
 };
 
-export default function InventoryTable({ items, selectedItems = [], onSelectionChange }: InventoryTableProps) {
+export default function InventoryTable({ items, selectedItems, onSelectionChange }: InventoryTableProps) {
     const { user, roles, deleteInventoryItem, deleteInventoryItemGroup, projects, updateInventoryItem, can, damageReports } = useAppContext();
     const { toast } = useToast();
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -168,50 +168,50 @@ export default function InventoryTable({ items, selectedItems = [], onSelectionC
     const [isRenameOpen, setIsRenameOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
     const [selectedItemGroup, setSelectedItemGroup] = useState<string | null>(null);
-    const [sortConfig, setSortConfig] = useState<{ key: keyof InventoryItem, direction: 'ascending' | 'descending' } | null>({ key: 'lastUpdated', direction: 'descending' });
-    const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+    const [sortConfig, setSortConfig] = useState<{ key: 'lastUpdated', direction: 'ascending' | 'descending' } | null>(null);
 
-    const canManage = useMemo(() => user?.role === 'Admin' || can.manage_inventory, [user, can]);
+
+    const canManage = useMemo(() => {
+        if (!user) return false;
+        const userRole = roles.find(r => r.name === user.role);
+        return userRole?.permissions.includes('manage_inventory') ?? false;
+    }, [user, roles]);
     
-    const toggleRow = (id: string) => {
-        setExpandedRows(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(id)) {
-                newSet.delete(id);
-            } else {
-                newSet.add(id);
-            }
-            return newSet;
-        });
-    };
-
     const getProjectName = (item: InventoryItem) => {
-        if (item.status === 'Moved to another project') return item.movedToProjectId || 'N/A';
+        if (item.status === 'Moved to another project') {
+          return item.movedToProjectId || 'N/A';
+        }
         const project = projects.find(p => p.id === item.projectId);
         if (!project) return 'N/A';
         return item.plantUnit ? `${project.name} / ${item.plantUnit}` : project.name;
     };
 
-    const sortedItems = useMemo(() => {
-        const sortableItems = [...items];
+    const groupedItems = useMemo(() => {
+        const sortedItems = [...items];
         if (sortConfig) {
-          sortableItems.sort((a, b) => {
-            const aValue = a[sortConfig.key];
-            const bValue = b[sortConfig.key];
-    
-            if (aValue === null || aValue === undefined) return 1;
-            if (bValue === null || bValue === undefined) return -1;
-            
-            if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
-            if (aValue > bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
-            
-            return 0;
-          });
+            sortedItems.sort((a, b) => {
+                const dateA = a.lastUpdated ? parseISO(a.lastUpdated).getTime() : 0;
+                const dateB = b.lastUpdated ? parseISO(b.lastUpdated).getTime() : 0;
+                if (dateA < dateB) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (dateA > dateB) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
+            });
         }
-        return sortableItems;
+        
+        return sortedItems.reduce<Record<string, InventoryItem[]>>((acc, item) => {
+            if (!acc[item.name]) {
+                acc[item.name] = [];
+            }
+            acc[item.name].push(item);
+            return acc;
+        }, {});
     }, [items, sortConfig]);
 
-    const requestSort = (key: keyof InventoryItem) => {
+    const requestSort = (key: 'lastUpdated') => {
         let direction: 'ascending' | 'descending' = 'ascending';
         if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
             direction = 'descending';
@@ -228,6 +228,11 @@ export default function InventoryTable({ items, selectedItems = [], onSelectionC
         setSelectedItem(item);
         setIsCertRequestOpen(true);
     };
+    
+    const handleRenameGroupClick = (itemName: string) => {
+        setSelectedItemGroup(itemName);
+        setIsRenameOpen(true);
+    };
 
     const handleVerify = (item: InventoryItem) => {
         updateInventoryItem(item);
@@ -242,38 +247,20 @@ export default function InventoryTable({ items, selectedItems = [], onSelectionC
         toast({ variant: 'destructive', title: 'Item Deleted' });
     };
 
-    const handleSelectAll = (checked: boolean | 'indeterminate') => {
-        if (!onSelectionChange) return;
-        onSelectionChange(checked === true ? [...items] : []);
-    };
-
-    const handleRowSelection = (item: InventoryItem, checked: boolean) => {
-        if (!onSelectionChange) return;
-        const currentSelection = new Set(selectedItems.map(i => i.id));
-        if (checked) {
-            currentSelection.add(item.id);
-        } else {
-            currentSelection.delete(item.id);
-        }
-        onSelectionChange(items.filter(i => currentSelection.has(i.id)));
-    };
-
-    const getStatusVariant = (status: string) => {
-        switch (status) {
-            case 'Damaged': return 'destructive';
-            case 'Expired': return 'yellow';
-            case 'Quarantine': return 'quarantine';
-            case 'In Use': return 'success';
-            case 'In Store': return 'default';
-            default: return 'secondary';
-        }
-    };
+    const handleDeleteGroup = (itemName: string) => {
+        deleteInventoryItemGroup(itemName);
+        toast({ variant: 'destructive', title: 'Item Group Deleted', description: `All items named "${itemName}" have been deleted.` });
+    }
     
     const getDateStyles = (dateString?: string | null): string => {
         if (!dateString) return '';
         const date = parseISO(dateString);
-        if (isPast(date)) return 'text-destructive font-bold';
-        if (differenceInDays(date, new Date()) <= 30) return 'text-orange-500 font-semibold';
+        if (isPast(date)) {
+            return 'text-destructive font-bold';
+        }
+        if (differenceInDays(date, new Date()) <= 30) {
+            return 'text-orange-500 font-semibold';
+        }
         return '';
     };
 
@@ -283,6 +270,38 @@ export default function InventoryTable({ items, selectedItems = [], onSelectionC
             return format(new Date(dateString), 'dd-MM-yyyy');
         } catch (error) {
             return 'Invalid Date';
+        }
+    };
+    
+    const handleItemGroupSelection = (itemName: string, checked: boolean | 'indeterminate') => {
+        if (!onSelectionChange || !selectedItems) return;
+        const groupItems = groupedItems[itemName];
+        const currentSelection = new Set(selectedItems.map(i => i.id));
+        if (checked) {
+            groupItems.forEach(item => currentSelection.add(item.id));
+        } else {
+            groupItems.forEach(item => currentSelection.delete(item.id));
+        }
+        onSelectionChange(items.filter(i => currentSelection.has(i.id)));
+    };
+    
+    const handleRowSelection = (item: InventoryItem) => {
+        if (!onSelectionChange || !selectedItems) return;
+        const currentSelection = new Set(selectedItems.map(i => i.id));
+        if (currentSelection.has(item.id)) {
+            currentSelection.delete(item.id);
+        } else {
+            currentSelection.add(item.id);
+        }
+        onSelectionChange(items.filter(i => currentSelection.has(i.id)));
+    };
+
+    const getStatusVariant = (status: string) => {
+        switch (status) {
+            case 'Damaged': return 'destructive';
+            case 'Expired': return 'yellow';
+            case 'Quarantine': return 'quarantine';
+            default: return 'secondary';
         }
     };
 
@@ -298,111 +317,183 @@ export default function InventoryTable({ items, selectedItems = [], onSelectionC
         <TooltipProvider>
             {/* Desktop View */}
             <div className="hidden md:block">
-                <ScrollArea className="h-[calc(100vh-32rem)]">
-                    <Table>
-                        <TableHeader className="sticky top-0 z-10 bg-card">
-                            <TableRow>
-                                {onSelectionChange && <TableHead className="w-12"><Checkbox checked={selectedItems.length === items.length && items.length > 0 ? true : (selectedItems.length > 0 ? 'indeterminate' : false)} onCheckedChange={handleSelectAll} /></TableHead>}
-                                <TableHead className="w-8"></TableHead>
-                                <TableHead>Item Name</TableHead>
-                                <TableHead>Serial No.</TableHead>
-                                <TableHead>Aries ID</TableHead>
-                                <TableHead>Location</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Insp. Due</TableHead>
-                                <TableHead>TP Insp. Due</TableHead>
-                                <TableHead>
-                                    <Button variant="ghost" onClick={() => requestSort('lastUpdated')} className="px-0 hover:bg-transparent">
-                                        Last Updated
-                                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                                    </Button>
-                                </TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {sortedItems.map(item => {
-                                const isExpanded = expandedRows.has(item.id);
-                                const now = new Date();
-                                const isItemExpired = (item.inspectionDueDate && isPast(parseISO(item.inspectionDueDate))) || (item.tpInspectionDueDate && isPast(parseISO(item.tpInspectionDueDate)));
-                                const displayStatus = isItemExpired ? 'Expired' : item.status;
-                                const damageReport = damageReports.find(dr => dr.itemId === item.id);
-                                const attachmentUrl = damageReport?.attachmentDownloadUrl || damageReport?.attachmentOriginalUrl || damageReport?.attachmentUrl;
-                                
-                                return (
-                                    <React.Fragment key={item.id}>
-                                        <TableRow>
-                                            {onSelectionChange && <TableCell><Checkbox checked={selectedItems.some(sel => sel.id === item.id)} onCheckedChange={(checked) => handleRowSelection(item, checked === true)}/></TableCell>}
-                                            <TableCell>
-                                                <Button variant="ghost" size="icon" onClick={() => toggleRow(item.id)} className="h-8 w-8">
-                                                    {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                                                </Button>
-                                            </TableCell>
-                                            <TableCell className="font-medium">{item.name}</TableCell>
-                                            <TableCell>{item.serialNumber}</TableCell>
-                                            <TableCell>{item.ariesId || 'N/A'}</TableCell>
-                                            <TableCell>{getProjectName(item)}</TableCell>
-                                            <TableCell><Badge variant={getStatusVariant(displayStatus)}>{displayStatus}</Badge></TableCell>
-                                            <TableCell className={cn(getDateStyles(item.inspectionDueDate))}>{formatDate(item.inspectionDueDate)}</TableCell>
-                                            <TableCell className={cn(getDateStyles(item.tpInspectionDueDate))}>{formatDate(item.tpInspectionDueDate)}</TableCell>
-                                            <TableCell className="text-xs text-muted-foreground">{item.lastUpdated ? formatDistanceToNow(parseISO(item.lastUpdated), { addSuffix: true }) : 'N/A'}</TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    {canManage && (
-                                                        <AlertDialog>
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end">
-                                                                    <DropdownMenuItem onSelect={() => handleEditClick(item)}><Edit className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
-                                                                    <DropdownMenuItem onSelect={() => handleRequestClick(item)}><ShieldQuestion className="mr-2 h-4 w-4"/>Request Cert</DropdownMenuItem>
-                                                                    <DropdownMenuItem onSelect={() => handleVerify(item)}><CheckCircle className="mr-2 h-4 w-4"/>Mark as Verified</DropdownMenuItem>
-                                                                    <AlertDialogTrigger asChild><DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem></AlertDialogTrigger>
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
-                                                            <AlertDialogContent>
-                                                                <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete this item.</AlertDialogDescription></AlertDialogHeader>
-                                                                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(item.id)}>Delete</AlertDialogAction></AlertDialogFooter>
-                                                            </AlertDialogContent>
-                                                        </AlertDialog>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                        {isExpanded && (
-                                            <TableRow>
-                                                <TableCell colSpan={onSelectionChange ? 11 : 10}>
-                                                    <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4 bg-muted/50">
-                                                        <DetailItem label="Chest Croll No." value={item.chestCrollNo} />
-                                                        <DetailItem label="ERP ID" value={item.erpId} />
-                                                        <DetailItem label="Certification" value={item.certification} />
-                                                        <DetailItem label="Purchase Date" value={formatDate(item.purchaseDate)} />
-                                                        <DetailItem label="Inspection Date" value={formatDate(item.inspectionDate)} />
-                                                        <div className="col-span-full space-y-1">
-                                                            <p className="text-xs text-muted-foreground">Remarks</p>
-                                                            <p className="text-sm font-medium">{item.remarks || 'N/A'}</p>
-                                                        </div>
-                                                        <div className="col-span-full flex gap-4">
-                                                            {item.certificateUrl && <Button size="sm" variant="link" asChild><a href={item.certificateUrl} target="_blank"><LinkIcon className="h-4 w-4 mr-2" /> View TP Cert.</a></Button>}
-                                                            {item.inspectionCertificateUrl && <Button size="sm" variant="link" asChild><a href={item.inspectionCertificateUrl} target="_blank"><LinkIcon className="h-4 w-4 mr-2" /> View Insp. Cert.</a></Button>}
-                                                            {attachmentUrl && <Button size="sm" variant="link" asChild><a href={attachmentUrl} target="_blank"><Download className="h-4 w-4 mr-2 text-red-500" /> Damage Report</a></Button>}
-                                                        </div>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                    </React.Fragment>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
-                </ScrollArea>
-            </div>
-            
-            {/* Mobile View */}
-            <div className="md:hidden space-y-4">
-                 <ScrollArea className="h-[calc(100vh-25rem)]">
-                    {sortedItems.map(item => <ItemCard key={item.id} item={item} onEdit={() => handleEditClick(item)} onRequest={() => handleRequestClick(item)} onDelete={() => handleDelete(item.id)} onVerify={() => handleVerify(item)}/>)}
-                 </ScrollArea>
+            <ScrollArea className="h-96">
+                <div className="overflow-x-auto">
+                    <Accordion type="multiple" className="w-full space-y-2">
+                        {Object.entries(groupedItems).map(([itemName, itemList]) => {
+                            const allInGroupSelected = itemList.every(item => selectedItems?.some(sel => sel.id === item.id));
+                            const someInGroupSelected = itemList.some(item => selectedItems?.some(sel => sel.id === item.id));
+
+                            return (
+                            <AccordionItem key={itemName} value={itemName} className="border rounded-lg bg-card">
+                                <div className="flex justify-between items-center p-4">
+                                    <div className="flex items-center gap-4 flex-1">
+                                        {onSelectionChange && <Checkbox checked={allInGroupSelected ? true : (someInGroupSelected ? 'indeterminate' : false)} onCheckedChange={(checked) => handleItemGroupSelection(itemName, checked)} />}
+                                        <AccordionTrigger className="p-0 hover:no-underline flex-1 text-left">
+                                            <div className="flex items-center gap-4">
+                                                <h3 className="font-semibold text-lg">{itemName}</h3>
+                                                <Badge variant="secondary">Total: {itemList.length}</Badge>
+                                            </div>
+                                        </AccordionTrigger>
+                                    </div>
+                                    {user?.role === 'Admin' && (
+                                        <div className="flex items-center gap-1 pl-4">
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button variant="ghost" size="icon" onClick={() => handleRenameGroupClick(itemName)}>
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent><p>Edit Group Name</p></TooltipContent>
+                                            </Tooltip>
+                                            <AlertDialog>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </AlertDialogTrigger>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent><p>Delete Entire Group</p></TooltipContent>
+                                                </Tooltip>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This action cannot be undone. This will permanently delete all {itemList.length} items named "{itemName}".
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeleteGroup(itemName)}>Delete All</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </div>
+                                    )}
+                                </div>
+                                <AccordionContent>
+                                    <div className="border-t">
+                                      <ScrollArea className="h-72">
+                                        <div className="overflow-x-auto">
+                                            <Table>
+                                                <TableHeader className="sticky top-0 z-10 bg-card">
+                                                    <TableRow>
+                                                        <TableHead></TableHead>
+                                                        <TableHead>Serial No.</TableHead>
+                                                        <TableHead>Aries ID</TableHead>
+                                                        {itemName.toLowerCase() === 'harness' && <TableHead>Chest Croll No.</TableHead>}
+                                                        <TableHead>Status</TableHead>
+                                                        <TableHead>Location</TableHead>
+                                                        <TableHead>Transfer Date</TableHead>
+                                                        <TableHead>Insp. Due</TableHead>
+                                                        <TableHead>TP Insp. Due</TableHead>
+                                                        <TableHead>
+                                                            <Button variant="ghost" onClick={() => requestSort('lastUpdated')} className="px-0 hover:bg-transparent">
+                                                                Last Updated
+                                                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                                                            </Button>
+                                                        </TableHead>
+                                                        <TableHead>TP Cert.</TableHead>
+                                                        <TableHead>Insp. Cert.</TableHead>
+                                                        <TableHead>Damage Report</TableHead>
+                                                        <TableHead className="text-right">Actions</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {itemList.map(item => {
+                                                        const now = new Date();
+                                                        const isExpired = (item.inspectionDueDate && isPast(parseISO(item.inspectionDueDate))) || (item.tpInspectionDueDate && isPast(parseISO(item.tpInspectionDueDate)));
+                                                        const displayStatus = isExpired ? 'Expired' : item.status;
+                                                        const damageReport = damageReports.find(dr => dr.itemId === item.id);
+                                                        const attachmentUrl = damageReport?.attachmentDownloadUrl || damageReport?.attachmentOriginalUrl || damageReport?.attachmentUrl;
+                                                        
+                                                        return (
+                                                        <TableRow key={item.id}>
+                                                            <TableCell>
+                                                            {onSelectionChange && <Checkbox checked={selectedItems?.some(sel => sel.id === item.id)} onCheckedChange={() => handleRowSelection(item)} />}
+                                                            </TableCell>
+                                                            <TableCell>{item.serialNumber}</TableCell>
+                                                            <TableCell>{item.ariesId || 'N/A'}</TableCell>
+                                                            {itemName.toLowerCase() === 'harness' && <TableCell>{item.chestCrollNo || 'N/A'}</TableCell>}
+                                                            <TableCell><Badge variant={getStatusVariant(displayStatus)}>{displayStatus}</Badge></TableCell>
+                                                            <TableCell>{getProjectName(item)}</TableCell>
+                                                            <TableCell>{item.status === 'Moved to another project' ? formatDate(item.transferDate) : 'N/A'}</TableCell>
+                                                            <TableCell className={cn(getDateStyles(item.inspectionDueDate))}>{formatDate(item.inspectionDueDate)}</TableCell>
+                                                            <TableCell className={cn(getDateStyles(item.tpInspectionDueDate))}>{formatDate(item.tpInspectionDueDate)}</TableCell>
+                                                            <TableCell className="text-xs text-muted-foreground">
+                                                                {item.lastUpdated ? formatDistanceToNow(parseISO(item.lastUpdated), { addSuffix: true }) : 'N/A'}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {item.certificateUrl && (
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Button asChild variant="ghost" size="icon">
+                                                                                <a href={item.certificateUrl} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /></a>
+                                                                            </Button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>View TP Certificate</TooltipContent>
+                                                                    </Tooltip>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {item.inspectionCertificateUrl && (
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Button asChild variant="ghost" size="icon">
+                                                                                <a href={item.inspectionCertificateUrl} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /></a>
+                                                                            </Button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>View Inspection Certificate</TooltipContent>
+                                                                    </Tooltip>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {attachmentUrl && (
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Button asChild variant="ghost" size="icon">
+                                                                                <a href={attachmentUrl} target="_blank" rel="noopener noreferrer"><Download className="h-4 w-4 text-red-500"/></a>
+                                                                            </Button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>Download Damage Report</TooltipContent>
+                                                                    </Tooltip>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="text-right">
+                                                                    <div className="flex items-center justify-end gap-2">
+                                                                        
+                                                                        <AlertDialog>
+                                                                            <DropdownMenu>
+                                                                                <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                                                                <DropdownMenuContent align="end">
+                                                                                    {canManage && <DropdownMenuItem onSelect={() => handleEditClick(item)}><Edit className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>}
+                                                                                    {canManage && <DropdownMenuItem onSelect={() => handleVerify(item)}><CheckCircle className="mr-2 h-4 w-4"/>Mark as Verified</DropdownMenuItem>}
+                                                                                    <DropdownMenuItem onSelect={() => handleRequestClick(item)}><ShieldQuestion className="mr-2 h-4 w-4"/>Request Certificate</DropdownMenuItem>
+                                                                                    {canManage && <AlertDialogTrigger asChild><DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem></AlertDialogTrigger>}
+                                                                                </DropdownMenuContent>
+                                                                            </DropdownMenu>
+                                                                            <AlertDialogContent>
+                                                                                <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the item. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                                                                                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(item.id)}>Delete</AlertDialogAction></AlertDialogFooter>
+                                                                            </AlertDialogContent>
+                                                                        </AlertDialog>
+                                                                    </div>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )})}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                      </ScrollArea>
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        )})}
+                    </Accordion>
+                </div>
+            </ScrollArea>
             </div>
 
             {selectedItem && canManage && <EditItemDialog isOpen={isEditDialogOpen} setIsOpen={setIsEditDialogOpen} item={selectedItem} />}

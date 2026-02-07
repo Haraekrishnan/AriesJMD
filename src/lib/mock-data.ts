@@ -24,7 +24,7 @@ export const ROLES: RoleDefinition[] = [
       'manage_equipment_status',
       'manage_announcements', 'view_performance_reports', 'view_activity_logs',
       'log_manpower', 'manage_job_schedule', 'manage_vendors', 'manage_payments', 'view_ppe_requests',
-      'manage_job_record', 'manage_purchase_register', 'manage_igp_ogp'
+      'manage_job_record', 'manage_purchase_register', 'manage_igp_ogp', 'manage_inventory_database'
     ],
     isEditable: false,
   },
