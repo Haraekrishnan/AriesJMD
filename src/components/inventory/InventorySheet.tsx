@@ -42,7 +42,7 @@ const EditableCell = ({ getValue, row, column, table }: any) => {
 
   return (
     <Input
-      value={value as string}
+      value={value || ''}
       onChange={e => setValue(e.target.value)}
       onBlur={onBlur}
       disabled={!isEditable}
@@ -106,9 +106,8 @@ const InventorySheet = ({ category }: { category: string }) => {
   const { toast } = useToast();
   const [rowSelection, setRowSelection] = useState({});
 
-  const { data } = useMemo(() => {
-    const filteredData = (inventoryItems || []).filter(i => i.name === category && !i.isArchived);
-    return { data: filteredData };
+  const data = useMemo(() => {
+    return (inventoryItems || []).filter(i => i.name === category && !i.isArchived);
   }, [category, inventoryItems]);
 
   const columns = useMemo<ColumnDef<InventoryItem>[]>(() => {
