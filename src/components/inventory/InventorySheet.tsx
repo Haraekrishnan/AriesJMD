@@ -6,6 +6,10 @@ import {
   getCoreRowModel,
   flexRender,
   ColumnDef,
+  ColumnFiltersState,
+  getFilteredRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
 } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,7 +29,7 @@ import { Card, CardHeader, CardContent } from '../ui/card';
 const statusOptions: InventoryItemStatus[] = ['In Use', 'In Store', 'Damaged', 'Expired', 'Moved to another project', 'Quarantine'];
 
 const EditableCell = ({ getValue, row, column, table }: any) => {
-  const initialValue = getValue();
+  const initialValue = getValue() ?? '';
   const [value, setValue] = useState(initialValue);
   const { can } = useAppContext();
   const isEditable = can.manage_inventory_database;
@@ -42,7 +46,7 @@ const EditableCell = ({ getValue, row, column, table }: any) => {
 
   return (
     <Input
-      value={value || ''}
+      value={value}
       onChange={e => setValue(e.target.value)}
       onBlur={onBlur}
       disabled={!isEditable}
@@ -93,6 +97,35 @@ const DateCell = ({ getValue, row, column, table }: any) => {
   );
 };
 
+const DebouncedInput = ({
+  value: initialValue,
+  onChange,
+  debounce = 500,
+  ...props
+}: {
+  value: string | number
+  onChange: (value: string | number) => void
+  debounce?: number
+} & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'>) => {
+  const [value, setValue] = useState(initialValue)
+
+  useEffect(() => {
+    setValue(initialValue)
+  }, [initialValue])
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      onChange(value)
+    }, debounce)
+
+    return () => clearTimeout(timeout)
+  }, [value])
+
+  return (
+    <Input {...props} value={value} onChange={e => setValue(e.target.value)} />
+  )
+}
+
 const InventorySheet = ({ category }: { category: string }) => {
   const { 
     inventoryItems, 
@@ -105,6 +138,7 @@ const InventorySheet = ({ category }: { category: string }) => {
   
   const { toast } = useToast();
   const [rowSelection, setRowSelection] = useState({});
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const data = useMemo(() => {
     return (inventoryItems || []).filter(i => i.name === category && !i.isArchived);
@@ -113,6 +147,31 @@ const InventorySheet = ({ category }: { category: string }) => {
   const columns = useMemo<ColumnDef<InventoryItem>[]>(() => {
     const projectOptions = projects.map(p => ({ value: p.id, label: p.name }));
     const statusOptionsMapped = statusOptions.map(s => ({ value: s, label: s }));
+    
+    const FilterableHeader = ({ title, column }: { title: string, column: any }) => (
+      <div className="flex flex-col gap-1">
+        <span>{title}</span>
+        <DebouncedInput
+          value={column.getFilterValue() as string ?? ''}
+          onChange={value => column.setFilterValue(String(value))}
+          placeholder={`Search...`}
+          className="h-7"
+        />
+      </div>
+    );
+    
+    const SelectFilterHeader = ({ title, column, options }: { title: string, column: any, options: {value: string, label: string}[]}) => (
+       <div className="flex flex-col gap-1">
+          <span>{title}</span>
+          <Select value={column.getFilterValue() as string ?? ''} onValueChange={value => column.setFilterValue(value || undefined)}>
+            <SelectTrigger className="h-7 w-full"><SelectValue placeholder="All" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All</SelectItem>
+              {options.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+      </div>
+    );
 
     let baseColumns: ColumnDef<InventoryItem>[] = [
       {
@@ -134,27 +193,27 @@ const InventorySheet = ({ category }: { category: string }) => {
         enableSorting: false,
         enableHiding: false,
       },
-      { accessorKey: 'serialNumber', header: 'Serial No.', cell: EditableCell },
-      { accessorKey: 'ariesId', header: 'Aries ID', cell: EditableCell },
-      { accessorKey: 'erpId', header: 'ERP ID', cell: EditableCell },
-      { accessorKey: 'certification', header: 'Certification', cell: EditableCell },
+      { accessorKey: 'serialNumber', header: ({column}) => <FilterableHeader title="Serial No." column={column} />, cell: EditableCell },
+      { accessorKey: 'ariesId', header: ({column}) => <FilterableHeader title="Aries ID" column={column} />, cell: EditableCell },
+      { accessorKey: 'erpId', header: ({column}) => <FilterableHeader title="ERP ID" column={column} />, cell: EditableCell },
+      { accessorKey: 'certification', header: ({column}) => <FilterableHeader title="Certification" column={column} />, cell: EditableCell },
       { 
         accessorKey: 'projectId', 
-        header: 'Project', 
+        header: ({column}) => <SelectFilterHeader title="Project" column={column} options={projectOptions} />, 
         cell: (props) => <SelectCell {...props} options={projectOptions} placeholder="Select Project" />
       },
-      { accessorKey: 'plantUnit', header: 'Plant/Unit', cell: EditableCell },
+      { accessorKey: 'plantUnit', header: ({column}) => <FilterableHeader title="Plant/Unit" column={column} />, cell: EditableCell },
       { 
         accessorKey: 'status', 
-        header: 'Status', 
+        header: ({column}) => <SelectFilterHeader title="Status" column={column} options={statusOptionsMapped} />, 
         cell: (props) => <SelectCell {...props} options={statusOptionsMapped} />
       },
       { accessorKey: 'purchaseDate', header: 'Purchase Date', cell: DateCell },
       { accessorKey: 'inspectionDueDate', header: 'Insp. Due', cell: DateCell },
       { accessorKey: 'tpInspectionDueDate', header: 'TP Insp. Due', cell: DateCell },
-      { accessorKey: 'certificateUrl', header: 'TP Cert Link', cell: EditableCell },
-      { accessorKey: 'inspectionCertificateUrl', header: 'Insp Cert Link', cell: EditableCell },
-      { accessorKey: 'remarks', header: 'Remarks', cell: EditableCell },
+      { accessorKey: 'certificateUrl', header: ({column}) => <FilterableHeader title="TP Cert Link" column={column} />, cell: EditableCell },
+      { accessorKey: 'inspectionCertificateUrl', header: ({column}) => <FilterableHeader title="Insp Cert Link" column={column} />, cell: EditableCell },
+      { accessorKey: 'remarks', header: ({column}) => <FilterableHeader title="Remarks" column={column} />, cell: EditableCell },
       { accessorKey: 'lastUpdated', header: 'Last Updated', cell: ({ getValue }) => {
           const value = getValue() as string;
           if (!value) return 'N/A';
@@ -166,7 +225,7 @@ const InventorySheet = ({ category }: { category: string }) => {
       }},
     ];
     if (category.toLowerCase() === 'harness') {
-      baseColumns.splice(3, 0, { accessorKey: 'chestCrollNo', header: 'Chest Croll No.', cell: EditableCell });
+      baseColumns.splice(3, 0, { accessorKey: 'chestCrollNo', header: ({column}) => <FilterableHeader title="Chest Croll No." column={column} />, cell: EditableCell });
     }
     return baseColumns;
   }, [category, projects]);
@@ -174,14 +233,19 @@ const InventorySheet = ({ category }: { category: string }) => {
   const table = useReactTable({
     data,
     columns,
-    getCoreRowModel: getCoreRowModel(),
-    onRowSelectionChange: setRowSelection,
     state: {
       rowSelection,
+      columnFilters,
     },
+    getCoreRowModel: getCoreRowModel(),
+    onRowSelectionChange: setRowSelection,
+    onColumnFiltersChange: setColumnFilters,
+    getFilteredRowModel: getFilteredRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
     meta: {
       updateData: (rowIndex: number, columnId: string, value: any) => {
-        const itemToUpdate = data[rowIndex];
+        const itemToUpdate = table.getRow(rowIndex.toString()).original;
         updateInventoryItem({ ...itemToUpdate, [columnId]: value });
       },
     },
@@ -244,7 +308,7 @@ const InventorySheet = ({ category }: { category: string }) => {
                 {table.getHeaderGroups().map(headerGroup => (
                 <TableRow key={headerGroup.id}>
                     {headerGroup.headers.map(header => (
-                    <TableHead key={header.id}>
+                    <TableHead key={header.id} className="p-1 align-top">
                         {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
                     ))}
@@ -270,3 +334,5 @@ const InventorySheet = ({ category }: { category: string }) => {
 };
 
 export default InventorySheet;
+
+    
