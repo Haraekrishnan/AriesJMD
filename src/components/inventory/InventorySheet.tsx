@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import {
   useReactTable,
@@ -16,11 +16,11 @@ import { Input } from '@/components/ui/input';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { PlusCircle, Trash2, CheckCircle } from 'lucide-react';
+import { PlusCircle, Trash2, CheckCircle, Settings, Save, ArrowUp, ArrowDown } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { isPast, parseISO, isValid, format } from 'date-fns';
+import { isPast, parseISO, isValid, format, parse } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import type { InventoryItem, InventoryItemStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -33,6 +33,7 @@ const EditableCell = ({ getValue, row, column, table }: any) => {
   const [value, setValue] = useState(initialValue);
   const { can } = useAppContext();
   const isEditable = can.manage_inventory_database;
+  const { updateData, setActiveCell } = table.options.meta;
 
   useEffect(() => {
     setValue(initialValue);
@@ -40,8 +41,12 @@ const EditableCell = ({ getValue, row, column, table }: any) => {
 
   const onBlur = () => {
     if (value !== initialValue) {
-      table.options.meta?.updateData(row.index, column.id, value);
+      updateData(row.index, column.id, value);
     }
+  };
+
+  const onFocus = () => {
+    setActiveCell({ row: row.index, columnId: column.id });
   };
 
   return (
@@ -49,6 +54,7 @@ const EditableCell = ({ getValue, row, column, table }: any) => {
       value={value}
       onChange={e => setValue(e.target.value)}
       onBlur={onBlur}
+      onFocus={onFocus}
       disabled={!isEditable}
       className="w-full h-full border-transparent bg-transparent focus:bg-white focus:border focus:ring-1 focus:ring-ring p-1"
     />
@@ -59,22 +65,29 @@ const SelectCell = ({ getValue, row, column, table, options, placeholder }: any)
   const initialValue = getValue();
   const { can } = useAppContext();
   const isEditable = can.manage_inventory_database;
+  const { setActiveCell, updateData } = table.options.meta;
+
+  const onFocus = () => {
+    setActiveCell({ row: row.index, columnId: column.id });
+  };
 
   return (
-    <Select
-      value={initialValue || ''}
-      onValueChange={value => table.options.meta?.updateData(row.index, column.id, value)}
-      disabled={!isEditable}
-    >
-      <SelectTrigger className="border-transparent bg-transparent focus:ring-0 w-full h-full p-1">
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((option: { value: string; label: string }) => (
-          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div onFocus={onFocus}>
+        <Select
+            value={initialValue || ''}
+            onValueChange={value => updateData(row.index, column.id, value)}
+            disabled={!isEditable}
+        >
+            <SelectTrigger className="border-transparent bg-transparent focus:ring-0 w-full h-full p-1">
+                <SelectValue placeholder={placeholder} />
+            </SelectTrigger>
+            <SelectContent>
+                {options.map((option: { value: string; label: string }) => (
+                <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+    </div>
   );
 };
 
@@ -83,14 +96,19 @@ const DateCell = ({ getValue, row, column, table }: any) => {
   const { can } = useAppContext();
   const isEditable = can.manage_inventory_database;
   const dateValue = initialValue ? parseISO(initialValue) : undefined;
-  
+  const { setActiveCell, updateData } = table.options.meta;
+
   const isExpired = dateValue && isPast(dateValue);
+  
+  const onFocus = () => {
+    setActiveCell({ row: row.index, columnId: column.id });
+  };
 
   return (
-    <div className={cn(isExpired && "text-destructive font-bold")}>
+    <div className={cn(isExpired && "text-destructive font-bold")} onFocus={onFocus}>
       <DatePickerInput
         value={isValid(dateValue) ? dateValue : undefined}
-        onChange={date => table.options.meta?.updateData(row.index, column.id, date ? date.toISOString() : null)}
+        onChange={date => updateData(row.index, column.id, date ? date.toISOString() : null)}
         disabled={!isEditable}
       />
     </div>
@@ -119,7 +137,7 @@ const DebouncedInput = ({
     }, debounce)
 
     return () => clearTimeout(timeout)
-  }, [value])
+  }, [value, onChange, debounce])
 
   return (
     <Input {...props} value={value} onChange={e => setValue(e.target.value)} />
@@ -133,12 +151,14 @@ const InventorySheet = ({ category }: { category: string }) => {
     can, 
     addInventoryItem,
     updateInventoryItem,
+    batchUpdateInventoryItems,
     deleteInventoryItem,
   } = useAppContext();
   
   const { toast } = useToast();
   const [rowSelection, setRowSelection] = useState({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [activeCell, setActiveCell] = useState<{row: number, columnId: string} | null>(null);
 
   const data = useMemo(() => {
     return (inventoryItems || []).filter(i => i.name === category && !i.isArchived);
@@ -152,7 +172,7 @@ const InventorySheet = ({ category }: { category: string }) => {
       <div className="flex flex-col gap-1">
         <span>{title}</span>
         <DebouncedInput
-          value={column.getFilterValue() as string ?? ''}
+          value={(column.getFilterValue() as string) ?? ''}
           onChange={value => column.setFilterValue(String(value))}
           placeholder={`Search...`}
           className="h-7"
@@ -245,9 +265,10 @@ const InventorySheet = ({ category }: { category: string }) => {
     getFacetedUniqueValues: getFacetedUniqueValues(),
     meta: {
       updateData: (rowIndex: number, columnId: string, value: any) => {
-        const itemToUpdate = table.getRow(rowIndex.toString()).original;
+        const itemToUpdate = table.getRowModel().rows[rowIndex].original;
         updateInventoryItem({ ...itemToUpdate, [columnId]: value });
       },
+      setActiveCell: setActiveCell,
     },
   });
   
@@ -273,6 +294,61 @@ const InventorySheet = ({ category }: { category: string }) => {
   };
   
   const isEditable = can.manage_inventory_database;
+
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
+    if (!activeCell || !isEditable) return;
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    const rows = pastedText.split('\n').filter(r => r.trim() !== '');
+
+    const startRowIndex = activeCell.row;
+    const allTableColumns = table.getAllLeafColumns();
+    const startColumnIndex = allTableColumns.findIndex(c => c.id === activeCell.columnId);
+
+    if (startColumnIndex === -1) return;
+
+    const updatesById: { [key: string]: { id: string; data: Partial<InventoryItem> } } = {};
+
+    rows.forEach((row, rowIndex) => {
+        const cells = row.split('\t');
+        const targetRowIndex = startRowIndex + rowIndex;
+        const targetRow = table.getRowModel().rows[targetRowIndex];
+
+        if (targetRow) {
+            const originalItemId = targetRow.original.id;
+            if (!updatesById[originalItemId]) {
+                updatesById[originalItemId] = { id: originalItemId, data: {} };
+            }
+
+            cells.forEach((cellValue, colIndex) => {
+                const targetColumnIndex = startColumnIndex + colIndex;
+                if (targetColumnIndex < allTableColumns.length) {
+                    const column = allTableColumns[targetColumnIndex];
+                    const columnId = column.id;
+                    if (columnId && columnId !== 'select') {
+                        let processedValue: any = cellValue.trim();
+                        
+                        if (column.id === 'projectId') {
+                            const project = projects.find(p => p.name.toLowerCase() === processedValue.toLowerCase());
+                            processedValue = project ? project.id : null;
+                        } else if (column.id?.includes('Date')) {
+                             const parsedDate = parse(processedValue, 'dd-MM-yyyy', new Date());
+                             processedValue = isValid(parsedDate) ? parsedDate.toISOString() : null;
+                        }
+
+                        (updatesById[originalItemId].data as any)[columnId] = processedValue;
+                    }
+                }
+            });
+        }
+    });
+    
+    const batchUpdates = Object.values(updatesById);
+    if(batchUpdates.length > 0) {
+        batchUpdateInventoryItems(batchUpdates);
+        toast({ title: 'Paste Complete', description: `${batchUpdates.length} rows updated.` });
+    }
+  }, [activeCell, table, batchUpdateInventoryItems, toast, projects, isEditable]);
 
   return (
     <Card>
@@ -302,32 +378,40 @@ const InventorySheet = ({ category }: { category: string }) => {
         </div>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-[60vh] border rounded-md">
-            <Table>
-            <TableHeader>
-                {table.getHeaderGroups().map(headerGroup => (
-                <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map(header => (
-                    <TableHead key={header.id} className="p-1 align-top">
-                        {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
+        <div onPaste={handlePaste}>
+            <ScrollArea className="h-[60vh] border rounded-md">
+                <Table>
+                <TableHeader>
+                    {table.getHeaderGroups().map(headerGroup => (
+                    <TableRow key={headerGroup.id}>
+                        {headerGroup.headers.map(header => (
+                        <TableHead key={header.id} className="p-1 align-top">
+                            {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                        </TableHead>
+                        ))}
+                    </TableRow>
                     ))}
-                </TableRow>
-                ))}
-            </TableHeader>
-            <TableBody>
-                {table.getRowModel().rows.map(row => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-                    {row.getVisibleCells().map(cell => (
-                    <TableCell key={cell.id} className="p-0">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
+                </TableHeader>
+                <TableBody>
+                    {table.getRowModel().rows.map(row => (
+                    <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                        {row.getVisibleCells().map(cell => (
+                        <TableCell 
+                            key={cell.id} 
+                            className={cn(
+                                "p-0",
+                                activeCell?.row === row.index && activeCell?.columnId === cell.column.id && "ring-2 ring-ring ring-offset-2 z-10"
+                            )}
+                        >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                        ))}
+                    </TableRow>
                     ))}
-                </TableRow>
-                ))}
-            </TableBody>
-            </Table>
-        </ScrollArea>
+                </TableBody>
+                </Table>
+            </ScrollArea>
+        </div>
       </CardContent>
     </Card>
   );
