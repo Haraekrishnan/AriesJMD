@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -558,7 +559,7 @@ const InventorySheet = ({ category }: { category: string }) => {
                         <Button size="sm" variant="destructive" disabled={table.getSelectedRowModel().rows.length === 0}><Trash2 className="mr-2 h-4 w-4"/> Delete Selected</Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
-                        <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will archive the selected rows. They will no longer appear in the database view.</AlertDialogDescription></AlertDialogHeader>
+                        <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the selected rows. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction onClick={handleDeleteSelected}>Confirm Delete</AlertDialogAction>

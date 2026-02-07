@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -589,13 +590,13 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, [inventoryItems, projects]);
 
     const batchDeleteInventoryItems = useCallback((itemIds: string[]) => {
-        if (!user) return;
-        const updates: { [key: string]: boolean } = {};
-        itemIds.forEach(id => {
-          updates[`/inventoryItems/${id}/isArchived`] = true;
-        });
-        update(ref(rtdb), updates);
-        addActivityLog(user.id, "Inventory Item(s) Deleted", `Archived ${itemIds.length} items.`);
+      if (!user) return;
+      const updates: { [key: string]: null } = {};
+      itemIds.forEach(id => {
+        updates[`/inventoryItems/${id}`] = null;
+      });
+      update(ref(rtdb), updates);
+      addActivityLog(user.id, "Inventory Item(s) Deleted", `Permanently deleted ${itemIds.length} items.`);
     }, [user, addActivityLog]);
 
     const deleteInventoryItemGroup = useCallback((itemName: string) => {
