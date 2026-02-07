@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import * as React from 'react';
@@ -16,9 +14,10 @@ interface DatePickerInputProps {
   value: Date | undefined;
   onChange: (date: Date | undefined) => void;
   disabled?: boolean;
+  onFocus?: () => void;
 }
 
-export function DatePickerInput({ value, onChange, disabled }: DatePickerInputProps) {
+export function DatePickerInput({ value, onChange, disabled, onFocus }: DatePickerInputProps) {
   const [textValue, setTextValue] = React.useState('');
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
 
@@ -39,8 +38,6 @@ export function DatePickerInput({ value, onChange, disabled }: DatePickerInputPr
 
     for (const fmt of formats) {
       const parsed = parse(str, fmt, new Date());
-      // Check if parsing was successful and if the formatted date matches the input
-      // This helps avoid partial matches like '12' becoming a valid date
       if (isValid(parsed) && format(parsed, fmt).padStart(fmt.length, '0') === str.padStart(fmt.length, '0')) {
         parsedDate = parsed;
         break;
@@ -55,7 +52,6 @@ export function DatePickerInput({ value, onChange, disabled }: DatePickerInputPr
   };
 
   const handleBlur = () => {
-    // On blur, if the text input is invalid, format it back to the last valid `value`
     if (value && isValid(value)) {
       setTextValue(format(value, 'dd-MM-yyyy'));
     } else {
@@ -86,6 +82,7 @@ export function DatePickerInput({ value, onChange, disabled }: DatePickerInputPr
         value={textValue}
         onChange={handleInputChange}
         onBlur={handleBlur}
+        onFocus={onFocus}
         disabled={disabled}
         className="pr-16"
       />

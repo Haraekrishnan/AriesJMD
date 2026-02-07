@@ -96,6 +96,7 @@ type InventoryContextType = {
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'lastUpdated'>) => void;
   addMultipleInventoryItems: (items: any[]) => number;
   updateInventoryItem: (item: InventoryItem) => void;
+  batchUpdateInventoryItems: (updates: { id: string; data: Partial<InventoryItem> }[]) => void;
   updateInventoryItemGroup: (itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => void;
   updateInventoryItemGroupByProject: (itemName: string, projectId: string, updates: Partial<Pick<InventoryItem, 'inspectionDate' | 'inspectionDueDate' | 'inspectionCertificateUrl'>>) => void;
   updateMultipleInventoryItems: (itemsData: any[]) => number;
@@ -465,6 +466,26 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         };
         update(ref(rtdb, `inventoryItems/${id}`), updates);
     }, []);
+
+    const batchUpdateInventoryItems = useCallback((updates: { id: string, data: Partial<InventoryItem> }[]) => {
+        if (!user) return;
+    
+        const dbUpdates: { [key: string]: any } = {};
+        const timestamp = new Date().toISOString();
+    
+        updates.forEach(({ id, data }) => {
+            const path = `/inventoryItems/${id}`;
+            const existingItem = inventoryItemsById[id];
+            if (existingItem) {
+              dbUpdates[path] = { ...existingItem, ...data, lastUpdated: timestamp };
+            }
+        });
+    
+        if (Object.keys(dbUpdates).length > 0) {
+            update(ref(rtdb), dbUpdates);
+            addActivityLog(user.id, "Inventory Batch Updated", `Updated ${updates.length} items via paste.`);
+        }
+    }, [user, inventoryItemsById, addActivityLog]);
     
     const updateInventoryItemGroup = useCallback((itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => {
         const itemsToUpdate = inventoryItems.filter(item => item.name === itemName && item.tpInspectionDueDate === originalDueDate);
@@ -1557,7 +1578,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     const contextValue: InventoryContextType = {
         inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory, directives: [], damageReports,
-        addInventoryItem, addMultipleInventoryItems, updateInventoryItem, updateInventoryItemGroup, updateInventoryItemGroupByProject, updateMultipleInventoryItems, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
+        addInventoryItem, addMultipleInventoryItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInventoryItemGroupByProject, updateMultipleInventoryItems, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
         addInventoryTransferRequest, updateInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
         addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest,
         addUTMachine, updateUTMachine, deleteUTMachine,
