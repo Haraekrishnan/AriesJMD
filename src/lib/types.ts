@@ -637,26 +637,8 @@ export type InventoryItem = {
   unit?: string;
   movedToProjectId?: string | null;
   transferDate?: string | null;
+  isArchived?: boolean;
 };
-
-type DbItem = {
-    id: string;
-    serialNo: string;
-    itemName: string;
-    ariesId?: string;
-    status: 'In Use' | 'Expired' | 'Repair' | 'Idle' | 'In Store';
-    projectId: string;
-    inspectionDueDate?: string; // ISO
-    tpInspectionDueDate?: string; // ISO
-    lastUpdated: string; // ISO
-    createdBy: string; // userId
-    isArchived: boolean;
-}
-
-export type Harness = DbItem & { chestCrollNo?: string; };
-export type Tripod = DbItem;
-export type Lifeline = DbItem;
-export type GasDetector = DbItem;
 
 export type UTMachine = {
   id: string;

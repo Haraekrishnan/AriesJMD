@@ -1,4 +1,5 @@
 
+
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -19,19 +20,18 @@ import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { isPast, parseISO, isValid } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import type { Harness, Tripod, Lifeline, GasDetector } from '@/lib/types';
+import type { InventoryItem, InventoryItemStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardContent } from '../ui/card';
 
-
-type Item = Harness | Tripod | Lifeline | GasDetector;
 type Category = 'harness' | 'tripod' | 'lifeline' | 'gas_detectors';
+
+const statusOptions: InventoryItemStatus[] = ['In Use', 'In Store', 'Damaged', 'Expired', 'Moved to another project', 'Quarantine'];
 
 const EditableCell = ({ getValue, row, column, table }: any) => {
   const initialValue = getValue();
   const [value, setValue] = useState(initialValue);
   const { can } = useAppContext();
-
   const isEditable = can.manage_inventory_database;
 
   useEffect(() => {
@@ -55,7 +55,7 @@ const EditableCell = ({ getValue, row, column, table }: any) => {
   );
 };
 
-const SelectCell = ({ getValue, row, column, table, options }: any) => {
+const SelectCell = ({ getValue, row, column, table, options, placeholder }: any) => {
   const initialValue = getValue();
   const { can } = useAppContext();
   const isEditable = can.manage_inventory_database;
@@ -67,11 +67,11 @@ const SelectCell = ({ getValue, row, column, table, options }: any) => {
       disabled={!isEditable}
     >
       <SelectTrigger className="border-transparent bg-transparent focus:ring-0 w-full h-full p-1">
-        <SelectValue />
+        <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
-        {options.map((option: string) => (
-          <SelectItem key={option} value={option}>{option}</SelectItem>
+        {options.map((option: { value: string; label: string }) => (
+          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
         ))}
       </SelectContent>
     </Select>
@@ -98,29 +98,23 @@ const DateCell = ({ getValue, row, column, table }: any) => {
 };
 
 const InventorySheet = ({ category }: { category: Category }) => {
-  const {
-    harnesses, tripods, lifelines, gasDetectors, projects, can,
-    addHarness, updateHarness, deleteHarness,
-    addTripod, updateTripod, deleteTripod,
-    addLifeline, updateLifeline, deleteLifeline,
-    addGasDetector, updateGasDetector, deleteGasDetector,
-  } = useAppContext();
+  const { inventoryItems, projects, can, addInventoryItem, updateInventoryItem, deleteInventoryItem } = useAppContext();
   
   const { toast } = useToast();
   const [rowSelection, setRowSelection] = useState({});
 
-  const { data, addAction, updateAction, deleteAction } = useMemo(() => {
-    switch (category) {
-      case 'harness': return { data: (harnesses || []).filter(i => !i.isArchived), addAction: addHarness, updateAction: updateHarness, deleteAction: deleteHarness };
-      case 'tripod': return { data: (tripods || []).filter(i => !i.isArchived), addAction: addTripod, updateAction: updateTripod, deleteAction: deleteTripod };
-      case 'lifeline': return { data: (lifelines || []).filter(i => !i.isArchived), addAction: addLifeline, updateAction: updateLifeline, deleteAction: deleteLifeline };
-      case 'gas_detectors': return { data: (gasDetectors || []).filter(i => !i.isArchived), addAction: addGasDetector, updateAction: updateGasDetector, deleteAction: deleteGasDetector };
-      default: return { data: [], addAction: () => {}, updateAction: () => {}, deleteAction: () => {} };
-    }
-  }, [category, harnesses, tripods, lifelines, gasDetectors, addHarness, updateHarness, deleteHarness, addTripod, updateTripod, deleteTripod, addLifeline, updateLifeline, deleteLifeline, addGasDetector, updateGasDetector, deleteGasDetector]);
+  const data = useMemo(() => {
+    if (!inventoryItems) return [];
+    return inventoryItems.filter(
+        (i) => i.name.toLowerCase() === category.toLowerCase() && !i.isArchived
+    );
+  }, [inventoryItems, category]);
 
-  const columns = useMemo<ColumnDef<Item>[]>(() => {
-    const baseColumns: ColumnDef<Item>[] = [
+  const columns = useMemo<ColumnDef<InventoryItem>[]>(() => {
+    const projectOptions = projects.map(p => ({ value: p.id, label: p.name }));
+    const statusOptionsMapped = statusOptions.map(s => ({ value: s, label: s }));
+
+    const baseColumns: ColumnDef<InventoryItem>[] = [
       {
         id: 'select',
         header: ({ table }) => (
@@ -140,24 +134,26 @@ const InventorySheet = ({ category }: { category: Category }) => {
         enableSorting: false,
         enableHiding: false,
       },
-      { accessorKey: 'serialNo', header: 'Serial No.', cell: EditableCell },
-      { accessorKey: 'itemName', header: 'Item Name', cell: EditableCell },
+      { accessorKey: 'serialNumber', header: 'Serial No.', cell: EditableCell },
       { accessorKey: 'ariesId', header: 'Aries ID', cell: EditableCell },
-      { 
-        accessorKey: 'status', 
-        header: 'Status', 
-        cell: (props) => <SelectCell {...props} options={['In Use', 'Expired', 'Repair', 'Idle', 'In Store']} />
-      },
       { 
         accessorKey: 'projectId', 
         header: 'Project', 
-        cell: (props) => <SelectCell {...props} options={projects.map(p => p.name)} />
+        cell: (props) => <SelectCell {...props} options={projectOptions} placeholder="Select Project" />
+      },
+      { 
+        accessorKey: 'status', 
+        header: 'Status', 
+        cell: (props) => <SelectCell {...props} options={statusOptionsMapped} />
       },
       { accessorKey: 'inspectionDueDate', header: 'Insp. Due', cell: DateCell },
       { accessorKey: 'tpInspectionDueDate', header: 'TP Insp. Due', cell: DateCell },
+      { accessorKey: 'certificateUrl', header: 'TP Cert Link', cell: EditableCell },
+      { accessorKey: 'inspectionCertificateUrl', header: 'Insp Cert Link', cell: EditableCell },
+      { accessorKey: 'remarks', header: 'Remarks', cell: EditableCell },
     ];
     if (category === 'harness') {
-      baseColumns.splice(4, 0, { accessorKey: 'chestCrollNo', header: 'Chest Croll No.', cell: EditableCell });
+      baseColumns.splice(3, 0, { accessorKey: 'chestCrollNo', header: 'Chest Croll No.', cell: EditableCell });
     }
     return baseColumns;
   }, [category, projects]);
@@ -173,16 +169,22 @@ const InventorySheet = ({ category }: { category: Category }) => {
     meta: {
       updateData: (rowIndex: number, columnId: string, value: any) => {
         const itemToUpdate = data[rowIndex];
-        updateAction(itemToUpdate.id, { [columnId]: value });
+        if (columnId === 'projectId') {
+            const projectName = projects.find(p => p.id === value)?.name;
+            updateInventoryItem({ ...itemToUpdate, [columnId]: value, plantUnit: projectName });
+        } else {
+            updateInventoryItem({ ...itemToUpdate, [columnId]: value });
+        }
       },
     },
   });
   
   const handleAddRow = () => {
-    addAction({
-      serialNo: `NEW-${Math.floor(Math.random() * 1000)}`,
-      itemName: category.charAt(0).toUpperCase() + category.slice(1, -1),
+    addInventoryItem({
+      name: category.charAt(0).toUpperCase() + category.slice(1).replace('_', ' '),
+      serialNumber: `NEW-${Math.floor(Math.random() * 10000)}`,
       status: 'In Store',
+      projectId: projects[0]?.id || '',
       isArchived: false,
     });
   };
@@ -193,7 +195,7 @@ const InventorySheet = ({ category }: { category: Category }) => {
         toast({ title: "No rows selected", variant: 'destructive'});
         return;
     }
-    selectedIds.forEach(id => deleteAction(id));
+    selectedIds.forEach(id => deleteInventoryItem(id));
     setRowSelection({});
     toast({ title: `${selectedIds.length} rows deleted` });
   };

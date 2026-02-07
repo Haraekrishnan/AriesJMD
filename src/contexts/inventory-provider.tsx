@@ -1,3 +1,5 @@
+
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -395,6 +397,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const newRef = push(ref(rtdb, 'inventoryItems'));
         const dataToSave = { 
             ...itemData, 
+            isArchived: false,
             chestCrollNo: itemData.chestCrollNo || null,
             lastUpdated: new Date().toISOString(),
             movedToProjectId: itemData.movedToProjectId || null,
@@ -427,6 +430,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             const dataToSave: Partial<InventoryItem> = {
                 name: row['ITEM NAME'] || '',
                 serialNumber: serialNumber,
+                isArchived: false,
                 chestCrollNo: row['CHEST CROLL NO'] || null,
                 ariesId: row['ARIES ID'] || '',
                 inspectionDate: parseDateExcel(row['INSPECTION DATE']),
@@ -559,7 +563,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, [inventoryItems, projects]);
 
     const deleteInventoryItem = useCallback((itemId: string) => {
-        remove(ref(rtdb, `inventoryItems/${itemId}`));
+        update(ref(rtdb, `inventoryItems/${itemId}`), { isArchived: true });
     }, []);
 
     const deleteInventoryItemGroup = useCallback((itemName: string) => {
