@@ -35,7 +35,6 @@ import {
   Download,
   MessageSquare,
   Hammer,
-  Database,
 } from 'lucide-react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -180,7 +179,6 @@ const plannerNotificationCount =
     { href: '/job-progress', icon: ClipboardList, label: 'JMS Tracker', notificationCount: 0, show: can.manage_job_progress },
     { href: '/purchase-register', icon: ShoppingCart, label: 'Purchase Register', notificationCount: 0, show: true },
     { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: notificationCounts.storeInventory || 0, show: true },
-    { href: '/inventory-database', icon: Database, label: 'Inventory DB', notificationCount: 0, show: can.view_inventory_database },
     { href: '/consumables', icon: Package, label: 'Consumables', notificationCount: 0, show: false },
     { href: '/igp-ogp', icon: ArrowRightLeft, label: 'IGP/OGP Register', notificationCount: 0, show: false },
     { href: '/ppe-stock', icon: Package, label: 'PPE Stock', notificationCount: 0, show: false },

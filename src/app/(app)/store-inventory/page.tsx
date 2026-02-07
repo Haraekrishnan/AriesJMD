@@ -1,10 +1,11 @@
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Upload, ChevronsUpDown, FilePen, FilePlus, FileText, ArrowRightLeft, Package, Hammer, CheckCircle } from 'lucide-react';
+import { PlusCircle, Upload, ChevronsUpDown, FilePen, FilePlus, FileText, ArrowRightLeft, Package, Hammer, CheckCircle, Database } from 'lucide-react';
 import InventoryTable from '@/components/inventory/InventoryTable';
 import AddItemDialog from '@/components/inventory/AddItemDialog';
 import ImportItemsDialog from '@/components/inventory/ImportItemsDialog';
@@ -166,6 +167,7 @@ export default function StoreInventoryPage() {
                     <p className="text-muted-foreground">Manage and track all equipment and items.</p>
                 </div>
                 <div className="flex items-center flex-wrap gap-2">
+                    <Button asChild variant="outline"><Link href="/inventory-database"><Database className="mr-2 h-4 w-4"/> Inventory DB</Link></Button>
                     <Button asChild variant="outline"><Link href="/consumables"><Package className="mr-2 h-4 w-4"/> Consumables</Link></Button>
                     <Button asChild variant="outline"><Link href="/ppe-stock"><Package className="mr-2 h-4 w-4"/> PPE Stock</Link></Button>
                     <Button asChild variant="outline"><Link href="/igp-ogp"><ArrowRightLeft className="mr-2 h-4 w-4"/> IGP/OGP Register</Link></Button>
