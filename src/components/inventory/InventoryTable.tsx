@@ -161,7 +161,7 @@ const ItemCard = ({ item, onEdit, onRequest, onDelete, onVerify }: { item: Inven
 };
 
 export default function InventoryTable({ items, selectedItems, onSelectionChange }: InventoryTableProps) {
-    const { user, roles, deleteInventoryItem, deleteInventoryItemGroup, projects, updateInventoryItem, can, damageReports } = useAppContext();
+    const { user, roles, batchDeleteInventoryItems, projects, updateInventoryItem, can, damageReports } = useAppContext();
     const { toast } = useToast();
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isCertRequestOpen, setIsCertRequestOpen] = useState(false);
@@ -243,13 +243,16 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
     };
 
     const handleDelete = (itemId: string) => {
-        deleteInventoryItem(itemId);
+        batchDeleteInventoryItems([itemId]);
         toast({ variant: 'destructive', title: 'Item Deleted' });
     };
 
     const handleDeleteGroup = (itemName: string) => {
-        deleteInventoryItemGroup(itemName);
-        toast({ variant: 'destructive', title: 'Item Group Deleted', description: `All items named "${itemName}" have been deleted.` });
+        const itemsToDelete = items.filter(item => item.name === itemName).map(item => item.id);
+        if (itemsToDelete.length > 0) {
+            batchDeleteInventoryItems(itemsToDelete);
+            toast({ variant: 'destructive', title: 'Item Group Deleted', description: `All items named "${itemName}" have been deleted.` });
+        }
     }
     
     const getDateStyles = (dateString?: string | null): string => {
@@ -328,7 +331,7 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
                             <AccordionItem key={itemName} value={itemName} className="border rounded-lg bg-card">
                                 <div className="flex justify-between items-center p-4">
                                     <div className="flex items-center gap-4 flex-1">
-                                        {onSelectionChange && <Checkbox checked={allInGroupSelected ? true : (someInGroupSelected ? 'indeterminate' : false)} onCheckedChange={(checked) => handleItemGroupSelection(itemName, checked)} />}
+                                        {onSelectionChange && <Checkbox checked={allInGroupSelected ? true : (someInGroupSelected ? 'indeterminate' : false)} onCheckedChange={(checked) => handleItemGroupSelection(itemName, checked === true)} />}
                                         <AccordionTrigger className="p-0 hover:no-underline flex-1 text-left">
                                             <div className="flex items-center gap-4">
                                                 <h3 className="font-semibold text-lg">{itemName}</h3>
@@ -475,7 +478,7 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
                                                                                 </DropdownMenuContent>
                                                                             </DropdownMenu>
                                                                             <AlertDialogContent>
-                                                                                <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the item. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                                                                                <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This action will permanently delete the item. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
                                                                                 <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(item.id)}>Delete</AlertDialogAction></AlertDialogFooter>
                                                                             </AlertDialogContent>
                                                                         </AlertDialog>

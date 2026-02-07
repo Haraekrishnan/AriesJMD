@@ -100,7 +100,7 @@ type InventoryContextType = {
   updateInventoryItemGroup: (itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => void;
   updateInventoryItemGroupByProject: (itemName: string, projectId: string, updates: Partial<Pick<InventoryItem, 'inspectionDate' | 'inspectionDueDate' | 'inspectionCertificateUrl'>>) => void;
   updateMultipleInventoryItems: (itemsData: any[]) => number;
-  deleteInventoryItem: (itemId: string) => void;
+  batchDeleteInventoryItems: (itemIds: string[]) => void;
   deleteInventoryItemGroup: (itemName: string) => void;
   renameInventoryItemGroup: (oldName: string, newName: string) => void;
   revalidateExpiredItems: () => void;
@@ -477,13 +477,20 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             const path = `/inventoryItems/${id}`;
             const existingItem = inventoryItemsById[id];
             if (existingItem) {
-              dbUpdates[path] = { ...existingItem, ...data, lastUpdated: timestamp };
+              const updatedData = { ...existingItem, ...data, lastUpdated: timestamp };
+              // Ensure nulls are handled correctly when sent to Firebase
+              for (const key in updatedData) {
+                if (updatedData[key as keyof typeof updatedData] === undefined) {
+                  updatedData[key as keyof typeof updatedData] = null;
+                }
+              }
+              dbUpdates[path] = updatedData;
             }
         });
     
         if (Object.keys(dbUpdates).length > 0) {
             update(ref(rtdb), dbUpdates);
-            addActivityLog(user.id, "Inventory Batch Updated", `Updated ${updates.length} items via paste.`);
+            addActivityLog(user.id, "Inventory Batch Updated", `Updated ${updates.length} items.`);
         }
     }, [user, inventoryItemsById, addActivityLog]);
     
@@ -581,9 +588,15 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         return updatedCount;
     }, [inventoryItems, projects]);
 
-    const deleteInventoryItem = useCallback((itemId: string) => {
-        update(ref(rtdb, `inventoryItems/${itemId}`), { isArchived: true });
-    }, []);
+    const batchDeleteInventoryItems = useCallback((itemIds: string[]) => {
+        if (!user) return;
+        const updates: { [key: string]: boolean } = {};
+        itemIds.forEach(id => {
+          updates[`/inventoryItems/${id}/isArchived`] = true;
+        });
+        update(ref(rtdb), updates);
+        addActivityLog(user.id, "Inventory Item(s) Deleted", `Archived ${itemIds.length} items.`);
+    }, [user, addActivityLog]);
 
     const deleteInventoryItemGroup = useCallback((itemName: string) => {
         const itemsToDelete = inventoryItems.filter(item => item.name === itemName);
@@ -1578,7 +1591,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     const contextValue: InventoryContextType = {
         inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory, directives: [], damageReports,
-        addInventoryItem, addMultipleInventoryItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInventoryItemGroupByProject, updateMultipleInventoryItems, deleteInventoryItem, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
+        addInventoryItem, addMultipleInventoryItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInventoryItemGroupByProject, updateMultipleInventoryItems, batchDeleteInventoryItems, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
         addInventoryTransferRequest, updateInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
         addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest,
         addUTMachine, updateUTMachine, deleteUTMachine,
