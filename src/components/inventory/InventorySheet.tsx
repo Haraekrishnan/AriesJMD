@@ -11,13 +11,15 @@ import {
   getFilteredRowModel,
   getFacetedRowModel,
   getFacetedUniqueValues,
+  getSortedRowModel,
+  SortingState,
 } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { PlusCircle, Trash2, CheckCircle, Settings, Save, ArrowUp, ArrowDown, Download } from 'lucide-react';
+import { PlusCircle, Trash2, CheckCircle, Settings, Save, ArrowUp, ArrowDown, Download, ArrowUpDown } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -48,14 +50,13 @@ const statusOptions: {value: InventoryItemStatus | 'Inspection Expired' | 'TP Ex
     { value: 'Moved to another project', label: 'Moved' },
 ];
 
-
 const statusColorMap: Record<InventoryItemStatus, string> = {
-    'In Use': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
-    'In Store': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
-    'Expired': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200',
-    'Damaged': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200',
-    'Quarantine': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200',
-    'Moved to another project': 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+    'In Use': 'bg-green-100 text-green-900 dark:bg-green-900/30 dark:text-green-200',
+    'In Store': 'bg-blue-100 text-blue-900 dark:bg-blue-900/30 dark:text-blue-200',
+    'Expired': 'bg-red-100 text-red-900 dark:bg-red-900/30 dark:text-red-200',
+    'Damaged': 'bg-orange-100 text-orange-900 dark:bg-orange-900/30 dark:text-orange-200',
+    'Quarantine': 'bg-purple-100 text-purple-900 dark:bg-purple-900/30 dark:text-purple-200',
+    'Moved to another project': 'bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-200',
 };
 
 
@@ -115,7 +116,7 @@ const SelectCell = React.memo(({ getValue, row, column, table, options, placehol
               disabled={!isEditable}
           >
               <SelectTrigger className={cn(
-                "border-transparent bg-transparent focus:ring-0 w-full h-full p-1",
+                "border-transparent bg-transparent focus:ring-0 w-full h-full p-1 font-bold",
                 !isEditable && "opacity-60 cursor-not-allowed"
               )}>
                   <SelectValue placeholder={placeholder} />
@@ -199,6 +200,8 @@ const InventorySheet = ({ category }: { category: string }) => {
   } = useAppContext();
 
   const [localData, setLocalData] = useState<InventoryItem[]>([]);
+  const [sorting, setSorting] = useState<SortingState>([]);
+
 
   useEffect(() => {
     setLocalData(dataFromContext.filter(i => i.name === category && !i.isArchived));
@@ -226,7 +229,20 @@ const InventorySheet = ({ category }: { category: string }) => {
     
     const FilterableHeader = ({ title, column }: { title: string, column: any }) => (
       <div className="flex flex-col gap-1">
-        <span>{title}</span>
+        <Button
+            variant="ghost"
+            onClick={column.getToggleSortingHandler()}
+            className="px-0 py-0 h-auto justify-start font-bold"
+        >
+            {title}
+            {column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+            ) : column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+            ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+            )}
+        </Button>
         <DebouncedInput
           value={(column.getFilterValue() as string) ?? ''}
           onChange={value => column.setFilterValue(String(value))}
@@ -238,7 +254,20 @@ const InventorySheet = ({ category }: { category: string }) => {
     
     const SelectFilterHeader = ({ title, column, options }: { title: string, column: any, options: {value: string, label: string}[]}) => (
        <div className="flex flex-col gap-1">
-          <span>{title}</span>
+          <Button
+            variant="ghost"
+            onClick={column.getToggleSortingHandler()}
+            className="px-0 py-0 h-auto justify-start font-bold"
+          >
+            {title}
+            {column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-2 h-4 w-4" />
+            ) : column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-2 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+            )}
+          </Button>
           <Select value={(column.getFilterValue() as string) ?? 'all'} onValueChange={value => column.setFilterValue(value === 'all' ? undefined : value)}>
             <SelectTrigger className="h-7 w-full"><SelectValue placeholder="All" /></SelectTrigger>
             <SelectContent>
@@ -287,13 +316,13 @@ const InventorySheet = ({ category }: { category: string }) => {
         cell: (props) => <SelectCell {...props} options={statusOptionsMapped} />,
         size: 180,
       },
-      { accessorKey: 'purchaseDate', header: 'Purchase Date', cell: DateCell, size: 150 },
-      { accessorKey: 'inspectionDueDate', header: 'Insp. Due', cell: DateCell, size: 150 },
-      { accessorKey: 'tpInspectionDueDate', header: 'TP Insp. Due', cell: DateCell, size: 150 },
+      { accessorKey: 'purchaseDate', header: ({column}) => <FilterableHeader title="Purchase Date" column={column} />, cell: DateCell, size: 150 },
+      { accessorKey: 'inspectionDueDate', header: ({column}) => <FilterableHeader title="Insp. Due" column={column} />, cell: DateCell, size: 150 },
+      { accessorKey: 'tpInspectionDueDate', header: ({column}) => <FilterableHeader title="TP Insp. Due" column={column} />, cell: DateCell, size: 150 },
       { accessorKey: 'certificateUrl', header: ({column}) => <FilterableHeader title="TP Cert Link" column={column} />, cell: EditableCell, size: 250 },
       { accessorKey: 'inspectionCertificateUrl', header: ({column}) => <FilterableHeader title="Insp Cert Link" column={column} />, cell: EditableCell, size: 250 },
       { accessorKey: 'remarks', header: ({column}) => <FilterableHeader title="Remarks" column={column} />, cell: EditableCell, size: 300 },
-      { accessorKey: 'lastUpdated', header: 'Last Updated', cell: ({ getValue }) => {
+      { accessorKey: 'lastUpdated', header: ({column}) => <FilterableHeader title="Last Updated" column={column} />, cell: ({ getValue }) => {
           const value = getValue() as string;
           if (!value) return 'N/A';
           try {
@@ -316,7 +345,10 @@ const InventorySheet = ({ category }: { category: string }) => {
     state: {
       rowSelection,
       columnFilters,
+      sorting,
     },
+    onSortingChange: setSorting,
+    getSortedRowModel: getSortedRowModel(),
     getCoreRowModel: getCoreRowModel(),
     onRowSelectionChange: setRowSelection,
     onColumnFiltersChange: setColumnFilters,
@@ -629,3 +661,5 @@ const InventorySheet = ({ category }: { category: string }) => {
 };
 
 export default InventorySheet;
+
+  
