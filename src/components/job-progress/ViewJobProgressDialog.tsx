@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -64,12 +65,12 @@ const reopenSchema = z.object({
 type ReopenFormValues = z.infer<typeof reopenSchema>;
 
 const ReopenJobDialog = ({ isOpen, setIsOpen, job, reopenJob }: { isOpen: boolean; setIsOpen: (open: boolean) => void; job: JobProgress; reopenJob: (jobId: string, reason: string, newStepName: string, newStepAssigneeId: string) => void; }) => {
-    const { getAssignableUsers } = useAppContext();
+    const { users } = useAppContext();
     const [popoverOpen, setPopoverOpen] = useState(false);
 
     const assignableUsers = useMemo(() => {
-        return getAssignableUsers().filter(u => u.role !== 'Manager');
-    }, [getAssignableUsers]);
+        return users.filter(u => u.role !== 'Manager');
+    }, [users]);
 
     const form = useForm<ReopenFormValues>({
         resolver: zodResolver(reopenSchema),
@@ -289,15 +290,15 @@ const nextStepSchema = z.object({
 
 
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
-    const { addAndCompleteStep, getAssignableUsers } = useAppContext();
+    const { addAndCompleteStep, users } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
     const form = useForm<z.infer<typeof nextStepSchema>>({
         resolver: zodResolver(nextStepSchema),
     });
     
     const assignableUsers = useMemo(() => {
-        return getAssignableUsers().filter(u => u.role !== 'Manager');
-    }, [getAssignableUsers]);
+        return users.filter(u => u.role !== 'Manager');
+    }, [users]);
 
     const handleFormSubmit = (data: z.infer<typeof nextStepSchema>) => {
         addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, undefined, {
