@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -101,7 +100,7 @@ export default function StoreInventoryPage() {
             // Sort logic to prioritize more urgent items, e.g., expired > expiring soon
             return 0; // Simple for now
         });
-    }, [inventoryItems, can.manage_inventory, user]);
+    }, [inventoryItems, can.manage_inventory, user, projects]);
 
 
     const filteredItems = useMemo(() => {
@@ -249,6 +248,7 @@ export default function StoreInventoryPage() {
                 <AccordionItem value="inventory-transfers">
                     <AccordionTrigger className={cn("text-lg font-semibold", pendingInventoryTransferRequestCount > 0 && "text-destructive")}>
                         <div className="flex items-center gap-2">
+                           {pendingInventoryTransferRequestCount > 0 && <AlertTriangle />}
                             Inventory Transfers
                             {pendingInventoryTransferRequestCount > 0 && <Badge variant="destructive">{pendingInventoryTransferRequestCount}</Badge>}
                         </div>
@@ -272,7 +272,7 @@ export default function StoreInventoryPage() {
                                 <div className="flex justify-between items-center">
                                     <div>
                                         <CardTitle>Items Requiring Attention</CardTitle>
-                                        <CardDescription>These items are expired or have certifications expiring soon. Damaged or quarantined items are not shown here.</CardDescription>
+                                        <CardDescription>These items have certifications expiring soon or are already expired. Damaged or quarantined items are not shown here.</CardDescription>
                                     </div>
                                     <ActionRequiredReport notifications={actionRequiredNotifications} />
                                 </div>
