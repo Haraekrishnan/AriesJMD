@@ -1,17 +1,16 @@
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Upload, ChevronsUpDown, FilePen, FilePlus, FileText, ArrowRightLeft, Package, Hammer, CheckCircle, Database } from 'lucide-react';
+import { PlusCircle, Upload, ChevronsUpDown, FilePen, FilePlus, FileText, ArrowRightLeft, Package, Hammer, CheckCircle, Database, AlertTriangle } from 'lucide-react';
 import InventoryTable from '@/components/inventory/InventoryTable';
 import AddItemDialog from '@/components/inventory/AddItemDialog';
 import ImportItemsDialog from '@/components/inventory/ImportItemsDialog';
 import InventoryFilters from '@/components/inventory/InventoryFilters';
 import type { InventoryItem, CertificateRequest, Role, InventoryTransferRequest } from '@/lib/types';
-import { isAfter, isBefore, addDays, parseISO, isWithinInterval, subDays, format } from 'date-fns';
+import { isAfter, isBefore, addDays, parseISO, isWithinInterval, subDays, format, isValid, isPast } from 'date-fns';
 import ViewCertificateRequestDialog from '@/components/inventory/ViewCertificateRequestDialog';
 import InventorySummary from '@/components/inventory/InventorySummary';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +26,7 @@ import BulkUpdateInspectionDialog from '@/components/inventory/BulkUpdateInspect
 import UpdateItemsDialog from '@/components/inventory/UpdateItemsDialog';
 import ActionRequiredReport from '@/components/inventory/ActionRequiredReport';
 import NewDamageReportDialog from '@/components/damage-reports/NewDamageReportDialog';
+import { ScrollArea } from '../ui/scroll-area';
 
 
 export default function StoreInventoryPage() {
@@ -58,6 +58,52 @@ export default function StoreInventoryPage() {
         if (!user) return false;
         return user.role === 'Admin' || can.manage_inventory;
     }, [user, can]);
+    
+    const actionRequiredNotifications = useMemo(() => {
+        const now = new Date();
+        const thirtyDaysFromNow = addDays(now, 30);
+        const notifications: { message: string, item: InventoryItem }[] = [];
+
+        const userVisibleItems = inventoryItems.filter(item => {
+            if (can.manage_inventory || user?.role === 'Admin') return true;
+            return user?.projectIds?.includes(item.projectId);
+        });
+
+        userVisibleItems.forEach(item => {
+            if (item.isArchived) return;
+
+            if (item.status === 'Damaged') {
+                notifications.push({ message: `Item marked as Damaged`, item });
+            }
+
+            if (item.inspectionDueDate) {
+                const dueDate = parseISO(item.inspectionDueDate);
+                if (isValid(dueDate)) {
+                    if (isPast(dueDate)) {
+                        notifications.push({ message: `Inspection Expired: ${format(dueDate, 'dd-MM-yy')}`, item });
+                    } else if (isBefore(dueDate, thirtyDaysFromNow)) {
+                         notifications.push({ message: `Inspection Expires Soon: ${format(dueDate, 'dd-MM-yy')}`, item });
+                    }
+                }
+            }
+            if (item.tpInspectionDueDate) {
+                const dueDate = parseISO(item.tpInspectionDueDate);
+                if (isValid(dueDate)) {
+                    if (isPast(dueDate)) {
+                        notifications.push({ message: `TP Cert. Expired: ${format(dueDate, 'dd-MM-yy')}`, item });
+                    } else if (isBefore(dueDate, thirtyDaysFromNow)) {
+                         notifications.push({ message: `TP Cert. Expires Soon: ${format(dueDate, 'dd-MM-yy')}`, item });
+                    }
+                }
+            }
+        });
+
+        return notifications.sort((a,b) => {
+            // Sort logic to prioritize more urgent items, e.g., expired > expiring soon
+            return 0; // Simple for now
+        });
+    }, [inventoryItems, can.manage_inventory, user]);
+
 
     const filteredItems = useMemo(() => {
         const userCanManage = can.manage_inventory || user?.role === 'Admin';
@@ -212,6 +258,44 @@ export default function StoreInventoryPage() {
                         <PendingTransfers onEditRequest={openTransferRequestDialog} />
                     </AccordionContent>
                 </AccordionItem>
+                 {actionRequiredNotifications.length > 0 && (
+                <AccordionItem value="action-required">
+                    <AccordionTrigger className="text-lg font-semibold text-destructive">
+                        <div className="flex items-center gap-2">
+                            <AlertTriangle />
+                            Action Required
+                            <Badge variant="destructive">{actionRequiredNotifications.length}</Badge>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <Card>
+                            <CardHeader>
+                                <div className="flex justify-between items-center">
+                                    <div>
+                                        <CardTitle>Items Requiring Attention</CardTitle>
+                                        <CardDescription>These items are damaged, expired, or have certifications expiring soon.</CardDescription>
+                                    </div>
+                                    <ActionRequiredReport notifications={actionRequiredNotifications} />
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <ScrollArea className="h-64">
+                                    <div className="space-y-2">
+                                        {actionRequiredNotifications.map(({item, message}, index) => (
+                                            <div key={`${item.id}-${index}`} className="flex items-center justify-between p-2 rounded-md bg-muted">
+                                                <div className="text-sm">
+                                                    <p className="font-semibold">{item.name} <span className="text-muted-foreground">(SN: {item.serialNumber})</span></p>
+                                                    <p className="text-destructive">{message}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            </CardContent>
+                        </Card>
+                    </AccordionContent>
+                </AccordionItem>
+            )}
             </Accordion>
             
             <Card>
