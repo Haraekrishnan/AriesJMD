@@ -491,6 +491,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const returnEvents = commentsArray
                                     .filter(c => c && c.text && c.text.includes('was returned by'))
                                     .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+                                const generalComments = commentsArray.filter(c => c && c.text && !c.text.includes('was returned by'));
                                 
                                 return (
                                     <div key={step.id} className="relative flex items-start">
@@ -554,8 +555,8 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                 const reason = reasonMatch ? reasonMatch[1] : 'No reason provided.';
 
                                                 return (
-                                                    <div key={`return-${index}`} className="relative flex items-start mt-4">
-                                                        <div className="absolute left-[-26px] top-2 w-5 h-5 rounded-full flex items-center justify-center bg-red-100 dark:bg-red-900/30">
+                                                    <div key={`return-${index}`} className="relative flex items-start mt-2 pl-6">
+                                                        <div className="absolute left-0 top-1 w-5 h-5 rounded-full flex items-center justify-center bg-red-100 dark:bg-red-900/30">
                                                             <Undo2 className="h-3 w-3 text-red-500" />
                                                         </div>
                                                         <div className="w-full space-y-1">
@@ -571,32 +572,33 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                 );
                                             })}
 
-                                            <Accordion type="single" collapsible className="w-full text-xs">
-                                              <AccordionItem value="comments" className="border-none">
-                                                <AccordionTrigger className="p-0 text-blue-600 hover:no-underline">
-                                                  <div className="flex items-center gap-1">
-                                                    <MessageSquare className="h-3 w-3" /> View Comments ({commentsArray.length})
-                                                  </div>
-                                                </AccordionTrigger>
-                                                <AccordionContent className="pt-2">
-                                                  <div className="space-y-2">
-                                                    {commentsArray.map((comment, index) => {
-                                                      const commentUser = users.find(u => u.id === comment.userId);
-                                                      return (
-                                                        <div key={index} className="flex items-start gap-2">
-                                                          <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
-                                                          <div className="text-xs bg-background p-2 rounded-md w-full border">
-                                                            <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(parseISO(comment.date), { addSuffix: true })}</p></div>
-                                                            <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{comment.text}</p>
-                                                          </div>
-                                                        </div>
-                                                      );
-                                                    })}
-                                                    {commentsArray.length === 0 && <p className="text-xs text-muted-foreground py-2 text-center">No comments on this step.</p>}
-                                                  </div>
-                                                </AccordionContent>
-                                              </AccordionItem>
-                                            </Accordion>
+                                            {generalComments.length > 0 && (
+                                                <Accordion type="single" collapsible className="w-full text-xs">
+                                                <AccordionItem value="comments" className="border-none">
+                                                    <AccordionTrigger className="p-0 text-blue-600 hover:no-underline">
+                                                    <div className="flex items-center gap-1">
+                                                        <MessageSquare className="h-3 w-3" /> View Comments ({generalComments.length})
+                                                    </div>
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="pt-2">
+                                                    <div className="space-y-2">
+                                                        {generalComments.map((comment, index) => {
+                                                        const commentUser = users.find(u => u.id === comment.userId);
+                                                        return (
+                                                            <div key={index} className="flex items-start gap-2">
+                                                                <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
+                                                                <div className="text-xs bg-background p-2 rounded-md w-full border">
+                                                                    <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(parseISO(comment.date), { addSuffix: true })}</p></div>
+                                                                    <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{comment.text}</p>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                        })}
+                                                    </div>
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                                </Accordion>
+                                            )}
 
                                             {canAssign && (
                                                 <div className="mt-3 p-3 bg-background border rounded-md space-y-2">
