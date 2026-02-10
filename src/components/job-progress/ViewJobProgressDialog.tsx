@@ -499,7 +499,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                             <StatusIcon className={cn("h-3 w-3", statusConfig[step.status].color)} />
                                         </div>
                                         <div className={cn(
-                                            "ml-10 w-full pl-6 space-y-3",
+                                            "ml-14 w-full pl-6 space-y-3",
                                             isCurrentActionableStep && "bg-blue-50 dark:bg-blue-900/30 p-4 -ml-4 rounded-lg"
                                         )}>
                                             <div className="flex justify-between items-start gap-2">
