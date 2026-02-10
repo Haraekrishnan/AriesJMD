@@ -292,15 +292,15 @@ const nextStepSchema = z.object({
 
 
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
-    const { addAndCompleteStep, users } = useAppContext();
+    const { addAndCompleteStep, getAssignableUsers } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
     const form = useForm<z.infer<typeof nextStepSchema>>({
         resolver: zodResolver(nextStepSchema),
     });
     
     const assignableUsers = useMemo(() => {
-        return users.filter(u => u.role !== 'Manager');
-    }, [users]);
+        return getAssignableUsers();
+    }, [getAssignableUsers]);
 
     const handleFormSubmit = (data: z.infer<typeof nextStepSchema>) => {
         addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, undefined, {
@@ -454,7 +454,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                         <div className="space-y-8">
                             {job.steps.map((step, index) => {
                                 const assignee = users.find(u => u.id === step.assigneeId);
-                                const isPreviousStepCompleted = index === 0 || job.steps[index - 1].status === 'Completed';
+                                const isPreviousStepCompleted = index === 0 || job.steps[index - 1].status === 'Completed' || job.steps[index-1].status === 'Skipped';
                                 const isCurrentUserAssignee = user?.id === step.assigneeId;
                                 const isProjectMember = viewingUser?.projectIds?.includes(job.projectId || '');
                                 
@@ -462,6 +462,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const isAdmin = user?.role === 'Admin';
                                 const canEditRoles: Role[] = ['Project Coordinator', 'Document Controller'];
                                 const canEditStep = isCreator || isAdmin || isCurrentUserAssignee || (user && canEditRoles.includes(user.role));
+                                const isCurrentActionableStep = isPreviousStepCompleted && (step.status === 'Pending' || step.status === 'Acknowledged');
                                 
                                 let canActOnUnassigned = false;
                                 if (!step.assigneeId && (step.name === 'Timesheets Pending' || step.name === 'JMS Hard copy sent back to Site' || step.name === 'JMS Hard copy submitted')) {
@@ -496,7 +497,10 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                         <div className={cn("absolute left-10 top-2 w-5 h-5 rounded-full flex items-center justify-center -translate-x-1/2", statusConfig[step.status].color.replace('text-', 'bg-').replace('-500', '-100 dark:bg-opacity-30'))}>
                                             <StatusIcon className={cn("h-3 w-3", statusConfig[step.status].color)} />
                                         </div>
-                                        <div className="ml-10 w-full pl-6 space-y-3">
+                                        <div className={cn(
+                                            "ml-10 w-full pl-6 space-y-3",
+                                            isCurrentActionableStep && "bg-blue-50 dark:bg-blue-900/30 p-4 -ml-4 rounded-lg"
+                                        )}>
                                             <div className="flex justify-between items-start">
                                                  <div className="font-semibold flex items-center gap-2">
                                                     {editingStepId === step.id ? (
@@ -556,11 +560,8 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                         </div>
                                                         <div className="w-full space-y-1">
                                                             <div className="flex justify-between items-start">
-                                                                <div className="font-semibold text-sm">Step Returned</div>
+                                                                <div className="font-medium text-sm text-destructive">Step Returned by {eventUser?.name || 'Unknown'}</div>
                                                                 <div className="text-xs text-muted-foreground">{formatDistanceToNow(parseISO(event.date), { addSuffix: true })}</div>
-                                                            </div>
-                                                            <div className="text-xs text-muted-foreground">
-                                                                By: {eventUser?.name || 'Unknown'}
                                                             </div>
                                                             <div className="text-sm p-2 bg-red-50 dark:bg-red-900/20 rounded-md border border-red-200 dark:border-red-800">
                                                                 <strong>Reason:</strong> {reason}
