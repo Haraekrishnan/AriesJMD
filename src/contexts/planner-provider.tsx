@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -318,7 +317,26 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const updates: { [key: string]: any } = {};
         const basePath = `timesheets/${timesheetId}`;
         updates[`${basePath}/status`] = status;
-        
+
+        if (comment) {
+            let commentText = comment;
+            if (status === 'Rejected') {
+                updates[`${basePath}/rejectedById`] = user.id;
+                updates[`${basePath}/rejectedDate`] = new Date().toISOString();
+                updates[`${basePath}/rejectionReason`] = comment;
+                commentText = `Timesheet Rejected. Reason: ${comment}`;
+            }
+            const newCommentRef = push(ref(rtdb, `${basePath}/comments`));
+            const newComment: Omit<Comment, 'id'> = {
+                id: newCommentRef.key!,
+                userId: user.id,
+                text: commentText,
+                date: new Date().toISOString(),
+                eventId: timesheetId
+            };
+            updates[`${basePath}/comments/${newCommentRef.key}`] = newComment;
+        }
+    
         if (status === 'Acknowledged') {
             updates[`${basePath}/acknowledgedById`] = user.id;
             updates[`${basePath}/acknowledgedDate`] = new Date().toISOString();
@@ -332,10 +350,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         } else if (status === 'Office Acknowledged') {
             updates[`${basePath}/officeAcknowledgedById`] = user.id;
             updates[`${basePath}/officeAcknowledgedDate`] = new Date().toISOString();
-        } else if (status === 'Rejected' && comment) {
-            updates[`${basePath}/rejectedById`] = user.id;
-            updates[`${basePath}/rejectedDate`] = new Date().toISOString();
-            updates[`${basePath}/rejectionReason`] = comment;
+        } else if (status === 'Rejected') {
             // Reset the workflow fields but keep rejected status
             updates[`${basePath}/acknowledgedById`] = null;
             updates[`${basePath}/acknowledgedDate`] = null;
@@ -346,7 +361,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         }
         
         update(ref(rtdb), updates);
-    }, [user, timesheets]);
+    }, [user]);
     
     useEffect(() => {
         const unsubscribers = [
@@ -397,4 +412,3 @@ export const usePlanner = (): PlannerContextType => {
   }
   return context;
 };
-

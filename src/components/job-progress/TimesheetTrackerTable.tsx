@@ -11,9 +11,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAppContext } from '@/contexts/app-provider';
 import { useToast } from '@/hooks/use-toast';
-import type { Timesheet, TimesheetStatus } from '@/lib/types';
+import type { Comment, Timesheet, TimesheetStatus } from '@/lib/types';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
-import { Building, CheckCircle, MessageSquare, Send, UserCheck, XCircle } from 'lucide-react';
+import { Building, CheckCircle, UserCheck, XCircle, Send, MessageSquare } from 'lucide-react';
+import { ScrollArea } from '../ui/scroll-area';
 
 const statusVariantMap: { [key in TimesheetStatus]: 'default' | 'secondary' | 'destructive' | 'success' } = {
   'Pending': 'secondary',
@@ -62,6 +63,7 @@ export default function TimesheetTrackerTable() {
   const { toast } = useToast();
   const [rejectionInfo, setRejectionInfo] = useState<{ timesheet: Timesheet, action: 'Reject' | 'Reopen' } | null>(null);
   const [reason, setReason] = useState('');
+  const [comments, setComments] = useState<Record<string, string>>({});
 
   const canAcknowledgeOffice = useMemo(() => {
     if (!user) return false;
@@ -88,7 +90,7 @@ export default function TimesheetTrackerTable() {
     switch (timesheet.status) {
       case 'Pending':
         if (isRecipient) {
-          return <Button size="sm" onClick={() => updateTimesheetStatus(timesheet.id, 'Acknowledged')}>Acknowledge</Button>;
+          return <Button size="sm" onClick={() => updateTimesheetStatus(timesheet.id, 'Acknowledged', 'Acknowledged by recipient.')}>Acknowledge</Button>;
         }
         return null;
       case 'Acknowledged':
@@ -100,7 +102,7 @@ export default function TimesheetTrackerTable() {
         if (canAcknowledgeOffice) {
             return (
                 <div className="flex flex-col items-center gap-2">
-                    <Button size="sm" onClick={() => updateTimesheetStatus(timesheet.id, 'Office Acknowledged')}>Acknowledge Receipt</Button>
+                    <Button size="sm" onClick={() => updateTimesheetStatus(timesheet.id, 'Office Acknowledged', 'Acknowledged by office.')}>Acknowledge Receipt</Button>
                     <Button size="sm" variant="destructive" onClick={() => handleRejectClick(timesheet, 'Reject')}>Reject</Button>
                 </div>
             );
@@ -113,7 +115,34 @@ export default function TimesheetTrackerTable() {
          return null;
       case 'Rejected':
         if (isRecipient) {
-          return <Button size="sm" onClick={() => updateTimesheetStatus(timesheet.id, 'Acknowledged')}>Re-Acknowledge</Button>;
+            return (
+                <div className="space-y-2 w-full text-left">
+                    <Label htmlFor={`comment-${timesheet.id}`} className="text-xs">Reply to query</Label>
+                    <Textarea
+                        id={`comment-${timesheet.id}`}
+                        placeholder="Add your reply..."
+                        value={comments[timesheet.id] || ''}
+                        onChange={(e) => setComments(prev => ({...prev, [timesheet.id]: e.target.value}))}
+                        rows={2}
+                    />
+                    <Button 
+                        size="sm" 
+                        className="w-full"
+                        onClick={() => {
+                            const commentText = comments[timesheet.id]?.trim();
+                            if (!commentText) {
+                                toast({ title: "Reply is required to re-acknowledge.", variant: 'destructive'});
+                                return;
+                            }
+                            updateTimesheetStatus(timesheet.id, 'Acknowledged', commentText);
+                            setComments(prev => ({...prev, [timesheet.id]: ''}));
+                        }}
+                        disabled={!comments[timesheet.id]?.trim()}
+                    >
+                        Reply & Re-Acknowledge
+                    </Button>
+                </div>
+            );
         }
         return null;
       default:
@@ -135,7 +164,6 @@ export default function TimesheetTrackerTable() {
       <Accordion type="multiple" className="w-full space-y-2">
         {sortedTimesheets.map(ts => {
           const submitter = users.find(u => u.id === ts.submitterId);
-          const recipient = users.find(u => u.id === ts.submittedToId);
           const project = projects.find(p => p.id === ts.projectId);
           const acknowledgedBy = users.find(u => u.id === ts.acknowledgedById);
           const sentToOfficeBy = users.find(u => u.id === ts.sentToOfficeById);
@@ -179,18 +207,19 @@ export default function TimesheetTrackerTable() {
                               <TimelineItem icon={CheckCircle} title="Office Acknowledged" actorName={officeAcknowledgedBy?.name} date={ts.officeAcknowledgedDate} />
                             </>
                           )}
-                           {commentsArray.length > 0 && (
-                                <Accordion type="single" collapsible className="w-full mt-2">
-                                    <AccordionItem value="comments" className="border-none">
-                                        <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline"><div className="flex items-center gap-1"><MessageSquare className="h-3 w-3" /> View Comments ({commentsArray.length})</div></AccordionTrigger>
-                                        <AccordionContent className="pt-2">
-                                            <div className="space-y-2">
+                          {commentsArray.length > 0 && (
+                            <Accordion type="single" collapsible className="w-full mt-2">
+                                <AccordionItem value="comments" className="border-none">
+                                    <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline"><div className="flex items-center gap-1"><MessageSquare className="h-3 w-3" /> View Comments ({commentsArray.length})</div></AccordionTrigger>
+                                    <AccordionContent className="pt-2">
+                                        <ScrollArea className="h-32">
+                                            <div className="space-y-2 pr-4">
                                                 {commentsArray.map((c, i) => {
                                                     const commentUser = users.find(u => u.id === c.userId);
                                                     return (
                                                         <div key={i} className="flex items-start gap-2">
                                                             <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
-                                                            <div className="text-xs bg-background p-2 rounded-md w-full">
+                                                            <div className="text-xs bg-background p-2 rounded-md w-full border">
                                                                 <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(parseISO(c.date), { addSuffix: true })}</p></div>
                                                                 <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
                                                             </div>
@@ -198,10 +227,11 @@ export default function TimesheetTrackerTable() {
                                                     )
                                                 })}
                                             </div>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                </Accordion>
-                            )}
+                                        </ScrollArea>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            </Accordion>
+                          )}
                       </div>
                       <div className="flex flex-col items-center justify-center gap-4 p-4 bg-muted/50 rounded-md">
                           <h4 className="font-semibold text-sm">Next Action</h4>
@@ -218,7 +248,7 @@ export default function TimesheetTrackerTable() {
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle>{rejectionInfo.action} Timesheet?</AlertDialogTitle>
-                    <AlertDialogDescription>Please provide a reason. The timesheet will be marked as 'Rejected' and sent back to the recipient for re-acknowledgment after corrections.</AlertDialogDescription>
+                    <AlertDialogDescription>Please provide a reason. This action will be logged in the comment history.</AlertDialogDescription>
                 </AlertDialogHeader>
                 <div className="py-2">
                     <Label htmlFor="rejection-reason">Reason</Label>
@@ -234,4 +264,3 @@ export default function TimesheetTrackerTable() {
     </>
   );
 }
-
