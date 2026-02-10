@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { format, parseISO, formatDistanceToNow, isValid } from 'date-fns';
-import { CheckCircle, Clock, Circle, XCircle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X } from 'lucide-react';
+import { CheckCircle, Clock, Circle, XCircle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
@@ -37,6 +36,7 @@ import {
 } from '../ui/alert-dialog';
 import { JOB_PROGRESS_STEPS, REOPEN_JOB_STEPS } from '@/lib/types';
 import ReturnStepDialog from './ReturnStepDialog';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 
 const statusConfig: { [key in JobStepStatus]: { icon: React.ElementType, color: string, label: string } } = {
@@ -485,6 +485,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const canAssign = (user?.id === job.creatorId || user?.role === 'Admin') && isStepUnassigned && step.status === 'Pending';
                                 
                                 const StatusIcon = statusConfig[step.status].icon;
+                                const commentsArray = Array.isArray(step.comments) ? step.comments : Object.values(step.comments || {});
                                 
                                 return (
                                     <div key={step.id} className="relative flex items-start">
@@ -539,6 +540,33 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                             {step.acknowledgedAt && !step.completedAt && <p className="text-xs text-blue-600">Acknowledged: {formatDistanceToNow(parseISO(step.acknowledgedAt), { addSuffix: true })}</p>}
                                             {step.completedAt && <p className="text-xs text-green-600">Completed: {formatDistanceToNow(parseISO(step.completedAt), { addSuffix: true })} by {users.find(u => u.id === step.completedBy)?.name}</p>}
                                             
+                                            <Accordion type="single" collapsible className="w-full text-xs">
+                                              <AccordionItem value="comments" className="border-none">
+                                                <AccordionTrigger className="p-0 text-blue-600 hover:no-underline">
+                                                  <div className="flex items-center gap-1">
+                                                    <MessageSquare className="h-3 w-3" /> View Comments ({commentsArray.length})
+                                                  </div>
+                                                </AccordionTrigger>
+                                                <AccordionContent className="pt-2">
+                                                  <div className="space-y-2">
+                                                    {commentsArray.map((comment, index) => {
+                                                      const commentUser = users.find(u => u.id === comment.userId);
+                                                      return (
+                                                        <div key={index} className="flex items-start gap-2">
+                                                          <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
+                                                          <div className="text-xs bg-background p-2 rounded-md w-full border">
+                                                            <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(parseISO(comment.date), { addSuffix: true })}</p></div>
+                                                            <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{comment.text}</p>
+                                                          </div>
+                                                        </div>
+                                                      );
+                                                    })}
+                                                    {commentsArray.length === 0 && <p className="text-xs text-muted-foreground py-2 text-center">No comments on this step.</p>}
+                                                  </div>
+                                                </AccordionContent>
+                                              </AccordionItem>
+                                            </Accordion>
+
                                             {canAssign && (
                                                 <div className="mt-3 p-3 bg-background border rounded-md space-y-2">
                                                     <Label>Assign this step</Label>
