@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -489,30 +490,24 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     const batchUpdateInventoryItems = useCallback((updates: { id: string, data: Partial<InventoryItem> }[]) => {
         if (!user) return;
-    
+        
         const dbUpdates: { [key: string]: any } = {};
         const timestamp = new Date().toISOString();
-    
+        
         updates.forEach(({ id, data }) => {
-            const path = `/inventoryItems/${id}`;
-            const existingItem = inventoryItemsById[id];
-            if (existingItem) {
-              const updatedData = { ...existingItem, ...data, lastUpdated: timestamp };
-              // Ensure nulls are handled correctly when sent to Firebase
-              for (const key in updatedData) {
-                if (updatedData[key as keyof typeof updatedData] === undefined) {
-                  updatedData[key as keyof typeof updatedData] = null;
-                }
-              }
-              dbUpdates[path] = updatedData;
+            const basePath = `/inventoryItems/${id}`;
+            for (const key in data) {
+                const path = `${basePath}/${key}`;
+                dbUpdates[path] = data[key as keyof typeof data];
             }
+            dbUpdates[`${basePath}/lastUpdated`] = timestamp;
         });
-    
+        
         if (Object.keys(dbUpdates).length > 0) {
             update(ref(rtdb), dbUpdates);
             addActivityLog(user.id, "Inventory Batch Updated", `Updated ${updates.length} items.`);
         }
-    }, [user, inventoryItemsById, addActivityLog]);
+    }, [user, addActivityLog]);
     
     const updateInventoryItemGroup = useCallback((itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => {
         const itemsToUpdate = inventoryItems.filter(item => item.name === itemName && item.tpInspectionDueDate === originalDueDate);

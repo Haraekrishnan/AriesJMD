@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useEffect, useMemo, useState, useCallback, useRef, MouseEvent } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -27,7 +28,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import type { InventoryItem, InventoryItemStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardContent } from '../ui/card';
-import ExcelJS from 'exceljs';
+import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { Label } from '../ui/label';
 
@@ -40,14 +41,7 @@ function debounce<T extends (...args: any[]) => void>(func: T, delay: number): (
     };
 }
 
-const statusOptions: {value: InventoryItemStatus | 'Inspection Expired' | 'TP Expired' | 'Not Verified', label: string}[] = [
-    { value: 'In Use', label: 'In Use' },
-    { value: 'In Store', label: 'In Store' },
-    { value: 'Damaged', label: 'Damaged' },
-    { value: 'Quarantine', label: 'Quarantine' },
-    { value: 'Expired', label: 'Expired' },
-    { value: 'Moved to another project', label: 'Moved' },
-];
+const statusOptions: InventoryItemStatus[] = ['In Use', 'In Store', 'Damaged', 'Expired', 'Moved to another project', 'Quarantine'];
 
 const statusColorMap: Record<string, string> = {
     'In Use': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200 font-bold',
@@ -216,6 +210,8 @@ const InventorySheet = ({ category }: { category: string }) => {
   const [isAddRowsDialogOpen, setIsAddRowsDialogOpen] = useState(false);
   const [numRowsToAdd, setNumRowsToAdd] = useState(1);
   
+  const { updateInventoryItem } = useAppContext();
+  
   const debouncedUpdate = useRef(
       debounce((item: InventoryItem) => {
           updateInventoryItem(item);
@@ -224,7 +220,7 @@ const InventorySheet = ({ category }: { category: string }) => {
 
   const columns = useMemo<ColumnDef<InventoryItem>[]>(() => {
     const projectOptions = projects.map(p => ({ value: p.id, label: p.name }));
-    const statusOptionsMapped = statusOptions.map(s => ({ value: s.value, label: s.label }));
+    const statusOptionsMapped = statusOptions.map(s => ({ value: s, label: s }));
     
     const FilterableHeader = ({ title, column }: { title: string, column: any }) => (
       <div className="flex flex-col gap-1">
@@ -236,7 +232,7 @@ const InventorySheet = ({ category }: { category: string }) => {
           {{
             asc: <ArrowUp className="ml-2 h-4 w-4" />,
             desc: <ArrowDown className="ml-2 h-4 w-4" />,
-          }[column.getIsSorted() as string] ?? null}
+          }[column.getIsSorted() as string] ?? <ArrowUpDown className="ml-2 h-4 w-4 opacity-30" />}
         </span>
         <DebouncedInput
           value={(column.getFilterValue() as string) ?? ''}
@@ -257,7 +253,7 @@ const InventorySheet = ({ category }: { category: string }) => {
             {{
               asc: <ArrowUp className="ml-2 h-4 w-4" />,
               desc: <ArrowDown className="ml-2 h-4 w-4" />,
-            }[column.getIsSorted() as string] ?? null}
+            }[column.getIsSorted() as string] ?? <ArrowUpDown className="ml-2 h-4 w-4 opacity-30" />}
           </span>
           <Select value={(column.getFilterValue() as string) ?? 'all'} onValueChange={value => column.setFilterValue(value === 'all' ? undefined : value)}>
             <SelectTrigger className="h-7 w-full"><SelectValue placeholder="All" /></SelectTrigger>
@@ -309,8 +305,8 @@ const InventorySheet = ({ category }: { category: string }) => {
       { accessorKey: 'plantUnit', header: ({column}) => <FilterableHeader title="Plant/Unit" column={column} />, cell: EditableCell, size: 150 },
       { 
         accessorKey: 'status', 
-        header: ({column}) => <SelectFilterHeader title="Status" column={column} options={statusOptionsMapped} />, 
-        cell: (props) => <SelectCell {...props} options={statusOptionsMapped} />,
+        header: ({column}) => <SelectFilterHeader title="Status" column={column} options={statusOptions.map(s => ({value: s, label: s}))} />, 
+        cell: (props) => <SelectCell {...props} options={statusOptions.map(s => ({value: s, label: s}))} />,
         size: 180,
       },
       { accessorKey: 'purchaseDate', header: ({column}) => <FilterableHeader title="Purchase Date" column={column} />, cell: DateCell, size: 150 },
@@ -354,11 +350,21 @@ const InventorySheet = ({ category }: { category: string }) => {
     getFacetedUniqueValues: getFacetedUniqueValues(),
     meta: {
       updateData: (rowIndex: number, columnId: string, value: any) => {
-        const updatedRow = { ...localData[rowIndex], [columnId]: value, lastUpdated: new Date().toISOString() };
-        debouncedUpdate(updatedRow);
-        setLocalData(old =>
-            old.map((row, index) => (index === rowIndex ? updatedRow : row))
-        );
+        setLocalData(old => {
+          const newData = old.map((row, index) => {
+            if (index === rowIndex) {
+              const updatedRow = {
+                ...row,
+                [columnId]: value,
+                lastUpdated: new Date().toISOString(),
+              };
+              debouncedUpdate(updatedRow);
+              return updatedRow;
+            }
+            return row;
+          });
+          return newData;
+        });
       },
       setActiveCell: setActiveCell,
     },
@@ -573,9 +579,6 @@ const InventorySheet = ({ category }: { category: string }) => {
     toast({ title: "Export Complete" });
   };
   
-  // Fake updateInventoryItem to satisfy debounce
-  const updateInventoryItem = (item: InventoryItem) => {};
-
   return (
     <Card>
       <CardHeader className="flex flex-row justify-between items-center">
