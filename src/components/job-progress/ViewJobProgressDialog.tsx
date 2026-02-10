@@ -487,6 +487,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const canAssign = (user?.id === job.creatorId || user?.role === 'Admin') && isStepUnassigned && step.status === 'Pending';
                                 
                                 const StatusIcon = statusConfig[step.status].icon;
+                                const showStatusIcon = !!StatusIcon;
                                 const commentsArray = Array.isArray(step.comments) ? step.comments : Object.values(step.comments || {});
                                 const returnEvents = commentsArray
                                     .filter(c => c && c.text && c.text.includes('was returned by'))
@@ -495,9 +496,11 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 
                                 return (
                                     <div key={step.id} className="relative flex items-start">
-                                        <div className={cn("absolute left-10 top-2 w-5 h-5 rounded-full flex items-center justify-center -translate-x-1/2", statusConfig[step.status].color.replace('text-', 'bg-').replace('-500', '-100 dark:bg-opacity-30'))}>
-                                            {StatusIcon && <StatusIcon className="h-3 w-3" />}
-                                        </div>
+                                        {showStatusIcon && (
+                                            <div className={cn("absolute left-10 top-2 w-5 h-5 rounded-full flex items-center justify-center -translate-x-1/2", statusConfig[step.status].color.replace('text-', 'bg-').replace('-500', '-100 dark:bg-opacity-30'))}>
+                                                <StatusIcon className="h-3 w-3" />
+                                            </div>
+                                        )}
                                         <div className={cn(
                                             "ml-14 w-full pl-6 space-y-3",
                                             isCurrentActionableStep && "bg-blue-50 dark:bg-blue-900/30 p-4 -ml-4 rounded-lg"
@@ -568,7 +571,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                     })}
                                                 </div>
                                             )}
-
+                                            
                                             {generalComments.length > 0 && (
                                                 <Accordion type="single" collapsible className="w-full text-xs">
                                                 <AccordionItem value="comments" className="border-none">
@@ -722,5 +725,3 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         </>
     )
 }
-
-    
