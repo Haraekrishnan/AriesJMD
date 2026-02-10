@@ -26,7 +26,7 @@ import BulkUpdateInspectionDialog from '@/components/inventory/BulkUpdateInspect
 import UpdateItemsDialog from '@/components/inventory/UpdateItemsDialog';
 import ActionRequiredReport from '@/components/inventory/ActionRequiredReport';
 import NewDamageReportDialog from '@/components/damage-reports/NewDamageReportDialog';
-import { ScrollArea } from '../ui/scroll-area';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 export default function StoreInventoryPage() {
@@ -282,7 +282,7 @@ export default function StoreInventoryPage() {
                                 <ScrollArea className="h-64">
                                     <div className="space-y-2">
                                         {actionRequiredNotifications.map(({item, message}, index) => (
-                                            <div key={`${item.id}-${index}`} className="flex items-center justify-between p-2 rounded-md bg-muted">
+                                            <div key={`${'item.id'}-${index}`} className="flex items-center justify-between p-2 rounded-md bg-muted">
                                                 <div className="text-sm">
                                                     <p className="font-semibold">{item.name} <span className="text-muted-foreground">(SN: {item.serialNumber})</span></p>
                                                     <p className="text-destructive">{message}</p>
