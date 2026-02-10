@@ -292,15 +292,15 @@ const nextStepSchema = z.object({
 
 
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
-    const { addAndCompleteStep, getAssignableUsers } = useAppContext();
+    const { users, addAndCompleteStep } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
     const form = useForm<z.infer<typeof nextStepSchema>>({
         resolver: zodResolver(nextStepSchema),
     });
     
     const assignableUsers = useMemo(() => {
-        return getAssignableUsers();
-    }, [getAssignableUsers]);
+        return users.filter(u => u.role !== 'Manager');
+    }, [users]);
 
     const handleFormSubmit = (data: z.infer<typeof nextStepSchema>) => {
         addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, undefined, {
@@ -607,7 +607,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                         <Select onValueChange={setNewAssigneeId} value={newAssigneeId}>
                                                             <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
                                                             <SelectContent>
-                                                                {getAssignableUsers().filter(u => u.role !== 'Manager').map(u => (
+                                                                {users.filter(u => u.role !== 'Manager').map(u => (
                                                                     <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                                                                 ))}
                                                             </SelectContent>
