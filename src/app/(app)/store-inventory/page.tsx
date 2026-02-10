@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
@@ -269,7 +270,7 @@ export default function StoreInventoryPage() {
                                 <div className="flex justify-between items-center">
                                     <div>
                                         <CardTitle>Items Requiring Attention</CardTitle>
-                                        <CardDescription>These items are expired or have certifications expiring soon.</CardDescription>
+                                        <CardDescription>These items are expired or have certifications expiring soon. Damaged or quarantined items are not shown here.</CardDescription>
                                     </div>
                                     <ActionRequiredReport notifications={actionRequiredNotifications} />
                                 </div>
@@ -332,3 +333,4 @@ export default function StoreInventoryPage() {
         </div>
     );
 }
+
