@@ -936,25 +936,21 @@ export type JobProgress = {
 };
 
 export const JOB_PROGRESS_STEPS = [
-  "Timesheets Pending",
-  "Timesheets Checked",
-  "Timesheets Approved",
-  "Invoice Pending",
-  "Invoice Submitted",
-  "Payment Pending",
-  "Payment Received",
-  "JMS sent to Office",
-  "JMS sent back to Office",
-  "JMS Hard copy sent back to Site",
-  "JMS Hard copy submitted",
-  "JMS Completed",
-] as const;
-
-export const REOPEN_JOB_STEPS = [
-  "Timesheets Pending",
-  "Invoice Pending",
-  "Payment Pending",
-] as const;
+    "Invoice Pending",
+    "Invoice Submitted",
+    "Payment Pending",
+    "Payment Received",
+    "JMS sent to Office",
+    "JMS sent back to Office",
+    "JMS Hard copy sent back to Site",
+    "JMS Hard copy submitted",
+    "JMS Completed",
+  ] as const;
+  
+  export const REOPEN_JOB_STEPS = [
+    "Invoice Pending",
+    "Payment Pending",
+  ] as const;
 
 export type TpCertListItem = {
   itemId: string;
@@ -1163,4 +1159,31 @@ export type VehicleUsageRecord = {
       };
     };
   };
+};
+
+export type TimesheetStatus = 'Pending' | 'Acknowledged' | 'Sent To Office' | 'Office Acknowledged' | 'Rejected';
+
+export type Timesheet = {
+    id: string;
+    submitterId: string;
+    submittedToId: string;
+    projectId: string;
+    plantUnit: string;
+    startDate: string; // ISO
+    endDate: string; // ISO
+    submissionDate: string; // ISO
+    status: TimesheetStatus;
+
+    acknowledgedById?: string;
+    acknowledgedDate?: string; // ISO
+
+    sentToOfficeById?: string;
+    sentToOfficeDate?: string; // ISO
+
+    officeAcknowledgedById?: string;
+    officeAcknowledgedDate?: string; // ISO
+
+    rejectedById?: string;
+    rejectedDate?: string;
+    rejectionReason?: string;
 };

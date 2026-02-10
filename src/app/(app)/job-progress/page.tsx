@@ -1,3 +1,5 @@
+
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -10,12 +12,16 @@ import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDial
 import { JobProgress } from '@/lib/types';
 import { JobProgressTable } from '@/components/job-progress/JobProgressTable';
 import { format, startOfMonth, addMonths, subMonths, isSameMonth, parseISO, isBefore, isAfter, startOfToday } from 'date-fns';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import CreateTimesheetDialog from '@/components/job-progress/CreateTimesheetDialog';
+import TimesheetTrackerTable from '@/components/job-progress/TimesheetTrackerTable';
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
 
 export default function JobProgressPage() {
   const { can, jobProgress, user } = useAppContext();
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isCreateJobOpen, setIsCreateJobOpen] = useState(false);
+  const [isCreateTimesheetOpen, setIsCreateTimesheetOpen] = useState(false);
   const [viewingJob, setViewingJob] = useState<JobProgress | null>(null);
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
 
@@ -67,36 +73,63 @@ export default function JobProgressPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">JMS Tracker</h1>
-          <p className="text-muted-foreground">Monitor the lifecycle of JMS for the selected month.</p>
-        </div>
-        <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth}>
-                <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-lg font-semibold w-32 text-center">{format(currentMonth, 'MMMM yyyy')}</span>
-            <Button variant="outline" size="icon" onClick={() => changeMonth(1)} disabled={!canGoToNextMonth}>
-                <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button onClick={() => setIsCreateOpen(true)}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Create New JMS
-            </Button>
+          <h1 className="text-3xl font-bold tracking-tight">Trackers</h1>
+          <p className="text-muted-foreground">Monitor the lifecycle of JMS and Timesheets.</p>
         </div>
       </div>
+      
+      <Tabs defaultValue="jms-tracker">
+        <TabsList>
+            <TabsTrigger value="jms-tracker">JMS Tracker</TabsTrigger>
+            <TabsTrigger value="timesheet-tracker">Timesheet Tracker</TabsTrigger>
+        </TabsList>
+        <TabsContent value="jms-tracker" className="mt-4">
+            <div className="flex items-center justify-between gap-2 mb-4">
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth}>
+                        <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-lg font-semibold w-32 text-center">{format(currentMonth, 'MMMM yyyy')}</span>
+                    <Button variant="outline" size="icon" onClick={() => changeMonth(1)} disabled={!canGoToNextMonth}>
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
+                <Button onClick={() => setIsCreateJobOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Create New JMS
+                </Button>
+            </div>
+            <Card>
+                <CardHeader>
+                  <CardTitle>JMS for {format(currentMonth, 'MMMM yyyy')}</CardTitle>
+                  <CardDescription>A list of all JMS created this month and their current status.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <JobProgressTable jobs={filteredJobs} onViewJob={setViewingJob} />
+                </CardContent>
+            </Card>
+        </TabsContent>
+        <TabsContent value="timesheet-tracker" className="mt-4">
+            <div className="flex items-center justify-end gap-2 mb-4">
+                 <Button onClick={() => setIsCreateTimesheetOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Submit Timesheet
+                </Button>
+            </div>
+             <Card>
+                <CardHeader>
+                  <CardTitle>Timesheet Submissions</CardTitle>
+                  <CardDescription>Track the submission and approval status of all timesheets.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <TimesheetTrackerTable />
+                </CardContent>
+            </Card>
+        </TabsContent>
+      </Tabs>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>JMS for {format(currentMonth, 'MMMM yyyy')}</CardTitle>
-          <CardDescription>A list of all JMS created this month and their current status.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <JobProgressTable jobs={filteredJobs} onViewJob={setViewingJob} />
-        </CardContent>
-      </Card>
-
-      <CreateJobDialog isOpen={isCreateOpen} setIsOpen={setIsCreateOpen} />
+      <CreateJobDialog isOpen={isCreateJobOpen} setIsOpen={setIsCreateJobOpen} />
+      <CreateTimesheetDialog isOpen={isCreateTimesheetOpen} setIsOpen={setIsCreateTimesheetOpen} />
       {viewingJob && (
         <ViewJobProgressDialog 
             isOpen={!!viewingJob} 
