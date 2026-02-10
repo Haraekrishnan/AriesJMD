@@ -58,80 +58,9 @@ const TimelineItem = ({ icon: Icon, title, actorName, date, children }: { icon: 
     );
 };
 
-const RequestsTable = ({ requests }: { requests: Timesheet[] }) => {
-    const { user, manpowerProfiles, users, updateTimesheetStatus, addTimesheetComment, markLogbookRequestAsViewed, deleteTimesheet } = useAppContext();
-    const [viewingRequest, setViewingRequest] = useState<Timesheet | null>(null);
-    const { toast } = useToast();
-
-    const handleAction = (requestId: string, status: 'Completed' | 'Rejected', comment: string) => {
-        // Placeholder for future actions if needed
-    };
-
-    const handleView = (request: Timesheet) => {
-        // Placeholder
-        setViewingRequest(request);
-    };
-
-    if (requests.length === 0) {
-        return <p className="text-sm text-muted-foreground p-4 text-center">No requests in this category.</p>;
-    }
-    
-    return (
-      <>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Submitter</TableHead>
-              <TableHead>Project</TableHead>
-              <TableHead>Period</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {requests.map(req => {
-              const submitter = users.find(u => u.id === req.submitterId);
-              const project = useAppContext().projects.find(p => p.id === req.projectId);
-              
-              return (
-                <TableRow key={req.id}>
-                    <TableCell className="font-medium">{submitter?.name || 'Unknown'}</TableCell>
-                    <TableCell>{project?.name || 'N/A'} - {req.plantUnit}</TableCell>
-                    <TableCell>{format(parseISO(req.startDate), 'dd/MM')} - {format(parseISO(req.endDate), 'dd/MM/yy')}</TableCell>
-                    <TableCell>
-                        <Badge variant={statusVariantMap[req.status]}>{req.status}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right flex items-center justify-end gap-2">
-                       <Button variant="outline" size="sm" onClick={() => handleView(req)}>
-                           <Eye className="mr-2 h-4 w-4" /> View
-                       </Button>
-                       {user?.role === 'Admin' && (
-                           <AlertDialog>
-                               <AlertDialogTrigger asChild>
-                                   <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4"/></Button>
-                               </AlertDialogTrigger>
-                               <AlertDialogContent>
-                                   <AlertDialogHeader><AlertDialogTitle>Delete Timesheet?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
-                                   <AlertDialogFooter>
-                                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                       <AlertDialogAction onClick={() => deleteTimesheet(req.id)}>Delete</AlertDialogAction>
-                                   </AlertDialogFooter>
-                               </AlertDialogContent>
-                           </AlertDialog>
-                       )}
-                    </TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
-        {/* The details dialog would go here, managed by viewingRequest state */}
-      </>
-    );
-};
 
 export default function TimesheetTrackerTable() {
-  const { user, timesheets, updateTimesheetStatus } = useAppContext();
+  const { user, timesheets, updateTimesheetStatus, deleteTimesheet } = useAppContext();
   const { toast } = useToast();
   const [rejectionInfo, setRejectionInfo] = useState<{ timesheet: Timesheet, action: 'Reject' | 'Reopen' } | null>(null);
   const [reason, setReason] = useState('');
@@ -313,7 +242,7 @@ export default function TimesheetTrackerTable() {
                                    <AlertDialogTrigger asChild><Button variant="link" size="sm" className="text-destructive mt-4">Delete</Button></AlertDialogTrigger>
                                    <AlertDialogContent>
                                        <AlertDialogHeader><AlertDialogTitle>Delete this timesheet?</AlertDialogTitle><AlertDialogDescription>This action is permanent and cannot be undone.</AlertDialogDescription></AlertDialogHeader>
-                                       <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => useAppContext().deleteTimesheet(ts.id)}>Delete</AlertDialogAction></AlertDialogFooter>
+                                       <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => deleteTimesheet(ts.id)}>Delete</AlertDialogAction></AlertDialogFooter>
                                    </AlertDialogContent>
                                </AlertDialog>
                            )}
