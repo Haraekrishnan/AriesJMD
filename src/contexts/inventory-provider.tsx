@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -96,6 +95,7 @@ type InventoryContextType = {
 
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'lastUpdated'>) => void;
   addMultipleInventoryItems: (items: any[]) => number;
+  batchAddInventoryItems: (items: Omit<InventoryItem, 'id' | 'lastUpdated'>[]) => void;
   updateInventoryItem: (item: InventoryItem) => void;
   batchUpdateInventoryItems: (updates: { id: string; data: Partial<InventoryItem> }[]) => void;
   updateInventoryItemGroup: (itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => void;
@@ -407,6 +407,25 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         };
         set(newRef, dataToSave);
         addActivityLog(user.id, 'Inventory Item Added', `${itemData.name} (SN: ${itemData.serialNumber})`);
+    }, [user, addActivityLog]);
+
+    const batchAddInventoryItems = useCallback((items: Omit<InventoryItem, 'id' | 'lastUpdated'>[]) => {
+        if (!user) return;
+        const updates: { [key: string]: any } = {};
+        items.forEach(itemData => {
+            const newRef = push(ref(rtdb, 'inventoryItems'));
+            const dataToSave = {
+                ...itemData,
+                isArchived: false,
+                lastUpdated: new Date().toISOString(),
+            };
+            updates[`/inventoryItems/${newRef.key}`] = dataToSave;
+        });
+    
+        if (Object.keys(updates).length > 0) {
+            update(ref(rtdb), updates);
+            addActivityLog(user.id, 'Inventory Batch Added', `Added ${items.length} new items.`);
+        }
     }, [user, addActivityLog]);
 
     const addMultipleInventoryItems = useCallback((itemsData: any[]): number => {
@@ -1592,7 +1611,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     const contextValue: InventoryContextType = {
         inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory, directives: [], damageReports,
-        addInventoryItem, addMultipleInventoryItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInventoryItemGroupByProject, updateMultipleInventoryItems, batchDeleteInventoryItems, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
+        addInventoryItem, addMultipleInventoryItems, batchAddInventoryItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInventoryItemGroupByProject, updateMultipleInventoryItems, batchDeleteInventoryItems, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
         addInventoryTransferRequest, updateInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
         addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest,
         addUTMachine, updateUTMachine, deleteUTMachine,
