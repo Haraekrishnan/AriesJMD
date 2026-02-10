@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { PlannerEvent, DailyPlannerComment, Comment, JobSchedule, JobScheduleItem, JobRecord, JobRecordPlant, VehicleUsageRecord, User, Role, JobStep, JobProgress, JobStepStatus } from '@/lib/types';
+import { PlannerEvent, DailyPlannerComment, Comment, JobSchedule, JobScheduleItem, JobRecord, JobRecordPlant, VehicleUsageRecord, User, Role, JobStep, JobProgress, JobStepStatus, Timesheet, TimesheetStatus } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, update, get, remove } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -19,6 +19,7 @@ type PlannerContextType = {
   jobRecords: { [key: string]: JobRecord };
   jobRecordPlants: JobRecordPlant[];
   vehicleUsageRecords: { [key: string]: VehicleUsageRecord };
+  timesheets: Timesheet[];
   addPlannerEvent: (eventData: Omit<PlannerEvent, 'id'>) => void;
   updatePlannerEvent: (event: PlannerEvent) => void;
   deletePlannerEvent: (eventId: string) => void;
@@ -38,6 +39,8 @@ type PlannerContextType = {
   lockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
   unlockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
   returnJobStep: (jobId: string, stepId: string, reason: string) => void;
+  addTimesheet: (data: Omit<Timesheet, 'id' | 'submitterId' | 'submissionDate' | 'status'>) => void;
+  updateTimesheetStatus: (timesheetId: string, status: TimesheetStatus) => void;
 };
 
 const createDataListener = <T extends {}>(
@@ -73,11 +76,13 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     const [jobRecords, setJobRecords] = useState<{[key: string]: JobRecord}>({});
     const [jobRecordPlantsById, setJobRecordPlantsById] = useState<Record<string, JobRecordPlant>>({});
     const [vehicleUsageRecords, setVehicleUsageRecords] = useState<{ [key: string]: VehicleUsageRecord }>({});
+    const [timesheetsById, setTimesheetsById] = useState<Record<string, Timesheet>>({});
 
     const plannerEvents = useMemo(() => Object.values(plannerEventsById), [plannerEventsById]);
     const dailyPlannerComments = useMemo(() => Object.values(dailyPlannerCommentsById), [dailyPlannerCommentsById]);
     const jobSchedules = useMemo(() => Object.values(jobSchedulesById), [jobSchedulesById]);
     const jobRecordPlants = useMemo(() => Object.values(jobRecordPlantsById), [jobRecordPlantsById]);
+    const timesheets = useMemo(() => Object.values(timesheetsById), [timesheetsById]);
     
     const addPlannerEventComment = useCallback((plannerUserId: string, day: string, eventId: string, text: string) => {
         if (!user) return;
@@ -295,6 +300,38 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const path = `vehicleUsageRecords/${monthKey}/records/${vehicleId}/isLocked`;
         set(ref(rtdb, path), false);
     }, []);
+
+    const addTimesheet = useCallback((data: Omit<Timesheet, 'id' | 'submitterId' | 'submissionDate' | 'status'>) => {
+        if (!user) return;
+        const newRef = push(ref(rtdb, 'timesheets'));
+        const newTimesheet: Omit<Timesheet, 'id'> = {
+            ...data,
+            submitterId: user.id,
+            submissionDate: new Date().toISOString(),
+            status: 'Pending',
+        };
+        set(newRef, newTimesheet);
+    }, [user]);
+
+    const updateTimesheetStatus = useCallback((timesheetId: string, status: TimesheetStatus) => {
+        if (!user) return;
+        const updates: { [key: string]: any } = {};
+        const basePath = `timesheets/${timesheetId}`;
+        updates[`${basePath}/status`] = status;
+        
+        if (status === 'Acknowledged') {
+            updates[`${basePath}/acknowledgedById`] = user.id;
+            updates[`${basePath}/acknowledgedDate`] = new Date().toISOString();
+        } else if (status === 'Sent To Office') {
+            updates[`${basePath}/sentToOfficeById`] = user.id;
+            updates[`${basePath}/sentToOfficeDate`] = new Date().toISOString();
+        } else if (status === 'Office Acknowledged') {
+            updates[`${basePath}/officeAcknowledgedById`] = user.id;
+            updates[`${basePath}/officeAcknowledgedDate`] = new Date().toISOString();
+        }
+        
+        update(ref(rtdb), updates);
+    }, [user]);
     
     useEffect(() => {
         const unsubscribers = [
@@ -316,12 +353,13 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
                 const data = snapshot.val() || {};
                 setVehicleUsageRecords(data);
             }),
+            createDataListener('timesheets', setTimesheetsById),
         ];
         return () => unsubscribers.forEach(unsubscribe => unsubscribe());
     }, []);
 
     const contextValue: PlannerContextType = {
-        plannerEvents, dailyPlannerComments, jobSchedules, jobRecords, jobRecordPlants, vehicleUsageRecords,
+        plannerEvents, dailyPlannerComments, jobSchedules, jobRecords, jobRecordPlants, vehicleUsageRecords, timesheets,
         addPlannerEvent, updatePlannerEvent, deletePlannerEvent,
         getExpandedPlannerEvents, addPlannerEventComment,
         markSinglePlannerCommentAsRead, dismissPendingUpdate,
@@ -330,6 +368,8 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         deleteJobRecordPlant, carryForwardPlantAssignments,
         saveVehicleUsageRecord, lockVehicleUsageSheet, unlockVehicleUsageSheet,
         returnJobStep,
+        addTimesheet,
+        updateTimesheetStatus
     };
 
     return <PlannerContext.Provider value={contextValue}>{children}</PlannerContext.Provider>;
