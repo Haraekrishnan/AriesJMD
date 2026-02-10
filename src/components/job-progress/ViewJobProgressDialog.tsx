@@ -496,10 +496,11 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 return (
                                     <div key={step.id} className="relative flex items-start">
                                         <div className={cn("absolute left-10 top-2 w-5 h-5 rounded-full flex items-center justify-center -translate-x-1/2", statusConfig[step.status].color.replace('text-', 'bg-').replace('-500', '-100 dark:bg-opacity-30'))}>
+                                            <StatusIcon className="h-3 w-3" />
                                         </div>
                                         <div className={cn(
                                             "ml-14 w-full pl-6 space-y-3",
-                                            isCurrentActionableStep && "bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg"
+                                            isCurrentActionableStep && "bg-blue-50 dark:bg-blue-900/30 p-4 -ml-4 rounded-lg"
                                         )}>
                                             <div className="flex justify-between items-start gap-2">
                                                 <div className="font-semibold flex items-center gap-2 flex-1 min-w-0">
