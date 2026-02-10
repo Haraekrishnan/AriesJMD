@@ -10,7 +10,7 @@ import { eachDayOfInterval, endOfMonth, startOfMonth, format, isSameDay, getDay,
 import { useToast } from '@/hooks/use-toast';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { useGeneral } from './general-provider';
-
+import { useTask } from './task-provider';
 
 type PlannerContextType = {
   plannerEvents: PlannerEvent[];
@@ -62,7 +62,10 @@ const PlannerContext = createContext<PlannerContextType | undefined>(undefined);
 
 export function PlannerProvider({ children }: { children: ReactNode }) {
     const { user, users, getAssignableUsers } = useAuth();
-    const { addJobStepComment, jobProgress, notificationSettings } = useGeneral();
+    const { notificationSettings } = useGeneral();
+    const { 
+        returnJobStep, 
+    } = useTask();
     const { toast } = useToast();
     const [plannerEventsById, setPlannerEventsById] = useState<Record<string, PlannerEvent>>({});
     const [dailyPlannerCommentsById, setDailyPlannerCommentsById] = useState<Record<string, DailyPlannerComment>>({});
@@ -75,8 +78,42 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     const dailyPlannerComments = useMemo(() => Object.values(dailyPlannerCommentsById), [dailyPlannerCommentsById]);
     const jobSchedules = useMemo(() => Object.values(jobSchedulesById), [jobSchedulesById]);
     const jobRecordPlants = useMemo(() => Object.values(jobRecordPlantsById), [jobRecordPlantsById]);
-    const jobProgressById = useMemo(() => jobProgress.reduce((acc, job) => ({ ...acc, [job.id]: job }), {}), [jobProgress]);
+    
+    const addPlannerEventComment = useCallback((plannerUserId: string, day: string, eventId: string, text: string) => {
+        if (!user) return;
+        const dayCommentId = `${day}_${plannerUserId}`;
+        const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`));
+        const newComment: Comment = {
+          id: newCommentRef.key!,
+          userId: user.id,
+          text,
+          date: new Date().toISOString(),
+          eventId,
+          viewedBy: { [user.id]: true }
+        };
+        set(newCommentRef, newComment);
 
+        const updates: { [key: string]: any } = {};
+        updates[`dailyPlannerComments/${dayCommentId}/id`] = dayCommentId;
+        updates[`dailyPlannerComments/${dayCommentId}/plannerUserId`] = plannerUserId;
+        updates[`dailyPlannerComments/${dayCommentId}/day`] = day;
+        updates[`dailyPlannerComments/${dayCommentId}/lastUpdated`] = new Date().toISOString();
+        
+        // Mark as unread for other participants
+        const event = plannerEvents.find(e => e.id === eventId);
+        if (event) {
+            const participants = new Set([event.creatorId, event.userId]);
+            participants.forEach(pId => {
+                if (pId !== user.id) {
+                    updates[`plannerEvents/${eventId}/viewedBy/${pId}`] = false;
+                    updates[`dailyPlannerComments/${dayCommentId}/comments/${newComment.id}/viewedBy/${pId}`] = false;
+                }
+            });
+        }
+    
+        update(ref(rtdb), updates);
+
+    }, [user, plannerEvents]);
 
     const addPlannerEvent = useCallback((eventData: Omit<PlannerEvent, 'id'>) => {
         const newRef = push(ref(rtdb, 'plannerEvents'));
@@ -92,7 +129,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             const commentText = `Event "${eventData.title}" delegated by ${users.find(u => u.id === eventData.creatorId)?.name || 'Unknown'}`;
             addPlannerEventComment(eventData.userId, dayStr, newRef.key!, commentText);
         }
-    }, [users]);
+    }, [users, addPlannerEventComment]);
 
     const updatePlannerEvent = useCallback((event: PlannerEvent) => {
         const { id, ...data } = event;
@@ -144,42 +181,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         });
         return expanded;
     }, [plannerEvents]);
-
-    const addPlannerEventComment = useCallback((plannerUserId: string, day: string, eventId: string, text: string) => {
-        if (!user) return;
-        const dayCommentId = `${day}_${plannerUserId}`;
-        const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`));
-        const newComment: Comment = {
-          id: newCommentRef.key!,
-          userId: user.id,
-          text,
-          date: new Date().toISOString(),
-          eventId,
-          viewedBy: { [user.id]: true }
-        };
-        set(newCommentRef, newComment);
-
-        const updates: { [key: string]: any } = {};
-        updates[`dailyPlannerComments/${dayCommentId}/id`] = dayCommentId;
-        updates[`dailyPlannerComments/${dayCommentId}/plannerUserId`] = plannerUserId;
-        updates[`dailyPlannerComments/${dayCommentId}/day`] = day;
-        updates[`dailyPlannerComments/${dayCommentId}/lastUpdated`] = new Date().toISOString();
-        
-        // Mark as unread for other participants
-        const event = plannerEvents.find(e => e.id === eventId);
-        if (event) {
-            const participants = new Set([event.creatorId, event.userId]);
-            participants.forEach(pId => {
-                if (pId !== user.id) {
-                    updates[`plannerEvents/${eventId}/viewedBy/${pId}`] = false;
-                    updates[`dailyPlannerComments/${dayCommentId}/comments/${newComment.id}/viewedBy/${pId}`] = false;
-                }
-            });
-        }
-    
-        update(ref(rtdb), updates);
-
-    }, [user, plannerEvents]);
 
     const markSinglePlannerCommentAsRead = useCallback((plannerUserId: string, day: string, commentId: string) => {
         if (!user) return;
@@ -294,52 +295,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const path = `vehicleUsageRecords/${monthKey}/records/${vehicleId}/isLocked`;
         set(ref(rtdb, path), false);
     }, []);
-
-    const returnJobStep = useCallback((jobId: string, stepId: string, reason: string) => {
-        if (!user) return;
-        const job = jobProgressById[jobId];
-        if (!job) return;
-
-        const stepIndex = job.steps.findIndex(s => s.id === stepId);
-        if (stepIndex === -1) return;
-
-        const currentStep = job.steps[stepIndex];
-
-        const updates: { [key: string]: any } = {};
-        const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
-
-        updates[`${stepPath}/assigneeId`] = null;
-        updates[`${stepPath}/status`] = 'Pending';
-        updates[`${stepPath}/acknowledgedAt`] = null;
-        updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
-        
-        const returnComment = `${user.name} returned this step. Reason: ${reason}`;
-        addJobStepComment(jobId, stepId, returnComment);
-        
-        update(ref(rtdb), updates);
-
-        toast({ title: "Step Returned", description: `The step has been returned to an unassigned state.` });
-        
-        const creator = users.find(u => u.id === job.creatorId);
-        if (creator && creator.email && creator.id !== user.id) {
-            const htmlBody = `
-                <p>The step "${currentStep.name}" in job "${job.title}" was returned by <strong>${user.name}</strong>.</p>
-                <p><strong>Reason:</strong> ${reason}</p>
-                <p>The step is now unassigned. Please re-assign it.</p>
-                <a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Job</a>
-            `;
-            sendNotificationEmail({
-                to: [creator.email],
-                subject: `Step Returned: ${job.title}`,
-                htmlBody: htmlBody,
-                notificationSettings,
-                event: 'onTaskReturned',
-                involvedUser: creator,
-                creatorUser: user,
-            });
-        }
-    }, [user, jobProgressById, users, toast, notificationSettings, addJobStepComment]);
-
+    
     useEffect(() => {
         const unsubscribers = [
             createDataListener('plannerEvents', setPlannerEventsById),
