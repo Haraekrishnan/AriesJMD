@@ -1,6 +1,5 @@
-
 'use client';
-import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef, MouseEvent } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import {
   useReactTable,
@@ -30,7 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardContent } from '../ui/card';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-
+import { Label } from '../ui/label';
 
 // --- DEBOUNCE UTILITY ---
 function debounce<T extends (...args: any[]) => void>(func: T, delay: number): (...args: Parameters<T>) => void {
@@ -50,13 +49,13 @@ const statusOptions: {value: InventoryItemStatus | 'Inspection Expired' | 'TP Ex
     { value: 'Moved to another project', label: 'Moved' },
 ];
 
-const statusColorMap: Record<InventoryItemStatus, string> = {
-    'In Use': 'bg-green-100 text-green-900 dark:bg-green-900/30 dark:text-green-200',
-    'In Store': 'bg-blue-100 text-blue-900 dark:bg-blue-900/30 dark:text-blue-200',
-    'Expired': 'bg-red-100 text-red-900 dark:bg-red-900/30 dark:text-red-200',
-    'Damaged': 'bg-orange-100 text-orange-900 dark:bg-orange-900/30 dark:text-orange-200',
-    'Quarantine': 'bg-purple-100 text-purple-900 dark:bg-purple-900/30 dark:text-purple-200',
-    'Moved to another project': 'bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-200',
+const statusColorMap: Record<string, string> = {
+    'In Use': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200 font-bold',
+    'In Store': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200 font-bold',
+    'Expired': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200 font-bold',
+    'Damaged': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200 font-bold',
+    'Quarantine': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200 font-bold',
+    'Moved to another project': 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 font-bold',
 };
 
 
@@ -116,7 +115,7 @@ const SelectCell = React.memo(({ getValue, row, column, table, options, placehol
               disabled={!isEditable}
           >
               <SelectTrigger className={cn(
-                "border-transparent bg-transparent focus:ring-0 w-full h-full p-1 font-bold",
+                "border-transparent bg-transparent focus:ring-0 w-full h-full p-1",
                 !isEditable && "opacity-60 cursor-not-allowed"
               )}>
                   <SelectValue placeholder={placeholder} />
@@ -193,15 +192,12 @@ const InventorySheet = ({ category }: { category: string }) => {
     inventoryItems: dataFromContext, 
     projects, 
     can, 
-    addInventoryItem,
-    updateInventoryItem,
+    batchAddInventoryItems,
     batchUpdateInventoryItems,
     batchDeleteInventoryItems
   } = useAppContext();
 
   const [localData, setLocalData] = useState<InventoryItem[]>([]);
-  const [sorting, setSorting] = useState<SortingState>([]);
-
 
   useEffect(() => {
     setLocalData(dataFromContext.filter(i => i.name === category && !i.isArchived));
@@ -210,12 +206,15 @@ const InventorySheet = ({ category }: { category: string }) => {
   const { toast } = useToast();
   const [rowSelection, setRowSelection] = useState({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [sorting, setSorting] = useState<SortingState>([]);
   const [activeCell, setActiveCell] = useState<{row: number, columnId: string} | null>(null);
   const [selection, setSelection] = useState<{
     start: { row: number, col: number } | null;
     end: { row: number, col: number } | null;
   }>({ start: null, end: null });
   const [isSelecting, setIsSelecting] = useState(false);
+  const [isAddRowsDialogOpen, setIsAddRowsDialogOpen] = useState(false);
+  const [numRowsToAdd, setNumRowsToAdd] = useState(1);
   
   const debouncedUpdate = useRef(
       debounce((item: InventoryItem) => {
@@ -229,20 +228,16 @@ const InventorySheet = ({ category }: { category: string }) => {
     
     const FilterableHeader = ({ title, column }: { title: string, column: any }) => (
       <div className="flex flex-col gap-1">
-        <Button
-            variant="ghost"
-            onClick={column.getToggleSortingHandler()}
-            className="px-0 py-0 h-auto justify-start font-bold"
+        <span
+          className="cursor-pointer flex items-center"
+          onClick={column.getToggleSortingHandler()}
         >
-            {title}
-            {column.getIsSorted() === 'desc' ? (
-            <ArrowDown className="ml-2 h-4 w-4" />
-            ) : column.getIsSorted() === 'asc' ? (
-            <ArrowUp className="ml-2 h-4 w-4" />
-            ) : (
-            <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
-            )}
-        </Button>
+          {title}
+          {{
+            asc: <ArrowUp className="ml-2 h-4 w-4" />,
+            desc: <ArrowDown className="ml-2 h-4 w-4" />,
+          }[column.getIsSorted() as string] ?? null}
+        </span>
         <DebouncedInput
           value={(column.getFilterValue() as string) ?? ''}
           onChange={value => column.setFilterValue(String(value))}
@@ -254,20 +249,16 @@ const InventorySheet = ({ category }: { category: string }) => {
     
     const SelectFilterHeader = ({ title, column, options }: { title: string, column: any, options: {value: string, label: string}[]}) => (
        <div className="flex flex-col gap-1">
-          <Button
-            variant="ghost"
+          <span
+            className="cursor-pointer flex items-center"
             onClick={column.getToggleSortingHandler()}
-            className="px-0 py-0 h-auto justify-start font-bold"
           >
             {title}
-            {column.getIsSorted() === 'desc' ? (
-              <ArrowDown className="ml-2 h-4 w-4" />
-            ) : column.getIsSorted() === 'asc' ? (
-              <ArrowUp className="ml-2 h-4 w-4" />
-            ) : (
-              <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
-            )}
-          </Button>
+            {{
+              asc: <ArrowUp className="ml-2 h-4 w-4" />,
+              desc: <ArrowDown className="ml-2 h-4 w-4" />,
+            }[column.getIsSorted() as string] ?? null}
+          </span>
           <Select value={(column.getFilterValue() as string) ?? 'all'} onValueChange={value => column.setFilterValue(value === 'all' ? undefined : value)}>
             <SelectTrigger className="h-7 w-full"><SelectValue placeholder="All" /></SelectTrigger>
             <SelectContent>
@@ -297,6 +288,12 @@ const InventorySheet = ({ category }: { category: string }) => {
         ),
         enableSorting: false,
         enableHiding: false,
+        size: 60,
+      },
+      {
+        id: 'slNo',
+        header: 'Sl. No.',
+        cell: ({ row }) => row.index + 1,
         size: 60,
       },
       { accessorKey: 'serialNumber', header: ({column}) => <FilterableHeader title="Serial No." column={column} />, cell: EditableCell, size: 200 },
@@ -333,7 +330,7 @@ const InventorySheet = ({ category }: { category: string }) => {
       }, size: 150 },
     ];
     if (category.toLowerCase() === 'harness') {
-      baseColumns.splice(3, 0, { accessorKey: 'chestCrollNo', header: ({column}) => <FilterableHeader title="Chest Croll No." column={column} />, cell: EditableCell, size: 150 });
+      baseColumns.splice(4, 0, { accessorKey: 'chestCrollNo', header: ({column}) => <FilterableHeader title="Chest Croll No." column={column} />, cell: EditableCell, size: 150 });
     }
     return baseColumns;
   }, [category, projects]);
@@ -347,41 +344,43 @@ const InventorySheet = ({ category }: { category: string }) => {
       columnFilters,
       sorting,
     },
-    onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
     getCoreRowModel: getCoreRowModel(),
     onRowSelectionChange: setRowSelection,
     onColumnFiltersChange: setColumnFilters,
+    onSortingChange: setSorting,
+    getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     meta: {
       updateData: (rowIndex: number, columnId: string, value: any) => {
+        const updatedRow = { ...localData[rowIndex], [columnId]: value, lastUpdated: new Date().toISOString() };
+        debouncedUpdate(updatedRow);
         setLocalData(old =>
-            old.map((row, index) => {
-                if (index === rowIndex) {
-                    const updatedRow = { ...row, [columnId]: value, lastUpdated: new Date().toISOString() };
-                    debouncedUpdate(updatedRow);
-                    return updatedRow;
-                }
-                return row;
-            })
+            old.map((row, index) => (index === rowIndex ? updatedRow : row))
         );
       },
       setActiveCell: setActiveCell,
     },
   });
   
-  const handleAddRow = () => {
-    const newItem: Omit<InventoryItem, 'id' | 'lastUpdated'> = {
-      name: category,
-      serialNumber: `NEW-${Math.floor(Math.random() * 10000)}`,
-      status: 'In Store',
-      projectId: projects[0]?.id || '',
-      isArchived: false,
-    };
-    addInventoryItem(newItem);
-    // The useEffect will pick up the new item and add it to localData
+  const handleAddMultipleRows = () => {
+    if (numRowsToAdd > 0) {
+        const newItems: Omit<InventoryItem, 'id' | 'lastUpdated'>[] = [];
+        for (let i = 0; i < numRowsToAdd; i++) {
+            newItems.push({
+                name: category,
+                serialNumber: `NEW-${Date.now()}-${i}`,
+                status: 'In Store',
+                projectId: projects.find(p => p.name === 'Store')?.id || projects[0]?.id || '',
+                isArchived: false,
+            });
+        }
+        batchAddInventoryItems(newItems);
+        toast({ title: `${numRowsToAdd} rows added successfully.` });
+        setNumRowsToAdd(1);
+        setIsAddRowsDialogOpen(false);
+    }
   };
 
   const handleDeleteSelected = () => {
@@ -392,7 +391,6 @@ const InventorySheet = ({ category }: { category: string }) => {
     }
     batchDeleteInventoryItems(selectedIds);
     setRowSelection({});
-    toast({ title: `${selectedIds.length} rows deleted` });
   };
   
   const isEditable = can.manage_inventory_database;
@@ -428,7 +426,7 @@ const InventorySheet = ({ category }: { category: string }) => {
                 if (targetColumnIndex < allTableColumns.length) {
                     const column = allTableColumns[targetColumnIndex];
                     const columnId = column.id;
-                    if (columnId && columnId !== 'select') {
+                    if (columnId && columnId !== 'select' && columnId !== 'slNo') {
                         let processedValue: any = cellValue.trim();
                         
                         if (column.id === 'projectId') {
@@ -471,14 +469,10 @@ const InventorySheet = ({ category }: { category: string }) => {
   const isCellSelected = (rowIndex: number, colIndex: number) => {
     if (!selection.start || !selection.end) return false;
     
-    const visibleColumns = table.getVisibleLeafColumns();
-    const startCol = selection.start.col < 0 ? 0 : selection.start.col;
-    const endCol = selection.end.col < 0 ? 0 : selection.end.col;
-    
     const minRow = Math.min(selection.start.row, selection.end.row);
     const maxRow = Math.max(selection.start.row, selection.end.row);
-    const minCol = Math.min(startCol, endCol);
-    const maxCol = Math.max(startCol, endCol);
+    const minCol = Math.min(selection.start.col, selection.end.col);
+    const maxCol = Math.max(selection.start.col, selection.end.col);
 
     return rowIndex >= minRow && rowIndex <= maxRow && colIndex >= minCol && colIndex <= maxCol;
   };
@@ -541,6 +535,11 @@ const InventorySheet = ({ category }: { category: string }) => {
             const columnId = col.id as keyof InventoryItem;
             let value = row.original[columnId];
 
+            if (columnId === 'slNo') {
+              rowData[col.id] = row.index + 1;
+              return;
+            }
+
             if (columnId === 'projectId') {
                 value = projects.find(p => p.id === value)?.name || value;
             } else if (String(columnId).toLowerCase().includes('date') && typeof value === 'string') {
@@ -573,6 +572,9 @@ const InventorySheet = ({ category }: { category: string }) => {
     saveAs(new Blob([buffer]), `${category}_Inventory.xlsx`);
     toast({ title: "Export Complete" });
   };
+  
+  // Fake updateInventoryItem to satisfy debounce
+  const updateInventoryItem = (item: InventoryItem) => {};
 
   return (
     <Card>
@@ -585,7 +587,7 @@ const InventorySheet = ({ category }: { category: string }) => {
             </span>
             {isEditable && (
                 <>
-                <Button size="sm" onClick={handleAddRow}><PlusCircle className="mr-2 h-4 w-4"/> Add Row</Button>
+                <Button size="sm" onClick={() => setIsAddRowsDialogOpen(true)}><PlusCircle className="mr-2 h-4 w-4"/> Add Rows</Button>
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button size="sm" variant="destructive" disabled={table.getSelectedRowModel().rows.length === 0}><Trash2 className="mr-2 h-4 w-4"/> Delete Selected</Button>
@@ -611,7 +613,7 @@ const InventorySheet = ({ category }: { category: string }) => {
                         {table.getHeaderGroups().map(headerGroup => (
                         <TableRow key={headerGroup.id}>
                             {headerGroup.headers.map(header => (
-                            <TableHead key={header.id} className={cn("relative p-1 align-top bg-card", header.column.id === 'select' && 'sticky left-0 z-10', header.column.id === 'serialNumber' && 'sticky left-[60px] z-10')} style={{width: header.getSize()}}>
+                            <TableHead key={header.id} className={cn("relative p-1 align-top bg-card", header.column.id === 'select' && 'sticky left-0 z-10', header.column.id === 'slNo' && 'sticky left-[60px] z-10', header.column.id === 'serialNumber' && 'sticky left-[120px] z-10')} style={{width: header.getSize()}}>
                                 {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                                 <div
                                     onMouseDown={header.getResizeHandler()}
@@ -625,7 +627,7 @@ const InventorySheet = ({ category }: { category: string }) => {
                     </TableHeader>
                     <TableBody>
                         {table.getRowModel().rows.map((row, rowIndex) => (
-                        <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className={cn(rowIndex % 2 === 0 ? "bg-muted/30" : "")}>
+                        <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className={cn(rowIndex % 2 === 0 ? "bg-muted/30" : "bg-card", row.getIsSelected() && "bg-blue-100 dark:bg-blue-900")}>
                             {row.getVisibleCells().map((cell, colIndex) => (
                             <TableCell 
                                 key={cell.id}
@@ -636,11 +638,14 @@ const InventorySheet = ({ category }: { category: string }) => {
                                 className={cn(
                                     "p-0 h-10",
                                     { 'sticky left-0 z-10': cell.column.id === 'select' },
-                                    { 'sticky left-[60px] z-10': cell.column.id === 'serialNumber' },
+                                    { 'sticky left-[60px] z-10': cell.column.id === 'slNo' },
+                                    { 'sticky left-[120px] z-10': cell.column.id === 'serialNumber' },
                                     cell.column.id === 'select' && (rowIndex % 2 === 0 ? 'bg-muted/30' : 'bg-card'),
+                                    cell.column.id === 'slNo' && (rowIndex % 2 === 0 ? 'bg-muted/30' : 'bg-card'),
                                     cell.column.id === 'serialNumber' && (rowIndex % 2 === 0 ? 'bg-muted/30' : 'bg-card'),
+                                    row.getIsSelected() && 'bg-blue-100 dark:bg-blue-900',
                                     activeCell?.row === row.index && activeCell?.columnId === cell.column.id && "ring-2 ring-ring ring-offset-2 z-20",
-                                    isCellSelected(rowIndex, colIndex) && "bg-blue-100 dark:bg-blue-900/50"
+                                    isCellSelected(rowIndex, colIndex) && "bg-blue-200 dark:bg-blue-800/50"
                                 )}
                                 style={{width: cell.column.getSize()}}
                             >
@@ -655,11 +660,34 @@ const InventorySheet = ({ category }: { category: string }) => {
                  <ScrollBar orientation="horizontal" />
             </ScrollArea>
         </div>
+         <AlertDialog open={isAddRowsDialogOpen} onOpenChange={setIsAddRowsDialogOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Add New Rows</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        How many blank rows would you like to add to the end of the sheet?
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="py-4">
+                    <Label htmlFor="num-rows">Number of Rows</Label>
+                    <Input
+                        id="num-rows"
+                        type="number"
+                        value={numRowsToAdd}
+                        onChange={(e) => setNumRowsToAdd(Math.max(1, parseInt(e.target.value) || 1))}
+                        min="1"
+                        autoFocus
+                    />
+                </div>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleAddMultipleRows}>Add Rows</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );
 };
 
 export default InventorySheet;
-
-  
