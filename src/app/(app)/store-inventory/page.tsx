@@ -1,5 +1,6 @@
 
 'use client';
+
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useAppContext } from '@/contexts/app-provider';
@@ -28,6 +29,7 @@ import UpdateItemsDialog from '@/components/inventory/UpdateItemsDialog';
 import ActionRequiredReport from '@/components/inventory/ActionRequiredReport';
 import NewDamageReportDialog from '@/components/damage-reports/NewDamageReportDialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 
 export default function StoreInventoryPage() {
@@ -245,7 +247,7 @@ export default function StoreInventoryPage() {
             
             <Accordion type="single" collapsible className="w-full" defaultValue="inventory-transfers">
                 <AccordionItem value="inventory-transfers">
-                    <AccordionTrigger className="text-lg font-semibold">
+                    <AccordionTrigger className={cn("text-lg font-semibold", pendingInventoryTransferRequestCount > 0 && "text-destructive")}>
                         <div className="flex items-center gap-2">
                             Inventory Transfers
                             {pendingInventoryTransferRequestCount > 0 && <Badge variant="destructive">{pendingInventoryTransferRequestCount}</Badge>}
@@ -333,4 +335,3 @@ export default function StoreInventoryPage() {
         </div>
     );
 }
-
