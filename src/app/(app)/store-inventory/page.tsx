@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
@@ -71,11 +70,7 @@ export default function StoreInventoryPage() {
         });
 
         userVisibleItems.forEach(item => {
-            if (item.isArchived) return;
-
-            if (item.status === 'Damaged') {
-                notifications.push({ message: `Item marked as Damaged`, item });
-            }
+            if (item.isArchived || item.status === 'Damaged' || item.status === 'Quarantine') return;
 
             if (item.inspectionDueDate) {
                 const dueDate = parseISO(item.inspectionDueDate);
@@ -274,7 +269,7 @@ export default function StoreInventoryPage() {
                                 <div className="flex justify-between items-center">
                                     <div>
                                         <CardTitle>Items Requiring Attention</CardTitle>
-                                        <CardDescription>These items are damaged, expired, or have certifications expiring soon.</CardDescription>
+                                        <CardDescription>These items are expired or have certifications expiring soon.</CardDescription>
                                     </div>
                                     <ActionRequiredReport notifications={actionRequiredNotifications} />
                                 </div>
