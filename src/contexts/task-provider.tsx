@@ -35,6 +35,7 @@ type TaskContextType = {
   reassignJobStep: (jobId: string, stepId: string, newAssigneeId: string, comment: string) => void;
   assignJobStep: (jobId: string, stepId: string, assigneeId: string) => void;
   completeJobAsFinalStep: (jobId: string, stepId: string, comment: string) => void;
+  returnJobStep: (jobId: string, stepId: string, reason: string) => void;
   reopenJob: (jobId: string, reason: string, newStepName: string, newStepAssigneeId: string) => void;
 };
 
@@ -774,6 +775,54 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     
     }, [user, jobProgressById, addJobStepComment, toast, users, notificationSettings]);
 
+    const returnJobStep = useCallback((jobId: string, stepId: string, reason: string) => {
+        if (!user) return;
+        const job = jobProgressById[jobId];
+        if (!job) return;
+
+        const stepIndex = job.steps.findIndex(s => s.id === stepId);
+        if (stepIndex === -1) return;
+
+        const currentStep = job.steps[stepIndex];
+        const updates: { [key: string]: any } = {};
+        const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
+
+        updates[`${stepPath}/assigneeId`] = null;
+        updates[`${stepPath}/status`] = 'Pending';
+        updates[`${stepPath}/acknowledgedAt`] = null;
+
+        updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
+
+        update(ref(rtdb), updates);
+
+        const returnComment = `Step "${currentStep.name}" was returned by ${user.name}. Reason: ${reason}`;
+        addJobStepComment(jobId, stepId, returnComment);
+        
+        toast({ title: "Step Returned", description: "The step has been unassigned and is now pending." });
+
+        // Notify job creator
+        const creator = users.find(u => u.id === job.creatorId);
+        if (creator && creator.email && creator.id !== user.id) {
+            const htmlBody = `
+                <p>A step in your job "${job.title}" was returned by <strong>${user.name}</strong>.</p>
+                <hr>
+                <h3>Step: ${currentStep.name}</h3>
+                <p><strong>Reason for return:</strong> ${reason}</p>
+                <p>Please reassign the step in the app.</p>
+                <a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Job</a>
+            `;
+            sendNotificationEmail({
+                to: [creator.email],
+                subject: `Step Returned for Job: ${job.title}`,
+                htmlBody: htmlBody,
+                notificationSettings,
+                event: 'onTaskReturned', 
+                involvedUser: creator,
+                creatorUser: user,
+            });
+        }
+    }, [user, jobProgressById, addJobStepComment, toast, users, notificationSettings]);
+
     useEffect(() => {
         const unsubscribers = [
             createDataListener('tasks', setTasksById),
@@ -806,6 +855,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         reassignJobStep,
         assignJobStep,
         completeJobAsFinalStep,
+        returnJobStep,
         reopenJob
     };
 
