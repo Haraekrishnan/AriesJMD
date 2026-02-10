@@ -502,8 +502,8 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                             "ml-10 w-full pl-6 space-y-3",
                                             isCurrentActionableStep && "bg-blue-50 dark:bg-blue-900/30 p-4 -ml-4 rounded-lg"
                                         )}>
-                                            <div className="flex justify-between items-start">
-                                                 <div className="font-semibold flex items-center gap-2">
+                                            <div className="flex justify-between items-start gap-2">
+                                                <div className="font-semibold flex items-center gap-2 flex-1 min-w-0">
                                                     {editingStepId === step.id ? (
                                                         <Input 
                                                             value={editingStepName}
@@ -512,7 +512,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                             autoFocus
                                                         />
                                                     ) : (
-                                                        step.name
+                                                        <span className="truncate">{step.name}</span>
                                                     )}
                                                     
                                                     {editingStepId === step.id ? (
@@ -528,7 +528,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                         )
                                                     )}
                                                 </div>
-                                                <Badge variant="outline" className="capitalize">{statusConfig[step.status].label}</Badge>
+                                                <Badge variant="outline" className="capitalize shrink-0">{statusConfig[step.status].label}</Badge>
                                             </div>
                                             
                                             {assignee ? (
@@ -549,28 +549,25 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                             {step.acknowledgedAt && !step.completedAt && <p className="text-xs text-blue-600">Acknowledged: {formatDistanceToNow(parseISO(step.acknowledgedAt), { addSuffix: true })}</p>}
                                             {step.completedAt && <p className="text-xs text-green-600">Completed: {formatDistanceToNow(parseISO(step.completedAt), { addSuffix: true })} by {users.find(u => u.id === step.completedBy)?.name}</p>}
                                             
-                                            {returnEvents.map((event, index) => {
-                                                const eventUser = users.find(u => u.id === event.userId);
-                                                const reasonMatch = event.text.match(/Reason: (.*)/s);
-                                                const reason = reasonMatch ? reasonMatch[1] : 'No reason provided.';
+                                            {returnEvents.length > 0 && (
+                                                <div className="mt-2 space-y-2">
+                                                    {returnEvents.map((event, index) => {
+                                                        const eventUser = users.find(u => u.id === event.userId);
+                                                        const reasonMatch = event.text.match(/Reason: (.*)/s);
+                                                        const reason = reasonMatch ? reasonMatch[1] : 'No reason provided.';
 
-                                                return (
-                                                    <div key={`return-${index}`} className="relative flex items-start mt-2 pl-6">
-                                                        <div className="absolute left-0 top-1 w-5 h-5 rounded-full flex items-center justify-center bg-red-100 dark:bg-red-900/30">
-                                                            <Undo2 className="h-3 w-3 text-red-500" />
-                                                        </div>
-                                                        <div className="w-full space-y-1">
-                                                            <div className="flex justify-between items-start">
-                                                                <div className="font-medium text-sm text-destructive">Step Returned by {eventUser?.name || 'Unknown'}</div>
-                                                                <div className="text-xs text-muted-foreground">{formatDistanceToNow(parseISO(event.date), { addSuffix: true })}</div>
+                                                        return (
+                                                             <div key={`return-${index}`} className="text-sm p-2 bg-red-50 dark:bg-red-900/20 rounded-md border border-red-200 dark:border-red-800">
+                                                                <div className="flex justify-between items-start">
+                                                                    <div className="font-medium text-destructive flex items-center gap-2"><Undo2 className="h-4 w-4"/>Step Returned by {eventUser?.name || 'Unknown'}</div>
+                                                                    <div className="text-xs text-muted-foreground">{formatDistanceToNow(parseISO(event.date), { addSuffix: true })}</div>
+                                                                </div>
+                                                                <p className="mt-1 pl-6"><strong>Reason:</strong> {reason}</p>
                                                             </div>
-                                                            <div className="text-sm p-2 bg-red-50 dark:bg-red-900/20 rounded-md border border-red-200 dark:border-red-800">
-                                                                <strong>Reason:</strong> {reason}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
 
                                             {generalComments.length > 0 && (
                                                 <Accordion type="single" collapsible className="w-full text-xs">
