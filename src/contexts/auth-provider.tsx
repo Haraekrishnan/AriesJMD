@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, Dispatch, SetStateAction, useMemo } from 'react';
-import { User, RoleDefinition, Permission, ALL_PERMISSIONS, PasswordResetRequest, UnlockRequest, Feedback, DailyPlannerComment, PlannerEvent } from '@/lib/types';
+import { User, RoleDefinition, Permission, ALL_PERMISSIONS, PasswordResetRequest, UnlockRequest, Feedback, DailyPlannerComment, PlannerEvent, Role } from '@/lib/types';
 import { useRouter, usePathname } from 'next/navigation';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, get, query, orderByChild, equalTo, update, push, set, remove } from 'firebase/database';
@@ -412,8 +412,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const getAssignableUsers = useCallback(() => {
     if (!user) return [];
-    // The user wants to be able to assign tasks to anyone in the app, except for Managers.
-    return users.filter(u => u.role !== 'Manager');
+    
+    // Define roles that have broader assignment permissions
+    const highLevelRoles: Role[] = ['Admin', 'Manager', 'Project Coordinator', 'Document Controller', 'Store in Charge', 'Assistant Store Incharge'];
+    
+    if (highLevelRoles.includes(user.role)) {
+      // These roles can assign to anyone except for other high-level management
+      return users.filter(u => u.role !== 'Admin' && u.role !== 'Manager');
+    }
+  
+    // For other roles (like Supervisors), they can assign tasks to themselves or their direct reports.
+    const myDirectReports = users.filter(u => u.supervisorId === user.id);
+    const assignableUsers = new Set([user, ...myDirectReports]);
+    
+    return Array.from(assignableUsers);
   }, [user, users]);
   
   const clearInventoryTransferHistory = useCallback(() => {
