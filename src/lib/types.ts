@@ -1,5 +1,4 @@
 
-
 export type Broadcast = {
   id: string;
   message: string;
@@ -1186,4 +1185,6 @@ export type Timesheet = {
     rejectedById?: string;
     rejectedDate?: string;
     rejectionReason?: string;
+    comments?: Comment[];
 };
+
