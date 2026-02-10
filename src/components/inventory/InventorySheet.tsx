@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useEffect, useMemo, useState, useCallback, useRef, MouseEvent } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -288,7 +289,7 @@ const InventorySheet = ({ category }: { category: string }) => {
       {
         id: 'slNo',
         header: 'Sl. No.',
-        cell: ({ row }) => row.index + 1,
+        cell: () => null, // Content rendered in the body mapping
         size: 60,
       },
       { accessorKey: 'serialNumber', header: ({column}) => <FilterableHeader title="Serial No." column={column} />, cell: EditableCell, size: 200 },
@@ -534,14 +535,14 @@ const InventorySheet = ({ category }: { category: string }) => {
         return { header: headerText, key: col.id, width: 25 };
     });
 
-    const dataToExport = rows.map(row => {
+    const dataToExport = rows.map((row, rowIndex) => {
         const rowData: {[key: string]: any} = {};
         visibleColumns.forEach(col => {
             const columnId = col.id as keyof InventoryItem;
             let value = row.original[columnId];
 
             if (columnId === 'slNo') {
-              rowData[col.id] = row.index + 1;
+              rowData[col.id] = rowIndex + 1;
               return;
             }
 
@@ -595,7 +596,7 @@ const InventorySheet = ({ category }: { category: string }) => {
                         <Button size="sm" variant="destructive" disabled={table.getSelectedRowModel().rows.length === 0}><Trash2 className="mr-2 h-4 w-4"/> Delete Selected</Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
-                        <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the selected rows. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                        <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This action will permanently delete the selected rows. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction onClick={handleDeleteSelected}>Confirm Delete</AlertDialogAction>
@@ -638,7 +639,7 @@ const InventorySheet = ({ category }: { category: string }) => {
                                 onMouseEnter={() => handleMouseEnter(row.index, colIndex)}
                                 onKeyDown={(e) => handleCellKeyDown(e, row.index, colIndex)}
                                 className={cn(
-                                    "p-0 h-10",
+                                    "p-0 h-10 text-center",
                                     { 'sticky left-0 z-10': cell.column.id === 'select' },
                                     { 'sticky left-[60px] z-10': cell.column.id === 'slNo' },
                                     { 'sticky left-[120px] z-10': cell.column.id === 'serialNumber' },
@@ -651,7 +652,10 @@ const InventorySheet = ({ category }: { category: string }) => {
                                 )}
                                 style={{width: cell.column.getSize()}}
                             >
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                {cell.column.id === 'slNo' 
+                                    ? rowIndex + 1 
+                                    : flexRender(cell.column.columnDef.cell, cell.getContext())
+                                }
                             </TableCell>
                             ))}
                         </TableRow>
@@ -693,3 +697,5 @@ const InventorySheet = ({ category }: { category: string }) => {
 };
 
 export default InventorySheet;
+
+    
