@@ -36,6 +36,7 @@ import {
   AlertDialogTrigger,
 } from '../ui/alert-dialog';
 import { JOB_PROGRESS_STEPS, REOPEN_JOB_STEPS } from '@/lib/types';
+import ReturnStepDialog from './ReturnStepDialog';
 
 
 const statusConfig: { [key in JobStepStatus]: { icon: React.ElementType, color: string, label: string } } = {
@@ -381,8 +382,9 @@ interface ViewJobProgressDialogProps {
 }
 
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
-    const { user, users, projects, jobProgress, updateJobStep, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, completeJobAsFinalStep, reassignJobStep, getAssignableUsers } = useAppContext();
+    const { user, users, projects, jobProgress, updateJobStep, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, completeJobAsFinalStep, reassignJobStep, getAssignableUsers, returnJobStep } = useAppContext();
     const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
+    const [returningStep, setReturningStep] = useState<JobStep | null>(null);
     const [newAssigneeId, setNewAssigneeId] = useState<string>('');
     const [showNextStepForm, setShowNextStepForm] = useState<string | null>(null);
     const [isReopenDialogOpen, setIsReopenDialogOpen] = useState(false);
@@ -469,7 +471,8 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 }
                                 
                                 const canAct = (isCurrentUserAssignee || canActOnUnassigned) && isPreviousStepCompleted;
-                                const canReassign = (isCurrentUserAssignee || user?.role === 'Admin') && (step.status === 'Pending' || step.status === 'Acknowledged');
+                                const canReturn = isCurrentUserAssignee && (step.status === 'Pending' || step.status === 'Acknowledged');
+
                                 
                                 const canFinalize = useMemo(() => {
                                     if (!user || job.status === 'Completed') return false;
@@ -557,7 +560,14 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                             )}
 
                                             {canAct && step.status === 'Pending' && (
-                                                <Button size="sm" onClick={() => updateJobStepStatus(job.id, step.id, 'Acknowledged')}>Acknowledge</Button>
+                                                <div className="flex gap-2">
+                                                    <Button size="sm" onClick={() => updateJobStepStatus(job.id, step.id, 'Acknowledged')}>Acknowledge</Button>
+                                                    {canReturn && (
+                                                        <Button size="sm" variant="destructive" onClick={() => setReturningStep(step)}>
+                                                            <Undo2 className="mr-2 h-4 w-4"/> Return
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             )}
 
                                             {canAct && step.status === 'Acknowledged' && (
@@ -594,9 +604,16 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                             />
                                                         ) : (
                                                             <div className="flex justify-between items-center pt-3 border-t">
-                                                                <Button size="sm" variant="outline" onClick={() => setReassigningStep(step)}>
-                                                                    <UserRoundCog className="h-4 w-4 mr-2"/> Reassign
-                                                                </Button>
+                                                                 <div className="flex gap-2">
+                                                                    <Button size="sm" variant="outline" onClick={() => setReassigningStep(step)}>
+                                                                        <UserRoundCog className="h-4 w-4 mr-2"/> Reassign
+                                                                    </Button>
+                                                                     {canReturn && (
+                                                                        <Button size="sm" variant="destructive" onClick={() => setReturningStep(step)}>
+                                                                            <Undo2 className="mr-2 h-4 w-4"/> Return
+                                                                        </Button>
+                                                                    )}
+                                                                </div>
                                                                 <Button size="sm" onClick={() => setShowNextStepForm(step.id)}>
                                                                     <CheckCircle className="mr-2 h-4 w-4"/> Complete & Add Next Step
                                                                 </Button>
@@ -626,6 +643,14 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                 setIsOpen={() => setReassigningStep(null)}
                 job={job}
                 step={reassigningStep}
+            />
+        )}
+        {returningStep && (
+            <ReturnStepDialog
+                isOpen={!!returningStep}
+                setIsOpen={() => setReturningStep(null)}
+                job={job}
+                step={returningStep}
             />
         )}
         {isReopenDialogOpen && (

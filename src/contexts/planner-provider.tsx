@@ -1,11 +1,16 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { PlannerEvent, DailyPlannerComment, Comment, JobSchedule, JobScheduleItem, JobRecord, JobRecordPlant, VehicleUsageRecord, User } from '@/lib/types';
+import { PlannerEvent, DailyPlannerComment, Comment, JobSchedule, JobScheduleItem, JobRecord, JobRecordPlant, VehicleUsageRecord, User, Role, JobStep, JobProgress, JobStepStatus } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, update, get, remove } from 'firebase/database';
 import { useAuth } from './auth-provider';
 import { eachDayOfInterval, endOfMonth, startOfMonth, format, isSameDay, getDay, isWeekend, parseISO, getDate, endOfWeek, startOfWeek, startOfDay, isBefore, subMonths, isSameMonth } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
+import { useGeneral } from './general-provider';
+
 
 type PlannerContextType = {
   plannerEvents: PlannerEvent[];
@@ -32,6 +37,7 @@ type PlannerContextType = {
   saveVehicleUsageRecord: (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => void;
   lockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
   unlockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
+  returnJobStep: (jobId: string, stepId: string, reason: string) => void;
 };
 
 const createDataListener = <T extends {}>(
@@ -55,7 +61,9 @@ const createDataListener = <T extends {}>(
 const PlannerContext = createContext<PlannerContextType | undefined>(undefined);
 
 export function PlannerProvider({ children }: { children: ReactNode }) {
-    const { user, users } = useAuth();
+    const { user, users, getAssignableUsers } = useAuth();
+    const { addJobStepComment, jobProgress, notificationSettings } = useGeneral();
+    const { toast } = useToast();
     const [plannerEventsById, setPlannerEventsById] = useState<Record<string, PlannerEvent>>({});
     const [dailyPlannerCommentsById, setDailyPlannerCommentsById] = useState<Record<string, DailyPlannerComment>>({});
     const [jobSchedulesById, setJobSchedulesById] = useState<Record<string, JobSchedule>>({});
@@ -67,6 +75,8 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     const dailyPlannerComments = useMemo(() => Object.values(dailyPlannerCommentsById), [dailyPlannerCommentsById]);
     const jobSchedules = useMemo(() => Object.values(jobSchedulesById), [jobSchedulesById]);
     const jobRecordPlants = useMemo(() => Object.values(jobRecordPlantsById), [jobRecordPlantsById]);
+    const jobProgressById = useMemo(() => jobProgress.reduce((acc, job) => ({ ...acc, [job.id]: job }), {}), [jobProgress]);
+
 
     const addPlannerEvent = useCallback((eventData: Omit<PlannerEvent, 'id'>) => {
         const newRef = push(ref(rtdb, 'plannerEvents'));
@@ -285,6 +295,51 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         set(ref(rtdb, path), false);
     }, []);
 
+    const returnJobStep = useCallback((jobId: string, stepId: string, reason: string) => {
+        if (!user) return;
+        const job = jobProgressById[jobId];
+        if (!job) return;
+
+        const stepIndex = job.steps.findIndex(s => s.id === stepId);
+        if (stepIndex === -1) return;
+
+        const currentStep = job.steps[stepIndex];
+
+        const updates: { [key: string]: any } = {};
+        const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
+
+        updates[`${stepPath}/assigneeId`] = null;
+        updates[`${stepPath}/status`] = 'Pending';
+        updates[`${stepPath}/acknowledgedAt`] = null;
+        updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
+        
+        const returnComment = `${user.name} returned this step. Reason: ${reason}`;
+        addJobStepComment(jobId, stepId, returnComment);
+        
+        update(ref(rtdb), updates);
+
+        toast({ title: "Step Returned", description: `The step has been returned to an unassigned state.` });
+        
+        const creator = users.find(u => u.id === job.creatorId);
+        if (creator && creator.email && creator.id !== user.id) {
+            const htmlBody = `
+                <p>The step "${currentStep.name}" in job "${job.title}" was returned by <strong>${user.name}</strong>.</p>
+                <p><strong>Reason:</strong> ${reason}</p>
+                <p>The step is now unassigned. Please re-assign it.</p>
+                <a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Job</a>
+            `;
+            sendNotificationEmail({
+                to: [creator.email],
+                subject: `Step Returned: ${job.title}`,
+                htmlBody: htmlBody,
+                notificationSettings,
+                event: 'onTaskReturned',
+                involvedUser: creator,
+                creatorUser: user,
+            });
+        }
+    }, [user, jobProgressById, users, toast, notificationSettings, addJobStepComment]);
+
     useEffect(() => {
         const unsubscribers = [
             createDataListener('plannerEvents', setPlannerEventsById),
@@ -309,7 +364,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         return () => unsubscribers.forEach(unsubscribe => unsubscribe());
     }, []);
 
-    const contextValue: Omit<PlannerContextType, 'markPlannerEventAsViewed'> & { markPlannerEventAsViewed?: (eventId: string) => void } = {
+    const contextValue: PlannerContextType = {
         plannerEvents, dailyPlannerComments, jobSchedules, jobRecords, jobRecordPlants, vehicleUsageRecords,
         addPlannerEvent, updatePlannerEvent, deletePlannerEvent,
         getExpandedPlannerEvents, addPlannerEventComment,
@@ -318,9 +373,10 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         lockJobRecordSheet, unlockJobRecordSheet, addJobRecordPlant,
         deleteJobRecordPlant, carryForwardPlantAssignments,
         saveVehicleUsageRecord, lockVehicleUsageSheet, unlockVehicleUsageSheet,
+        returnJobStep,
     };
 
-    return <PlannerContext.Provider value={contextValue as PlannerContextType}>{children}</PlannerContext.Provider>;
+    return <PlannerContext.Provider value={contextValue}>{children}</PlannerContext.Provider>;
 }
 
 export const usePlanner = (): PlannerContextType => {
