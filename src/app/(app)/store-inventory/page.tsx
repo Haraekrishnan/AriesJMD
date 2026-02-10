@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
@@ -281,14 +282,19 @@ export default function StoreInventoryPage() {
                             <CardContent>
                                 <ScrollArea className="h-64">
                                     <div className="space-y-2">
-                                        {actionRequiredNotifications.map(({item, message}, index) => (
-                                            <div key={`${'item.id'}-${index}`} className="flex items-center justify-between p-2 rounded-md bg-muted">
+                                        {actionRequiredNotifications.map(({item, message}, index) => {
+                                            const projectName = projects.find(p => p.id === item.projectId)?.name;
+                                            return (
+                                            <div key={`${item.id}-${index}`} className="flex items-center justify-between p-2 rounded-md bg-muted">
                                                 <div className="text-sm">
-                                                    <p className="font-semibold">{item.name} <span className="text-muted-foreground">(SN: {item.serialNumber})</span></p>
+                                                    <p className="font-semibold">
+                                                        {item.name} <span className="text-muted-foreground">(SN: {item.serialNumber})</span>
+                                                        {projectName && <span className="ml-2 font-normal text-muted-foreground">[{projectName}]</span>}
+                                                    </p>
                                                     <p className="text-destructive">{message}</p>
                                                 </div>
                                             </div>
-                                        ))}
+                                        )})}
                                     </div>
                                 </ScrollArea>
                             </CardContent>
