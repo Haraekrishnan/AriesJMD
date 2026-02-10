@@ -231,12 +231,12 @@ export type PlannerEvent = {
 };
 
 export type DailyPlannerComment = {
-  id: string; // composite key: `${YYYY-MM-DD}_${plannerUserId}`
+  id: string;
   plannerUserId: string; // The user whose planner this comment belongs to
   day: string; // YYYY-MM-DD
   comments: Comment[];
   lastUpdated: string;
-  viewedBy: { [key: string]: boolean };
+  viewedBy: string[];
 };
 
 
@@ -513,6 +513,13 @@ export type ManpowerProfile = {
   // Logbook
   logbook?: LogbookRecord;
   logbookHistory?: { [key: string]: LogbookRecord };
+
+  // Accommodation
+  accommodation?: {
+    buildingId: string;
+    roomId: string;
+    bedId: string;
+  };
 
   // Remarks
   remarks?: string;
@@ -919,7 +926,35 @@ export type JobProgress = {
   lastUpdated: string; // ISO
   status: JobProgressStatus;
   steps: JobStep[];
+  projectId?: string;
+  workOrderNo?: string;
+  foNo?: string;
+  amount?: number;
+  dateFrom?: string | null;
+  dateTo?: string | null;
+  isReopened?: boolean;
 };
+
+export const JOB_PROGRESS_STEPS = [
+  "Timesheets Pending",
+  "Timesheets Checked",
+  "Timesheets Approved",
+  "Invoice Pending",
+  "Invoice Submitted",
+  "Payment Pending",
+  "Payment Received",
+  "JMS sent to Office",
+  "JMS sent back to Office",
+  "JMS Hard copy sent back to Site",
+  "JMS Hard copy submitted",
+  "JMS Completed",
+] as const;
+
+export const REOPEN_JOB_STEPS = [
+  "Timesheets Pending",
+  "Invoice Pending",
+  "Payment Pending",
+] as const;
 
 export type TpCertListItem = {
   itemId: string;
