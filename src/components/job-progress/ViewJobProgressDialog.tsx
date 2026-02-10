@@ -40,10 +40,10 @@ import ReturnStepDialog from './ReturnStepDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 
-const statusConfig: { [key in JobStepStatus]: { icon: React.ElementType, color: string, label: string } } = {
+const statusConfig: { [key in JobStepStatus]: { icon?: React.ElementType, color: string, label: string } } = {
   'Not Started': { icon: Circle, color: 'text-gray-400', label: 'Not Started' },
-  'Pending': { icon: Clock, color: 'text-yellow-500', label: 'Pending' },
-  'Acknowledged': { icon: Clock, color: 'text-blue-500', label: 'In Progress' },
+  'Pending': { color: 'text-yellow-500', label: 'Pending' },
+  'Acknowledged': { color: 'text-blue-500', label: 'In Progress' },
   'Completed': { icon: CheckCircle, color: 'text-green-500', label: 'Completed' },
   'Skipped': { icon: XCircle, color: 'text-gray-500', label: 'Skipped' },
 };
@@ -496,7 +496,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 return (
                                     <div key={step.id} className="relative flex items-start">
                                         <div className={cn("absolute left-10 top-2 w-5 h-5 rounded-full flex items-center justify-center -translate-x-1/2", statusConfig[step.status].color.replace('text-', 'bg-').replace('-500', '-100 dark:bg-opacity-30'))}>
-                                            <StatusIcon className="h-3 w-3" />
+                                            {StatusIcon && <StatusIcon className="h-3 w-3" />}
                                         </div>
                                         <div className={cn(
                                             "ml-14 w-full pl-6 space-y-3",
