@@ -13,7 +13,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Comment, Timesheet, TimesheetStatus } from '@/lib/types';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
-import { Building, CheckCircle, UserCheck, XCircle, Send, MessageSquare } from 'lucide-react';
+import { Building, CheckCircle, UserCheck, XCircle, Send, MessageSquare, Trash2, Eye } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 
 const statusVariantMap: { [key in TimesheetStatus]: 'default' | 'secondary' | 'destructive' | 'success' } = {
@@ -58,8 +58,80 @@ const TimelineItem = ({ icon: Icon, title, actorName, date, children }: { icon: 
     );
 };
 
+const RequestsTable = ({ requests }: { requests: Timesheet[] }) => {
+    const { user, manpowerProfiles, users, updateTimesheetStatus, addTimesheetComment, markLogbookRequestAsViewed, deleteTimesheet } = useAppContext();
+    const [viewingRequest, setViewingRequest] = useState<Timesheet | null>(null);
+    const { toast } = useToast();
+
+    const handleAction = (requestId: string, status: 'Completed' | 'Rejected', comment: string) => {
+        // Placeholder for future actions if needed
+    };
+
+    const handleView = (request: Timesheet) => {
+        // Placeholder
+        setViewingRequest(request);
+    };
+
+    if (requests.length === 0) {
+        return <p className="text-sm text-muted-foreground p-4 text-center">No requests in this category.</p>;
+    }
+    
+    return (
+      <>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Submitter</TableHead>
+              <TableHead>Project</TableHead>
+              <TableHead>Period</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {requests.map(req => {
+              const submitter = users.find(u => u.id === req.submitterId);
+              const project = useAppContext().projects.find(p => p.id === req.projectId);
+              
+              return (
+                <TableRow key={req.id}>
+                    <TableCell className="font-medium">{submitter?.name || 'Unknown'}</TableCell>
+                    <TableCell>{project?.name || 'N/A'} - {req.plantUnit}</TableCell>
+                    <TableCell>{format(parseISO(req.startDate), 'dd/MM')} - {format(parseISO(req.endDate), 'dd/MM/yy')}</TableCell>
+                    <TableCell>
+                        <Badge variant={statusVariantMap[req.status]}>{req.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right flex items-center justify-end gap-2">
+                       <Button variant="outline" size="sm" onClick={() => handleView(req)}>
+                           <Eye className="mr-2 h-4 w-4" /> View
+                       </Button>
+                       {user?.role === 'Admin' && (
+                           <AlertDialog>
+                               <AlertDialogTrigger asChild>
+                                   <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                               </AlertDialogTrigger>
+                               <AlertDialogContent>
+                                   <AlertDialogHeader><AlertDialogTitle>Delete Timesheet?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                                   <AlertDialogFooter>
+                                       <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                       <AlertDialogAction onClick={() => deleteTimesheet(req.id)}>Delete</AlertDialogAction>
+                                   </AlertDialogFooter>
+                               </AlertDialogContent>
+                           </AlertDialog>
+                       )}
+                    </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+        {/* The details dialog would go here, managed by viewingRequest state */}
+      </>
+    );
+};
+
 export default function TimesheetTrackerTable() {
-  const { user, users, projects, timesheets, updateTimesheetStatus } = useAppContext();
+  const { user, timesheets, updateTimesheetStatus } = useAppContext();
   const { toast } = useToast();
   const [rejectionInfo, setRejectionInfo] = useState<{ timesheet: Timesheet, action: 'Reject' | 'Reopen' } | null>(null);
   const [reason, setReason] = useState('');
@@ -163,12 +235,12 @@ export default function TimesheetTrackerTable() {
     <>
       <Accordion type="multiple" className="w-full space-y-2">
         {sortedTimesheets.map(ts => {
-          const submitter = users.find(u => u.id === ts.submitterId);
-          const project = projects.find(p => p.id === ts.projectId);
-          const acknowledgedBy = users.find(u => u.id === ts.acknowledgedById);
-          const sentToOfficeBy = users.find(u => u.id === ts.sentToOfficeById);
-          const officeAcknowledgedBy = users.find(u => u.id === ts.officeAcknowledgedById);
-          const rejectedBy = users.find(u => u.id === ts.rejectedById);
+          const submitter = useAppContext().users.find(u => u.id === ts.submitterId);
+          const project = useAppContext().projects.find(p => p.id === ts.projectId);
+          const acknowledgedBy = useAppContext().users.find(u => u.id === ts.acknowledgedById);
+          const sentToOfficeBy = useAppContext().users.find(u => u.id === ts.sentToOfficeById);
+          const officeAcknowledgedBy = useAppContext().users.find(u => u.id === ts.officeAcknowledgedById);
+          const rejectedBy = useAppContext().users.find(u => u.id === ts.rejectedById);
           const commentsArray = Array.isArray(ts.comments) ? ts.comments : (ts.comments ? Object.values(ts.comments) : []);
           
           return (
@@ -215,7 +287,7 @@ export default function TimesheetTrackerTable() {
                                         <ScrollArea className="h-32">
                                             <div className="space-y-2 pr-4">
                                                 {commentsArray.map((c, i) => {
-                                                    const commentUser = users.find(u => u.id === c.userId);
+                                                    const commentUser = useAppContext().users.find(u => u.id === c.userId);
                                                     return (
                                                         <div key={i} className="flex items-start gap-2">
                                                             <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
@@ -236,6 +308,15 @@ export default function TimesheetTrackerTable() {
                       <div className="flex flex-col items-center justify-center gap-4 p-4 bg-muted/50 rounded-md">
                           <h4 className="font-semibold text-sm">Next Action</h4>
                           {getAction(ts) || <p className="text-sm text-muted-foreground text-center">No action required from you.</p>}
+                           {user?.role === 'Admin' && (
+                               <AlertDialog>
+                                   <AlertDialogTrigger asChild><Button variant="link" size="sm" className="text-destructive mt-4">Delete</Button></AlertDialogTrigger>
+                                   <AlertDialogContent>
+                                       <AlertDialogHeader><AlertDialogTitle>Delete this timesheet?</AlertDialogTitle><AlertDialogDescription>This action is permanent and cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                                       <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => useAppContext().deleteTimesheet(ts.id)}>Delete</AlertDialogAction></AlertDialogFooter>
+                                   </AlertDialogContent>
+                               </AlertDialog>
+                           )}
                       </div>
                   </div>
               </AccordionContent>

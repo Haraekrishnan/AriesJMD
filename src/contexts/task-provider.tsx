@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -28,6 +29,7 @@ type TaskContextType = {
   markTaskAsViewed: (taskId: string) => void;
   acknowledgeReturnedTask: (taskId: string) => void;
   createJobProgress: (data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[]; projectId?: string; workOrderNo?: string; foNo?: string; amount?: number; dateFrom?: string | null; dateTo?: string | null; }) => void;
+  deleteJobProgress: (jobId: string) => void;
   updateJobStep: (jobId: string, stepId: string, newStepData: Partial<JobStep>) => void;
   updateJobStepStatus: (jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string, completionDetails?: { attachmentUrl?: string; customFields?: Record<string, any> }) => void;
   addAndCompleteStep: (jobId: string, currentStepId: string, completionComment: string | undefined, completionAttachment: Task['attachment'] | undefined, completionCustomFields: Record<string, any> | undefined, nextStepData: Omit<JobStep, 'id'|'status'>) => void;
@@ -396,6 +398,15 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     
         set(newRef, newJob);
     }, [user]);
+
+    const deleteJobProgress = useCallback((jobId: string) => {
+        if (user?.role !== 'Admin') {
+            toast({ title: 'Permission Denied', variant: 'destructive' });
+            return;
+        }
+        remove(ref(rtdb, `jobProgress/${jobId}`));
+        toast({ title: 'JMS Deleted', variant: 'destructive' });
+    }, [user, toast]);
 
     const addJobStepComment = useCallback((jobId: string, stepId: string, commentText: string) => {
         if (!user) return;
@@ -840,6 +851,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         createTask,
         updateTask,
         deleteTask,
+        deleteJobProgress,
         addComment,
         requestTaskStatusChange,
         approveTaskStatusChange,

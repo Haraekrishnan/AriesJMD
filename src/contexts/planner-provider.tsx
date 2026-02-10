@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -40,6 +41,7 @@ type PlannerContextType = {
   returnJobStep: (jobId: string, stepId: string, reason: string) => void;
   addTimesheet: (data: Omit<Timesheet, 'id' | 'submitterId' | 'submissionDate' | 'status'>) => void;
   updateTimesheetStatus: (timesheetId: string, status: TimesheetStatus, comment?: string) => void;
+  deleteTimesheet: (timesheetId: string) => void;
 };
 
 const createDataListener = <T extends {}>(
@@ -362,6 +364,15 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         
         update(ref(rtdb), updates);
     }, [user]);
+
+    const deleteTimesheet = useCallback((timesheetId: string) => {
+        if (!user || user.role !== 'Admin') {
+            toast({ title: 'Permission Denied', variant: 'destructive' });
+            return;
+        }
+        remove(ref(rtdb, `timesheets/${timesheetId}`));
+        toast({ title: 'Timesheet Deleted', variant: 'destructive' });
+    }, [user, toast]);
     
     useEffect(() => {
         const unsubscribers = [
@@ -399,7 +410,8 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         saveVehicleUsageRecord, lockVehicleUsageSheet, unlockVehicleUsageSheet,
         returnJobStep,
         addTimesheet,
-        updateTimesheetStatus
+        updateTimesheetStatus,
+        deleteTimesheet,
     };
 
     return <PlannerContext.Provider value={contextValue}>{children}</PlannerContext.Provider>;

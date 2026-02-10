@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { format, parseISO, formatDistanceToNow, isValid } from 'date-fns';
-import { CheckCircle, Clock, Circle, XCircle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X, MessageSquare } from 'lucide-react';
+import { CheckCircle, Clock, Circle, XCircle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X, MessageSquare, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
@@ -292,7 +292,7 @@ const nextStepSchema = z.object({
 
 
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
-    const { users, addAndCompleteStep } = useAppContext();
+    const { users, addAndCompleteStep, getAssignableUsers } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
     const form = useForm<z.infer<typeof nextStepSchema>>({
         resolver: zodResolver(nextStepSchema),
@@ -383,7 +383,7 @@ interface ViewJobProgressDialogProps {
 }
 
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
-    const { user, users, projects, jobProgress, updateJobStep, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, completeJobAsFinalStep, reassignJobStep, getAssignableUsers, returnJobStep } = useAppContext();
+    const { user, users, projects, jobProgress, updateJobStep, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, completeJobAsFinalStep, reassignJobStep, getAssignableUsers, returnJobStep, deleteJobProgress } = useAppContext();
     const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
     const [returningStep, setReturningStep] = useState<JobStep | null>(null);
     const [newAssigneeId, setNewAssigneeId] = useState<string>('');
@@ -691,9 +691,31 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                     </div>
                 </ScrollArea>
                 <DialogFooter className="justify-between">
-                    {canReopenJob && (
-                        <Button variant="outline" onClick={() => setIsReopenDialogOpen(true)}><Undo2 className="mr-2 h-4 w-4"/>Reopen Job</Button>
-                    )}
+                    <div className="flex gap-2">
+                        {user?.role === 'Admin' && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete JMS</Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>This will permanently delete this JMS and all its steps. This action cannot be undone.</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => {
+                                            deleteJobProgress(job.id);
+                                            setIsOpen(false);
+                                        }}>Confirm Delete</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        )}
+                        {canReopenJob && (
+                            <Button variant="outline" onClick={() => setIsReopenDialogOpen(true)}><Undo2 className="mr-2 h-4 w-4"/>Reopen Job</Button>
+                        )}
+                    </div>
                     <Button variant="secondary" onClick={() => setIsOpen(false)}>Close</Button>
                 </DialogFooter>
             </DialogContent>
