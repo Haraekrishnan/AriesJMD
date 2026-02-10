@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useEffect, useMemo, useState, useCallback, useRef, MouseEvent } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -305,8 +304,8 @@ const InventorySheet = ({ category }: { category: string }) => {
       { accessorKey: 'plantUnit', header: ({column}) => <FilterableHeader title="Plant/Unit" column={column} />, cell: EditableCell, size: 150 },
       { 
         accessorKey: 'status', 
-        header: ({column}) => <SelectFilterHeader title="Status" column={column} options={statusOptions.map(s => ({value: s, label: s}))} />, 
-        cell: (props) => <SelectCell {...props} options={statusOptions.map(s => ({value: s, label: s}))} />,
+        header: ({column}) => <SelectFilterHeader title="Status" column={column} options={statusOptionsMapped} />, 
+        cell: (props) => <SelectCell {...props} options={statusOptionsMapped} />,
         size: 180,
       },
       { accessorKey: 'purchaseDate', header: ({column}) => <FilterableHeader title="Purchase Date" column={column} />, cell: DateCell, size: 150 },
