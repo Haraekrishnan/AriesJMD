@@ -188,20 +188,23 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
   const forceUnassign = useCallback((manpowerId: string) => {
     if (!manpowerId) return;
 
-    // Find the bed the user is assigned to (if any) and clear it
+    const updates: { [key: string]: null } = {};
+    // Ensure the accommodation record on the profile is cleared.
+    updates[`manpowerProfiles/${manpowerId}/accommodation`] = null;
+
+    // Scan all buildings to find any beds this user might be occupying and clear them.
     for (const building of buildings) {
-      for (const room of building.rooms) {
-        for (const bed of room.beds) {
-          if (bed.occupantId === manpowerId) {
-            update(ref(rtdb, `buildings/${building.id}/rooms/${room.id}/beds/${bed.id}`), { occupantId: null });
-          }
+        for (const room of building.rooms) {
+            for (const bed of room.beds) {
+                if (bed.occupantId === manpowerId) {
+                    updates[`buildings/${building.id}/rooms/${room.id}/beds/${bed.id}/occupantId`] = null;
+                }
+            }
         }
-      }
     }
     
-    // Forcefully remove the accommodation object from the user profile
-    remove(ref(rtdb, `manpowerProfiles/${manpowerId}/accommodation`));
-
+    // Perform a single multi-path update.
+    update(ref(rtdb), updates);
   }, [buildings]);
 
 
