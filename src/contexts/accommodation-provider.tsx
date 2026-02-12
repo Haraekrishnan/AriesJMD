@@ -194,7 +194,6 @@ export function AccommodationProvider({ children }: { children: ReactNode }) {
         for (const bed of room.beds) {
           if (bed.occupantId === manpowerId) {
             update(ref(rtdb, `buildings/${building.id}/rooms/${room.id}/beds/${bed.id}`), { occupantId: null });
-            break;
           }
         }
       }
