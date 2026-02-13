@@ -935,10 +935,6 @@ export type JobProgress = {
 };
 
 export const JOB_PROGRESS_STEPS = [
-    "Invoice Pending",
-    "Invoice Submitted",
-    "Payment Pending",
-    "Payment Received",
     "JMS sent to Office",
     "JMS sent back to Office",
     "JMS Hard copy sent back to Site",
@@ -947,8 +943,7 @@ export const JOB_PROGRESS_STEPS = [
   ] as const;
   
   export const REOPEN_JOB_STEPS = [
-    "Invoice Pending",
-    "Payment Pending",
+    "JMS sent to Office",
   ] as const;
 
 export type TpCertListItem = {
@@ -1187,4 +1182,3 @@ export type Timesheet = {
     rejectionReason?: string;
     comments?: Comment[];
 };
-

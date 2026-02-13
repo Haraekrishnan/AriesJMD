@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useForm, Controller } from 'react-hook-form';
@@ -67,7 +66,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
   const form = useForm<JobFormValues>({
     resolver: zodResolver(jobSchema),
     defaultValues: {
-        steps: [{ name: 'Invoice Pending', assigneeId: undefined, description: '', dueDate: null }]
+        steps: [{ name: 'JMS sent to Office', assigneeId: undefined, description: '', dueDate: null }]
     }
   });
 
@@ -93,7 +92,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       form.reset({
-        steps: [{ name: 'Invoice Pending', assigneeId: undefined, description: '', dueDate: null }]
+        steps: [{ name: 'JMS sent to Office', assigneeId: undefined, description: '', dueDate: null }]
       });
     }
     setIsOpen(open);
