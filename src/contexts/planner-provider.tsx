@@ -566,6 +566,10 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         // 3. Update job metadata
         updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
         updates[`jobProgress/${jobId}/status`] = 'In Progress';
+        
+        if (completionCustomFields?.jmsNo) {
+            updates[`jobProgress/${jobId}/jmsNo`] = completionCustomFields.jmsNo;
+        }
     
         update(ref(rtdb), updates);
     
