@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
@@ -274,8 +273,13 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
 const unassignedSteps = ['Timesheets Pending', 'JMS sent back to Office', 'JMS Hard copy sent back to Site', 'JMS Hard copy submitted'];
 
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
-    const { users, addAndCompleteStep, getAssignableUsers } = useAppContext();
+    const { user, addAndCompleteStep, getAssignableUsers } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
+
+    const assignableUsersForNextStep = useMemo(() => {
+        if (!user) return [];
+        return getAssignableUsers().filter(u => u.id !== user.id);
+    }, [user, getAssignableUsers]);
 
     const nextStepSchema = useMemo(() => {
         return z.object({
@@ -298,10 +302,10 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
             }
             return true;
         }, {
-            message: 'JMS No. is required to complete this step.',
+            message: 'JMS No. is required for this step.',
             path: ['jmsNo'],
         });
-    }, [currentStep.name]);
+    }, []);
     
     type NextStepFormValues = z.infer<typeof nextStepSchema>;
     
@@ -376,7 +380,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                             <Select onValueChange={field.onChange} value={field.value}>
                                 <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
                                 <SelectContent>
-                                    {getAssignableUsers().map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                                    {assignableUsersForNextStep.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         )}
@@ -504,12 +508,13 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const canAct = (isCurrentUserAssignee || canActOnUnassigned) && isPreviousStepCompleted;
                                 const canReturn = isCurrentUserAssignee && (step.status === 'Pending' || step.status === 'Acknowledged');
 
-                                const canFinalize = useMemo(() => {
-                                    if (!user || job.status === 'Completed') return false;
-                                    const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
-                                    const isStepAssignee = step.assigneeId === user.id;
-                                    return canFinalizeRoles.includes(user.role) || user.id === job.creatorId || isStepAssignee;
-                                }, [user, job.status, step.assigneeId, job.creatorId]);
+                                const canFinalize = (
+                                    user && job.status !== 'Completed' && (
+                                        ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role) ||
+                                        user.id === job.creatorId ||
+                                        step.assigneeId === user.id
+                                    )
+                                );
                                 
                                 const isStepUnassigned = !step.assigneeId;
                                 const canAssign = (user?.id === job.creatorId || user?.role === 'Admin') && isStepUnassigned && step.status === 'Pending';
