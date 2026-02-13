@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
@@ -7,37 +6,27 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAppContext } from '@/contexts/app-provider';
 import type { JobProgress, JobStep, JobStepStatus, Task, User, Role } from '@/lib/types';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { format, formatDistanceToNow, parseISO } from 'date-fns';
+import { CheckCircle, Clock, Circle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X, MessageSquare, Trash2, ArrowRight, ArrowUp, ArrowDown } from 'lucide-react';
+import { Textarea } from '../ui/textarea';
+import { Label } from '../ui/label';
+import { Input } from '../ui/input';
+import { Checkbox } from '../ui/checkbox';
+import { DatePickerInput } from '../ui/date-picker-input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '../ui/scroll-area';
-import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
-import { format, parseISO, formatDistanceToNow, isValid } from 'date-fns';
-import { CheckCircle, Clock, Circle, XCircle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X, MessageSquare, Trash2, ArrowRight, ArrowUp, ArrowDown } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Textarea } from '../ui/textarea';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { DatePickerInput } from '../ui/date-picker-input';
-import { Checkbox } from '../ui/checkbox';
-import { useToast } from '@/hooks/use-toast';
-import { Badge } from '@/components/ui/badge';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '../ui/alert-dialog';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import { JOB_PROGRESS_STEPS, REOPEN_JOB_STEPS } from '@/lib/types';
 import ReturnStepDialog from './ReturnStepDialog';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 
 const statusConfig: { [key in JobStepStatus]: { icon?: React.ElementType, color: string, label: string } } = {
@@ -279,7 +268,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
 
     const assignableUsersForNextStep = useMemo(() => {
         if (!user) return [];
-        return getAssignableUsers().filter(u => u.id !== user.id);
+        return getAssignableUsers();
     }, [user, getAssignableUsers]);
 
     const nextStepSchema = useMemo(() => {
@@ -334,7 +323,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
     };
 
     const completedStepNames = new Set(job.steps.filter(s => s.status === 'Completed').map(s => s.name));
-    const availableNextSteps = JOB_PROGRESS_STEPS.filter(step => !completedStepNames.has(step) && step !== currentStep.name);
+    const availableNextSteps = JOB_PROGRESS_STEPS.filter(step => !completedStepNames.has(step));
 
 
     return (
@@ -504,13 +493,12 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const canAct = (isCurrentUserAssignee || canActOnUnassigned) && isPreviousStepCompleted;
                                 const canReturn = isCurrentUserAssignee && (step.status === 'Pending' || step.status === 'Acknowledged');
 
-                                const canFinalize = (
-                                    user && job.status !== 'Completed' && (
-                                        ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role) ||
-                                        user.id === job.creatorId ||
-                                        step.assigneeId === user.id
-                                    )
-                                );
+                                const canFinalize = useMemo(() => {
+                                    if (!user || job.status === 'Completed') return false;
+                                    const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+                                    const isStepAssignee = step.assigneeId === user.id;
+                                    return canFinalizeRoles.includes(user.role) || user.id === job.creatorId || isStepAssignee;
+                                }, [user, job, step]);
                                 
                                 const isStepUnassigned = !step.assigneeId;
                                 const canAssign = (user?.id === job.creatorId || user?.role === 'Admin') && isStepUnassigned && step.status === 'Pending';
