@@ -1,5 +1,5 @@
-'use client';
 
+'use client';
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -279,7 +279,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
             dueDate: z.date().optional().nullable(),
             jmsNo: z.string().optional(),
         }).refine(data => {
-            if (unassignedSteps.includes(data.name)) {
+            if (data.name === 'JMS Hard copy submitted') {
                 return true;
             }
             return !!data.assigneeId;
@@ -361,22 +361,24 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                         {form.formState.errors.jmsNo && <p className="text-xs text-destructive">{form.formState.errors.jmsNo.message}</p>}
                     </div>
                  )}
-                 <div className="space-y-1">
-                    <Label className="text-xs">Assign To</Label>
-                    <Controller
-                        name="assigneeId"
-                        control={form.control}
-                        render={({ field }) => (
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
-                                <SelectContent>
-                                    {assignableUsersForNextStep.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        )}
-                    />
-                    {form.formState.errors.assigneeId && <p className="text-xs text-destructive">{form.formState.errors.assigneeId.message}</p>}
-                </div>
+                 {nextStepName !== 'JMS Hard copy submitted' && (
+                    <div className="space-y-1">
+                        <Label className="text-xs">Assign To</Label>
+                        <Controller
+                            name="assigneeId"
+                            control={form.control}
+                            render={({ field }) => (
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
+                                    <SelectContent>
+                                        {assignableUsersForNextStep.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                        />
+                        {form.formState.errors.assigneeId && <p className="text-xs text-destructive">{form.formState.errors.assigneeId.message}</p>}
+                    </div>
+                 )}
                  <div className="space-y-1">
                     <Label className="text-xs">Description (Optional)</Label>
                     <Textarea {...form.register('description')} rows={2}/>
@@ -493,12 +495,15 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const canAct = (isCurrentUserAssignee || canActOnUnassigned) && isPreviousStepCompleted;
                                 const canReturn = isCurrentUserAssignee && (step.status === 'Pending' || step.status === 'Acknowledged');
 
-                                const canFinalize = useMemo(() => {
-                                    if (!user || job.status === 'Completed') return false;
-                                    const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
-                                    const isStepAssignee = step.assigneeId === user.id;
-                                    return canFinalizeRoles.includes(user.role) || user.id === job.creatorId || isStepAssignee;
-                                }, [user, job, step]);
+                                const canFinalize = (
+                                  user &&
+                                  job.status !== 'Completed' &&
+                                  (
+                                      ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role) ||
+                                      user.id === job.creatorId ||
+                                      step.assigneeId === user.id
+                                  )
+                                );
                                 
                                 const isStepUnassigned = !step.assigneeId;
                                 const canAssign = (user?.id === job.creatorId || user?.role === 'Admin') && isStepUnassigned && step.status === 'Pending';
@@ -764,4 +769,6 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         </>
     )
 }
+    
+
     
