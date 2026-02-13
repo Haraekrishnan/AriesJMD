@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -273,48 +273,50 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
 
 const unassignedSteps = ['Timesheets Pending', 'JMS sent back to Office', 'JMS Hard copy sent back to Site', 'JMS Hard copy submitted', 'JMS no created'];
 
-const nextStepSchema = z.object({
-  name: z.string({ required_error: 'Step name is required' }).min(1, 'Step name is required'),
-  assigneeId: z.string().optional(),
-  description: z.string().optional(),
-  dueDate: z.date().optional().nullable(),
-  jmsNo: z.string().optional(),
-}).refine(data => {
-    // If the step name is in the list of steps that can be unassigned, it's valid without an assignee.
-    if (unassignedSteps.includes(data.name)) {
-        return true;
-    }
-    // Otherwise, an assignee is required.
-    return !!data.assigneeId;
-}, {
-    message: 'Assignee is required for this step.',
-    path: ['assigneeId'],
-});
-
-
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
     const { users, addAndCompleteStep, getAssignableUsers } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
-    const form = useForm<z.infer<typeof nextStepSchema>>({
-        resolver: zodResolver(nextStepSchema),
-    });
-    
-    const assignableUsers = useMemo(() => {
-        return users.filter(u => u.role !== 'Manager');
-    }, [users]);
-    
+
     const showJmsNoField = useMemo(() => {
         return currentStep.name === 'JMS no created';
     }, [currentStep]);
 
-    const handleFormSubmit = (data: z.infer<typeof nextStepSchema>) => {
+    const nextStepSchema = useMemo(() => {
+        return z.object({
+            name: z.string({ required_error: 'Step name is required' }).min(1, 'Step name is required'),
+            assigneeId: z.string().optional(),
+            description: z.string().optional(),
+            dueDate: z.date().optional().nullable(),
+            jmsNo: showJmsNoField ? z.string().min(1, 'JMS No. is required to complete this step.') : z.string().optional(),
+        }).refine(data => {
+            if (unassignedSteps.includes(data.name)) {
+                return true;
+            }
+            return !!data.assigneeId;
+        }, {
+            message: 'Assignee is required for this step.',
+            path: ['assigneeId'],
+        });
+    }, [showJmsNoField]);
+    
+    type NextStepFormValues = z.infer<typeof nextStepSchema>;
+
+    const form = useForm<NextStepFormValues>({
+        resolver: zodResolver(nextStepSchema),
+    });
+
+    useEffect(() => {
+        form.reset();
+    }, [currentStep, form]);
+    
+    const handleFormSubmit = (data: NextStepFormValues) => {
         addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, data.jmsNo ? { jmsNo: data.jmsNo } : undefined, {
             ...data,
             dueDate: data.dueDate?.toISOString() || null,
         });
         onSave();
     };
-    
+
     const availableNextSteps = JOB_PROGRESS_STEPS.filter(step => step !== 'JMS Hard copy submitted');
 
 
@@ -330,6 +332,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                      <div className="space-y-1">
                         <Label className="text-xs">JMS No.</Label>
                         <Input {...form.register('jmsNo')} />
+                        {form.formState.errors.jmsNo && <p className="text-xs text-destructive">{form.formState.errors.jmsNo.message}</p>}
                     </div>
                  )}
                  <div className="space-y-1">
@@ -362,7 +365,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                             <Select onValueChange={field.onChange} value={field.value}>
                                 <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
                                 <SelectContent>
-                                    {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                                    {getAssignableUsers().map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         )}
@@ -490,7 +493,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const canAct = (isCurrentUserAssignee || canActOnUnassigned) && isPreviousStepCompleted;
                                 const canReturn = isCurrentUserAssignee && (step.status === 'Pending' || step.status === 'Acknowledged');
 
-                                const canFinalize = (() => {
+                                const canFinalize = (()=>{
                                     if (!user || job.status === 'Completed') return false;
                                     const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
                                     const isStepAssignee = step.assigneeId === user.id;
