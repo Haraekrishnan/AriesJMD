@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { format, parseISO, formatDistanceToNow, isValid } from 'date-fns';
-import { CheckCircle, Clock, Circle, XCircle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X, MessageSquare, Trash2 } from 'lucide-react';
+import { CheckCircle, Clock, Circle, XCircle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X, MessageSquare, Trash2, ArrowRight, ArrowUp, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
@@ -254,7 +254,7 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
                                 </Popover>
                             )}
                         />
-                         {form.formState.errors.newAssigneeId && <p className="text-xs text-destructive">{form.formState.errors.newAssigneeId.message}</p>}
+                         {form.formState.errors.newAssigneeId && <p className="text-xs text-destructive">{form.formState.errors.newStepAssigneeId.message}</p>}
                     </div>
                      <div className="space-y-2">
                         <Label htmlFor="comment">Comment</Label>
@@ -271,13 +271,14 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
     );
 };
 
-const unassignedSteps = ['Timesheets Pending', 'JMS sent back to Office', 'JMS Hard copy sent back to Site', 'JMS Hard copy submitted'];
+const unassignedSteps = ['Timesheets Pending', 'JMS sent back to Office', 'JMS Hard copy sent back to Site', 'JMS Hard copy submitted', 'JMS no created'];
 
 const nextStepSchema = z.object({
   name: z.string({ required_error: 'Step name is required' }).min(1, 'Step name is required'),
   assigneeId: z.string().optional(),
   description: z.string().optional(),
   dueDate: z.date().optional().nullable(),
+  jmsNo: z.string().optional(),
 }).refine(data => {
     // If the step name is in the list of steps that can be unassigned, it's valid without an assignee.
     if (unassignedSteps.includes(data.name)) {
@@ -301,16 +302,20 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
     const assignableUsers = useMemo(() => {
         return users.filter(u => u.role !== 'Manager');
     }, [users]);
+    
+    const showJmsNoField = useMemo(() => {
+        return currentStep.name === 'JMS sent to Office';
+    }, [currentStep]);
 
     const handleFormSubmit = (data: z.infer<typeof nextStepSchema>) => {
-        addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, undefined, {
+        addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, data.jmsNo ? { jmsNo: data.jmsNo } : undefined, {
             ...data,
             dueDate: data.dueDate?.toISOString() || null,
         });
         onSave();
     };
     
-    const availableNextSteps = JOB_PROGRESS_STEPS.filter(step => step !== 'Hard Copy submitted');
+    const availableNextSteps = JOB_PROGRESS_STEPS.filter(step => step !== 'JMS Hard copy submitted');
 
 
     return (
@@ -321,6 +326,12 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                     <Label className="text-xs">Completion Notes (Optional)</Label>
                     <Textarea value={completionComment} onChange={e => setCompletionComment(e.target.value)} rows={2} />
                 </div>
+                 {showJmsNoField && (
+                     <div className="space-y-1">
+                        <Label className="text-xs">JMS No.</Label>
+                        <Input {...form.register('jmsNo')} />
+                    </div>
+                 )}
                  <div className="space-y-1">
                     <Label className="text-xs">Next Step Name</Label>
                      <Controller
@@ -440,8 +451,10 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                     </div>
                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm pt-2">
                         <div><span className="font-semibold">Project:</span> {project?.name || 'N/A'}</div>
+                        <div><span className="font-semibold">Plant/Unit:</span> {job.plantUnit || 'N/A'}</div>
                         <div><span className="font-semibold">WO No:</span> {job.workOrderNo || 'N/A'}</div>
                         <div><span className="font-semibold">FO No:</span> {job.foNo || 'N/A'}</div>
+                        <div><span className="font-semibold">JMS No:</span> {job.jmsNo || 'N/A'}</div>
                         <div><span className="font-semibold">Amount:</span> {job.amount ? new Intl.NumberFormat('en-IN').format(job.amount) : 'N/A'}</div>
                         <div><span className="font-semibold">From:</span> {job.dateFrom ? format(parseISO(job.dateFrom), 'dd-MM-yy') : 'N/A'}</div>
                         <div><span className="font-semibold">To:</span> {job.dateTo ? format(parseISO(job.dateTo), 'dd-MM-yy') : 'N/A'}</div>
@@ -465,24 +478,25 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const isCurrentActionableStep = isPreviousStepCompleted && (step.status === 'Pending' || step.status === 'Acknowledged');
                                 
                                 let canActOnUnassigned = false;
-                                if (!step.assigneeId && (step.name === 'Timesheets Pending' || step.name === 'JMS Hard copy sent back to Site' || step.name === 'JMS Hard copy submitted')) {
-                                    canActOnUnassigned = isProjectMember || user?.role === 'Admin';
-                                } else if (!step.assigneeId && step.name === 'JMS sent back to Office') {
-                                    const allowedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
-                                    canActOnUnassigned = (user && allowedRoles.includes(user.role)) || user?.id === job.creatorId;
+                                if (!step.assigneeId && (unassignedSteps.includes(step.name))) {
+                                    if(step.name === 'JMS sent back to Office') {
+                                        const allowedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+                                        canActOnUnassigned = (user && allowedRoles.includes(user.role)) || user?.id === job.creatorId;
+                                    } else {
+                                        canActOnUnassigned = isProjectMember || user?.role === 'Admin' || isCreator;
+                                    }
                                 }
                                 
                                 const canAct = (isCurrentUserAssignee || canActOnUnassigned) && isPreviousStepCompleted;
                                 const canReturn = isCurrentUserAssignee && (step.status === 'Pending' || step.status === 'Acknowledged');
 
-                                
-                                const canFinalize = useMemo(() => {
+                                const canFinalize = (() => {
                                     if (!user || job.status === 'Completed') return false;
                                     const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
                                     const isStepAssignee = step.assigneeId === user.id;
                                     return canFinalizeRoles.includes(user.role) || user.id === job.creatorId || isStepAssignee;
-                                }, [user, job, step.assigneeId]);
-
+                                })();
+                                
                                 const isStepUnassigned = !step.assigneeId;
                                 const canAssign = (user?.id === job.creatorId || user?.role === 'Admin') && isStepUnassigned && step.status === 'Pending';
                                 
