@@ -293,7 +293,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
             message: 'Assignee is required for this step.',
             path: ['assigneeId'],
         }).refine(data => {
-            if (currentStep.name === 'JMS sent to Office' && data.name === 'JMS no created') {
+            if (data.name === 'JMS no created') {
                 return !!data.jmsNo && data.jmsNo.length > 0;
             }
             return true;
@@ -328,7 +328,8 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
         onSave();
     };
 
-    const availableNextSteps = JOB_PROGRESS_STEPS.filter(step => step !== currentStep.name);
+    const completedStepNames = new Set(job.steps.filter(s => s.status === 'Completed').map(s => s.name));
+    const availableNextSteps = JOB_PROGRESS_STEPS.filter(step => step !== currentStep.name && !completedStepNames.has(step));
 
 
     return (
