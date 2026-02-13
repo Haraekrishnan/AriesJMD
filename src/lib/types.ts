@@ -911,6 +911,7 @@ export type JobStep = {
       date?: string;
       attachmentUrl?: string;
       notes?: string;
+      customFields?: Record<string, any>;
   };
 };
 
@@ -926,8 +927,10 @@ export type JobProgress = {
   status: JobProgressStatus;
   steps: JobStep[];
   projectId?: string;
+  plantUnit?: string;
   workOrderNo?: string;
   foNo?: string;
+  jmsNo?: string;
   amount?: number;
   dateFrom?: string | null;
   dateTo?: string | null;
@@ -941,6 +944,7 @@ export const JOB_PROGRESS_STEPS = [
     "JMS submitted",
     "JMS Endorsed",
     "JMS sent to Office",
+    "JMS no created",
     "JMS Hard copy sent back to Site",
     "JMS Hard copy submitted",
   ] as const;
@@ -952,6 +956,7 @@ export const JOB_PROGRESS_STEPS = [
     "JMS submitted",
     "JMS Endorsed",
     "JMS sent to Office",
+    "JMS no created",
   ] as const;
 
 export type TpCertListItem = {

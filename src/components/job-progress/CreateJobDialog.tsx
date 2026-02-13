@@ -40,6 +40,7 @@ const jobStepSchema = z.object({
 const jobSchema = z.object({
   title: z.string().min(3, 'JMS title is required'),
   projectId: z.string().min(1, 'Project is required'),
+  plantUnit: z.string().optional(),
   workOrderNo: z.string().optional(),
   foNo: z.string().optional(),
   amount: z.coerce.number().optional(),
@@ -75,6 +76,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
     createJobProgress({
       title: data.title,
       projectId: data.projectId,
+      plantUnit: data.plantUnit,
       workOrderNo: data.workOrderNo,
       foNo: data.foNo,
       amount: data.amount,
@@ -195,6 +197,10 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
                   )}
                 />
                 {form.formState.errors.projectId && <p className="text-xs text-destructive mt-1">{form.formState.errors.projectId.message}</p>}
+            </div>
+            <div className="space-y-1">
+                <Label>Plant/Unit</Label>
+                <Input {...form.register('plantUnit')} />
             </div>
              <div className="space-y-1">
                 <Label>Start Date</Label>
