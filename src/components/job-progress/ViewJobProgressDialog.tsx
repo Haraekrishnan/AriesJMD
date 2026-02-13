@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import { CheckCircle, Clock, Circle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X, MessageSquare, Trash2, ArrowRight, ArrowUp, ArrowDown } from 'lucide-react';
+import { CheckCircle, Clock, Circle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X, MessageSquare, Trash2, ArrowRight, ArrowUp, ArrowDown, XCircle } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
@@ -764,3 +764,4 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         </>
     )
 }
+    
