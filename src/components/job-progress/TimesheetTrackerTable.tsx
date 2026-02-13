@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -199,7 +200,7 @@ export default function TimesheetTrackerTable() {
                             </TimelineItem>
                           ) : (
                             <>
-                              <TimelineItem icon={UserCheck} title="Acknowledged by Recipient" actorName={acknowledgedBy?.name} date={ts.acknowledgedDate}>
+                              <TimelineItem icon={UserCheck} title="Acknowledged" actorName={acknowledgedBy?.name} date={ts.acknowledgedDate}>
                                 <div className="h-full min-h-[2rem] w-px bg-border my-1" />
                               </TimelineItem>
                               <TimelineItem icon={Building} title="Sent to Office" actorName={sentToOfficeBy?.name} date={ts.sentToOfficeDate}>
