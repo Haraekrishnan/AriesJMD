@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
@@ -270,7 +271,7 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
     );
 };
 
-const unassignedSteps = ['Timesheets Pending', 'JMS sent back to Office', 'JMS Hard copy sent back to Site', 'JMS Hard copy submitted', 'JMS no created'];
+const unassignedSteps = ['Timesheets Pending', 'JMS sent back to Office', 'JMS Hard copy sent back to Site', 'JMS Hard copy submitted'];
 
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
     const { users, addAndCompleteStep, getAssignableUsers } = useAppContext();
@@ -292,7 +293,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
             message: 'Assignee is required for this step.',
             path: ['assigneeId'],
         }).refine(data => {
-            if (data.name === 'JMS no created') {
+            if (currentStep.name === 'JMS sent to Office' && data.name === 'JMS no created') {
                 return !!data.jmsNo && data.jmsNo.length > 0;
             }
             return true;
@@ -300,7 +301,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
             message: 'JMS No. is required to complete this step.',
             path: ['jmsNo'],
         });
-    }, []);
+    }, [currentStep.name]);
     
     type NextStepFormValues = z.infer<typeof nextStepSchema>;
     
@@ -322,11 +323,12 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
         addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, data.jmsNo ? { jmsNo: data.jmsNo } : undefined, {
             ...data,
             dueDate: data.dueDate?.toISOString() || null,
+            assigneeId: data.assigneeId || null,
         });
         onSave();
     };
 
-    const availableNextSteps = JOB_PROGRESS_STEPS.filter(step => step !== 'JMS Hard copy submitted' && step !== currentStep.name);
+    const availableNextSteps = JOB_PROGRESS_STEPS.filter(step => step !== currentStep.name);
 
 
     return (
@@ -501,12 +503,12 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const canAct = (isCurrentUserAssignee || canActOnUnassigned) && isPreviousStepCompleted;
                                 const canReturn = isCurrentUserAssignee && (step.status === 'Pending' || step.status === 'Acknowledged');
 
-                                const canFinalize = (()=>{
+                                const canFinalize = useMemo(() => {
                                     if (!user || job.status === 'Completed') return false;
                                     const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
                                     const isStepAssignee = step.assigneeId === user.id;
                                     return canFinalizeRoles.includes(user.role) || user.id === job.creatorId || isStepAssignee;
-                                })();
+                                }, [user, job.status, step.assigneeId, job.creatorId]);
                                 
                                 const isStepUnassigned = !step.assigneeId;
                                 const canAssign = (user?.id === job.creatorId || user?.role === 'Admin') && isStepUnassigned && step.status === 'Pending';
