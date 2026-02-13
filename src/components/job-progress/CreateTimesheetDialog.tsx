@@ -1,5 +1,3 @@
-
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,17 +9,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { DateRangePicker } from '../ui/date-range-picker';
-import type { DateRange } from 'react-day-picker';
+import { DatePickerInput } from '../ui/date-picker-input';
 
 const timesheetSchema = z.object({
     submittedToId: z.string().min(1, 'Please select a recipient'),
     projectId: z.string().min(1, 'Project is required'),
     plantUnit: z.string().min(1, 'Plant/Unit name is required'),
-    dateRange: z.object({
-        from: z.date({ required_error: 'Start date is required.' }),
-        to: z.date({ required_error: 'End date is required.' }),
-    }),
+    startDate: z.date({ required_error: 'Start date is required.' }),
+    endDate: z.date({ required_error: 'End date is required.' }),
+}).refine(data => !data.endDate || !data.startDate || data.endDate >= data.startDate, {
+    message: "End date cannot be before start date.",
+    path: ["endDate"],
 });
 
 type TimesheetFormValues = z.infer<typeof timesheetSchema>;
@@ -44,8 +42,8 @@ export default function CreateTimesheetDialog({ isOpen, setIsOpen }: CreateTimes
       submittedToId: data.submittedToId,
       projectId: data.projectId,
       plantUnit: data.plantUnit,
-      startDate: data.dateRange.from.toISOString(),
-      endDate: data.dateRange.to.toISOString(),
+      startDate: data.startDate.toISOString(),
+      endDate: data.endDate.toISOString(),
     });
     toast({ title: 'Timesheet Submitted' });
     setIsOpen(false);
@@ -116,14 +114,25 @@ export default function CreateTimesheetDialog({ isOpen, setIsOpen }: CreateTimes
                 {form.formState.errors.plantUnit && <p className="text-xs text-destructive">{form.formState.errors.plantUnit.message}</p>}
             </div>
             
-            <div className="space-y-2">
-                <Label>Timesheet Period</Label>
-                 <Controller
-                  name="dateRange"
-                  control={form.control}
-                  render={({ field }) => <DateRangePicker date={field.value as DateRange} onDateChange={field.onChange} />}
-                />
-                {form.formState.errors.dateRange && <p className="text-xs text-destructive">{form.formState.errors.dateRange.message}</p>}
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label>Start Date</Label>
+                    <Controller
+                        name="startDate"
+                        control={form.control}
+                        render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />}
+                    />
+                    {form.formState.errors.startDate && <p className="text-xs text-destructive">{form.formState.errors.startDate.message}</p>}
+                </div>
+                <div className="space-y-2">
+                    <Label>End Date</Label>
+                    <Controller
+                        name="endDate"
+                        control={form.control}
+                        render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />}
+                    />
+                    {form.formState.errors.endDate && <p className="text-xs text-destructive">{form.formState.errors.endDate.message}</p>}
+                </div>
             </div>
 
 
