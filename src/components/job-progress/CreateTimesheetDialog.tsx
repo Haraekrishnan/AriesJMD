@@ -56,7 +56,7 @@ export default function CreateTimesheetDialog({ isOpen, setIsOpen }: CreateTimes
       setIsOpen(open);
   };
 
-  const assignableUsers = users.filter(u => u.role !== 'Manager');
+  const assignableUsers = users.filter(u => u.role !== 'Manager' && u.id !== user?.id);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
