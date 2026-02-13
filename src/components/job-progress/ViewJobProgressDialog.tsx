@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
@@ -270,7 +271,7 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
     );
 };
 
-const unassignedSteps = ['Timesheets Pending', 'JMS sent back to Office', 'JMS Hard copy sent back to Site', 'JMS Hard copy submitted'];
+const unassignedSteps = ['JMS Hard copy submitted'];
 
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
     const { user, addAndCompleteStep, getAssignableUsers } = useAppContext();
@@ -333,7 +334,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
     };
 
     const completedStepNames = new Set(job.steps.filter(s => s.status === 'Completed').map(s => s.name));
-    const availableNextSteps = JOB_PROGRESS_STEPS.filter(step => step !== currentStep.name && !completedStepNames.has(step));
+    const availableNextSteps = JOB_PROGRESS_STEPS.filter(step => !completedStepNames.has(step) && step !== currentStep.name);
 
 
     return (
@@ -497,12 +498,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 
                                 let canActOnUnassigned = false;
                                 if (!step.assigneeId && (unassignedSteps.includes(step.name))) {
-                                    if(step.name === 'JMS sent back to Office') {
-                                        const allowedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
-                                        canActOnUnassigned = (user && allowedRoles.includes(user.role)) || user?.id === job.creatorId;
-                                    } else {
-                                        canActOnUnassigned = isProjectMember || user?.role === 'Admin' || isCreator;
-                                    }
+                                    canActOnUnassigned = isProjectMember || user?.role === 'Admin' || isCreator;
                                 }
                                 
                                 const canAct = (isCurrentUserAssignee || canActOnUnassigned) && isPreviousStepCompleted;

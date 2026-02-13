@@ -32,7 +32,7 @@ import type { DateRange } from 'react-day-picker';
 
 const jobStepSchema = z.object({
   name: z.enum(JOB_PROGRESS_STEPS, { required_error: 'Step name is required' }),
-  assigneeId: z.string().optional(),
+  assigneeId: z.string().min(1, 'Assignee is required.'),
   description: z.string().optional(),
   dueDate: z.date().optional().nullable(),
 });
@@ -124,7 +124,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
             />
           </div>
           <div className="space-y-1">
-            <Label>Assign To (Optional)</Label>
+            <Label>Assign To</Label>
             <Controller
               control={form.control}
               name={`${fieldName}.assigneeId`}
@@ -143,6 +143,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
                 </Select>
               )}
             />
+             {form.formState.errors.steps?.[0]?.assigneeId && <p className="text-xs text-destructive mt-1">{form.formState.errors.steps[0].assigneeId.message}</p>}
           </div>
         </div>
         <div className="space-y-1">
