@@ -304,7 +304,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
     }, [users]);
     
     const showJmsNoField = useMemo(() => {
-        return currentStep.name === 'JMS sent to Office';
+        return currentStep.name === 'JMS no created';
     }, [currentStep]);
 
     const handleFormSubmit = (data: z.infer<typeof nextStepSchema>) => {
