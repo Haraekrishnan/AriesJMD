@@ -60,7 +60,7 @@ const TimelineItem = ({ icon: Icon, title, actorName, date, children }: { icon: 
 
 
 export default function TimesheetTrackerTable() {
-  const { user, timesheets, updateTimesheetStatus, deleteTimesheet } = useAppContext();
+  const { user, users, projects, timesheets, updateTimesheetStatus, deleteTimesheet } = useAppContext();
   const { toast } = useToast();
   const [rejectionInfo, setRejectionInfo] = useState<{ timesheet: Timesheet, action: 'Reject' | 'Reopen' } | null>(null);
   const [reason, setReason] = useState('');
@@ -164,12 +164,12 @@ export default function TimesheetTrackerTable() {
     <>
       <Accordion type="multiple" className="w-full space-y-2">
         {sortedTimesheets.map(ts => {
-          const submitter = useAppContext().users.find(u => u.id === ts.submitterId);
-          const project = useAppContext().projects.find(p => p.id === ts.projectId);
-          const acknowledgedBy = useAppContext().users.find(u => u.id === ts.acknowledgedById);
-          const sentToOfficeBy = useAppContext().users.find(u => u.id === ts.sentToOfficeById);
-          const officeAcknowledgedBy = useAppContext().users.find(u => u.id === ts.officeAcknowledgedById);
-          const rejectedBy = useAppContext().users.find(u => u.id === ts.rejectedById);
+          const submitter = users.find(u => u.id === ts.submitterId);
+          const project = projects.find(p => p.id === ts.projectId);
+          const acknowledgedBy = users.find(u => u.id === ts.acknowledgedById);
+          const sentToOfficeBy = users.find(u => u.id === ts.sentToOfficeById);
+          const officeAcknowledgedBy = users.find(u => u.id === ts.officeAcknowledgedById);
+          const rejectedBy = users.find(u => u.id === ts.rejectedById);
           const commentsArray = Array.isArray(ts.comments) ? ts.comments : (ts.comments ? Object.values(ts.comments) : []);
           
           return (
@@ -216,7 +216,7 @@ export default function TimesheetTrackerTable() {
                                         <ScrollArea className="h-32">
                                             <div className="space-y-2 pr-4">
                                                 {commentsArray.map((c, i) => {
-                                                    const commentUser = useAppContext().users.find(u => u.id === c.userId);
+                                                    const commentUser = users.find(u => u.id === c.userId);
                                                     return (
                                                         <div key={i} className="flex items-start gap-2">
                                                             <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
