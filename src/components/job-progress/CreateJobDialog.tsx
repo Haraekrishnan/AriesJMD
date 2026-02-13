@@ -28,7 +28,6 @@ import {
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { useToast } from '@/hooks/use-toast';
 import { JOB_PROGRESS_STEPS } from '@/lib/types';
-import { DateRangePicker } from '../ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
 
 const jobStepSchema = z.object({
@@ -44,10 +43,8 @@ const jobSchema = z.object({
   workOrderNo: z.string().optional(),
   foNo: z.string().optional(),
   amount: z.coerce.number().optional(),
-  dateRange: z.object({
-    from: z.date().optional(),
-    to: z.date().optional(),
-  }).optional(),
+  dateFrom: z.date().optional().nullable(),
+  dateTo: z.date().optional().nullable(),
   steps: z.array(jobStepSchema).min(1),
 });
 
@@ -66,7 +63,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
   const form = useForm<JobFormValues>({
     resolver: zodResolver(jobSchema),
     defaultValues: {
-        steps: [{ name: 'JMS sent to Office', assigneeId: undefined, description: '', dueDate: null }]
+        steps: [{ name: 'JMS created', assigneeId: undefined, description: '', dueDate: null }]
     }
   });
 
@@ -81,8 +78,8 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
       workOrderNo: data.workOrderNo,
       foNo: data.foNo,
       amount: data.amount,
-      dateFrom: data.dateRange?.from?.toISOString() ?? null,
-      dateTo: data.dateRange?.to?.toISOString() ?? null,
+      dateFrom: data.dateFrom?.toISOString() ?? null,
+      dateTo: data.dateTo?.toISOString() ?? null,
       steps: data.steps,
     });
     toast({ title: 'JMS Created', description: data.title });
@@ -92,7 +89,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       form.reset({
-        steps: [{ name: 'JMS sent to Office', assigneeId: undefined, description: '', dueDate: null }]
+        steps: [{ name: 'JMS created', assigneeId: undefined, description: '', dueDate: null }]
       });
     }
     setIsOpen(open);
@@ -171,8 +168,8 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1 col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-1 md:col-span-3">
                 <Label htmlFor="job-title" className="font-semibold">JMS Title</Label>
                 <Input id="job-title" {...form.register('title')} />
                 {form.formState.errors.title && <p className="text-xs text-destructive mt-1">{form.formState.errors.title.message}</p>}
@@ -199,12 +196,20 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
                 />
                 {form.formState.errors.projectId && <p className="text-xs text-destructive mt-1">{form.formState.errors.projectId.message}</p>}
             </div>
-            <div className="space-y-1">
-                <Label>Date Range</Label>
+             <div className="space-y-1">
+                <Label>Start Date</Label>
                 <Controller
-                  name="dateRange"
+                  name="dateFrom"
                   control={form.control}
-                  render={({ field }) => <DateRangePicker date={field.value as DateRange} onDateChange={field.onChange} />}
+                  render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />}
+                />
+            </div>
+            <div className="space-y-1">
+                <Label>End Date</Label>
+                <Controller
+                  name="dateTo"
+                  control={form.control}
+                  render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />}
                 />
             </div>
             <div className="space-y-1">

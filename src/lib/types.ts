@@ -935,6 +935,10 @@ export type JobProgress = {
 };
 
 export const JOB_PROGRESS_STEPS = [
+    "JMS created",
+    "JMS submitted",
+    "JMS Handed Over to",
+    "JMS Endorsed",
     "JMS sent to Office",
     "JMS sent back to Office",
     "JMS Hard copy sent back to Site",
@@ -943,6 +947,10 @@ export const JOB_PROGRESS_STEPS = [
   ] as const;
   
   export const REOPEN_JOB_STEPS = [
+    "JMS created",
+    "JMS submitted",
+    "JMS Handed Over to",
+    "JMS Endorsed",
     "JMS sent to Office",
   ] as const;
 
