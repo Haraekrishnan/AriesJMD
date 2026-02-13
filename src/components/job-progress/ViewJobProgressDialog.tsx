@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
@@ -254,7 +253,7 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
                                 </Popover>
                             )}
                         />
-                         {form.formState.errors.newAssigneeId && <p className="text-xs text-destructive">{form.formState.errors.newStepAssigneeId.message}</p>}
+                         {form.formState.errors.newAssigneeId && <p className="text-xs text-destructive">{form.formState.errors.newAssigneeId.message}</p>}
                     </div>
                      <div className="space-y-2">
                         <Label htmlFor="comment">Comment</Label>
@@ -277,17 +276,13 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
     const { users, addAndCompleteStep, getAssignableUsers } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
 
-    const showJmsNoField = useMemo(() => {
-        return currentStep.name === 'JMS no created';
-    }, [currentStep]);
-
     const nextStepSchema = useMemo(() => {
         return z.object({
             name: z.string({ required_error: 'Step name is required' }).min(1, 'Step name is required'),
             assigneeId: z.string().optional(),
             description: z.string().optional(),
             dueDate: z.date().optional().nullable(),
-            jmsNo: showJmsNoField ? z.string().min(1, 'JMS No. is required to complete this step.') : z.string().optional(),
+            jmsNo: z.string().optional(),
         }).refine(data => {
             if (unassignedSteps.includes(data.name)) {
                 return true;
@@ -296,11 +291,19 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
         }, {
             message: 'Assignee is required for this step.',
             path: ['assigneeId'],
+        }).refine(data => {
+            if (data.name === 'JMS no created') {
+                return !!data.jmsNo && data.jmsNo.length > 0;
+            }
+            return true;
+        }, {
+            message: 'JMS No. is required to complete this step.',
+            path: ['jmsNo'],
         });
-    }, [showJmsNoField]);
+    }, []);
     
     type NextStepFormValues = z.infer<typeof nextStepSchema>;
-
+    
     const form = useForm<NextStepFormValues>({
         resolver: zodResolver(nextStepSchema),
     });
@@ -309,6 +312,12 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
         form.reset();
     }, [currentStep, form]);
     
+    const nextStepName = form.watch('name');
+    
+    const showJmsNoField = useMemo(() => {
+        return nextStepName === 'JMS no created';
+    }, [nextStepName]);
+
     const handleFormSubmit = (data: NextStepFormValues) => {
         addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, data.jmsNo ? { jmsNo: data.jmsNo } : undefined, {
             ...data,
@@ -317,7 +326,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
         onSave();
     };
 
-    const availableNextSteps = JOB_PROGRESS_STEPS.filter(step => step !== 'JMS Hard copy submitted');
+    const availableNextSteps = JOB_PROGRESS_STEPS.filter(step => step !== 'JMS Hard copy submitted' && step !== currentStep.name);
 
 
     return (
@@ -328,13 +337,6 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                     <Label className="text-xs">Completion Notes (Optional)</Label>
                     <Textarea value={completionComment} onChange={e => setCompletionComment(e.target.value)} rows={2} />
                 </div>
-                 {showJmsNoField && (
-                     <div className="space-y-1">
-                        <Label className="text-xs">JMS No.</Label>
-                        <Input {...form.register('jmsNo')} />
-                        {form.formState.errors.jmsNo && <p className="text-xs text-destructive">{form.formState.errors.jmsNo.message}</p>}
-                    </div>
-                 )}
                  <div className="space-y-1">
                     <Label className="text-xs">Next Step Name</Label>
                      <Controller
@@ -355,8 +357,14 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                     />
                      {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
                 </div>
-                
-                <div className="space-y-1">
+                 {showJmsNoField && (
+                     <div className="space-y-1">
+                        <Label className="text-xs">JMS No.</Label>
+                        <Input {...form.register('jmsNo')} />
+                        {form.formState.errors.jmsNo && <p className="text-xs text-destructive">{form.formState.errors.jmsNo.message}</p>}
+                    </div>
+                 )}
+                 <div className="space-y-1">
                     <Label className="text-xs">Assign To</Label>
                     <Controller
                         name="assigneeId"
@@ -624,7 +632,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                         <Select onValueChange={setNewAssigneeId} value={newAssigneeId}>
                                                             <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
                                                             <SelectContent>
-                                                                {users.filter(u => u.role !== 'Manager').map(u => (
+                                                                {getAssignableUsers().map(u => (
                                                                     <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                                                                 ))}
                                                             </SelectContent>
