@@ -63,8 +63,14 @@ export default function JobProgressPage() {
     const visibleJobs = jobProgress.filter(job => {
       const canViewAll = user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Document Controller';
       if (canViewAll) return true;
+      
+      const isAssignee = job.steps.some(step => step.assigneeId === user?.id);
+      if (isAssignee) return true;
+
       if (job.creatorId === user?.id) return true;
+      
       if (!user?.projectIds) return false;
+      
       return user.projectIds.some(userProjectId => {
         if (job.projectId === userProjectId) return true;
         const project = projects.find(p => p.id === job.projectId);
@@ -95,7 +101,11 @@ export default function JobProgressPage() {
     const visibleTimesheets = timesheets.filter(ts => {
       const canViewAll = user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Document Controller';
       if (canViewAll) return true;
+
+      // Show if user is the submitter or the one it's submitted to, regardless of project
       if (ts.submitterId === user?.id || ts.submittedToId === user?.id) return true;
+
+      // Fallback for managers who might not be directly involved but oversee projects
       if (!user?.projectIds) return false;
       return user.projectIds.includes(ts.projectId);
     });
