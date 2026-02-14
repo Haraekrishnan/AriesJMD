@@ -37,7 +37,7 @@ const taskSchema = z.object({
 type TaskFormValues = z.infer<typeof taskSchema>;
 
 export default function CreateTaskDialog() {
-  const { user, createTask, getAssignableUsers } = useAppContext();
+  const { user, createTask, getVisibleUsers, users } = useAppContext();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -53,8 +53,22 @@ export default function CreateTaskDialog() {
   });
 
   const assignableUsers = useMemo(() => {
-    return getAssignableUsers().map(u => ({ value: u.id, label: u.name }));
-  }, [getAssignableUsers]);
+    if (!user) return [];
+    
+    const privilegedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller', 'Store in Charge'];
+    
+    let usersToDisplay: User[];
+
+    if (privilegedRoles.includes(user.role)) {
+      // These roles can assign to anyone (except Admin/Manager)
+      usersToDisplay = users.filter(u => u.role !== 'Admin' && u.role !== 'Manager');
+    } else {
+      // Other roles can only assign to users they can see in their hierarchy, excluding themselves
+      usersToDisplay = getVisibleUsers().filter(u => u.id !== user.id && u.role !== 'Admin' && u.role !== 'Manager');
+    }
+    
+    return usersToDisplay.map(u => ({ value: u.id, label: u.name }));
+  }, [user, users, getVisibleUsers]);
 
   const onSubmit = (data: TaskFormValues) => {
     createTask(data);
