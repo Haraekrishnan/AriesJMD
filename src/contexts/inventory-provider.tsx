@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, PpeRequestStatus, Role, ConsumableInwardRecord, Directive, DirectiveStatus, DamageReport, User, NotificationSettings, DamageReportStatus } from '@/lib/types';
+import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, PpeRequestStatus, Role, ConsumableInwardRecord, Directive, DirectiveStatus, DamageReport, User, NotificationSettings, DamageReportStatus, WeldingMachine } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -80,6 +80,7 @@ type InventoryContextType = {
   digitalCameras: DigitalCamera[];
   anemometers: Anemometer[];
   otherEquipments: OtherEquipment[];
+  weldingMachines: WeldingMachine[];
   machineLogs: MachineLog[];
   certificateRequests: CertificateRequest[];
   internalRequests: InternalRequest[];
@@ -100,7 +101,7 @@ type InventoryContextType = {
   updateInventoryItem: (item: InventoryItem) => void;
   batchUpdateInventoryItems: (updates: { id: string; data: Partial<InventoryItem> }[]) => void;
   updateInventoryItemGroup: (itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => void;
-  updateInventoryItemGroupByProject: (itemName: string, projectId: string, updates: Partial<Pick<InventoryItem, 'inspectionDate' | 'inspectionDueDate' | 'inspectionCertificateUrl'>>) => void;
+  updateInspectionItemGroup: (itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'inspectionDate' | 'inspectionDueDate' | 'inspectionCertificateUrl'>>) => void;
   updateMultipleInventoryItems: (itemsData: any[]) => number;
   batchDeleteInventoryItems: (itemIds: string[]) => void;
   deleteInventoryItemGroup: (itemName: string) => void;
@@ -151,6 +152,10 @@ type InventoryContextType = {
   updateOtherEquipment: (equipment: OtherEquipment) => void;
   deleteOtherEquipment: (equipmentId: string) => void;
   
+  addWeldingMachine: (machine: Omit<WeldingMachine, 'id'>) => void;
+  updateWeldingMachine: (machine: WeldingMachine) => void;
+  deleteWeldingMachine: (machineId: string) => void;
+
   addMachineLog: (log: Omit<MachineLog, 'id'|'machineId'|'loggedByUserId'>, machineId: string) => void;
   deleteMachineLog: (logId: string) => void;
   getMachineLogs: (machineId: string) => MachineLog[];
@@ -238,6 +243,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const [digitalCamerasById, setDigitalCamerasById] = useState<Record<string, DigitalCamera>>({});
     const [anemometersById, setAnemometersById] = useState<Record<string, Anemometer>>({});
     const [otherEquipmentsById, setOtherEquipmentsById] = useState<Record<string, OtherEquipment>>({});
+    const [weldingMachinesById, setWeldingMachinesById] = useState<Record<string, WeldingMachine>>({});
     const [machineLogsById, setMachineLogsById] = useState<Record<string, MachineLog>>({});
     const [certificateRequestsById, setCertificateRequestsById] = useState<Record<string, CertificateRequest>>({});
     const [internalRequestsById, setInternalRequestsById] = useState<Record<string, InternalRequest>>({});
@@ -260,6 +266,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const digitalCameras = useMemo(() => Object.values(digitalCamerasById), [digitalCamerasById]);
     const anemometers = useMemo(() => Object.values(anemometersById), [anemometersById]);
     const otherEquipments = useMemo(() => Object.values(otherEquipmentsById), [otherEquipmentsById]);
+    const weldingMachines = useMemo(() => Object.values(weldingMachinesById), [weldingMachinesById]);
     const machineLogs = useMemo(() => Object.values(machineLogsById), [machineLogsById]);
     const certificateRequests = useMemo(() => Object.values(certificateRequestsById), [certificateRequestsById]);
     const internalRequests = useMemo(() => Object.values(internalRequestsById), [internalRequestsById]);
@@ -520,18 +527,24 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb), dbUpdates);
     }, [inventoryItems]);
 
-    const updateInventoryItemGroupByProject = useCallback((itemName: string, projectId: string, updates: Partial<Pick<InventoryItem, 'inspectionDate' | 'inspectionDueDate' | 'inspectionCertificateUrl'>>) => {
-        const itemsToUpdate = inventoryItems.filter(item => item.name === itemName && item.projectId === projectId);
-        if(itemsToUpdate.length === 0) return;
+    const updateInspectionItemGroup = useCallback((itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'inspectionDate' | 'inspectionDueDate' | 'inspectionCertificateUrl'>>) => {
+        const itemsToUpdate = inventoryItems.filter(item => item.name === itemName && item.inspectionDueDate === originalDueDate);
+        if (itemsToUpdate.length === 0) {
+            toast({ title: "No items found", description: `No items named "${itemName}" with the selected due date were found.`, variant: 'destructive' });
+            return;
+        }
         const dbUpdates: { [key: string]: any } = {};
+        const timestamp = new Date().toISOString();
         itemsToUpdate.forEach(item => {
-            dbUpdates[`/inventoryItems/${item.id}/inspectionDate`] = updates.inspectionDate || item.inspectionDate;
-            dbUpdates[`/inventoryItems/${item.id}/inspectionDueDate`] = updates.inspectionDueDate || item.inspectionDueDate;
-            dbUpdates[`/inventoryItems/${item.id}/inspectionCertificateUrl`] = updates.inspectionCertificateUrl || item.inspectionCertificateUrl;
-            dbUpdates[`/inventoryItems/${item.id}/lastUpdated`] = new Date().toISOString();
+            const itemPath = `/inventoryItems/${item.id}`;
+            if (updates.inspectionDate) dbUpdates[`${itemPath}/inspectionDate`] = updates.inspectionDate;
+            if (updates.inspectionDueDate) dbUpdates[`${itemPath}/inspectionDueDate`] = updates.inspectionDueDate;
+            if (updates.inspectionCertificateUrl) dbUpdates[`${itemPath}/inspectionCertificateUrl`] = updates.inspectionCertificateUrl;
+            dbUpdates[`${itemPath}/lastUpdated`] = timestamp;
         });
         update(ref(rtdb), dbUpdates);
-    }, [inventoryItems]);
+        toast({ title: 'Bulk Update Successful', description: `Updated ${itemsToUpdate.length} items.` });
+    }, [inventoryItems, toast]);
 
     const updateMultipleInventoryItems = useCallback((itemsData: any[]): number => {
         let updatedCount = 0;
@@ -771,6 +784,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 case 'DigitalCamera': itemPath = 'digitalCameras'; break;
                 case 'Anemometer': itemPath = 'anemometers'; break;
                 case 'OtherEquipment': itemPath = 'otherEquipments'; break;
+                case 'WeldingMachine': itemPath = 'weldingMachines'; break;
                 default: return;
             }
             updates[`${itemPath}/${item.itemId}/projectId`] = request.toProjectId;
@@ -1096,6 +1110,21 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const deleteAnemometer = useCallback((anemometerId: string) => {
         remove(ref(rtdb, `anemometers/${anemometerId}`));
     }, []);
+    
+    const addWeldingMachine = useCallback((machine: Omit<WeldingMachine, 'id'>) => {
+        const newRef = push(ref(rtdb, 'weldingMachines'));
+        set(newRef, { ...machine, tpInspectionDueDate: machine.tpInspectionDueDate || null });
+    }, []);
+    
+    const updateWeldingMachine = useCallback((machine: WeldingMachine) => {
+        const { id, ...data } = machine;
+        update(ref(rtdb, `weldingMachines/${id}`), data);
+    }, []);
+
+    const deleteWeldingMachine = useCallback((machineId: string) => {
+        remove(ref(rtdb, `weldingMachines/${machineId}`));
+    }, []);
+
 
     const addOtherEquipment = useCallback((equipment: Omit<OtherEquipment, 'id'>) => {
         if (!user) return;
@@ -1609,6 +1638,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             createDataListener('digitalCameras', setDigitalCamerasById),
             createDataListener('anemometers', setAnemometersById),
             createDataListener('otherEquipments', setOtherEquipmentsById),
+            createDataListener('weldingMachines', setWeldingMachinesById),
             createDataListener('machineLogs', setMachineLogsById),
             createDataListener('certificateRequests', setCertificateRequestsById),
             createDataListener('internalRequests', setInternalRequestsById),
@@ -1625,8 +1655,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const contextValue: InventoryContextType = {
-        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory, directives: [], damageReports,
-        addInventoryItem, addMultipleInventoryItems, batchAddInventoryItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInventoryItemGroupByProject, updateMultipleInventoryItems, batchDeleteInventoryItems, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
+        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, weldingMachines, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory, directives: [], damageReports,
+        addInventoryItem, addMultipleInventoryItems, batchAddInventoryItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInspectionItemGroup, updateMultipleInventoryItems, batchDeleteInventoryItems, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
         addInventoryTransferRequest, updateInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
         addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest,
         addUTMachine, updateUTMachine, deleteUTMachine,
@@ -1636,6 +1666,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         addDigitalCamera, updateDigitalCamera, deleteDigitalCamera,
         addAnemometer, updateAnemometer, deleteAnemometer,
         addOtherEquipment, updateOtherEquipment, deleteOtherEquipment,
+        addWeldingMachine, updateWeldingMachine, deleteWeldingMachine,
         addMachineLog, deleteMachineLog, getMachineLogs,
         addInternalRequest, deleteInternalRequest, forceDeleteInternalRequest, addInternalRequestComment, updateInternalRequestStatus, updateInternalRequestItemStatus, updateInternalRequestItem, markInternalRequestAsViewed, acknowledgeInternalRequest,
         addPpeRequest, updatePpeRequest, updatePpeRequestStatus, addPpeRequestComment, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed,

@@ -16,13 +16,14 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { ChevronsUpDown } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { DatePickerInput } from '../ui/date-picker-input';
+import { format, parseISO } from 'date-fns';
 
 const bulkUpdateSchema = z.object({
   itemName: z.string().min(1, 'Please select an item name.'),
-  projectId: z.string().min(1, 'Please select a project.'),
-  inspectionDate: z.date({ required_error: 'Inspection Date is required' }),
-  inspectionDueDate: z.date({ required_error: 'Inspection Due Date is required' }),
-  inspectionCertificateUrl: z.string().url({ message: "Please enter a valid URL." }),
+  originalInspectionDueDate: z.string({ required_error: 'Please select the due date to target.' }),
+  newInspectionDate: z.date({ required_error: 'New Inspection Date is required' }),
+  newInspectionDueDate: z.date({ required_error: 'New Inspection Due Date is required' }),
+  newInspectionCertificateUrl: z.string().url({ message: "Please enter a valid URL." }),
 });
 
 type BulkUpdateFormValues = z.infer<typeof bulkUpdateSchema>;
@@ -33,7 +34,7 @@ interface BulkUpdateInspectionDialogProps {
 }
 
 export default function BulkUpdateInspectionDialog({ isOpen, setIsOpen }: BulkUpdateInspectionDialogProps) {
-  const { inventoryItems, projects, updateInventoryItemGroupByProject } = useAppContext();
+  const { inventoryItems, updateInspectionItemGroup } = useAppContext();
   const { toast } = useToast();
   const [isItemPopoverOpen, setIsItemPopoverOpen] = useState(false);
   
@@ -43,18 +44,26 @@ export default function BulkUpdateInspectionDialog({ isOpen, setIsOpen }: BulkUp
     resolver: zodResolver(bulkUpdateSchema),
   });
 
-  const onSubmit = (data: BulkUpdateFormValues) => {
-    updateInventoryItemGroupByProject(data.itemName, data.projectId, {
-      inspectionDate: data.inspectionDate.toISOString(),
-      inspectionDueDate: data.inspectionDueDate.toISOString(),
-      inspectionCertificateUrl: data.inspectionCertificateUrl,
+  const watchItemName = form.watch('itemName');
+
+  const availableDates = useMemo(() => {
+    if (!watchItemName) return [];
+    const dates = new Set<string>();
+    inventoryItems.forEach(item => {
+      if (item.name === watchItemName && item.inspectionDueDate) {
+        dates.add(item.inspectionDueDate);
+      }
     });
-    toast({
-      title: 'Bulk Update Successful',
-      description: `All '${data.itemName}' items in '${projects.find(p => p.id === data.projectId)?.name}' have been updated.`,
+    return Array.from(dates).sort((a,b) => parseISO(a).getTime() - parseISO(b).getTime());
+  }, [watchItemName, inventoryItems]);
+
+  const onSubmit = (data: BulkUpdateFormValues) => {
+    updateInspectionItemGroup(data.itemName, data.originalInspectionDueDate, {
+      inspectionDate: data.newInspectionDate.toISOString(),
+      inspectionDueDate: data.newInspectionDueDate.toISOString(),
+      inspectionCertificateUrl: data.newInspectionCertificateUrl,
     });
     setIsOpen(false);
-    form.reset();
   };
   
   const handleOpenChange = (open: boolean) => {
@@ -70,7 +79,7 @@ export default function BulkUpdateInspectionDialog({ isOpen, setIsOpen }: BulkUp
         <DialogHeader>
           <DialogTitle>Bulk Update Inspection Certificate</DialogTitle>
           <DialogDescription>
-            Update dates and links for all items of a specific type within a project.
+            Update dates and links for all items with the same name and due date.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
@@ -99,6 +108,7 @@ export default function BulkUpdateInspectionDialog({ isOpen, setIsOpen }: BulkUp
                               value={name}
                               onSelect={() => {
                                 form.setValue("itemName", name);
+                                form.setValue("originalInspectionDueDate", "");
                                 setIsItemPopoverOpen(false);
                               }}
                             >
@@ -115,43 +125,49 @@ export default function BulkUpdateInspectionDialog({ isOpen, setIsOpen }: BulkUp
             {form.formState.errors.itemName && <p className="text-xs text-destructive">{form.formState.errors.itemName.message}</p>}
           </div>
 
-          <div className="space-y-2">
-            <Label>Project/Plant</Label>
+           <div className="space-y-2">
+            <Label>Current Inspection Due Date</Label>
             <Controller
-              name="projectId"
-              control={form.control}
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger><SelectValue placeholder="Select project..."/></SelectTrigger>
-                    <SelectContent>
-                        {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-              )}
+                name="originalInspectionDueDate"
+                control={form.control}
+                render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value} disabled={!watchItemName || availableDates.length === 0}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select a due date to target..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {availableDates.map(date => (
+                                <SelectItem key={date} value={date}>
+                                    {format(parseISO(date), 'dd-MM-yyyy')}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                )}
             />
-            {form.formState.errors.projectId && <p className="text-xs text-destructive">{form.formState.errors.projectId.message}</p>}
+            {form.formState.errors.originalInspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.originalInspectionDueDate.message}</p>}
           </div>
 
           <div className="space-y-2">
-              <Label>Inspection Date</Label>
-              <Controller name="inspectionDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
-              {form.formState.errors.inspectionDate && <p className="text-xs text-destructive">{form.formState.errors.inspectionDate.message}</p>}
+              <Label>New Inspection Date</Label>
+              <Controller name="newInspectionDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
+              {form.formState.errors.newInspectionDate && <p className="text-xs text-destructive">{form.formState.errors.newInspectionDate.message}</p>}
           </div>
           <div className="space-y-2">
               <Label>New Inspection Due Date</Label>
-              <Controller name="inspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
-              {form.formState.errors.inspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.inspectionDueDate.message}</p>}
+              <Controller name="newInspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
+              {form.formState.errors.newInspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.newInspectionDueDate.message}</p>}
           </div>
 
           <div className="space-y-2">
             <Label>New Inspection Certificate Link</Label>
-            <Input {...form.register('inspectionCertificateUrl')} placeholder="https://..." />
-            {form.formState.errors.inspectionCertificateUrl && <p className="text-xs text-destructive">{form.formState.errors.inspectionCertificateUrl.message}</p>}
+            <Input {...form.register('newInspectionCertificateUrl')} placeholder="https://..." />
+            {form.formState.errors.newInspectionCertificateUrl && <p className="text-xs text-destructive">{form.formState.errors.newInspectionCertificateUrl.message}</p>}
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit">Update All Matching Items</Button>
+            <Button type="submit">Update Matching Items</Button>
           </DialogFooter>
         </form>
       </DialogContent>
