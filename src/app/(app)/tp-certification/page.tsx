@@ -146,8 +146,8 @@ export default function TpCertificationPage() {
     };
     
     const handleUnlock = (list: TpCertList) => {
-        updateTpCertList({ ...list, isLocked: false, checklist: {}, checklistMaxIndex: -1 });
-        toast({ title: "List & Checklist Unlocked", description: "The list items can be edited and checklist has been reset." });
+        updateTpCertList({ ...list, isLocked: false });
+        toast({ title: "List Unlocked", description: "The list items can now be edited." });
     };
 
     const toggleAdminChecklistLock = (listId: string) => {
@@ -246,7 +246,7 @@ export default function TpCertificationPage() {
                                                     <Button size="sm" variant="secondary" onClick={() => setEditingList(list)}><Edit className="mr-2 h-4 w-4"/> Edit List</Button>
                                                 )}
                                                 {isLockedForEdit && canUserUnlock && (
-                                                    <Button size="sm" variant="outline" onClick={() => handleUnlock(list)}><Unlock className="mr-2 h-4 w-4" /> Unlock & Reset</Button>
+                                                    <Button size="sm" variant="outline" onClick={() => handleUnlock(list)}><Unlock className="mr-2 h-4 w-4" /> Unlock</Button>
                                                 )}
                                                 {isAdmin && maxIndex > -1 && (
                                                     <Button size="sm" variant={adminUnlockedLists.has(list.id) ? "secondary" : "outline"} onClick={() => toggleAdminChecklistLock(list.id)}>
