@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -43,7 +44,7 @@ export default function AddAnemometerDialog({ isOpen, setIsOpen }: AddAnemometer
   });
 
   const onSubmit = (data: FormValues) => {
-    addAnemometer({ ...data, calibrationDueDate: data.calibrationDueDate?.toISOString() });
+    addAnemometer({ ...data, calibrationDueDate: data.calibrationDueDate?.toISOString() || null });
     toast({
       title: 'Equipment Added',
       description: `${data.make} ${data.model} has been added.`,

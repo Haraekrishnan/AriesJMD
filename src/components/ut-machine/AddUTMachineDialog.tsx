@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -107,7 +108,7 @@ export default function AddUTMachineDialog({ isOpen, setIsOpen }: AddUTMachineDi
                 <div><Label>Cable Details</Label><Input {...form.register('cableDetails')} /></div>
                 <div><Label>Cable Status</Label><Controller control={form.control} name="cableStatus" render={({field}) => <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{componentStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>} /></div>
               </div>
-
+              
               <div>
                 <Label>Certificate URL</Label>
                 <Input {...form.register('certificateUrl')} placeholder="https://..." />

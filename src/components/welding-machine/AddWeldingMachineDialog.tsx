@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -44,7 +45,7 @@ export default function AddWeldingMachineDialog({ isOpen, setIsOpen }: AddWeldin
   });
 
   const onSubmit = (data: FormValues) => {
-    addWeldingMachine({ ...data, tpInspectionDueDate: data.tpInspectionDueDate?.toISOString() });
+    addWeldingMachine({ ...data, tpInspectionDueDate: data.tpInspectionDueDate?.toISOString() ?? null });
     toast({
       title: 'Equipment Added',
       description: `Welding Machine has been added.`,
