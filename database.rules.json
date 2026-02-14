@@ -90,6 +90,10 @@
       ".read": true,
       ".write": true
     },
+    "weldingMachines": {
+      ".read": true,
+      ".write": true
+    },
     "machineLogs": {
       ".read": true,
       ".write": true

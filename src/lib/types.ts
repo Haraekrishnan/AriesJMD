@@ -704,6 +704,19 @@ export type Anemometer = {
   ariesId?: string;
 };
 
+export type WeldingMachine = {
+    id: string;
+    serialNumber: string;
+    ariesId?: string;
+    projectId: string;
+    status: string;
+    remarks?: string;
+    model?: string;
+    make?: string;
+    tpInspectionDueDate?: string | null;
+    certificateUrl?: string;
+};
+
 export type MobileSimStatus = 'Active' | 'Inactive' | 'Returned' | 'Standby';
 
 export type MobileSim = {
@@ -939,8 +952,8 @@ export type JobProgress = {
 
 export const JOB_PROGRESS_STEPS = [
     "JMS created",
-    "JMS Handed Over to",
     "JMS sent to Site",
+    "JMS Handed Over to",
     "JMS submitted",
     "JMS Endorsed",
     "JMS sent to Office",
@@ -951,8 +964,8 @@ export const JOB_PROGRESS_STEPS = [
   
   export const REOPEN_JOB_STEPS = [
     "JMS created",
-    "JMS Handed Over to",
     "JMS sent to Site",
+    "JMS Handed Over to",
     "JMS submitted",
     "JMS Endorsed",
     "JMS sent to Office",

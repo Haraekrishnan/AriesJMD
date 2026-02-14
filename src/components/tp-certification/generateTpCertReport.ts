@@ -16,6 +16,7 @@ import type {
   MobileSim,
   InspectionChecklist,
   User,
+  WeldingMachine,
 } from '@/lib/types';
 import { format, parseISO, isValid } from 'date-fns';
 
@@ -27,7 +28,8 @@ type FullItem =
   | Anemometer
   | OtherEquipment
   | LaptopDesktop
-  | MobileSim;
+  | MobileSim
+  | WeldingMachine;
 
 interface CertItem {
   itemId: string;
@@ -272,107 +274,6 @@ export async function generateTpCertExcel(
     saveAs(new Blob([bufferExcel]), "TP_Certification_List.xlsx");
   }
 }
-
-export async function generateTpCertPdf(
-  items: TpCertListItem[],
-  allItems: FullItem[],
-  listDate?: Date | string
-) {
-  const headerImagePath = '/images/aries-header.png';
-  const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
-
-  const certItems = buildCertItems(items, allItems);
-  const groupedItems = groupItemsForExport(certItems);
-
-  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-  const pageWidth = doc.internal.pageSize.getWidth();
-
-  const dateToUse = listDate && typeof listDate === 'string' ? parseISO(listDate) : listDate || new Date();
-
-  doc.addImage(imgDataUrl, "PNG", 40, 20, pageWidth - 80, 60);
-
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text(`Date: ${format(dateToUse, 'dd-MM-yyyy')}`, pageWidth - 40, 95, { align: 'right' });
-
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.text('Trivedi & Associates Technical Services (P.) Ltd.', pageWidth / 2, 110, { align: 'center' });
-  doc.text('Jamnagar.', pageWidth / 2, 125, { align: 'center' });
-  doc.setFont("helvetica", "normal");
-  doc.text("Subject : Testing & Certification", 40, 155);
-
-  const headers = ["SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report"];
-  const columnStyles = {
-    0: { cellWidth: 25, halign: 'center', valign: 'middle' },
-    1: { cellWidth: 60, halign: 'center', valign: 'middle' },
-    2: { cellWidth: 150, halign: 'center', valign: 'middle' },
-    3: { cellWidth: 70, halign: 'center', valign: 'middle' },
-    4: { cellWidth: 40, halign: 'center', valign: 'middle' },
-    5: { cellWidth: 30, halign: 'center', valign: 'middle' },
-    6: { cellWidth: 35, halign: 'center', valign: 'middle' },
-    7: { cellWidth: 50, halign: 'center', valign: 'middle' },
-    8: { cellWidth: 'auto', halign: 'center', valign: 'middle' },
-  };
-
-  const bodyRows: any[][] = [];
-  let srNo = 1;
-
-  groupedItems.forEach(group => {
-    group.forEach((item, index) => {
-      const isHarness = item.materialName.toLowerCase().includes('harness');
-      if (index === 0) {
-        bodyRows.push([
-          { content: srNo, rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
-          { content: item.materialName, rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
-          item.manufacturerSrNo,
-          isHarness ? (item.chestCrollNo || '') : '',
-          { content: getCapacity(item.materialName), rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
-          { content: group.length, rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
-          { content: 'OLD', rowSpan: group.length, styles: { valign: 'middle', halign: 'center' } },
-          { content: '', rowSpan: group.length, styles: { valign: 'middle' } },
-          { content: '', rowSpan: group.length, styles: { valign: 'middle' } }
-        ]);
-      } else {
-        bodyRows.push([
-          item.manufacturerSrNo,
-          isHarness ? (item.chestCrollNo || '') : ''
-        ]);
-      }
-    });
-    srNo++;
-  });
-  
-  (doc as any).autoTable({
-      head: [headers],
-      body: bodyRows,
-      startY: 170,
-      theme: "grid",
-      styles: { fontSize: 7, valign: 'middle' },
-      headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold', halign: 'center' },
-      columnStyles: columnStyles,
-  });
-
-  const finalY = (doc as any).lastAutoTable.finalY + 20;
-  doc.setFontSize(10);
-  const footerX = 40;
-  let footerY = finalY;
-
-  doc.text("Company Authorised Contact Person", footerX, footerY);
-  footerY += 15;
-  doc.text("Name : VIJAY SAI", footerX, footerY);
-  footerY += 15;
-  doc.text("Contact Number : 919662095558", footerX, footerY);
-  footerY += 15;
-  doc.text("Site : RELIANCE INDUSTRIES LTD", footerX, footerY);
-  footerY += 15;
-  doc.text("email id: ariesril@ariesmar.com", footerX, footerY);
-  footerY += 20;
-  doc.text('Note : For "New Materials only" Manufacturer Test Certificates submitted.', footerX, footerY);
-
-  doc.save("TP_Certification_List.pdf");
-}
-
 
 export async function generateChecklistPdf(
   checklist: any,
