@@ -15,14 +15,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CreateTimesheetDialog from '@/components/job-progress/CreateTimesheetDialog';
 import TimesheetTrackerTable from '@/components/job-progress/TimesheetTrackerTable';
 import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
 
 export default function JobProgressPage() {
-  const { can, jobProgress, timesheets, user, projects } = useAppContext();
+  const { can, jobProgress, timesheets, user, projects, users } = useAppContext();
   const [isCreateJobOpen, setIsCreateJobOpen] = useState(false);
   const [isCreateTimesheetOpen, setIsCreateTimesheetOpen] = useState(false);
   const [viewingJob, setViewingJob] = useState<JobProgress | null>(null);
+  const { toast } = useToast();
   
   // JMS States
   const [currentJmsMonth, setCurrentJmsMonth] = useState(startOfMonth(new Date()));
@@ -31,6 +33,24 @@ export default function JobProgressPage() {
   // Timesheet States
   const [currentTimesheetMonth, setCurrentTimesheetMonth] = useState(startOfMonth(new Date()));
   const [timesheetSearchTerm, setTimesheetSearchTerm] = useState('');
+
+  const myPendingJmsSteps = useMemo(() => {
+    if (!user) return [];
+    return jobProgress.flatMap(job =>
+      (job.steps || [])
+            .filter(step => step.assigneeId === user.id && step.status === 'Pending')
+            .map(step => ({ job, step }))
+    );
+  }, [jobProgress, user]);
+
+  const myPendingTimesheets = useMemo(() => {
+      if (!user) return [];
+      const canAcknowledgeOffice = ['Admin', 'Document Controller', 'Project Coordinator'].includes(user.role);
+      return timesheets.filter(ts => 
+          (ts.submittedToId === user.id && ts.status === 'Pending') ||
+          (canAcknowledgeOffice && ts.status === 'Sent To Office')
+      );
+  }, [timesheets, user]);
 
 
   const changeJmsMonth = (amount: number) => {
@@ -147,6 +167,52 @@ export default function JobProgressPage() {
         </div>
       </div>
       
+      {(myPendingJmsSteps.length > 0 || myPendingTimesheets.length > 0) && (
+        <Card className="border-primary">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="text-primary"/> My Pending Actions
+                </CardTitle>
+                <CardDescription>Items that require your attention, regardless of the month filter below.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+                {myPendingJmsSteps.map(({ job, step }) => (
+                    <div key={step.id} className="p-3 border rounded-md flex justify-between items-center bg-card">
+                        <div>
+                            <p className="font-semibold">JMS Step: {step.name}</p>
+                            <p className="text-sm text-muted-foreground">{job.title}</p>
+                        </div>
+                        <Button onClick={() => {
+                            setCurrentJmsMonth(startOfMonth(parseISO(job.dateFrom || job.createdAt)));
+                            setViewingJob(job);
+                        }}>View JMS</Button>
+                    </div>
+                ))}
+                {myPendingTimesheets.map(ts => {
+                    const submitter = users.find(u => u.id === ts.submitterId);
+                    const project = projects.find(p => p.id === ts.projectId);
+                    return (
+                        <div key={ts.id} className="p-3 border rounded-md flex justify-between items-center bg-card">
+                            <div>
+                                <p className="font-semibold">Timesheet requires acknowledgement</p>
+                                <p className="text-sm text-muted-foreground">
+                                    From {submitter?.name} for {project?.name} - {ts.plantUnit}
+                                </p>
+                            </div>
+                            <Button onClick={() => {
+                                setCurrentTimesheetMonth(startOfMonth(parseISO(ts.submissionDate)));
+                                toast({
+                                    title: "Navigated to Timesheet Month",
+                                    description: "The timesheet will be visible in the list below.",
+                                });
+                            }}>View</Button>
+                        </div>
+                    )
+                })}
+            </CardContent>
+        </Card>
+      )}
+
       <Tabs defaultValue="jms-tracker">
         <TabsList>
             <TabsTrigger value="jms-tracker">JMS Tracker</TabsTrigger>
