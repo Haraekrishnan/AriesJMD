@@ -263,7 +263,7 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
 const unassignedSteps = ['JMS Hard copy submitted'];
 
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
-    const { user, addAndCompleteStep, getAssignableUsers } = useAppContext();
+    const { user, addAndCompleteStep, completeJobAsFinalStep, getAssignableUsers } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
 
     const assignableUsersForNextStep = useMemo(() => {
@@ -273,13 +273,13 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
 
     const nextStepSchema = useMemo(() => {
         return z.object({
-            name: z.string({ required_error: 'Step name is required' }).min(1, 'Step name is required'),
-            assigneeId: z.string().optional(),
-            description: z.string().optional(),
-            dueDate: z.date().optional().nullable(),
-            jmsNo: z.string().optional(),
+          name: z.string({ required_error: 'Step name is required' }).min(1, 'Step name is required'),
+          assigneeId: z.string().optional(),
+          description: z.string().optional(),
+          dueDate: z.date().optional().nullable(),
+          jmsNo: z.string().optional(),
         }).refine(data => {
-            if (unassignedSteps.includes(data.name)) {
+            if (unassignedSteps.includes(data.name) || data.name === 'JMS Hard copy submitted') {
                 return true;
             }
             return !!data.assigneeId;
@@ -314,11 +314,15 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
     }, [nextStepName]);
 
     const handleFormSubmit = (data: NextStepFormValues) => {
-        addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, data.jmsNo ? { jmsNo: data.jmsNo } : undefined, {
-            ...data,
-            dueDate: data.dueDate?.toISOString() || null,
-            assigneeId: data.assigneeId || null,
-        });
+        if (data.name === 'JMS Hard copy submitted') {
+            completeJobAsFinalStep(job.id, currentStep.id, completionComment || `Final step completed by ${user?.name}.`);
+        } else {
+            addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, data.jmsNo ? { jmsNo: data.jmsNo } : undefined, {
+                ...data,
+                dueDate: data.dueDate?.toISOString() || null,
+                assigneeId: data.assigneeId || null,
+            });
+        }
         onSave();
     };
 
@@ -354,42 +358,50 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                     />
                      {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
                 </div>
-                 {showJmsNoField && (
-                     <div className="space-y-1">
-                        <Label className="text-xs">JMS No.</Label>
-                        <Input {...form.register('jmsNo')} />
-                        {form.formState.errors.jmsNo && <p className="text-xs text-destructive">{form.formState.errors.jmsNo.message}</p>}
-                    </div>
+                 
+                 {nextStepName !== 'JMS Hard copy submitted' && (
+                    <>
+                         {showJmsNoField && (
+                             <div className="space-y-1">
+                                <Label className="text-xs">JMS No.</Label>
+                                <Input {...form.register('jmsNo')} />
+                                {form.formState.errors.jmsNo && <p className="text-xs text-destructive">{form.formState.errors.jmsNo.message}</p>}
+                            </div>
+                         )}
+                         {nextStepName && !unassignedSteps.includes(nextStepName) && (
+                            <div className="space-y-1">
+                                <Label className="text-xs">Assign To</Label>
+                                <Controller
+                                    name="assigneeId"
+                                    control={form.control}
+                                    render={({ field }) => (
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
+                                            <SelectContent>
+                                                {assignableUsersForNextStep.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                />
+                                {form.formState.errors.assigneeId && <p className="text-xs text-destructive">{form.formState.errors.assigneeId.message}</p>}
+                            </div>
+                         )}
+                         <div className="space-y-1">
+                            <Label className="text-xs">Description (Optional)</Label>
+                            <Textarea {...form.register('description')} rows={2}/>
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-xs">Due Date (Optional)</Label>
+                            <Controller name="dueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
+                        </div>
+                    </>
                  )}
-                 {!unassignedSteps.includes(nextStepName) && (
-                    <div className="space-y-1">
-                        <Label className="text-xs">Assign To</Label>
-                        <Controller
-                            name="assigneeId"
-                            control={form.control}
-                            render={({ field }) => (
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
-                                    <SelectContent>
-                                        {assignableUsersForNextStep.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            )}
-                        />
-                        {form.formState.errors.assigneeId && <p className="text-xs text-destructive">{form.formState.errors.assigneeId.message}</p>}
-                    </div>
-                 )}
-                 <div className="space-y-1">
-                    <Label className="text-xs">Description (Optional)</Label>
-                    <Textarea {...form.register('description')} rows={2}/>
-                </div>
-                <div className="space-y-1">
-                    <Label className="text-xs">Due Date (Optional)</Label>
-                    <Controller name="dueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
-                </div>
+
                 <div className="flex justify-end gap-2">
                     <Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
-                    <Button type="submit" size="sm">Complete & Assign Next Step</Button>
+                    <Button type="submit" size="sm">
+                        {nextStepName === 'JMS Hard copy submitted' ? 'Finalize JMS' : 'Complete & Assign Next Step'}
+                    </Button>
                 </div>
             </form>
         </div>
@@ -647,53 +659,29 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
 
                                             {canAct && step.status === 'Acknowledged' && (
                                                 <>
-                                                     {step.name === 'JMS Hard copy submitted' ? (
-                                                        <div className="flex justify-end pt-3 border-t">
-                                                            <AlertDialog>
-                                                                <AlertDialogTrigger asChild>
-                                                                    <Button size="sm">Finalize & Complete Job</Button>
-                                                                </AlertDialogTrigger>
-                                                                <AlertDialogContent>
-                                                                    <AlertDialogHeader>
-                                                                        <AlertDialogTitle>Complete this Job?</AlertDialogTitle>
-                                                                        <AlertDialogDescription>
-                                                                            This will mark this step and the entire JMS as completed. This is the final action for this workflow.
-                                                                        </AlertDialogDescription>
-                                                                    </AlertDialogHeader>
-                                                                    <AlertDialogFooter>
-                                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                        <AlertDialogAction onClick={() => completeJobAsFinalStep(job.id, step.id, `Manually finalized by ${user?.name}`)}>
-                                                                            Confirm Completion
-                                                                        </AlertDialogAction>
-                                                                    </AlertDialogFooter>
-                                                                </AlertDialogContent>
-                                                            </AlertDialog>
-                                                        </div>
+                                                    {showNextStepForm === step.id ? (
+                                                        <AddNextStepForm 
+                                                            job={job}
+                                                            currentStep={step}
+                                                            onCancel={() => setShowNextStepForm(null)}
+                                                            onSave={() => setShowNextStepForm(null)}
+                                                        />
                                                     ) : (
-                                                        showNextStepForm === step.id ? (
-                                                            <AddNextStepForm 
-                                                                job={job}
-                                                                currentStep={step}
-                                                                onCancel={() => setShowNextStepForm(null)}
-                                                                onSave={() => setShowNextStepForm(null)}
-                                                            />
-                                                        ) : (
-                                                            <div className="flex justify-between items-center pt-3 border-t">
-                                                                 <div className="flex gap-2">
-                                                                    <Button size="sm" variant="outline" onClick={() => setReassigningStep(step)}>
-                                                                        <UserRoundCog className="h-4 w-4 mr-2"/> Reassign
-                                                                    </Button>
-                                                                     {canReturn && (
-                                                                        <Button size="sm" variant="destructive" onClick={() => setReturningStep(step)}>
-                                                                            <Undo2 className="mr-2 h-4 w-4"/> Return
-                                                                        </Button>
-                                                                    )}
-                                                                </div>
-                                                                <Button size="sm" onClick={() => setShowNextStepForm(step.id)}>
-                                                                    <CheckCircle className="mr-2 h-4 w-4"/> Complete & Add Next Step
+                                                        <div className="flex justify-between items-center pt-3 border-t">
+                                                                <div className="flex gap-2">
+                                                                <Button size="sm" variant="outline" onClick={() => setReassigningStep(step)}>
+                                                                    <UserRoundCog className="h-4 w-4 mr-2"/> Reassign
                                                                 </Button>
+                                                                    {canReturn && (
+                                                                    <Button size="sm" variant="destructive" onClick={() => setReturningStep(step)}>
+                                                                        <Undo2 className="mr-2 h-4 w-4"/> Return
+                                                                    </Button>
+                                                                )}
                                                             </div>
-                                                        )
+                                                            <Button size="sm" onClick={() => setShowNextStepForm(step.id)}>
+                                                                <CheckCircle className="mr-2 h-4 w-4"/> Complete Step
+                                                            </Button>
+                                                        </div>
                                                     )}
                                                 </>
                                             )}
