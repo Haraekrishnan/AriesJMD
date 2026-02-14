@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -60,8 +58,8 @@ const TimelineItem = ({ icon: Icon, title, actorName, date, children }: { icon: 
 };
 
 
-export default function TimesheetTrackerTable() {
-  const { user, users, projects, timesheets, updateTimesheetStatus, deleteTimesheet } = useAppContext();
+export default function TimesheetTrackerTable({ timesheets }: { timesheets: Timesheet[] }) {
+  const { user, users, projects, updateTimesheetStatus, deleteTimesheet } = useAppContext();
   const { toast } = useToast();
   const [rejectionInfo, setRejectionInfo] = useState<{ timesheet: Timesheet, action: 'Reject' | 'Reopen' } | null>(null);
   const [reason, setReason] = useState('');
@@ -153,12 +151,11 @@ export default function TimesheetTrackerTable() {
   };
 
   const sortedTimesheets = useMemo(() => {
-    if (!timesheets) return [];
     return [...timesheets].sort((a, b) => parseISO(b.submissionDate).getTime() - parseISO(a.submissionDate).getTime());
   }, [timesheets]);
   
   if (sortedTimesheets.length === 0) {
-    return <p className="text-center text-muted-foreground py-8">No timesheets submitted yet.</p>;
+    return <p className="text-center text-muted-foreground py-8">No timesheets found for this period.</p>;
   }
 
   return (
