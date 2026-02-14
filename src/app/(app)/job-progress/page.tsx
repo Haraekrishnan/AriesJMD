@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -33,6 +32,7 @@ export default function JobProgressPage() {
   // Timesheet States
   const [currentTimesheetMonth, setCurrentTimesheetMonth] = useState(startOfMonth(new Date()));
   const [timesheetSearchTerm, setTimesheetSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('jms-tracker');
 
   const myPendingJmsSteps = useMemo(() => {
     if (!user) return [];
@@ -200,6 +200,7 @@ export default function JobProgressPage() {
                                 </p>
                             </div>
                             <Button onClick={() => {
+                                setActiveTab('timesheet-tracker');
                                 setCurrentTimesheetMonth(startOfMonth(parseISO(ts.submissionDate)));
                                 toast({
                                     title: "Navigated to Timesheet Month",
@@ -213,7 +214,7 @@ export default function JobProgressPage() {
         </Card>
       )}
 
-      <Tabs defaultValue="jms-tracker">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
             <TabsTrigger value="jms-tracker">JMS Tracker</TabsTrigger>
             <TabsTrigger value="timesheet-tracker">Timesheet Tracker</TabsTrigger>
