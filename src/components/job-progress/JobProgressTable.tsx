@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -23,7 +24,7 @@ const statusVariantMap: { [key in JobProgressStatus]: 'default' | 'secondary' | 
 };
 
 export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
-  const { users } = useAppContext();
+  const { users, projects } = useAppContext();
 
   const sortedJobs = useMemo(() => {
     if (!jobs) return [];
@@ -46,8 +47,10 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
         <TableHeader>
           <TableRow>
             <TableHead>JMS Title</TableHead>
+            <TableHead>Project/Unit</TableHead>
+            <TableHead>JMS No.</TableHead>
+            <TableHead>Period</TableHead>
             <TableHead>Created By</TableHead>
-            <TableHead>Date Created</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="w-[200px]">Progress</TableHead>
             <TableHead className="text-right">Actions</TableHead>
@@ -58,6 +61,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             const creator = users.find(u => u.id === job.creatorId);
             const progress = calculateProgress(job);
             const currentStep = job.steps.find(s => s.status === 'Pending' || s.status === 'Acknowledged');
+            const project = projects.find(p => p.id === job.projectId);
 
             return (
               <TableRow 
@@ -66,8 +70,15 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                 onClick={() => onViewJob(job)}
               >
                 <TableCell className="font-medium">{job.title}</TableCell>
+                <TableCell>
+                    <p className="font-medium">{project?.name || 'N/A'}</p>
+                    {job.plantUnit && <p className="text-xs text-muted-foreground">{job.plantUnit}</p>}
+                </TableCell>
+                <TableCell>{job.jmsNo || 'N/A'}</TableCell>
+                <TableCell>
+                    {job.dateFrom ? format(parseISO(job.dateFrom), 'dd-MM-yy') : 'N/A'} - {job.dateTo ? format(parseISO(job.dateTo), 'dd-MM-yy') : 'N/A'}
+                </TableCell>
                 <TableCell>{creator?.name || 'Unknown'}</TableCell>
-                <TableCell>{format(parseISO(job.createdAt), 'dd MMM, yyyy')}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Badge variant={statusVariantMap[job.status]}>
