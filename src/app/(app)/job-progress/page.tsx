@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -71,7 +72,10 @@ export default function JobProgressPage() {
       });
     });
   
-    const jobsInMonth = visibleJobs.filter(job => isSameMonth(parseISO(job.createdAt), currentJmsMonth));
+    const jobsInMonth = visibleJobs.filter(job => {
+      const dateToCompare = job.dateFrom ? parseISO(job.dateFrom) : parseISO(job.createdAt);
+      return isSameMonth(dateToCompare, currentJmsMonth);
+    });
   
     if (!jmsSearchTerm) return jobsInMonth;
     const lowercasedTerm = jmsSearchTerm.toLowerCase();
@@ -165,7 +169,7 @@ export default function JobProgressPage() {
             <Card>
                 <CardHeader>
                   <CardTitle>JMS for {format(currentJmsMonth, 'MMMM yyyy')}</CardTitle>
-                  <CardDescription>A list of all JMS created this month and their current status.</CardDescription>
+                  <CardDescription>A list of all JMS with start dates in this month and their current status.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <JobProgressTable jobs={filteredJobs} onViewJob={setViewingJob} />
