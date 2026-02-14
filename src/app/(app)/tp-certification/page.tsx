@@ -150,6 +150,11 @@ export default function TpCertificationPage() {
         toast({ title: "List Unlocked", description: "The list items can now be edited." });
     };
 
+    const handleLock = (list: TpCertList) => {
+        updateTpCertList({ ...list, isLocked: true });
+        toast({ title: "List Locked", description: "The list is now locked from editing." });
+    };
+
     const toggleAdminChecklistLock = (listId: string) => {
       setAdminUnlockedLists(prev => {
         const newSet = new Set(prev);
@@ -244,6 +249,9 @@ export default function TpCertificationPage() {
                                                 <Button size="sm" variant="outline" onClick={() => setUpdatingValidityList(list)}><BookOpen className="mr-2 h-4 w-4"/> Update Validity</Button>
                                                 {!isLockedForEdit && (
                                                     <Button size="sm" variant="secondary" onClick={() => setEditingList(list)}><Edit className="mr-2 h-4 w-4"/> Edit List</Button>
+                                                )}
+                                                {!isLockedForEdit && canUserUnlock && (
+                                                    <Button size="sm" variant="outline" onClick={() => handleLock(list)}><Lock className="mr-2 h-4 w-4" /> Lock</Button>
                                                 )}
                                                 {isLockedForEdit && canUserUnlock && (
                                                     <Button size="sm" variant="outline" onClick={() => handleUnlock(list)}><Unlock className="mr-2 h-4 w-4" /> Unlock</Button>
@@ -361,4 +369,3 @@ export default function TpCertificationPage() {
         </>
     );
 }
-
