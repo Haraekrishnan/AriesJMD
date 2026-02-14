@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, AlertTriangle, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
-import { JobProgress, Timesheet } from '@/lib/types';
+import { JobProgress, Timesheet, Role } from '@/lib/types';
 import { JobProgressTable } from '@/components/job-progress/JobProgressTable';
 import { format, startOfMonth, addMonths, subMonths, isSameMonth, parseISO, isBefore, isAfter, startOfToday } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -52,6 +52,11 @@ export default function JobProgressPage() {
       );
   }, [timesheets, user]);
 
+  const canCreateJms = useMemo(() => {
+    if (!user) return false;
+    const allowedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+    return allowedRoles.includes(user.role);
+  }, [user]);
 
   const changeJmsMonth = (amount: number) => {
     setCurrentJmsMonth(prev => addMonths(prev, amount));
@@ -239,9 +244,11 @@ export default function JobProgressPage() {
                         onChange={e => setJmsSearchTerm(e.target.value)}
                     />
                 </div>
-                <Button onClick={() => setIsCreateJobOpen(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Create New JMS
-                </Button>
+                {canCreateJms && (
+                  <Button onClick={() => setIsCreateJobOpen(true)}>
+                      <PlusCircle className="mr-2 h-4 w-4" /> Create New JMS
+                  </Button>
+                )}
             </div>
             <Card>
                 <CardHeader>
