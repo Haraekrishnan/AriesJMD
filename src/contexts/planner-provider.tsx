@@ -22,6 +22,7 @@ type PlannerContextType = {
   vehicleUsageRecords: { [key: string]: VehicleUsageRecord };
   timesheets: Timesheet[];
   jobProgress: JobProgress[];
+  jmsAndTimesheetNotificationCount: number;
   addPlannerEvent: (eventData: Omit<PlannerEvent, 'id'>) => void;
   updatePlannerEvent: (event: PlannerEvent) => void;
   deletePlannerEvent: (eventId: string) => void;
@@ -76,7 +77,7 @@ const PlannerContext = createContext<PlannerContextType | undefined>(undefined);
 
 export function PlannerProvider({ children }: { children: ReactNode }) {
     const { user, users, getAssignableUsers } = useAuth();
-    const { notificationSettings } = useGeneral();
+    const { notificationSettings, projects } = useGeneral();
     const { toast } = useToast();
     const [plannerEventsById, setPlannerEventsById] = useState<Record<string, PlannerEvent>>({});
     const [dailyPlannerCommentsById, setDailyPlannerCommentsById] = useState<Record<string, DailyPlannerComment>>({});
@@ -93,6 +94,29 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     const jobRecordPlants = useMemo(() => Object.values(jobRecordPlantsById), [jobRecordPlantsById]);
     const timesheets = useMemo(() => Object.values(timesheetsById), [timesheetsById]);
     const jobProgress = useMemo(() => Object.values(jobProgressById), [jobProgressById]);
+
+    const jmsAndTimesheetNotificationCount = useMemo(() => {
+      if (!user) return 0;
+      let count = 0;
+
+      // Timesheets awaiting my action
+      const canAcknowledgeOffice = ['Admin', 'Document Controller', 'Project Coordinator'].includes(user.role);
+      timesheets.forEach(ts => {
+          if ((ts.status === 'Pending' && ts.submittedToId === user.id) || (ts.status === 'Sent To Office' && canAcknowledgeOffice)) {
+              count++;
+          }
+      });
+
+      // JMS steps awaiting my action
+      jobProgress.forEach(job => {
+          const currentStep = job.steps.find(s => s.status === 'Pending');
+          if (currentStep && currentStep.assigneeId === user.id) {
+              count++;
+          }
+      });
+
+      return count;
+    }, [user, timesheets, jobProgress]);
     
     const addPlannerEventComment = useCallback((plannerUserId: string, day: string, eventId: string, text: string) => {
         if (!user) return;
@@ -321,10 +345,33 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             status: 'Pending',
         };
         set(newRef, newTimesheet);
-    }, [user]);
+
+        const recipient = users.find(u => u.id === data.submittedToId);
+        if (recipient?.email) {
+            const startDate = data.startDate ? format(parseISO(data.startDate), 'dd MMM, yyyy') : 'N/A';
+            const endDate = data.endDate ? format(parseISO(data.endDate), 'dd MMM, yyyy') : 'N/A';
+            const htmlBody = `
+                <p>A new timesheet from <strong>${user.name}</strong> requires your acknowledgement.</p>
+                <p><strong>Period:</strong> ${startDate} - ${endDate}</p>
+                <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Timesheet</a></p>
+            `;
+            sendNotificationEmail({
+                to: [recipient.email],
+                subject: `New Timesheet from ${user.name}`,
+                htmlBody,
+                notificationSettings,
+                event: 'onTaskForApproval',
+                involvedUser: recipient,
+                creatorUser: user,
+            });
+        }
+    }, [user, users, notificationSettings]);
 
     const updateTimesheetStatus = useCallback((timesheetId: string, status: TimesheetStatus, comment?: string) => {
         if (!user) return;
+        const timesheet = timesheetsById[timesheetId];
+        if (!timesheet) return;
+
         const updates: { [key: string]: any } = {};
         const basePath = `timesheets/${timesheetId}`;
         updates[`${basePath}/status`] = status;
@@ -351,7 +398,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         if (status === 'Acknowledged') {
             updates[`${basePath}/acknowledgedById`] = user.id;
             updates[`${basePath}/acknowledgedDate`] = new Date().toISOString();
-            // Clear rejection info if re-acknowledging
             updates[`${basePath}/rejectedById`] = null;
             updates[`${basePath}/rejectedDate`] = null;
             updates[`${basePath}/rejectionReason`] = null;
@@ -362,7 +408,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             updates[`${basePath}/officeAcknowledgedById`] = user.id;
             updates[`${basePath}/officeAcknowledgedDate`] = new Date().toISOString();
         } else if (status === 'Rejected') {
-            // Reset the workflow fields but keep rejected status
             updates[`${basePath}/acknowledgedById`] = null;
             updates[`${basePath}/acknowledgedDate`] = null;
             updates[`${basePath}/sentToOfficeById`] = null;
@@ -372,7 +417,47 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         }
         
         update(ref(rtdb), updates);
-    }, [user]);
+
+        const submitter = users.find(u => u.id === timesheet.submitterId);
+        if (submitter?.email && submitter.id !== user.id) {
+            const htmlBody = `
+                <p>The status of your timesheet for <strong>${projects.find(p => p.id === timesheet.projectId)?.name || ''} - ${timesheet.plantUnit}</strong> has been updated to <strong>${status}</strong> by ${user.name}.</p>
+                ${comment ? `<p><strong>Comment:</strong> ${comment}</p>` : ''}
+                <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Timesheet</a></p>
+            `;
+            sendNotificationEmail({
+                to: [submitter.email],
+                subject: `Timesheet Status Updated: ${status}`,
+                htmlBody,
+                notificationSettings,
+                event: 'onTaskStatusSubmitted', 
+                involvedUser: submitter,
+                creatorUser: user,
+            });
+        }
+        if (status === 'Sent To Office') {
+            const officeUsers = users.filter(u => ['Admin', 'Document Controller', 'Project Coordinator'].includes(u.role));
+            const submitterName = users.find(u => u.id === timesheet.submitterId)?.name || 'a user';
+            const projectName = projects.find(p => p.id === timesheet.projectId)?.name || 'a project';
+            officeUsers.forEach(officeUser => {
+                 if (officeUser.email) {
+                     const htmlBody = `
+                        <p>A timesheet from <strong>${submitterName}</strong> for project <strong>${projectName} - ${timesheet.plantUnit}</strong> has been sent to the office for acknowledgement.</p>
+                        <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Timesheet</a></p>
+                    `;
+                    sendNotificationEmail({
+                        to: [officeUser.email],
+                        subject: `Timesheet Sent to Office: ${timesheet.plantUnit}`,
+                        htmlBody,
+                        notificationSettings,
+                        event: 'onTaskForApproval',
+                        involvedUser: officeUser,
+                        creatorUser: user
+                    });
+                 }
+            });
+        }
+    }, [user, timesheetsById, users, projects, notificationSettings]);
 
     const deleteTimesheet = useCallback((timesheetId: string) => {
         if (!user || user.role !== 'Admin') {
@@ -881,6 +966,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
 
     const contextValue: PlannerContextType = {
         plannerEvents, dailyPlannerComments, jobSchedules, jobRecords, jobRecordPlants, vehicleUsageRecords, timesheets, jobProgress,
+        jmsAndTimesheetNotificationCount,
         addPlannerEvent, updatePlannerEvent, deletePlannerEvent,
         getExpandedPlannerEvents, addPlannerEventComment,
         markSinglePlannerCommentAsRead, dismissPendingUpdate,

@@ -56,6 +56,7 @@ export function AppSidebar() {
     inventoryTransferRequests, dailyPlannerComments, logbookRequests,
     pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount,
     damageReports,
+    jmsAndTimesheetNotificationCount
   } = useAppContext();
   const pathname = usePathname();
 
@@ -151,6 +152,7 @@ const plannerNotificationCount =
     return {
       myRequests: pendingInternalRequestCount + updatedInternalRequestCount + pendingPpeRequestCount + updatedPpeRequestCount,
       manageTasks: myNewTaskCount + pendingTaskApprovalCount + myPendingTaskRequestCount,
+      jmsTracker: jmsAndTimesheetNotificationCount,
       storeInventory: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount,
       equipment: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length,
       damageReports: pendingDamageReportCount,
@@ -166,7 +168,8 @@ const plannerNotificationCount =
     internalRequests, managementRequests, incidentReports, damageReports,
     ppeRequests, payments, feedback, unlockRequests,
     inventoryTransferRequests, dailyPlannerComments, logbookRequests,
-    myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount
+    myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount,
+    jmsAndTimesheetNotificationCount,
   ]);
   
   const navItems = useMemo(() => [
@@ -176,7 +179,7 @@ const plannerNotificationCount =
     { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: notificationCounts.manageTasks || 0, show: true },
     { href: '/job-schedule', icon: CalendarCheck, label: 'Job Schedule', notificationCount: 0, show: can.manage_job_schedule },
     { href: '/job-record', icon: ClipboardList, label: 'Job Record', notificationCount: 0, show: true },
-    { href: '/job-progress', icon: ClipboardList, label: 'JMS Tracker', notificationCount: 0, show: can.manage_job_progress },
+    { href: '/job-progress', icon: ClipboardList, label: 'JMS Tracker', notificationCount: notificationCounts.jmsTracker || 0, show: can.manage_job_progress },
     { href: '/purchase-register', icon: ShoppingCart, label: 'Purchase Register', notificationCount: 0, show: true },
     { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: notificationCounts.storeInventory || 0, show: true },
     { href: '/consumables', icon: Package, label: 'Consumables', notificationCount: 0, show: false },
