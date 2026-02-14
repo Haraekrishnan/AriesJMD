@@ -995,7 +995,19 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
     const addUTMachine = useCallback((machine: Omit<UTMachine, 'id'>) => {
         const newRef = push(ref(rtdb, 'utMachines'));
-        set(newRef, machine);
+        const dataToSave = {
+            ...machine,
+            ariesId: machine.ariesId || null,
+            tpInspectionDueDate: machine.tpInspectionDueDate || null,
+            probeDetails: machine.probeDetails || null,
+            probeStatus: machine.probeStatus || null,
+            cableDetails: machine.cableDetails || null,
+            cableStatus: machine.cableStatus || null,
+            remarks: machine.remarks || null,
+            certificateUrl: machine.certificateUrl || null,
+            movedToProjectId: machine.movedToProjectId || null,
+        };
+        set(newRef, dataToSave);
     }, []);
 
     const updateUTMachine = useCallback((machine: UTMachine) => {
@@ -1009,7 +1021,15 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
     const addDftMachine = useCallback((machine: Omit<DftMachine, 'id'>) => {
         const newRef = push(ref(rtdb, 'dftMachines'));
-        set(newRef, machine);
+        const dataToSave = {
+            ...machine,
+            ariesId: machine.ariesId || null,
+            tpInspectionDueDate: machine.tpInspectionDueDate || null,
+            certificateUrl: machine.certificateUrl || null,
+            movedToProjectId: machine.movedToProjectId || null,
+            remarks: (machine as any).remarks || null,
+        };
+        set(newRef, dataToSave);
     }, []);
 
     const updateDftMachine = useCallback((machine: DftMachine) => {
