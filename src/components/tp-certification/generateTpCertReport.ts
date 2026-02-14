@@ -146,6 +146,102 @@ async function fetchImageAsBufferAndBase64(
   return { buffer, base64 };
 }
 
+export async function generateTpCertPdf(
+    items: TpCertListItem[],
+    allItems: FullItem[],
+    listDate?: Date | string
+  ) {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+    const headerImagePath = '/images/aries-header.png';
+    const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
+  
+    const certItems = buildCertItems(items, allItems);
+    const groupedItems = groupItemsForExport(certItems);
+    
+    const dateToUse = listDate && typeof listDate === 'string' ? parseISO(listDate) : listDate || new Date();
+    
+    const addPageContent = () => {
+      // Header image
+      doc.addImage(imgDataUrl, "PNG", 40, 20, 515, 70);
+  
+      // Date
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Date: ${format(dateToUse, 'dd-MM-yyyy')}`, 555, 105, { align: 'right' });
+  
+      // Titles
+      doc.setFontSize(12);
+      doc.text("Trivedi & Associates Technical Services (P.) Ltd.", doc.internal.pageSize.getWidth() / 2, 120, { align: 'center' });
+      doc.text("Jamnagar.", doc.internal.pageSize.getWidth() / 2, 135, { align: 'center' });
+  
+      // Subject
+      doc.text("Subject : Testing & Certification", 40, 160);
+    };
+    
+    addPageContent();
+  
+    const head = [
+      ["SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report"]
+    ];
+    
+    const body: any[] = [];
+    let srNo = 1;
+    groupedItems.forEach(group => {
+      const groupSize = group.length;
+      group.forEach((item, index) => {
+          const isHarness = item.materialName.toLowerCase().includes('harness');
+          const rowData = [
+              index === 0 ? { content: srNo, rowSpan: groupSize } : '',
+              index === 0 ? { content: item.materialName, rowSpan: groupSize } : '',
+              item.manufacturerSrNo,
+              isHarness ? (item.chestCrollNo || '') : '',
+              index === 0 ? { content: getCapacity(item.materialName), rowSpan: groupSize } : '',
+              index === 0 ? { content: groupSize, rowSpan: groupSize } : '',
+              index === 0 ? { content: 'OLD', rowSpan: groupSize } : '',
+              '', // Valid upto
+              ''  // Submit report
+          ];
+          // Remove empty cells to let rowspan work
+          body.push(rowData.filter(cell => cell !== ''));
+      });
+      srNo++;
+    });
+    
+    doc.autoTable({
+      head: head,
+      body: body,
+      startY: 175,
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 2, halign: 'center', valign: 'middle' },
+      headStyles: { fontStyle: 'bold', fillColor: [220, 220, 220] },
+      columnStyles: {
+          0: { cellWidth: 30 },
+          1: { cellWidth: 80 },
+          2: { cellWidth: 100 },
+          3: { cellWidth: 70 },
+          4: { cellWidth: 40 },
+          5: { cellWidth: 30 },
+      }
+    });
+  
+    let finalY = (doc as any).lastAutoTable.finalY + 20;
+  
+    const footerLines = [
+      "Company Authorised Contact Person",
+      "Name : VIJAY SAI",
+      "Contact Number : 919662095558",
+      "Site : RELIANCE INDUSTRIES LTD",
+      "email id: ariesril@ariesmar.com",
+      'Note : For "New Materials only" Manufacturer Test Certificates submitted.'
+    ];
+    doc.setFontSize(10);
+    footerLines.forEach((text, i) => {
+      doc.text(text, 40, finalY + (i * 15));
+    });
+  
+    doc.save("TP_Certification_List.pdf");
+  }
+
 export async function generateTpCertExcel(
   items: TpCertListItem[],
   allItems: FullItem[],
@@ -386,6 +482,7 @@ export async function generateChecklistPdf(
 
   doc.save(`Inspection_Checklist_${item.serialNumber}.pdf`);
 }
+
 
 export async function generateChecklistExcel(
   checklist: any,
