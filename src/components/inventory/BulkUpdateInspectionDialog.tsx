@@ -17,14 +17,22 @@ import { ChevronsUpDown } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { format, parseISO } from 'date-fns';
+import type { InventoryItem } from '@/lib/types';
 
 const bulkUpdateSchema = z.object({
   itemName: z.string().min(1, 'Please select an item name.'),
   originalInspectionDueDate: z.string({ required_error: 'Please select the due date to target.' }),
-  newInspectionDate: z.date({ required_error: 'New Inspection Date is required' }),
-  newInspectionDueDate: z.date({ required_error: 'New Inspection Due Date is required' }),
-  newInspectionCertificateUrl: z.string().url({ message: "Please enter a valid URL." }),
-});
+  newInspectionDate: z.date().optional().nullable(),
+  newInspectionDueDate: z.date().optional().nullable(),
+  newInspectionCertificateUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
+}).refine(
+  (data) => data.newInspectionDate || data.newInspectionDueDate || data.newInspectionCertificateUrl,
+  {
+    message: "At least one new value (date or link) must be provided to update.",
+    path: ["newInspectionDate"],
+  }
+);
+
 
 type BulkUpdateFormValues = z.infer<typeof bulkUpdateSchema>;
 
@@ -58,11 +66,19 @@ export default function BulkUpdateInspectionDialog({ isOpen, setIsOpen }: BulkUp
   }, [watchItemName, inventoryItems]);
 
   const onSubmit = (data: BulkUpdateFormValues) => {
-    updateInspectionItemGroup(data.itemName, data.originalInspectionDueDate, {
-      inspectionDate: data.newInspectionDate.toISOString(),
-      inspectionDueDate: data.newInspectionDueDate.toISOString(),
-      inspectionCertificateUrl: data.newInspectionCertificateUrl,
-    });
+    const updateData: Partial<Pick<InventoryItem, 'inspectionDate' | 'inspectionDueDate' | 'inspectionCertificateUrl'>> = {};
+
+    if (data.newInspectionDate) {
+        updateData.inspectionDate = data.newInspectionDate.toISOString();
+    }
+    if (data.newInspectionDueDate) {
+        updateData.inspectionDueDate = data.newInspectionDueDate.toISOString();
+    }
+    if (data.newInspectionCertificateUrl) {
+        updateData.inspectionCertificateUrl = data.newInspectionCertificateUrl;
+    }
+    
+    updateInspectionItemGroup(data.itemName, data.originalInspectionDueDate, updateData);
     setIsOpen(false);
   };
   
@@ -150,12 +166,12 @@ export default function BulkUpdateInspectionDialog({ isOpen, setIsOpen }: BulkUp
 
           <div className="space-y-2">
               <Label>New Inspection Date</Label>
-              <Controller name="newInspectionDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
+              <Controller name="newInspectionDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
               {form.formState.errors.newInspectionDate && <p className="text-xs text-destructive">{form.formState.errors.newInspectionDate.message}</p>}
           </div>
           <div className="space-y-2">
               <Label>New Inspection Due Date</Label>
-              <Controller name="newInspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
+              <Controller name="newInspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
               {form.formState.errors.newInspectionDueDate && <p className="text-xs text-destructive">{form.formState.errors.newInspectionDueDate.message}</p>}
           </div>
 
