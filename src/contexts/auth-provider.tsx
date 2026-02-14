@@ -162,7 +162,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setStoredUserId(foundUser.id);
             setUser(foundUser);
             setLoading(false);
-            router.replace('/status');
             return { success: true, user: foundUser };
         }
         setStoredUserId(foundUser.id);
@@ -174,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setLoading(false);
     return { success: false };
-  }, [setStoredUserId, addActivityLog, router]);
+  }, [setStoredUserId, addActivityLog]);
 
   const logout = useCallback(() => {
     if (user) addActivityLog(user.id, 'User Logged Out');
@@ -412,20 +411,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const getAssignableUsers = useCallback(() => {
     if (!user) return [];
-    
-    // Define roles that have broader assignment permissions
-    const highLevelRoles: Role[] = ['Admin', 'Manager', 'Project Coordinator', 'Document Controller', 'Store in Charge', 'Assistant Store Incharge'];
-    
-    if (highLevelRoles.includes(user.role)) {
-      // These roles can assign to anyone except for other high-level management
-      return users.filter(u => u.role !== 'Admin' && u.role !== 'Manager');
-    }
-  
-    // For other roles (like Supervisors), they can assign tasks to themselves or their direct reports.
-    const myDirectReports = users.filter(u => u.supervisorId === user.id);
-    const assignableUsers = new Set([user, ...myDirectReports]);
-    
-    return Array.from(assignableUsers);
+    // Allow assigning to anyone except for Admin and Manager roles.
+    return users.filter(u => u.role !== 'Admin' && u.role !== 'Manager');
   }, [user, users]);
   
   const clearInventoryTransferHistory = useCallback(() => {
@@ -472,7 +459,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const foundUser = users.find(u => u.id === storedUserId);
       if (foundUser) {
         if (foundUser.status === 'locked') {
-          router.replace('/status');
+          if (pathname !== '/status') {
+            router.replace('/status');
+          }
+        } else if (pathname === '/status' || pathname === '/login') {
+           router.replace('/dashboard');
         }
         setUser(foundUser);
       } else {
@@ -480,9 +471,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
        setLoading(false);
     } else if (!storedUserId) {
+      if (pathname !== '/login') {
+          router.replace('/login');
+      }
       setLoading(false);
     }
-  }, [storedUserId, users, logout, router]);
+  }, [storedUserId, users, logout, router, pathname]);
 
   const contextValue: AuthContextType = {
     user, loading, users, roles, passwordResetRequests, unlockRequests, can, appName, appLogo, activeTheme, plannerNotificationCount,

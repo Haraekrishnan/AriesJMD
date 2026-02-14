@@ -177,13 +177,13 @@ const reassignSchema = z.object({
 type ReassignFormValues = z.infer<typeof reassignSchema>;
   
 const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean; setIsOpen: (open: boolean) => void; job: JobProgress; step: JobStep; }) => {
-    const { getAssignableUsers, reassignJobStep } = useAppContext();
+    const { getVisibleUsers, reassignJobStep, user } = useAppContext();
     const { toast } = useToast();
     const [popoverOpen, setPopoverOpen] = useState(false);
 
     const assignableUsers = useMemo(() => {
-        return getAssignableUsers();
-    }, [getAssignableUsers]);
+        return getVisibleUsers().filter(u => u.id !== user?.id);
+    }, [getVisibleUsers, user]);
 
     const form = useForm<ReassignFormValues>({
         resolver: zodResolver(reassignSchema),
