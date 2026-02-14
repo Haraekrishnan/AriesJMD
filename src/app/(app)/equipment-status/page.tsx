@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, AlertTriangle, CheckCircle, X, FileDown, ChevronsUpDown, FilePlus, Search, FilePen } from 'lucide-react';
 import UTMachineTable from '@/components/ut-machine/UTMachineTable';
 import AddUTMachineDialog from '@/components/ut-machine/AddUTMachineDialog';
-import type { UTMachine, DftMachine, MobileSim, LaptopDesktop, CertificateRequest, Role, DigitalCamera, Anemometer, OtherEquipment, PneumaticDrillingMachine, PneumaticAngleGrinder, WiredDrillingMachine, CordlessDrillingMachine, WiredAngleGrinder, CordlessAngleGrinder, CordlessReciprocatingSaw } from '@/lib/types';
+import type { UTMachine, DftMachine, MobileSim, LaptopDesktop, CertificateRequest, Role, DigitalCamera, Anemometer, OtherEquipment, PneumaticDrillingMachine, PneumaticAngleGrinder, WiredDrillingMachine, CordlessDrillingMachine, WiredAngleGrinder, CordlessAngleGrinder, CordlessReciprocatingSaw, WeldingMachine } from '@/lib/types';
 import EditUTMachineDialog from '@/components/ut-machine/EditUTMachineDialog';
 import { addDays, isBefore, format, formatDistanceToNow, eachDayOfInterval, isSameDay, isAfter, parseISO } from 'date-fns';
 import UTMachineLogManagerDialog from '@/components/ut-machine/UTMachineLogManagerDialog';
@@ -76,6 +76,9 @@ import CordlessAngleGrinderTable from '@/components/cordless-angle-grinder/Cordl
 import AddCordlessReciprocatingSawDialog from '@/components/cordless-reciprocating-saw/AddCordlessReciprocatingSawDialog';
 import EditCordlessReciprocatingSawDialog from '@/components/cordless-reciprocating-saw/EditCordlessReciprocatingSawDialog';
 import CordlessReciprocatingSawTable from '@/components/cordless-reciprocating-saw/CordlessReciprocatingSawTable';
+import AddWeldingMachineDialog from '@/components/welding-machine/AddWeldingMachineDialog';
+import EditWeldingMachineDialog from '@/components/welding-machine/EditWeldingMachineDialog';
+import WeldingMachineTable from '@/components/welding-machine/WeldingMachineTable';
 
 export default function EquipmentStatusPage() {
     const { user, users, can } = useAuth();
@@ -83,7 +86,7 @@ export default function EquipmentStatusPage() {
     const { 
         utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, 
         pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines,
-        wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws,
+        wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws, weldingMachines,
         certificateRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, machineLogs, inventoryItems 
     } = useInventory();
     const { toast } = useToast();
@@ -155,6 +158,9 @@ export default function EquipmentStatusPage() {
     const [isAddCordlessReciprocatingSawOpen, setIsAddCordlessReciprocatingSawOpen] = useState(false);
     const [editingCordlessReciprocatingSaw, setEditingCordlessReciprocatingSaw] = useState<CordlessReciprocatingSaw | null>(null);
 
+    // Welding Machine State
+    const [isAddWeldingMachineOpen, setIsAddWeldingMachineOpen] = useState(false);
+    const [editingWeldingMachine, setEditingWeldingMachine] = useState<WeldingMachine | null>(null);
 
     const [isUpdateItemsOpen, setIsUpdateItemsOpen] = useState(false);
 
@@ -211,6 +217,7 @@ export default function EquipmentStatusPage() {
 
     const filteredLaptopsDesktops = useMemo(() => applyFilters(laptopsDesktops), [laptopsDesktops, filters]);
     const filteredOtherEquipments = useMemo(() => applyFilters(otherEquipments), [otherEquipments, filters]);
+    const filteredWeldingMachines = useMemo(() => applyFilters(weldingMachines), [weldingMachines, filters]);
 
     const filteredPneumaticDrillingMachines = useMemo(() => applyFilters(pneumaticDrillingMachines), [pneumaticDrillingMachines, filters]);
     const filteredPneumaticAngleGrinders = useMemo(() => applyFilters(pneumaticAngleGrinders), [pneumaticAngleGrinders, filters]);
@@ -302,6 +309,7 @@ export default function EquipmentStatusPage() {
     const handleEditWiredAngleGrinder = (item: WiredAngleGrinder) => { setEditingWiredAngleGrinder(item) };
     const handleEditCordlessAngleGrinder = (item: CordlessAngleGrinder) => { setEditingCordlessAngleGrinder(item) };
     const handleEditCordlessReciprocatingSaw = (item: CordlessReciprocatingSaw) => { setEditingCordlessReciprocatingSaw(item) };
+    const handleEditWeldingMachine = (item: WeldingMachine) => { setEditingWeldingMachine(item) };
 
     const detailedUsageData = useMemo(() => {
         if (!activeDaysDateRange?.from) {
@@ -596,6 +604,7 @@ export default function EquipmentStatusPage() {
             case 'wired-angle-grinder': setIsAddWiredAngleGrinderOpen(true); break;
             case 'cordless-angle-grinder': setIsAddCordlessAngleGrinderOpen(true); break;
             case 'cordless-reciprocating-saw': setIsAddCordlessReciprocatingSawOpen(true); break;
+            case 'welding-machines': setIsAddWeldingMachineOpen(true); break;
             case 'general-equipments': setIsAddOtherEquipmentOpen(true); break;
         }
     };
@@ -744,6 +753,7 @@ export default function EquipmentStatusPage() {
                         <TabsList className="h-auto flex-wrap justify-start">
                             <TabsTrigger value="ut-machines">UT Machines</TabsTrigger>
                             <TabsTrigger value="dft-machines">DFT Machines</TabsTrigger>
+                            <TabsTrigger value="welding-machines">Welding Machines</TabsTrigger>
                             <TabsTrigger value="digital-camera">Digital Camera</TabsTrigger>
                             <TabsTrigger value="anemometer">Anemometer</TabsTrigger>
                             <TabsTrigger value="mobile-sim">Mobile &amp; SIM</TabsTrigger>
@@ -767,6 +777,12 @@ export default function EquipmentStatusPage() {
                             <Card>
                                 <CardHeader><CardTitle>DFT Machine List</CardTitle><CardDescription>A comprehensive list of all DFT machines.</CardDescription></CardHeader>
                                 <CardContent><DftMachineTable items={filteredDftMachines} onEdit={handleEditDft} onLogManager={handleLogManagerDft} /></CardContent>
+                            </Card>
+                        </TabsContent>
+                         <TabsContent value="welding-machines" className="mt-4">
+                            <Card>
+                                <CardHeader><CardTitle>Welding Machines</CardTitle></CardHeader>
+                                <CardContent><WeldingMachineTable items={filteredWeldingMachines} onEdit={handleEditWeldingMachine} /></CardContent>
                             </Card>
                         </TabsContent>
                         <TabsContent value="digital-camera" className="mt-4 space-y-4">
@@ -899,6 +915,9 @@ export default function EquipmentStatusPage() {
 
             <AddCordlessReciprocatingSawDialog isOpen={isAddCordlessReciprocatingSawOpen} setIsOpen={setIsAddCordlessReciprocatingSawOpen} />
             {editingCordlessReciprocatingSaw && <EditCordlessReciprocatingSawDialog isOpen={!!editingCordlessReciprocatingSaw} setIsOpen={() => setEditingCordlessReciprocatingSaw(null)} item={editingCordlessReciprocatingSaw} />}
+
+            <AddWeldingMachineDialog isOpen={isAddWeldingMachineOpen} setIsOpen={setIsAddWeldingMachineOpen} />
+            {editingWeldingMachine && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && <EditWeldingMachineDialog isOpen={!!editingWeldingMachine} setIsOpen={() => setEditingWeldingMachine(null)} item={editingWeldingMachine} />}
 
             <UpdateItemsDialog isOpen={isUpdateItemsOpen} setIsOpen={setIsUpdateItemsOpen} />
             <GenerateTpCertDialog isOpen={isGenerateCertOpen} setIsOpen={setIsGenerateCertOpen} />
