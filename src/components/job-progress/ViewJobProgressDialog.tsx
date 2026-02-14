@@ -182,7 +182,7 @@ const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean;
     const [popoverOpen, setPopoverOpen] = useState(false);
 
     const assignableUsers = useMemo(() => {
-        return getVisibleUsers().filter(u => u.id !== user?.id);
+        return getVisibleUsers().filter(u => u.id !== user?.id && u.role !== 'Manager');
     }, [getVisibleUsers, user]);
 
     const form = useForm<ReassignFormValues>({
@@ -279,7 +279,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
             dueDate: z.date().optional().nullable(),
             jmsNo: z.string().optional(),
         }).refine(data => {
-            if (data.name === 'JMS Hard copy submitted') {
+            if (unassignedSteps.includes(data.name)) {
                 return true;
             }
             return !!data.assigneeId;
@@ -361,7 +361,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                         {form.formState.errors.jmsNo && <p className="text-xs text-destructive">{form.formState.errors.jmsNo.message}</p>}
                     </div>
                  )}
-                 {nextStepName !== 'JMS Hard copy submitted' && (
+                 {!unassignedSteps.includes(nextStepName) && (
                     <div className="space-y-1">
                         <Label className="text-xs">Assign To</Label>
                         <Controller
@@ -492,18 +492,10 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                     canActOnUnassigned = isProjectMember || user?.role === 'Admin' || isCreator;
                                 }
                                 
-                                const canAct = (isCurrentUserAssignee || canActOnUnassigned) && isPreviousStepCompleted;
+                                const canAct = (isCurrentUserAssignee || canActOnUnassigned) && isCurrentActionableStep;
                                 const canReturn = isCurrentUserAssignee && (step.status === 'Pending' || step.status === 'Acknowledged');
 
-                                const canFinalize = (
-                                  user &&
-                                  job.status !== 'Completed' &&
-                                  (
-                                      ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role) ||
-                                      user.id === job.creatorId ||
-                                      step.assigneeId === user.id
-                                  )
-                                );
+                                const canFinalize = can.manage_job_progress && job.status !== 'Completed';
                                 
                                 const isStepUnassigned = !step.assigneeId;
                                 const canAssign = (user?.id === job.creatorId || user?.role === 'Admin') && isStepUnassigned && step.status === 'Pending';
@@ -769,6 +761,8 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         </>
     )
 }
+    
+
     
 
     
