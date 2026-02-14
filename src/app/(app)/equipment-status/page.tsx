@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, AlertTriangle, CheckCircle, X, FileDown, ChevronsUpDown, FilePlus, Search, FilePen } from 'lucide-react';
 import UTMachineTable from '@/components/ut-machine/UTMachineTable';
 import AddUTMachineDialog from '@/components/ut-machine/AddUTMachineDialog';
-import type { UTMachine, DftMachine, MobileSim, LaptopDesktop, CertificateRequest, Role, DigitalCamera, Anemometer, OtherEquipment, PneumaticDrillingMachine, PneumaticAngleGrinder, WiredDrillingMachine, CordlessDrillingMachine, WiredAngleGrinder, CordlessAngleGrinder, CordlessReciprocatingSaw, WeldingMachine } from '@/lib/types';
+import type { UTMachine, DftMachine, MobileSim, LaptopDesktop, CertificateRequest, Role, DigitalCamera, Anemometer, OtherEquipment, PneumaticDrillingMachine, PneumaticAngleGrinder, WiredDrillingMachine, CordlessDrillingMachine, WiredAngleGrinder, CordlessAngleGrinder, CordlessReciprocatingSaw, WeldingMachine, WalkieTalkie } from '@/lib/types';
 import EditUTMachineDialog from '@/components/ut-machine/EditUTMachineDialog';
 import { addDays, isBefore, format, formatDistanceToNow, eachDayOfInterval, isSameDay, isAfter, parseISO } from 'date-fns';
 import UTMachineLogManagerDialog from '@/components/ut-machine/UTMachineLogManagerDialog';
@@ -79,6 +79,9 @@ import CordlessReciprocatingSawTable from '@/components/cordless-reciprocating-s
 import AddWeldingMachineDialog from '@/components/welding-machine/AddWeldingMachineDialog';
 import EditWeldingMachineDialog from '@/components/welding-machine/EditWeldingMachineDialog';
 import WeldingMachineTable from '@/components/welding-machine/WeldingMachineTable';
+import AddWalkieTalkieDialog from '@/components/walkie-talkie/AddWalkieTalkieDialog';
+import EditWalkieTalkieDialog from '@/components/walkie-talkie/EditWalkieTalkieDialog';
+import WalkieTalkieTable from '@/components/walkie-talkie/WalkieTalkieTable';
 
 export default function EquipmentStatusPage() {
     const { user, users, can } = useAuth();
@@ -86,7 +89,7 @@ export default function EquipmentStatusPage() {
     const { 
         utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, 
         pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines,
-        wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws, weldingMachines,
+        wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws, weldingMachines, walkieTalkies,
         certificateRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, machineLogs, inventoryItems 
     } = useInventory();
     const { toast } = useToast();
@@ -162,6 +165,10 @@ export default function EquipmentStatusPage() {
     const [isAddWeldingMachineOpen, setIsAddWeldingMachineOpen] = useState(false);
     const [editingWeldingMachine, setEditingWeldingMachine] = useState<WeldingMachine | null>(null);
 
+    // Walkie Talkie State
+    const [isAddWalkieTalkieOpen, setIsAddWalkieTalkieOpen] = useState(false);
+    const [editingWalkieTalkie, setEditingWalkieTalkie] = useState<WalkieTalkie | null>(null);
+
     const [isUpdateItemsOpen, setIsUpdateItemsOpen] = useState(false);
 
 
@@ -218,6 +225,7 @@ export default function EquipmentStatusPage() {
     const filteredLaptopsDesktops = useMemo(() => applyFilters(laptopsDesktops), [laptopsDesktops, filters]);
     const filteredOtherEquipments = useMemo(() => applyFilters(otherEquipments), [otherEquipments, filters]);
     const filteredWeldingMachines = useMemo(() => applyFilters(weldingMachines), [weldingMachines, filters]);
+    const filteredWalkieTalkies = useMemo(() => applyFilters(walkieTalkies), [walkieTalkies, filters]);
 
     const filteredPneumaticDrillingMachines = useMemo(() => applyFilters(pneumaticDrillingMachines), [pneumaticDrillingMachines, filters]);
     const filteredPneumaticAngleGrinders = useMemo(() => applyFilters(pneumaticAngleGrinders), [pneumaticAngleGrinders, filters]);
@@ -310,6 +318,7 @@ export default function EquipmentStatusPage() {
     const handleEditCordlessAngleGrinder = (item: CordlessAngleGrinder) => { setEditingCordlessAngleGrinder(item) };
     const handleEditCordlessReciprocatingSaw = (item: CordlessReciprocatingSaw) => { setEditingCordlessReciprocatingSaw(item) };
     const handleEditWeldingMachine = (item: WeldingMachine) => { setEditingWeldingMachine(item) };
+    const handleEditWalkieTalkie = (item: WalkieTalkie) => { setEditingWalkieTalkie(item) };
 
     const detailedUsageData = useMemo(() => {
         if (!activeDaysDateRange?.from) {
@@ -605,6 +614,7 @@ export default function EquipmentStatusPage() {
             case 'cordless-angle-grinder': setIsAddCordlessAngleGrinderOpen(true); break;
             case 'cordless-reciprocating-saw': setIsAddCordlessReciprocatingSawOpen(true); break;
             case 'welding-machines': setIsAddWeldingMachineOpen(true); break;
+            case 'walkie-talkie': setIsAddWalkieTalkieOpen(true); break;
             case 'general-equipments': setIsAddOtherEquipmentOpen(true); break;
         }
     };
@@ -754,6 +764,7 @@ export default function EquipmentStatusPage() {
                             <TabsTrigger value="ut-machines">UT Machines</TabsTrigger>
                             <TabsTrigger value="dft-machines">DFT Machines</TabsTrigger>
                             <TabsTrigger value="welding-machines">Welding Machines</TabsTrigger>
+                            <TabsTrigger value="walkie-talkie">Walkie Talkie</TabsTrigger>
                             <TabsTrigger value="digital-camera">Digital Camera</TabsTrigger>
                             <TabsTrigger value="anemometer">Anemometer</TabsTrigger>
                             <TabsTrigger value="mobile-sim">Mobile &amp; SIM</TabsTrigger>
@@ -783,6 +794,12 @@ export default function EquipmentStatusPage() {
                             <Card>
                                 <CardHeader><CardTitle>Welding Machines</CardTitle></CardHeader>
                                 <CardContent><WeldingMachineTable items={filteredWeldingMachines} onEdit={handleEditWeldingMachine} /></CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="walkie-talkie" className="mt-4">
+                            <Card>
+                                <CardHeader><CardTitle>Walkie Talkies</CardTitle></CardHeader>
+                                <CardContent><WalkieTalkieTable items={filteredWalkieTalkies} onEdit={handleEditWalkieTalkie} /></CardContent>
                             </Card>
                         </TabsContent>
                         <TabsContent value="digital-camera" className="mt-4 space-y-4">
@@ -918,6 +935,9 @@ export default function EquipmentStatusPage() {
 
             <AddWeldingMachineDialog isOpen={isAddWeldingMachineOpen} setIsOpen={setIsAddWeldingMachineOpen} />
             {editingWeldingMachine && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && <EditWeldingMachineDialog isOpen={!!editingWeldingMachine} setIsOpen={() => setEditingWeldingMachine(null)} item={editingWeldingMachine} />}
+
+            <AddWalkieTalkieDialog isOpen={isAddWalkieTalkieOpen} setIsOpen={setIsAddWalkieTalkieOpen} />
+            {editingWalkieTalkie && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && <EditWalkieTalkieDialog isOpen={!!editingWalkieTalkie} setIsOpen={() => setEditingWalkieTalkie(null)} item={editingWalkieTalkie} />}
 
             <UpdateItemsDialog isOpen={isUpdateItemsOpen} setIsOpen={setIsUpdateItemsOpen} />
             <GenerateTpCertDialog isOpen={isGenerateCertOpen} setIsOpen={setIsGenerateCertOpen} />

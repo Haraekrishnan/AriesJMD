@@ -717,6 +717,17 @@ export type WeldingMachine = {
     certificateUrl?: string;
 };
 
+export type WalkieTalkie = {
+  id: string;
+  serialNumber: string;
+  ariesId?: string;
+  projectId: string;
+  status: string;
+  remarks?: string;
+  model?: string;
+  make?: string;
+};
+
 export type MobileSimStatus = 'Active' | 'Inactive' | 'Returned' | 'Standby';
 
 export type MobileSim = {

@@ -48,6 +48,7 @@ import type {
   Role,
   InventoryTransferRequest,
   WeldingMachine,
+  WalkieTalkie,
 } from "@/lib/types";
 
 import { TRANSFER_REASONS } from "@/lib/types";
@@ -62,7 +63,8 @@ type SearchableItem =
   | (OtherEquipment & { itemType: "OtherEquipment" })
   | (LaptopDesktop & { itemType: 'LaptopDesktop' })
   | (MobileSim & { itemType: 'MobileSim' })
-  | (WeldingMachine & { itemType: 'WeldingMachine' });
+  | (WeldingMachine & { itemType: 'WeldingMachine' })
+  | (WalkieTalkie & { itemType: 'WalkieTalkie' });
 
 const transferRequestSchema = z
   .object({
@@ -85,6 +87,7 @@ const transferRequestSchema = z
             "LaptopDesktop",
             "MobileSim",
             "WeldingMachine",
+            "WalkieTalkie",
           ]),
           name: z.string(),
           serialNumber: z.string(),
@@ -135,6 +138,7 @@ export default function NewInventoryTransferRequestDialog({
     laptopsDesktops,
     mobileSims,
     weldingMachines,
+    walkieTalkies,
     addInventoryTransferRequest,
     updateInventoryTransferRequest,
   } = useAppContext();
@@ -210,6 +214,9 @@ export default function NewInventoryTransferRequestDialog({
     weldingMachines?.forEach((i) =>
       arr.push({ ...i, itemType: "WeldingMachine" })
     );
+    walkieTalkies?.forEach((i) =>
+      arr.push({ ...i, itemType: "WalkieTalkie" })
+    );
     laptopsDesktops?.forEach((i) => arr.push({ ...i, itemType: "LaptopDesktop" }));
     mobileSims?.forEach((i) => arr.push({ ...i, itemType: "MobileSim" }));
     return arr;
@@ -223,6 +230,7 @@ export default function NewInventoryTransferRequestDialog({
     laptopsDesktops,
     mobileSims,
     weldingMachines,
+    walkieTalkies,
   ]);
 
   const availableItems = useMemo(() => {

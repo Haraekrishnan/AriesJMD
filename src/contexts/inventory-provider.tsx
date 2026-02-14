@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, PpeRequestStatus, Role, ConsumableInwardRecord, Directive, DirectiveStatus, DamageReport, User, NotificationSettings, DamageReportStatus, WeldingMachine } from '@/lib/types';
+import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, PpeRequestStatus, Role, ConsumableInwardRecord, Directive, DirectiveStatus, DamageReport, User, NotificationSettings, DamageReportStatus, WeldingMachine, WalkieTalkie } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -81,6 +81,7 @@ type InventoryContextType = {
   anemometers: Anemometer[];
   otherEquipments: OtherEquipment[];
   weldingMachines: WeldingMachine[];
+  walkieTalkies: WalkieTalkie[];
   machineLogs: MachineLog[];
   certificateRequests: CertificateRequest[];
   internalRequests: InternalRequest[];
@@ -155,6 +156,10 @@ type InventoryContextType = {
   addWeldingMachine: (machine: Omit<WeldingMachine, 'id'>) => void;
   updateWeldingMachine: (machine: WeldingMachine) => void;
   deleteWeldingMachine: (machineId: string) => void;
+  
+  addWalkieTalkie: (machine: Omit<WalkieTalkie, 'id'>) => void;
+  updateWalkieTalkie: (machine: WalkieTalkie) => void;
+  deleteWalkieTalkie: (machineId: string) => void;
 
   addMachineLog: (log: Omit<MachineLog, 'id'|'machineId'|'loggedByUserId'>, machineId: string) => void;
   deleteMachineLog: (logId: string) => void;
@@ -244,6 +249,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const [anemometersById, setAnemometersById] = useState<Record<string, Anemometer>>({});
     const [otherEquipmentsById, setOtherEquipmentsById] = useState<Record<string, OtherEquipment>>({});
     const [weldingMachinesById, setWeldingMachinesById] = useState<Record<string, WeldingMachine>>({});
+    const [walkieTalkiesById, setWalkieTalkiesById] = useState<Record<string, WalkieTalkie>>({});
     const [machineLogsById, setMachineLogsById] = useState<Record<string, MachineLog>>({});
     const [certificateRequestsById, setCertificateRequestsById] = useState<Record<string, CertificateRequest>>({});
     const [internalRequestsById, setInternalRequestsById] = useState<Record<string, InternalRequest>>({});
@@ -267,6 +273,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const anemometers = useMemo(() => Object.values(anemometersById), [anemometersById]);
     const otherEquipments = useMemo(() => Object.values(otherEquipmentsById), [otherEquipmentsById]);
     const weldingMachines = useMemo(() => Object.values(weldingMachinesById), [weldingMachinesById]);
+    const walkieTalkies = useMemo(() => Object.values(walkieTalkiesById), [walkieTalkiesById]);
     const machineLogs = useMemo(() => Object.values(machineLogsById), [machineLogsById]);
     const certificateRequests = useMemo(() => Object.values(certificateRequestsById), [certificateRequestsById]);
     const internalRequests = useMemo(() => Object.values(internalRequestsById), [internalRequestsById]);
@@ -785,6 +792,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 case 'Anemometer': itemPath = 'anemometers'; break;
                 case 'OtherEquipment': itemPath = 'otherEquipments'; break;
                 case 'WeldingMachine': itemPath = 'weldingMachines'; break;
+                case 'WalkieTalkie': itemPath = 'walkieTalkies'; break;
                 default: return;
             }
             updates[`${itemPath}/${item.itemId}/projectId`] = request.toProjectId;
@@ -1123,6 +1131,20 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     const deleteWeldingMachine = useCallback((machineId: string) => {
         remove(ref(rtdb, `weldingMachines/${machineId}`));
+    }, []);
+
+    const addWalkieTalkie = useCallback((machine: Omit<WalkieTalkie, 'id'>) => {
+        const newRef = push(ref(rtdb, 'walkieTalkies'));
+        set(newRef, { ...machine });
+    }, []);
+
+    const updateWalkieTalkie = useCallback((machine: WalkieTalkie) => {
+        const { id, ...data } = machine;
+        update(ref(rtdb, `walkieTalkies/${id}`), data);
+    }, []);
+
+    const deleteWalkieTalkie = useCallback((machineId: string) => {
+        remove(ref(rtdb, `walkieTalkies/${machineId}`));
     }, []);
 
 
@@ -1639,6 +1661,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             createDataListener('anemometers', setAnemometersById),
             createDataListener('otherEquipments', setOtherEquipmentsById),
             createDataListener('weldingMachines', setWeldingMachinesById),
+            createDataListener('walkieTalkies', setWalkieTalkiesById),
             createDataListener('machineLogs', setMachineLogsById),
             createDataListener('certificateRequests', setCertificateRequestsById),
             createDataListener('internalRequests', setInternalRequestsById),
@@ -1655,7 +1678,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const contextValue: InventoryContextType = {
-        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, weldingMachines, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory, directives: [], damageReports,
+        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, weldingMachines, walkieTalkies, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory, directives: [], damageReports,
         addInventoryItem, addMultipleInventoryItems, batchAddInventoryItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInspectionItemGroup, updateMultipleInventoryItems, batchDeleteInventoryItems, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
         addInventoryTransferRequest, updateInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
         addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest,
@@ -1667,6 +1690,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         addAnemometer, updateAnemometer, deleteAnemometer,
         addOtherEquipment, updateOtherEquipment, deleteOtherEquipment,
         addWeldingMachine, updateWeldingMachine, deleteWeldingMachine,
+        addWalkieTalkie, updateWalkieTalkie, deleteWalkieTalkie,
         addMachineLog, deleteMachineLog, getMachineLogs,
         addInternalRequest, deleteInternalRequest, forceDeleteInternalRequest, addInternalRequestComment, updateInternalRequestStatus, updateInternalRequestItemStatus, updateInternalRequestItem, markInternalRequestAsViewed, acknowledgeInternalRequest,
         addPpeRequest, updatePpeRequest, updatePpeRequestStatus, addPpeRequestComment, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed,
