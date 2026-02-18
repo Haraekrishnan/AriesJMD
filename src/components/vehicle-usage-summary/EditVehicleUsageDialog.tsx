@@ -15,6 +15,7 @@ import { format, getDay, getDaysInMonth, parseISO } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../ui/dialog';
 import { ScrollArea } from '../ui/scroll-area';
 import { Vehicle } from '@/lib/types';
+import { Save } from 'lucide-react';
 
 interface EditVehicleUsageDialogProps {
   isOpen: boolean;
@@ -27,17 +28,51 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
     const { saveVehicleUsageRecord, vehicleUsageRecords } = useAppContext();
     const { toast } = useToast();
     
-    const monthKey = format(currentMonth, 'yyyy-MM');
-    const record = vehicleUsageRecords?.[monthKey];
-    const vehicleRecord = record?.records?.[vehicle.id];
-
     const [cellStates, setCellStates] = useState<Record<string, any>>({});
     const [headerStates, setHeaderStates] = useState({
       jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0,
       verifiedByName: '', verifiedByDate: undefined as Date | undefined,
     });
+    const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const monthKey = useMemo(() => format(currentMonth, 'yyyy-MM'), [currentMonth]);
     
-    const dayHeaders = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
+    const dayHeaders = useMemo(() => Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1), [currentMonth]);
+
+    useEffect(() => {
+      if (isOpen) {
+        const record = vehicleUsageRecords?.[monthKey];
+        const vehicleRecord = record?.records?.[vehicle.id];
+
+        if (vehicleRecord) {
+            const newStates: Record<string, any> = {};
+            if (vehicleRecord.days) {
+              for (const day in vehicleRecord.days) {
+                  newStates[`${day}-startKm`] = vehicleRecord.days[day].startKm || '';
+                  newStates[`${day}-endKm`] = vehicleRecord.days[day].endKm || '';
+                  newStates[`${day}-overtime`] = vehicleRecord.days[day].overtime || '';
+                  newStates[`${day}-remarks`] = vehicleRecord.days[day].remarks || '';
+                  newStates[`${day}-isHoliday`] = vehicleRecord.days[day].isHoliday || false;
+              }
+            }
+            setCellStates(newStates);
+            setHeaderStates({
+                jobNo: vehicleRecord.jobNo || '',
+                vehicleType: vehicleRecord.vehicleType || '',
+                extraKm: vehicleRecord.extraKm || 0,
+                headerOvertime: vehicleRecord.headerOvertime || '',
+                extraNight: vehicleRecord.extraNight || 0,
+                extraDays: vehicleRecord.extraDays || 0,
+                verifiedByName: vehicleRecord.verifiedBy?.name || '',
+                verifiedByDate: vehicleRecord.verifiedBy?.date ? parseISO(vehicleRecord.verifiedBy.date) : undefined,
+            });
+        } else {
+            setCellStates({});
+            setHeaderStates({ jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0, verifiedByName: '', verifiedByDate: undefined });
+        }
+      }
+    }, [isOpen, vehicle, currentMonth, vehicleUsageRecords, monthKey]);
 
     const monthlyTotalKm = useMemo(() => {
         let total = 0;
@@ -65,61 +100,68 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
         return `${hours}:${minutes.toString().padStart(2, '0')}`;
     }, [cellStates, dayHeaders]);
 
-     useEffect(() => {
-        const extra = monthlyTotalKm > 3000 ? monthlyTotalKm - 3000 : 0;
-        setHeaderStates(prev => ({ ...prev, extraKm: extra, headerOvertime: monthlyTotalOvertime }));
-    }, [monthlyTotalKm, monthlyTotalOvertime]);
+    const saveData = useCallback(() => {
+      if (!vehicle.id) return;
+      const dataToSave: Partial<any> = {
+          days: dayHeaders.reduce((acc, day) => {
+              acc[day] = {
+                  startKm: Number(cellStates[`${day}-startKm`] || 0),
+                  endKm: Number(cellStates[`${day}-endKm`] || 0),
+                  overtime: cellStates[`${day}-overtime`] || '',
+                  remarks: cellStates[`${day}-remarks`] || '',
+                  isHoliday: cellStates[`${day}-isHoliday`] || false,
+              };
+              return acc;
+          }, {} as any),
+          jobNo: headerStates.jobNo,
+          vehicleType: headerStates.vehicleType,
+          extraKm: monthlyTotalKm > 3000 ? monthlyTotalKm - 3000 : 0,
+          headerOvertime: monthlyTotalOvertime,
+          extraNight: Number(headerStates.extraNight || 0),
+          extraDays: Number(headerStates.extraDays || 0),
+          verifiedBy: {
+              name: headerStates.verifiedByName || null,
+              date: headerStates.verifiedByDate ? headerStates.verifiedByDate.toISOString() : null
+          }
+      };
 
-    useEffect(() => {
-        if (vehicleRecord) {
-            const newStates: Record<string, any> = {};
-            for (const day in vehicleRecord.days) {
-                newStates[`${day}-startKm`] = vehicleRecord.days[day].startKm || '';
-                newStates[`${day}-endKm`] = vehicleRecord.days[day].endKm || '';
-                newStates[`${day}-overtime`] = vehicleRecord.days[day].overtime || '';
-                newStates[`${day}-remarks`] = vehicleRecord.days[day].remarks || '';
-                newStates[`${day}-isHoliday`] = vehicleRecord.days[day].isHoliday || false;
-            }
-            setCellStates(newStates);
-            setHeaderStates({
-                jobNo: vehicleRecord.jobNo || '',
-                vehicleType: vehicleRecord.vehicleType || '',
-                extraKm: vehicleRecord.extraKm || 0,
-                headerOvertime: vehicleRecord.headerOvertime || '',
-                extraNight: vehicleRecord.extraNight || 0,
-                extraDays: vehicleRecord.extraDays || 0,
-                verifiedByName: vehicleRecord.verifiedBy?.name || '',
-                verifiedByDate: vehicleRecord.verifiedBy?.date ? parseISO(vehicleRecord.verifiedBy.date) : undefined,
-            });
-        } else {
-            setCellStates({});
-            setHeaderStates({ jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0, verifiedByName: '', verifiedByDate: undefined });
-        }
-    }, [vehicleRecord, vehicle.id, currentMonth]);
+      saveVehicleUsageRecord(monthKey, vehicle.id, dataToSave)
+          .then(() => {
+              setSaveState('saved');
+              setTimeout(() => setSaveState('idle'), 2000);
+          })
+          .catch((error) => {
+              setSaveState('idle');
+              toast({ title: "Auto-save Failed", description: error.message, variant: 'destructive' });
+          });
+    }, [cellStates, headerStates, vehicle.id, monthKey, dayHeaders, monthlyTotalKm, monthlyTotalOvertime, saveVehicleUsageRecord, toast]);
 
+    const debouncedSave = useCallback(() => {
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        setSaveState('saving');
+        saveTimeoutRef.current = setTimeout(saveData, 1500);
+    }, [saveData]);
+    
     const handleInputChange = (day: number, field: string, value: string | number | boolean) => {
         const dayKey = `${day}-${field}`;
         const nextDayKey = `${day + 1}-startKm`;
     
         if ((field === 'startKm' || field === 'endKm') && Number(value) < 0) {
-            return; // Prevent negative numbers
+            return;
         }
 
-        setCellStates(prev => {
-            const newStates = { ...prev, [dayKey]: value };
-            if (field === 'endKm' && day < getDaysInMonth(currentMonth)) {
-                // Automatically carry over end KM to next day's start KM
-                newStates[nextDayKey] = value;
-            }
-            return newStates;
-        });
+        const newCellStates = { ...cellStates, [dayKey]: value };
+        if (field === 'endKm' && day < getDaysInMonth(currentMonth)) {
+            newCellStates[nextDayKey] = value;
+        }
+        setCellStates(newCellStates);
+        debouncedSave();
     };
     
     const handleKmBlur = (day: number, field: 'startKm' | 'endKm') => {
         const startKmValue = Number(cellStates[`${day}-startKm`] || 0);
         const endKmValue = Number(cellStates[`${day}-endKm`] || 0);
-
-        // Validation for Start KM (must match previous End KM)
+    
         if (field === 'startKm' && day > 1) {
             const prevEndKm = Number(cellStates[`${day - 1}-endKm`] || 0);
             if (startKmValue !== prevEndKm) {
@@ -132,21 +174,12 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
             }
         }
     
-        // Validation for End KM (must be >= Start KM, and Start KM must exist)
         if (field === 'endKm') {
             if (endKmValue > 0 && !startKmValue) {
-                toast({
-                    variant: 'destructive',
-                    title: 'Invalid Entry',
-                    description: 'Please enter Start KM before entering End KM.',
-                });
+                toast({ variant: 'destructive', title: 'Invalid Entry', description: 'Please enter Start KM before entering End KM.' });
                 handleInputChange(day, 'endKm', '');
             } else if (endKmValue > 0 && endKmValue < startKmValue) {
-                toast({
-                    variant: 'destructive',
-                    title: 'Invalid Kilometers',
-                    description: 'End KM cannot be less than Start KM. The value has been cleared.',
-                });
+                toast({ variant: 'destructive', title: 'Invalid Kilometers', description: 'End KM cannot be less than Start KM. The value has been cleared.' });
                 handleInputChange(day, 'endKm', '');
             }
         }
@@ -154,35 +187,7 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
     
     const handleHeaderChange = (field: keyof typeof headerStates, value: string | number | Date | undefined) => {
         setHeaderStates(prev => ({ ...prev, [field]: value }));
-    };
-
-    const handleSave = () => {
-        if (!vehicle.id) return;
-        const dataToSave: Partial<any> = {
-            days: dayHeaders.reduce((acc, day) => {
-                acc[day] = {
-                    startKm: Number(cellStates[`${day}-startKm`] || 0),
-                    endKm: Number(cellStates[`${day}-endKm`] || 0),
-                    overtime: cellStates[`${day}-overtime`] || '',
-                    remarks: cellStates[`${day}-remarks`] || '',
-                    isHoliday: cellStates[`${day}-isHoliday`] || false,
-                };
-                return acc;
-            }, {} as any),
-            jobNo: headerStates.jobNo,
-            vehicleType: headerStates.vehicleType,
-            extraKm: monthlyTotalKm > 3000 ? monthlyTotalKm - 3000 : 0,
-            headerOvertime: monthlyTotalOvertime,
-            extraNight: Number(headerStates.extraNight || 0),
-            extraDays: Number(headerStates.extraDays || 0),
-            verifiedBy: {
-                name: headerStates.verifiedByName || null,
-                date: headerStates.verifiedByDate ? headerStates.verifiedByDate.toISOString() : null
-            }
-        };
-        saveVehicleUsageRecord(monthKey, vehicle.id, dataToSave);
-        toast({ title: "Record Saved", description: "Vehicle usage data has been saved." });
-        setIsOpen(false);
+        debouncedSave();
     };
 
     return (
@@ -191,20 +196,20 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
                 <DialogHeader>
                     <DialogTitle>Edit Vehicle Usage: {vehicle.vehicleNumber}</DialogTitle>
                     <DialogDescription>
-                        Log daily usage for {format(currentMonth, 'MMMM yyyy')}.
+                        Log daily usage for {format(currentMonth, 'MMMM yyyy')}. All changes are saved automatically.
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="flex-1 overflow-hidden flex flex-col">
                     <div className="p-4 border rounded-md mb-4 bg-background grid grid-cols-2 md:grid-cols-5 gap-4">
-                        <div className="space-y-2"><Label>Job No.</Label><Input value={headerStates.jobNo} onChange={e => handleHeaderChange('jobNo', e.target.value)} /></div>
-                        <div className="space-y-2"><Label>Vehicle Type</Label><Input value={headerStates.vehicleType} onChange={e => handleHeaderChange('vehicleType', e.target.value)} /></div>
-                        <div className="space-y-2"><Label>Over Time (Header)</Label><Input value={headerStates.headerOvertime} readOnly className="font-bold" /></div>
-                        <div className="space-y-2"><Label>Extra Night</Label><Input type="number" value={headerStates.extraNight} onChange={e => handleHeaderChange('extraNight', e.target.value)} /></div>
-                        <div className="space-y-2"><Label>Extra Days</Label><Input type="number" value={headerStates.extraDays} onChange={e => handleHeaderChange('extraDays', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>Job No.</Label><Input value={headerStates.jobNo} onChange={e => handleHeaderChange('jobNo', e.target.value)} onBlur={debouncedSave} /></div>
+                        <div className="space-y-2"><Label>Vehicle Type</Label><Input value={headerStates.vehicleType} onChange={e => handleHeaderChange('vehicleType', e.target.value)} onBlur={debouncedSave} /></div>
+                        <div className="space-y-2"><Label>Over Time (Header)</Label><Input value={monthlyTotalOvertime} readOnly className="font-bold" /></div>
+                        <div className="space-y-2"><Label>Extra Night</Label><Input type="number" value={headerStates.extraNight} onChange={e => handleHeaderChange('extraNight', e.target.value)} onBlur={debouncedSave} /></div>
+                        <div className="space-y-2"><Label>Extra Days</Label><Input type="number" value={headerStates.extraDays} onChange={e => handleHeaderChange('extraDays', e.target.value)} onBlur={debouncedSave} /></div>
                         <div className="space-y-2"><Label>Total KM</Label><Input value={monthlyTotalKm} readOnly className="font-bold" /></div>
-                        <div className="space-y-2"><Label>Extra KM</Label><Input type="number" value={headerStates.extraKm} readOnly className="font-bold" /></div>
-                        <div className="space-y-2"><Label>Verified By</Label><Input value={headerStates.verifiedByName} onChange={e => handleHeaderChange('verifiedByName', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>Extra KM</Label><Input type="number" value={monthlyTotalKm > 3000 ? monthlyTotalKm - 3000 : 0} readOnly className="font-bold" /></div>
+                        <div className="space-y-2"><Label>Verified By</Label><Input value={headerStates.verifiedByName} onChange={e => handleHeaderChange('verifiedByName', e.target.value)} onBlur={debouncedSave} /></div>
                         <div className="space-y-2"><Label>Verified Date</Label><DatePickerInput value={headerStates.verifiedByDate} onChange={date => handleHeaderChange('verifiedByDate', date)} /></div>
                     </div>
                      <ScrollArea className="flex-1">
@@ -234,8 +239,8 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
                                             <TableCell><Input type="number" min="0" className="h-8" value={cellStates[`${day}-startKm`] || ''} onChange={(e) => handleInputChange(day, 'startKm', e.target.value)} onBlur={() => handleKmBlur(day, 'startKm')} /></TableCell>
                                             <TableCell><Input type="number" min="0" className="h-8" value={cellStates[`${day}-endKm`] || ''} onChange={(e) => handleInputChange(day, 'endKm', e.target.value)} onBlur={() => handleKmBlur(day, 'endKm')} /></TableCell>
                                             <TableCell className="font-medium text-center">{totalKm}</TableCell>
-                                            <TableCell><Input className="h-8" value={cellStates[`${day}-overtime`] || ''} onChange={(e) => handleInputChange(day, 'overtime', e.target.value)} /></TableCell>
-                                            <TableCell><Input className="h-8" value={cellStates[`${day}-remarks`] || ''} onChange={(e) => handleInputChange(day, 'remarks', e.target.value)} /></TableCell>
+                                            <TableCell><Input className="h-8" value={cellStates[`${day}-overtime`] || ''} onChange={(e) => handleInputChange(day, 'overtime', e.target.value)} onBlur={debouncedSave} /></TableCell>
+                                            <TableCell><Input className="h-8" value={cellStates[`${day}-remarks`] || ''} onChange={(e) => handleInputChange(day, 'remarks', e.target.value)} onBlur={debouncedSave} /></TableCell>
                                             <TableCell className="text-center"><Checkbox checked={isHoliday} onCheckedChange={(checked) => handleInputChange(day, 'isHoliday', !!checked)} /></TableCell>
                                         </TableRow>
                                     )
@@ -245,8 +250,11 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
                      </ScrollArea>
                 </div>
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSave}>Save Changes</Button>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        {saveState === 'saving' && <><Save className="h-4 w-4 animate-spin" /> Saving...</>}
+                        {saveState === 'saved' && <>Changes saved.</>}
+                    </div>
+                    <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

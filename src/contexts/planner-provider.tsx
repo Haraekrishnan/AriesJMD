@@ -38,7 +38,7 @@ type PlannerContextType = {
   addJobRecordPlant: (name: string) => void;
   deleteJobRecordPlant: (id: string) => void;
   carryForwardPlantAssignments: (monthKey: string) => void;
-  saveVehicleUsageRecord: (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => void;
+  saveVehicleUsageRecord: (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => Promise<void>;
   lockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
   unlockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
   createJobProgress: (data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[]; projectId?: string; workOrderNo?: string; foNo?: string; amount?: number; dateFrom?: string | null; dateTo?: string | null; }) => void;
@@ -314,7 +314,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         }
     }, []);
     
-    const saveVehicleUsageRecord = useCallback((monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => {
+    const saveVehicleUsageRecord = useCallback(async (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => {
         if (!user) return;
         const path = `vehicleUsageRecords/${monthKey}/records/${vehicleId}`;
         const updates = { 
@@ -322,7 +322,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             lastUpdated: new Date().toISOString(),
             lastUpdatedById: user.id,
         };
-        update(ref(rtdb, path), updates);
+        return update(ref(rtdb, path), updates);
     }, [user]);
     
     const lockVehicleUsageSheet = useCallback((monthKey: string, vehicleId: string) => {
