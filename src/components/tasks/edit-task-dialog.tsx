@@ -1,5 +1,4 @@
 
-
 'use client';
 import * as React from "react";
 import { useEffect, useState, useMemo } from 'react';
@@ -328,8 +327,8 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
             </Alert>
           )}
         </DialogHeader>
-        <div className="grid md:grid-cols-2 gap-8 flex-1 overflow-hidden">
-            <ScrollArea className="h-full pr-4">
+        <div className="grid md:grid-cols-2 gap-8 flex-1 overflow-y-auto p-1">
+            <div className="pr-4">
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div>
                   <Label>Title</Label>
@@ -481,11 +480,11 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 
                 { (canEditCoreFields || canReassign) && <Button type="submit" className="w-full">Save Changes</Button> }
               </form>
-            </ScrollArea>
+            </div>
 
             <div className="flex flex-col gap-4">
                 <h3 className="text-lg font-semibold">Comments & Activity</h3>
-                <ScrollArea className="flex-1 h-64 pr-4 border-b">
+                <ScrollArea className="h-64 pr-4 border-b">
                     <div className="space-y-4">
                         {commentsArray.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((comment, index) => {
                             const commentUser = users.find(u => u.id === comment.userId);

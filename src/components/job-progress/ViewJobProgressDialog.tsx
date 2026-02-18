@@ -667,12 +667,12 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                             onSave={() => setShowNextStepForm(null)}
                                                         />
                                                     ) : (
-                                                        <div className="flex justify-between items-center pt-3 border-t">
-                                                                <div className="flex gap-2">
+                                                        <div className="flex flex-wrap justify-between items-center pt-3 border-t gap-2">
+                                                            <div className="flex gap-2 flex-wrap">
                                                                 <Button size="sm" variant="outline" onClick={() => setReassigningStep(step)}>
                                                                     <UserRoundCog className="h-4 w-4 mr-2"/> Reassign
                                                                 </Button>
-                                                                    {canReturn && (
+                                                                {canReturn && (
                                                                     <Button size="sm" variant="destructive" onClick={() => setReturningStep(step)}>
                                                                         <Undo2 className="mr-2 h-4 w-4"/> Return
                                                                     </Button>
@@ -754,3 +754,4 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
     
 
     
+
