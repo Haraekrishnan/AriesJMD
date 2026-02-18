@@ -1,7 +1,6 @@
-
 'use client';
 
-import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -11,10 +10,12 @@ import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Checkbox } from '../ui/checkbox';
-import { format, getDay, getDaysInMonth, parseISO } from 'date-fns';
+import { format, getDay, getDaysInMonth, parseISO, isValid } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../ui/dialog';
 import { ScrollArea } from '../ui/scroll-area';
 import { Vehicle } from '@/lib/types';
+import { get, ref } from 'firebase/database';
+import { rtdb } from '@/lib/rtdb';
 
 interface EditVehicleUsageDialogProps {
   isOpen: boolean;
@@ -27,10 +28,6 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
     const { saveVehicleUsageRecord, vehicleUsageRecords } = useAppContext();
     const { toast } = useToast();
     
-    const monthKey = format(currentMonth, 'yyyy-MM');
-    const record = vehicleUsageRecords?.[monthKey];
-    const vehicleRecord = record?.records?.[vehicle.id];
-
     const [cellStates, setCellStates] = useState<Record<string, any>>({});
     const [headerStates, setHeaderStates] = useState({
       jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0,
@@ -66,36 +63,55 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
     }, [cellStates, dayHeaders]);
 
      useEffect(() => {
-        const extra = monthlyTotalKm > 3000 ? monthlyTotalKm - 3000 : 0;
-        setHeaderStates(prev => ({ ...prev, extraKm: extra, headerOvertime: monthlyTotalOvertime }));
+        setHeaderStates(prev => ({ ...prev, extraKm: monthlyTotalKm > 3000 ? monthlyTotalKm - 3000 : 0, headerOvertime: monthlyTotalOvertime }));
     }, [monthlyTotalKm, monthlyTotalOvertime]);
 
     useEffect(() => {
-        if (vehicleRecord) {
-            const newStates: Record<string, any> = {};
-            for (const day in vehicleRecord.days) {
-                newStates[`${day}-startKm`] = vehicleRecord.days[day].startKm || '';
-                newStates[`${day}-endKm`] = vehicleRecord.days[day].endKm || '';
-                newStates[`${day}-overtime`] = vehicleRecord.days[day].overtime || '';
-                newStates[`${day}-remarks`] = vehicleRecord.days[day].remarks || '';
-                newStates[`${day}-isHoliday`] = vehicleRecord.days[day].isHoliday || false;
-            }
-            setCellStates(newStates);
-            setHeaderStates({
-                jobNo: vehicleRecord.jobNo || '',
-                vehicleType: vehicleRecord.vehicleType || '',
-                extraKm: vehicleRecord.extraKm || 0,
-                headerOvertime: vehicleRecord.headerOvertime || '',
-                extraNight: vehicleRecord.extraNight || 0,
-                extraDays: vehicleRecord.extraDays || 0,
-                verifiedByName: vehicleRecord.verifiedBy?.name || '',
-                verifiedByDate: vehicleRecord.verifiedBy?.date ? parseISO(vehicleRecord.verifiedBy.date) : undefined,
-            });
-        } else {
+        if (!isOpen) {
             setCellStates({});
-            setHeaderStates({ jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0, verifiedByName: '', verifiedByDate: undefined });
+            setHeaderStates({
+                jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0,
+                verifiedByName: '', verifiedByDate: undefined,
+            });
+            return;
         }
-    }, [vehicleRecord, vehicle.id, currentMonth]);
+
+        const monthKey = format(currentMonth, 'yyyy-MM');
+        const vehicleRecordPath = `vehicleUsageRecords/${monthKey}/records/${vehicle.id}`;
+        
+        get(ref(rtdb, vehicleRecordPath)).then((snapshot) => {
+            if (snapshot.exists()) {
+                const vehicleRecord = snapshot.val();
+                const newStates: Record<string, any> = {};
+                for (const day of dayHeaders) {
+                    const dayData = vehicleRecord.days?.[day];
+                    newStates[`${day}-startKm`] = dayData?.startKm || '';
+                    newStates[`${day}-endKm`] = dayData?.endKm || '';
+                    newStates[`${day}-overtime`] = dayData?.overtime || '';
+                    newStates[`${day}-remarks`] = dayData?.remarks || '';
+                    newStates[`${day}-isHoliday`] = dayData?.isHoliday || false;
+                }
+                setCellStates(newStates);
+                setHeaderStates({
+                    jobNo: vehicleRecord.jobNo || '',
+                    vehicleType: vehicleRecord.vehicleType || '',
+                    extraKm: vehicleRecord.extraKm || 0,
+                    headerOvertime: vehicleRecord.headerOvertime || '',
+                    extraNight: vehicleRecord.extraNight || 0,
+                    extraDays: vehicleRecord.extraDays || 0,
+                    verifiedByName: vehicleRecord.verifiedBy?.name || '',
+                    verifiedByDate: vehicleRecord.verifiedBy?.date ? parseISO(vehicleRecord.verifiedBy.date) : undefined,
+                });
+            } else {
+                setCellStates({});
+                setHeaderStates({
+                    jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0,
+                    verifiedByName: '', verifiedByDate: undefined,
+                });
+            }
+        });
+
+    }, [isOpen, vehicle.id, currentMonth, dayHeaders]);
 
     const handleInputChange = (day: number, field: string, value: string | number | boolean) => {
         const dayKey = `${day}-${field}`;
@@ -108,7 +124,6 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
         setCellStates(prev => {
             const newStates = { ...prev, [dayKey]: value };
             if (field === 'endKm' && day < getDaysInMonth(currentMonth)) {
-                // Automatically carry over end KM to next day's start KM
                 newStates[nextDayKey] = value;
             }
             return newStates;
@@ -119,7 +134,6 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
         const startKmValue = Number(cellStates[`${day}-startKm`] || 0);
         const endKmValue = Number(cellStates[`${day}-endKm`] || 0);
 
-        // Validation for Start KM (must match previous End KM)
         if (field === 'startKm' && day > 1) {
             const prevEndKm = Number(cellStates[`${day - 1}-endKm`] || 0);
             if (startKmValue !== prevEndKm) {
@@ -132,7 +146,6 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
             }
         }
     
-        // Validation for End KM (must be >= Start KM, and Start KM must exist)
         if (field === 'endKm') {
             if (endKmValue > 0 && !startKmValue) {
                 toast({
@@ -152,12 +165,9 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
         }
     };
     
-    const handleHeaderChange = (field: keyof typeof headerStates, value: string | number | Date | undefined) => {
-        setHeaderStates(prev => ({ ...prev, [field]: value }));
-    };
-
     const handleSave = () => {
         if (!vehicle.id) return;
+        const monthKey = format(currentMonth, 'yyyy-MM');
         const dataToSave: Partial<any> = {
             days: dayHeaders.reduce((acc, day) => {
                 acc[day] = {
