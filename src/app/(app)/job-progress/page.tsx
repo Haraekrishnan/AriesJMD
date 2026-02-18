@@ -225,7 +225,7 @@ export default function JobProgressPage() {
             <TabsTrigger value="timesheet-tracker">Timesheet Tracker</TabsTrigger>
         </TabsList>
         <TabsContent value="jms-tracker" className="mt-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="icon" onClick={() => changeJmsMonth(-1)} disabled={!canGoToPreviousJmsMonth}>
                         <ChevronLeft className="h-4 w-4" />
@@ -235,20 +235,22 @@ export default function JobProgressPage() {
                         <ChevronRight className="h-4 w-4" />
                     </Button>
                 </div>
-                <div className="relative w-full sm:w-auto">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search by title, JMS no, project..."
-                        className="pl-9"
-                        value={jmsSearchTerm}
-                        onChange={e => setJmsSearchTerm(e.target.value)}
-                    />
+                <div className="flex flex-col sm:flex-row items-center gap-4 flex-1">
+                    <div className="relative w-full sm:w-auto flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search by title, JMS no, project..."
+                            className="pl-9"
+                            value={jmsSearchTerm}
+                            onChange={e => setJmsSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    {canCreateJms && (
+                      <Button onClick={() => setIsCreateJobOpen(true)} className="w-full sm:w-auto">
+                          <PlusCircle className="mr-2 h-4 w-4" /> Create New JMS
+                      </Button>
+                    )}
                 </div>
-                {canCreateJms && (
-                  <Button onClick={() => setIsCreateJobOpen(true)}>
-                      <PlusCircle className="mr-2 h-4 w-4" /> Create New JMS
-                  </Button>
-                )}
             </div>
             <Card>
                 <CardHeader>
@@ -261,7 +263,7 @@ export default function JobProgressPage() {
             </Card>
         </TabsContent>
         <TabsContent value="timesheet-tracker" className="mt-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="icon" onClick={() => changeTimesheetMonth(-1)} disabled={!canGoToPreviousTimesheetMonth}>
                         <ChevronLeft className="h-4 w-4" />
@@ -271,18 +273,20 @@ export default function JobProgressPage() {
                         <ChevronRight className="h-4 w-4" />
                     </Button>
                 </div>
-                <div className="relative w-full sm:w-auto">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search by project or unit..."
-                        className="pl-9"
-                        value={timesheetSearchTerm}
-                        onChange={e => setTimesheetSearchTerm(e.target.value)}
-                    />
+                <div className="flex flex-col sm:flex-row items-center gap-4 flex-1">
+                    <div className="relative w-full sm:w-auto flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search by project or unit..."
+                            className="pl-9"
+                            value={timesheetSearchTerm}
+                            onChange={e => setTimesheetSearchTerm(e.target.value)}
+                        />
+                    </div>
+                     <Button onClick={() => setIsCreateTimesheetOpen(true)} className="w-full sm:w-auto">
+                        <PlusCircle className="mr-2 h-4 w-4" /> Submit Timesheet
+                    </Button>
                 </div>
-                 <Button onClick={() => setIsCreateTimesheetOpen(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Submit Timesheet
-                </Button>
             </div>
              <Card>
                 <CardHeader>
