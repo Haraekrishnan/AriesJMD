@@ -1,4 +1,3 @@
-
 'use client';
 import { useAuth } from '@/contexts/auth-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
@@ -90,7 +89,7 @@ export default function AccountPage() {
   
   const handleProfileSave = (e: React.FormEvent) => {
     e.preventDefault();
-    updateProfile({ name, email, avatarFile, password, signatureFile });
+    updateProfile(name, email, avatarFile, password, signatureFile);
     toast({
       title: 'Profile Updated',
       description: 'Your profile information has been saved.',

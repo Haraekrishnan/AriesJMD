@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, Dispatch, SetStateAction, useMemo } from 'react';
@@ -188,6 +187,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (dataToSave.supervisorId === 'none' || dataToSave.supervisorId === undefined) {
       dataToSave.supervisorId = null;
     }
+    
+    // Sanitize object to remove undefined values before sending to Firebase
+    Object.keys(dataToSave).forEach(key => {
+        if (dataToSave[key] === undefined) {
+            dataToSave[key] = null;
+        }
+    });
+
     update(ref(rtdb, `users/${id}`), dataToSave);
     if (user?.id) addActivityLog(user.id, 'User Profile Updated', `Updated details for ${updatedUser.name}`);
     if (user?.id === updatedUser.id) setUser(updatedUser);
