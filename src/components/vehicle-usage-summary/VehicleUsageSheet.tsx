@@ -22,12 +22,13 @@ import { Badge } from '../ui/badge';
 
 const implementationStartDate = new Date(2026, 0, 1); // January 2026 (Month is 0-indexed)
 
-const VehicleDataRow = React.memo(({ vehicle, currentMonth, slNo }: { vehicle: Vehicle, currentMonth: Date, slNo: number }) => {
+const VehicleDataRow = ({ vehicle, currentMonth, slNo }: { vehicle: any, currentMonth: Date, slNo: number }) => {
     const { user, can, lockVehicleUsageSheet, unlockVehicleUsageSheet, drivers, vehicleUsageRecords, users } = useAppContext();
     const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
 
     const monthKey = format(currentMonth, 'yyyy-MM');
-    const vehicleRecord = vehicleUsageRecords?.[monthKey]?.records?.[vehicle.id];
+    const record = vehicleUsageRecords?.[monthKey];
+    const vehicleRecord = record?.records?.[vehicle.id];
 
     const isLocked = vehicleRecord?.isLocked;
     const canEdit = can.manage_vehicle_usage && !isLocked;
@@ -68,24 +69,10 @@ const VehicleDataRow = React.memo(({ vehicle, currentMonth, slNo }: { vehicle: V
         else exportToPdf(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates);
     };
 
-    const statusLabel = useMemo((): 'Completed' | 'On Going' | 'Not Yet Started' => {
-        if (vehicleRecord?.isLocked) {
-            return 'Completed';
-        }
-        if (vehicleRecord) {
-            const hasData = Object.values(vehicleRecord.days || {}).some(dayData => 
-                (dayData as any).startKm || (dayData as any).endKm || (dayData as any).overtime || (dayData as any).remarks
-            );
-            if (hasData) {
-                return 'On Going';
-            }
-        }
-        return 'Not Yet Started';
-    }, [vehicleRecord]);
-
     const getStatusBadge = () => {
-        const variant: 'success' | 'yellow' | 'destructive' = statusLabel === 'Completed' ? 'success' : statusLabel === 'On Going' ? 'yellow' : 'destructive';
-        return <Badge variant={variant}>{statusLabel}</Badge>;
+        const status = vehicle.status;
+        const variant: 'success' | 'yellow' | 'destructive' = status.label === 'Completed' ? 'success' : status.label === 'On Going' ? 'yellow' : 'destructive';
+        return <Badge variant={variant}>{status.label}</Badge>;
     }
 
     return (
@@ -141,24 +128,42 @@ const VehicleDataRow = React.memo(({ vehicle, currentMonth, slNo }: { vehicle: V
             )}
         </>
     )
-});
-VehicleDataRow.displayName = 'VehicleDataRow';
+};
 
 
 export default function VehicleUsageSheet() {
-    const { vehicles, can } = useAppContext();
+    const { vehicles, vehicleUsageRecords, can } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     
+    const getVehicleStatus = (vehicleId: string) => {
+        const record = vehicleUsageRecords?.[format(currentMonth, 'yyyy-MM')];
+        const vehicleRecord = record?.records?.[vehicleId];
+        if (vehicleRecord?.isLocked) {
+            return { label: 'Completed', color: 'bg-green-500' };
+        }
+        if (vehicleRecord) {
+            const hasData = Object.values(vehicleRecord.days || {}).some(dayData => 
+                dayData.startKm || dayData.endKm || dayData.overtime || dayData.remarks
+            );
+            if (hasData) {
+                return { label: 'On Going', color: 'bg-yellow-500' };
+            }
+        }
+        return { label: 'Not Yet Started', color: 'bg-red-500' };
+    };
+    
+
     const sortedVehicles = useMemo(() => {
         return [...vehicles]
             .filter(v => v.status === 'Active' || v.status === 'In Maintenance')
+            .map(v => ({ ...v, status: getVehicleStatus(v.id) }))
             .sort((a,b) => a.vehicleNumber.localeCompare(b.vehicleNumber));
-    }, [vehicles]);
-    
+    }, [vehicles, currentMonth, vehicleUsageRecords]);
+
     const canGoToPreviousMonth = useMemo(() => {
-      const firstDayOfCurrentMonth = startOfMonth(currentMonth);
-      return isAfter(firstDayOfCurrentMonth, implementationStartDate);
-    }, [currentMonth]);
+        const firstDayOfCurrentMonth = startOfMonth(currentMonth);
+        return isAfter(firstDayOfCurrentMonth, implementationStartDate);
+      }, [currentMonth]);
       
     const canGoToNextMonth = useMemo(() => {
         const firstDayOfCurrentMonth = startOfMonth(currentMonth);
