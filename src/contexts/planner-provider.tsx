@@ -41,7 +41,7 @@ type PlannerContextType = {
   saveVehicleUsageRecord: (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => Promise<void>;
   lockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
   unlockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
-  createJobProgress: (data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[]; projectId?: string; workOrderNo?: string; foNo?: string; amount?: number; dateFrom?: string | null; dateTo?: string | null; }) => void;
+  createJobProgress: (data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[]; projectId?: string; plantUnit?: string; workOrderNo?: string; foNo?: string; amount?: number; dateFrom?: string | null; dateTo?: string | null; }) => void;
   updateJobProgress: (jobId: string, data: Partial<Omit<JobProgress, 'id' | 'steps' | 'creatorId' | 'createdAt'>>) => void;
   deleteJobProgress: (jobId: string) => void;
   updateJobStep: (jobId: string, stepId: string, newStepData: Partial<JobStep>) => void;
@@ -488,7 +488,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         toast({ title: 'Timesheet Deleted', variant: 'destructive' });
     }, [user, toast]);
 
-    const createJobProgress = useCallback((data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[], projectId?: string, workOrderNo?: string, foNo?: string, amount?: number, dateFrom?: string | null, dateTo?: string | null }) => {
+    const createJobProgress = useCallback((data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[]; projectId?: string; plantUnit?: string; workOrderNo?: string; foNo?: string; amount?: number; dateFrom?: string | null; dateTo?: string | null; }) => {
         if (!user) return;
         const newRef = push(ref(rtdb, 'jobProgress'));
         const now = new Date().toISOString();
@@ -509,6 +509,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
           status: 'Not Started',
           steps: initialSteps,
           projectId: data.projectId,
+          plantUnit: data.plantUnit,
           workOrderNo: data.workOrderNo,
           foNo: data.foNo,
           amount: data.amount,
