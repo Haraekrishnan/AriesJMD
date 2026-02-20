@@ -15,6 +15,7 @@ const timesheetSchema = z.object({
     submittedToId: z.string().min(1, 'Please select a recipient'),
     projectId: z.string().min(1, 'Project is required'),
     plantUnit: z.string().min(1, 'Plant/Unit name is required'),
+    numberOfTimesheets: z.coerce.number().min(1, "Number of timesheets must be at least 1."),
     startDate: z.date({ required_error: 'Start date is required.' }),
     endDate: z.date({ required_error: 'End date is required.' }),
 }).refine(data => !data.endDate || !data.startDate || data.endDate >= data.startDate, {
@@ -35,6 +36,9 @@ export default function CreateTimesheetDialog({ isOpen, setIsOpen }: CreateTimes
 
   const form = useForm<TimesheetFormValues>({
     resolver: zodResolver(timesheetSchema),
+    defaultValues: {
+      numberOfTimesheets: 1,
+    }
   });
 
   const onSubmit = (data: TimesheetFormValues) => {
@@ -42,6 +46,7 @@ export default function CreateTimesheetDialog({ isOpen, setIsOpen }: CreateTimes
       submittedToId: data.submittedToId,
       projectId: data.projectId,
       plantUnit: data.plantUnit,
+      numberOfTimesheets: data.numberOfTimesheets,
       startDate: data.startDate.toISOString(),
       endDate: data.endDate.toISOString(),
     });
@@ -51,7 +56,7 @@ export default function CreateTimesheetDialog({ isOpen, setIsOpen }: CreateTimes
   
   const handleOpenChange = (open: boolean) => {
       if (!open) {
-          form.reset();
+          form.reset({ numberOfTimesheets: 1 });
       }
       setIsOpen(open);
   };
@@ -112,6 +117,12 @@ export default function CreateTimesheetDialog({ isOpen, setIsOpen }: CreateTimes
                 <Label htmlFor="plant-unit">Plant/Unit</Label>
                 <Input id="plant-unit" {...form.register('plantUnit')} />
                 {form.formState.errors.plantUnit && <p className="text-xs text-destructive">{form.formState.errors.plantUnit.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="number-of-timesheets">No. of Timesheets</Label>
+                <Input id="number-of-timesheets" type="number" {...form.register('numberOfTimesheets')} />
+                {form.formState.errors.numberOfTimesheets && <p className="text-xs text-destructive">{form.formState.errors.numberOfTimesheets.message}</p>}
             </div>
             
             <div className="grid grid-cols-2 gap-4">

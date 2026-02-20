@@ -1,4 +1,5 @@
 
+
 export type Broadcast = {
   id: string;
   message: string;
@@ -1200,6 +1201,7 @@ export type Timesheet = {
     submittedToId: string;
     projectId: string;
     plantUnit: string;
+    numberOfTimesheets: number;
     startDate: string; // ISO
     endDate: string; // ISO
     submissionDate: string; // ISO
