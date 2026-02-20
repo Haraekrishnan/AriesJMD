@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -9,6 +10,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import type { JobProgress, JobProgressStatus } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 interface JobProgressTableProps {
   jobs: JobProgress[];
@@ -51,6 +53,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             <TableHead>Period</TableHead>
             <TableHead>Created By</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Currently With</TableHead>
             <TableHead className="w-[200px]">Progress</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -61,6 +64,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             const progress = calculateProgress(job);
             const currentStep = job.steps.find(s => s.status === 'Pending' || s.status === 'Acknowledged');
             const project = projects.find(p => p.id === job.projectId);
+            const currentAssignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
 
             return (
               <TableRow 
@@ -85,6 +89,19 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                     </Badge>
                     {job.isReopened && <Badge variant="warning">Reopened</Badge>}
                   </div>
+                </TableCell>
+                <TableCell>
+                  {currentAssignee ? (
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={currentAssignee.avatar} />
+                        <AvatarFallback>{currentAssignee.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm">{currentAssignee.name}</span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">N/A</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
