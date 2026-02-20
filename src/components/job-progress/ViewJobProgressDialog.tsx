@@ -37,6 +37,20 @@ const statusConfig: { [key in JobStepStatus]: { icon?: React.ElementType, color:
   'Skipped': { icon: XCircle, color: 'text-gray-500', label: 'Skipped' },
 };
 
+const jobDetailsSchema = z.object({
+    title: z.string().min(3, 'JMS title is required'),
+    projectId: z.string().min(1, 'Project is required'),
+    plantUnit: z.string().optional(),
+    workOrderNo: z.string().optional(),
+    foNo: z.string().optional(),
+    jmsNo: z.string().optional(),
+    amount: z.coerce.number().optional(),
+    dateFrom: z.date().optional().nullable(),
+    dateTo: z.date().optional().nullable(),
+});
+type JobDetailsFormValues = z.infer<typeof jobDetailsSchema>;
+
+
 const reopenSchema = z.object({
   reason: z.string().min(10, "A detailed reason for reopening is required."),
   newStepName: z.string().min(1, "A name for the new step is required."),
@@ -177,13 +191,13 @@ const reassignSchema = z.object({
 type ReassignFormValues = z.infer<typeof reassignSchema>;
   
 const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean; setIsOpen: (open: boolean) => void; job: JobProgress; step: JobStep; }) => {
-    const { getVisibleUsers, reassignJobStep, user } = useAppContext();
+    const { getAssignableUsers, reassignJobStep, user } = useAppContext();
     const { toast } = useToast();
     const [popoverOpen, setPopoverOpen] = useState(false);
 
     const assignableUsers = useMemo(() => {
-        return getVisibleUsers().filter(u => u.id !== user?.id && u.role !== 'Manager');
-    }, [getVisibleUsers, user]);
+        return getAssignableUsers().filter(u => u.id !== user?.id && u.role !== 'Manager');
+    }, [getAssignableUsers, user]);
 
     const form = useForm<ReassignFormValues>({
         resolver: zodResolver(reassignSchema),
@@ -416,7 +430,7 @@ interface ViewJobProgressDialogProps {
 }
 
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
-    const { user, users, projects, jobProgress, updateJobStep, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, completeJobAsFinalStep, reassignJobStep, getAssignableUsers, returnJobStep, deleteJobProgress } = useAppContext();
+    const { user, users, projects, jobProgress, updateJobProgress, updateJobStep, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, completeJobAsFinalStep, reassignJobStep, getAssignableUsers, returnJobStep, deleteJobProgress } = useAppContext();
     const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
     const [returningStep, setReturningStep] = useState<JobStep | null>(null);
     const [newAssigneeId, setNewAssigneeId] = useState<string>('');
@@ -424,6 +438,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
     const [isReopenDialogOpen, setIsReopenDialogOpen] = useState(false);
     const [editingStepId, setEditingStepId] = useState<string | null>(null);
     const [editingStepName, setEditingStepName] = useState('');
+    const [isEditingHeader, setIsEditingHeader] = useState(false);
     const { toast } = useToast();
 
     const job = useMemo(() => {
@@ -434,6 +449,43 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
 
     const creator = users.find(u => u.id === job.creatorId);
     const project = projects.find(p => p.id === job.projectId);
+
+    const form = useForm<JobDetailsFormValues>({
+        resolver: zodResolver(jobDetailsSchema),
+      });
+    
+      useEffect(() => {
+        if (job) {
+          form.reset({
+            title: job.title,
+            projectId: job.projectId,
+            plantUnit: job.plantUnit || '',
+            workOrderNo: job.workOrderNo || '',
+            foNo: job.foNo || '',
+            jmsNo: job.jmsNo || '',
+            amount: job.amount || undefined,
+            dateFrom: job.dateFrom ? parseISO(job.dateFrom) : null,
+            dateTo: job.dateTo ? parseISO(job.dateTo) : null,
+          });
+        }
+      }, [job, form, isOpen]);
+    
+      const onHeaderSubmit = (data: JobDetailsFormValues) => {
+          updateJobProgress(job.id, {
+              ...data,
+              amount: data.amount || null,
+              dateFrom: data.dateFrom?.toISOString() || null,
+              dateTo: data.dateTo?.toISOString() || null,
+          });
+          setIsEditingHeader(false);
+          toast({ title: 'JMS details updated.' });
+      };
+
+    const canEditJob = useMemo(() => {
+      if (!user || !job) return false;
+      const canEditRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+      return (canEditRoles.includes(user.role) || user.id === job.creatorId);
+    }, [user, job]);
 
     const canReopenJob = useMemo(() => {
         if (!user || !job) return false;
@@ -464,23 +516,58 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogContent className="max-w-4xl h-[90vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
                 <DialogHeader>
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <DialogTitle>JMS Details: {job.title}</DialogTitle>
-                            <DialogDescription>Created by {creator?.name} on {format(parseISO(job.createdAt), 'PPP')}</DialogDescription>
+                    <form onSubmit={form.handleSubmit(onHeaderSubmit)}>
+                        <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                                <DialogTitle className="flex items-center gap-2">
+                                    {isEditingHeader ? (
+                                        <Input {...form.register('title')} className="text-2xl font-bold p-0 h-auto border-0 shadow-none focus-visible:ring-0" />
+                                    ) : (
+                                        `JMS Details: ${job.title}`
+                                    )}
+                                </DialogTitle>
+                                <DialogDescription>Created by {creator?.name} on {format(parseISO(job.createdAt), 'PPP')}</DialogDescription>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {canEditJob && !isEditingHeader && (
+                                    <Button type="button" variant="ghost" size="icon" onClick={() => setIsEditingHeader(true)}><Edit className="h-4 w-4" /></Button>
+                                )}
+                                <Badge variant={job.status === 'Completed' ? 'success' : 'secondary'}>{job.status}</Badge>
+                            </div>
                         </div>
-                        <Badge variant={job.status === 'Completed' ? 'success' : 'secondary'}>{job.status}</Badge>
-                    </div>
-                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm pt-2">
-                        <div><span className="font-semibold">Project:</span> {project?.name || 'N/A'}</div>
-                        <div><span className="font-semibold">Plant/Unit:</span> {job.plantUnit || 'N/A'}</div>
-                        <div><span className="font-semibold">WO No:</span> {job.workOrderNo || 'N/A'}</div>
-                        <div><span className="font-semibold">FO No:</span> {job.foNo || 'N/A'}</div>
-                        <div><span className="font-semibold">JMS No:</span> {job.jmsNo || 'N/A'}</div>
-                        <div><span className="font-semibold">Amount:</span> {job.amount ? new Intl.NumberFormat('en-IN').format(job.amount) : 'N/A'}</div>
-                        <div><span className="font-semibold">From:</span> {job.dateFrom ? format(parseISO(job.dateFrom), 'dd-MM-yy') : 'N/A'}</div>
-                        <div><span className="font-semibold">To:</span> {job.dateTo ? format(parseISO(job.dateTo), 'dd-MM-yy') : 'N/A'}</div>
-                    </div>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm pt-2">
+                            {isEditingHeader ? (
+                                <>
+                                    <div className="space-y-1"><Label>Project</Label><Controller name="projectId" control={form.control} render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>)}/></div>
+                                    <div className="space-y-1"><Label>Plant/Unit</Label><Input {...form.register('plantUnit')} /></div>
+                                    <div className="space-y-1"><Label>WO No</Label><Input {...form.register('workOrderNo')} /></div>
+                                    <div className="space-y-1"><Label>FO No</Label><Input {...form.register('foNo')} /></div>
+                                    <div className="space-y-1"><Label>JMS No</Label><Input {...form.register('jmsNo')} /></div>
+                                    <div className="space-y-1"><Label>Amount</Label><Input type="number" {...form.register('amount')} /></div>
+                                    <div className="space-y-1"><Label>From</Label><Controller name="dateFrom" control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} /></div>
+                                    <div className="space-y-1"><Label>To</Label><Controller name="dateTo" control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} /></div>
+                                </>
+                            ) : (
+                                <>
+                                    <div><span className="font-semibold">Project:</span> {project?.name || 'N/A'}</div>
+                                    <div><span className="font-semibold">Plant/Unit:</span> {job.plantUnit || 'N/A'}</div>
+                                    <div><span className="font-semibold">WO No:</span> {job.workOrderNo || 'N/A'}</div>
+                                    <div><span className="font-semibold">FO No:</span> {job.foNo || 'N/A'}</div>
+                                    <div><span className="font-semibold">JMS No:</span> {job.jmsNo || 'N/A'}</div>
+                                    <div><span className="font-semibold">Amount:</span> {job.amount ? new Intl.NumberFormat('en-IN').format(job.amount) : 'N/A'}</div>
+                                    <div><span className="font-semibold">From:</span> {job.dateFrom ? format(parseISO(job.dateFrom), 'dd-MM-yy') : 'N/A'}</div>
+                                    <div><span className="font-semibold">To:</span> {job.dateTo ? format(parseISO(job.dateTo), 'dd-MM-yy') : 'N/A'}</div>
+                                </>
+                            )}
+                        </div>
+                        {isEditingHeader && (
+                            <div className="flex justify-end gap-2 pt-2">
+                                <Button type="button" variant="ghost" onClick={() => { setIsEditingHeader(false); form.reset(); }}>Cancel</Button>
+                                <Button type="submit">Save Changes</Button>
+                            </div>
+                        )}
+                    </form>
                 </DialogHeader>
                 <ScrollArea className="flex-1 -mx-6 px-6">
                     <div className="relative pl-6">
@@ -754,4 +841,5 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
     
 
     
+
 

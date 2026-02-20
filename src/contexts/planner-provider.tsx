@@ -42,6 +42,7 @@ type PlannerContextType = {
   lockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
   unlockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
   createJobProgress: (data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[]; projectId?: string; workOrderNo?: string; foNo?: string; amount?: number; dateFrom?: string | null; dateTo?: string | null; }) => void;
+  updateJobProgress: (jobId: string, data: Partial<Omit<JobProgress, 'id' | 'steps' | 'creatorId' | 'createdAt'>>) => void;
   deleteJobProgress: (jobId: string) => void;
   updateJobStep: (jobId: string, stepId: string, newStepData: Partial<JobStep>) => void;
   updateJobStepStatus: (jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string, completionDetails?: { attachmentUrl?: string; customFields?: Record<string, any> }) => void;
@@ -153,6 +154,25 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb), updates);
 
     }, [user, plannerEvents]);
+    
+    const addJobStepComment = useCallback((jobId: string, stepId: string, commentText: string) => {
+        if (!user) return;
+        const job = jobProgressById[jobId];
+        if (!job) return;
+        
+        const stepIndex = job.steps.findIndex(s => s.id === stepId);
+        if (stepIndex === -1) return;
+
+        const newCommentRef = push(ref(rtdb, `jobProgress/${jobId}/steps/${stepIndex}/comments`));
+        const newComment: Omit<Comment, 'id'> = {
+            id: newCommentRef.key!,
+            userId: user.id,
+            text: commentText,
+            date: new Date().toISOString(),
+            eventId: jobId
+        };
+        set(newCommentRef, newComment);
+    }, [user, jobProgressById]);
 
     const addPlannerEvent = useCallback((eventData: Omit<PlannerEvent, 'id'>) => {
         const newRef = push(ref(rtdb, 'plannerEvents'));
@@ -499,6 +519,33 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         set(newRef, newJob);
     }, [user]);
 
+    const updateJobProgress = useCallback((jobId: string, data: Partial<Omit<JobProgress, 'id' | 'steps' | 'creatorId' | 'createdAt'>>) => {
+        if (!user) return;
+        const job = jobProgressById[jobId];
+        if (!job) return;
+    
+        const canEditRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+        const canEdit = canEditRoles.includes(user.role) || user.id === job.creatorId;
+        if (!canEdit) {
+          toast({ title: 'Permission Denied', variant: 'destructive' });
+          return;
+        }
+    
+        const updates: { [key: string]: any } = {};
+        const jobPath = `jobProgress/${jobId}`;
+    
+        Object.entries(data).forEach(([key, value]) => {
+          updates[`${jobPath}/${key}`] = value === undefined ? null : value;
+        });
+    
+        updates[`${jobPath}/lastUpdated`] = new Date().toISOString();
+    
+        update(ref(rtdb), updates);
+    
+        const commentText = `${user.name} updated the main job details.`;
+        addJobStepComment(jobId, job.steps[0].id, commentText);
+      }, [user, jobProgressById, addJobStepComment, toast]);
+
     const deleteJobProgress = useCallback((jobId: string) => {
         if (user?.role !== 'Admin') {
             toast({ title: 'Permission Denied', variant: 'destructive' });
@@ -507,26 +554,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         remove(ref(rtdb, `jobProgress/${jobId}`));
         toast({ title: 'JMS Deleted', variant: 'destructive' });
     }, [user, toast]);
-
-    const addJobStepComment = useCallback((jobId: string, stepId: string, commentText: string) => {
-        if (!user) return;
-        const job = jobProgressById[jobId];
-        if (!job) return;
-        
-        const stepIndex = job.steps.findIndex(s => s.id === stepId);
-        if (stepIndex === -1) return;
-
-        const newCommentRef = push(ref(rtdb, `jobProgress/${jobId}/steps/${stepIndex}/comments`));
-        const newComment: Omit<Comment, 'id'> = {
-            id: newCommentRef.key!,
-            userId: user.id,
-            text: commentText,
-            date: new Date().toISOString(),
-            eventId: jobId
-        };
-        set(newCommentRef, newComment);
-    }, [user, jobProgressById]);
-
+    
     const updateJobStep = useCallback((jobId: string, stepId: string, newStepData: Partial<JobStep>) => {
         if (!user) return;
         const job = jobProgressById[jobId];
@@ -974,7 +1002,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         lockJobRecordSheet, unlockJobRecordSheet, addJobRecordPlant,
         deleteJobRecordPlant, carryForwardPlantAssignments,
         saveVehicleUsageRecord, lockVehicleUsageSheet, unlockVehicleUsageSheet,
-        createJobProgress, deleteJobProgress, updateJobStep, updateJobStepStatus,
+        createJobProgress, updateJobProgress, deleteJobProgress, updateJobStep, updateJobStepStatus,
         addAndCompleteStep, addJobStepComment, reassignJobStep, assignJobStep,
         completeJobAsFinalStep, returnJobStep, reopenJob,
         addTimesheet,
@@ -992,3 +1020,5 @@ export const usePlanner = (): PlannerContextType => {
   }
   return context;
 };
+
+    
