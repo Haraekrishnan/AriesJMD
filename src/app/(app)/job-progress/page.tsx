@@ -182,63 +182,69 @@ export default function JobProgressPage() {
         </div>
       </div>
       
-      {(myPendingJmsSteps.length > 0 || myPendingTimesheets.length > 0) && (
-        <Card className="border-primary">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="text-primary"/> Pending Acknowledgement
-                </CardTitle>
-                <CardDescription>Items that require your attention to acknowledge or start working on.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-                {myPendingJmsSteps.map(({ job, step }) => (
-                    <div key={step.id} className="p-3 border rounded-md flex justify-between items-center bg-card">
-                        <div>
-                            <p className="font-semibold">JMS Step: {step.name}</p>
-                            <p className="text-sm text-muted-foreground">{job.title}</p>
-                        </div>
-                        <Button onClick={() => {
-                            setCurrentJmsMonth(startOfMonth(parseISO(job.dateFrom || job.createdAt)));
-                            setViewingJob(job);
-                        }}>View JMS</Button>
-                    </div>
-                ))}
-                {myPendingTimesheets.map(ts => {
-                    const submitter = users.find(u => u.id === ts.submitterId);
-                    const project = projects.find(p => p.id === ts.projectId);
-                    return (
-                        <div key={ts.id} className="p-3 border rounded-md flex justify-between items-center bg-card">
-                            <div>
-                                <p className="font-semibold">Timesheet requires acknowledgement</p>
-                                <p className="text-sm text-muted-foreground">
-                                    From {submitter?.name} for {project?.name} - {ts.plantUnit}
-                                </p>
-                            </div>
-                            <Button onClick={() => {
-                                setActiveTab('timesheet-tracker');
-                                setCurrentTimesheetMonth(startOfMonth(parseISO(ts.submissionDate)));
-                                toast({
-                                    title: "Navigated to Timesheet Month",
-                                    description: "The timesheet will be visible in the list below.",
-                                });
-                            }}>View</Button>
-                        </div>
-                    )
-                })}
-            </CardContent>
-        </Card>
-      )}
+      <Card className="border-primary">
+          <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="text-primary"/> Pending Acknowledgement
+              </CardTitle>
+              <CardDescription>Items that require your attention to acknowledge or start working on.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+              {myPendingJmsSteps.length === 0 && myPendingTimesheets.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No items are pending your acknowledgement.</p>
+              ) : (
+                <>
+                  {myPendingJmsSteps.map(({ job, step }) => (
+                      <div key={step.id} className="p-3 border rounded-md flex justify-between items-center bg-card">
+                          <div>
+                              <p className="font-semibold">JMS Step: {step.name}</p>
+                              <p className="text-sm text-muted-foreground">{job.title}</p>
+                          </div>
+                          <Button onClick={() => {
+                              setCurrentJmsMonth(startOfMonth(parseISO(job.dateFrom || job.createdAt)));
+                              setViewingJob(job);
+                          }}>View JMS</Button>
+                      </div>
+                  ))}
+                  {myPendingTimesheets.map(ts => {
+                      const submitter = users.find(u => u.id === ts.submitterId);
+                      const project = projects.find(p => p.id === ts.projectId);
+                      return (
+                          <div key={ts.id} className="p-3 border rounded-md flex justify-between items-center bg-card">
+                              <div>
+                                  <p className="font-semibold">Timesheet requires acknowledgement</p>
+                                  <p className="text-sm text-muted-foreground">
+                                      From {submitter?.name} for {project?.name} - {ts.plantUnit}
+                                  </p>
+                              </div>
+                              <Button onClick={() => {
+                                  setActiveTab('timesheet-tracker');
+                                  setCurrentTimesheetMonth(startOfMonth(parseISO(ts.submissionDate)));
+                                  toast({
+                                      title: "Navigated to Timesheet Month",
+                                      description: "The timesheet will be visible in the list below.",
+                                  });
+                              }}>View</Button>
+                          </div>
+                      )
+                  })}
+                </>
+              )}
+          </CardContent>
+      </Card>
 
-      {myOngoingJmsSteps.length > 0 && (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock/> On-Going Activities
-                </CardTitle>
-                <CardDescription>Items you have acknowledged and are currently working on.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-                {myOngoingJmsSteps.map(({ job, step }) => (
+      <Card>
+          <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock/> On-Going Activities
+              </CardTitle>
+              <CardDescription>Items you have acknowledged and are currently working on.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+              {myOngoingJmsSteps.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">You have no on-going activities.</p>
+              ) : (
+                myOngoingJmsSteps.map(({ job, step }) => (
                     <div key={step.id} className="p-3 border rounded-md flex justify-between items-center bg-card">
                         <div>
                             <p className="font-semibold">JMS Step: {step.name}</p>
@@ -249,10 +255,10 @@ export default function JobProgressPage() {
                             setViewingJob(job);
                         }}>View JMS</Button>
                     </div>
-                ))}
-            </CardContent>
-        </Card>
-      )}
+                ))
+              )}
+          </CardContent>
+      </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
