@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { PlusCircle, AlertTriangle, ChevronLeft, ChevronRight, Search, Clock } from 'lucide-react';
 import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress, Timesheet, Role } from '@/lib/types';
@@ -51,6 +52,15 @@ export default function JobProgressPage() {
           (canAcknowledgeOffice && ts.status === 'Sent To Office')
       );
   }, [timesheets, user]);
+
+  const myOngoingJmsSteps = useMemo(() => {
+    if (!user) return [];
+    return jobProgress.flatMap(job =>
+      (job.steps || [])
+        .filter(step => step.assigneeId === user.id && step.status === 'Acknowledged')
+        .map(step => ({ job, step }))
+    );
+  }, [jobProgress, user]);
 
   const canCreateJms = useMemo(() => {
     if (!user) return false;
@@ -176,9 +186,9 @@ export default function JobProgressPage() {
         <Card className="border-primary">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="text-primary"/> My Pending Actions
+                  <AlertTriangle className="text-primary"/> Pending Acknowledgement
                 </CardTitle>
-                <CardDescription>Items that require your attention, regardless of the month filter below.</CardDescription>
+                <CardDescription>Items that require your attention to acknowledge or start working on.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
                 {myPendingJmsSteps.map(({ job, step }) => (
@@ -215,6 +225,31 @@ export default function JobProgressPage() {
                         </div>
                     )
                 })}
+            </CardContent>
+        </Card>
+      )}
+
+      {myOngoingJmsSteps.length > 0 && (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock/> On-Going Activities
+                </CardTitle>
+                <CardDescription>Items you have acknowledged and are currently working on.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+                {myOngoingJmsSteps.map(({ job, step }) => (
+                    <div key={step.id} className="p-3 border rounded-md flex justify-between items-center bg-card">
+                        <div>
+                            <p className="font-semibold">JMS Step: {step.name}</p>
+                            <p className="text-sm text-muted-foreground">{job.title}</p>
+                        </div>
+                        <Button onClick={() => {
+                            setCurrentJmsMonth(startOfMonth(parseISO(job.dateFrom || job.createdAt)));
+                            setViewingJob(job);
+                        }}>View JMS</Button>
+                    </div>
+                ))}
             </CardContent>
         </Card>
       )}
