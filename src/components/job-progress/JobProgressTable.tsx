@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -8,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAppContext } from '@/contexts/app-provider';
 import type { JobProgress, JobProgressStatus } from '@/lib/types';
-import { format, parseISO } from 'date-fns';
+import { format, startOfMonth, addMonths, subMonths, isSameMonth, parseISO, isBefore, isAfter, startOfToday, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
@@ -66,6 +65,17 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             const project = projects.find(p => p.id === job.projectId);
             const currentAssignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
 
+            let sinceDate: string | null = null;
+            if (currentStep) {
+                const dateToCompare = currentStep.status === 'Acknowledged' && currentStep.acknowledgedAt
+                    ? currentStep.acknowledgedAt
+                    : job.lastUpdated;
+                
+                if (dateToCompare) {
+                    sinceDate = formatDistanceToNow(parseISO(dateToCompare), { addSuffix: true });
+                }
+            }
+
             return (
               <TableRow 
                 key={job.id} 
@@ -97,7 +107,10 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                         <AvatarImage src={currentAssignee.avatar} />
                         <AvatarFallback>{currentAssignee.name.charAt(0)}</AvatarFallback>
                       </Avatar>
-                      <span className="text-sm">{currentAssignee.name}</span>
+                      <div>
+                        <span className="text-sm">{currentAssignee.name}</span>
+                        {sinceDate && <p className="text-xs text-muted-foreground">since {sinceDate}</p>}
+                      </div>
                     </div>
                   ) : (
                     <span className="text-sm text-muted-foreground">N/A</span>
