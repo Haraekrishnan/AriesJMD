@@ -1,17 +1,10 @@
-
 'use client';
 
-import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, Download, Save, Lock, Unlock, Edit } from 'lucide-react';
-import { format, startOfMonth, addMonths, subMonths, isSameMonth, isAfter, isBefore, startOfToday, parseISO } from 'date-fns';
-import { saveAs } from "file-saver";
-import { Accordion } from '@/components/ui/accordion';
-import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { ChevronLeft, ChevronRight, Download, Edit, Lock, Unlock } from 'lucide-react';
+import { format, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { ScrollArea } from '../ui/scroll-area';
 import { exportToExcel, exportToPdf } from './generateUsageSummary';
@@ -19,20 +12,33 @@ import EditVehicleUsageDialog from './EditVehicleUsageDialog';
 import type { Vehicle, User } from '@/lib/types';
 import { Badge } from '../ui/badge';
 
-
 const implementationStartDate = new Date(2026, 0, 1); // January 2026 (Month is 0-indexed)
 
-const VehicleDataRow = ({ vehicle, currentMonth, slNo }: { vehicle: any, currentMonth: Date, slNo: number }) => {
-    const { user, can, lockVehicleUsageSheet, unlockVehicleUsageSheet, drivers, vehicleUsageRecords, users } = useAppContext();
+const VehicleDataRow = React.memo(({ vehicleId, currentMonth, slNo }: { vehicleId: string; currentMonth: Date; slNo: number }) => {
+    const { user, can, lockVehicleUsageSheet, unlockVehicleUsageSheet, vehicles, drivers, vehicleUsageRecords, users } = useAppContext();
     const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
+
+    const vehicle = useMemo(() => vehicles.find(v => v.id === vehicleId), [vehicles, vehicleId]);
 
     const monthKey = format(currentMonth, 'yyyy-MM');
     const record = vehicleUsageRecords?.[monthKey];
-    const vehicleRecord = record?.records?.[vehicle.id];
+    const vehicleRecord = record?.records?.[vehicleId];
 
-    const isLocked = vehicleRecord?.isLocked;
-    const canEdit = can.manage_vehicle_usage && !isLocked;
-    const canLockSheet = can.manage_vehicle_usage;
+    const getStatusBadge = () => {
+        if (!vehicleRecord) {
+            return <Badge variant="destructive">Not Yet Started</Badge>;
+        }
+        if (vehicleRecord.isLocked) {
+            return <Badge variant="success">Completed</Badge>;
+        }
+        const hasData = Object.values(vehicleRecord.days || {}).some(dayData => 
+            dayData.startKm || dayData.endKm || dayData.overtime || dayData.remarks
+        );
+        if (hasData) {
+            return <Badge variant="yellow">On Going</Badge>;
+        }
+        return <Badge variant="destructive">Not Yet Started</Badge>;
+    };
 
     const lastUpdatedBy = useMemo(() => {
         if (!vehicleRecord?.lastUpdatedById) return null;
@@ -40,8 +46,9 @@ const VehicleDataRow = ({ vehicle, currentMonth, slNo }: { vehicle: any, current
     }, [vehicleRecord, users]);
 
     const handleExport = (formatType: 'excel' | 'pdf') => {
+        if (!vehicle) return;
         const dayHeaders = Array.from({ length: new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate() }, (_, i) => i + 1);
-        const driver = drivers.find(d => d.id === vehicle?.driverId);
+        const driver = drivers.find(d => d.id === vehicle.driverId);
         
         const cellStates: Record<string, any> = {};
         if (vehicleRecord?.days) {
@@ -69,12 +76,11 @@ const VehicleDataRow = ({ vehicle, currentMonth, slNo }: { vehicle: any, current
         else exportToPdf(vehicle, driver, currentMonth, cellStates, dayHeaders, headerStates);
     };
 
-    const getStatusBadge = () => {
-        const status = vehicle.status;
-        const variant: 'success' | 'yellow' | 'destructive' = status.label === 'Completed' ? 'success' : status.label === 'On Going' ? 'yellow' : 'destructive';
-        return <Badge variant={variant}>{status.label}</Badge>;
-    }
-
+    if (!vehicle) return null;
+    
+    const canEdit = can.manage_vehicle_usage && !vehicleRecord?.isLocked;
+    const canLockSheet = can.manage_vehicle_usage;
+    
     return (
         <>
             <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(0,2fr)] items-center p-2 border-b">
@@ -102,7 +108,7 @@ const VehicleDataRow = ({ vehicle, currentMonth, slNo }: { vehicle: any, current
                     <Button variant="outline" size="sm" onClick={() => handleExport('pdf')}><Download className="mr-2 h-4 w-4"/>PDF</Button>
                     {canEdit && <Button size="sm" onClick={() => setEditingVehicle(vehicle)}><Edit className="mr-2 h-4 w-4"/>Edit</Button>}
                     {canLockSheet && (
-                        isLocked
+                        vehicleRecord?.isLocked
                         ? (user?.role === 'Admin' && <Button variant="secondary" size="sm" onClick={() => unlockVehicleUsageSheet(monthKey, vehicle.id)}>Unlock</Button>)
                         : (
                             <AlertDialog>
@@ -128,37 +134,19 @@ const VehicleDataRow = ({ vehicle, currentMonth, slNo }: { vehicle: any, current
             )}
         </>
     )
-};
+});
 
 
 export default function VehicleUsageSheet() {
-    const { vehicles, vehicleUsageRecords, can } = useAppContext();
+    const { vehicles } = useAppContext();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     
-    const getVehicleStatus = (vehicleId: string) => {
-        const record = vehicleUsageRecords?.[format(currentMonth, 'yyyy-MM')];
-        const vehicleRecord = record?.records?.[vehicleId];
-        if (vehicleRecord?.isLocked) {
-            return { label: 'Completed', color: 'bg-green-500' };
-        }
-        if (vehicleRecord) {
-            const hasData = Object.values(vehicleRecord.days || {}).some(dayData => 
-                dayData.startKm || dayData.endKm || dayData.overtime || dayData.remarks
-            );
-            if (hasData) {
-                return { label: 'On Going', color: 'bg-yellow-500' };
-            }
-        }
-        return { label: 'Not Yet Started', color: 'bg-red-500' };
-    };
-    
-
-    const sortedVehicles = useMemo(() => {
+    const sortedVehicleIds = useMemo(() => {
         return [...vehicles]
             .filter(v => v.status === 'Active' || v.status === 'In Maintenance')
-            .map(v => ({ ...v, status: getVehicleStatus(v.id) }))
-            .sort((a,b) => a.vehicleNumber.localeCompare(b.vehicleNumber));
-    }, [vehicles, currentMonth, vehicleUsageRecords]);
+            .sort((a,b) => a.vehicleNumber.localeCompare(b.vehicleNumber))
+            .map(v => v.id);
+    }, [vehicles]);
 
     const canGoToPreviousMonth = useMemo(() => {
         const firstDayOfCurrentMonth = startOfMonth(currentMonth);
@@ -190,8 +178,8 @@ export default function VehicleUsageSheet() {
                 </div>
             </div>
             <ScrollArea className="flex-1">
-                 {sortedVehicles.map((vehicle, index) => (
-                    <VehicleDataRow key={vehicle.id} vehicle={vehicle} currentMonth={currentMonth} slNo={index + 1} />
+                 {sortedVehicleIds.map((vehicleId, index) => (
+                    <VehicleDataRow key={vehicleId} vehicleId={vehicleId} currentMonth={currentMonth} slNo={index + 1} />
                 ))}
             </ScrollArea>
         </div>

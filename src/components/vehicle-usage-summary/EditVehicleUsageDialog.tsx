@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -11,7 +10,7 @@ import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Checkbox } from '../ui/checkbox';
-import { format, getDay, getDaysInMonth, parseISO } from 'date-fns';
+import { format, getDay, getDaysInMonth, parseISO, isValid } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../ui/dialog';
 import { ScrollArea } from '../ui/scroll-area';
 import { Vehicle } from '@/lib/types';
@@ -72,7 +71,8 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
             setHeaderStates({ jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0, verifiedByName: '', verifiedByDate: undefined });
         }
       }
-    }, [isOpen, vehicle, currentMonth, vehicleUsageRecords, monthKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, vehicle.id, monthKey]);
 
     const monthlyTotalKm = useMemo(() => {
         let total = 0;
@@ -128,7 +128,8 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
       saveVehicleUsageRecord(monthKey, vehicle.id, dataToSave)
           .then(() => {
               setSaveState('saved');
-              setTimeout(() => setSaveState('idle'), 2000);
+              if(saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+              saveTimeoutRef.current = setTimeout(() => setSaveState('idle'), 2000);
           })
           .catch((error) => {
               setSaveState('idle');
@@ -202,14 +203,14 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
 
                 <div className="flex-1 overflow-hidden flex flex-col">
                     <div className="p-4 border rounded-md mb-4 bg-background grid grid-cols-2 md:grid-cols-5 gap-4">
-                        <div className="space-y-2"><Label>Job No.</Label><Input value={headerStates.jobNo} onChange={e => handleHeaderChange('jobNo', e.target.value)} onBlur={debouncedSave} /></div>
-                        <div className="space-y-2"><Label>Vehicle Type</Label><Input value={headerStates.vehicleType} onChange={e => handleHeaderChange('vehicleType', e.target.value)} onBlur={debouncedSave} /></div>
+                        <div className="space-y-2"><Label>Job No.</Label><Input value={headerStates.jobNo} onChange={e => handleHeaderChange('jobNo', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>Vehicle Type</Label><Input value={headerStates.vehicleType} onChange={e => handleHeaderChange('vehicleType', e.target.value)} /></div>
                         <div className="space-y-2"><Label>Over Time (Header)</Label><Input value={monthlyTotalOvertime} readOnly className="font-bold" /></div>
-                        <div className="space-y-2"><Label>Extra Night</Label><Input type="number" value={headerStates.extraNight} onChange={e => handleHeaderChange('extraNight', e.target.value)} onBlur={debouncedSave} /></div>
-                        <div className="space-y-2"><Label>Extra Days</Label><Input type="number" value={headerStates.extraDays} onChange={e => handleHeaderChange('extraDays', e.target.value)} onBlur={debouncedSave} /></div>
+                        <div className="space-y-2"><Label>Extra Night</Label><Input type="number" value={headerStates.extraNight} onChange={e => handleHeaderChange('extraNight', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>Extra Days</Label><Input type="number" value={headerStates.extraDays} onChange={e => handleHeaderChange('extraDays', e.target.value)} /></div>
                         <div className="space-y-2"><Label>Total KM</Label><Input value={monthlyTotalKm} readOnly className="font-bold" /></div>
                         <div className="space-y-2"><Label>Extra KM</Label><Input type="number" value={monthlyTotalKm > 3000 ? monthlyTotalKm - 3000 : 0} readOnly className="font-bold" /></div>
-                        <div className="space-y-2"><Label>Verified By</Label><Input value={headerStates.verifiedByName} onChange={e => handleHeaderChange('verifiedByName', e.target.value)} onBlur={debouncedSave} /></div>
+                        <div className="space-y-2"><Label>Verified By</Label><Input value={headerStates.verifiedByName} onChange={e => handleHeaderChange('verifiedByName', e.target.value)} /></div>
                         <div className="space-y-2"><Label>Verified Date</Label><DatePickerInput value={headerStates.verifiedByDate} onChange={date => handleHeaderChange('verifiedByDate', date)} /></div>
                     </div>
                      <ScrollArea className="flex-1">
@@ -239,8 +240,8 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
                                             <TableCell><Input type="number" min="0" className="h-8" value={cellStates[`${day}-startKm`] || ''} onChange={(e) => handleInputChange(day, 'startKm', e.target.value)} onBlur={() => handleKmBlur(day, 'startKm')} /></TableCell>
                                             <TableCell><Input type="number" min="0" className="h-8" value={cellStates[`${day}-endKm`] || ''} onChange={(e) => handleInputChange(day, 'endKm', e.target.value)} onBlur={() => handleKmBlur(day, 'endKm')} /></TableCell>
                                             <TableCell className="font-medium text-center">{totalKm}</TableCell>
-                                            <TableCell><Input className="h-8" value={cellStates[`${day}-overtime`] || ''} onChange={(e) => handleInputChange(day, 'overtime', e.target.value)} onBlur={debouncedSave} /></TableCell>
-                                            <TableCell><Input className="h-8" value={cellStates[`${day}-remarks`] || ''} onChange={(e) => handleInputChange(day, 'remarks', e.target.value)} onBlur={debouncedSave} /></TableCell>
+                                            <TableCell><Input className="h-8" value={cellStates[`${day}-overtime`] || ''} onChange={(e) => handleInputChange(day, 'overtime', e.target.value)} /></TableCell>
+                                            <TableCell><Input className="h-8" value={cellStates[`${day}-remarks`] || ''} onChange={(e) => handleInputChange(day, 'remarks', e.target.value)} /></TableCell>
                                             <TableCell className="text-center"><Checkbox checked={isHoliday} onCheckedChange={(checked) => handleInputChange(day, 'isHoliday', !!checked)} /></TableCell>
                                         </TableRow>
                                     )
@@ -252,7 +253,7 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
                 <DialogFooter>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         {saveState === 'saving' && <><Save className="h-4 w-4 animate-spin" /> Saving...</>}
-                        {saveState === 'saved' && <>Changes saved.</>}
+                        {saveState === 'saved' && <><Check className="h-4 w-4 text-green-500" /> All changes saved.</>}
                     </div>
                     <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
                 </DialogFooter>
