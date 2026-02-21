@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -176,9 +177,10 @@ export default function TimesheetTrackerTable({ timesheets }: { timesheets: Time
                 <div className="flex justify-between w-full items-center">
                   <div className="text-left">
                     <p className="font-semibold">{project?.name} - {ts.plantUnit}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Period: {format(parseISO(ts.startDate), 'dd/MM/yy')} - {format(parseISO(ts.endDate), 'dd/MM/yy')}
-                    </p>
+                    <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                        <span>Period: {format(parseISO(ts.startDate), 'dd/MM/yy')} - {format(parseISO(ts.endDate), 'dd/MM/yy')}</span>
+                        <Badge variant="outline">Sheets: {ts.numberOfTimesheets}</Badge>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 pr-4">
                     <Badge variant={statusVariantMap[ts.status]}>{ts.status}</Badge>
