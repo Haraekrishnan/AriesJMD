@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, Controller } from 'react-hook-form';
@@ -29,6 +28,7 @@ import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { useToast } from '@/hooks/use-toast';
 import { JOB_PROGRESS_STEPS } from '@/lib/types';
 import type { DateRange } from 'react-day-picker';
+import { ScrollArea } from '../ui/scroll-area';
 
 const jobStepSchema = z.object({
   name: z.enum(JOB_PROGRESS_STEPS, { required_error: 'Step name is required' }),
@@ -164,80 +164,83 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Create New JMS</DialogTitle>
           <DialogDescription>Define the JMS title and its first step to begin the workflow.</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-1 md:col-span-3">
-                <Label htmlFor="job-title" className="font-semibold">JMS Title</Label>
-                <Input id="job-title" {...form.register('title')} />
-                {form.formState.errors.title && <p className="text-xs text-destructive mt-1">{form.formState.errors.title.message}</p>}
-            </div>
-            <div className="space-y-1">
-                <Label>Project</Label>
-                <Controller
-                  control={form.control}
-                  name="projectId"
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select project" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {projects.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {form.formState.errors.projectId && <p className="text-xs text-destructive mt-1">{form.formState.errors.projectId.message}</p>}
-            </div>
-            <div className="space-y-1">
-                <Label>Plant/Unit</Label>
-                <Input {...form.register('plantUnit')} />
-            </div>
-             <div className="space-y-1">
-                <Label>Start Date</Label>
-                <Controller
-                  name="dateFrom"
-                  control={form.control}
-                  render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />}
-                />
-            </div>
-            <div className="space-y-1">
-                <Label>End Date</Label>
-                <Controller
-                  name="dateTo"
-                  control={form.control}
-                  render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />}
-                />
-            </div>
-            <div className="space-y-1">
-                <Label>Work Order No.</Label>
-                <Input {...form.register('workOrderNo')} />
-            </div>
-             <div className="space-y-1">
-                <Label>F.O No.</Label>
-                <Input {...form.register('foNo')} />
-            </div>
-             <div className="space-y-1">
-                <Label>Amount</Label>
-                <Input type="number" {...form.register('amount')} />
-            </div>
-          </div>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
+          <ScrollArea className="flex-1 pr-6 -mr-6">
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1 md:col-span-3">
+                    <Label htmlFor="job-title" className="font-semibold">JMS Title</Label>
+                    <Input id="job-title" {...form.register('title')} />
+                    {form.formState.errors.title && <p className="text-xs text-destructive mt-1">{form.formState.errors.title.message}</p>}
+                </div>
+                <div className="space-y-1">
+                    <Label>Project</Label>
+                    <Controller
+                      control={form.control}
+                      name="projectId"
+                      render={({ field }) => (
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select project" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {projects.map((p) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {form.formState.errors.projectId && <p className="text-xs text-destructive mt-1">{form.formState.errors.projectId.message}</p>}
+                </div>
+                <div className="space-y-1">
+                    <Label>Plant/Unit</Label>
+                    <Input {...form.register('plantUnit')} />
+                </div>
+                 <div className="space-y-1">
+                    <Label>Start Date</Label>
+                    <Controller
+                      name="dateFrom"
+                      control={form.control}
+                      render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />}
+                    />
+                </div>
+                <div className="space-y-1">
+                    <Label>End Date</Label>
+                    <Controller
+                      name="dateTo"
+                      control={form.control}
+                      render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />}
+                    />
+                </div>
+                <div className="space-y-1">
+                    <Label>Work Order No.</Label>
+                    <Input {...form.register('workOrderNo')} />
+                </div>
+                 <div className="space-y-1">
+                    <Label>F.O No.</Label>
+                    <Input {...form.register('foNo')} />
+                </div>
+                 <div className="space-y-1">
+                    <Label>Amount</Label>
+                    <Input type="number" {...form.register('amount')} />
+                </div>
+              </div>
 
-          <div className="space-y-4">
-            <StepFields fieldName="steps.0" title="Initial Step" />
-          </div>
-
-          <DialogFooter className="pt-4">
+              <div className="space-y-4">
+                <StepFields fieldName="steps.0" title="Initial Step" />
+              </div>
+            </div>
+          </ScrollArea>
+          <DialogFooter className="pt-4 border-t">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit">Create JMS</Button>
           </DialogFooter>
