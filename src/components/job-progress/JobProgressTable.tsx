@@ -41,6 +41,8 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
     return (completedSteps / job.steps.length) * 100;
   };
 
+  const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN').format(amount);
+
   return (
     <div className="border rounded-lg overflow-x-auto">
       <Table>
@@ -49,6 +51,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             <TableHead>JMS Title</TableHead>
             <TableHead>Project/Unit</TableHead>
             <TableHead>JMS No.</TableHead>
+            <TableHead>Amount</TableHead>
             <TableHead>Period</TableHead>
             <TableHead>Created By</TableHead>
             <TableHead>Status</TableHead>
@@ -88,6 +91,9 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                     {job.plantUnit && <p className="text-xs text-muted-foreground">{job.plantUnit}</p>}
                 </TableCell>
                 <TableCell>{job.jmsNo || 'N/A'}</TableCell>
+                <TableCell className="font-medium">
+                  {job.amount ? formatCurrency(job.amount) : 'N/A'}
+                </TableCell>
                 <TableCell>
                     {job.dateFrom ? format(parseISO(job.dateFrom), 'dd-MM-yy') : 'N/A'} - {job.dateTo ? format(parseISO(job.dateTo), 'dd-MM-yy') : 'N/A'}
                 </TableCell>
