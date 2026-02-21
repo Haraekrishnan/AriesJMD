@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,10 @@ export default function OngoingJobsReport({ jobs }: OngoingJobsReportProps) {
       { header: 'JMS Title', key: 'title', width: 40 },
       { header: 'Project', key: 'project', width: 25 },
       { header: 'JMS No.', key: 'jmsNo', width: 15 },
+      { header: 'Creator', key: 'creator', width: 25 },
+      { header: 'Created At', key: 'createdAt', width: 20 },
+      { header: 'Job Start Date', key: 'jobDateFrom', width: 20 },
+      { header: 'Job End Date', key: 'jobDateTo', width: 20 },
       { header: 'Step No.', key: 'stepNo', width: 10 },
       { header: 'Step Name', key: 'stepName', width: 30 },
       { header: 'Step Status', key: 'stepStatus', width: 20 },
@@ -40,12 +45,17 @@ export default function OngoingJobsReport({ jobs }: OngoingJobsReportProps) {
 
     const dataToExport = jobs.flatMap(({ job }) => {
         const project = projects.find(p => p.id === job.projectId);
+        const creator = users.find(u => u.id === job.creatorId);
         return job.steps.map((step, index) => {
             const assignee = users.find(u => u.id === step.assigneeId);
             return {
                 title: job.title,
                 project: project?.name || 'N/A',
                 jmsNo: job.jmsNo || 'N/A',
+                creator: creator?.name || 'N/A',
+                createdAt: format(parseISO(job.createdAt), 'dd-MM-yyyy HH:mm'),
+                jobDateFrom: job.dateFrom ? format(parseISO(job.dateFrom), 'dd-MM-yyyy') : 'N/A',
+                jobDateTo: job.dateTo ? format(parseISO(job.dateTo), 'dd-MM-yyyy') : 'N/A',
                 stepNo: index + 1,
                 stepName: step.name,
                 stepStatus: step.status,
