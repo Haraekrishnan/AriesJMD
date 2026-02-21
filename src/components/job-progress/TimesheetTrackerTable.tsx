@@ -87,6 +87,7 @@ export default function TimesheetTrackerTable({ timesheets }: { timesheets: Time
 
   const getAction = (timesheet: Timesheet) => {
     const isRecipient = timesheet.submittedToId === user?.id;
+    const isSubmitter = timesheet.submitterId === user?.id;
 
     switch (timesheet.status) {
       case 'Pending':
@@ -115,7 +116,7 @@ export default function TimesheetTrackerTable({ timesheets }: { timesheets: Time
          }
          return null;
       case 'Rejected':
-        if (isRecipient) {
+        if (isSubmitter) {
             return (
                 <div className="space-y-2 w-full text-left">
                     <Label htmlFor={`comment-${timesheet.id}`} className="text-xs">Reply to query</Label>
@@ -142,6 +143,24 @@ export default function TimesheetTrackerTable({ timesheets }: { timesheets: Time
                     >
                         Reply & Re-Acknowledge
                     </Button>
+                     <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="outline" className="w-full">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete & Start New
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Delete this submission?</AlertDialogTitle>
+                                <AlertDialogDescription>This action cannot be undone. You will need to create a new timesheet submission.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteTimesheet(timesheet.id)}>Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 </div>
             );
         }
