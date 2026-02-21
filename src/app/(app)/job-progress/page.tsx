@@ -53,14 +53,35 @@ export default function JobProgressPage() {
       );
   }, [timesheets, user]);
 
-  const myOngoingJmsSteps = useMemo(() => {
+  const myOngoingItems = useMemo(() => {
     if (!user) return [];
-    return jobProgress.flatMap(job =>
-      (job.steps || [])
-        .filter(step => step.assigneeId === user.id && step.status === 'Acknowledged')
-        .map(step => ({ job, step }))
-    );
+
+    const items = new Map<string, { job: JobProgress; step: any }>();
+
+    // 1. Add steps I am currently working on
+    jobProgress.forEach(job => {
+      const myAcknowledgedStep = (job.steps || []).find(
+        step => step.assigneeId === user.id && step.status === 'Acknowledged'
+      );
+      if (myAcknowledgedStep) {
+        items.set(job.id, { job, step: myAcknowledgedStep });
+      }
+    });
+
+    // 2. Add jobs created by me that are still in progress
+    jobProgress.forEach(job => {
+      if (job.creatorId === user.id && job.status !== 'Completed' && !items.has(job.id)) {
+        // Find the current active step (first one that isn't completed)
+        const currentStep = (job.steps || []).find(s => s.status === 'Pending' || s.status === 'Acknowledged');
+        if (currentStep) {
+          items.set(job.id, { job, step: currentStep });
+        }
+      }
+    });
+
+    return Array.from(items.values());
   }, [jobProgress, user]);
+
 
   const canCreateJms = useMemo(() => {
     if (!user) return false;
@@ -238,17 +259,25 @@ export default function JobProgressPage() {
               <CardTitle className="flex items-center gap-2">
                 <Clock/> On-Going Activities
               </CardTitle>
-              <CardDescription>Items you have acknowledged and are currently working on.</CardDescription>
+              <CardDescription>A list of your active tasks and jobs you've created that are still in progress.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-              {myOngoingJmsSteps.length === 0 ? (
+              {myOngoingItems.length === 0 ? (
                   <p className="text-sm text-muted-foreground">You have no on-going activities.</p>
               ) : (
-                myOngoingJmsSteps.map(({ job, step }) => (
-                    <div key={step.id} className="p-3 border rounded-md flex justify-between items-center bg-card">
+                myOngoingItems.map(({ job, step }) => (
+                    <div key={job.id} className="p-3 border rounded-md flex justify-between items-center bg-card">
                         <div>
-                            <p className="font-semibold">JMS Step: {step.name}</p>
-                            <p className="text-sm text-muted-foreground">{job.title}</p>
+                            <p className="font-semibold">{job.title}</p>
+                            <div className="text-sm text-muted-foreground flex items-center gap-2">
+                                <span>Current Step: {step.name}</span>
+                                {step.assigneeId !== user?.id && (
+                                    <>
+                                        <span>&middot;</span>
+                                        <span>With: {users.find(u => u.id === step.assigneeId)?.name || 'Unassigned'}</span>
+                                    </>
+                                )}
+                            </div>
                         </div>
                         <Button onClick={() => {
                             setCurrentJmsMonth(startOfMonth(parseISO(job.dateFrom || job.createdAt)));
