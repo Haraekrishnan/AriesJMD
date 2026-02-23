@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -72,7 +71,7 @@ export default function JobProgressPage() {
     // 2. Add jobs created by me that are still in progress
     jobProgress.forEach(job => {
       if (job.creatorId === user.id && job.status !== 'Completed' && !items.has(job.id)) {
-        // Find the current active step (first one that isn't completed)
+        // Find the current active step
         const currentStep =
           job.steps.find(s => s.isReturned === true) ||
           job.steps.find(s => s.status === 'Pending') ||

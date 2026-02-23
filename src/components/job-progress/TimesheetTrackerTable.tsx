@@ -1,7 +1,14 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  useReactTable,
+  SortingState,
+} from "@tanstack/react-table"
 import {
   Accordion,
   AccordionContent,
@@ -55,6 +62,9 @@ import {
   Trash2,
   UserCheck,
   XCircle,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
 } from 'lucide-react';
 
 const statusVariantMap: Record<
@@ -493,16 +503,86 @@ export default function TimesheetTrackerTable({
   const [viewingTimesheet, setViewingTimesheet] = useState<Timesheet | null>(
     null
   );
+  const [sorting, setSorting] = useState<SortingState>([]);
+  
+  const columns: ColumnDef<Timesheet>[] = useMemo(
+    () => [
+      {
+        id: 'project',
+        header: 'Project/Unit',
+        accessorFn: (row) => projects.find(p => p.id === row.projectId)?.name || '',
+        cell: ({ row }) => {
+          const project = projects.find(p => p.id === row.original.projectId);
+          return (
+            <div>
+              <p>{project?.name || 'N/A'}</p>
+              <p className="text-xs text-muted-foreground">{row.original.plantUnit}</p>
+            </div>
+          )
+        }
+      },
+      {
+        id: 'submitter',
+        header: 'Submitted By',
+        accessorFn: (row) => users.find(u => u.id === row.submitterId)?.name || '',
+      },
+      {
+        id: 'period',
+        header: 'Period',
+        cell: ({ row }) => (
+          <div className="whitespace-nowrap">
+            {format(parseISO(row.original.startDate), 'dd/MM/yy')} - {format(parseISO(row.original.endDate), 'dd/MM/yy')}
+          </div>
+        )
+      },
+      {
+        accessorKey: 'numberOfTimesheets',
+        header: '# of Sheets',
+        cell: ({ row }) => <div className="text-center">{row.original.numberOfTimesheets}</div>
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: ({ row }) => <Badge variant={statusVariantMap[row.original.status]}>{row.original.status}</Badge>
+      },
+      {
+        id: 'lastUpdated',
+        header: 'Last Updated',
+        accessorFn: (row) => row.officeAcknowledgedDate || row.sentToOfficeDate || row.acknowledgedDate || row.submissionDate,
+        cell: ({ row }) => {
+          const lastUpdateDate = row.original.officeAcknowledgedDate || row.original.sentToOfficeDate || row.original.acknowledgedDate || row.original.submissionDate;
+          return (
+            <div className="text-xs">
+              {formatDistanceToNow(parseISO(lastUpdateDate), { addSuffix: true })}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'actions',
+        header: () => <div className="text-right">Actions</div>,
+        cell: ({ row }) => (
+          <div className="text-right">
+            <Button variant="outline" size="sm" onClick={() => setViewingTimesheet(row.original)}>
+              <Eye className="mr-2 h-4 w-4" /> View
+            </Button>
+          </div>
+        )
+      }
+    ],
+    [users, projects]
+  );
+  
+  const table = useReactTable({
+    data: timesheets,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
 
-  const sortedTimesheets = useMemo(() => {
-    return [...timesheets].sort(
-      (a, b) =>
-        parseISO(b.submissionDate).getTime() -
-        parseISO(a.submissionDate).getTime()
-    );
-  }, [timesheets]);
-
-  if (sortedTimesheets.length === 0) {
+  if (timesheets.length === 0) {
     return (
       <p className="text-center text-muted-foreground py-8">
         No timesheets found for this period.
@@ -512,71 +592,42 @@ export default function TimesheetTrackerTable({
 
   return (
     <>
-      <div className="border rounded-lg overflow-x-auto flex-1">
-        <Table className="text-sm">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Project/Unit</TableHead>
-              <TableHead>Submitted By</TableHead>
-              <TableHead>Period</TableHead>
-              <TableHead># of Sheets</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Last Updated</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sortedTimesheets.map((ts) => {
-              const submitter = users.find((u) => u.id === ts.submitterId);
-              const project = projects.find((p) => p.id === ts.projectId);
-              const lastUpdateDate =
-                ts.officeAcknowledgedDate ||
-                ts.sentToOfficeDate ||
-                ts.acknowledgedDate ||
-                ts.submissionDate;
-
-              return (
-                <TableRow key={ts.id}>
-                  <TableCell className="p-2 font-medium">
-                    <p>{project?.name || 'N/A'}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {ts.plantUnit}
-                    </p>
-                  </TableCell>
-                  <TableCell className="p-2">
-                    {submitter?.name || 'Unknown'}
-                  </TableCell>
-                  <TableCell className="p-2 whitespace-nowrap">
-                    {format(parseISO(ts.startDate), 'dd/MM/yy')} -{' '}
-                    {format(parseISO(ts.endDate), 'dd/MM/yy')}
-                  </TableCell>
-                  <TableCell className="p-2 text-center">
-                    {ts.numberOfTimesheets}
-                  </TableCell>
-                  <TableCell className="p-2">
-                    <Badge variant={statusVariantMap[ts.status]}>
-                      {ts.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="p-2 text-xs">
-                    {formatDistanceToNow(parseISO(lastUpdateDate), {
-                      addSuffix: true,
-                    })}
-                  </TableCell>
-                  <TableCell className="text-right p-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setViewingTimesheet(ts)}
-                    >
-                      <Eye className="mr-2 h-4 w-4" /> View
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+      <div className="border rounded-lg overflow-hidden flex-1 flex flex-col">
+        <ScrollArea className="h-full">
+            <Table className="text-sm">
+                <TableHeader className="sticky top-0 bg-card z-10">
+                    {table.getHeaderGroups().map(headerGroup => (
+                        <TableRow key={headerGroup.id}>
+                            {headerGroup.headers.map(header => (
+                                <TableHead key={header.id} onClick={header.column.getToggleSortingHandler()} className="cursor-pointer">
+                                    {header.isPlaceholder
+                                        ? null
+                                        : <div className="flex items-center">
+                                            {flexRender(header.column.columnDef.header, header.getContext())}
+                                            {{
+                                                asc: <ArrowUp className="ml-2 h-4 w-4" />,
+                                                desc: <ArrowDown className="ml-2 h-4 w-4" />,
+                                            }[header.column.getIsSorted() as string] ?? (header.column.getCanSort() ? <ArrowUpDown className="ml-2 h-4 w-4 opacity-30"/> : null) }
+                                          </div>
+                                    }
+                                </TableHead>
+                            ))}
+                        </TableRow>
+                    ))}
+                </TableHeader>
+                <TableBody>
+                    {table.getRowModel().rows.map(row => (
+                        <TableRow key={row.id}>
+                            {row.getVisibleCells().map(cell => (
+                                <TableCell key={cell.id} className="p-2">
+                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                </TableCell>
+                            ))}
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </ScrollArea>
       </div>
       {viewingTimesheet && (
         <ViewTimesheetDialog
