@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -158,13 +158,12 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
         debouncedSave();
     };
     
-    const handleKmBlur = (day: number, field: 'startKm' | 'endKm') => {
-        const startKmValue = Number(cellStates[`${day}-startKm`] || 0);
-        const endKmValue = Number(cellStates[`${day}-endKm`] || 0);
-    
+    const handleKmBlur = (day: number, field: 'startKm' | 'endKm', value: string) => {
+        const currentValue = Number(value || 0);
+
         if (field === 'startKm' && day > 1) {
             const prevEndKm = Number(cellStates[`${day - 1}-endKm`] || 0);
-            if (startKmValue !== prevEndKm) {
+            if (currentValue !== prevEndKm) {
                 toast({
                     variant: 'destructive',
                     title: 'Invalid Start KM',
@@ -175,10 +174,11 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
         }
     
         if (field === 'endKm') {
-            if (endKmValue > 0 && !startKmValue) {
+            const startKmValue = Number(cellStates[`${day}-startKm`] || 0);
+            if (currentValue > 0 && !startKmValue) {
                 toast({ variant: 'destructive', title: 'Invalid Entry', description: 'Please enter Start KM before entering End KM.' });
                 handleInputChange(day, 'endKm', '');
-            } else if (endKmValue > 0 && endKmValue < startKmValue) {
+            } else if (currentValue > 0 && currentValue < startKmValue) {
                 toast({ variant: 'destructive', title: 'Invalid Kilometers', description: 'End KM cannot be less than Start KM. The value has been cleared.' });
                 handleInputChange(day, 'endKm', '');
             }
@@ -236,8 +236,8 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
                                     return (
                                         <TableRow key={day} className={cn((isHoliday || isSunday) && 'bg-yellow-100 dark:bg-yellow-900/30')}>
                                             <TableCell className={cn("sticky left-0 font-medium z-10 border-r", (isHoliday || isSunday) ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-card')}>{format(dateForDay, 'dd-MM-yyyy')}</TableCell>
-                                            <TableCell><Input type="number" min="0" className="h-8" value={cellStates[`${day}-startKm`] || ''} onChange={(e) => handleInputChange(day, 'startKm', e.target.value)} onBlur={() => handleKmBlur(day, 'startKm')} /></TableCell>
-                                            <TableCell><Input type="number" min="0" className="h-8" value={cellStates[`${day}-endKm`] || ''} onChange={(e) => handleInputChange(day, 'endKm', e.target.value)} onBlur={() => handleKmBlur(day, 'endKm')} /></TableCell>
+                                            <TableCell><Input type="number" min="0" className="h-8" value={cellStates[`${day}-startKm`] || ''} onChange={(e) => handleInputChange(day, 'startKm', e.target.value)} onBlur={(e) => handleKmBlur(day, 'startKm', e.target.value)} /></TableCell>
+                                            <TableCell><Input type="number" min="0" className="h-8" value={cellStates[`${day}-endKm`] || ''} onChange={(e) => handleInputChange(day, 'endKm', e.target.value)} onBlur={(e) => handleKmBlur(day, 'endKm', e.target.value)} /></TableCell>
                                             <TableCell className="font-medium text-center">{totalKm}</TableCell>
                                             <TableCell><Input className="h-8" value={cellStates[`${day}-overtime`] || ''} onChange={(e) => handleInputChange(day, 'overtime', e.target.value)} onBlur={debouncedSave} /></TableCell>
                                             <TableCell><Input className="h-8" value={cellStates[`${day}-remarks`] || ''} onChange={(e) => handleInputChange(day, 'remarks', e.target.value)} onBlur={debouncedSave} /></TableCell>
