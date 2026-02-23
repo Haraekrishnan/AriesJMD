@@ -16,6 +16,7 @@ import TimesheetTrackerTable from '@/components/job-progress/TimesheetTrackerTab
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import OngoingJobsReport from '@/components/job-progress/OngoingJobsReport';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
 
@@ -276,35 +277,39 @@ export default function JobProgressPage() {
             </div>
             <OngoingJobsReport jobs={myOngoingItems} />
           </CardHeader>
-          <CardContent className="space-y-3">
-              {myOngoingItems.length > 0 ? (
-                myOngoingItems.map(({ job, step }) => (
-                    <div key={job.id} className="p-3 border rounded-md flex justify-between items-center bg-card">
-                        <div>
-                            <p className="font-semibold">{job.title}</p>
-                            <div className="text-sm text-muted-foreground flex items-center gap-2">
-                                <span>Current Step: {step.name}</span>
-                                {step.assigneeId !== user?.id && (
-                                    <>
-                                        <span>&middot;</span>
-                                        <span>With: {users.find(u => u.id === step.assigneeId)?.name || 'Unassigned'}</span>
-                                    </>
-                                )}
+          <CardContent>
+              <ScrollArea className="h-72">
+                <div className="space-y-3 pr-4">
+                    {myOngoingItems.length > 0 ? (
+                        myOngoingItems.map(({ job, step }) => (
+                            <div key={job.id} className="p-3 border rounded-md flex justify-between items-center bg-card">
+                                <div>
+                                    <p className="font-semibold">{job.title}</p>
+                                    <div className="text-sm text-muted-foreground flex items-center gap-2">
+                                        <span>Current Step: {step.name}</span>
+                                        {step.assigneeId !== user?.id && (
+                                            <>
+                                                <span>&middot;</span>
+                                                <span>With: {users.find(u => u.id === step.assigneeId)?.name || 'Unassigned'}</span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                                <Button onClick={() => {
+                                    setCurrentJmsMonth(startOfMonth(parseISO(job.dateFrom || job.createdAt)));
+                                    setViewingJob(job);
+                                }}>View JMS</Button>
                             </div>
-                        </div>
-                        <Button onClick={() => {
-                            setCurrentJmsMonth(startOfMonth(parseISO(job.dateFrom || job.createdAt)));
-                            setViewingJob(job);
-                        }}>View JMS</Button>
-                    </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">You have no on-going activities.</p>
-              )}
+                        ))
+                    ) : (
+                        <p className="text-sm text-muted-foreground text-center pt-8">You have no on-going activities.</p>
+                    )}
+                </div>
+              </ScrollArea>
           </CardContent>
       </Card>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4 flex-1 flex flex-col">
         <TabsList>
             <TabsTrigger value="jms-tracker">JMS Tracker</TabsTrigger>
             <TabsTrigger value="timesheet-tracker">Timesheet Tracker</TabsTrigger>
