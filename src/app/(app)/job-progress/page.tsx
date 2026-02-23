@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -72,7 +73,10 @@ export default function JobProgressPage() {
     jobProgress.forEach(job => {
       if (job.creatorId === user.id && job.status !== 'Completed' && !items.has(job.id)) {
         // Find the current active step (first one that isn't completed)
-        const currentStep = (job.steps || []).find(s => s.status === 'Pending' || s.status === 'Acknowledged');
+        const currentStep =
+          job.steps.find(s => s.isReturned === true) ||
+          job.steps.find(s => s.status === 'Pending') ||
+          job.steps.find(s => s.status === 'Acknowledged');
         if (currentStep) {
           items.set(job.id, { job, step: currentStep });
         }

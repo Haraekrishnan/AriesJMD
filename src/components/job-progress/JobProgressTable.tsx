@@ -65,10 +65,19 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
           {sortedJobs.map(job => {
             const creator = users.find(u => u.id === job.creatorId);
             const progress = calculateProgress(job);
-            const currentStep = job.steps.find(s => s.isReturned === true || s.status === 'Pending' || s.status === 'Acknowledged');
+            
+            // Priority-based step detection
+            let currentStep =
+              job.steps.find(s => s.isReturned === true) ||
+              job.steps.find(s => s.status === 'Pending') ||
+              job.steps.find(s => s.status === 'Acknowledged') ||
+              null;
+
+            const isReturnedStepActive = currentStep?.isReturned === true;
+            
             const project = projects.find(p => p.id === job.projectId);
             const currentAssignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
-            const isReturnedStepActive = currentStep?.isReturned;
+            
 
             let sinceDate: string | null = null;
             if (currentStep) {
@@ -121,7 +130,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                       </div>
                     </div>
                   ) : (
-                    <span className="text-sm text-muted-foreground">N/A</span>
+                    <span className="text-sm text-muted-foreground">{isReturnedStepActive ? 'Unassigned' : 'N/A'}</span>
                   )}
                 </TableCell>
                 <TableCell>
