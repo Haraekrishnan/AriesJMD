@@ -592,7 +592,7 @@ export default function TimesheetTrackerTable({
 
   return (
     <>
-      <div className="border rounded-lg overflow-hidden flex-1 flex flex-col">
+      <div className="border rounded-lg overflow-hidden flex-1 flex flex-col min-h-0">
         <ScrollArea className="h-full">
             <Table className="text-sm">
                 <TableHeader className="sticky top-0 bg-card z-10">

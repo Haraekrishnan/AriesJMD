@@ -93,7 +93,10 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             return currentStep?.isReturned ? 'Returned' : currentStep?.name || row.status;
         },
         cell: ({ row }) => {
-            let currentStep = row.original.steps.find(s => s.isReturned === true) || row.original.steps.find(s => s.status === 'Pending') || row.original.steps.find(s => s.status === 'Acknowledged');
+            const currentStep =
+                row.original.steps.find(s => s.isReturned === true) ||
+                row.original.steps.find(s => s.status === 'Pending') ||
+                row.original.steps.find(s => s.status === 'Acknowledged');
             const isReturnedStepActive = currentStep?.isReturned === true;
             return (
                 <div className="flex items-center gap-2">
@@ -109,11 +112,14 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
         id: 'currentlyWith',
         header: 'Currently With',
         accessorFn: (row) => {
-            let currentStep = row.steps.find(s => s.isReturned === true) || row.steps.find(s => s.status === 'Pending') || row.steps.find(s => s.status === 'Acknowledged');
+            const currentStep = row.steps.find(s => s.isReturned === true) || row.steps.find(s => s.status === 'Pending') || row.steps.find(s => s.status === 'Acknowledged');
             return currentStep ? users.find(u => u.id === currentStep.assigneeId)?.name : '';
         },
         cell: ({ row }) => {
-            let currentStep = row.original.steps.find(s => s.isReturned === true) || row.original.steps.find(s => s.status === 'Pending') || row.original.steps.find(s => s.status === 'Acknowledged');
+            const currentStep =
+                row.original.steps.find(s => s.isReturned === true) ||
+                row.original.steps.find(s => s.status === 'Pending') ||
+                row.original.steps.find(s => s.status === 'Acknowledged');
             const isReturnedStepActive = currentStep?.isReturned === true;
             const currentAssignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
             let returnerInfo: { name: string; date: string } | null = null;
@@ -173,7 +179,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   }
 
   return (
-    <div className="border rounded-lg overflow-hidden flex-1 flex flex-col">
+    <div className="border rounded-lg overflow-hidden flex-1 flex flex-col min-h-0">
       <ScrollArea className="h-full">
         <Table className="text-sm">
           <TableHeader className="sticky top-0 bg-card z-10">
