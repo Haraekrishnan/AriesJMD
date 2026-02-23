@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -593,7 +594,7 @@ export default function TimesheetTrackerTable({
   return (
     <>
       <div className="border rounded-lg overflow-hidden flex-1 flex flex-col min-h-0">
-        <ScrollArea className="h-full">
+        <ScrollArea className="h-[60vh]">
             <Table className="text-sm">
                 <TableHeader className="sticky top-0 bg-card z-10">
                     {table.getHeaderGroups().map(headerGroup => (

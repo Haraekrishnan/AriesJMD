@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -93,10 +94,11 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             return currentStep?.isReturned ? 'Returned' : currentStep?.name || row.status;
         },
         cell: ({ row }) => {
-            const currentStep =
-                row.original.steps.find(s => s.isReturned === true) ||
-                row.original.steps.find(s => s.status === 'Pending') ||
-                row.original.steps.find(s => s.status === 'Acknowledged');
+            let currentStep =
+              row.original.steps.find(s => s.isReturned === true) ||
+              row.original.steps.find(s => s.status === 'Pending') ||
+              row.original.steps.find(s => s.status === 'Acknowledged') ||
+              null;
             const isReturnedStepActive = currentStep?.isReturned === true;
             return (
                 <div className="flex items-center gap-2">
@@ -116,10 +118,11 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             return currentStep ? users.find(u => u.id === currentStep.assigneeId)?.name : '';
         },
         cell: ({ row }) => {
-            const currentStep =
+            let currentStep =
                 row.original.steps.find(s => s.isReturned === true) ||
                 row.original.steps.find(s => s.status === 'Pending') ||
-                row.original.steps.find(s => s.status === 'Acknowledged');
+                row.original.steps.find(s => s.status === 'Acknowledged') ||
+                null;
             const isReturnedStepActive = currentStep?.isReturned === true;
             const currentAssignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
             let returnerInfo: { name: string; date: string } | null = null;
@@ -180,7 +183,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
 
   return (
     <div className="border rounded-lg overflow-hidden flex-1 flex flex-col min-h-0">
-      <ScrollArea className="h-full">
+      <ScrollArea className="h-[60vh]">
         <Table className="text-sm">
           <TableHeader className="sticky top-0 bg-card z-10">
             {table.getHeaderGroups().map(headerGroup => (
