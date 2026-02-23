@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect } from 'react';
@@ -12,6 +13,7 @@ import { DecorationProvider } from '@/components/decorations/DecorationProvider'
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAppContext();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (loading) {
@@ -19,10 +21,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
     if (!user) {
       router.replace('/login');
-    } else if (user.status === 'locked') {
+    } else if (user.status === 'locked' && pathname !== '/status') {
       router.replace('/status');
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, pathname]);
 
   if (loading || !user || user.status === 'locked') {
     return (

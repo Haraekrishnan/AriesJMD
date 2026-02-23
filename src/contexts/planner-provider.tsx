@@ -169,7 +169,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             userId: user.id,
             text: commentText,
             date: new Date().toISOString(),
-            eventId: jobId
+            eventId: jobId,
         };
         set(newCommentRef, newComment);
     }, [user, jobProgressById]);
@@ -944,27 +944,42 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         
         toast({ title: "Step Returned", description: "The step has been unassigned and is now pending." });
 
-        // Notify job creator
+        // Create a set of people to notify
+        const recipients = new Set<User>();
         const creator = users.find(u => u.id === job.creatorId);
-        if (creator && creator.email && creator.id !== user.id) {
-            const htmlBody = `
-                <p>A step in your job "${job.title}" was returned by <strong>${user.name}</strong>.</p>
-                <hr>
-                <h3>Step: ${currentStep.name}</h3>
-                <p><strong>Reason for return:</strong> ${reason}</p>
-                <p>Please reassign the step in the app.</p>
-                <a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Job</a>
-            `;
-            sendNotificationEmail({
-                to: [creator.email],
-                subject: `Step Returned for Job: ${job.title}`,
-                htmlBody: htmlBody,
-                notificationSettings,
-                event: 'onTaskReturned', 
-                involvedUser: creator,
-                creatorUser: user,
-            });
+        if (creator && creator.id !== user.id) recipients.add(creator);
+        
+        if (stepIndex > 0) {
+            const prevStepAssigneeId = job.steps[stepIndex - 1].assigneeId;
+            const prevStepAssignee = users.find(u => u.id === prevStepAssigneeId);
+            if (prevStepAssignee && prevStepAssignee.id !== user.id) {
+                recipients.add(prevStepAssignee);
+            }
         }
+        
+        // Notify recipients
+        recipients.forEach(recipient => {
+            if (recipient.email) {
+                const htmlBody = `
+                    <p>A step in the job "${job.title}" was returned by <strong>${user.name}</strong>.</p>
+                    <hr>
+                    <h3>Step: ${currentStep.name}</h3>
+                    <p><strong>Reason for return:</strong> ${reason}</p>
+                    <p>Please review the job in the app.</p>
+                    <a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Job</a>
+                `;
+                sendNotificationEmail({
+                    to: [recipient.email],
+                    subject: `Step Returned for Job: ${job.title}`,
+                    htmlBody: htmlBody,
+                    notificationSettings,
+                    event: 'onTaskReturned', 
+                    involvedUser: recipient,
+                    creatorUser: user,
+                });
+            }
+        });
+
     }, [user, jobProgressById, addJobStepComment, toast, users, notificationSettings]);
     
     useEffect(() => {
@@ -1004,7 +1019,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         deleteJobRecordPlant, carryForwardPlantAssignments,
         saveVehicleUsageRecord, lockVehicleUsageSheet, unlockVehicleUsageSheet,
         createJobProgress, updateJobProgress, deleteJobProgress, updateJobStep, updateJobStepStatus,
-        addAndCompleteStep, addJobStepComment, reassignJobStep, assignJobStep,
+        addAndCompleteStep, reassignJobStep, assignJobStep,
         completeJobAsFinalStep, returnJobStep, reopenJob,
         addTimesheet,
         updateTimesheetStatus,
@@ -1023,3 +1038,4 @@ export const usePlanner = (): PlannerContextType => {
 };
 
     
+

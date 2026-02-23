@@ -1,7 +1,6 @@
-
 'use client';
 import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { LogOut, ShieldAlert } from 'lucide-react';
@@ -13,6 +12,7 @@ export default function StatusPage() {
   const { user, loading, logout, requestUnlock } = useAppContext();
   const { toast } = useToast();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!loading) {
@@ -34,11 +34,11 @@ export default function StatusPage() {
     }
   };
 
-  if (loading || !user || user.status !== 'locked') {
+  if (loading || !user || (user && user.status !== 'locked')) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="text-center space-y-2">
-          <p className="text-muted-foreground">Redirecting...</p>
+          <p className="text-muted-foreground">Verifying status...</p>
           <div className="flex items-center space-x-4">
             <Skeleton className="h-12 w-12 rounded-full" />
             <div className="space-y-2">

@@ -79,6 +79,5 @@ export const useAppContext = () => {
   if (context === undefined) {
     throw new Error('useAppContext must be used within an AppProvider');
   }
-  return context;
+  return context as ReturnType<typeof useAuth> & ReturnType<typeof useGeneral> & ReturnType<typeof useInventory> & ReturnType<typeof useManpower> & ReturnType<typeof usePlanner> & ReturnType<typeof usePurchase> & ReturnType<typeof useTask> & ReturnType<typeof useConsumable> & ReturnType<typeof useAccommodation> & ReturnType<typeof useDecorations>;
 };
-
