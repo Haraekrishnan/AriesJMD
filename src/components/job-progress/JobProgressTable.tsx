@@ -68,7 +68,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             const currentStep = job.steps.find(s => s.status === 'Pending' || s.status === 'Acknowledged');
             const project = projects.find(p => p.id === job.projectId);
             const currentAssignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
-            const isReturned = currentStep?.isReturned;
+            const isReturned = job.steps.some(s => s.isReturned);
 
             let sinceDate: string | null = null;
             if (currentStep) {
