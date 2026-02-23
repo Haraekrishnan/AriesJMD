@@ -37,7 +37,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   }
 
   const calculateProgress = (job: JobProgress): number => {
-    const completedSteps = job.steps.filter(s => s.status === 'Completed').length;
+    const completedSteps = job.steps.filter(s => s.status === 'Completed' && !s.isReturned).length;
     if (job.steps.length === 0) return 0;
     return (completedSteps / job.steps.length) * 100;
   };
@@ -65,7 +65,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
           {sortedJobs.map(job => {
             const creator = users.find(u => u.id === job.creatorId);
             const progress = calculateProgress(job);
-            const currentStep = job.steps.find(s => s.status === 'Pending' || s.status === 'Acknowledged');
+            const currentStep = job.steps.find(s => s.isReturned === true || s.status === 'Pending' || s.status === 'Acknowledged');
             const project = projects.find(p => p.id === job.projectId);
             const currentAssignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
             const isReturnedStepActive = currentStep?.isReturned;
