@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -45,8 +46,8 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN').format(amount);
 
   return (
-    <div className="border rounded-lg overflow-x-auto">
-      <Table>
+    <div className="border rounded-lg overflow-x-auto flex-1">
+      <Table className="text-sm">
         <TableHeader>
           <TableRow>
             <TableHead>JMS Title</TableHead>
@@ -57,7 +58,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             <TableHead>Created By</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Currently With</TableHead>
-            <TableHead className="w-[200px]">Progress</TableHead>
+            <TableHead className="w-[150px]">Progress</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -66,7 +67,6 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             const creator = users.find(u => u.id === job.creatorId);
             const progress = calculateProgress(job);
             
-            // Priority-based step detection
             let currentStep =
               job.steps.find(s => s.isReturned === true) ||
               job.steps.find(s => s.status === 'Pending') ||
@@ -114,20 +114,20 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                 className={cn("cursor-pointer", job.isReopened && "bg-orange-100 dark:bg-orange-900/40 border-l-4 border-orange-500")}
                 onClick={() => onViewJob(job)}
               >
-                <TableCell className="font-medium">{job.title}</TableCell>
-                <TableCell>
-                    <p className="font-medium">{project?.name || 'N/A'}</p>
+                <TableCell className="font-medium p-2">{job.title}</TableCell>
+                <TableCell className="p-2">
+                    <p>{project?.name || 'N/A'}</p>
                     {job.plantUnit && <p className="text-xs text-muted-foreground">{job.plantUnit}</p>}
                 </TableCell>
-                <TableCell>{job.jmsNo || 'N/A'}</TableCell>
-                <TableCell className="font-medium">
+                <TableCell className="p-2">{job.jmsNo || 'N/A'}</TableCell>
+                <TableCell className="p-2 font-medium">
                   {job.amount ? formatCurrency(job.amount) : 'N/A'}
                 </TableCell>
-                <TableCell>
+                <TableCell className="p-2 text-xs whitespace-nowrap">
                     {job.dateFrom ? format(parseISO(job.dateFrom), 'dd-MM-yy') : 'N/A'} - {job.dateTo ? format(parseISO(job.dateTo), 'dd-MM-yy') : 'N/A'}
                 </TableCell>
-                <TableCell>{creator?.name || 'Unknown'}</TableCell>
-                <TableCell>
+                <TableCell className="p-2">{creator?.name || 'Unknown'}</TableCell>
+                <TableCell className="p-2">
                   <div className="flex items-center gap-2">
                     <Badge variant={isReturnedStepActive ? 'destructive' : statusVariantMap[job.status]}>
                         {isReturnedStepActive ? 'Returned' : (currentStep ? currentStep.name : job.status)}
@@ -135,23 +135,15 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                     {job.isReopened && <Badge variant="warning">Reopened</Badge>}
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="p-2">
                   {currentAssignee ? (
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage src={currentAssignee.avatar} />
-                        <AvatarFallback>{currentAssignee.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <span className="text-sm">{currentAssignee.name}</span>
-                        {sinceDate && <p className="text-xs text-muted-foreground">since {sinceDate}</p>}
-                      </div>
+                    <div>
+                      <span>{currentAssignee.name}</span>
+                      {sinceDate && <p className="text-xs text-muted-foreground">since {sinceDate}</p>}
                     </div>
                   ) : returnerInfo ? (
                     <div className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6 border-2 border-destructive flex items-center justify-center bg-destructive/10">
-                            <Undo2 className="h-3 w-3 text-destructive" />
-                        </Avatar>
+                        <Undo2 className="h-4 w-4 text-destructive shrink-0" />
                         <div>
                             <span className="text-sm text-destructive">Returned by {returnerInfo.name}</span>
                             <p className="text-xs text-muted-foreground">{returnerInfo.date}</p>
@@ -161,13 +153,13 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                     <span className="text-sm text-muted-foreground">{isReturnedStepActive ? 'Unassigned' : 'N/A'}</span>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell className="p-2">
                   <div className="flex items-center gap-2">
-                    <Progress value={progress} />
+                    <Progress value={progress} className="h-2" />
                     <span className="text-xs text-muted-foreground">{Math.round(progress)}%</span>
                   </div>
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right p-2">
                     <Button variant="outline" size="sm">View Details</Button>
                 </TableCell>
               </TableRow>

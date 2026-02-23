@@ -199,7 +199,7 @@ export default function JobProgressPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 h-full flex flex-col">
        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Trackers</h1>
@@ -305,12 +305,12 @@ export default function JobProgressPage() {
           </CardContent>
       </Card>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         <TabsList>
             <TabsTrigger value="jms-tracker">JMS Tracker</TabsTrigger>
             <TabsTrigger value="timesheet-tracker">Timesheet Tracker</TabsTrigger>
         </TabsList>
-        <TabsContent value="jms-tracker" className="mt-4">
+        <TabsContent value="jms-tracker" className="mt-4 flex-1 flex flex-col">
             <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="icon" onClick={() => changeJmsMonth(-1)} disabled={!canGoToPreviousJmsMonth}>
@@ -338,17 +338,9 @@ export default function JobProgressPage() {
                     )}
                 </div>
             </div>
-            <Card>
-                <CardHeader>
-                  <CardTitle>JMS for {format(currentJmsMonth, 'MMMM yyyy')}</CardTitle>
-                  <CardDescription>A list of all JMS with start dates in this month and their current status.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <JobProgressTable jobs={filteredJobs} onViewJob={setViewingJob} />
-                </CardContent>
-            </Card>
+            <JobProgressTable jobs={filteredJobs} onViewJob={setViewingJob} />
         </TabsContent>
-        <TabsContent value="timesheet-tracker" className="mt-4">
+        <TabsContent value="timesheet-tracker" className="mt-4 flex-1 flex flex-col">
             <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="icon" onClick={() => changeTimesheetMonth(-1)} disabled={!canGoToPreviousTimesheetMonth}>
@@ -374,15 +366,7 @@ export default function JobProgressPage() {
                     </Button>
                 </div>
             </div>
-             <Card>
-                <CardHeader>
-                  <CardTitle>Timesheet Submissions for {format(currentTimesheetMonth, 'MMMM yyyy')}</CardTitle>
-                  <CardDescription>Track the submission and approval status of all timesheets.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <TimesheetTrackerTable timesheets={filteredTimesheets}/>
-                </CardContent>
-            </Card>
+             <TimesheetTrackerTable timesheets={filteredTimesheets}/>
         </TabsContent>
       </Tabs>
 
