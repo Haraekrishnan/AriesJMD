@@ -927,6 +927,7 @@ export type JobStep = {
   description?: string;
   dueDate?: string; // ISO string
   requiresAttachment?: boolean;
+  isReturned?: boolean;
   
   acknowledgedAt?: string; // ISO
   completedAt?: string; // ISO

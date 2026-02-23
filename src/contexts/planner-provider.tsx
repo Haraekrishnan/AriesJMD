@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -606,6 +607,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         
         if (newStatus === 'Acknowledged') {
             updates[`${stepPath}/acknowledgedAt`] = new Date().toISOString();
+            updates[`${stepPath}/isReturned`] = null; // Clear the flag
         } else if (newStatus === 'Completed') {
             updates[`${stepPath}/completedAt`] = new Date().toISOString();
             updates[`${stepPath}/completedBy`] = user.id;
@@ -743,6 +745,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       updates[`${stepPath}/assigneeId`] = newAssigneeId;
       updates[`${stepPath}/status`] = 'Pending';
       updates[`${stepPath}/acknowledgedAt`] = null; // Reset acknowledgment
+      updates[`${stepPath}/isReturned`] = null;
   
       const newCommentRef = push(ref(rtdb, `${stepPath}/comments`));
       const newComment: Omit<Comment, 'id'> = {
@@ -780,7 +783,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
               creatorUser: user,
           });
       }
-    }, [user, jobProgressById, users, toast, notificationSettings, getAssignableUsers]);
+    }, [user, jobProgressById, users, toast, notificationSettings, getAssignableUsers, addJobStepComment]);
 
     const assignJobStep = useCallback((jobId: string, stepId: string, assigneeId: string) => {
         if (!user) return;
@@ -934,6 +937,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         updates[`${stepPath}/assigneeId`] = null;
         updates[`${stepPath}/status`] = 'Pending';
         updates[`${stepPath}/acknowledgedAt`] = null;
+        updates[`${stepPath}/isReturned`] = true;
 
         updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
 
@@ -1038,4 +1042,5 @@ export const usePlanner = (): PlannerContextType => {
 };
 
     
+
 

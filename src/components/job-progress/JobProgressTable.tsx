@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -67,6 +68,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             const currentStep = job.steps.find(s => s.status === 'Pending' || s.status === 'Acknowledged');
             const project = projects.find(p => p.id === job.projectId);
             const currentAssignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
+            const isReturned = currentStep?.isReturned;
 
             let sinceDate: string | null = null;
             if (currentStep) {
@@ -100,8 +102,8 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                 <TableCell>{creator?.name || 'Unknown'}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <Badge variant={statusVariantMap[job.status]}>
-                        {currentStep ? currentStep.name : job.status}
+                    <Badge variant={isReturned ? 'destructive' : statusVariantMap[job.status]}>
+                        {isReturned ? 'Returned' : (currentStep ? currentStep.name : job.status)}
                     </Badge>
                     {job.isReopened && <Badge variant="warning">Reopened</Badge>}
                   </div>
