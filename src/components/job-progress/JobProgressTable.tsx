@@ -90,20 +90,20 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
         id: 'status',
         header: 'Status',
         accessorFn: (row) => {
-            let currentStep =
-              row.steps.find(s => s.isReturned === true) ||
-              row.steps.find(s => s.status === 'Pending') ||
-              row.steps.find(s => s.status === 'Acknowledged') ||
-              null;
-            return currentStep?.isReturned ? 'Returned' : currentStep?.name || row.status;
+            const returnedStep = row.steps.find(s => s.isReturned === true);
+            const pendingStep = row.steps.find(s => s.status === 'Pending');
+            const acknowledgedStep = row.steps.find(s => s.status === 'Acknowledged');
+
+            const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
+            return currentStep?.name || row.status;
         },
         cell: ({ row }) => {
-            let currentStep =
-              row.original.steps.find(s => s.isReturned === true) ||
-              row.original.steps.find(s => s.status === 'Pending') ||
-              row.original.steps.find(s => s.status === 'Acknowledged') ||
-              null;
-            const isReturnedStepActive = currentStep?.isReturned === true;
+            const returnedStep = row.original.steps.find(s => s.isReturned === true);
+            const pendingStep = row.original.steps.find(s => s.status === 'Pending');
+            const acknowledgedStep = row.original.steps.find(s => s.status === 'Acknowledged');
+
+            const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
+            const isReturnedStepActive = !!returnedStep;
             
             const variant = isReturnedStepActive 
               ? 'destructive' 
@@ -123,20 +123,17 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
         id: 'acknowledgmentStatus',
         header: 'Acknowledgment',
         cell: ({ row }) => {
-            let currentStep =
-              row.original.steps.find(s => s.isReturned === true) ||
-              row.original.steps.find(s => s.status === 'Pending') ||
-              row.original.steps.find(s => s.status === 'Acknowledged') ||
-              null;
-            
-            const isReturnedStepActive = currentStep?.isReturned === true;
-            if (isReturnedStepActive) {
-                return <Badge variant="destructive">Step Returned</Badge>;
+            const returnedStep = row.original.steps.find(s => s.isReturned === true);
+            const pendingStep = row.original.steps.find(s => s.status === 'Pending');
+            const acknowledgedStep = row.original.steps.find(s => s.status === 'Acknowledged');
+
+            if (returnedStep) {
+                return <Badge variant="destructive">Returned</Badge>;
             }
-            if (currentStep?.status === 'Acknowledged') {
+            if (acknowledgedStep) {
                 return <Badge variant="success">Acknowledged</Badge>;
             }
-            if (currentStep?.status === 'Pending') {
+            if (pendingStep) {
                 return <Badge variant="secondary">Pending Acknowledgment</Badge>;
             }
             if (row.original.status === 'Completed') {
@@ -149,22 +146,21 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
         id: 'currentlyWith',
         header: 'Currently With',
         accessorFn: (row) => {
-            let currentStep =
-                row.steps.find(s => s.isReturned === true) ||
-                row.steps.find(s => s.status === 'Pending') ||
-                row.steps.find(s => s.status === 'Acknowledged') ||
-                null;
-            const isReturnedStepActive = currentStep?.isReturned === true;
+            const returnedStep = row.steps.find(s => s.isReturned === true);
+            const pendingStep = row.steps.find(s => s.status === 'Pending');
+            const acknowledgedStep = row.steps.find(s => s.status === 'Acknowledged');
+            const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
+
             const currentAssignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
-            return currentAssignee?.name || (isReturnedStepActive ? 'Unassigned' : '');
+            return currentAssignee?.name || '';
         },
         cell: ({ row }) => {
-            let currentStep =
-                row.original.steps.find(s => s.isReturned === true) ||
-                row.original.steps.find(s => s.status === 'Pending') ||
-                row.original.steps.find(s => s.status === 'Acknowledged') ||
-                null;
-            const isReturnedStepActive = currentStep?.isReturned === true;
+            const returnedStep = row.original.steps.find(s => s.isReturned === true);
+            const pendingStep = row.original.steps.find(s => s.status === 'Pending');
+            const acknowledgedStep = row.original.steps.find(s => s.status === 'Acknowledged');
+            const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
+
+            const isReturnedStepActive = !!returnedStep;
             const currentAssignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
             let returnerInfo: { name: string; date: string } | null = null;
             if (isReturnedStepActive && currentStep) {
@@ -224,7 +220,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
 
   return (
     <div className="border rounded-lg overflow-hidden flex-1 flex flex-col min-h-0">
-      <ScrollArea className="h-full">
+      <ScrollArea className="h-[60vh]">
         <Table className="text-sm">
           <TableHeader className="sticky top-0 bg-card z-10">
             {table.getHeaderGroups().map(headerGroup => (
