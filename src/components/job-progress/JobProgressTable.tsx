@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -11,6 +10,7 @@ import type { JobProgress, JobProgressStatus } from '@/lib/types';
 import { format, startOfMonth, addMonths, subMonths, isSameMonth, parseISO, isBefore, isAfter, startOfToday, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Undo2 } from 'lucide-react';
 
 interface JobProgressTableProps {
   jobs: JobProgress[];
@@ -78,9 +78,27 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             const project = projects.find(p => p.id === job.projectId);
             const currentAssignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
             
+            let returnerInfo: { name: string; date: string } | null = null;
+            if (isReturnedStepActive && currentStep) {
+                const comments = Array.isArray(currentStep.comments)
+                    ? currentStep.comments
+                    : Object.values(currentStep.comments || {});
+                
+                const returnComment = comments
+                    .filter(c => c && c.text && c.text.includes('was returned by'))
+                    .sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime())[0];
+
+                if (returnComment) {
+                    const returner = users.find(u => u.id === returnComment.userId);
+                    returnerInfo = {
+                        name: returner?.name || 'Unknown',
+                        date: formatDistanceToNow(parseISO(returnComment.date), { addSuffix: true })
+                    };
+                }
+            }
 
             let sinceDate: string | null = null;
-            if (currentStep) {
+            if (currentStep && !returnerInfo) {
                 const dateToCompare = currentStep.status === 'Acknowledged' && currentStep.acknowledgedAt
                     ? currentStep.acknowledgedAt
                     : job.lastUpdated;
@@ -128,6 +146,16 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                         <span className="text-sm">{currentAssignee.name}</span>
                         {sinceDate && <p className="text-xs text-muted-foreground">since {sinceDate}</p>}
                       </div>
+                    </div>
+                  ) : returnerInfo ? (
+                    <div className="flex items-center gap-2">
+                        <Avatar className="h-6 w-6 border-2 border-destructive flex items-center justify-center bg-destructive/10">
+                            <Undo2 className="h-3 w-3 text-destructive" />
+                        </Avatar>
+                        <div>
+                            <span className="text-sm text-destructive">Returned by {returnerInfo.name}</span>
+                            <p className="text-xs text-muted-foreground">{returnerInfo.date}</p>
+                        </div>
                     </div>
                   ) : (
                     <span className="text-sm text-muted-foreground">{isReturnedStepActive ? 'Unassigned' : 'N/A'}</span>
