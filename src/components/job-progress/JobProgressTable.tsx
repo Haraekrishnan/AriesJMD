@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -90,7 +89,11 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
         id: 'status',
         header: 'Status',
         accessorFn: (row) => {
-            const currentStep = row.steps.find(s => s.isReturned === true) || row.steps.find(s => s.status === 'Pending') || row.steps.find(s => s.status === 'Acknowledged');
+            let currentStep =
+              row.steps.find(s => s.isReturned === true) ||
+              row.steps.find(s => s.status === 'Pending') ||
+              row.steps.find(s => s.status === 'Acknowledged') ||
+              null;
             return currentStep?.isReturned ? 'Returned' : currentStep?.name || row.status;
         },
         cell: ({ row }) => {
@@ -111,11 +114,42 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
         }
       },
       {
+        id: 'acknowledgmentStatus',
+        header: 'Acknowledgment',
+        cell: ({ row }) => {
+            const currentStep =
+              row.original.steps.find(s => s.isReturned === true) ||
+              row.original.steps.find(s => s.status === 'Pending') ||
+              row.original.steps.find(s => s.status === 'Acknowledged') ||
+              null;
+
+            if (currentStep?.isReturned) {
+                return <Badge variant="destructive">Step Returned</Badge>;
+            }
+            if (currentStep?.status === 'Acknowledged') {
+                return <Badge variant="success">Acknowledged</Badge>;
+            }
+            if (currentStep?.status === 'Pending') {
+                return <Badge variant="secondary">Pending Acknowledgment</Badge>;
+            }
+            if (row.original.status === 'Completed') {
+                return <Badge variant="outline">Completed</Badge>;
+            }
+            return <span className="text-muted-foreground">N/A</span>;
+        }
+      },
+      {
         id: 'currentlyWith',
         header: 'Currently With',
         accessorFn: (row) => {
-            const currentStep = row.steps.find(s => s.isReturned === true) || row.steps.find(s => s.status === 'Pending') || row.steps.find(s => s.status === 'Acknowledged');
-            return currentStep ? users.find(u => u.id === currentStep.assigneeId)?.name : '';
+            let currentStep =
+                row.steps.find(s => s.isReturned === true) ||
+                row.steps.find(s => s.status === 'Pending') ||
+                row.steps.find(s => s.status === 'Acknowledged') ||
+                null;
+            const isReturnedStepActive = currentStep?.isReturned === true;
+            const currentAssignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
+            return currentAssignee?.name || (isReturnedStepActive ? 'Unassigned' : '');
         },
         cell: ({ row }) => {
             let currentStep =
@@ -183,7 +217,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
 
   return (
     <div className="border rounded-lg overflow-hidden flex-1 flex flex-col min-h-0">
-      <ScrollArea className="h-[60vh]">
+      <ScrollArea className="h-full">
         <Table className="text-sm">
           <TableHeader className="sticky top-0 bg-card z-10">
             {table.getHeaderGroups().map(headerGroup => (
