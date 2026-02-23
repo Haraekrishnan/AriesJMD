@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -103,9 +104,14 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
               row.original.steps.find(s => s.status === 'Acknowledged') ||
               null;
             const isReturnedStepActive = currentStep?.isReturned === true;
+            
+            const variant = isReturnedStepActive 
+              ? 'destructive' 
+              : statusVariantMap[row.original.status];
+
             return (
                 <div className="flex items-center gap-2">
-                    <Badge variant={isReturnedStepActive ? 'destructive' : statusVariantMap[row.original.status]}>
+                    <Badge variant={variant}>
                         {isReturnedStepActive ? 'Returned' : (currentStep ? currentStep.name : row.original.status)}
                     </Badge>
                     {row.original.isReopened && <Badge variant="warning">Reopened</Badge>}
@@ -117,13 +123,14 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
         id: 'acknowledgmentStatus',
         header: 'Acknowledgment',
         cell: ({ row }) => {
-            const currentStep =
+            let currentStep =
               row.original.steps.find(s => s.isReturned === true) ||
               row.original.steps.find(s => s.status === 'Pending') ||
               row.original.steps.find(s => s.status === 'Acknowledged') ||
               null;
-
-            if (currentStep?.isReturned) {
+            
+            const isReturnedStepActive = currentStep?.isReturned === true;
+            if (isReturnedStepActive) {
                 return <Badge variant="destructive">Step Returned</Badge>;
             }
             if (currentStep?.status === 'Acknowledged') {
