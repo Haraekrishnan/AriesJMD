@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
@@ -11,7 +10,7 @@ import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Checkbox } from '../ui/checkbox';
-import { format, getDay, getDaysInMonth, parseISO } from 'date-fns';
+import { format, getDay, getDaysInMonth, parse, parseISO, isValid } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../ui/dialog';
 import { ScrollArea } from '../ui/scroll-area';
 import { Vehicle } from '@/lib/types';
@@ -24,6 +23,16 @@ interface EditVehicleUsageDialogProps {
   currentMonth: Date;
 }
 
+// --- DEBOUNCE UTILITY ---
+function debounce<T extends (...args: any[]) => void>(func: T, delay: number): (...args: Parameters<T>) => void {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    return function(this: ThisParameterType<T>, ...args: Parameters<T>) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func.apply(this, args), delay);
+    };
+}
+
+
 export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, currentMonth }: EditVehicleUsageDialogProps) {
     const { saveVehicleUsageRecord, vehicleUsageRecords } = useAppContext();
     const { toast } = useToast();
@@ -34,7 +43,49 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
       verifiedByName: '', verifiedByDate: undefined as Date | undefined,
     });
     const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
+    
+    const saveData = useCallback(() => {
+        if (!vehicle.id) return;
+        const dataToSave: Partial<any> = {
+            days: dayHeaders.reduce((acc, day) => {
+                acc[day] = {
+                    startKm: Number(cellStates[`${day}-startKm`] || 0),
+                    endKm: Number(cellStates[`${day}-endKm`] || 0),
+                    overtime: cellStates[`${day}-overtime`] || '',
+                    remarks: cellStates[`${day}-remarks`] || '',
+                    isHoliday: cellStates[`${day}-isHoliday`] || false,
+                };
+                return acc;
+            }, {} as any),
+            jobNo: headerStates.jobNo,
+            vehicleType: headerStates.vehicleType,
+            extraKm: monthlyTotalKm > 3000 ? monthlyTotalKm - 3000 : 0,
+            headerOvertime: monthlyTotalOvertime,
+            extraNight: Number(headerStates.extraNight || 0),
+            extraDays: Number(headerStates.extraDays || 0),
+            verifiedBy: {
+                name: headerStates.verifiedByName || null,
+                date: headerStates.verifiedByDate ? headerStates.verifiedByDate.toISOString() : null
+            }
+        };
+
+        saveVehicleUsageRecord(monthKey, vehicle.id, dataToSave)
+            .then(() => {
+                setSaveState('saved');
+                setTimeout(() => setSaveState('idle'), 2000);
+            })
+            .catch((error) => {
+                setSaveState('idle');
+                toast({ title: "Auto-save Failed", description: error.message, variant: 'destructive' });
+            });
+    }, [cellStates, headerStates, vehicle.id, monthKey, dayHeaders, monthlyTotalKm, monthlyTotalOvertime, saveVehicleUsageRecord, toast]);
+    
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const debouncedSave = useCallback(() => {
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        setSaveState('saving');
+        saveTimeoutRef.current = setTimeout(saveData, 1500);
+    }, [saveData]);
 
     const monthKey = useMemo(() => format(currentMonth, 'yyyy-MM'), [currentMonth]);
     
@@ -100,67 +151,17 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
         return `${hours}:${minutes.toString().padStart(2, '0')}`;
     }, [cellStates, dayHeaders]);
 
-    const saveData = useCallback(() => {
-      if (!vehicle.id) return;
-      const dataToSave: Partial<any> = {
-          days: dayHeaders.reduce((acc, day) => {
-              acc[day] = {
-                  startKm: Number(cellStates[`${day}-startKm`] || 0),
-                  endKm: Number(cellStates[`${day}-endKm`] || 0),
-                  overtime: cellStates[`${day}-overtime`] || '',
-                  remarks: cellStates[`${day}-remarks`] || '',
-                  isHoliday: cellStates[`${day}-isHoliday`] || false,
-              };
-              return acc;
-          }, {} as any),
-          jobNo: headerStates.jobNo,
-          vehicleType: headerStates.vehicleType,
-          extraKm: monthlyTotalKm > 3000 ? monthlyTotalKm - 3000 : 0,
-          headerOvertime: monthlyTotalOvertime,
-          extraNight: Number(headerStates.extraNight || 0),
-          extraDays: Number(headerStates.extraDays || 0),
-          verifiedBy: {
-              name: headerStates.verifiedByName || null,
-              date: headerStates.verifiedByDate ? headerStates.verifiedByDate.toISOString() : null
-          }
-      };
-
-      saveVehicleUsageRecord(monthKey, vehicle.id, dataToSave)
-          .then(() => {
-              setSaveState('saved');
-              setTimeout(() => setSaveState('idle'), 2000);
-          })
-          .catch((error) => {
-              setSaveState('idle');
-              toast({ title: "Auto-save Failed", description: error.message, variant: 'destructive' });
-          });
-    }, [cellStates, headerStates, vehicle.id, monthKey, dayHeaders, monthlyTotalKm, monthlyTotalOvertime, saveVehicleUsageRecord, toast]);
-
-    const debouncedSave = useCallback(() => {
-        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-        setSaveState('saving');
-        saveTimeoutRef.current = setTimeout(saveData, 1500);
-    }, [saveData]);
-    
-    const handleInputChange = (day: number, field: string, value: string | number | boolean) => {
+    const handleInputChange = (day: number, field: string, value: string) => {
         const dayKey = `${day}-${field}`;
-        const nextDayKey = `${day + 1}-startKm`;
-    
         if ((field === 'startKm' || field === 'endKm') && Number(value) < 0) {
             return;
         }
-
-        const newCellStates = { ...cellStates, [dayKey]: value };
-        if (field === 'endKm' && day < getDaysInMonth(currentMonth)) {
-            newCellStates[nextDayKey] = value;
-        }
-        setCellStates(newCellStates);
-        debouncedSave();
+        setCellStates(prev => ({...prev, [dayKey]: value}));
     };
     
     const handleKmBlur = (day: number, field: 'startKm' | 'endKm', value: string) => {
         const currentValue = Number(value || 0);
-
+    
         if (field === 'startKm' && day > 1) {
             const prevEndKm = Number(cellStates[`${day - 1}-endKm`] || 0);
             if (currentValue !== prevEndKm) {
@@ -169,7 +170,8 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
                     title: 'Invalid Start KM',
                     description: `Start KM for day ${day} must match End KM of day ${day - 1}. Resetting value.`,
                 });
-                handleInputChange(day, 'startKm', prevEndKm);
+                setCellStates(prev => ({...prev, [`${day}-startKm`]: String(prevEndKm)}));
+                return;
             }
         }
     
@@ -177,12 +179,23 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
             const startKmValue = Number(cellStates[`${day}-startKm`] || 0);
             if (currentValue > 0 && !startKmValue) {
                 toast({ variant: 'destructive', title: 'Invalid Entry', description: 'Please enter Start KM before entering End KM.' });
-                handleInputChange(day, 'endKm', '');
+                setCellStates(prev => ({...prev, [`${day}-endKm`]: ''}));
+                return;
             } else if (currentValue > 0 && currentValue < startKmValue) {
                 toast({ variant: 'destructive', title: 'Invalid Kilometers', description: 'End KM cannot be less than Start KM. The value has been cleared.' });
-                handleInputChange(day, 'endKm', '');
+                setCellStates(prev => ({...prev, [`${day}-endKm`]: ''}));
+                return;
+            }
+            
+            if (day < getDaysInMonth(currentMonth)) {
+                setCellStates(prev => ({
+                    ...prev,
+                    [`${day + 1}-startKm`]: String(currentValue)
+                }));
             }
         }
+        
+        debouncedSave();
     };
     
     const handleHeaderChange = (field: keyof typeof headerStates, value: string | number | Date | undefined) => {
@@ -241,7 +254,7 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
                                             <TableCell className="font-medium text-center">{totalKm}</TableCell>
                                             <TableCell><Input className="h-8" value={cellStates[`${day}-overtime`] || ''} onChange={(e) => handleInputChange(day, 'overtime', e.target.value)} onBlur={debouncedSave} /></TableCell>
                                             <TableCell><Input className="h-8" value={cellStates[`${day}-remarks`] || ''} onChange={(e) => handleInputChange(day, 'remarks', e.target.value)} onBlur={debouncedSave} /></TableCell>
-                                            <TableCell className="text-center"><Checkbox checked={isHoliday} onCheckedChange={(checked) => handleInputChange(day, 'isHoliday', !!checked)} /></TableCell>
+                                            <TableCell className="text-center"><Checkbox checked={isHoliday} onCheckedChange={(checked) => handleInputChange(day, 'isHoliday', !!checked)} onBlur={debouncedSave} /></TableCell>
                                         </TableRow>
                                     )
                                 })}
@@ -260,5 +273,3 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
         </Dialog>
     );
 }
-
-    
