@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { JobProgress } from '@/lib/types';
@@ -24,24 +23,28 @@ const JobCard = ({ job, onViewJob }: { job: JobProgress; onViewJob: (job: JobPro
     return (
         <Card onClick={() => onViewJob(job)} className="cursor-pointer hover:shadow-md">
             <CardContent className="p-3 space-y-2">
-                <p className="font-semibold text-sm">{job.title}</p>
-                <div className="flex justify-between items-center">
-                    <p className="text-xs text-muted-foreground">{project?.name || 'N/A'}</p>
+                <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                        <p className="font-semibold text-sm leading-tight">{job.title}</p>
+                        <p className="text-xs text-muted-foreground">{job.plantUnit || project?.name || 'N/A'}</p>
+                    </div>
                     {assignee && (
-                        <div className="flex items-center gap-1">
-                            <Avatar className="h-5 w-5">
+                        <div className="flex-shrink-0">
+                            <Avatar className="h-6 w-6">
                                 <AvatarImage src={assignee.avatar} />
                                 <AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback>
                             </Avatar>
                         </div>
                     )}
                 </div>
-                 {currentStep && <Badge variant={returnedStep ? 'destructive' : (acknowledgedStep ? 'default' : 'secondary')}>{currentStep.name}</Badge>}
+
+                {currentStep && <Badge variant={returnedStep ? 'destructive' : (acknowledgedStep ? 'default' : 'secondary')}>{currentStep.name}</Badge>}
+                
+                <div className="text-xs text-muted-foreground pt-1 flex justify-between">
+                    <span>{job.dateFrom ? format(new Date(job.dateFrom), 'dd MMM') : (job.createdAt ? format(new Date(job.createdAt), 'dd MMM') : '')}</span>
+                    {job.jmsNo && <span>JMS: {job.jmsNo}</span>}
+                </div>
             </CardContent>
-            <CardFooter className="p-3 pt-0 text-xs text-muted-foreground">
-                {job.dateFrom && <span>{format(new Date(job.dateFrom), 'dd MMM')}</span>}
-                {job.jmsNo && <span>JMS: {job.jmsNo}</span>}
-            </CardFooter>
         </Card>
     )
 }
@@ -118,4 +121,3 @@ export default function JobProgressBoard({ jobs, onViewJob }: { jobs: JobProgres
     </div>
   );
 }
-
