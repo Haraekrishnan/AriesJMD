@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import {
@@ -113,7 +112,7 @@ export default function ViewTimesheetDialog({
     action: 'Reject' | 'Reopen';
   } | null>(null);
   const [reason, setReason] = useState('');
-  const [comments, setComments] = useState<Record<string, string>>({});
+  const [newComment, setNewComment] = useState('');
   const [isEditing, setIsEditing] = useState(false);
 
   const canAcknowledgeOffice = useMemo(() => {
@@ -162,7 +161,7 @@ export default function ViewTimesheetDialog({
     
     switch (timesheet.status) {
       case 'Pending':
-        if (isRecipient) {
+        if (isRecipient || isAdmin) {
           return (
             <div className="flex flex-col items-center gap-2 w-full">
               <Button
@@ -187,6 +186,11 @@ export default function ViewTimesheetDialog({
               >
                 Reject
               </Button>
+              {isAdmin && (
+                 <Button size="sm" variant="outline" className="w-full" onClick={() => setIsEditing(true)}>
+                    <Edit className="mr-2 h-4 w-4" /> Edit / Reassign
+                </Button>
+              )}
             </div>
           );
         }
@@ -221,7 +225,7 @@ export default function ViewTimesheetDialog({
         }
         break;
       case 'Acknowledged':
-        if (isRecipient) {
+        if (isRecipient || isAdmin) {
           return (
             <div className="flex flex-col items-center gap-2 w-full">
               <Button
@@ -290,73 +294,27 @@ export default function ViewTimesheetDialog({
       case 'Rejected':
         if (isSubmitter) {
           return (
-            <div className="space-y-2 w-full text-left">
-              <Label htmlFor={`comment-${timesheet.id}`} className="text-xs">
-                Reply to query
-              </Label>
-              <Textarea
-                id={`comment-${timesheet.id}`}
-                placeholder="Add your reply..."
-                value={comments[timesheet.id] || ''}
-                onChange={(e) =>
-                  setComments((prev) => ({
-                    ...prev,
-                    [timesheet.id]: e.target.value,
-                  }))
-                }
-                rows={2}
-              />
-              <Button
-                size="sm"
-                className="w-full"
-                onClick={() => {
-                  const commentText = comments[timesheet.id]?.trim();
-                  if (!commentText) {
-                    toast({
-                      title: 'Reply is required to re-acknowledge.',
-                      variant: 'destructive',
-                    });
-                    return;
-                  }
-                  updateTimesheetStatus(
-                    timesheet.id,
-                    'Acknowledged',
-                    commentText
-                  );
-                  setComments((prev) => ({ ...prev, [timesheet.id]: '' }));
-                  setIsOpen(false);
-                }}
-                disabled={!comments[timesheet.id]?.trim()}
-              >
-                Reply & Re-Acknowledge
+            <div className="flex flex-col items-center gap-2 w-full">
+              <Button size="sm" className="w-full" onClick={() => setIsEditing(true)}>
+                <Edit className="mr-2 h-4 w-4" /> Edit & Resubmit
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="outline" className="w-full">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete & Start New
+                  <Button size="sm" variant="destructive" className="w-full">
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete Submission
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      Delete this submission?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. You will need to create a
-                      new timesheet submission.
-                    </AlertDialogDescription>
+                    <AlertDialogTitle>Delete Submission?</AlertDialogTitle>
+                    <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => {
+                    <AlertDialogAction onClick={() => {
                         deleteTimesheet(timesheet.id);
                         setIsOpen(false);
-                      }}
-                    >
-                      Delete
-                    </AlertDialogAction>
+                    }}>Delete</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -367,23 +325,15 @@ export default function ViewTimesheetDialog({
       default:
         break;
     }
-
-    if (isAdmin && timesheet.status !== 'Rejected') {
-        return (
-            <Button size="sm" className="w-full" onClick={() => setIsEditing(true)}>
-                <Edit className="mr-2 h-4 w-4" /> Edit / Reassign
-            </Button>
-        );
-    }
     
     return null;
   };
 
   const handleAddComment = () => {
-    const text = comments[timesheet.id];
-    if (!text || !text.trim()) return;
+    const text = newComment.trim();
+    if (!text) return;
     addTimesheetComment(timesheet.id, text);
-    setComments(prev => ({...prev, [timesheet.id]: ''}));
+    setNewComment('');
   };
 
   return (
