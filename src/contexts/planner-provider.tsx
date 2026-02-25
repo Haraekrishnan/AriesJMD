@@ -55,6 +55,7 @@ type PlannerContextType = {
   returnJobStep: (jobId: string, stepId: string, reason: string) => void;
   reopenJob: (jobId: string, reason: string, newStepName: string, newStepAssigneeId: string) => void;
   addTimesheet: (data: Omit<Timesheet, 'id' | 'submitterId' | 'submissionDate' | 'status'>) => void;
+  updateTimesheet: (timesheet: Timesheet) => void;
   updateTimesheetStatus: (timesheetId: string, status: TimesheetStatus, comment?: string) => void;
   deleteTimesheet: (timesheetId: string) => void;
 };
@@ -388,6 +389,13 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         }
     }, [user, users, notificationSettings]);
 
+    const updateTimesheet = useCallback((timesheet: Timesheet) => {
+        const { id, ...data } = timesheet;
+        const updates: Partial<Timesheet> & { lastUpdated?: string } = { ...data, lastUpdated: new Date().toISOString() };
+        delete (updates as any).comments;
+        update(ref(rtdb, `timesheets/${id}`), updates);
+    }, []);
+
     const updateTimesheetStatus = useCallback((timesheetId: string, status: TimesheetStatus, comment?: string) => {
         if (!user) return;
         const timesheet = timesheetsById[timesheetId];
@@ -396,6 +404,8 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const updates: { [key: string]: any } = {};
         const basePath = `timesheets/${timesheetId}`;
         updates[`${basePath}/status`] = status;
+        updates[`${basePath}/lastUpdated`] = new Date().toISOString();
+
 
         if (comment) {
             let commentText = comment;
@@ -481,13 +491,8 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     }, [user, timesheetsById, users, projects, notificationSettings]);
 
     const deleteTimesheet = useCallback((timesheetId: string) => {
-        if (!user || user.role !== 'Admin') {
-            toast({ title: 'Permission Denied', variant: 'destructive' });
-            return;
-        }
         remove(ref(rtdb, `timesheets/${timesheetId}`));
-        toast({ title: 'Timesheet Deleted', variant: 'destructive' });
-    }, [user, toast]);
+    }, []);
 
     const createJobProgress = useCallback((data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[]; projectId?: string; plantUnit?: string; workOrderNo?: string; foNo?: string; amount?: number; dateFrom?: string | null; dateTo?: string | null; }) => {
         if (!user) return;
@@ -1026,6 +1031,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         addAndCompleteStep, reassignJobStep, assignJobStep,
         completeJobAsFinalStep, returnJobStep, reopenJob,
         addTimesheet,
+        updateTimesheet,
         updateTimesheetStatus,
         deleteTimesheet,
     };
@@ -1042,5 +1048,6 @@ export const usePlanner = (): PlannerContextType => {
 };
 
     
+
 
 

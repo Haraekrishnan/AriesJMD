@@ -44,7 +44,9 @@ import {
   Trash2,
   UserCheck,
   XCircle,
+  Edit,
 } from 'lucide-react';
+import EditTimesheetDialog from './EditTimesheetDialog';
 
 const statusVariantMap: Record<
   TimesheetStatus,
@@ -111,6 +113,8 @@ export default function ViewTimesheetDialog({
   } | null>(null);
   const [reason, setReason] = useState('');
   const [comments, setComments] = useState<Record<string, string>>({});
+  const [isEditing, setIsEditing] = useState(false);
+
   const canAcknowledgeOffice = useMemo(() => {
     if (!user) return false;
     return ['Admin', 'Document Controller', 'Project Coordinator'].includes(
@@ -155,6 +159,32 @@ export default function ViewTimesheetDialog({
 
     switch (timesheet.status) {
       case 'Pending':
+        if (isSubmitter) {
+          return (
+            <div className="flex flex-col items-center gap-2 w-full">
+              <Button size="sm" className="w-full" onClick={() => setIsEditing(true)}>
+                <Edit className="mr-2 h-4 w-4" /> Edit & Resubmit
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm" variant="destructive" className="w-full">
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete Submission
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Submission?</AlertDialogTitle>
+                    <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => deleteTimesheet(timesheet.id)}>Delete</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          );
+        }
         if (isRecipient) {
           return (
             <Button
@@ -170,24 +200,6 @@ export default function ViewTimesheetDialog({
               Acknowledge
             </Button>
           );
-        }
-        if (isSubmitter) {
-            return (
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button size="sm" variant="destructive">
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete Submission
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader><AlertDialogTitle>Delete Submission?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => deleteTimesheet(timesheet.id)}>Delete</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            );
         }
         return null;
       case 'Acknowledged':
@@ -475,6 +487,13 @@ export default function ViewTimesheetDialog({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+      )}
+      {isEditing && (
+        <EditTimesheetDialog
+          isOpen={isEditing}
+          setIsOpen={setIsEditing}
+          timesheet={timesheet}
+        />
       )}
     </>
   );
