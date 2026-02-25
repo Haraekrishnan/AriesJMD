@@ -156,7 +156,16 @@ export default function ViewTimesheetDialog({
   const getAction = () => {
     const isRecipient = timesheet.submittedToId === user?.id;
     const isSubmitter = timesheet.submitterId === user?.id;
+    const isAdmin = user?.role === 'Admin';
 
+    if (isAdmin && timesheet.status !== 'Rejected') {
+        return (
+            <Button size="sm" className="w-full" onClick={() => setIsEditing(true)}>
+                <Edit className="mr-2 h-4 w-4" /> Edit / Reassign
+            </Button>
+        );
+    }
+    
     switch (timesheet.status) {
       case 'Pending':
         if (isSubmitter) {

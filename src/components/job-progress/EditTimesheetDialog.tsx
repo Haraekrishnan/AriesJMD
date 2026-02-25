@@ -36,7 +36,7 @@ interface EditTimesheetDialogProps {
 }
 
 export default function EditTimesheetDialog({ isOpen, setIsOpen, timesheet }: EditTimesheetDialogProps) {
-  const { user, users, projects, updateTimesheet } = useAppContext();
+  const { user, users, projects, updateTimesheet, addTimesheetComment } = useAppContext();
   const { toast } = useToast();
 
   const form = useForm<TimesheetFormValues>({
@@ -60,6 +60,14 @@ export default function EditTimesheetDialog({ isOpen, setIsOpen, timesheet }: Ed
         startDate: data.startDate.toISOString(),
         endDate: data.endDate.toISOString(),
     };
+    
+    if (data.submittedToId !== timesheet.submittedToId) {
+        const oldRecipient = users.find(u => u.id === timesheet.submittedToId)?.name || 'Previous recipient';
+        const newRecipient = users.find(u => u.id === data.submittedToId)?.name || 'New recipient';
+        const comment = `${user?.name} reassigned the acknowledgment from ${oldRecipient} to ${newRecipient}.`;
+        addTimesheetComment(timesheet.id, comment);
+    }
+    
     updateTimesheet(updatedTimesheet);
     toast({ title: 'Timesheet Updated' });
     setIsOpen(false);

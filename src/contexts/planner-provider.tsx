@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -56,6 +55,7 @@ type PlannerContextType = {
   reopenJob: (jobId: string, reason: string, newStepName: string, newStepAssigneeId: string) => void;
   addTimesheet: (data: Omit<Timesheet, 'id' | 'submitterId' | 'submissionDate' | 'status'>) => void;
   updateTimesheet: (timesheet: Timesheet) => void;
+  addTimesheetComment: (timesheetId: string, text: string) => void;
   updateTimesheetStatus: (timesheetId: string, status: TimesheetStatus, comment?: string) => void;
   deleteTimesheet: (timesheetId: string) => void;
 };
@@ -388,6 +388,19 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             });
         }
     }, [user, users, notificationSettings]);
+    
+    const addTimesheetComment = useCallback((timesheetId: string, text: string) => {
+        if (!user) return;
+        const newCommentRef = push(ref(rtdb, `timesheets/${timesheetId}/comments`));
+        const newComment: Omit<Comment, 'id'> = {
+            id: newCommentRef.key!,
+            userId: user.id,
+            text,
+            date: new Date().toISOString(),
+            eventId: timesheetId,
+        };
+        set(newCommentRef, newComment);
+    }, [user]);
 
     const updateTimesheet = useCallback((timesheet: Timesheet) => {
         const { id, ...data } = timesheet;
@@ -733,7 +746,8 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       const currentStep = job.steps[stepIndex];
       const assignableUsers = getAssignableUsers();
 
-      if (currentStep.assigneeId !== user.id && user.role !== 'Admin') {
+      const canReassignRoles: Role[] = ['Admin', 'Project Coordinator', 'Supervisor', 'Senior Safety Supervisor'];
+      if (!canReassignRoles.includes(user.role)) {
           toast({ title: 'Not authorized', variant: 'destructive' });
           return;
       }
@@ -1034,6 +1048,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         updateTimesheet,
         updateTimesheetStatus,
         deleteTimesheet,
+        addTimesheetComment,
     };
 
     return <PlannerContext.Provider value={contextValue}>{children}</PlannerContext.Provider>;
@@ -1046,8 +1061,3 @@ export const usePlanner = (): PlannerContextType => {
   }
   return context;
 };
-
-    
-
-
-

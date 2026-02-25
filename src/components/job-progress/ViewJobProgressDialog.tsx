@@ -1,6 +1,6 @@
 
 'use client';
-import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -27,6 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { JOB_PROGRESS_STEPS, REOPEN_JOB_STEPS } from '@/lib/types';
 import ReturnStepDialog from './ReturnStepDialog';
+import ReassignStepDialog from './ReassignStepDialog';
 
 
 const statusConfig: { [key in JobStepStatus]: { icon?: React.ElementType, color: string, label: string } } = {
@@ -183,99 +184,6 @@ const ReopenJobDialog = ({ isOpen, setIsOpen, job, reopenJob }: { isOpen: boolea
     );
 };
 
-const reassignSchema = z.object({
-    newAssigneeId: z.string().min(1, "Please select a new assignee."),
-    comment: z.string().min(10, "A comment is required for reassignment."),
-});
-  
-type ReassignFormValues = z.infer<typeof reassignSchema>;
-  
-const ReassignStepDialog = ({ isOpen, setIsOpen, job, step }: { isOpen: boolean; setIsOpen: (open: boolean) => void; job: JobProgress; step: JobStep; }) => {
-    const { getAssignableUsers, reassignJobStep, user } = useAppContext();
-    const { toast } = useToast();
-    const [popoverOpen, setPopoverOpen] = useState(false);
-
-    const assignableUsers = useMemo(() => {
-        return getAssignableUsers().filter(u => u.id !== user?.id && u.role !== 'Manager');
-    }, [getAssignableUsers, user]);
-
-    const form = useForm<ReassignFormValues>({
-        resolver: zodResolver(reassignSchema),
-        defaultValues: { newAssigneeId: '', comment: '' }
-    });
-
-    const onSubmit = (data: ReassignFormValues) => {
-        reassignJobStep(job.id, step.id, data.newAssigneeId, data.comment);
-        toast({ title: "Step Reassigned", description: `The step has been reassigned.` });
-        setIsOpen(false);
-    };
-
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent onInteractOutside={(e) => e.preventDefault()}>
-                <DialogHeader>
-                    <DialogTitle>Reassign Step: {step.name}</DialogTitle>
-                    <DialogDescription>Select a new assignee for this step.</DialogDescription>
-                </DialogHeader>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <Label>New Assignee</Label>
-                         <Controller
-                            name="newAssigneeId"
-                            control={form.control}
-                            render={({ field }) => (
-                                <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-                                    <PopoverTrigger asChild>
-                                        <Button variant="outline" role="combobox" className="w-full justify-between">
-                                            {field.value ? assignableUsers.find(u => u.id === field.value)?.name : "Select new assignee..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Search users..." />
-                                            <CommandList>
-                                                <CommandEmpty>No users found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {assignableUsers.map(user => (
-                                                        <CommandItem
-                                                            key={user.id}
-                                                            value={user.name}
-                                                            onSelect={() => {
-                                                                form.setValue('newAssigneeId', user.id);
-                                                                setPopoverOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check className={cn("mr-2 h-4 w-4", user.id === field.value ? "opacity-100" : "opacity-0")} />
-                                                            {user.name}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                            )}
-                        />
-                         {form.formState.errors.newAssigneeId && <p className="text-xs text-destructive">{form.formState.errors.newAssigneeId.message}</p>}
-                    </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="comment">Comment</Label>
-                        <Textarea id="comment" {...form.register('comment')} />
-                        {form.formState.errors.comment && <p className="text-xs text-destructive">{form.formState.errors.comment.message}</p>}
-                    </div>
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                        <Button type="submit">Reassign Step</Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
-    );
-};
-
-const unassignedSteps = ['JMS Hard copy submitted'];
-
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
     const { user, addAndCompleteStep, completeJobAsFinalStep, getAssignableUsers } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
@@ -430,7 +338,7 @@ interface ViewJobProgressDialogProps {
 }
 
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
-    const { user, users, projects, jobProgress, updateJobProgress, updateJobStep, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, completeJobAsFinalStep, reassignJobStep, getAssignableUsers, returnJobStep, deleteJobProgress } = useAppContext();
+    const { user, users, projects, jobProgress, updateJobProgress, updateJobStep, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, completeJobAsFinalStep, reassignJobStep, returnJobStep, deleteJobProgress } = useAppContext();
     const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
     const [returningStep, setReturningStep] = useState<JobStep | null>(null);
     const [newAssigneeId, setNewAssigneeId] = useState<string>('');
