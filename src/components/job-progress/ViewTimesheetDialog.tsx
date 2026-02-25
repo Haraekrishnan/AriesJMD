@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import {
@@ -151,6 +152,7 @@ export default function ViewTimesheetDialog({
     updateTimesheetStatus(timesheet.id, 'Rejected', reason);
     setRejectionInfo(null);
     setReason('');
+    setIsOpen(false);
   };
 
   const getAction = () => {
@@ -187,7 +189,10 @@ export default function ViewTimesheetDialog({
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => deleteTimesheet(timesheet.id)}>Delete</AlertDialogAction>
+                    <AlertDialogAction onClick={() => {
+                        deleteTimesheet(timesheet.id);
+                        setIsOpen(false);
+                    }}>Delete</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -200,13 +205,14 @@ export default function ViewTimesheetDialog({
               <Button
                 size="sm"
                 className="w-full"
-                onClick={() =>
+                onClick={() => {
                   updateTimesheetStatus(
                     timesheet.id,
                     'Acknowledged',
                     'Acknowledged by recipient.'
-                  )
-                }
+                  );
+                  setIsOpen(false);
+                }}
               >
                 Acknowledge
               </Button>
@@ -229,9 +235,10 @@ export default function ViewTimesheetDialog({
               <Button
                 size="sm"
                 className="w-full"
-                onClick={() =>
-                  updateTimesheetStatus(timesheet.id, 'Sent To Office')
-                }
+                onClick={() => {
+                  updateTimesheetStatus(timesheet.id, 'Sent To Office');
+                  setIsOpen(false);
+                }}
               >
                 Send to Office
               </Button>
@@ -253,13 +260,14 @@ export default function ViewTimesheetDialog({
             <div className="flex flex-col items-center gap-2">
               <Button
                 size="sm"
-                onClick={() =>
+                onClick={() => {
                   updateTimesheetStatus(
                     timesheet.id,
                     'Office Acknowledged',
                     'Acknowledged by office.'
-                  )
-                }
+                  );
+                  setIsOpen(false);
+                }}
               >
                 Acknowledge Receipt
               </Button>
@@ -324,6 +332,7 @@ export default function ViewTimesheetDialog({
                     commentText
                   );
                   setComments((prev) => ({ ...prev, [timesheet.id]: '' }));
+                  setIsOpen(false);
                 }}
                 disabled={!comments[timesheet.id]?.trim()}
               >
@@ -349,7 +358,10 @@ export default function ViewTimesheetDialog({
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction
-                      onClick={() => deleteTimesheet(timesheet.id)}
+                      onClick={() => {
+                        deleteTimesheet(timesheet.id);
+                        setIsOpen(false);
+                      }}
                     >
                       Delete
                     </AlertDialogAction>
