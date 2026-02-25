@@ -1,10 +1,9 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Search, Bell } from 'lucide-react';
 import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress, Timesheet, Role } from '@/lib/types';
@@ -15,15 +14,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import JobProgressBoard from '@/components/job-progress/JobProgressBoard';
 import TimesheetBoard from '@/components/job-progress/TimesheetBoard';
 import ViewTimesheetDialog from '@/components/job-progress/ViewTimesheetDialog';
+import { Badge } from '@/components/ui/badge';
+import PendingActionsDialog from '@/components/job-progress/PendingActionsDialog';
+
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
 
 export default function JobProgressPage() {
-  const { can, jobProgress, timesheets, user, projects, users } = useAppContext();
+  const { can, jobProgress, timesheets, user, projects, users, jmsAndTimesheetNotificationCount } = useAppContext();
   const [isCreateJobOpen, setIsCreateJobOpen] = useState(false);
   const [isCreateTimesheetOpen, setIsCreateTimesheetOpen] = useState(false);
   const [viewingJob, setViewingJob] = useState<JobProgress | null>(null);
   const [viewingTimesheet, setViewingTimesheet] = useState<Timesheet | null>(null);
+  const [isPendingDialogOpen, setIsPendingDialogOpen] = useState(false);
   
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
   const [jmsSearchTerm, setJmsSearchTerm] = useState('');
@@ -122,6 +125,15 @@ export default function JobProgressPage() {
           <p className="text-muted-foreground">Monitor the lifecycle of JMS and Timesheets.</p>
         </div>
         <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setIsPendingDialogOpen(true)}>
+              <Bell className="mr-2 h-4 w-4" />
+              Pending Actions
+              {jmsAndTimesheetNotificationCount > 0 && (
+                <Badge variant="destructive" className="ml-2">
+                  {jmsAndTimesheetNotificationCount}
+                </Badge>
+              )}
+            </Button>
             <div className="flex items-center gap-2">
                 <Button variant="outline" size="icon" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth}>
                     <ChevronLeft className="h-4 w-4" />
@@ -190,7 +202,7 @@ export default function JobProgressPage() {
           timesheet={viewingTimesheet}
         />
       )}
+      <PendingActionsDialog isOpen={isPendingDialogOpen} setIsOpen={setIsPendingDialogOpen} />
     </div>
   );
 }
-
