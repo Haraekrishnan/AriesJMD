@@ -160,26 +160,30 @@ export default function JobProgressPage() {
           <TabsTrigger value="timesheets">Timesheet Tracker</TabsTrigger>
         </TabsList>
         <TabsContent value="jms" className="flex-1 overflow-hidden">
-           <div className="relative w-full sm:w-auto max-w-sm flex-1 pt-2 pb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-[-50%] h-4 w-4 text-muted-foreground" />
-              <Input
-                  placeholder="Search by title, JMS no, project..."
-                  className="pl-9"
-                  value={jmsSearchTerm}
-                  onChange={e => setJmsSearchTerm(e.target.value)}
-              />
+           <div className="w-full sm:w-auto max-w-sm pt-2 pb-4">
+              <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                      placeholder="Search by title, JMS no, project..."
+                      className="pl-9"
+                      value={jmsSearchTerm}
+                      onChange={e => setJmsSearchTerm(e.target.value)}
+                  />
+              </div>
           </div>
           <JobProgressBoard jobs={filteredJobs} onViewJob={setViewingJob} />
         </TabsContent>
         <TabsContent value="timesheets" className="flex-1 overflow-hidden">
-            <div className="relative w-full sm:w-auto max-w-sm flex-1 pt-2 pb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-[-50%] h-4 w-4 text-muted-foreground" />
-              <Input
-                  placeholder="Search by project or unit..."
-                  className="pl-9"
-                  value={timesheetSearchTerm}
-                  onChange={e => setTimesheetSearchTerm(e.target.value)}
-              />
+            <div className="w-full sm:w-auto max-w-sm pt-2 pb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                    placeholder="Search by project or unit..."
+                    className="pl-9"
+                    value={timesheetSearchTerm}
+                    onChange={e => setTimesheetSearchTerm(e.target.value)}
+                />
+              </div>
           </div>
           <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={setViewingTimesheet} />
         </TabsContent>
