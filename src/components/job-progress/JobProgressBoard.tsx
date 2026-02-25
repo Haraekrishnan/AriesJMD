@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Clock, Loader, Undo2, CheckCircle } from 'lucide-react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { format } from 'date-fns';
+import { format, isSameMonth, parseISO } from 'date-fns';
 import { Badge } from '../ui/badge';
 
 const JobCard = ({ job, onViewJob }: { job: JobProgress; onViewJob: (job: JobProgress) => void }) => {
@@ -19,6 +19,22 @@ const JobCard = ({ job, onViewJob }: { job: JobProgress; onViewJob: (job: JobPro
 
     const assignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
     const project = projects.find(p => p.id === job.projectId);
+
+    const dateText = useMemo(() => {
+        const from = job.dateFrom ? parseISO(job.dateFrom) : (job.createdAt ? parseISO(job.createdAt) : null);
+        const to = job.dateTo ? parseISO(job.dateTo) : null;
+
+        if (from && to) {
+            if (isSameMonth(from, to)) {
+                return `${format(from, 'dd')} - ${format(to, 'dd MMM')}`;
+            }
+            return `${format(from, 'dd MMM')} - ${format(to, 'dd MMM')}`;
+        }
+        if (from) {
+            return format(from, 'dd MMM');
+        }
+        return '';
+    }, [job.dateFrom, job.dateTo, job.createdAt]);
 
     return (
         <Card onClick={() => onViewJob(job)} className="cursor-pointer hover:shadow-md">
@@ -34,7 +50,7 @@ const JobCard = ({ job, onViewJob }: { job: JobProgress; onViewJob: (job: JobPro
                 
                 <div className="flex justify-between items-center pt-2">
                     <div className="text-xs text-muted-foreground">
-                        <span>{job.dateFrom ? format(new Date(job.dateFrom), 'dd MMM') : (job.createdAt ? format(new Date(job.createdAt), 'dd MMM') : '')}</span>
+                        <span>{dateText}</span>
                         {job.jmsNo && <span className="ml-2">JMS: {job.jmsNo}</span>}
                     </div>
                     {assignee && (
