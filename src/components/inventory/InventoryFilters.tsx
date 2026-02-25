@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -40,7 +41,7 @@ export default function InventoryFilters({ onApplyFilters, initialFilters }: Inv
     const { projects, inventoryItems, user, can } = useAppContext();
     const [filters, setFilters] = useState<InventoryFilterValues>(initialFilters);
 
-    const itemNames = Array.from(new Set(inventoryItems.filter(item => item.category !== 'Daily Consumable' && item.category !== 'Job Consumable').map(item => item.name)));
+    const itemNames = Array.from(new Set(inventoryItems.filter(item => item.category === 'General').map(item => item.name)));
 
     useEffect(() => {
         onApplyFilters(filters);
@@ -89,7 +90,7 @@ export default function InventoryFilters({ onApplyFilters, initialFilters }: Inv
             <DateRangePicker placeholder="Filter by updated date..." date={filters.updatedDateRange} onDateChange={(d) => handleFilterChange('updatedDateRange', d)} />
 
             <div className="flex gap-2 ml-auto">
-                <Button variant="secondary" onClick={handleClear}><X className="mr-2 h-4 w-4" /> Clear</Button>
+                <Button variant="ghost" onClick={handleClear}><X className="mr-2 h-4 w-4" /> Clear</Button>
             </div>
         </div>
     );

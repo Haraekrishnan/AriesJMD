@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -306,7 +307,7 @@ export default function StoreInventoryPage() {
                 <CardHeader>
                     <div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-4'>
                     {view === 'list' ? (
-                        <InventoryFilters onApplyFilters={setFilters} />
+                        <InventoryFilters onApplyFilters={setFilters} initialFilters={filters} />
                     ) : <CardTitle>General Inventory Summary</CardTitle>}
                     <InventoryReportDownloads items={filteredItems} isSummary={view === 'summary'} summaryData={summaryData} />
                     </div>
