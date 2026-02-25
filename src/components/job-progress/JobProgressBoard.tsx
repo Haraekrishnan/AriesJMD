@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { JobProgress } from '@/lib/types';
@@ -42,7 +43,7 @@ const JobCard = ({ job, onViewJob }: { job: JobProgress; onViewJob: (job: JobPro
             <CardContent className="p-3 space-y-2">
                 <div className="flex justify-between items-start">
                     <div className="space-y-1 pr-2">
-                        <p className="font-semibold text-sm leading-tight">{job.title}</p>
+                        <p className="font-bold text-base leading-tight">{job.title}</p>
                         <p className="text-xs text-muted-foreground">{locationText || 'N/A'}</p>
                     </div>
                 </div>
