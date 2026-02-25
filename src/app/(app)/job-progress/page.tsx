@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Search, Bell } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Search, Bell, FileDown } from 'lucide-react';
 import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress, Timesheet, Role } from '@/lib/types';
@@ -16,6 +16,7 @@ import TimesheetBoard from '@/components/job-progress/TimesheetBoard';
 import ViewTimesheetDialog from '@/components/job-progress/ViewTimesheetDialog';
 import { Badge } from '@/components/ui/badge';
 import PendingActionsDialog from '@/components/job-progress/PendingActionsDialog';
+import OngoingJobsReport from '@/components/job-progress/OngoingJobsReport';
 
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
@@ -125,6 +126,7 @@ export default function JobProgressPage() {
           <p className="text-muted-foreground">Monitor the lifecycle of JMS and Timesheets.</p>
         </div>
         <div className="flex items-center gap-2">
+            <OngoingJobsReport jobs={filteredJobs} />
             <Button variant="outline" onClick={() => setIsPendingDialogOpen(true)}>
               <Bell className="mr-2 h-4 w-4" />
               Pending Actions
