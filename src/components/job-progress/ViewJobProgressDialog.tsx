@@ -5,7 +5,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAppContext } from '@/contexts/app-provider';
-import type { JobProgress, JobStep, JobStepStatus, Task, User, Role, Comment } from '@/lib/types';
+import type { JobProgress, JobStep, JobStepStatus, Task, User, Role, Comment, ApprovalState, Subtask } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -569,8 +569,99 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                         )}
                     </form>
                 </DialogHeader>
-                <ScrollArea className="flex-1 -mx-6 px-6">
-                   {/* Timeline content will go here */}
+                 <ScrollArea className="flex-1 -mx-6 px-6">
+                    <div className="relative p-6">
+                        <div className="absolute left-10 top-0 bottom-0 w-0.5 bg-border -z-10" />
+                        <div className="space-y-8">
+                            {job.steps.map((step, index) => {
+                                const assignee = users.find(u => u.id === step.assigneeId);
+                                const Icon = statusConfig[step.status]?.icon || Circle;
+                                const isEditingThisStep = editingStepId === step.id;
+                                
+                                const canPerformAction = (user?.id === step.assigneeId && step.status !== 'Completed') || (job.status !== 'Completed' && !step.assigneeId && (user?.projectIds?.includes(job.projectId || '') || can.manage_job_progress));
+
+                                const canModifyStep = (user?.role === 'Admin' || user?.id === job.creatorId) && job.status !== 'Completed';
+
+                                return (
+                                    <div key={step.id} className="relative flex items-start gap-6">
+                                        <div className="absolute left-[-11px] top-1 h-5 w-5 rounded-full bg-card border-2 border-primary flex items-center justify-center">
+                                            <Icon className={cn("h-3 w-3", statusConfig[step.status]?.color)} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="p-4 border rounded-lg bg-card shadow-sm">
+                                                <div className="flex justify-between items-start gap-4">
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                          {isEditingThisStep ? (
+                                                            <Input value={editingStepName} onChange={e => setEditingStepName(e.target.value)} className="h-8 text-base font-semibold" />
+                                                          ) : (
+                                                            <h4 className="font-semibold">{index + 1}. {step.name}</h4>
+                                                          )}
+                                                          {canModifyStep && (
+                                                            isEditingThisStep 
+                                                              ? <Button size="icon" className="h-8 w-8" onClick={() => handleSaveStepName(step)}><Check className="h-4 w-4"/></Button>
+                                                              : <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditStepClick(step)}><Edit className="h-4 w-4"/></Button>
+                                                          )}
+                                                        </div>
+                                                        {step.description && <p className="text-sm text-muted-foreground mt-1">{step.description}</p>}
+                                                    </div>
+                                                     <Badge variant={step.isReturned ? 'destructive' : (statusConfig[step.status]?.label === 'Pending' ? 'warning' : 'secondary')} className="whitespace-nowrap">
+                                                      {step.isReturned ? 'Returned' : statusConfig[step.status]?.label || step.status}
+                                                    </Badge>
+                                                </div>
+
+                                                <div className="mt-3 pt-3 border-t text-sm">
+                                                  <p className="flex items-center gap-2">
+                                                    <strong>Assignee:</strong> 
+                                                    {assignee ? (
+                                                      <span className="flex items-center gap-1"><Avatar className="h-5 w-5"><AvatarImage src={assignee.avatar}/><AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback></Avatar>{assignee.name}</span>
+                                                    ) : 'Unassigned'}
+                                                    {canModifyStep && <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReassigningStep(step)}><UserRoundCog className="h-4 w-4 text-blue-600"/></Button>}
+                                                  </p>
+                                                  {step.dueDate && <p><strong>Due:</strong> {format(parseISO(step.dueDate), 'dd MMM yyyy')}</p>}
+                                                </div>
+
+                                                <div className="mt-2 text-xs text-muted-foreground">
+                                                  {step.acknowledgedAt && <p>Acknowledged: {formatDistanceToNow(parseISO(step.acknowledgedAt), { addSuffix: true })}</p>}
+                                                  {step.completedAt && <p>Completed: {formatDistanceToNow(parseISO(step.completedAt), { addSuffix: true })} by {users.find(u => u.id === step.completedBy)?.name}</p>}
+                                                </div>
+                                                
+                                                {(Array.isArray(step.comments) && step.comments.length > 0) && (
+                                                    <Accordion type="single" collapsible className="w-full mt-2 text-xs">
+                                                        <AccordionItem value="comments" className="border-none">
+                                                            <AccordionTrigger className="p-0 hover:no-underline text-blue-600"><div className="flex items-center gap-1"><MessageSquare className="h-3 w-3" /> View Comments ({step.comments.length})</div></AccordionTrigger>
+                                                            <AccordionContent className="pt-2">
+                                                                <div className="space-y-2">
+                                                                    {step.comments.map((c, i) => {
+                                                                        const commentUser = users.find(u => u.id === c.userId);
+                                                                        return <div key={i}><strong className="font-semibold">{commentUser?.name}:</strong> {c.text}</div>
+                                                                    })}
+                                                                </div>
+                                                            </AccordionContent>
+                                                        </AccordionItem>
+                                                    </Accordion>
+                                                )}
+
+                                                {showNextStepForm === step.id ? (
+                                                    <AddNextStepForm job={job} currentStep={step} onCancel={() => setShowNextStepForm(null)} onSave={() => setShowNextStepForm(null)} />
+                                                ) : (
+                                                    <div className="flex justify-end gap-2 mt-4">
+                                                        {canPerformAction && (
+                                                            <>
+                                                                {step.status === 'Pending' && <Button size="sm" onClick={() => updateJobStepStatus(job.id, step.id, 'Acknowledged', 'Acknowledged step.')}>Acknowledge</Button>}
+                                                                {step.status === 'Acknowledged' && <Button size="sm" onClick={() => setShowNextStepForm(step.id)}>Complete Step</Button>}
+                                                                <Button variant="outline" size="sm" onClick={() => setReturningStep(step)}>Return Step</Button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
                 </ScrollArea>
                 <DialogFooter className="justify-between">
                     <div className="flex gap-2">
