@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import {
@@ -196,18 +195,29 @@ export default function ViewTimesheetDialog({
         }
         if (isRecipient) {
           return (
-            <Button
-              size="sm"
-              onClick={() =>
-                updateTimesheetStatus(
-                  timesheet.id,
-                  'Acknowledged',
-                  'Acknowledged by recipient.'
-                )
-              }
-            >
-              Acknowledge
-            </Button>
+            <div className="flex flex-col items-center gap-2 w-full">
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={() =>
+                  updateTimesheetStatus(
+                    timesheet.id,
+                    'Acknowledged',
+                    'Acknowledged by recipient.'
+                  )
+                }
+              >
+                Acknowledge
+              </Button>
+               <Button
+                size="sm"
+                variant="destructive"
+                className="w-full"
+                onClick={() => handleActionClick('Reject')}
+              >
+                Reject
+              </Button>
+            </div>
           );
         }
         return null;

@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -51,6 +50,7 @@ const jobDetailsSchema = z.object({
 });
 type JobDetailsFormValues = z.infer<typeof jobDetailsSchema>;
 
+const unassignedSteps: string[] = [];
 
 const reopenSchema = z.object({
   reason: z.string().min(10, "A detailed reason for reopening is required."),
@@ -394,6 +394,12 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
       const canEditRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
       return (canEditRoles.includes(user.role) || user.id === job.creatorId);
     }, [user, job]);
+    
+    const canReassign = useMemo(() => {
+      if (!user || job.status === 'Completed') return false;
+      const allowedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+      return allowedRoles.includes(user.role);
+    }, [user, job.status]);
 
     const canReopenJob = useMemo(() => {
         if (!user || !job) return false;
@@ -488,7 +494,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 
                                 const canPerformAction = (user?.id === step.assigneeId && step.status !== 'Completed') || (job.status !== 'Completed' && !step.assigneeId && (user?.projectIds?.includes(job.projectId || '') || can.manage_job_progress));
 
-                                const canModifyStep = (user?.role === 'Admin' || user?.id === job.creatorId) && job.status !== 'Completed';
+                                const canModifyStepName = (user?.role === 'Admin' || user?.id === job.creatorId) && job.status !== 'Completed';
 
                                 return (
                                     <div key={step.id} className="relative flex items-start gap-6">
@@ -505,7 +511,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                           ) : (
                                                             <h4 className="font-semibold">{index + 1}. {step.name}</h4>
                                                           )}
-                                                          {canModifyStep && (
+                                                          {canModifyStepName && (
                                                             isEditingThisStep 
                                                               ? <Button size="icon" className="h-8 w-8" onClick={() => handleSaveStepName(step)}><Check className="h-4 w-4"/></Button>
                                                               : <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditStepClick(step)}><Edit className="h-4 w-4"/></Button>
@@ -524,7 +530,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                     {assignee ? (
                                                       <span className="flex items-center gap-1"><Avatar className="h-5 w-5"><AvatarImage src={assignee.avatar}/><AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback></Avatar>{assignee.name}</span>
                                                     ) : 'Unassigned'}
-                                                    {canModifyStep && <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReassigningStep(step)}><UserRoundCog className="h-4 w-4 text-blue-600"/></Button>}
+                                                    {canReassign && <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReassigningStep(step)}><UserRoundCog className="h-4 w-4 text-blue-600"/></Button>}
                                                   </p>
                                                   {step.dueDate && <p><strong>Due:</strong> {format(parseISO(step.dueDate), 'dd MMM yyyy')}</p>}
                                                 </div>
