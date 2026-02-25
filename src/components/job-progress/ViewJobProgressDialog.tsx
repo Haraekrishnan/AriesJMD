@@ -1,11 +1,11 @@
 
 'use client';
-import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAppContext } from '@/contexts/app-provider';
-import type { JobProgress, JobStep, JobStepStatus, Task, User, Role } from '@/lib/types';
+import type { JobProgress, JobStep, JobStepStatus, Task, User, Role, Comment } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,7 @@ import ReturnStepDialog from './ReturnStepDialog';
 
 const statusConfig: { [key in JobStepStatus]: { icon?: React.ElementType, color: string, label: string } } = {
   'Not Started': { icon: Circle, color: 'text-gray-400', label: 'Not Started' },
-  'Pending': { color: 'text-yellow-500', label: 'Pending' },
+  'Pending': { icon: Clock, color: 'text-yellow-500', label: 'Pending' },
   'Acknowledged': { color: 'text-blue-500', label: 'In Progress' },
   'Completed': { icon: CheckCircle, color: 'text-green-500', label: 'Completed' },
   'Skipped': { icon: XCircle, color: 'text-gray-500', label: 'Skipped' },
@@ -570,214 +570,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                     </form>
                 </DialogHeader>
                 <ScrollArea className="flex-1 -mx-6 px-6">
-                    <div className="relative pl-6">
-                        <div className="absolute left-10 top-2 bottom-2 w-0.5 bg-border -translate-x-1/2"></div>
-                        
-                        <div className="space-y-8">
-                            {job.steps.map((step, index) => {
-                                const assignee = users.find(u => u.id === step.assigneeId);
-                                const isPreviousStepCompleted = index === 0 || job.steps[index - 1].status === 'Completed' || job.steps[index-1].status === 'Skipped';
-                                const isCurrentUserAssignee = user?.id === step.assigneeId;
-                                const isProjectMember = viewingUser?.projectIds?.includes(job.projectId || '');
-                                
-                                const isCreator = user?.id === job.creatorId;
-                                const isAdmin = user?.role === 'Admin';
-                                const canEditRoles: Role[] = ['Project Coordinator', 'Document Controller'];
-                                const canEditStep = isCreator || isAdmin || isCurrentUserAssignee || (user && canEditRoles.includes(user.role));
-                                const isCurrentActionableStep = isPreviousStepCompleted && (step.status === 'Pending' || step.status === 'Acknowledged');
-                                
-                                let canActOnUnassigned = false;
-                                if (!step.assigneeId && (unassignedSteps.includes(step.name))) {
-                                    canActOnUnassigned = isProjectMember || user?.role === 'Admin' || isCreator;
-                                }
-                                
-                                const canAct = (isCurrentUserAssignee || canActOnUnassigned) && isCurrentActionableStep;
-                                const canReturn = isCurrentUserAssignee && (step.status === 'Pending' || step.status === 'Acknowledged');
-
-                                const canFinalize = can.manage_job_progress && job.status !== 'Completed';
-                                
-                                const isStepUnassigned = !step.assigneeId;
-                                const canAssign = (user?.id === job.creatorId || user?.role === 'Admin') && isStepUnassigned && step.status === 'Pending';
-                                
-                                const StatusIcon = statusConfig[step.status].icon;
-                                const showStatusIcon = !!StatusIcon;
-                                const commentsArray = Array.isArray(step.comments) ? step.comments : Object.values(step.comments || {});
-                                const returnEvents = commentsArray
-                                    .filter(c => c && c.text && c.text.includes('was returned by'))
-                                    .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-                                const generalComments = commentsArray.filter(c => c && c.text && !c.text.includes('was returned by'));
-                                
-                                return (
-                                    <div key={step.id} className="relative flex items-start">
-                                        {showStatusIcon && (
-                                            <div className={cn("absolute left-10 top-2 w-5 h-5 rounded-full flex items-center justify-center -translate-x-1/2", statusConfig[step.status].color.replace('text-', 'bg-').replace('-500', '-100 dark:bg-opacity-30'))}>
-                                                <StatusIcon className="h-3 w-3" />
-                                            </div>
-                                        )}
-                                        <div className={cn(
-                                            "ml-14 w-full pl-6 space-y-3",
-                                            isCurrentActionableStep && "bg-blue-50 dark:bg-blue-900/30 p-4 -ml-4 rounded-lg"
-                                        )}>
-                                            <div className="flex justify-between items-start gap-2">
-                                                <div className="font-semibold flex items-center gap-2 flex-1 min-w-0">
-                                                    {editingStepId === step.id ? (
-                                                        <Input 
-                                                            value={editingStepName}
-                                                            onChange={(e) => setEditingStepName(e.target.value)}
-                                                            className="h-8"
-                                                            autoFocus
-                                                        />
-                                                    ) : (
-                                                        <span className="truncate">{step.name}</span>
-                                                    )}
-                                                    
-                                                    {editingStepId === step.id ? (
-                                                        <div className="flex">
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleSaveStepName(step)}><Check className="h-4 w-4 text-green-600" /></Button>
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingStepId(null)}><X className="h-4 w-4 text-red-600" /></Button>
-                                                        </div>
-                                                    ) : (
-                                                        canEditStep && (
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditStepClick(step)}>
-                                                                <Edit className="h-3 w-3" />
-                                                            </Button>
-                                                        )
-                                                    )}
-                                                </div>
-                                                <Badge variant="outline" className="capitalize shrink-0">{statusConfig[step.status].label}</Badge>
-                                            </div>
-                                            
-                                            {assignee ? (
-                                                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                                                    <span>Assigned to:</span>
-                                                    <Avatar className="h-5 w-5"><AvatarImage src={assignee?.avatar} /><AvatarFallback>{assignee?.name?.[0]}</AvatarFallback></Avatar>
-                                                    <span>{assignee?.name}</span>
-                                                    {step.dueDate && <span>&middot; Due {format(parseISO(step.dueDate), 'dd MMM')}</span>}
-                                                </div>
-                                             ) : (
-                                                <div className="text-xs text-muted-foreground mt-1">
-                                                    Unassigned
-                                                </div>
-                                             )}
-
-                                            {step.description && <p className="text-sm text-muted-foreground p-2 bg-muted/50 rounded-md">{step.description}</p>}
-                                            
-                                            {step.acknowledgedAt && !step.completedAt && <p className="text-xs text-blue-600">Acknowledged: {formatDistanceToNow(parseISO(step.acknowledgedAt), { addSuffix: true })}</p>}
-                                            {step.completedAt && <p className="text-xs text-green-600">Completed: {formatDistanceToNow(parseISO(step.completedAt), { addSuffix: true })} by {users.find(u => u.id === step.completedBy)?.name}</p>}
-                                            
-                                            {returnEvents.length > 0 && (
-                                                <div className="mt-2 space-y-2">
-                                                    {returnEvents.map((event, index) => {
-                                                        const eventUser = users.find(u => u.id === event.userId);
-                                                        const reasonMatch = event.text.match(/Reason: (.*)/s);
-                                                        const reason = reasonMatch ? reasonMatch[1] : 'No reason provided.';
-
-                                                        return (
-                                                             <div key={`return-${index}`} className="text-sm p-2 bg-red-50 dark:bg-red-900/20 rounded-md border border-red-200 dark:border-red-800">
-                                                                <div className="flex justify-between items-start">
-                                                                    <div className="font-medium text-destructive flex items-center gap-2"><Undo2 className="h-4 w-4"/>Step Returned by {eventUser?.name || 'Unknown'}</div>
-                                                                    <div className="text-xs text-muted-foreground">{formatDistanceToNow(parseISO(event.date), { addSuffix: true })}</div>
-                                                                </div>
-                                                                <p className="mt-1 pl-6"><strong>Reason:</strong> {reason}</p>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                            
-                                            {generalComments.length > 0 && (
-                                                <Accordion type="single" collapsible className="w-full text-xs">
-                                                <AccordionItem value="comments" className="border-none">
-                                                    <AccordionTrigger className="p-0 text-blue-600 hover:no-underline">
-                                                    <div className="flex items-center gap-1">
-                                                        <MessageSquare className="h-3 w-3" /> View Comments ({generalComments.length})
-                                                    </div>
-                                                    </AccordionTrigger>
-                                                    <AccordionContent className="pt-2">
-                                                    <div className="space-y-2">
-                                                        {generalComments.map((comment, index) => {
-                                                        const commentUser = users.find(u => u.id === comment.userId);
-                                                        return (
-                                                            <div key={index} className="flex items-start gap-2">
-                                                                <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
-                                                                <div className="text-xs bg-background p-2 rounded-md w-full border">
-                                                                    <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(parseISO(comment.date), { addSuffix: true })}</p></div>
-                                                                    <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{comment.text}</p>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                        })}
-                                                    </div>
-                                                    </AccordionContent>
-                                                </AccordionItem>
-                                                </Accordion>
-                                            )}
-
-                                            {canAssign && (
-                                                <div className="mt-3 p-3 bg-background border rounded-md space-y-2">
-                                                    <Label>Assign this step</Label>
-                                                    <div className="flex gap-2">
-                                                        <Select onValueChange={setNewAssigneeId} value={newAssigneeId}>
-                                                            <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
-                                                            <SelectContent>
-                                                                {getAssignableUsers().map(u => (
-                                                                    <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                        <Button size="sm" disabled={!newAssigneeId} onClick={() => {
-                                                            assignJobStep(job.id, step.id, newAssigneeId);
-                                                            setNewAssigneeId('');
-                                                        }}>Assign</Button>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {canAct && step.status === 'Pending' && (
-                                                <div className="flex gap-2">
-                                                    <Button size="sm" onClick={() => updateJobStepStatus(job.id, step.id, 'Acknowledged')}>Acknowledge</Button>
-                                                    {canReturn && (
-                                                        <Button size="sm" variant="destructive" onClick={() => setReturningStep(step)}>
-                                                            <Undo2 className="mr-2 h-4 w-4"/> Return
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {canAct && step.status === 'Acknowledged' && (
-                                                <>
-                                                    {showNextStepForm === step.id ? (
-                                                        <AddNextStepForm 
-                                                            job={job}
-                                                            currentStep={step}
-                                                            onCancel={() => setShowNextStepForm(null)}
-                                                            onSave={() => setShowNextStepForm(null)}
-                                                        />
-                                                    ) : (
-                                                        <div className="flex flex-wrap justify-between items-center pt-3 border-t gap-2">
-                                                            <div className="flex gap-2 flex-wrap">
-                                                                <Button size="sm" variant="outline" onClick={() => setReassigningStep(step)}>
-                                                                    <UserRoundCog className="h-4 w-4 mr-2"/> Reassign
-                                                                </Button>
-                                                                {canReturn && (
-                                                                    <Button size="sm" variant="destructive" onClick={() => setReturningStep(step)}>
-                                                                        <Undo2 className="mr-2 h-4 w-4"/> Return
-                                                                    </Button>
-                                                                )}
-                                                            </div>
-                                                            <Button size="sm" onClick={() => setShowNextStepForm(step.id)}>
-                                                                <CheckCircle className="mr-2 h-4 w-4"/> Complete Step
-                                                            </Button>
-                                                        </div>
-                                                    )}
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    </div>
+                   {/* Timeline content will go here */}
                 </ScrollArea>
                 <DialogFooter className="justify-between">
                     <div className="flex gap-2">
@@ -836,10 +629,3 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         </>
     )
 }
-    
-
-    
-
-    
-
-

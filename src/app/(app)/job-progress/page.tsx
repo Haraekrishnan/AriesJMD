@@ -1,21 +1,20 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, ChevronLeft, ChevronRight, Search, Clock } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress, Timesheet, Role } from '@/lib/types';
-import { JobProgressTable } from '@/components/job-progress/JobProgressTable';
 import { format, startOfMonth, addMonths, subMonths, isSameMonth, parseISO, isBefore, isAfter, startOfToday } from 'date-fns';
 import CreateTimesheetDialog from '@/components/job-progress/CreateTimesheetDialog';
-import TimesheetTrackerTable from '@/components/job-progress/TimesheetTrackerTable';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
-import OngoingJobsReport from '@/components/job-progress/OngoingJobsReport';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import JobProgressBoard from '@/components/job-progress/JobProgressBoard';
+import TimesheetBoard from '@/components/job-progress/TimesheetBoard';
+import ViewTimesheetDialog from '@/components/job-progress/ViewTimesheetDialog';
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
 
@@ -24,59 +23,11 @@ export default function JobProgressPage() {
   const [isCreateJobOpen, setIsCreateJobOpen] = useState(false);
   const [isCreateTimesheetOpen, setIsCreateTimesheetOpen] = useState(false);
   const [viewingJob, setViewingJob] = useState<JobProgress | null>(null);
-  const { toast } = useToast();
+  const [viewingTimesheet, setViewingTimesheet] = useState<Timesheet | null>(null);
   
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
   const [jmsSearchTerm, setJmsSearchTerm] = useState('');
   const [timesheetSearchTerm, setTimesheetSearchTerm] = useState('');
-
-  const myPendingJmsSteps = useMemo(() => {
-    if (!user) return [];
-    return jobProgress.flatMap(job =>
-      (job.steps || [])
-            .filter(step => step.assigneeId === user.id && step.status === 'Pending')
-            .map(step => ({ job, step }))
-    );
-  }, [jobProgress, user]);
-
-  const myPendingTimesheets = useMemo(() => {
-      if (!user) return [];
-      const canAcknowledgeOffice = ['Admin', 'Document Controller', 'Project Coordinator'].includes(user.role);
-      return timesheets.filter(ts => 
-          (ts.submittedToId === user.id && ts.status === 'Pending') ||
-          (canAcknowledgeOffice && ts.status === 'Sent To Office')
-      );
-  }, [timesheets, user]);
-
-  const myOngoingItems = useMemo(() => {
-    if (!user) return [];
-
-    const items = new Map<string, { job: JobProgress; step: any }>();
-
-    jobProgress.forEach(job => {
-      const myAcknowledgedStep = (job.steps || []).find(
-        step => step.assigneeId === user.id && step.status === 'Acknowledged'
-      );
-      if (myAcknowledgedStep) {
-        items.set(job.id, { job, step: myAcknowledgedStep });
-      }
-    });
-
-    jobProgress.forEach(job => {
-      if (job.creatorId === user.id && job.status !== 'Completed' && !items.has(job.id)) {
-        const currentStep =
-          job.steps.find(s => s.isReturned === true) ||
-          job.steps.find(s => s.status === 'Pending') ||
-          job.steps.find(s => s.status === 'Acknowledged');
-        if (currentStep) {
-          items.set(job.id, { job, step: currentStep });
-        }
-      }
-    });
-
-    return Array.from(items.values());
-  }, [jobProgress, user]);
-
 
   const canCreateJms = useMemo(() => {
     if (!user) return false;
@@ -159,23 +110,12 @@ export default function JobProgressPage() {
     });
   }, [timesheets, currentMonth, user, timesheetSearchTerm, projects]);
 
-
   if (!can.manage_job_progress) {
-    return (
-      <Card className="w-full max-w-md mx-auto mt-20">
-        <CardHeader className="text-center items-center">
-          <div className="mx-auto bg-destructive/10 p-3 rounded-full w-fit mb-4">
-            <AlertTriangle className="h-10 w-10 text-destructive" />
-          </div>
-          <CardTitle>Access Denied</CardTitle>
-          <CardDescription>You do not have permission to view this page.</CardDescription>
-        </CardHeader>
-      </Card>
-    );
+    return null;
   }
 
   return (
-    <div className="space-y-8 h-full flex flex-col">
+    <div className="space-y-4 h-full flex flex-col">
        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Trackers</h1>
@@ -202,136 +142,37 @@ export default function JobProgressPage() {
         </div>
       </div>
       
-      {myPendingJmsSteps.length > 0 || myPendingTimesheets.length > 0 ? (
-          <Card className="border-primary">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="text-primary"/> Pending Acknowledgement
-                </CardTitle>
-                <CardDescription>Items that require your attention to acknowledge or start working on.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {myPendingJmsSteps.map(({ job, step }) => (
-                  <div key={step.id} className="p-3 border rounded-md flex justify-between items-center bg-card">
-                      <div>
-                          <p className="font-semibold">JMS Step: {step.name}</p>
-                          <p className="text-sm text-muted-foreground">{job.title}</p>
-                      </div>
-                      <Button onClick={() => { setViewingJob(job); }}>View JMS</Button>
-                  </div>
-              ))}
-              {myPendingTimesheets.map(ts => {
-                  const submitter = users.find(u => u.id === ts.submitterId);
-                  const project = projects.find(p => p.id === ts.projectId);
-                  return (
-                      <div key={ts.id} className="p-3 border rounded-md flex justify-between items-center bg-card">
-                          <div>
-                              <p className="font-semibold">Timesheet requires acknowledgement</p>
-                              <p className="text-sm text-muted-foreground">
-                                  From {submitter?.name} for {project?.name} - {ts.plantUnit}
-                              </p>
-                          </div>
-                          <Button onClick={() => {
-                              toast({
-                                  title: "Scroll down to find the Timesheet Tracker",
-                                  description: "The timesheet will be visible in the list below.",
-                              });
-                          }}>View</Button>
-                      </div>
-                  )
-              })}
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle/> Pending Acknowledgement
-                </CardTitle>
-                <CardDescription>Items that require your attention to acknowledge or start working on.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <p className="text-sm text-muted-foreground">No items are pending your acknowledgement.</p>
-            </CardContent>
-          </Card>
-        )
-      }
+      <Tabs defaultValue="jms" className="flex-1 flex flex-col">
+        <TabsList className="shrink-0">
+          <TabsTrigger value="jms">JMS Tracker</TabsTrigger>
+          <TabsTrigger value="timesheets">Timesheet Tracker</TabsTrigger>
+        </TabsList>
+        <TabsContent value="jms" className="flex-1 overflow-hidden">
+           <div className="relative w-full sm:w-auto max-w-sm flex-1 pt-2 pb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-[-50%] h-4 w-4 text-muted-foreground" />
+              <Input
+                  placeholder="Search by title, JMS no, project..."
+                  className="pl-9"
+                  value={jmsSearchTerm}
+                  onChange={e => setJmsSearchTerm(e.target.value)}
+              />
+          </div>
+          <JobProgressBoard jobs={filteredJobs} onViewJob={setViewingJob} />
+        </TabsContent>
+        <TabsContent value="timesheets" className="flex-1 overflow-hidden">
+            <div className="relative w-full sm:w-auto max-w-sm flex-1 pt-2 pb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-[-50%] h-4 w-4 text-muted-foreground" />
+              <Input
+                  placeholder="Search by project or unit..."
+                  className="pl-9"
+                  value={timesheetSearchTerm}
+                  onChange={e => setTimesheetSearchTerm(e.target.value)}
+              />
+          </div>
+          <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={setViewingTimesheet} />
+        </TabsContent>
+      </Tabs>
 
-      <Card>
-          <CardHeader className="flex flex-row justify-between items-start">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Clock/> On-Going Activities
-              </CardTitle>
-              <CardDescription>A list of your active tasks and jobs you've created that are still in progress.</CardDescription>
-            </div>
-            <OngoingJobsReport jobs={myOngoingItems} />
-          </CardHeader>
-          <CardContent>
-              <ScrollArea className="h-72">
-                <div className="space-y-3 pr-4">
-                    {myOngoingItems.length > 0 ? (
-                        myOngoingItems.map(({ job, step }) => (
-                            <div key={job.id} className="p-3 border rounded-md flex justify-between items-center bg-card">
-                                <div>
-                                    <p className="font-semibold">{job.title}</p>
-                                    <div className="text-sm text-muted-foreground flex items-center gap-2">
-                                        <span>Current Step: {step.name}</span>
-                                        {step.assigneeId !== user?.id && (
-                                            <>
-                                                <span>&middot;</span>
-                                                <span>With: {users.find(u => u.id === step.assigneeId)?.name || 'Unassigned'}</span>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                                <Button onClick={() => { setViewingJob(job); }}>View JMS</Button>
-                            </div>
-                        ))
-                    ) : (
-                        <p className="text-sm text-muted-foreground text-center pt-8">You have no on-going activities.</p>
-                    )}
-                </div>
-              </ScrollArea>
-          </CardContent>
-      </Card>
-
-      <div className="grid lg:grid-cols-2 gap-8 mt-4">
-        <Card>
-            <CardHeader>
-                <CardTitle>JMS Tracker</CardTitle>
-                <div className="relative w-full sm:w-auto flex-1 pt-2">
-                    <Search className="absolute left-3 top-1/2 -translate-y-[-50%] h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search by title, JMS no, project..."
-                        className="pl-9"
-                        value={jmsSearchTerm}
-                        onChange={e => setJmsSearchTerm(e.target.value)}
-                    />
-                </div>
-            </CardHeader>
-            <CardContent>
-                <JobProgressTable jobs={filteredJobs} onViewJob={setViewingJob} />
-            </CardContent>
-        </Card>
-        <Card>
-            <CardHeader>
-                <CardTitle>Timesheet Tracker</CardTitle>
-                 <div className="relative w-full sm:w-auto flex-1 pt-2">
-                    <Search className="absolute left-3 top-1/2 -translate-y-[-50%] h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search by project or unit..."
-                        className="pl-9"
-                        value={timesheetSearchTerm}
-                        onChange={e => setTimesheetSearchTerm(e.target.value)}
-                    />
-                </div>
-            </CardHeader>
-            <CardContent>
-                <TimesheetTrackerTable timesheets={filteredTimesheets}/>
-            </CardContent>
-        </Card>
-      </div>
 
       <CreateJobDialog isOpen={isCreateJobOpen} setIsOpen={setIsCreateJobOpen} />
       <CreateTimesheetDialog isOpen={isCreateTimesheetOpen} setIsOpen={setIsCreateTimesheetOpen} />
@@ -342,6 +183,14 @@ export default function JobProgressPage() {
             job={viewingJob} 
         />
       )}
+       {viewingTimesheet && (
+        <ViewTimesheetDialog
+          isOpen={!!viewingTimesheet}
+          setIsOpen={() => setViewingTimesheet(null)}
+          timesheet={viewingTimesheet}
+        />
+      )}
     </div>
   );
 }
+
