@@ -1,16 +1,14 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAppContext } from '@/contexts/app-provider';
 import type { JobProgress, JobProgressStatus } from '@/lib/types';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Undo2, ArrowUpDown } from 'lucide-react';
+import { Undo2, ArrowUpDown, User, Eye, AlertCircle } from 'lucide-react';
 import {
     ColumnDef,
     flexRender,
@@ -20,6 +18,8 @@ import {
     SortingState,
   } from "@tanstack/react-table"
 import { ScrollArea } from '../ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface JobProgressTableProps {
   jobs: JobProgress[];
@@ -35,22 +35,33 @@ const statusVariantMap: { [key in JobProgressStatus]: 'default' | 'secondary' | 
 
 export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   const { users, projects } = useAppContext();
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'lastUpdated', desc: true }]);
   
-  const calculateProgress = (job: JobProgress): number => {
-    const completedSteps = job.steps.filter(s => s.status === 'Completed' && !s.isReturned).length;
-    if (job.steps.length === 0) return 0;
-    return (completedSteps / job.steps.length) * 100;
-  };
-
-  const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN').format(amount);
-
   const columns: ColumnDef<JobProgress>[] = useMemo(
     () => [
       {
         accessorKey: 'title',
         header: 'JMS Title',
-        cell: ({ row }) => <div className="font-medium">{row.original.title}</div>
+        cell: ({ row }) => {
+            const returnedStep = row.original.steps.find(s => s.isReturned === true);
+            return (
+                <div className="flex items-center gap-2">
+                    {returnedStep && (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger>
+                                    <AlertCircle className="h-4 w-4 text-destructive" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>This job has a returned step.</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    )}
+                    <span className="font-medium truncate">{row.original.title}</span>
+                </div>
+            )
+        }
       },
       {
         id: 'project',
@@ -66,36 +77,54 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
           )
         }
       },
-      { accessorKey: 'jmsNo', header: 'JMS No.' },
+      {
+        id: 'assignee',
+        header: 'Assignee',
+        accessorFn: (row) => {
+            const currentStep = row.original.steps.find(s => s.status === 'Pending' || s.isReturned) || row.original.steps.find(s => s.status === 'Acknowledged');
+            return users.find(u => u.id === currentStep?.assigneeId)?.name || '';
+        },
+        cell: ({ row }) => {
+            const returnedStep = row.original.steps.find(s => s.isReturned === true);
+            const pendingStep = row.original.steps.find(s => s.status === 'Pending');
+            const acknowledgedStep = row.original.steps.find(s => s.status === 'Acknowledged');
+            const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
+            const assignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
+            return assignee ? (
+                <div className="flex items-center gap-2">
+                    <Avatar className="h-6 w-6">
+                        <AvatarImage src={assignee.avatar} />
+                        <AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <span className="truncate">{assignee.name}</span>
+                </div>
+            ) : <span className="text-muted-foreground">Unassigned</span>;
+        }
+      },
       { 
-        accessorKey: 'amount', 
-        header: 'Amount',
-        cell: ({ row }) => row.original.amount ? formatCurrency(row.original.amount) : 'N/A'
-      },
-      {
-        id: 'period',
-        header: 'Period',
-        cell: ({ row }) => (
-          <div className="text-xs whitespace-nowrap">
-            {row.original.dateFrom ? format(parseISO(row.original.dateFrom), 'dd-MM-yy') : 'N/A'} - {row.original.dateTo ? format(parseISO(row.original.dateTo), 'dd-MM-yy') : 'N/A'}
+        accessorKey: 'lastUpdated', 
+        header: ({ column }) => (
+          <div className="flex items-center cursor-pointer" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+            Last Updated <ArrowUpDown className="ml-2 h-4 w-4" />
           </div>
+        ),
+        cell: ({ row }) => (
+            <div className="text-xs whitespace-nowrap text-muted-foreground">
+                {formatDistanceToNow(parseISO(row.original.lastUpdated), { addSuffix: true })}
+            </div>
         )
-      },
-      {
-        id: 'creator',
-        header: 'Created By',
-        accessorFn: (row) => users.find(u => u.id === row.creatorId)?.name || '',
       },
       {
         id: 'status',
         header: 'Status',
         accessorFn: (row) => {
             const returnedStep = row.steps.find(s => s.isReturned === true);
+            if(returnedStep) return 'Returned';
             const pendingStep = row.steps.find(s => s.status === 'Pending');
+            if(pendingStep) return pendingStep.name;
             const acknowledgedStep = row.steps.find(s => s.status === 'Acknowledged');
-
-            const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
-            return currentStep?.name || row.status;
+            if(acknowledgedStep) return acknowledgedStep.name;
+            return row.status;
         },
         cell: ({ row }) => {
             const returnedStep = row.original.steps.find(s => s.isReturned === true);
@@ -103,103 +132,16 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             const acknowledgedStep = row.original.steps.find(s => s.status === 'Acknowledged');
 
             const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
-            const isReturnedStepActive = !!returnedStep;
             
-            const variant = isReturnedStepActive 
-              ? 'destructive' 
-              : statusVariantMap[row.original.status];
-
-            return (
-                <div className="flex items-center gap-2">
-                    <Badge variant={variant}>
-                        {isReturnedStepActive ? 'Returned' : (currentStep ? currentStep.name : row.original.status)}
-                    </Badge>
-                    {row.original.isReopened && <Badge variant="warning">Reopened</Badge>}
-                </div>
-            )
-        }
-      },
-      {
-        id: 'acknowledgmentStatus',
-        header: 'Acknowledgment',
-        cell: ({ row }) => {
-            const returnedStep = row.original.steps.find(s => s.isReturned === true);
-            const pendingStep = row.original.steps.find(s => s.status === 'Pending');
-            const acknowledgedStep = row.original.steps.find(s => s.status === 'Acknowledged');
-
-            if (returnedStep) {
-                return <Badge variant="destructive">Returned</Badge>;
-            }
-            if (acknowledgedStep) {
-                return <Badge variant="success">Acknowledged</Badge>;
-            }
-            if (pendingStep) {
-                return <Badge variant="secondary">Pending Acknowledgment</Badge>;
-            }
-            if (row.original.status === 'Completed') {
-                return <Badge variant="outline">Completed</Badge>;
-            }
-            return <span className="text-muted-foreground">N/A</span>;
-        }
-      },
-      {
-        id: 'currentlyWith',
-        header: 'Currently With',
-        accessorFn: (row) => {
-            const returnedStep = row.steps.find(s => s.isReturned === true);
-            const pendingStep = row.steps.find(s => s.status === 'Pending');
-            const acknowledgedStep = row.steps.find(s => s.status === 'Acknowledged');
-            const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
-
-            const currentAssignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
-            return currentAssignee?.name || '';
-        },
-        cell: ({ row }) => {
-            const returnedStep = row.original.steps.find(s => s.isReturned === true);
-            const pendingStep = row.original.steps.find(s => s.status === 'Pending');
-            const acknowledgedStep = row.original.steps.find(s => s.status === 'Acknowledged');
-            const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
-
-            const isReturnedStepActive = !!returnedStep;
-            const currentAssignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
-            let returnerInfo: { name: string; date: string } | null = null;
-            if (isReturnedStepActive && currentStep) {
-                const comments = Array.isArray(currentStep.comments) ? currentStep.comments : Object.values(currentStep.comments || {});
-                const returnComment = comments.filter(c => c && c.text && c.text.includes('was returned by')).sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime())[0];
-                if (returnComment) {
-                    const returner = users.find(u => u.id === returnComment.userId);
-                    returnerInfo = { name: returner?.name || 'Unknown', date: formatDistanceToNow(parseISO(returnComment.date), { addSuffix: true }) };
-                }
-            }
-            let sinceDate: string | null = null;
-            if (currentStep && !returnerInfo) {
-                const dateToCompare = currentStep.status === 'Acknowledged' && currentStep.acknowledgedAt ? currentStep.acknowledgedAt : row.original.lastUpdated;
-                if (dateToCompare) sinceDate = formatDistanceToNow(parseISO(dateToCompare), { addSuffix: true });
-            }
-            return currentAssignee ? (
-                <div><span>{currentAssignee.name}</span>{sinceDate && <p className="text-xs text-muted-foreground">since {sinceDate}</p>}</div>
-            ) : returnerInfo ? (
-                <div className="flex items-center gap-2"><Undo2 className="h-4 w-4 text-destructive shrink-0" /><div><span className="text-sm text-destructive">Returned by {returnerInfo.name}</span><p className="text-xs text-muted-foreground">{returnerInfo.date}</p></div></div>
-            ) : (<span className="text-sm text-muted-foreground">{isReturnedStepActive ? 'Unassigned' : 'N/A'}</span>)
-        }
-      },
-      {
-        id: 'progress',
-        header: 'Progress',
-        cell: ({ row }) => {
-          const progress = calculateProgress(row.original);
-          return (
-            <div className="flex items-center gap-2">
-              <Progress value={progress} className="h-2" />
-              <span className="text-xs text-muted-foreground">{Math.round(progress)}%</span>
-            </div>
-          )
+            const variant = returnedStep ? 'destructive' : (acknowledgedStep ? 'default' : (pendingStep ? 'warning' : 'success'));
+            const text = currentStep ? currentStep.name : row.original.status;
+            
+            return <Badge variant={variant}>{text}</Badge>
         }
       },
       {
         id: 'actions',
-        header: () => <div className="text-right">Actions</div>,
-        cell: ({ row }) => <div className="text-right"><Button variant="outline" size="sm" onClick={() => onViewJob(row.original)}>View Details</Button></div>
+        cell: ({ row }) => <div className="text-right"><Button variant="outline" size="sm" onClick={() => onViewJob(row.original)}><Eye className="mr-2 h-4 w-4" /> View</Button></div>
       }
     ],
     [projects, users]
@@ -219,24 +161,16 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   }
 
   return (
-    <div className="border rounded-lg overflow-hidden flex-1 flex flex-col min-h-0">
-      <ScrollArea className="h-[60vh]">
+    <ScrollArea className="h-96">
         <Table className="text-sm">
-          <TableHeader className="sticky top-0 bg-card z-10">
+          <TableHeader>
             {table.getHeaderGroups().map(headerGroup => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map(header => (
-                  <TableHead key={header.id} onClick={header.column.getToggleSortingHandler()} className="cursor-pointer">
+                  <TableHead key={header.id} >
                     {header.isPlaceholder
                       ? null
-                      : <div className="flex items-center">
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          {{
-                            asc: <ArrowUpDown className="ml-2 h-4 w-4" />,
-                            desc: <ArrowUpDown className="ml-2 h-4 w-4" />,
-                          }[header.column.getIsSorted() as string] ?? (header.column.getCanSort() ? <ArrowUpDown className="ml-2 h-4 w-4 opacity-30"/> : null) }
-                        </div>
-                    }
+                      : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>
@@ -246,11 +180,11 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             {table.getRowModel().rows.map(row => (
               <TableRow
                 key={row.id}
-                className={cn("cursor-pointer", row.original.isReopened && "bg-orange-100 dark:bg-orange-900/40 border-l-4 border-orange-500")}
+                className="cursor-pointer"
                 onClick={() => onViewJob(row.original)}
               >
                 {row.getVisibleCells().map(cell => (
-                  <TableCell key={cell.id} className="p-2">
+                  <TableCell key={cell.id}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}
@@ -259,6 +193,5 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
           </TableBody>
         </Table>
       </ScrollArea>
-    </div>
   );
 }

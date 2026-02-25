@@ -10,7 +10,6 @@ import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDial
 import { JobProgress, Timesheet, Role } from '@/lib/types';
 import { JobProgressTable } from '@/components/job-progress/JobProgressTable';
 import { format, startOfMonth, addMonths, subMonths, isSameMonth, parseISO, isBefore, isAfter, startOfToday } from 'date-fns';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CreateTimesheetDialog from '@/components/job-progress/CreateTimesheetDialog';
 import TimesheetTrackerTable from '@/components/job-progress/TimesheetTrackerTable';
 import { Input } from '@/components/ui/input';
@@ -27,14 +26,9 @@ export default function JobProgressPage() {
   const [viewingJob, setViewingJob] = useState<JobProgress | null>(null);
   const { toast } = useToast();
   
-  // JMS States
-  const [currentJmsMonth, setCurrentJmsMonth] = useState(startOfMonth(new Date()));
+  const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
   const [jmsSearchTerm, setJmsSearchTerm] = useState('');
-
-  // Timesheet States
-  const [currentTimesheetMonth, setCurrentTimesheetMonth] = useState(startOfMonth(new Date()));
   const [timesheetSearchTerm, setTimesheetSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('jms-tracker');
 
   const myPendingJmsSteps = useMemo(() => {
     if (!user) return [];
@@ -59,7 +53,6 @@ export default function JobProgressPage() {
 
     const items = new Map<string, { job: JobProgress; step: any }>();
 
-    // 1. Add steps I am currently working on
     jobProgress.forEach(job => {
       const myAcknowledgedStep = (job.steps || []).find(
         step => step.assigneeId === user.id && step.status === 'Acknowledged'
@@ -69,10 +62,8 @@ export default function JobProgressPage() {
       }
     });
 
-    // 2. Add jobs created by me that are still in progress
     jobProgress.forEach(job => {
       if (job.creatorId === user.id && job.status !== 'Completed' && !items.has(job.id)) {
-        // Find the current active step
         const currentStep =
           job.steps.find(s => s.isReturned === true) ||
           job.steps.find(s => s.status === 'Pending') ||
@@ -93,31 +84,18 @@ export default function JobProgressPage() {
     return allowedRoles.includes(user.role);
   }, [user]);
 
-  const changeJmsMonth = (amount: number) => {
-    setCurrentJmsMonth(prev => addMonths(prev, amount));
+  const changeMonth = (amount: number) => {
+    setCurrentMonth(prev => addMonths(prev, amount));
   };
   
-  const changeTimesheetMonth = (amount: number) => {
-    setCurrentTimesheetMonth(prev => addMonths(prev, amount));
-  };
-
-  const canGoToPreviousJmsMonth = useMemo(() => {
-    const firstDayOfCurrentMonth = startOfMonth(currentJmsMonth);
+  const canGoToPreviousMonth = useMemo(() => {
+    const firstDayOfCurrentMonth = startOfMonth(currentMonth);
     return isAfter(firstDayOfCurrentMonth, implementationStartDate);
-  }, [currentJmsMonth]);
+  }, [currentMonth]);
 
-  const canGoToNextJmsMonth = useMemo(() => {
-    return isBefore(startOfMonth(currentJmsMonth), startOfToday());
-  }, [currentJmsMonth]);
-  
-  const canGoToPreviousTimesheetMonth = useMemo(() => {
-    const firstDayOfCurrentMonth = startOfMonth(currentTimesheetMonth);
-    return isAfter(firstDayOfCurrentMonth, implementationStartDate);
-  }, [currentTimesheetMonth]);
-
-  const canGoToNextTimesheetMonth = useMemo(() => {
-    return isBefore(startOfMonth(currentTimesheetMonth), startOfToday());
-  }, [currentTimesheetMonth]);
+  const canGoToNextMonth = useMemo(() => {
+    return isBefore(startOfMonth(currentMonth), startOfToday());
+  }, [currentMonth]);
 
   const filteredJobs = useMemo(() => {
     const visibleJobs = jobProgress.filter(job => {
@@ -140,7 +118,7 @@ export default function JobProgressPage() {
   
     const jobsInMonth = visibleJobs.filter(job => {
       const dateToCompare = job.dateFrom ? parseISO(job.dateFrom) : parseISO(job.createdAt);
-      return isSameMonth(dateToCompare, currentJmsMonth);
+      return isSameMonth(dateToCompare, currentMonth);
     });
   
     if (!jmsSearchTerm) return jobsInMonth;
@@ -155,22 +133,20 @@ export default function JobProgressPage() {
         );
     });
   
-  }, [jobProgress, currentJmsMonth, user, jmsSearchTerm, projects]);
+  }, [jobProgress, currentMonth, user, jmsSearchTerm, projects]);
 
   const filteredTimesheets = useMemo(() => {
     const visibleTimesheets = timesheets.filter(ts => {
       const canViewAll = user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Document Controller';
       if (canViewAll) return true;
 
-      // Show if user is the submitter or the one it's submitted to, regardless of project
       if (ts.submitterId === user?.id || ts.submittedToId === user?.id) return true;
 
-      // Fallback for managers who might not be directly involved but oversee projects
       if (!user?.projectIds) return false;
       return user.projectIds.includes(ts.projectId);
     });
 
-    const timesheetsInMonth = visibleTimesheets.filter(ts => isSameMonth(parseISO(ts.submissionDate), currentTimesheetMonth));
+    const timesheetsInMonth = visibleTimesheets.filter(ts => isSameMonth(parseISO(ts.submissionDate), currentMonth));
 
     if (!timesheetSearchTerm) return timesheetsInMonth;
     const lowercasedTerm = timesheetSearchTerm.toLowerCase();
@@ -181,7 +157,7 @@ export default function JobProgressPage() {
             (ts.plantUnit && ts.plantUnit.toLowerCase().includes(lowercasedTerm))
         );
     });
-  }, [timesheets, currentTimesheetMonth, user, timesheetSearchTerm, projects]);
+  }, [timesheets, currentMonth, user, timesheetSearchTerm, projects]);
 
 
   if (!can.manage_job_progress) {
@@ -205,6 +181,25 @@ export default function JobProgressPage() {
           <h1 className="text-3xl font-bold tracking-tight">Trackers</h1>
           <p className="text-muted-foreground">Monitor the lifecycle of JMS and Timesheets.</p>
         </div>
+        <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+                <Button variant="outline" size="icon" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth}>
+                    <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-lg font-semibold w-32 text-center">{format(currentMonth, 'MMMM yyyy')}</span>
+                <Button variant="outline" size="icon" onClick={() => changeMonth(1)} disabled={!canGoToNextMonth}>
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
+            </div>
+            {canCreateJms && (
+              <Button onClick={() => setIsCreateJobOpen(true)}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Create New JMS
+              </Button>
+            )}
+             <Button onClick={() => setIsCreateTimesheetOpen(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Submit Timesheet
+            </Button>
+        </div>
       </div>
       
       {myPendingJmsSteps.length > 0 || myPendingTimesheets.length > 0 ? (
@@ -222,10 +217,7 @@ export default function JobProgressPage() {
                           <p className="font-semibold">JMS Step: {step.name}</p>
                           <p className="text-sm text-muted-foreground">{job.title}</p>
                       </div>
-                      <Button onClick={() => {
-                          setCurrentJmsMonth(startOfMonth(parseISO(job.dateFrom || job.createdAt)));
-                          setViewingJob(job);
-                      }}>View JMS</Button>
+                      <Button onClick={() => { setViewingJob(job); }}>View JMS</Button>
                   </div>
               ))}
               {myPendingTimesheets.map(ts => {
@@ -240,10 +232,8 @@ export default function JobProgressPage() {
                               </p>
                           </div>
                           <Button onClick={() => {
-                              setActiveTab('timesheet-tracker');
-                              setCurrentTimesheetMonth(startOfMonth(parseISO(ts.submissionDate)));
                               toast({
-                                  title: "Navigated to Timesheet Month",
+                                  title: "Scroll down to find the Timesheet Tracker",
                                   description: "The timesheet will be visible in the list below.",
                               });
                           }}>View</Button>
@@ -295,10 +285,7 @@ export default function JobProgressPage() {
                                         )}
                                     </div>
                                 </div>
-                                <Button onClick={() => {
-                                    setCurrentJmsMonth(startOfMonth(parseISO(job.dateFrom || job.createdAt)));
-                                    setViewingJob(job);
-                                }}>View JMS</Button>
+                                <Button onClick={() => { setViewingJob(job); }}>View JMS</Button>
                             </div>
                         ))
                     ) : (
@@ -309,70 +296,42 @@ export default function JobProgressPage() {
           </CardContent>
       </Card>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4 flex-1 flex flex-col">
-        <TabsList>
-            <TabsTrigger value="jms-tracker">JMS Tracker</TabsTrigger>
-            <TabsTrigger value="timesheet-tracker">Timesheet Tracker</TabsTrigger>
-        </TabsList>
-        <TabsContent value="jms-tracker" className="mt-4 flex-1 flex flex-col">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={() => changeJmsMonth(-1)} disabled={!canGoToPreviousJmsMonth}>
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-lg font-semibold w-32 text-center">{format(currentJmsMonth, 'MMMM yyyy')}</span>
-                    <Button variant="outline" size="icon" onClick={() => changeJmsMonth(1)} disabled={!canGoToNextJmsMonth}>
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
+      <div className="grid lg:grid-cols-2 gap-8 mt-4">
+        <Card>
+            <CardHeader>
+                <CardTitle>JMS Tracker</CardTitle>
+                <div className="relative w-full sm:w-auto flex-1 pt-2">
+                    <Search className="absolute left-3 top-1/2 -translate-y-[-50%] h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search by title, JMS no, project..."
+                        className="pl-9"
+                        value={jmsSearchTerm}
+                        onChange={e => setJmsSearchTerm(e.target.value)}
+                    />
                 </div>
-                <div className="flex flex-col sm:flex-row items-center gap-4 flex-1">
-                    <div className="relative w-full sm:w-auto flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search by title, JMS no, project..."
-                            className="pl-9"
-                            value={jmsSearchTerm}
-                            onChange={e => setJmsSearchTerm(e.target.value)}
-                        />
-                    </div>
-                    {canCreateJms && (
-                      <Button onClick={() => setIsCreateJobOpen(true)} className="w-full sm:w-auto">
-                          <PlusCircle className="mr-2 h-4 w-4" /> Create New JMS
-                      </Button>
-                    )}
+            </CardHeader>
+            <CardContent>
+                <JobProgressTable jobs={filteredJobs} onViewJob={setViewingJob} />
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle>Timesheet Tracker</CardTitle>
+                 <div className="relative w-full sm:w-auto flex-1 pt-2">
+                    <Search className="absolute left-3 top-1/2 -translate-y-[-50%] h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search by project or unit..."
+                        className="pl-9"
+                        value={timesheetSearchTerm}
+                        onChange={e => setTimesheetSearchTerm(e.target.value)}
+                    />
                 </div>
-            </div>
-            <JobProgressTable jobs={filteredJobs} onViewJob={setViewingJob} />
-        </TabsContent>
-        <TabsContent value="timesheet-tracker" className="mt-4 flex-1 flex flex-col">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={() => changeTimesheetMonth(-1)} disabled={!canGoToPreviousTimesheetMonth}>
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-lg font-semibold w-32 text-center">{format(currentTimesheetMonth, 'MMMM yyyy')}</span>
-                    <Button variant="outline" size="icon" onClick={() => changeTimesheetMonth(1)} disabled={!canGoToNextTimesheetMonth}>
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                </div>
-                <div className="flex flex-col sm:flex-row items-center gap-4 flex-1">
-                    <div className="relative w-full sm:w-auto flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search by project or unit..."
-                            className="pl-9"
-                            value={timesheetSearchTerm}
-                            onChange={e => setTimesheetSearchTerm(e.target.value)}
-                        />
-                    </div>
-                     <Button onClick={() => setIsCreateTimesheetOpen(true)} className="w-full sm:w-auto">
-                        <PlusCircle className="mr-2 h-4 w-4" /> Submit Timesheet
-                    </Button>
-                </div>
-            </div>
-             <TimesheetTrackerTable timesheets={filteredTimesheets}/>
-        </TabsContent>
-      </Tabs>
+            </CardHeader>
+            <CardContent>
+                <TimesheetTrackerTable timesheets={filteredTimesheets}/>
+            </CardContent>
+        </Card>
+      </div>
 
       <CreateJobDialog isOpen={isCreateJobOpen} setIsOpen={setIsCreateJobOpen} />
       <CreateTimesheetDialog isOpen={isCreateTimesheetOpen} setIsOpen={setIsCreateTimesheetOpen} />

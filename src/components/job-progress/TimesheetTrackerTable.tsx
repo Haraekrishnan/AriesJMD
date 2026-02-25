@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -70,9 +69,9 @@ import {
 
 const statusVariantMap: Record<
   TimesheetStatus,
-  'default' | 'secondary' | 'destructive' | 'success'
+  'default' | 'secondary' | 'destructive' | 'success' | 'warning'
 > = {
-  Pending: 'secondary',
+  Pending: 'warning',
   Acknowledged: 'default',
   'Sent To Office': 'default',
   'Office Acknowledged': 'success',
@@ -85,41 +84,32 @@ const TimelineItem = ({
   actorName,
   date,
   children,
+  isLast = false
 }: {
   icon: React.ElementType;
   title: string;
   actorName?: string;
   date?: string;
   children?: React.ReactNode;
+  isLast?: boolean;
 }) => {
-  if (!actorName || !date) {
-    return (
-      <div className="flex gap-4">
-        <div className="flex flex-col items-center">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted border">
-            <Icon className="h-5 w-5 text-muted-foreground/50" />
-          </div>
-        </div>
-        <div>
-          <p className="font-semibold text-muted-foreground/50">{title}</p>
-        </div>
-      </div>
-    );
-  }
+  const isPending = !actorName || !date;
 
   return (
     <div className="flex gap-4">
       <div className="flex flex-col items-center">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-          <Icon className="h-5 w-5 text-muted-foreground" />
+        <div className={`flex h-8 w-8 items-center justify-center rounded-full ${isPending ? 'bg-muted border' : 'bg-muted'}`}>
+          <Icon className={`h-5 w-5 ${isPending ? 'text-muted-foreground/50' : 'text-muted-foreground'}`} />
         </div>
-        {children && <div className="h-full min-h-[2rem] w-px bg-border my-1" />}
+        {!isLast && <div className="h-full min-h-[2rem] w-px bg-border my-1" />}
       </div>
-      <div>
+      <div className={`pt-1 ${isPending ? 'text-muted-foreground/50' : ''}`}>
         <p className="font-semibold">{title}</p>
-        <p className="text-xs text-muted-foreground">
-          by {actorName} on {format(parseISO(date), 'dd MMM, yyyy')}
-        </p>
+        {!isPending && (
+            <p className="text-xs text-muted-foreground">
+                by {actorName} on {format(parseISO(date), 'dd MMM, yyyy')}
+            </p>
+        )}
       </div>
     </div>
   );
@@ -349,50 +339,37 @@ const ViewTimesheetDialog = ({
                 title="Submitted"
                 actorName={submitter?.name}
                 date={timesheet.submissionDate}
-              >
-                {timesheet.status !== 'Rejected' && (
-                  <div className="h-full min-h-[2rem] w-px bg-border my-1" />
-                )}
-              </TimelineItem>
+              />
+               <TimelineItem
+                icon={UserCheck}
+                title="Acknowledged"
+                actorName={acknowledgedBy?.name}
+                date={timesheet.acknowledgedDate}
+              />
+               <TimelineItem
+                icon={Building}
+                title="Sent to Office"
+                actorName={sentToOfficeBy?.name}
+                date={timesheet.sentToOfficeDate}
+              />
               {timesheet.status === 'Rejected' ? (
                 <TimelineItem
                   icon={XCircle}
                   title="Rejected"
                   actorName={rejectedBy?.name}
                   date={timesheet.rejectedDate}
-                >
-                  {timesheet.rejectionReason && (
-                    <p className="text-xs text-muted-foreground mt-1 pl-10">
-                      Reason: {timesheet.rejectionReason}
-                    </p>
-                  )}
-                </TimelineItem>
+                  isLast={true}
+                />
               ) : (
-                <>
-                  <TimelineItem
-                    icon={UserCheck}
-                    title="Acknowledged"
-                    actorName={acknowledgedBy?.name}
-                    date={timesheet.acknowledgedDate}
-                  >
-                    <div className="h-full min-h-[2rem] w-px bg-border my-1" />
-                  </TimelineItem>
-                  <TimelineItem
-                    icon={Building}
-                    title="Sent to Office"
-                    actorName={sentToOfficeBy?.name}
-                    date={timesheet.sentToOfficeDate}
-                  >
-                    <div className="h-full min-h-[2rem] w-px bg-border my-1" />
-                  </TimelineItem>
-                  <TimelineItem
+                 <TimelineItem
                     icon={CheckCircle}
                     title="Office Acknowledged"
                     actorName={officeAcknowledgedBy?.name}
                     date={timesheet.officeAcknowledgedDate}
+                    isLast={true}
                   />
-                </>
               )}
+
               {commentsArray.length > 0 && (
                 <Accordion type="single" collapsible className="w-full mt-2">
                   <AccordionItem value="comments" className="border-none">
@@ -537,18 +514,17 @@ export default function TimesheetTrackerTable({
         )
       },
       {
-        accessorKey: 'numberOfTimesheets',
-        header: '# of Sheets',
-        cell: ({ row }) => <div className="text-center">{row.original.numberOfTimesheets}</div>
-      },
-      {
         accessorKey: 'status',
         header: 'Status',
         cell: ({ row }) => <Badge variant={statusVariantMap[row.original.status]}>{row.original.status}</Badge>
       },
       {
         id: 'lastUpdated',
-        header: 'Last Updated',
+        header: ({ column }) => (
+            <div className="flex items-center cursor-pointer" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+              Last Updated <ArrowUpDown className="ml-2 h-4 w-4" />
+            </div>
+        ),
         accessorFn: (row) => row.officeAcknowledgedDate || row.sentToOfficeDate || row.acknowledgedDate || row.submissionDate,
         cell: ({ row }) => {
           const lastUpdateDate = row.original.officeAcknowledgedDate || row.original.sentToOfficeDate || row.original.acknowledgedDate || row.original.submissionDate;
@@ -561,7 +537,6 @@ export default function TimesheetTrackerTable({
       },
       {
         id: 'actions',
-        header: () => <div className="text-right">Actions</div>,
         cell: ({ row }) => (
           <div className="text-right">
             <Button variant="outline" size="sm" onClick={() => setViewingTimesheet(row.original)}>
@@ -593,24 +568,16 @@ export default function TimesheetTrackerTable({
 
   return (
     <>
-      <div className="border rounded-lg overflow-hidden flex-1 flex flex-col min-h-0">
-        <ScrollArea className="h-[60vh]">
+        <ScrollArea className="h-96">
             <Table className="text-sm">
-                <TableHeader className="sticky top-0 bg-card z-10">
+                <TableHeader>
                     {table.getHeaderGroups().map(headerGroup => (
                         <TableRow key={headerGroup.id}>
                             {headerGroup.headers.map(header => (
-                                <TableHead key={header.id} onClick={header.column.getToggleSortingHandler()} className="cursor-pointer">
+                                <TableHead key={header.id}>
                                     {header.isPlaceholder
                                         ? null
-                                        : <div className="flex items-center">
-                                            {flexRender(header.column.columnDef.header, header.getContext())}
-                                            {{
-                                                asc: <ArrowUp className="ml-2 h-4 w-4" />,
-                                                desc: <ArrowDown className="ml-2 h-4 w-4" />,
-                                            }[header.column.getIsSorted() as string] ?? (header.column.getCanSort() ? <ArrowUpDown className="ml-2 h-4 w-4 opacity-30"/> : null) }
-                                          </div>
-                                    }
+                                        : flexRender(header.column.columnDef.header, header.getContext())}
                                 </TableHead>
                             ))}
                         </TableRow>
@@ -620,7 +587,7 @@ export default function TimesheetTrackerTable({
                     {table.getRowModel().rows.map(row => (
                         <TableRow key={row.id}>
                             {row.getVisibleCells().map(cell => (
-                                <TableCell key={cell.id} className="p-2">
+                                <TableCell key={cell.id}>
                                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                 </TableCell>
                             ))}
@@ -629,7 +596,6 @@ export default function TimesheetTrackerTable({
                 </TableBody>
             </Table>
         </ScrollArea>
-      </div>
       {viewingTimesheet && (
         <ViewTimesheetDialog
           isOpen={!!viewingTimesheet}
