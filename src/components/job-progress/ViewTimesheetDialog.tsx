@@ -1,6 +1,6 @@
 
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   Accordion,
   AccordionContent,
@@ -159,17 +159,37 @@ export default function ViewTimesheetDialog({
     const isRecipient = timesheet.submittedToId === user?.id;
     const isSubmitter = timesheet.submitterId === user?.id;
     const isAdmin = user?.role === 'Admin';
-
-    if (isAdmin && timesheet.status !== 'Rejected') {
-        return (
-            <Button size="sm" className="w-full" onClick={() => setIsEditing(true)}>
-                <Edit className="mr-2 h-4 w-4" /> Edit / Reassign
-            </Button>
-        );
-    }
     
     switch (timesheet.status) {
       case 'Pending':
+        if (isRecipient) {
+          return (
+            <div className="flex flex-col items-center gap-2 w-full">
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  updateTimesheetStatus(
+                    timesheet.id,
+                    'Acknowledged',
+                    'Acknowledged by recipient.'
+                  );
+                  setIsOpen(false);
+                }}
+              >
+                Acknowledge
+              </Button>
+               <Button
+                size="sm"
+                variant="destructive"
+                className="w-full"
+                onClick={() => handleActionClick('Reject')}
+              >
+                Reject
+              </Button>
+            </div>
+          );
+        }
         if (isSubmitter) {
           return (
             <div className="flex flex-col items-center gap-2 w-full">
@@ -199,35 +219,7 @@ export default function ViewTimesheetDialog({
             </div>
           );
         }
-        if (isRecipient) {
-          return (
-            <div className="flex flex-col items-center gap-2 w-full">
-              <Button
-                size="sm"
-                className="w-full"
-                onClick={() => {
-                  updateTimesheetStatus(
-                    timesheet.id,
-                    'Acknowledged',
-                    'Acknowledged by recipient.'
-                  );
-                  setIsOpen(false);
-                }}
-              >
-                Acknowledge
-              </Button>
-               <Button
-                size="sm"
-                variant="destructive"
-                className="w-full"
-                onClick={() => handleActionClick('Reject')}
-              >
-                Reject
-              </Button>
-            </div>
-          );
-        }
-        return null;
+        break;
       case 'Acknowledged':
         if (isRecipient) {
           return (
@@ -253,7 +245,7 @@ export default function ViewTimesheetDialog({
             </div>
           );
         }
-        return null;
+        break;
       case 'Sent To Office':
         if (canAcknowledgeOffice) {
           return (
@@ -281,7 +273,7 @@ export default function ViewTimesheetDialog({
             </div>
           );
         }
-        return null;
+        break;
       case 'Office Acknowledged':
         if (canAcknowledgeOffice) {
           return (
@@ -294,7 +286,7 @@ export default function ViewTimesheetDialog({
             </Button>
           );
         }
-        return null;
+        break;
       case 'Rejected':
         if (isSubmitter) {
           return (
@@ -371,10 +363,27 @@ export default function ViewTimesheetDialog({
             </div>
           );
         }
-        return null;
+        break;
       default:
-        return null;
+        break;
     }
+
+    if (isAdmin && timesheet.status !== 'Rejected') {
+        return (
+            <Button size="sm" className="w-full" onClick={() => setIsEditing(true)}>
+                <Edit className="mr-2 h-4 w-4" /> Edit / Reassign
+            </Button>
+        );
+    }
+    
+    return null;
+  };
+
+  const handleAddComment = () => {
+    const text = comments[timesheet.id];
+    if (!text || !text.trim()) return;
+    addTimesheetComment(timesheet.id, text);
+    setComments(prev => ({...prev, [timesheet.id]: ''}));
   };
 
   return (
