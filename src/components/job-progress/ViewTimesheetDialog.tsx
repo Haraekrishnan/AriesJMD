@@ -63,7 +63,7 @@ const TimelineItem = ({
   actorName,
   date,
   children,
-  isLast = false
+  isLast = false,
 }: {
   icon: React.ElementType;
   title: string;
@@ -103,7 +103,7 @@ export default function ViewTimesheetDialog({
   setIsOpen: (open: boolean) => void;
   timesheet: Timesheet;
 }) {
-  const { user, users, projects, updateTimesheetStatus, deleteTimesheet } =
+  const { user, users, projects, updateTimesheetStatus, deleteTimesheet, addTimesheetComment } =
     useAppContext();
   const { toast } = useToast();
   const [rejectionInfo, setRejectionInfo] = useState<{
@@ -171,18 +171,47 @@ export default function ViewTimesheetDialog({
             </Button>
           );
         }
+        if (isSubmitter) {
+            return (
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button size="sm" variant="destructive">
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete Submission
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader><AlertDialogTitle>Delete Submission?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteTimesheet(timesheet.id)}>Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            );
+        }
         return null;
       case 'Acknowledged':
         if (isRecipient) {
           return (
-            <Button
-              size="sm"
-              onClick={() =>
-                updateTimesheetStatus(timesheet.id, 'Sent To Office')
-              }
-            >
-              Send to Office
-            </Button>
+            <div className="flex flex-col items-center gap-2 w-full">
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={() =>
+                  updateTimesheetStatus(timesheet.id, 'Sent To Office')
+                }
+              >
+                Send to Office
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="w-full"
+                onClick={() => handleActionClick('Reject')}
+              >
+                Reject
+              </Button>
+            </div>
           );
         }
         return null;
