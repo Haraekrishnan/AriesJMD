@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo } from 'react';
 import { Timesheet, TimesheetStatus } from '@/lib/types';
@@ -15,11 +14,12 @@ const TimesheetCard = ({ timesheet, onViewTimesheet }: { timesheet: Timesheet, o
     const submitter = users.find(u => u.id === timesheet.submitterId);
     const recipient = users.find(u => u.id === timesheet.submittedToId);
     const project = projects.find(p => p.id === timesheet.projectId);
+    const locationText = [project?.name, timesheet.plantUnit].filter(Boolean).join(' / ');
 
     return (
         <Card onClick={() => onViewTimesheet(timesheet)} className="cursor-pointer hover:shadow-md">
             <CardContent className="p-3 space-y-2">
-                <p className="font-semibold text-sm">{project?.name || 'N/A'} - {timesheet.plantUnit}</p>
+                <p className="font-semibold text-sm">{locationText || 'N/A'}</p>
                 <div className="flex justify-between items-center">
                     <p className="text-xs text-muted-foreground">
                         {format(parseISO(timesheet.startDate), 'dd MMM')} - {format(parseISO(timesheet.endDate), 'dd MMM, yyyy')}

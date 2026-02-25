@@ -19,6 +19,7 @@ const JobCard = ({ job, onViewJob }: { job: JobProgress; onViewJob: (job: JobPro
 
     const assignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
     const project = projects.find(p => p.id === job.projectId);
+    const locationText = [project?.name, job.plantUnit].filter(Boolean).join(' / ');
 
     const dateText = useMemo(() => {
         const from = job.dateFrom ? parseISO(job.dateFrom) : (job.createdAt ? parseISO(job.createdAt) : null);
@@ -42,7 +43,7 @@ const JobCard = ({ job, onViewJob }: { job: JobProgress; onViewJob: (job: JobPro
                 <div className="flex justify-between items-start">
                     <div className="space-y-1 pr-2">
                         <p className="font-semibold text-sm leading-tight">{job.title}</p>
-                        <p className="text-xs text-muted-foreground">{job.plantUnit || project?.name || 'N/A'}</p>
+                        <p className="text-xs text-muted-foreground">{locationText || 'N/A'}</p>
                     </div>
                 </div>
 
