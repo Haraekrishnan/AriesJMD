@@ -86,10 +86,10 @@ const TimelineItem = ({
         </div>
         {!isLast && <div className="h-full min-h-[2rem] w-px bg-border my-1" />}
       </div>
-      <div className={`pt-1 flex-1 ${isPending ? 'text-muted-foreground/50' : ''}`}>
-        <p className="font-semibold">{title}</p>
+      <div className={`pt-1.5 flex-1 ${isPending ? 'text-muted-foreground/50' : ''}`}>
+        <p className="font-semibold leading-none">{title}</p>
         {!isPending && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-0.5">
                 by {actorName} on {format(parseISO(date), 'dd MMM, yyyy')}
             </p>
         )}
@@ -175,7 +175,7 @@ export default function ViewTimesheetDialog({
     
     // Sort events to ensure chronological order
     return events.sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-  }, [timesheet, users]);
+  }, [timesheet, users, commentsArray]);
 
   const lastEventType = timelineEvents.length > 0 ? timelineEvents[timelineEvents.length - 1].type : null;
 
@@ -410,12 +410,13 @@ export default function ViewTimesheetDialog({
                   <TimelineItem
                       key={index}
                       icon={event.icon}
-                      title={event.title}
+                      title={event.type}
                       actorName={event.actor?.name}
                       date={event.date}
+                      isLast={index === timelineEvents.length - 1 && pendingSteps.length === 0}
                   >
                       {event.comment && (
-                          <div className="text-xs mt-1 p-2 bg-destructive/10 text-destructive-foreground rounded-md">
+                          <div className="text-xs mt-1 p-2 bg-destructive/10 text-destructive rounded-md">
                               <strong>Reason:</strong> {event.comment}
                           </div>
                       )}
