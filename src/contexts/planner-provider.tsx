@@ -410,18 +410,18 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             ...data,
             lastUpdated: new Date().toISOString() 
         };
+        
+        const previousStatus = timesheetsById[id]?.status;
 
-        // If status is changing back to Pending, clear rejection/completion fields
-        if (updates.status === 'Pending' && timesheetsById[id]?.status !== 'Pending') {
+        // If status is changing back to Pending from Rejected, clear workflow fields but keep rejection history
+        if (updates.status === 'Pending' && previousStatus === 'Rejected') {
             updates.acknowledgedById = undefined;
             updates.acknowledgedDate = undefined;
             updates.sentToOfficeById = undefined;
             updates.sentToOfficeDate = undefined;
             updates.officeAcknowledgedById = undefined;
             updates.officeAcknowledgedDate = undefined;
-            updates.rejectedById = undefined;
-            updates.rejectedDate = undefined;
-            updates.rejectionReason = undefined;
+            // Note: rejectedById, rejectedDate, and rejectionReason are NOT cleared
         }
 
         // To remove fields in firebase, they must be set to null
