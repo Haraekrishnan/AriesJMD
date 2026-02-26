@@ -7,7 +7,7 @@ import { PlusCircle, ChevronLeft, ChevronRight, Search, Bell, FileDown } from 'l
 import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress, Timesheet, Role } from '@/lib/types';
-import { format, startOfMonth, addMonths, subMonths, isSameMonth, parseISO, isBefore, isAfter, startOfToday } from 'date-fns';
+import { format, startOfMonth, addMonths, subMonths, isSameMonth, parseISO, isBefore, isAfter, startOfToday, differenceInDays } from 'date-fns';
 import CreateTimesheetDialog from '@/components/job-progress/CreateTimesheetDialog';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,6 +17,7 @@ import ViewTimesheetDialog from '@/components/job-progress/ViewTimesheetDialog';
 import { Badge } from '@/components/ui/badge';
 import PendingActionsDialog from '@/components/job-progress/PendingActionsDialog';
 import OngoingJobsReport from '@/components/job-progress/OngoingJobsReport';
+import { JobProgressTable } from '@/components/job-progress/JobProgressTable';
 
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
@@ -38,6 +39,23 @@ export default function JobProgressPage() {
     const allowedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
     return allowedRoles.includes(user.role);
   }, [user]);
+
+  const longPendingJobs = useMemo(() => {
+    if (!user) return [];
+    const allowedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+    if (!allowedRoles.includes(user.role)) return [];
+    
+    return jobProgress.filter(job => {
+        const isPendingAck = job.steps.some(s => s.status === 'Pending');
+        const isInProgress = job.steps.some(s => s.status === 'Acknowledged');
+        
+        if (job.status !== 'Completed' && (isPendingAck || isInProgress)) {
+            const daysIdle = differenceInDays(new Date(), parseISO(job.lastUpdated));
+            return daysIdle > 3;
+        }
+        return false;
+    });
+  }, [jobProgress, user]);
 
   const changeMonth = (amount: number) => {
     setCurrentMonth(prev => addMonths(prev, amount));
@@ -118,6 +136,8 @@ export default function JobProgressPage() {
     return null;
   }
 
+  const canViewLongPending = user && ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role);
+
   return (
     <div className="space-y-4 h-full flex flex-col">
        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -160,6 +180,9 @@ export default function JobProgressPage() {
         <TabsList className="shrink-0">
           <TabsTrigger value="jms">JMS Tracker</TabsTrigger>
           <TabsTrigger value="timesheets">Timesheet Tracker</TabsTrigger>
+          {canViewLongPending && (
+             <TabsTrigger value="long-pending">Long Pending JMS</TabsTrigger>
+          )}
         </TabsList>
         <TabsContent value="jms" className="flex-1 overflow-hidden">
            <div className="w-full sm:w-auto max-w-sm pt-2 pb-4">
@@ -189,6 +212,11 @@ export default function JobProgressPage() {
           </div>
           <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={setViewingTimesheet} />
         </TabsContent>
+        {canViewLongPending && (
+          <TabsContent value="long-pending" className="flex-1 overflow-hidden mt-4">
+            <JobProgressTable jobs={longPendingJobs} onViewJob={setViewingJob} />
+          </TabsContent>
+        )}
       </Tabs>
 
 

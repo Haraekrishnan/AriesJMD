@@ -8,7 +8,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import type { JobProgress, JobProgressStatus } from '@/lib/types';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Undo2, ArrowUpDown, User, Eye, AlertCircle } from 'lucide-react';
+import { Undo2, ArrowUpDown, User, Eye } from 'lucide-react';
 import {
     ColumnDef,
     flexRender,
@@ -19,7 +19,7 @@ import {
   } from "@tanstack/react-table"
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+
 
 interface JobProgressTableProps {
   jobs: JobProgress[];
@@ -42,26 +42,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
       {
         accessorKey: 'title',
         header: 'JMS Title',
-        cell: ({ row }) => {
-            const returnedStep = row.original.steps.find(s => s.isReturned === true);
-            return (
-                <div className="flex items-center gap-2">
-                    {returnedStep && (
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger>
-                                    <AlertCircle className="h-4 w-4 text-destructive" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>This job has a returned step.</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    )}
-                    <span className="font-medium truncate">{row.original.title}</span>
-                </div>
-            )
-        }
+        cell: ({ row }) => <span className="font-medium">{row.original.title}</span>
       },
       {
         id: 'project',
@@ -79,7 +60,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
       },
       {
         id: 'assignee',
-        header: 'Assignee',
+        header: 'Current Assignee',
         accessorFn: (row) => {
             const currentStep = row.original.steps.find(s => s.status === 'Pending' || s.isReturned) || row.original.steps.find(s => s.status === 'Acknowledged');
             return users.find(u => u.id === currentStep?.assigneeId)?.name || '';
@@ -116,7 +97,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
       },
       {
         id: 'status',
-        header: 'Status',
+        header: 'Current Step',
         accessorFn: (row) => {
             const returnedStep = row.steps.find(s => s.isReturned === true);
             if(returnedStep) return 'Returned';
@@ -157,12 +138,12 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   });
 
   if (jobs.length === 0) {
-    return <p className="text-center text-muted-foreground py-8">No JMS created yet for this month.</p>;
+    return <p className="text-center text-muted-foreground py-8">No long pending jobs found.</p>;
   }
 
   return (
-    <ScrollArea className="h-96">
-        <Table className="text-sm">
+    <ScrollArea className="h-full">
+        <Table>
           <TableHeader>
             {table.getHeaderGroups().map(headerGroup => (
               <TableRow key={headerGroup.id}>
