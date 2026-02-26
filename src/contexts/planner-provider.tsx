@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -404,10 +403,34 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
 
     const updateTimesheet = useCallback((timesheet: Timesheet) => {
         const { id, ...data } = timesheet;
-        const updates: Partial<Timesheet> & { lastUpdated?: string } = { ...data, lastUpdated: new Date().toISOString() };
-        delete (updates as any).comments;
-        update(ref(rtdb, `timesheets/${id}`), updates);
-    }, []);
+
+        const updates: Partial<Timesheet> & { lastUpdated?: string } = {
+            ...data,
+            lastUpdated: new Date().toISOString() 
+        };
+
+        // If status is changing back to Pending, clear rejection/completion fields
+        if (updates.status === 'Pending' && timesheetsById[id]?.status !== 'Pending') {
+            updates.acknowledgedById = undefined;
+            updates.acknowledgedDate = undefined;
+            updates.sentToOfficeById = undefined;
+            updates.sentToOfficeDate = undefined;
+            updates.officeAcknowledgedById = undefined;
+            updates.officeAcknowledgedDate = undefined;
+            updates.rejectedById = undefined;
+            updates.rejectedDate = undefined;
+            updates.rejectionReason = undefined;
+        }
+
+        // To remove fields in firebase, they must be set to null
+        const finalUpdates: { [key: string]: any } = {};
+        for (const key in updates) {
+            finalUpdates[key] = (updates as any)[key] === undefined ? null : (updates as any)[key];
+        }
+        delete finalUpdates.comments;
+
+        update(ref(rtdb, `timesheets/${id}`), finalUpdates);
+    }, [timesheetsById]);
 
     const updateTimesheetStatus = useCallback((timesheetId: string, status: TimesheetStatus, comment?: string) => {
         if (!user) return;
@@ -746,7 +769,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       const currentStep = job.steps[stepIndex];
       const assignableUsers = getAssignableUsers();
 
-      const canReassignRoles: Role[] = ['Admin', 'Project Coordinator', 'Supervisor', 'Senior Safety Supervisor'];
+      const canReassignRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
       if (!canReassignRoles.includes(user.role)) {
           toast({ title: 'Not authorized', variant: 'destructive' });
           return;

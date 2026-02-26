@@ -33,7 +33,12 @@ export default function PendingActionsDialog({ isOpen, setIsOpen }: PendingActio
 
   const pendingTimesheets = useMemo(() => {
     if (!user) return [];
-    return timesheets.filter(ts => (ts.status === 'Pending' && ts.submittedToId === user.id) || (ts.status === 'Sent To Office' && canAcknowledgeOffice));
+    return timesheets.filter(ts => {
+        const isRecipientAction = (ts.status === 'Pending' && ts.submittedToId === user.id);
+        const isOfficeAction = (ts.status === 'Sent To Office' && canAcknowledgeOffice);
+        const isSubmitterAction = (ts.status === 'Rejected' && ts.submitterId === user.id);
+        return isRecipientAction || isOfficeAction || isSubmitterAction;
+    });
   }, [user, timesheets, canAcknowledgeOffice]);
 
   return (
