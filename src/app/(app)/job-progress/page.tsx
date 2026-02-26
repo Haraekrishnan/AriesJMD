@@ -146,7 +146,7 @@ export default function JobProgressPage() {
           <h1 className="text-3xl font-bold tracking-tight">Trackers</h1>
           <p className="text-muted-foreground">Monitor the lifecycle of JMS and Timesheets.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-start sm:justify-end gap-2">
             <OngoingJobsReport jobs={filteredJobs} />
             <Button variant="outline" onClick={() => setIsPendingDialogOpen(true)}>
               <Bell className="mr-2 h-4 w-4" />
