@@ -13,12 +13,11 @@ import { JobProgressTable } from './JobProgressTable';
 interface PendingActionsDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  longPendingJobs: JobProgress[];
   onViewJob: (job: JobProgress) => void;
   onViewTimesheet: (timesheet: Timesheet) => void;
 }
 
-export default function PendingActionsDialog({ isOpen, setIsOpen, longPendingJobs, onViewJob, onViewTimesheet }: PendingActionsDialogProps) {
+export default function PendingActionsDialog({ isOpen, setIsOpen, onViewJob, onViewTimesheet }: PendingActionsDialogProps) {
   const { user, jobProgress, timesheets, users, projects } = useAppContext();
   
   const canAcknowledgeOffice = useMemo(() => {
@@ -26,11 +25,9 @@ export default function PendingActionsDialog({ isOpen, setIsOpen, longPendingJob
     return ['Admin', 'Document Controller', 'Project Coordinator'].includes(user.role);
   }, [user]);
 
-  const canViewLongPending = user && ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role);
-
   const pendingJms = useMemo(() => {
     if (!user) return [];
-    return jobProgress.filter(job => job.steps.some(step => step.assigneeId === user.id && step.status === 'Pending'));
+    return jobProgress.filter(job => job.steps.some(step => step.assigneeId === user.id && (step.status === 'Pending' || step.isReturned)));
   }, [user, jobProgress]);
 
   const pendingTimesheets = useMemo(() => {
@@ -56,9 +53,6 @@ export default function PendingActionsDialog({ isOpen, setIsOpen, longPendingJob
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="jms">Pending JMS ({pendingJms.length})</TabsTrigger>
               <TabsTrigger value="timesheets">Pending Timesheets ({pendingTimesheets.length})</TabsTrigger>
-              {canViewLongPending && (
-                <TabsTrigger value="long-pending">Long Pending ({longPendingJobs.length})</TabsTrigger>
-              )}
             </TabsList>
             <TabsContent value="jms" className="flex-1 overflow-auto mt-2">
               <ScrollArea className="h-full">
@@ -94,11 +88,6 @@ export default function PendingActionsDialog({ isOpen, setIsOpen, longPendingJob
                 </div>
               </ScrollArea>
             </TabsContent>
-            {canViewLongPending && (
-              <TabsContent value="long-pending" className="flex-1 overflow-hidden mt-4">
-                  <JobProgressTable jobs={longPendingJobs} onViewJob={onViewJob} />
-              </TabsContent>
-            )}
           </Tabs>
           <DialogFooter className="mt-auto">
             <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>

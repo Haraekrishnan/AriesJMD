@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Search, Bell, FileDown } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Search, Bell, FileDown, Clock } from 'lucide-react';
 import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress, Timesheet, Role } from '@/lib/types';
@@ -17,6 +17,7 @@ import ViewTimesheetDialog from '@/components/job-progress/ViewTimesheetDialog';
 import { Badge } from '@/components/ui/badge';
 import PendingActionsDialog from '@/components/job-progress/PendingActionsDialog';
 import OngoingJobsReport from '@/components/job-progress/OngoingJobsReport';
+import LongPendingJmsDialog from '@/components/job-progress/LongPendingJmsDialog';
 
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
@@ -28,6 +29,7 @@ export default function JobProgressPage() {
   const [viewingJob, setViewingJob] = useState<JobProgress | null>(null);
   const [viewingTimesheet, setViewingTimesheet] = useState<Timesheet | null>(null);
   const [isPendingDialogOpen, setIsPendingDialogOpen] = useState(false);
+  const [isLongPendingDialogOpen, setIsLongPendingDialogOpen] = useState(false);
   
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
   const [jmsSearchTerm, setJmsSearchTerm] = useState('');
@@ -155,6 +157,17 @@ export default function JobProgressPage() {
                 </Badge>
               )}
             </Button>
+            {canViewLongPending && (
+                <Button variant="outline" onClick={() => setIsLongPendingDialogOpen(true)}>
+                    <Clock className="mr-2 h-4 w-4" />
+                    Long Pending
+                    {longPendingJobs.length > 0 && (
+                    <Badge variant="destructive" className="ml-2">
+                        {longPendingJobs.length}
+                    </Badge>
+                    )}
+                </Button>
+            )}
             <div className="flex items-center gap-2">
                 <Button variant="outline" size="icon" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth}>
                     <ChevronLeft className="h-4 w-4" />
@@ -230,9 +243,14 @@ export default function JobProgressPage() {
       <PendingActionsDialog 
         isOpen={isPendingDialogOpen} 
         setIsOpen={setIsPendingDialogOpen} 
-        longPendingJobs={longPendingJobs}
         onViewJob={setViewingJob}
         onViewTimesheet={setViewingTimesheet}
+      />
+      <LongPendingJmsDialog
+        isOpen={isLongPendingDialogOpen}
+        setIsOpen={setIsLongPendingDialogOpen}
+        longPendingJobs={longPendingJobs}
+        onViewJob={setViewingJob}
       />
     </div>
   );
