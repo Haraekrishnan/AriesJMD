@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import {
@@ -35,7 +36,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAppContext } from '@/contexts/app-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Comment, Timesheet, TimesheetStatus } from '@/lib/types';
-import { format, formatDistanceToNow, parseISO } from 'date-fns';
+import { format, formatDistanceToNow, parseISO, isAfter } from 'date-fns';
 import {
   Building,
   CheckCircle,
@@ -45,6 +46,7 @@ import {
   UserCheck,
   XCircle,
   Edit,
+  Undo2,
 } from 'lucide-react';
 import EditTimesheetDialog from './EditTimesheetDialog';
 
@@ -84,13 +86,14 @@ const TimelineItem = ({
         </div>
         {!isLast && <div className="h-full min-h-[2rem] w-px bg-border my-1" />}
       </div>
-      <div className={`pt-1 ${isPending ? 'text-muted-foreground/50' : ''}`}>
+      <div className={`pt-1 flex-1 ${isPending ? 'text-muted-foreground/50' : ''}`}>
         <p className="font-semibold">{title}</p>
         {!isPending && (
             <p className="text-xs text-muted-foreground">
                 by {actorName} on {format(parseISO(date), 'dd MMM, yyyy')}
             </p>
         )}
+        {children}
       </div>
     </div>
   );
@@ -122,22 +125,83 @@ export default function ViewTimesheetDialog({
     );
   }, [user]);
 
-  const submitter = users.find((u) => u.id === timesheet.submitterId);
-  const acknowledgedBy = users.find(
-    (u) => u.id === timesheet.acknowledgedById
-  );
-  const sentToOfficeBy = users.find(
-    (u) => u.id === timesheet.sentToOfficeById
-  );
-  const officeAcknowledgedBy = users.find(
-    (u) => u.id === timesheet.officeAcknowledgedById
-  );
-  const rejectedBy = users.find((u) => u.id === timesheet.rejectedById);
   const commentsArray = Array.isArray(timesheet.comments)
     ? timesheet.comments
     : timesheet.comments
     ? Object.values(timesheet.comments)
     : [];
+    
+    
+  const timelineEvents = useMemo(() => {
+    const events: any[] = [];
+    const submitter = users.find(u => u.id === timesheet.submitterId);
+
+    // Initial Submission
+    if (timesheet.submissionDate) {
+        events.push({ type: 'Submitted', date: timesheet.submissionDate, actor: submitter, icon: Send });
+    }
+    // Acknowledged
+    if (timesheet.acknowledgedDate && timesheet.acknowledgedById) {
+        events.push({ type: 'Acknowledged', date: timesheet.acknowledgedDate, actor: users.find(u => u.id === timesheet.acknowledgedById), icon: UserCheck });
+    }
+    // Sent To Office
+    if (timesheet.sentToOfficeDate && timesheet.sentToOfficeById) {
+        events.push({ type: 'Sent To Office', date: timesheet.sentToOfficeDate, actor: users.find(u => u.id === timesheet.sentToOfficeById), icon: Building });
+    }
+    // Office Acknowledged
+    if (timesheet.officeAcknowledgedDate && timesheet.officeAcknowledgedById) {
+        events.push({ type: 'Office Acknowledged', date: timesheet.officeAcknowledgedDate, actor: users.find(u => u.id === timesheet.officeAcknowledgedById), icon: CheckCircle });
+    }
+    // Rejection
+    if (timesheet.rejectedDate && timesheet.rejectedById) {
+        events.push({
+            type: 'Rejected',
+            date: timesheet.rejectedDate,
+            actor: users.find(u => u.id === timesheet.rejectedById),
+            icon: XCircle,
+            comment: timesheet.rejectionReason,
+        });
+    }
+    // Resubmission (detected via comment)
+    const resubmissionComment = commentsArray.find(c => c.text.includes('edited and resubmitted'));
+    if (resubmissionComment) {
+        events.push({
+            type: 'Resubmitted',
+            date: resubmissionComment.date,
+            actor: users.find(u => u.id === resubmissionComment.userId),
+            icon: Undo2
+        });
+    }
+    
+    // Sort events to ensure chronological order
+    return events.sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+  }, [timesheet, users]);
+
+  const lastEventType = timelineEvents.length > 0 ? timelineEvents[timelineEvents.length - 1].type : null;
+
+  const pendingSteps = useMemo(() => {
+    if (!lastEventType || lastEventType === 'Office Acknowledged' || lastEventType === 'Rejected') {
+        return [];
+    }
+    
+    const allWorkflowSteps = [
+        { type: 'Acknowledged', icon: UserCheck, title: 'Acknowledge'},
+        { type: 'Sent To Office', icon: Building, title: 'Send to Office' },
+        { type: 'Office Acknowledged', icon: CheckCircle, title: 'Office Acknowledge' }
+    ];
+
+    let nextStepIndex = -1;
+    if (lastEventType === 'Submitted' || lastEventType === 'Resubmitted') {
+        nextStepIndex = 0; // Start from Acknowledge
+    } else {
+        const lastCompletedIndex = allWorkflowSteps.findIndex(s => s.type === lastEventType);
+        if (lastCompletedIndex !== -1) {
+            nextStepIndex = lastCompletedIndex + 1;
+        }
+    }
+
+    return nextStepIndex !== -1 ? allWorkflowSteps.slice(nextStepIndex) : [];
+  }, [lastEventType]);
 
   const handleActionClick = (action: 'Reject' | 'Reopen') => {
     setRejectionInfo({ action });
@@ -194,12 +258,9 @@ export default function ViewTimesheetDialog({
             </div>
           );
         }
-        if (isSubmitter) {
+        if (isSubmitter && !isRecipient) {
           return (
             <div className="flex flex-col items-center gap-2 w-full">
-              <Button size="sm" className="w-full" onClick={() => setIsEditing(true)}>
-                <Edit className="mr-2 h-4 w-4" /> Edit & Resubmit
-              </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button size="sm" variant="destructive" className="w-full">
@@ -344,93 +405,31 @@ export default function ViewTimesheetDialog({
             <DialogTitle>Timesheet Details</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-[1fr,200px] gap-4 pt-4 border-t">
-            <div className="space-y-0">
-              <TimelineItem
-                icon={Send}
-                title="Submitted"
-                actorName={submitter?.name}
-                date={timesheet.submissionDate}
-              />
-               <TimelineItem
-                icon={UserCheck}
-                title="Acknowledged"
-                actorName={acknowledgedBy?.name}
-                date={timesheet.acknowledgedDate}
-              />
-               <TimelineItem
-                icon={Building}
-                title="Sent to Office"
-                actorName={sentToOfficeBy?.name}
-                date={timesheet.sentToOfficeDate}
-              />
-              {timesheet.status === 'Rejected' ? (
-                <TimelineItem
-                  icon={XCircle}
-                  title="Rejected"
-                  actorName={rejectedBy?.name}
-                  date={timesheet.rejectedDate}
-                  isLast={true}
-                />
-              ) : (
-                 <TimelineItem
-                    icon={CheckCircle}
-                    title="Office Acknowledged"
-                    actorName={officeAcknowledgedBy?.name}
-                    date={timesheet.officeAcknowledgedDate}
-                    isLast={true}
+          <div className="space-y-0">
+              {timelineEvents.map((event, index) => (
+                  <TimelineItem
+                      key={index}
+                      icon={event.icon}
+                      title={event.title}
+                      actorName={event.actor?.name}
+                      date={event.date}
+                  >
+                      {event.comment && (
+                          <div className="text-xs mt-1 p-2 bg-destructive/10 text-destructive-foreground rounded-md">
+                              <strong>Reason:</strong> {event.comment}
+                          </div>
+                      )}
+                  </TimelineItem>
+              ))}
+              {pendingSteps.map((step, index) => (
+                  <TimelineItem
+                      key={`pending-${index}`}
+                      icon={step.icon}
+                      title={step.title}
+                      isLast={index === pendingSteps.length - 1}
                   />
-              )}
-
-              {commentsArray.length > 0 && (
-                <Accordion type="single" collapsible className="w-full mt-2">
-                  <AccordionItem value="comments" className="border-none">
-                    <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">
-                      <div className="flex items-center gap-1">
-                        <MessageSquare className="h-3 w-3" /> View Comments (
-                        {commentsArray.length})
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-2">
-                      <ScrollArea className="h-32">
-                        <div className="space-y-2 pr-4">
-                          {commentsArray.map((c, i) => {
-                            const commentUser = users.find(
-                              (u) => u.id === c.userId
-                            );
-                            return (
-                              <div key={i} className="flex items-start gap-2">
-                                <Avatar className="h-6 w-6">
-                                  <AvatarImage src={commentUser?.avatar} />
-                                  <AvatarFallback>
-                                    {commentUser?.name.charAt(0)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="text-xs bg-background p-2 rounded-md w-full border">
-                                  <div className="flex justify-between items-baseline">
-                                    <p className="font-semibold">
-                                      {commentUser?.name}
-                                    </p>
-                                    <p className="text-muted-foreground">
-                                      {formatDistanceToNow(
-                                        parseISO(c.date),
-                                        { addSuffix: true }
-                                      )}
-                                    </p>
-                                  </div>
-                                  <p className="text-foreground/80 mt-1 whitespace-pre-wrap">
-                                    {c.text}
-                                  </p>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </ScrollArea>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              )}
-            </div>
+              ))}
+          </div>
             <div className="flex flex-col items-center justify-center gap-4 p-4 bg-muted/50 rounded-md">
               <h4 className="font-semibold text-sm">Next Action</h4>
               {getAction() || (
