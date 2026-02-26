@@ -54,9 +54,12 @@ export default function EditTimesheetDialog({ isOpen, setIsOpen, timesheet }: Ed
   }, [timesheet, form]);
 
   const onSubmit = (data: TimesheetFormValues) => {
+    const isResubmittingRejected = timesheet.status === 'Rejected';
+
     const updatedTimesheet: Timesheet = {
         ...timesheet,
         ...data,
+        status: isResubmittingRejected ? 'Pending' : timesheet.status,
         startDate: data.startDate.toISOString(),
         endDate: data.endDate.toISOString(),
     };
@@ -66,10 +69,12 @@ export default function EditTimesheetDialog({ isOpen, setIsOpen, timesheet }: Ed
         const newRecipient = users.find(u => u.id === data.submittedToId)?.name || 'New recipient';
         const comment = `${user?.name} reassigned the acknowledgment from ${oldRecipient} to ${newRecipient}.`;
         addTimesheetComment(timesheet.id, comment);
+    } else if (isResubmittingRejected) {
+        addTimesheetComment(timesheet.id, `${user?.name} edited and resubmitted the timesheet after rejection.`);
     }
     
     updateTimesheet(updatedTimesheet);
-    toast({ title: 'Timesheet Updated' });
+    toast({ title: isResubmittingRejected ? 'Timesheet Resubmitted' : 'Timesheet Updated' });
     setIsOpen(false);
   };
   

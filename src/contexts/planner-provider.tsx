@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -78,7 +79,7 @@ const createDataListener = <T extends {}>(
 const PlannerContext = createContext<PlannerContextType | undefined>(undefined);
 
 export function PlannerProvider({ children }: { children: ReactNode }) {
-    const { user, users, getAssignableUsers } = useAuth();
+    const { user, users, getAssignableUsers, can } = useAuth();
     const { notificationSettings, projects } = useGeneral();
     const { toast } = useToast();
     const [plannerEventsById, setPlannerEventsById] = useState<Record<string, PlannerEvent>>({});
@@ -101,17 +102,18 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       if (!user) return 0;
       let count = 0;
 
-      // Timesheets awaiting my action
       const canAcknowledgeOffice = ['Admin', 'Document Controller', 'Project Coordinator'].includes(user.role);
       timesheets.forEach(ts => {
-          if ((ts.status === 'Pending' && ts.submittedToId === user.id) || (ts.status === 'Sent To Office' && canAcknowledgeOffice)) {
+          if ((ts.status === 'Pending' && ts.submittedToId === user.id) || 
+              (ts.status === 'Sent To Office' && canAcknowledgeOffice) ||
+              (ts.status === 'Rejected' && ts.submitterId === user.id)) {
               count++;
           }
       });
 
       // JMS steps awaiting my action
       jobProgress.forEach(job => {
-          const currentStep = job.steps.find(s => s.status === 'Pending');
+          const currentStep = job.steps.find(s => s.status === 'Pending' || s.isReturned);
           if (currentStep && currentStep.assigneeId === user.id) {
               count++;
           }
@@ -451,15 +453,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
                 updates[`${basePath}/rejectionReason`] = comment;
                 commentText = `Timesheet Rejected. Reason: ${comment}`;
             }
-            const newCommentRef = push(ref(rtdb, `${basePath}/comments`));
-            const newComment: Omit<Comment, 'id'> = {
-                id: newCommentRef.key!,
-                userId: user.id,
-                text: commentText,
-                date: new Date().toISOString(),
-                eventId: timesheetId
-            };
-            updates[`${basePath}/comments/${newCommentRef.key}`] = newComment;
+            addTimesheetComment(timesheetId, commentText);
         }
     
         if (status === 'Acknowledged') {
@@ -524,7 +518,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
                  }
             });
         }
-    }, [user, timesheetsById, users, projects, notificationSettings]);
+    }, [user, timesheetsById, users, projects, notificationSettings, addTimesheetComment]);
 
     const deleteTimesheet = useCallback((timesheetId: string) => {
         remove(ref(rtdb, `timesheets/${timesheetId}`));
@@ -691,7 +685,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const isProjectMember = user.projectIds?.includes(job.projectId || '');
         const canActOnUnassigned = !currentStep.assigneeId && isProjectMember;
 
-        if (currentStep.assigneeId !== user.id && !canActOnUnassigned && user.role !== 'Admin') {
+        if (currentStep.assigneeId !== user.id && !canActOnUnassigned && user.role !== 'Admin' && !can.manage_job_progress) {
             toast({ variant: 'destructive', title: 'Not authorized to complete this step.' });
             return;
         }
@@ -756,7 +750,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
                 creatorUser: user,
             });
         }
-    }, [user, jobProgressById, users, addJobStepComment, notificationSettings, toast]);
+    }, [user, jobProgressById, users, addJobStepComment, notificationSettings, toast, can.manage_job_progress]);
 
     const reassignJobStep = useCallback((jobId: string, stepId: string, newAssigneeId: string, comment: string) => {
       if (!user) return;
