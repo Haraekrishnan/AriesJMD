@@ -410,7 +410,7 @@ export default function ViewTimesheetDialog({
                   <TimelineItem
                       key={index}
                       icon={event.icon}
-                      title={event.title}
+                      title={event.type}
                       actorName={event.actor?.name}
                       date={event.date}
                       isLast={index === timelineEvents.length - 1 && pendingSteps.length === 0}
