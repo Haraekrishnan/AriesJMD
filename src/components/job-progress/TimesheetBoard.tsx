@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo } from 'react';
 import { Timesheet, TimesheetStatus } from '@/lib/types';
@@ -19,8 +20,11 @@ const TimesheetCard = ({ timesheet, onViewTimesheet }: { timesheet: Timesheet, o
     return (
         <Card onClick={() => onViewTimesheet(timesheet)} className="cursor-pointer hover:shadow-md">
             <CardContent className="p-3 space-y-2">
-                <p className="font-semibold text-sm">{locationText || 'N/A'}</p>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-start">
+                    <p className="font-semibold text-sm pr-2">{locationText || 'N/A'}</p>
+                    <Badge variant="outline">Qty: {timesheet.numberOfTimesheets}</Badge>
+                </div>
+                <div className="flex justify-between items-center pt-1">
                     <p className="text-xs text-muted-foreground">
                         {format(parseISO(timesheet.startDate), 'dd MMM')} - {format(parseISO(timesheet.endDate), 'dd MMM, yyyy')}
                     </p>
