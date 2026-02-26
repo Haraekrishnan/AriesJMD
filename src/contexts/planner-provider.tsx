@@ -405,32 +405,31 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
 
     const updateTimesheet = useCallback((timesheet: Timesheet) => {
         const { id, ...data } = timesheet;
-
+    
         const updates: Partial<Timesheet> & { lastUpdated?: string } = {
             ...data,
             lastUpdated: new Date().toISOString() 
         };
         
         const previousStatus = timesheetsById[id]?.status;
-
-        // If status is changing back to Pending from Rejected, clear workflow fields but keep rejection history
+    
         if (updates.status === 'Pending' && previousStatus === 'Rejected') {
+            // Only reset workflow progress fields, keep rejection history
             updates.acknowledgedById = undefined;
             updates.acknowledgedDate = undefined;
             updates.sentToOfficeById = undefined;
             updates.sentToOfficeDate = undefined;
             updates.officeAcknowledgedById = undefined;
             updates.officeAcknowledgedDate = undefined;
-            // Note: rejectedById, rejectedDate, and rejectionReason are NOT cleared
         }
-
+    
         // To remove fields in firebase, they must be set to null
         const finalUpdates: { [key: string]: any } = {};
         for (const key in updates) {
             finalUpdates[key] = (updates as any)[key] === undefined ? null : (updates as any)[key];
         }
         delete finalUpdates.comments;
-
+    
         update(ref(rtdb, `timesheets/${id}`), finalUpdates);
     }, [timesheetsById]);
 

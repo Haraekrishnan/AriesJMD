@@ -136,44 +136,46 @@ export default function ViewTimesheetDialog({
     const events: any[] = [];
     const submitter = users.find(u => u.id === timesheet.submitterId);
 
-    // Initial Submission
+    // 1. Initial Submission
     if (timesheet.submissionDate) {
         events.push({ type: 'Submitted', date: timesheet.submissionDate, actor: submitter, icon: Send });
     }
-    // Acknowledged
+    
+    // 2. Key Milestones from date fields
     if (timesheet.acknowledgedDate && timesheet.acknowledgedById) {
         events.push({ type: 'Acknowledged', date: timesheet.acknowledgedDate, actor: users.find(u => u.id === timesheet.acknowledgedById), icon: UserCheck });
     }
-    // Sent To Office
     if (timesheet.sentToOfficeDate && timesheet.sentToOfficeById) {
         events.push({ type: 'Sent To Office', date: timesheet.sentToOfficeDate, actor: users.find(u => u.id === timesheet.sentToOfficeById), icon: Building });
     }
-    // Office Acknowledged
     if (timesheet.officeAcknowledgedDate && timesheet.officeAcknowledgedById) {
         events.push({ type: 'Office Acknowledged', date: timesheet.officeAcknowledgedDate, actor: users.find(u => u.id === timesheet.officeAcknowledgedById), icon: CheckCircle });
     }
-    // Rejection
-    if (timesheet.rejectedDate && timesheet.rejectedById) {
-        events.push({
-            type: 'Rejected',
-            date: timesheet.rejectedDate,
-            actor: users.find(u => u.id === timesheet.rejectedById),
-            icon: XCircle,
-            comment: timesheet.rejectionReason,
-        });
-    }
-    // Resubmission (detected via comment)
-    const resubmissionComment = commentsArray.find(c => c.text.includes('edited and resubmitted'));
-    if (resubmissionComment) {
-        events.push({
-            type: 'Resubmitted',
-            date: resubmissionComment.date,
-            actor: users.find(u => u.id === resubmissionComment.userId),
-            icon: Undo2
-        });
-    }
+
+    // 3. Process comments for rejections and resubmissions
+    commentsArray.forEach(comment => {
+        if (!comment || !comment.text) return;
+
+        if (comment.text.startsWith('Timesheet Rejected. Reason:')) {
+            const reason = comment.text.replace('Timesheet Rejected. Reason:', '').trim();
+            events.push({
+                type: 'Rejected',
+                date: comment.date,
+                actor: users.find(u => u.id === comment.userId),
+                icon: XCircle,
+                comment: reason,
+            });
+        } else if (comment.text.includes('edited and resubmitted')) {
+            events.push({
+                type: 'Resubmitted',
+                date: comment.date,
+                actor: users.find(u => u.id === comment.userId),
+                icon: Undo2,
+            });
+        }
+    });
     
-    // Sort events to ensure chronological order
+    // Sort all collected events by date
     return events.sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
   }, [timesheet, users, commentsArray]);
 
@@ -416,7 +418,7 @@ export default function ViewTimesheetDialog({
                       isLast={index === timelineEvents.length - 1 && pendingSteps.length === 0}
                   >
                       {event.comment && (
-                          <div className="text-xs mt-1 p-2 bg-destructive/10 text-destructive rounded-md font-medium">
+                          <div className="text-xs mt-1 p-2 bg-destructive/10 text-destructive-foreground rounded-md font-medium">
                               <strong>Reason:</strong> {event.comment}
                           </div>
                       )}
