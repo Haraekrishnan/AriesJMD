@@ -1,14 +1,15 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { JobProgress } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Clock, Loader, Undo2, CheckCircle } from 'lucide-react';
+import { Clock, Loader, Undo2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { format, isSameMonth, parseISO } from 'date-fns';
+import { format, isSameMonth, parseISO, differenceInDays } from 'date-fns';
 import { Badge } from '../ui/badge';
+import { cn } from '@/lib/utils';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
 const JobCard = ({ job, onViewJob }: { job: JobProgress; onViewJob: (job: JobProgress) => void }) => {
     const { users, projects } = useAppContext();
@@ -38,14 +39,29 @@ const JobCard = ({ job, onViewJob }: { job: JobProgress; onViewJob: (job: JobPro
         return '';
     }, [job.dateFrom, job.dateTo, job.createdAt]);
 
+    const daysSinceUpdate = differenceInDays(new Date(), parseISO(job.lastUpdated));
+    const isLongPending = daysSinceUpdate > 3 && (pendingStep || acknowledgedStep);
+
     return (
-        <Card onClick={() => onViewJob(job)} className="cursor-pointer hover:shadow-md">
+        <Card onClick={() => onViewJob(job)} className={cn("cursor-pointer hover:shadow-md", isLongPending && "border-amber-500")}>
             <CardContent className="p-3 space-y-2">
                 <div className="flex justify-between items-start">
                     <div className="space-y-1 pr-2">
                         <p className="font-bold text-base leading-tight">{job.title}</p>
                         <p className="text-xs text-muted-foreground">{locationText || 'N/A'}</p>
                     </div>
+                     {isLongPending && (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger>
+                                    <AlertTriangle className="h-5 w-5 text-amber-500" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>This job has been idle for {daysSinceUpdate} days.</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    )}
                 </div>
 
                 {currentStep && <Badge variant={returnedStep ? 'destructive' : (acknowledgedStep ? 'default' : 'secondary')}>{currentStep.name}</Badge>}
