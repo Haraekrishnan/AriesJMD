@@ -7,24 +7,26 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO } from 'date-fns';
-import ViewJobProgressDialog from './ViewJobProgressDialog';
-import ViewTimesheetDialog from './ViewTimesheetDialog';
-import type { JobProgress, Timesheet } from '@/lib/types';
+import type { JobProgress, Timesheet, Role } from '@/lib/types';
+import { JobProgressTable } from './JobProgressTable';
 
 interface PendingActionsDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  longPendingJobs: JobProgress[];
+  onViewJob: (job: JobProgress) => void;
+  onViewTimesheet: (timesheet: Timesheet) => void;
 }
 
-export default function PendingActionsDialog({ isOpen, setIsOpen }: PendingActionsDialogProps) {
+export default function PendingActionsDialog({ isOpen, setIsOpen, longPendingJobs, onViewJob, onViewTimesheet }: PendingActionsDialogProps) {
   const { user, jobProgress, timesheets, users, projects } = useAppContext();
-  const [viewingJob, setViewingJob] = useState<JobProgress | null>(null);
-  const [viewingTimesheet, setViewingTimesheet] = useState<Timesheet | null>(null);
-
+  
   const canAcknowledgeOffice = useMemo(() => {
     if (!user) return false;
     return ['Admin', 'Document Controller', 'Project Coordinator'].includes(user.role);
   }, [user]);
+
+  const canViewLongPending = user && ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role);
 
   const pendingJms = useMemo(() => {
     if (!user) return [];
@@ -42,7 +44,6 @@ export default function PendingActionsDialog({ isOpen, setIsOpen }: PendingActio
   }, [user, timesheets, canAcknowledgeOffice]);
 
   return (
-    <>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-2xl h-full max-h-[80vh] flex flex-col">
           <DialogHeader>
@@ -55,12 +56,15 @@ export default function PendingActionsDialog({ isOpen, setIsOpen }: PendingActio
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="jms">Pending JMS ({pendingJms.length})</TabsTrigger>
               <TabsTrigger value="timesheets">Pending Timesheets ({pendingTimesheets.length})</TabsTrigger>
+              {canViewLongPending && (
+                <TabsTrigger value="long-pending">Long Pending ({longPendingJobs.length})</TabsTrigger>
+              )}
             </TabsList>
             <TabsContent value="jms" className="flex-1 overflow-auto mt-2">
               <ScrollArea className="h-full">
                 <div className="space-y-2 p-1">
                   {pendingJms.length > 0 ? pendingJms.map(job => (
-                    <div key={job.id} className="border p-3 rounded-lg flex justify-between items-center cursor-pointer hover:bg-muted/50" onClick={() => setViewingJob(job)}>
+                    <div key={job.id} className="border p-3 rounded-lg flex justify-between items-center cursor-pointer hover:bg-muted/50" onClick={() => onViewJob(job)}>
                       <div>
                         <p className="font-semibold">{job.title}</p>
                         <p className="text-sm text-muted-foreground">Project: {projects.find(p => p.id === job.projectId)?.name || 'N/A'}</p>
@@ -77,7 +81,7 @@ export default function PendingActionsDialog({ isOpen, setIsOpen }: PendingActio
               <ScrollArea className="h-full">
                 <div className="space-y-2 p-1">
                   {pendingTimesheets.length > 0 ? pendingTimesheets.map(ts => (
-                    <div key={ts.id} className="border p-3 rounded-lg flex justify-between items-center cursor-pointer hover:bg-muted/50" onClick={() => setViewingTimesheet(ts)}>
+                    <div key={ts.id} className="border p-3 rounded-lg flex justify-between items-center cursor-pointer hover:bg-muted/50" onClick={() => onViewTimesheet(ts)}>
                        <div>
                         <p className="font-semibold">{projects.find(p => p.id === ts.projectId)?.name} - {ts.plantUnit}</p>
                         <p className="text-sm text-muted-foreground">From: {users.find(u => u.id === ts.submitterId)?.name}</p>
@@ -90,27 +94,16 @@ export default function PendingActionsDialog({ isOpen, setIsOpen }: PendingActio
                 </div>
               </ScrollArea>
             </TabsContent>
+            {canViewLongPending && (
+              <TabsContent value="long-pending" className="flex-1 overflow-hidden mt-4">
+                  <JobProgressTable jobs={longPendingJobs} onViewJob={onViewJob} />
+              </TabsContent>
+            )}
           </Tabs>
           <DialogFooter className="mt-auto">
             <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
-      {viewingJob && (
-        <ViewJobProgressDialog 
-            isOpen={!!viewingJob} 
-            setIsOpen={() => setViewingJob(null)} 
-            job={viewingJob} 
-        />
-      )}
-      {viewingTimesheet && (
-        <ViewTimesheetDialog
-          isOpen={!!viewingTimesheet}
-          setIsOpen={() => setViewingTimesheet(null)}
-          timesheet={viewingTimesheet}
-        />
-      )}
-    </>
   );
 }

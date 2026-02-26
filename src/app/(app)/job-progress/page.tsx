@@ -17,7 +17,6 @@ import ViewTimesheetDialog from '@/components/job-progress/ViewTimesheetDialog';
 import { Badge } from '@/components/ui/badge';
 import PendingActionsDialog from '@/components/job-progress/PendingActionsDialog';
 import OngoingJobsReport from '@/components/job-progress/OngoingJobsReport';
-import { JobProgressTable } from '@/components/job-progress/JobProgressTable';
 
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
@@ -180,9 +179,6 @@ export default function JobProgressPage() {
         <TabsList className="shrink-0">
           <TabsTrigger value="jms">JMS Tracker</TabsTrigger>
           <TabsTrigger value="timesheets">Timesheet Tracker</TabsTrigger>
-          {canViewLongPending && (
-             <TabsTrigger value="long-pending">Long Pending JMS</TabsTrigger>
-          )}
         </TabsList>
         <TabsContent value="jms" className="flex-1 overflow-hidden">
            <div className="w-full sm:w-auto max-w-sm pt-2 pb-4">
@@ -212,11 +208,6 @@ export default function JobProgressPage() {
           </div>
           <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={setViewingTimesheet} />
         </TabsContent>
-        {canViewLongPending && (
-          <TabsContent value="long-pending" className="flex-1 overflow-hidden mt-4">
-            <JobProgressTable jobs={longPendingJobs} onViewJob={setViewingJob} />
-          </TabsContent>
-        )}
       </Tabs>
 
 
@@ -236,7 +227,13 @@ export default function JobProgressPage() {
           timesheet={viewingTimesheet}
         />
       )}
-      <PendingActionsDialog isOpen={isPendingDialogOpen} setIsOpen={setIsPendingDialogOpen} />
+      <PendingActionsDialog 
+        isOpen={isPendingDialogOpen} 
+        setIsOpen={setIsPendingDialogOpen} 
+        longPendingJobs={longPendingJobs}
+        onViewJob={setViewingJob}
+        onViewTimesheet={setViewingTimesheet}
+      />
     </div>
   );
 }
