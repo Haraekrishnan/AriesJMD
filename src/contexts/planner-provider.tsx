@@ -414,7 +414,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const previousStatus = timesheetsById[id]?.status;
     
         if (updates.status === 'Pending' && previousStatus === 'Rejected') {
-            // Only reset workflow progress fields, keep rejection history
+            // Only reset workflow progress fields
             updates.acknowledgedById = undefined;
             updates.acknowledgedDate = undefined;
             updates.sentToOfficeById = undefined;
@@ -468,12 +468,11 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             updates[`${basePath}/officeAcknowledgedById`] = user.id;
             updates[`${basePath}/officeAcknowledgedDate`] = new Date().toISOString();
         } else if (status === 'Rejected') {
-            updates[`${basePath}/acknowledgedById`] = null;
-            updates[`${basePath}/acknowledgedDate`] = null;
-            updates[`${basePath}/sentToOfficeById`] = null;
-            updates[`${basePath}/sentToOfficeDate`] = null;
-            updates[`${basePath}/officeAcknowledgedById`] = null;
-            updates[`${basePath}/officeAcknowledgedDate`] = null;
+            const previousStatus = timesheetsById[timesheetId]?.status;
+            if(previousStatus !== 'Sent To Office') {
+              updates[`${basePath}/acknowledgedById`] = null;
+              updates[`${basePath}/acknowledgedDate`] = null;
+            }
         }
         
         update(ref(rtdb), updates);
