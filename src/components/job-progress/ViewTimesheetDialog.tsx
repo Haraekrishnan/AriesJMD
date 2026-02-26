@@ -416,7 +416,7 @@ export default function ViewTimesheetDialog({
                       isLast={index === timelineEvents.length - 1 && pendingSteps.length === 0}
                   >
                       {event.comment && (
-                          <div className="text-xs mt-1 p-2 bg-destructive/10 text-destructive rounded-md">
+                          <div className="text-xs mt-1 p-2 bg-destructive/10 text-destructive-foreground rounded-md">
                               <strong>Reason:</strong> {event.comment}
                           </div>
                       )}
@@ -484,6 +484,7 @@ export default function ViewTimesheetDialog({
           isOpen={isEditing}
           setIsOpen={setIsEditing}
           timesheet={timesheet}
+          onSuccess={() => setIsOpen(false)}
         />
       )}
     </>

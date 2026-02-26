@@ -33,9 +33,10 @@ interface EditTimesheetDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   timesheet: Timesheet;
+  onSuccess?: () => void;
 }
 
-export default function EditTimesheetDialog({ isOpen, setIsOpen, timesheet }: EditTimesheetDialogProps) {
+export default function EditTimesheetDialog({ isOpen, setIsOpen, timesheet, onSuccess }: EditTimesheetDialogProps) {
   const { user, users, projects, updateTimesheet, addTimesheetComment } = useAppContext();
   const { toast } = useToast();
 
@@ -76,6 +77,7 @@ export default function EditTimesheetDialog({ isOpen, setIsOpen, timesheet }: Ed
     updateTimesheet(updatedTimesheet);
     toast({ title: isResubmittingRejected ? 'Timesheet Resubmitted' : 'Timesheet Updated' });
     setIsOpen(false);
+    if (onSuccess) onSuccess();
   };
   
   const handleOpenChange = (open: boolean) => {
