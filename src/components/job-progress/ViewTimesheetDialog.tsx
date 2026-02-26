@@ -418,7 +418,7 @@ export default function ViewTimesheetDialog({
                       isLast={index === timelineEvents.length - 1 && pendingSteps.length === 0}
                   >
                       {event.comment && (
-                          <div className="text-xs mt-1 p-2 bg-destructive/10 text-destructive-foreground rounded-md font-medium">
+                          <div className="text-xs mt-1 p-2 bg-destructive/10 text-destructive rounded-md font-medium">
                               <strong>Reason:</strong> {event.comment}
                           </div>
                       )}
