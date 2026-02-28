@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -406,28 +405,27 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
 
     const updateTimesheet = useCallback((timesheet: Timesheet) => {
         const { id, ...data } = timesheet;
-    
         const updates: Partial<Timesheet> & { lastUpdated?: string } = {
-            ...data,
-            lastUpdated: new Date().toISOString() 
+          ...data,
+          lastUpdated: new Date().toISOString()
         };
-        
+    
         const previousStatus = timesheetsById[id]?.status;
     
         if (updates.status === 'Pending' && previousStatus === 'Rejected') {
-            // Only reset workflow progress fields
-            updates.acknowledgedById = undefined;
-            updates.acknowledgedDate = undefined;
-            updates.sentToOfficeById = undefined;
-            updates.sentToOfficeDate = undefined;
-            updates.officeAcknowledgedById = undefined;
-            updates.officeAcknowledgedDate = undefined;
+          // When resubmitting, only reset the workflow part of the state,
+          // keeping the rejection info intact for the audit trail.
+          updates.acknowledgedById = undefined;
+          updates.acknowledgedDate = undefined;
+          updates.sentToOfficeById = undefined;
+          updates.sentToOfficeDate = undefined;
+          updates.officeAcknowledgedById = undefined;
+          updates.officeAcknowledgedDate = undefined;
         }
     
-        // To remove fields in firebase, they must be set to null
         const finalUpdates: { [key: string]: any } = {};
         for (const key in updates) {
-            finalUpdates[key] = (updates as any)[key] === undefined ? null : (updates as any)[key];
+          finalUpdates[key] = (updates as any)[key] === undefined ? null : (updates as any)[key];
         }
         delete finalUpdates.comments;
     
@@ -468,12 +466,10 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         } else if (status === 'Office Acknowledged') {
             updates[`${basePath}/officeAcknowledgedById`] = user.id;
             updates[`${basePath}/officeAcknowledgedDate`] = new Date().toISOString();
-        } else if (status === 'Rejected') {
-            const previousStatus = timesheetsById[timesheetId]?.status;
-            if (previousStatus !== 'Sent To Office') {
-                updates[`${basePath}/acknowledgedById`] = null;
-                updates[`${basePath}/acknowledgedDate`] = null;
-            }
+        } else if (status === 'Rejected' && timesheetsById[timesheetId]?.status !== 'Sent To Office') {
+            // Only reset acknowledgement if it wasn't already sent to office
+            updates[`${basePath}/acknowledgedById`] = null;
+            updates[`${basePath}/acknowledgedDate`] = null;
         }
         
         update(ref(rtdb), updates);
