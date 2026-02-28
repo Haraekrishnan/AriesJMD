@@ -320,16 +320,6 @@ export default function EquipmentStatusPage() {
     const handleEditWeldingMachine = (item: WeldingMachine) => { setEditingWeldingMachine(item) };
     const handleEditWalkieTalkie = (item: WalkieTalkie) => { setEditingWalkieTalkie(item) };
 
-    const [isUpdateItemsOpen, setIsUpdateItemsOpen] = useState(false);
-
-
-    const [viewingCertRequest, setViewingCertRequest] = useState<CertificateRequest | null>(null);
-    const [isGenerateCertOpen, setIsGenerateCertOpen] = useState(false);
-    
-    // Report State
-    const [activeDaysDateRange, setActiveDaysDateRange] = useState<DateRange | undefined>();
-    const [selectedMachineIds, setSelectedMachineIds] = useState<string[]>([]);
-
     const detailedUsageData = useMemo(() => {
         if (!activeDaysDateRange?.from) {
             return { dates: [], machineData: [] };
