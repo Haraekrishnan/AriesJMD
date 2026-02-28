@@ -320,6 +320,16 @@ export default function EquipmentStatusPage() {
     const handleEditWeldingMachine = (item: WeldingMachine) => { setEditingWeldingMachine(item) };
     const handleEditWalkieTalkie = (item: WalkieTalkie) => { setEditingWalkieTalkie(item) };
 
+    const [isUpdateItemsOpen, setIsUpdateItemsOpen] = useState(false);
+
+
+    const [viewingCertRequest, setViewingCertRequest] = useState<CertificateRequest | null>(null);
+    const [isGenerateCertOpen, setIsGenerateCertOpen] = useState(false);
+    
+    // Report State
+    const [activeDaysDateRange, setActiveDaysDateRange] = useState<DateRange | undefined>();
+    const [selectedMachineIds, setSelectedMachineIds] = useState<string[]>([]);
+
     const detailedUsageData = useMemo(() => {
         if (!activeDaysDateRange?.from) {
             return { dates: [], machineData: [] };
@@ -460,6 +470,10 @@ export default function EquipmentStatusPage() {
             { header: 'Machine Name', key: 'name', width: 25 },
             { header: 'Aries ID', key: 'ariesId', width: 20 },
             { header: 'Serial No.', key: 'serial', width: 20 },
+            { header: 'Probe Details', key: 'probeDetails', width: 25 },
+            { header: 'Probe Status', key: 'probeStatus', width: 15 },
+            { header: 'Cable Details', key: 'cableDetails', width: 25 },
+            { header: 'Cable Status', key: 'cableStatus', width: 15 },
             { header: 'Location', key: 'location', width: 20 },
             { header: 'Calibration Due', key: 'calibDue', width: 20 },
             { header: 'Status', key: 'status', width: 15 },
@@ -469,6 +483,10 @@ export default function EquipmentStatusPage() {
             name: m.machineName,
             ariesId: m.ariesId || 'N/A',
             serial: m.serialNumber,
+            probeDetails: m.probeDetails || 'N/A',
+            probeStatus: m.probeStatus || 'N/A',
+            cableDetails: m.cableDetails || 'N/A',
+            cableStatus: m.cableStatus || 'N/A',
             location: projects.find(p => p.id === m.projectId)?.name || 'N/A',
             calibDue: format(parseISO(m.calibrationDueDate), 'dd-MM-yyyy'),
             status: m.status,
@@ -481,6 +499,8 @@ export default function EquipmentStatusPage() {
             { header: 'Machine Name', key: 'name', width: 25 },
             { header: 'Aries ID', key: 'ariesId', width: 20 },
             { header: 'Serial No.', key: 'serial', width: 20 },
+            { header: 'Probe Details', key: 'probeDetails', width: 25 },
+            { header: 'Cable Details', key: 'cableDetails', width: 25 },
             { header: 'Location', key: 'location', width: 20 },
             { header: 'Calibration Due', key: 'calibDue', width: 20 },
             { header: 'Status', key: 'status', width: 15 },
@@ -490,6 +510,8 @@ export default function EquipmentStatusPage() {
             name: m.machineName,
             ariesId: m.ariesId || 'N/A',
             serial: m.serialNumber,
+            probeDetails: m.probeDetails,
+            cableDetails: m.cableDetails,
             location: projects.find(p => p.id === m.projectId)?.name || 'N/A',
             calibDue: format(parseISO(m.calibrationDueDate), 'dd-MM-yyyy'),
             status: m.status,
