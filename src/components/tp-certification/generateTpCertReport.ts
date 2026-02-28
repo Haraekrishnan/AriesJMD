@@ -186,18 +186,28 @@ export async function generateTpCertPdf(
       const groupSize = group.length;
       group.forEach((item, index) => {
           const isHarness = item.materialName.toLowerCase().includes('harness');
+          
+          let chestCrollValue = '';
+          if (isHarness) {
+              chestCrollValue = item.chestCrollNo || '';
+          } else if (index === 0) {
+              // Use a non-empty, non-filterable value to hold the column space
+              // for the first row of non-harness items.
+              chestCrollValue = ' ';
+          }
+
           const rowData = [
               index === 0 ? { content: srNo, rowSpan: groupSize } : '',
               index === 0 ? { content: item.materialName, rowSpan: groupSize } : '',
               item.manufacturerSrNo,
-              isHarness ? (item.chestCrollNo || '') : '',
+              chestCrollValue,
               index === 0 ? { content: getCapacity(item.materialName), rowSpan: groupSize } : '',
               index === 0 ? { content: groupSize, rowSpan: groupSize } : '',
               index === 0 ? { content: 'OLD', rowSpan: groupSize } : '',
               '', // Valid upto
               ''  // Submit report
           ];
-          // Remove empty cells to let rowspan work
+          // Filter out only the empty strings used for row-spanning logic, but keep the space ' '
           body.push(rowData.filter(cell => cell !== ''));
       });
       srNo++;
