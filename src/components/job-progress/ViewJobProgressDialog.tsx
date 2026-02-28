@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -496,6 +497,10 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
 
                                 const canModifyStepName = (user?.role === 'Admin' || user?.id === job.creatorId) && job.status !== 'Completed';
 
+                                const commentsArray = Array.isArray(step.comments)
+                                  ? step.comments
+                                  : Object.values(step.comments || {});
+
                                 return (
                                     <div key={step.id} className="relative flex items-start gap-6">
                                         <div className="absolute left-[-11px] top-1 h-5 w-5 rounded-full bg-card border-2 border-primary flex items-center justify-center">
@@ -540,15 +545,23 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                   {step.completedAt && <p>Completed: {formatDistanceToNow(parseISO(step.completedAt), { addSuffix: true })} by {users.find(u => u.id === step.completedBy)?.name}</p>}
                                                 </div>
                                                 
-                                                {(Array.isArray(step.comments) && step.comments.length > 0) && (
+                                                {commentsArray.length > 0 && (
                                                     <Accordion type="single" collapsible className="w-full mt-2 text-xs">
                                                         <AccordionItem value="comments" className="border-none">
-                                                            <AccordionTrigger className="p-0 hover:no-underline text-blue-600"><div className="flex items-center gap-1"><MessageSquare className="h-3 w-3" /> View Comments ({step.comments.length})</div></AccordionTrigger>
+                                                            <AccordionTrigger className="p-0 hover:no-underline text-blue-600"><div className="flex items-center gap-1"><MessageSquare className="h-3 w-3" /> View Comments ({commentsArray.length})</div></AccordionTrigger>
                                                             <AccordionContent className="pt-2">
                                                                 <div className="space-y-2">
-                                                                    {step.comments.map((c, i) => {
+                                                                    {commentsArray.map((c, i) => {
                                                                         const commentUser = users.find(u => u.id === c.userId);
-                                                                        return <div key={i}><strong className="font-semibold">{commentUser?.name}:</strong> {c.text}</div>
+                                                                        return (
+                                                                            <div key={i} className="flex items-start gap-2">
+                                                                                <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
+                                                                                <div className="text-xs bg-background p-2 rounded-md w-full border">
+                                                                                    <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
+                                                                                    <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
+                                                                                </div>
+                                                                            </div>
+                                                                        )
                                                                     })}
                                                                 </div>
                                                             </AccordionContent>
@@ -634,3 +647,5 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         </>
     )
 }
+
+    
