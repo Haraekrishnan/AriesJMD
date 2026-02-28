@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -469,9 +470,9 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             updates[`${basePath}/officeAcknowledgedDate`] = new Date().toISOString();
         } else if (status === 'Rejected') {
             const previousStatus = timesheetsById[timesheetId]?.status;
-            if(previousStatus !== 'Sent To Office') {
-              updates[`${basePath}/acknowledgedById`] = null;
-              updates[`${basePath}/acknowledgedDate`] = null;
+            if (previousStatus !== 'Sent To Office') {
+                updates[`${basePath}/acknowledgedById`] = null;
+                updates[`${basePath}/acknowledgedDate`] = null;
             }
         }
         
@@ -960,65 +961,63 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         if (!user) return;
         const job = jobProgressById[jobId];
         if (!job) return;
-
+    
         const stepIndex = job.steps.findIndex(s => s.id === stepId);
         if (stepIndex === -1) return;
-
+    
         const currentStep = job.steps[stepIndex];
+        
+        let newAssigneeId: string | null = null;
+        if (stepIndex > 0) {
+            const prevStep = job.steps[stepIndex - 1];
+            newAssigneeId = prevStep.completedBy || prevStep.assigneeId;
+        } else {
+            newAssigneeId = job.creatorId;
+        }
+        
         const updates: { [key: string]: any } = {};
         const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
-
-        updates[`${stepPath}/assigneeId`] = null;
+    
+        updates[`${stepPath}/assigneeId`] = newAssigneeId;
         updates[`${stepPath}/status`] = 'Pending';
         updates[`${stepPath}/acknowledgedAt`] = null;
         updates[`${stepPath}/isReturned`] = true;
-
+        updates[`${stepPath}/returnDetails`] = {
+            returnedBy: user.id,
+            date: new Date().toISOString(),
+            reason: reason,
+        };
+        updates[`${stepPath}/completedAt`] = null;
+        updates[`${stepPath}/completedBy`] = null;
+        updates[`${stepPath}/completionDetails`] = null;
+    
         updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
-
+    
         update(ref(rtdb), updates);
-
-        const returnComment = `Step "${currentStep.name}" was returned by ${user.name}. Reason: ${reason}`;
-        addJobStepComment(jobId, stepId, returnComment);
-        
-        toast({ title: "Step Returned", description: "The step has been unassigned and is now pending." });
-
-        // Create a set of people to notify
-        const recipients = new Set<User>();
-        const creator = users.find(u => u.id === job.creatorId);
-        if (creator && creator.id !== user.id) recipients.add(creator);
-        
-        if (stepIndex > 0) {
-            const prevStepAssigneeId = job.steps[stepIndex - 1].assigneeId;
-            const prevStepAssignee = users.find(u => u.id === prevStepAssigneeId);
-            if (prevStepAssignee && prevStepAssignee.id !== user.id) {
-                recipients.add(prevStepAssignee);
-            }
+    
+        toast({ title: "Step Returned", description: `The step has been returned to ${users.find(u => u.id === newAssigneeId)?.name || 'the previous user'}.` });
+    
+        const assignee = users.find(u => u.id === newAssigneeId);
+        if (assignee?.email) {
+            const htmlBody = `
+                <p>A step in the job "${job.title}" was returned by <strong>${user.name}</strong> and now requires your attention.</p>
+                <hr>
+                <h3>Step: ${currentStep.name}</h3>
+                <p><strong>Reason for return:</strong> ${reason}</p>
+                <p>Please review the job in the app.</p>
+                <a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Job</a>
+            `;
+            sendNotificationEmail({
+                to: [assignee.email],
+                subject: `Step Returned for Job: ${job.title}`,
+                htmlBody: htmlBody,
+                notificationSettings,
+                event: 'onTaskReturned', 
+                involvedUser: assignee,
+                creatorUser: user,
+            });
         }
-        
-        // Notify recipients
-        recipients.forEach(recipient => {
-            if (recipient.email) {
-                const htmlBody = `
-                    <p>A step in the job "${job.title}" was returned by <strong>${user.name}</strong>.</p>
-                    <hr>
-                    <h3>Step: ${currentStep.name}</h3>
-                    <p><strong>Reason for return:</strong> ${reason}</p>
-                    <p>Please review the job in the app.</p>
-                    <a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Job</a>
-                `;
-                sendNotificationEmail({
-                    to: [recipient.email],
-                    subject: `Step Returned for Job: ${job.title}`,
-                    htmlBody: htmlBody,
-                    notificationSettings,
-                    event: 'onTaskReturned', 
-                    involvedUser: recipient,
-                    creatorUser: user,
-                });
-            }
-        });
-
-    }, [user, jobProgressById, addJobStepComment, toast, users, notificationSettings]);
+    }, [user, jobProgressById, toast, users, notificationSettings]);
     
     useEffect(() => {
         const unsubscribers = [

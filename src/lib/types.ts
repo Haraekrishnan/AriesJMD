@@ -928,6 +928,11 @@ export type JobStep = {
   dueDate?: string; // ISO string
   requiresAttachment?: boolean;
   isReturned?: boolean;
+  returnDetails?: {
+    returnedBy: string;
+    date: string;
+    reason: string;
+  };
   
   acknowledgedAt?: string; // ISO
   completedAt?: string; // ISO

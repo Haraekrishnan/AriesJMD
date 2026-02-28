@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -533,12 +534,20 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                   <p className="flex items-center gap-2">
                                                     <strong>Assignee:</strong> 
                                                     {assignee ? (
-                                                      <span className="flex items-center gap-1"><Avatar className="h-5 w-5"><AvatarImage src={assignee.avatar}/><AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback></Avatar>{assignee.name}</span>
+                                                      <span className="flex items-center gap-1"><Avatar className="h-5 w-5"><AvatarImage src={assignee.avatar} /><AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback></Avatar>{assignee.name}</span>
                                                     ) : 'Unassigned'}
                                                     {canReassign && <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReassigningStep(step)}><UserRoundCog className="h-4 w-4 text-blue-600"/></Button>}
                                                   </p>
                                                   {step.dueDate && <p><strong>Due:</strong> {format(parseISO(step.dueDate), 'dd MMM yyyy')}</p>}
                                                 </div>
+
+                                                {step.isReturned && step.returnDetails && (
+                                                    <div className="mt-3 p-3 bg-destructive/10 border border-destructive/20 rounded-md text-sm">
+                                                        <p className="font-semibold text-destructive flex items-center gap-2"><Undo2 className="h-4 w-4" /> Returned by {users.find(u => u.id === step.returnDetails!.returnedBy)?.name}</p>
+                                                        <p className="text-destructive/90 mt-1">{step.returnDetails.reason}</p>
+                                                        <p className="text-xs text-muted-foreground mt-1">{formatDistanceToNow(parseISO(step.returnDetails.date), { addSuffix: true })}</p>
+                                                    </div>
+                                                )}
 
                                                 <div className="mt-2 text-xs text-muted-foreground">
                                                   {step.acknowledgedAt && <p>Acknowledged: {formatDistanceToNow(parseISO(step.acknowledgedAt), { addSuffix: true })}</p>}
