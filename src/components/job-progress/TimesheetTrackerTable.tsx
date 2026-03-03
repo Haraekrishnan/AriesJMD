@@ -68,6 +68,18 @@ export default function TimesheetTrackerTable({
         id: 'submitter',
         header: 'Submitted By',
         accessorFn: (row) => users.find(u => u.id === row.submitterId)?.name || '',
+        cell: ({ row }) => {
+          const submitter = users.find(u => u.id === row.original.submitterId);
+          return submitter ? (
+            <div className="flex items-center gap-2">
+              <Avatar className="h-6 w-6">
+                <AvatarImage src={submitter.avatar} />
+                <AvatarFallback>{submitter.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <span className="truncate">{submitter.name}</span>
+            </div>
+          ) : null;
+        }
       },
       {
         id: 'period',
@@ -127,7 +139,7 @@ export default function TimesheetTrackerTable({
 
   return (
     <>
-        <ScrollArea className="h-96">
+        <ScrollArea className="h-[calc(100vh-28rem)]">
             <Table className="text-sm">
                 <TableHeader>
                     {table.getHeaderGroups().map(headerGroup => (

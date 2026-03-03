@@ -20,8 +20,9 @@ import PendingActionsDialog from '@/components/job-progress/PendingActionsDialog
 import OngoingJobsReport from '@/components/job-progress/OngoingJobsReport';
 import LongPendingJmsDialog from '@/components/job-progress/LongPendingJmsDialog';
 import CreateDocumentMovementDialog from '@/components/job-progress/CreateDocumentMovementDialog';
-import DocumentMovementList from '@/components/job-progress/DocumentTrackerBoard';
+import DocumentMovementList from '@/components/job-progress/DocumentMovementList';
 import ViewDocumentMovementDialog from '@/components/job-progress/ViewDocumentMovementDialog';
+import TimesheetTrackerTable from '@/components/job-progress/TimesheetTrackerTable';
 
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
@@ -42,6 +43,7 @@ export default function JobProgressPage() {
   const [timesheetSearchTerm, setTimesheetSearchTerm] = useState('');
   const [docSearchTerm, setDocSearchTerm] = useState('');
   const [jmsView, setJmsView] = useState<'board' | 'list'>('board');
+  const [timesheetView, setTimesheetView] = useState<'board' | 'list'>('board');
 
   const canCreateJms = useMemo(() => {
     if (!user) return false;
@@ -231,9 +233,9 @@ export default function JobProgressPage() {
             <JobProgressTable jobs={filteredJobs} onViewJob={setViewingJob} />
           )}
         </TabsContent>
-        <TabsContent value="timesheets" className="flex-1 overflow-hidden">
-            <div className="w-full sm:w-auto max-w-sm pt-2 pb-4">
-              <div className="relative">
+        <TabsContent value="timesheets" className="flex-1 overflow-hidden flex flex-col">
+          <div className="flex justify-between items-center pt-2 pb-4">
+              <div className="relative w-full sm:w-auto max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                     placeholder="Search by project or unit..."
@@ -242,8 +244,16 @@ export default function JobProgressPage() {
                     onChange={e => setTimesheetSearchTerm(e.target.value)}
                 />
               </div>
+              <div className="flex items-center gap-2">
+                <Button variant={timesheetView === 'board' ? 'secondary' : 'outline'} size="icon" onClick={() => setTimesheetView('board')}><LayoutGrid className="h-4 w-4" /></Button>
+                <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" onClick={() => setTimesheetView('list')}><List className="h-4 w-4" /></Button>
+              </div>
           </div>
-          <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={setViewingTimesheet} />
+          {timesheetView === 'board' ? (
+            <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={setViewingTimesheet} />
+          ) : (
+            <TimesheetTrackerTable timesheets={filteredTimesheets} />
+          )}
         </TabsContent>
          <TabsContent value="documents" className="flex-1 overflow-hidden">
             <div className="w-full sm:w-auto max-w-sm pt-2 pb-4">
