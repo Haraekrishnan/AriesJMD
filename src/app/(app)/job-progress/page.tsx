@@ -1,10 +1,9 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Search, Bell, FileDown, Clock, Folder, List, LayoutGrid, Settings, X } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Search, Bell, FileDown, Clock, Folder, List, LayoutGrid, Settings, X, Info } from 'lucide-react';
 import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress, Timesheet, Role, DocumentMovement } from '@/lib/types';
@@ -236,12 +235,13 @@ export default function JobProgressPage() {
         </TabsList>
         <TabsContent value="jms" className="flex-1 overflow-hidden flex flex-col">
            {showViewNotice && (
-                <Alert className="mt-4 mb-2 relative pr-10">
-                    <AlertTitle>New! List View & Default Settings</AlertTitle>
-                    <AlertDescription>
+                <Alert className="mt-4 mb-2 relative pr-10 border-blue-500/50 text-blue-900 bg-blue-50 dark:border-blue-700 dark:text-blue-200 dark:bg-blue-900/30">
+                    <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <AlertTitle className="font-semibold text-blue-800 dark:text-blue-100">New! List View & Default Settings</AlertTitle>
+                    <AlertDescription className="text-blue-700 dark:text-blue-300">
                         You can now switch between Board and List views. Use the <Settings className="inline h-4 w-4" /> icon to set your preferred default view for this tracker.
                     </AlertDescription>
-                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => setShowViewNotice(false)}>
+                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 text-blue-800 dark:text-blue-100 hover:bg-blue-100 dark:hover:bg-blue-900" onClick={() => setShowViewNotice(false)}>
                         <X className="h-4 w-4" />
                     </Button>
                 </Alert>
@@ -290,12 +290,13 @@ export default function JobProgressPage() {
         </TabsContent>
         <TabsContent value="timesheets" className="flex-1 overflow-hidden flex flex-col">
           {showViewNotice && (
-              <Alert className="mt-4 mb-2 relative pr-10">
-                  <AlertTitle>New! List View & Default Settings</AlertTitle>
-                  <AlertDescription>
+              <Alert className="mt-4 mb-2 relative pr-10 border-blue-500/50 text-blue-900 bg-blue-50 dark:border-blue-700 dark:text-blue-200 dark:bg-blue-900/30">
+                  <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <AlertTitle className="font-semibold text-blue-800 dark:text-blue-100">New! List View & Default Settings</AlertTitle>
+                  <AlertDescription className="text-blue-700 dark:text-blue-300">
                       You can now switch between Board and List views. Use the <Settings className="inline h-4 w-4" /> icon to set your preferred default view for this tracker.
                   </AlertDescription>
-                  <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => setShowViewNotice(false)}>
+                  <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 text-blue-800 dark:text-blue-100 hover:bg-blue-100 dark:hover:bg-blue-900" onClick={() => setShowViewNotice(false)}>
                       <X className="h-4 w-4" />
                   </Button>
               </Alert>
