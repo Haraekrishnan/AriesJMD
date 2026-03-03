@@ -63,6 +63,9 @@ type PlannerContextType = {
   acknowledgeDocumentMovement: (movementId: string, comment?: string) => void;
   completeDocumentMovement: (movementId: string, comment?: string) => void;
   addDocumentMovementComment: (movementId: string, text: string) => void;
+  forwardDocumentMovement: (movementId: string, newAssigneeId: string, comment: string) => void;
+  returnDocumentMovement: (movementId: string, comment: string) => void;
+  deleteDocumentMovement: (movementId: string) => void;
 };
 
 const createDataListener = <T extends {}>(
@@ -1073,6 +1076,59 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       }
     }, [user, addDocumentMovementComment]);
     
+    const forwardDocumentMovement = useCallback((movementId: string, newAssigneeId: string, comment: string) => {
+      if (!user) return;
+      const movement = documentMovementsById[movementId];
+      if (!movement) return;
+
+      const oldAssigneeName = users.find(u => u.id === movement.assigneeId)?.name || 'Previous Assignee';
+      const newAssigneeName = users.find(u => u.id === newAssigneeId)?.name || 'New Assignee';
+      
+      update(ref(rtdb, `documentMovements/${movementId}`), {
+        assigneeId: newAssigneeId,
+        status: 'Pending',
+        acknowledgedAt: null,
+        lastUpdated: new Date().toISOString(),
+      });
+      
+      const forwardComment = `Forwarded from ${oldAssigneeName} to ${newAssigneeName} by ${user.name}. ${comment ? `Comment: ${comment}` : ''}`;
+      addDocumentMovementComment(movementId, forwardComment);
+    }, [user, documentMovementsById, users, addDocumentMovementComment]);
+    
+    const returnDocumentMovement = useCallback((movementId: string, comment: string) => {
+        if (!user) return;
+        const movement = documentMovementsById[movementId];
+        if (!movement) return;
+    
+        const comments = Array.isArray(movement.comments) ? movement.comments : (movement.comments ? Object.values(movement.comments) : []);
+        // Find the last user who wasn't the current user
+        const lastAssignee = comments.reverse().find(c => c.userId !== user.id);
+        const returnToId = lastAssignee ? lastAssignee.userId : movement.creatorId;
+    
+        update(ref(rtdb, `documentMovements/${movementId}`), {
+            assigneeId: returnToId,
+            status: 'Returned',
+            acknowledgedAt: null,
+            lastUpdated: new Date().toISOString(),
+        });
+        
+        const returnComment = `Returned by ${user.name}. Reason: ${comment}`;
+        addDocumentMovementComment(movementId, returnComment);
+    }, [user, documentMovementsById, addDocumentMovementComment]);
+
+    const deleteDocumentMovement = useCallback((movementId: string) => {
+      if (!user) return;
+      const movement = documentMovementsById[movementId];
+      if (!movement) return;
+  
+      if (user.role === 'Admin' || user.id === movement.creatorId) {
+          remove(ref(rtdb, `documentMovements/${movementId}`));
+          toast({ title: 'Document Tracker Deleted', variant: 'destructive'});
+      } else {
+          toast({ title: 'Permission Denied', variant: 'destructive'});
+      }
+    }, [user, documentMovementsById, toast]);
+    
     useEffect(() => {
         const unsubscribers = [
             createDataListener('plannerEvents', setPlannerEventsById),
@@ -1121,7 +1177,10 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         addDocumentMovement,
         acknowledgeDocumentMovement,
         completeDocumentMovement,
-        addDocumentMovementComment
+        addDocumentMovementComment,
+        forwardDocumentMovement,
+        returnDocumentMovement,
+        deleteDocumentMovement,
     };
 
     return <PlannerContext.Provider value={contextValue}>{children}</PlannerContext.Provider>;

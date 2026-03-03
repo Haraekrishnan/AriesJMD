@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Badge } from '@/components/ui/badge';
 import { format, formatDistanceToNow, parseISO, isValid } from 'date-fns';
 import type { DocumentMovement, DocumentMovementStatus, Comment, Role } from '@/lib/types';
-import { Check, CheckCheck, Send, Undo2, Forward } from 'lucide-react';
+import { Check, CheckCheck, Send, Undo2, Forward, Trash2 } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Textarea } from '../ui/textarea';
@@ -31,30 +31,30 @@ interface ViewDocumentMovementDialogProps {
 }
 
 export default function ViewDocumentMovementDialog({ isOpen, setIsOpen, movement: initialMovement }: ViewDocumentMovementDialogProps) {
-  const { user, users, documentMovements, acknowledgeDocumentMovement, completeDocumentMovement, addDocumentMovementComment, forwardDocumentMovement, returnDocumentMovement } = useAppContext();
+  const { user, users, documentMovements, acknowledgeDocumentMovement, completeDocumentMovement, addDocumentMovementComment, forwardDocumentMovement, returnDocumentMovement, deleteDocumentMovement } = useAppContext();
   const { toast } = useToast();
   const [comment, setComment] = useState('');
   const [isForwarding, setIsForwarding] = useState(false);
   const [forwardToUserId, setForwardToUserId] = useState('');
   
-  const movement = useMemo(() => {
+  const request = useMemo(() => {
     return documentMovements.find(m => m.id === initialMovement.id) || initialMovement;
   }, [documentMovements, initialMovement]);
   
-  const creator = useMemo(() => users.find(u => u.id === movement.creatorId), [users, movement]);
-  const assignee = useMemo(() => users.find(u => u.id === movement.assigneeId), [users, movement]);
+  const creator = useMemo(() => users.find(u => u.id === request.creatorId), [users, request]);
+  const assignee = useMemo(() => users.find(u => u.id === request.assigneeId), [users, request]);
   
-  const commentsArray = Array.isArray(movement.comments) ? movement.comments : Object.values(movement.comments || {});
+  const commentsArray = Array.isArray(request.comments) ? request.comments : Object.values(request.comments || {});
 
   const handleAddComment = () => {
     if (!comment.trim()) return;
-    addDocumentMovementComment(movement.id, comment);
+    addDocumentMovementComment(request.id, comment);
     setComment('');
   };
   
   const handleAcknowledge = () => {
-    if (user?.id !== movement.assigneeId) return;
-    acknowledgeDocumentMovement(movement.id, comment);
+    if (user?.id !== request.assigneeId) return;
+    acknowledgeDocumentMovement(request.id, comment);
     setComment('');
   }
   
@@ -63,7 +63,7 @@ export default function ViewDocumentMovementDialog({ isOpen, setIsOpen, movement
         toast({ title: "Please select a user to forward to.", variant: "destructive" });
         return;
     }
-    forwardDocumentMovement(movement.id, forwardToUserId, comment);
+    forwardDocumentMovement(request.id, forwardToUserId, comment);
     setIsForwarding(false);
     setComment('');
     setForwardToUserId('');
@@ -74,23 +74,24 @@ export default function ViewDocumentMovementDialog({ isOpen, setIsOpen, movement
         toast({ title: "A reason is required to return.", variant: "destructive" });
         return;
     }
-    returnDocumentMovement(movement.id, comment);
+    returnDocumentMovement(request.id, comment);
     setComment('');
   }
 
   const handleComplete = () => {
-    completeDocumentMovement(movement.id, comment);
+    completeDocumentMovement(request.id, comment);
     setComment('');
     setIsOpen(false);
   }
 
   const assignableUsers = useMemo(() => {
     if (!user) return [];
-    const currentParticipantIds = new Set([movement.creatorId, movement.assigneeId, ...(movement.comments || []).map(c => c.userId)]);
+    const currentParticipantIds = new Set([request.creatorId, request.assigneeId, ...(request.comments || []).map(c => c.userId)]);
     return users.filter(u => !currentParticipantIds.has(u.id));
-  }, [user, users, movement]);
+  }, [user, users, request]);
   
-  const canTakeAction = user?.id === movement.assigneeId;
+  const canTakeAction = user?.id === request.assigneeId;
+  const canDelete = user?.role === 'Admin' || user?.id === request.creatorId;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -98,12 +99,12 @@ export default function ViewDocumentMovementDialog({ isOpen, setIsOpen, movement
         <DialogHeader>
           <div className="flex justify-between items-start">
             <div>
-              <DialogTitle>{movement.title}</DialogTitle>
+              <DialogTitle>{request.title}</DialogTitle>
               <DialogDescription>
                 Created by {creator?.name} &middot; Currently with {assignee?.name}
               </DialogDescription>
             </div>
-            <Badge variant={statusVariant[movement.status]}>{movement.status}</Badge>
+            <Badge variant={statusVariant[request.status]}>{request.status}</Badge>
           </div>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -152,6 +153,28 @@ export default function ViewDocumentMovementDialog({ isOpen, setIsOpen, movement
         </div>
         <DialogFooter className="justify-between">
             <div className="flex gap-2">
+              {canDelete && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4" /> Delete</Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                      <AlertDialogDescription>This will permanently delete this document tracker and its history.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => {
+                          deleteDocumentMovement(request.id);
+                          setIsOpen(false);
+                      }}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
+            <div className="flex gap-2">
                 {canTakeAction && movement.status === 'Acknowledged' && (
                     <>
                         <Button size="sm" onClick={() => setIsForwarding(true)}><Forward className="mr-2 h-4 w-4"/>Forward</Button>
@@ -172,8 +195,8 @@ export default function ViewDocumentMovementDialog({ isOpen, setIsOpen, movement
                 {canTakeAction && (movement.status === 'Pending' || movement.status === 'Returned') && (
                      <Button onClick={handleAcknowledge}><Check className="mr-2 h-4 w-4"/>Acknowledge</Button>
                 )}
+                <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
             </div>
-            <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
