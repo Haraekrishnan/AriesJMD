@@ -1,4 +1,3 @@
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -36,8 +35,8 @@ export default function ReassignStepDialog({ isOpen, setIsOpen, job, step }: Rea
     const [popoverOpen, setPopoverOpen] = useState(false);
 
     const assignableUsers = useMemo(() => {
-        return getAssignableUsers().filter(u => u.id !== user?.id);
-    }, [getAssignableUsers, user]);
+        return getAssignableUsers();
+    }, [getAssignableUsers]);
 
     const form = useForm<ReassignFormValues>({
         resolver: zodResolver(reassignSchema),
