@@ -26,12 +26,13 @@ import TimesheetTrackerTable from '@/components/job-progress/TimesheetTrackerTab
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
 
 export default function JobProgressPage() {
-  const { can, jobProgress, timesheets, user, projects, users, trackerNotificationCount, documentMovements, updateUserViewPreference } = useAppContext();
+  const { can, jobProgress, timesheets, user, projects, users, trackerNotificationCount, documentMovements, updateUserViewPreference, getVisibleUsers } = useAppContext();
   const [isCreateJobOpen, setIsCreateJobOpen] = useState(false);
   const [isCreateTimesheetOpen, setIsCreateTimesheetOpen] = useState(false);
   const [isCreateDocumentOpen, setIsCreateDocumentOpen] = useState(false);
@@ -44,11 +45,16 @@ export default function JobProgressPage() {
   
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
   const [jmsSearchTerm, setJmsSearchTerm] = useState('');
+  const [jmsAssigneeFilter, setJmsAssigneeFilter] = useState('all');
   const [timesheetSearchTerm, setTimesheetSearchTerm] = useState('');
   const [docSearchTerm, setDocSearchTerm] = useState('');
 
   const [jmsView, setJmsView] = useState<'board' | 'list'>(user?.viewPreferences?.jmsTracker || 'board');
   const [timesheetView, setTimesheetView] = useState<'board' | 'list'>(user?.viewPreferences?.timesheetTracker || 'board');
+
+  const assignableUsers = useMemo(() => {
+    return getVisibleUsers().filter(u => u.role !== 'Manager');
+  }, [getVisibleUsers]);
 
   useEffect(() => {
     if (user?.viewPreferences?.jmsTracker) {
@@ -127,19 +133,41 @@ export default function JobProgressPage() {
       return isSameMonth(dateToCompare, currentMonth);
     });
   
-    if (!jmsSearchTerm) return jobsInMonth;
-    const lowercasedTerm = jmsSearchTerm.toLowerCase();
     return jobsInMonth.filter(job => {
-        const project = projects.find(p => p.id === job.projectId);
-        return (
-            job.title.toLowerCase().includes(lowercasedTerm) ||
-            (job.jmsNo && job.jmsNo.toLowerCase().includes(lowercasedTerm)) ||
-            (project && project.name.toLowerCase().includes(lowercasedTerm)) ||
-            (job.plantUnit && job.plantUnit.toLowerCase().includes(lowercasedTerm))
-        );
+        // Assignee Filter
+        let assigneeMatch = true;
+        if (jmsAssigneeFilter !== 'all') {
+            const returnedStep = job.steps.find(s => s.isReturned === true);
+            const pendingStep = job.steps.find(s => s.status === 'Pending');
+            const acknowledgedStep = job.steps.find(s => s.status === 'Acknowledged');
+            const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
+            
+            if (job.status === 'Completed') {
+                const lastStep = job.steps[job.steps.length - 1];
+                const completerId = lastStep?.completedBy;
+                assigneeMatch = completerId === jmsAssigneeFilter;
+            } else {
+                assigneeMatch = currentStep?.assigneeId === jmsAssigneeFilter;
+            }
+        }
+        
+        // Search Term Filter
+        let searchMatch = true;
+        if (jmsSearchTerm) {
+            const lowercasedTerm = jmsSearchTerm.toLowerCase();
+            const project = projects.find(p => p.id === job.projectId);
+            searchMatch = (
+                job.title.toLowerCase().includes(lowercasedTerm) ||
+                (job.jmsNo && job.jmsNo.toLowerCase().includes(lowercasedTerm)) ||
+                (project && project.name.toLowerCase().includes(lowercasedTerm)) ||
+                (job.plantUnit && job.plantUnit.toLowerCase().includes(lowercasedTerm))
+            );
+        }
+
+        return assigneeMatch && searchMatch;
     });
   
-  }, [jobProgress, currentMonth, user, jmsSearchTerm, projects]);
+  }, [jobProgress, currentMonth, user, jmsSearchTerm, jmsAssigneeFilter, projects]);
 
   const filteredTimesheets = useMemo(() => {
     const visibleTimesheets = timesheets.filter(ts => {
@@ -249,14 +277,27 @@ export default function JobProgressPage() {
                 </div>
             )}
            <div className="flex justify-between items-center pt-2 pb-4">
-              <div className="relative w-full sm:w-auto max-w-sm">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                      placeholder="Search by title, JMS no, project..."
-                      className="pl-9"
-                      value={jmsSearchTerm}
-                      onChange={e => setJmsSearchTerm(e.target.value)}
-                  />
+              <div className="flex gap-2 items-center">
+                  <div className="relative w-full sm:w-auto max-w-sm">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                          placeholder="Search by title, JMS no, project..."
+                          className="pl-9"
+                          value={jmsSearchTerm}
+                          onChange={e => setJmsSearchTerm(e.target.value)}
+                      />
+                  </div>
+                  <Select value={jmsAssigneeFilter} onValueChange={setJmsAssigneeFilter}>
+                      <SelectTrigger className="w-[200px]">
+                          <SelectValue placeholder="Filter by assignee..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                          <SelectItem value="all">All Assignees</SelectItem>
+                          {assignableUsers.map(u => (
+                              <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
               </div>
               <div className="flex items-center gap-2">
                 <Button variant={jmsView === 'board' ? 'secondary' : 'outline'} size="icon" onClick={() => setJmsView('board')}><LayoutGrid className="h-4 w-4" /></Button>
