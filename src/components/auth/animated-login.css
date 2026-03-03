@@ -1,0 +1,124 @@
+
+.animated-login-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background-color: #000;
+    overflow: hidden;
+    position: relative;
+}
+
+.login-card {
+    background-color: rgba(10, 10, 25, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    width: 100%;
+    max-width: 400px;
+    color: white;
+}
+
+.title-2026 {
+    font-size: 6rem;
+    font-weight: bold;
+    color: #FFD700;
+    line-height: 1;
+    text-shadow: 0 0 10px #FFD700, 0 0 20px #FFD700, 0 0 30px #FFA500;
+    animation: flicker-2026 3s infinite alternate;
+}
+
+.title-happy-new-year {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #fff;
+    margin-top: -1rem;
+    letter-spacing: 2px;
+}
+
+@keyframes flicker-2026 {
+  0%, 100% {
+    opacity: 1;
+    text-shadow: 0 0 10px #FFD700, 0 0 20px #FFD700, 0 0 30px #FFA500, 0 0 40px #FFA500;
+  }
+  50% {
+    opacity: 0.9;
+    text-shadow: 0 0 8px #FFD700, 0 0 15px #FFD700, 0 0 25px #FFA500;
+  }
+}
+
+/* Base firework styles */
+.firework {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: white;
+  border-radius: 50%;
+  opacity: 1;
+  animation: firework-trail 2s ease-out infinite;
+}
+
+@keyframes firework-trail {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-80vh) scale(0);
+    opacity: 0;
+  }
+}
+
+/* Individual firework trails */
+.firework:nth-child(1) {
+  left: 20%;
+  animation-duration: 2.5s;
+  animation-delay: 0s;
+}
+.firework:nth-child(2) {
+  left: 80%;
+  animation-duration: 2.2s;
+  animation-delay: 0.8s;
+}
+.firework:nth-child(3) {
+  left: 50%;
+  animation-duration: 3s;
+  animation-delay: 1.5s;
+}
+
+/* Firework explosion part */
+.firework::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 150px;
+  height: 150px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, #FFD700, #FFA500, transparent);
+  opacity: 0;
+  animation: firework-burst 1s ease-out infinite;
+  animation-delay: inherit;
+}
+
+@keyframes firework-burst {
+  0%, 100% {
+    transform: translate(-50%, -100vh) scale(0);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  99% {
+    transform: translate(-50%, -80vh) scale(1.5);
+    opacity: 0;
+  }
+}
+
+.firework:nth-child(1)::before { animation-duration: 1.2s; animation-delay: 2.5s; background: radial-gradient(circle, #f00, #f80, transparent); }
+.firework:nth-child(2)::before { animation-duration: 1s; animation-delay: 3.0s; background: radial-gradient(circle, #0f0, #0f8, transparent); }
+.firework:nth-child(3)::before { animation-duration: 1.5s; animation-delay: 4.5s; background: radial-gradient(circle, #00f, #80f, transparent); }
+

@@ -1,0 +1,182 @@
+
+'use client';
+
+import { useMemo, useState } from 'react';
+import { useAuth } from '@/contexts/auth-provider';
+import { useInventory } from '@/contexts/inventory-provider';
+import { useConsumable } from '@/contexts/consumable-provider';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { PlusCircle } from 'lucide-react';
+import NewInternalRequestDialog from '@/components/requests/new-internal-request-dialog';
+import InternalRequestTable from '@/components/requests/internal-request-table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import NewPpeRequestDialog from '@/components/requests/NewPpeRequestDialog';
+import PpeRequestTable from '@/components/requests/PpeRequestTable';
+import { Role } from '@/lib/types';
+import NewConsumableRequestDialog from '@/components/requests/NewConsumableRequestDialog';
+import { usePurchase } from '@/contexts/purchase-provider';
+
+export default function MyRequestsPage() {
+    const { user, roles, can } = useAuth();
+    const { 
+        internalRequests, 
+        ppeRequests,
+        pendingConsumableRequestCount,
+        updatedConsumableRequestCount,
+        pendingGeneralRequestCount,
+        updatedGeneralRequestCount,
+        pendingPpeRequestCount,
+        updatedPpeRequestCount,
+     } = useInventory();
+    const { consumableItems } = useConsumable();
+
+    const [isNewRequestDialogOpen, setIsNewRequestDialogOpen] = useState(false);
+    const [isNewConsumableRequestDialogOpen, setIsNewConsumableRequestDialogOpen] = useState(false);
+    const [isNewPpeRequestDialogOpen, setIsNewPpeRequestDialogOpen] = useState(false);
+
+    const consumableItemIds = useMemo(() => new Set(consumableItems.map(item => item.id)), [consumableItems]);
+
+    const { consumableRequests, generalStoreRequests } = useMemo(() => {
+        const consumables: any[] = [];
+        const general: any[] = [];
+        const corruptedRequestId = "-OaA1ma81MdDVw62D8Xg";
+
+        internalRequests
+            .filter(req => req.id !== corruptedRequestId)
+            .forEach(req => {
+                const isConsumableReq = req.items?.some(item => item.inventoryItemId && consumableItemIds.has(item.inventoryItemId));
+                
+                if (isConsumableReq) {
+                    consumables.push(req);
+                } else {
+                    general.push(req);
+                }
+            });
+
+        const filterAndSort = (requests: any[]) => {
+          if (!user) return [];
+          return requests
+              .filter(req => req.requesterId === user.id || can.view_internal_store_request || can.manage_store_requests)
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        }
+
+        return {
+            consumableRequests: filterAndSort(consumables),
+            generalStoreRequests: filterAndSort(general),
+        };
+    }, [internalRequests, consumableItemIds, user, can.view_internal_store_request, can.manage_store_requests]);
+    
+    const visiblePpeRequests = useMemo(() => {
+        if (!user || !ppeRequests) return [];
+        if (can.view_ppe_requests || can.manage_ppe_request) {
+            return ppeRequests.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        }
+        return ppeRequests
+            .filter(req => req.requesterId === user.id)
+            .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [ppeRequests, user, can.view_ppe_requests, can.manage_ppe_request]);
+
+    const consumableNotifCount = pendingConsumableRequestCount + updatedConsumableRequestCount;
+    const generalNotifCount = pendingGeneralRequestCount + updatedGeneralRequestCount;
+    const ppeNotifCount = pendingPpeRequestCount + updatedPpeRequestCount;
+
+    return (
+        <div className="space-y-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">My Requests</h1>
+                    <p className="text-muted-foreground">
+                        Track your submitted requests or create a new PPE request.
+                    </p>
+                </div>
+            </div>
+            
+            <Tabs defaultValue="ppe-requests">
+                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto sm:h-10">
+                    <TabsTrigger value="ppe-requests" className="flex items-center gap-2">
+                        PPE Requests
+                        {ppeNotifCount > 0 && (
+                           <Badge variant="destructive">{ppeNotifCount}</Badge>
+                        )}
+                    </TabsTrigger>
+                     <TabsTrigger value="consumable-requests" className="flex items-center gap-2">
+                        Consumable Requests
+                         {consumableNotifCount > 0 && (
+                            <Badge variant="destructive">{consumableNotifCount}</Badge>
+                         )}
+                    </TabsTrigger>
+                    <TabsTrigger value="store-requests" className="flex items-center gap-2">
+                        General Store Requests
+                         {generalNotifCount > 0 && (
+                            <Badge variant="destructive">{generalNotifCount}</Badge>
+                         )}
+                    </TabsTrigger>
+                </TabsList>
+                <TabsContent value="ppe-requests">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle>PPE Requests</CardTitle>
+                                <CardDescription>
+                                    Request coveralls and safety shoes for personnel.
+                                </CardDescription>
+                            </div>
+                            <Button onClick={() => setIsNewPpeRequestDialogOpen(true)}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                New PPE Request
+                            </Button>
+                        </CardHeader>
+                        <CardContent>
+                            <PpeRequestTable requests={visiblePpeRequests} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                <TabsContent value="consumable-requests">
+                    <Card>
+                        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div>
+                                <CardTitle>Consumable Requests</CardTitle>
+                                <CardDescription>
+                                    Request daily or job-specific consumables.
+                                </CardDescription>
+                            </div>
+                            <Button onClick={() => setIsNewConsumableRequestDialogOpen(true)}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Request Consumables
+                            </Button>
+                        </CardHeader>
+                        <CardContent>
+                            <InternalRequestTable requests={consumableRequests} showAcknowledge={false} isConsumable={true} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                <TabsContent value="store-requests">
+                    <Card>
+                        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div>
+                                <CardTitle>General Store Requests</CardTitle>
+                                <CardDescription>
+                                    Request general items from the store inventory.
+                                </CardDescription>
+                            </div>
+                            <Button onClick={() => setIsNewRequestDialogOpen(true)}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                New General Request
+                            </Button>
+                        </CardHeader>
+                        <CardContent>
+                            <InternalRequestTable requests={generalStoreRequests} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
+
+
+            <NewInternalRequestDialog isOpen={isNewRequestDialogOpen} setIsOpen={setIsNewRequestDialogOpen} />
+            <NewConsumableRequestDialog isOpen={isNewConsumableRequestDialogOpen} setIsOpen={setIsNewConsumableRequestDialogOpen} />
+            <NewPpeRequestDialog isOpen={isNewPpeRequestDialogOpen} setIsOpen={setIsNewPpeRequestDialogOpen} />
+        </div>
+    );
+}
