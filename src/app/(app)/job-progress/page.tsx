@@ -1,10 +1,9 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Search, Bell, FileDown, Clock, Folder } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Search, Bell, FileDown, Clock, Folder, List, LayoutGrid } from 'lucide-react';
 import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress, Timesheet, Role, DocumentMovement } from '@/lib/types';
@@ -13,6 +12,7 @@ import CreateTimesheetDialog from '@/components/job-progress/CreateTimesheetDial
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import JobProgressBoard from '@/components/job-progress/JobProgressBoard';
+import { JobProgressTable } from '@/components/job-progress/JobProgressTable';
 import TimesheetBoard from '@/components/job-progress/TimesheetBoard';
 import ViewTimesheetDialog from '@/components/job-progress/ViewTimesheetDialog';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +41,7 @@ export default function JobProgressPage() {
   const [jmsSearchTerm, setJmsSearchTerm] = useState('');
   const [timesheetSearchTerm, setTimesheetSearchTerm] = useState('');
   const [docSearchTerm, setDocSearchTerm] = useState('');
+  const [jmsView, setJmsView] = useState<'board' | 'list'>('board');
 
   const canCreateJms = useMemo(() => {
     if (!user) return false;
@@ -208,9 +209,9 @@ export default function JobProgressPage() {
           <TabsTrigger value="timesheets">Timesheet Tracker</TabsTrigger>
           <TabsTrigger value="documents">Document Tracker</TabsTrigger>
         </TabsList>
-        <TabsContent value="jms" className="flex-1 overflow-hidden">
-           <div className="w-full sm:w-auto max-w-sm pt-2 pb-4">
-              <div className="relative">
+        <TabsContent value="jms" className="flex-1 overflow-hidden flex flex-col">
+           <div className="flex justify-between items-center pt-2 pb-4">
+              <div className="relative w-full sm:w-auto max-w-sm">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                       placeholder="Search by title, JMS no, project..."
@@ -219,8 +220,16 @@ export default function JobProgressPage() {
                       onChange={e => setJmsSearchTerm(e.target.value)}
                   />
               </div>
+              <div className="flex items-center gap-2">
+                <Button variant={jmsView === 'board' ? 'secondary' : 'outline'} size="icon" onClick={() => setJmsView('board')}><LayoutGrid className="h-4 w-4" /></Button>
+                <Button variant={jmsView === 'list' ? 'secondary' : 'outline'} size="icon" onClick={() => setJmsView('list')}><List className="h-4 w-4" /></Button>
+              </div>
           </div>
-          <JobProgressBoard jobs={filteredJobs} onViewJob={setViewingJob} />
+          {jmsView === 'board' ? (
+            <JobProgressBoard jobs={filteredJobs} onViewJob={setViewingJob} />
+          ) : (
+            <JobProgressTable jobs={filteredJobs} onViewJob={setViewingJob} />
+          )}
         </TabsContent>
         <TabsContent value="timesheets" className="flex-1 overflow-hidden">
             <div className="w-full sm:w-auto max-w-sm pt-2 pb-4">

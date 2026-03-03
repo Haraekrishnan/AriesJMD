@@ -138,7 +138,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   });
 
   if (jobs.length === 0) {
-    return <p className="text-center text-muted-foreground py-8">No long pending jobs found.</p>;
+    return <p className="text-center text-muted-foreground py-8">No jobs found for the selected month.</p>;
   }
 
   return (
