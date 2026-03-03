@@ -67,9 +67,10 @@ const JobCard = ({ job, onViewJob }: { job: JobProgress; onViewJob: (job: JobPro
                 {currentStep && <Badge variant={returnedStep ? 'destructive' : (acknowledgedStep ? 'default' : 'secondary')}>{currentStep.name}</Badge>}
                 
                 <div className="flex justify-between items-center pt-2">
-                    <div className="text-xs text-muted-foreground flex items-center gap-2">
+                    <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
                         <span>{dateText}</span>
                         {job.jmsNo && <Badge variant="outline">JMS: {job.jmsNo}</Badge>}
+                        {job.amount && <Badge variant="outline">Amount: {new Intl.NumberFormat('en-IN').format(job.amount)}</Badge>}
                     </div>
                     {assignee && (
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
