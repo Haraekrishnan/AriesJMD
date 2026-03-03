@@ -235,16 +235,18 @@ export default function JobProgressPage() {
         </TabsList>
         <TabsContent value="jms" className="flex-1 overflow-hidden flex flex-col">
            {showViewNotice && (
-                <Alert className="mt-4 mb-2 relative pr-10 border-blue-500/50 text-blue-900 bg-blue-50 dark:border-blue-700 dark:text-blue-200 dark:bg-blue-900/30">
-                    <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <AlertTitle className="font-semibold text-blue-800 dark:text-blue-100">New! List View & Default Settings</AlertTitle>
-                    <AlertDescription className="text-blue-700 dark:text-blue-300">
-                        You can now switch between Board and List views. Use the <Settings className="inline h-4 w-4" /> icon to set your preferred default view for this tracker.
-                    </AlertDescription>
-                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 text-blue-800 dark:text-blue-100 hover:bg-blue-100 dark:hover:bg-blue-900" onClick={() => setShowViewNotice(false)}>
+                <div className="relative mt-4 mb-2">
+                    <Alert className="pr-12 border-blue-500/50 text-blue-900 bg-blue-50 dark:border-blue-700 dark:text-blue-200 dark:bg-blue-900/30">
+                        <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <AlertTitle className="font-semibold text-blue-800 dark:text-blue-100">New! List View & Default Settings</AlertTitle>
+                        <AlertDescription className="text-blue-700 dark:text-blue-300">
+                            You can now switch between Board and List views. Use the <Settings className="inline h-4 w-4" /> icon to set your preferred default view for this tracker.
+                        </AlertDescription>
+                    </Alert>
+                    <Button variant="ghost" size="icon" className="absolute top-1/2 -translate-y-1/2 right-2 h-8 w-8 text-blue-800 dark:text-blue-100 hover:bg-blue-100 dark:hover:bg-blue-900" onClick={() => setShowViewNotice(false)}>
                         <X className="h-4 w-4" />
                     </Button>
-                </Alert>
+                </div>
             )}
            <div className="flex justify-between items-center pt-2 pb-4">
               <div className="relative w-full sm:w-auto max-w-sm">
@@ -290,16 +292,18 @@ export default function JobProgressPage() {
         </TabsContent>
         <TabsContent value="timesheets" className="flex-1 overflow-hidden flex flex-col">
           {showViewNotice && (
-              <Alert className="mt-4 mb-2 relative pr-10 border-blue-500/50 text-blue-900 bg-blue-50 dark:border-blue-700 dark:text-blue-200 dark:bg-blue-900/30">
-                  <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                  <AlertTitle className="font-semibold text-blue-800 dark:text-blue-100">New! List View & Default Settings</AlertTitle>
-                  <AlertDescription className="text-blue-700 dark:text-blue-300">
-                      You can now switch between Board and List views. Use the <Settings className="inline h-4 w-4" /> icon to set your preferred default view for this tracker.
-                  </AlertDescription>
-                  <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 text-blue-800 dark:text-blue-100 hover:bg-blue-100 dark:hover:bg-blue-900" onClick={() => setShowViewNotice(false)}>
-                      <X className="h-4 w-4" />
-                  </Button>
-              </Alert>
+              <div className="relative mt-4 mb-2">
+                    <Alert className="pr-12 border-blue-500/50 text-blue-900 bg-blue-50 dark:border-blue-700 dark:text-blue-200 dark:bg-blue-900/30">
+                        <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <AlertTitle className="font-semibold text-blue-800 dark:text-blue-100">New! List View & Default Settings</AlertTitle>
+                        <AlertDescription className="text-blue-700 dark:text-blue-300">
+                            You can now switch between Board and List views. Use the <Settings className="inline h-4 w-4" /> icon to set your preferred default view for this tracker.
+                        </AlertDescription>
+                    </Alert>
+                    <Button variant="ghost" size="icon" className="absolute top-1/2 -translate-y-1/2 right-2 h-8 w-8 text-blue-800 dark:text-blue-100 hover:bg-blue-100 dark:hover:bg-blue-900" onClick={() => setShowViewNotice(false)}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
           )}
           <div className="flex justify-between items-center pt-2 pb-4">
               <div className="relative w-full sm:w-auto max-w-sm">
