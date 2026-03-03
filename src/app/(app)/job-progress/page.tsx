@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Search, Bell, FileDown, Clock, Folder, List, LayoutGrid, Settings } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Search, Bell, FileDown, Clock, Folder, List, LayoutGrid, Settings, X } from 'lucide-react';
 import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress, Timesheet, Role, DocumentMovement } from '@/lib/types';
@@ -26,6 +26,7 @@ import ViewDocumentMovementDialog from '@/components/job-progress/ViewDocumentMo
 import TimesheetTrackerTable from '@/components/job-progress/TimesheetTrackerTable';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
@@ -40,6 +41,7 @@ export default function JobProgressPage() {
   const [viewingDocument, setViewingDocument] = useState<DocumentMovement | null>(null);
   const [isPendingDialogOpen, setIsPendingDialogOpen] = useState(false);
   const [isLongPendingDialogOpen, setIsLongPendingDialogOpen] = useState(false);
+  const [showViewNotice, setShowViewNotice] = useState(true);
   
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
   const [jmsSearchTerm, setJmsSearchTerm] = useState('');
@@ -233,6 +235,17 @@ export default function JobProgressPage() {
           <TabsTrigger value="documents">Document Tracker</TabsTrigger>
         </TabsList>
         <TabsContent value="jms" className="flex-1 overflow-hidden flex flex-col">
+           {showViewNotice && (
+                <Alert className="mt-4 mb-2 relative pr-10">
+                    <AlertTitle>New! List View & Default Settings</AlertTitle>
+                    <AlertDescription>
+                        You can now switch between Board and List views. Use the <Settings className="inline h-4 w-4" /> icon to set your preferred default view for this tracker.
+                    </AlertDescription>
+                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => setShowViewNotice(false)}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                </Alert>
+            )}
            <div className="flex justify-between items-center pt-2 pb-4">
               <div className="relative w-full sm:w-auto max-w-sm">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -276,6 +289,17 @@ export default function JobProgressPage() {
           )}
         </TabsContent>
         <TabsContent value="timesheets" className="flex-1 overflow-hidden flex flex-col">
+          {showViewNotice && (
+              <Alert className="mt-4 mb-2 relative pr-10">
+                  <AlertTitle>New! List View & Default Settings</AlertTitle>
+                  <AlertDescription>
+                      You can now switch between Board and List views. Use the <Settings className="inline h-4 w-4" /> icon to set your preferred default view for this tracker.
+                  </AlertDescription>
+                  <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => setShowViewNotice(false)}>
+                      <X className="h-4 w-4" />
+                  </Button>
+              </Alert>
+          )}
           <div className="flex justify-between items-center pt-2 pb-4">
               <div className="relative w-full sm:w-auto max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
