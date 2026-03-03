@@ -120,6 +120,28 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             ) : <span className="text-muted-foreground">Unassigned</span>;
         }
       },
+      {
+        id: 'acknowledgment',
+        header: 'Acknowledgment',
+        cell: ({ row }) => {
+          if (row.original.status === 'Completed') {
+            return <Badge variant="success">Completed</Badge>;
+          }
+          const returnedStep = row.original.steps.find(s => s.isReturned === true);
+          if (returnedStep) {
+            return <Badge variant="destructive">Returned</Badge>;
+          }
+          const acknowledgedStep = row.original.steps.find(s => s.status === 'Acknowledged');
+          if (acknowledgedStep) {
+            return <Badge variant="default">Acknowledged</Badge>;
+          }
+          const pendingStep = row.original.steps.find(s => s.status === 'Pending');
+          if (pendingStep) {
+            return <Badge variant="warning">Pending</Badge>;
+          }
+          return <Badge variant="secondary">{row.original.status}</Badge>;
+        }
+      },
       { 
         accessorKey: 'lastUpdated', 
         header: ({ column }) => (
