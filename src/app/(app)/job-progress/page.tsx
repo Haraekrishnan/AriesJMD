@@ -1,9 +1,10 @@
+
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Search, Bell, FileDown, Clock, Folder, List, LayoutGrid } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Search, Bell, FileDown, Clock, Folder, List, LayoutGrid, Settings } from 'lucide-react';
 import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress, Timesheet, Role, DocumentMovement } from '@/lib/types';
@@ -23,12 +24,14 @@ import CreateDocumentMovementDialog from '@/components/job-progress/CreateDocume
 import DocumentMovementList from '@/components/job-progress/DocumentMovementList';
 import ViewDocumentMovementDialog from '@/components/job-progress/ViewDocumentMovementDialog';
 import TimesheetTrackerTable from '@/components/job-progress/TimesheetTrackerTable';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
 
 export default function JobProgressPage() {
-  const { can, jobProgress, timesheets, user, projects, users, trackerNotificationCount, documentMovements } = useAppContext();
+  const { can, jobProgress, timesheets, user, projects, users, trackerNotificationCount, documentMovements, updateUserViewPreference } = useAppContext();
   const [isCreateJobOpen, setIsCreateJobOpen] = useState(false);
   const [isCreateTimesheetOpen, setIsCreateTimesheetOpen] = useState(false);
   const [isCreateDocumentOpen, setIsCreateDocumentOpen] = useState(false);
@@ -42,8 +45,26 @@ export default function JobProgressPage() {
   const [jmsSearchTerm, setJmsSearchTerm] = useState('');
   const [timesheetSearchTerm, setTimesheetSearchTerm] = useState('');
   const [docSearchTerm, setDocSearchTerm] = useState('');
-  const [jmsView, setJmsView] = useState<'board' | 'list'>('board');
-  const [timesheetView, setTimesheetView] = useState<'board' | 'list'>('board');
+
+  const [jmsView, setJmsView] = useState<'board' | 'list'>(user?.viewPreferences?.jmsTracker || 'board');
+  const [timesheetView, setTimesheetView] = useState<'board' | 'list'>(user?.viewPreferences?.timesheetTracker || 'board');
+
+  useEffect(() => {
+    if (user?.viewPreferences?.jmsTracker) {
+        setJmsView(user.viewPreferences.jmsTracker);
+    }
+    if (user?.viewPreferences?.timesheetTracker) {
+        setTimesheetView(user.viewPreferences.timesheetTracker);
+    }
+  }, [user?.viewPreferences]);
+
+  const handleJmsDefaultViewChange = (value: string) => {
+    updateUserViewPreference('jmsTracker', value as 'board' | 'list');
+  };
+
+  const handleTimesheetDefaultViewChange = (value: string) => {
+    updateUserViewPreference('timesheetTracker', value as 'board' | 'list');
+  };
 
   const canCreateJms = useMemo(() => {
     if (!user) return false;
@@ -225,6 +246,27 @@ export default function JobProgressPage() {
               <div className="flex items-center gap-2">
                 <Button variant={jmsView === 'board' ? 'secondary' : 'outline'} size="icon" onClick={() => setJmsView('board')}><LayoutGrid className="h-4 w-4" /></Button>
                 <Button variant={jmsView === 'list' ? 'secondary' : 'outline'} size="icon" onClick={() => setJmsView('list')}><List className="h-4 w-4" /></Button>
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="icon"><Settings className="h-4 w-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuLabel>Default View</DropdownMenuLabel>
+                                <DropdownMenuRadioGroup value={user?.viewPreferences?.jmsTracker || 'board'} onValueChange={handleJmsDefaultViewChange}>
+                                <DropdownMenuRadioItem value="board">Board</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="list">List</DropdownMenuRadioItem>
+                                </DropdownMenuRadioGroup>
+                            </DropdownMenuContent>
+                            </DropdownMenu>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Set your default view for the JMS tracker.</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
               </div>
           </div>
           {jmsView === 'board' ? (
@@ -247,6 +289,27 @@ export default function JobProgressPage() {
               <div className="flex items-center gap-2">
                 <Button variant={timesheetView === 'board' ? 'secondary' : 'outline'} size="icon" onClick={() => setTimesheetView('board')}><LayoutGrid className="h-4 w-4" /></Button>
                 <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" onClick={() => setTimesheetView('list')}><List className="h-4 w-4" /></Button>
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="icon"><Settings className="h-4 w-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuLabel>Default View</DropdownMenuLabel>
+                                <DropdownMenuRadioGroup value={user?.viewPreferences?.timesheetTracker || 'board'} onValueChange={handleTimesheetDefaultViewChange}>
+                                <DropdownMenuRadioItem value="board">Board</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="list">List</DropdownMenuRadioItem>
+                                </DropdownMenuRadioGroup>
+                            </DropdownMenuContent>
+                            </DropdownMenu>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Set your default view for the Timesheet tracker.</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
               </div>
           </div>
           {timesheetView === 'board' ? (

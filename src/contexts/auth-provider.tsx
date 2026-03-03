@@ -51,6 +51,7 @@ type AuthContextType = {
   getAssignableUsers: () => User[];
   clearInventoryTransferHistory: () => void;
   markPlannerEventAsViewed: (eventId: string) => void;
+  updateUserViewPreference: (key: 'jmsTracker' | 'timesheetTracker', value: 'board' | 'list') => void;
 };
 
 // --- HELPER FUNCTIONS ---
@@ -432,6 +433,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `plannerEvents/${eventId}/viewedBy`), { [user.id]: true });
   }, [user]);
 
+  const updateUserViewPreference = useCallback((key: 'jmsTracker' | 'timesheetTracker', value: 'board' | 'list') => {
+    if (!user) return;
+    const path = `users/${user.id}/viewPreferences/${key}`;
+    set(ref(rtdb, path), value);
+  }, [user]);
+
   useEffect(() => {
     const unsubscribers = [
       createDataListener('users', setUsersById),
@@ -486,6 +493,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user, loading, users, roles, passwordResetRequests, unlockRequests, can, appName, appLogo, activeTheme, plannerNotificationCount,
     login, logout, updateProfile, requestPasswordReset,
     resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, updateBranding, updateActiveTheme, addActivityLog, getVisibleUsers, getAssignableUsers, clearInventoryTransferHistory, markPlannerEventAsViewed,
+    updateUserViewPreference
   };
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;

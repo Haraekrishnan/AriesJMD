@@ -19,6 +19,10 @@ export type User = {
   signatureUrl?: string;
   viewedBy?: { [key: string]: boolean };
   dismissedPendingUpdates?: { [key: string]: boolean };
+  viewPreferences?: {
+    jmsTracker: 'board' | 'list';
+    timesheetTracker: 'board' | 'list';
+  };
 };
 
 export type TaskStatus = 'To Do' | 'In Progress' | 'In Review' | 'Done' | 'Pending Approval' | 'Overdue' | 'Completed';
@@ -913,26 +917,26 @@ export type VehicleUsageRecord = {
 };
 
 export const JOB_PROGRESS_STEPS = [
-  "JMS created",
-  "JMS sent to Site",
-  "JMS Handed Over to",
-  "JMS submitted",
-  "JMS Endorsed",
-  "JMS sent to Office",
-  "JMS no created",
-  "JMS Hard copy sent back to Site",
-  "JMS Hard copy submitted",
-] as const;
-
-export const REOPEN_JOB_STEPS = [
-  "JMS created",
-  "JMS sent to Site",
-  "JMS Handed Over to",
-  "JMS submitted",
-  "JMS Endorsed",
-  "JMS sent to Office",
-  "JMS no created",
-] as const;
+    "JMS created",
+    "JMS sent to Site",
+    "JMS Handed Over to",
+    "JMS submitted",
+    "JMS Endorsed",
+    "JMS sent to Office",
+    "JMS no created",
+    "JMS Hard copy sent back to Site",
+    "JMS Hard copy submitted",
+  ] as const;
+  
+  export const REOPEN_JOB_STEPS = [
+    "JMS created",
+    "JMS sent to Site",
+    "JMS Handed Over to",
+    "JMS submitted",
+    "JMS Endorsed",
+    "JMS sent to Office",
+    "JMS no created",
+  ] as const;
 
 
 export type JobProgressStatus = 'Not Started' | 'In Progress' | 'On Hold' | 'Completed';
