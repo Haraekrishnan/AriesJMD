@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -60,6 +59,16 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
         }
       },
       {
+        accessorKey: 'dateFrom',
+        header: 'Start Date',
+        cell: ({ row }) => row.original.dateFrom ? format(parseISO(row.original.dateFrom), 'dd-MM-yyyy') : 'N/A'
+      },
+      {
+        accessorKey: 'dateTo',
+        header: 'End Date',
+        cell: ({ row }) => row.original.dateTo ? format(parseISO(row.original.dateTo), 'dd-MM-yyyy') : 'N/A'
+      },
+      {
         accessorKey: 'jmsNo',
         header: 'JMS No.',
         cell: ({ row }) => row.original.jmsNo || 'N/A'
@@ -107,7 +116,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             const pendingStep = row.original.steps.find(s => s.status === 'Pending');
             const acknowledgedStep = row.original.steps.find(s => s.status === 'Acknowledged');
             const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
-            const assignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
+            const assignee = currentStep ? users.find(u => u.id === currentStep?.assigneeId) : null;
             
             return assignee ? (
                 <div className="flex items-center gap-2">
