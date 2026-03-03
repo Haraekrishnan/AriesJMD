@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -44,7 +45,7 @@ export default function PendingActionsDialog({ isOpen, setIsOpen, onViewJob, onV
 
   const pendingDocuments = useMemo(() => {
     if (!user) return [];
-    return documentMovements.filter(doc => doc.assigneeId === user.id && doc.status === 'Pending');
+    return documentMovements.filter(doc => doc.assigneeId === user.id && (doc.status === 'Pending' || doc.status === 'Returned'));
   }, [user, documentMovements]);
 
 
@@ -106,7 +107,7 @@ export default function PendingActionsDialog({ isOpen, setIsOpen, onViewJob, onV
                         <p className="font-semibold">{doc.title}</p>
                         <p className="text-sm text-muted-foreground">From: {users.find(u => u.id === doc.creatorId)?.name}</p>
                       </div>
-                      <Badge>{format(parseISO(doc.createdAt), 'dd MMM')}</Badge>
+                      <Badge variant={doc.status === 'Returned' ? 'destructive' : 'secondary'}>{doc.status}</Badge>
                     </div>
                   )) : (
                     <p className="text-muted-foreground text-center py-8">No pending documents.</p>

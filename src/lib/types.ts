@@ -1,4 +1,5 @@
 
+
 import type { User as FirebaseUser } from 'firebase/auth';
 
 // User & Auth
@@ -1097,7 +1098,7 @@ export type NotificationSettings = {
   };
 };
 
-export type DocumentMovementStatus = 'Pending' | 'Acknowledged' | 'Completed';
+export type DocumentMovementStatus = 'Pending' | 'Acknowledged' | 'Returned' | 'Completed';
 
 export type DocumentMovement = {
   id: string;

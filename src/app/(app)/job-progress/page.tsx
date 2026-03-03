@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -20,7 +21,7 @@ import PendingActionsDialog from '@/components/job-progress/PendingActionsDialog
 import OngoingJobsReport from '@/components/job-progress/OngoingJobsReport';
 import LongPendingJmsDialog from '@/components/job-progress/LongPendingJmsDialog';
 import CreateDocumentMovementDialog from '@/components/job-progress/CreateDocumentMovementDialog';
-import DocumentTrackerBoard from '@/components/job-progress/DocumentTrackerBoard';
+import DocumentMovementList from '@/components/job-progress/DocumentMovementList';
 import ViewDocumentMovementDialog from '@/components/job-progress/ViewDocumentMovementDialog';
 
 
@@ -248,7 +249,7 @@ export default function JobProgressPage() {
                 />
               </div>
           </div>
-          <DocumentTrackerBoard documents={filteredDocuments} onViewDocument={setViewingDocument} />
+          <DocumentMovementList documents={filteredDocuments} onViewDocument={setViewingDocument} />
         </TabsContent>
       </Tabs>
 
