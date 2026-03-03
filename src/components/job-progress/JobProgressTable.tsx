@@ -81,15 +81,34 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
         id: 'assignee',
         header: 'Current Assignee',
         accessorFn: (row) => {
-            const currentStep = row.original.steps.find(s => s.status === 'Pending' || s.isReturned) || row.original.steps.find(s => s.status === 'Acknowledged');
+            if (row.status === 'Completed') {
+                const lastStep = row.steps[row.steps.length - 1];
+                return users.find(u => u.id === lastStep?.completedBy)?.name || 'Completed';
+            }
+            const currentStep = row.steps.find(s => s.status === 'Pending' || s.isReturned) || row.steps.find(s => s.status === 'Acknowledged');
             return users.find(u => u.id === currentStep?.assigneeId)?.name || '';
         },
         cell: ({ row }) => {
+            if (row.original.status === 'Completed') {
+                const lastStep = row.original.steps[row.original.steps.length - 1];
+                const completer = lastStep?.completedBy ? users.find(u => u.id === lastStep.completedBy) : null;
+                return completer ? (
+                    <div className="flex items-center gap-2">
+                        <Avatar className="h-6 w-6">
+                            <AvatarImage src={completer.avatar} />
+                            <AvatarFallback>{completer.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <span className="truncate">{completer.name}</span>
+                    </div>
+                ) : <span className="text-muted-foreground">Completed</span>;
+            }
+
             const returnedStep = row.original.steps.find(s => s.isReturned === true);
             const pendingStep = row.original.steps.find(s => s.status === 'Pending');
             const acknowledgedStep = row.original.steps.find(s => s.status === 'Acknowledged');
             const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
             const assignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
+            
             return assignee ? (
                 <div className="flex items-center gap-2">
                     <Avatar className="h-6 w-6">
@@ -118,6 +137,9 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
         id: 'status',
         header: 'Current Step',
         accessorFn: (row) => {
+            if (row.status === 'Completed') {
+                return 'Completed';
+            }
             const returnedStep = row.steps.find(s => s.isReturned === true);
             if(returnedStep) return 'Returned';
             const pendingStep = row.steps.find(s => s.status === 'Pending');
@@ -127,13 +149,16 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             return row.status;
         },
         cell: ({ row }) => {
+            if (row.original.status === 'Completed') {
+                return <Badge variant="success">Completed</Badge>;
+            }
             const returnedStep = row.original.steps.find(s => s.isReturned === true);
             const pendingStep = row.original.steps.find(s => s.status === 'Pending');
             const acknowledgedStep = row.original.steps.find(s => s.status === 'Acknowledged');
 
             const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
             
-            const variant = returnedStep ? 'destructive' : (acknowledgedStep ? 'default' : (pendingStep ? 'warning' : 'success'));
+            const variant = returnedStep ? 'destructive' : (acknowledgedStep ? 'default' : (pendingStep ? 'warning' : 'secondary'));
             const text = currentStep ? currentStep.name : row.original.status;
             
             return <Badge variant={variant}>{text}</Badge>
