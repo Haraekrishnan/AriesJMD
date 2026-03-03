@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO } from 'date-fns';
-import type { JobProgress, Timesheet, Role } from '@/lib/types';
+import type { JobProgress, Timesheet, Role, DocumentMovement } from '@/lib/types';
 import { JobProgressTable } from './JobProgressTable';
 
 interface PendingActionsDialogProps {
@@ -15,10 +16,11 @@ interface PendingActionsDialogProps {
   setIsOpen: (open: boolean) => void;
   onViewJob: (job: JobProgress) => void;
   onViewTimesheet: (timesheet: Timesheet) => void;
+  onViewDocument: (doc: DocumentMovement) => void;
 }
 
-export default function PendingActionsDialog({ isOpen, setIsOpen, onViewJob, onViewTimesheet }: PendingActionsDialogProps) {
-  const { user, jobProgress, timesheets, users, projects } = useAppContext();
+export default function PendingActionsDialog({ isOpen, setIsOpen, onViewJob, onViewTimesheet, onViewDocument }: PendingActionsDialogProps) {
+  const { user, jobProgress, timesheets, users, projects, documentMovements } = useAppContext();
   
   const canAcknowledgeOffice = useMemo(() => {
     if (!user) return false;
@@ -40,6 +42,12 @@ export default function PendingActionsDialog({ isOpen, setIsOpen, onViewJob, onV
     });
   }, [user, timesheets, canAcknowledgeOffice]);
 
+  const pendingDocuments = useMemo(() => {
+    if (!user) return [];
+    return documentMovements.filter(doc => doc.assigneeId === user.id && doc.status === 'Pending');
+  }, [user, documentMovements]);
+
+
   return (
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-2xl h-full max-h-[80vh] flex flex-col">
@@ -50,9 +58,10 @@ export default function PendingActionsDialog({ isOpen, setIsOpen, onViewJob, onV
             </DialogDescription>
           </DialogHeader>
           <Tabs defaultValue="jms" className="flex-1 flex flex-col overflow-hidden">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="jms">Pending JMS ({pendingJms.length})</TabsTrigger>
               <TabsTrigger value="timesheets">Pending Timesheets ({pendingTimesheets.length})</TabsTrigger>
+              <TabsTrigger value="documents">Documents ({pendingDocuments.length})</TabsTrigger>
             </TabsList>
             <TabsContent value="jms" className="flex-1 overflow-auto mt-2">
               <ScrollArea className="h-full">
@@ -84,6 +93,23 @@ export default function PendingActionsDialog({ isOpen, setIsOpen, onViewJob, onV
                     </div>
                   )) : (
                      <p className="text-muted-foreground text-center py-8">No pending timesheets.</p>
+                  )}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+            <TabsContent value="documents" className="flex-1 overflow-auto mt-2">
+              <ScrollArea className="h-full">
+                <div className="space-y-2 p-1">
+                  {pendingDocuments.length > 0 ? pendingDocuments.map(doc => (
+                    <div key={doc.id} className="border p-3 rounded-lg flex justify-between items-center cursor-pointer hover:bg-muted/50" onClick={() => onViewDocument(doc)}>
+                      <div>
+                        <p className="font-semibold">{doc.title}</p>
+                        <p className="text-sm text-muted-foreground">From: {users.find(u => u.id === doc.creatorId)?.name}</p>
+                      </div>
+                      <Badge>{format(parseISO(doc.createdAt), 'dd MMM')}</Badge>
+                    </div>
+                  )) : (
+                    <p className="text-muted-foreground text-center py-8">No pending documents.</p>
                   )}
                 </div>
               </ScrollArea>

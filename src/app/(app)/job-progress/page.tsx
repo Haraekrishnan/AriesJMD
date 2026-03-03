@@ -4,10 +4,10 @@
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Search, Bell, FileDown, Clock } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Search, Bell, FileDown, Clock, Folder } from 'lucide-react';
 import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
-import { JobProgress, Timesheet, Role } from '@/lib/types';
+import { JobProgress, Timesheet, Role, DocumentMovement } from '@/lib/types';
 import { format, startOfMonth, addMonths, subMonths, isSameMonth, parseISO, isBefore, isAfter, startOfToday, differenceInDays } from 'date-fns';
 import CreateTimesheetDialog from '@/components/job-progress/CreateTimesheetDialog';
 import { Input } from '@/components/ui/input';
@@ -19,22 +19,28 @@ import { Badge } from '@/components/ui/badge';
 import PendingActionsDialog from '@/components/job-progress/PendingActionsDialog';
 import OngoingJobsReport from '@/components/job-progress/OngoingJobsReport';
 import LongPendingJmsDialog from '@/components/job-progress/LongPendingJmsDialog';
+import CreateDocumentMovementDialog from '@/components/job-progress/CreateDocumentMovementDialog';
+import DocumentTrackerBoard from '@/components/job-progress/DocumentTrackerBoard';
+import ViewDocumentMovementDialog from '@/components/job-progress/ViewDocumentMovementDialog';
 
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
 
 export default function JobProgressPage() {
-  const { can, jobProgress, timesheets, user, projects, users, jmsAndTimesheetNotificationCount } = useAppContext();
+  const { can, jobProgress, timesheets, user, projects, users, trackerNotificationCount, documentMovements } = useAppContext();
   const [isCreateJobOpen, setIsCreateJobOpen] = useState(false);
   const [isCreateTimesheetOpen, setIsCreateTimesheetOpen] = useState(false);
+  const [isCreateDocumentOpen, setIsCreateDocumentOpen] = useState(false);
   const [viewingJob, setViewingJob] = useState<JobProgress | null>(null);
   const [viewingTimesheet, setViewingTimesheet] = useState<Timesheet | null>(null);
+  const [viewingDocument, setViewingDocument] = useState<DocumentMovement | null>(null);
   const [isPendingDialogOpen, setIsPendingDialogOpen] = useState(false);
   const [isLongPendingDialogOpen, setIsLongPendingDialogOpen] = useState(false);
   
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
   const [jmsSearchTerm, setJmsSearchTerm] = useState('');
   const [timesheetSearchTerm, setTimesheetSearchTerm] = useState('');
+  const [docSearchTerm, setDocSearchTerm] = useState('');
 
   const canCreateJms = useMemo(() => {
     if (!user) return false;
@@ -133,6 +139,14 @@ export default function JobProgressPage() {
         );
     });
   }, [timesheets, currentMonth, user, timesheetSearchTerm, projects]);
+  
+  const filteredDocuments = useMemo(() => {
+    const documentsInMonth = documentMovements.filter(doc => isSameMonth(parseISO(doc.createdAt), currentMonth));
+    if (!docSearchTerm) return documentsInMonth;
+    const lowercasedTerm = docSearchTerm.toLowerCase();
+    return documentsInMonth.filter(doc => doc.title.toLowerCase().includes(lowercasedTerm));
+  }, [documentMovements, currentMonth, docSearchTerm]);
+
 
   const canViewLongPending = user && ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role);
 
@@ -141,16 +155,16 @@ export default function JobProgressPage() {
        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Trackers</h1>
-          <p className="text-muted-foreground">Monitor the lifecycle of JMS and Timesheets.</p>
+          <p className="text-muted-foreground">Monitor the lifecycle of JMS, Timesheets, and other documents.</p>
         </div>
         <div className="flex flex-wrap items-center justify-start sm:justify-end gap-2">
             <OngoingJobsReport jobs={filteredJobs} />
             <Button variant="outline" onClick={() => setIsPendingDialogOpen(true)}>
               <Bell className="mr-2 h-4 w-4" />
               Pending Actions
-              {jmsAndTimesheetNotificationCount > 0 && (
+              {trackerNotificationCount > 0 && (
                 <Badge variant="destructive" className="ml-2">
-                  {jmsAndTimesheetNotificationCount}
+                  {trackerNotificationCount}
                 </Badge>
               )}
             </Button>
@@ -182,13 +196,17 @@ export default function JobProgressPage() {
              <Button onClick={() => setIsCreateTimesheetOpen(true)}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Submit Timesheet
             </Button>
+             <Button onClick={() => setIsCreateDocumentOpen(true)}>
+                <Folder className="mr-2 h-4 w-4" /> Create Document
+            </Button>
         </div>
       </div>
       
       <Tabs defaultValue="jms" className="flex-1 flex flex-col">
-        <TabsList className="shrink-0">
+        <TabsList className="shrink-0 grid w-full grid-cols-3">
           <TabsTrigger value="jms">JMS Tracker</TabsTrigger>
           <TabsTrigger value="timesheets">Timesheet Tracker</TabsTrigger>
+          <TabsTrigger value="documents">Document Tracker</TabsTrigger>
         </TabsList>
         <TabsContent value="jms" className="flex-1 overflow-hidden">
            <div className="w-full sm:w-auto max-w-sm pt-2 pb-4">
@@ -218,11 +236,26 @@ export default function JobProgressPage() {
           </div>
           <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={setViewingTimesheet} />
         </TabsContent>
+         <TabsContent value="documents" className="flex-1 overflow-hidden">
+            <div className="w-full sm:w-auto max-w-sm pt-2 pb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                    placeholder="Search by title..."
+                    className="pl-9"
+                    value={docSearchTerm}
+                    onChange={e => setDocSearchTerm(e.target.value)}
+                />
+              </div>
+          </div>
+          <DocumentTrackerBoard documents={filteredDocuments} onViewDocument={setViewingDocument} />
+        </TabsContent>
       </Tabs>
 
 
       <CreateJobDialog isOpen={isCreateJobOpen} setIsOpen={setIsCreateJobOpen} />
       <CreateTimesheetDialog isOpen={isCreateTimesheetOpen} setIsOpen={setIsCreateTimesheetOpen} />
+      <CreateDocumentMovementDialog isOpen={isCreateDocumentOpen} setIsOpen={setIsCreateDocumentOpen} />
       {viewingJob && (
         <ViewJobProgressDialog 
             isOpen={!!viewingJob} 
@@ -237,11 +270,19 @@ export default function JobProgressPage() {
           timesheet={viewingTimesheet}
         />
       )}
+      {viewingDocument && (
+        <ViewDocumentMovementDialog
+            isOpen={!!viewingDocument}
+            setIsOpen={() => setViewingDocument(null)}
+            movement={viewingDocument}
+        />
+      )}
       <PendingActionsDialog 
         isOpen={isPendingDialogOpen} 
         setIsOpen={setIsPendingDialogOpen} 
         onViewJob={setViewingJob}
         onViewTimesheet={setViewingTimesheet}
+        onViewDocument={setViewingDocument}
       />
       <LongPendingJmsDialog
         isOpen={isLongPendingDialogOpen}

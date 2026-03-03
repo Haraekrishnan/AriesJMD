@@ -1096,3 +1096,18 @@ export type NotificationSettings = {
     [key in NotificationEventKey]?: NotificationEventSettings;
   };
 };
+
+export type DocumentMovementStatus = 'Pending' | 'Acknowledged' | 'Completed';
+
+export type DocumentMovement = {
+  id: string;
+  title: string;
+  creatorId: string;
+  assigneeId: string;
+  createdAt: string; // ISO
+  lastUpdated: string; // ISO
+  status: DocumentMovementStatus;
+  comments?: Comment[];
+  acknowledgedAt?: string;
+  completedAt?: string;
+};

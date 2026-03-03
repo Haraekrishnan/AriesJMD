@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { PlannerEvent, DailyPlannerComment, Comment, JobSchedule, JobScheduleItem, JobRecord, JobRecordPlant, VehicleUsageRecord, User, Role, JobStep, JobProgress, JobStepStatus, Timesheet, TimesheetStatus } from '@/lib/types';
+import { PlannerEvent, DailyPlannerComment, Comment, JobSchedule, JobScheduleItem, JobRecord, JobRecordPlant, VehicleUsageRecord, User, Role, JobStep, JobProgress, JobStepStatus, Timesheet, TimesheetStatus, DocumentMovement, DocumentMovementStatus } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, update, get, remove } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -22,7 +22,8 @@ type PlannerContextType = {
   vehicleUsageRecords: { [key: string]: VehicleUsageRecord };
   timesheets: Timesheet[];
   jobProgress: JobProgress[];
-  jmsAndTimesheetNotificationCount: number;
+  documentMovements: DocumentMovement[];
+  trackerNotificationCount: number;
   addPlannerEvent: (eventData: Omit<PlannerEvent, 'id'>) => void;
   updatePlannerEvent: (event: PlannerEvent) => void;
   deletePlannerEvent: (eventId: string) => void;
@@ -58,6 +59,10 @@ type PlannerContextType = {
   addTimesheetComment: (timesheetId: string, text: string) => void;
   updateTimesheetStatus: (timesheetId: string, status: TimesheetStatus, comment?: string) => void;
   deleteTimesheet: (timesheetId: string) => void;
+  addDocumentMovement: (data: { title: string; assigneeId: string; comment?: string }) => void;
+  acknowledgeDocumentMovement: (movementId: string, comment?: string) => void;
+  completeDocumentMovement: (movementId: string, comment?: string) => void;
+  addDocumentMovementComment: (movementId: string, text: string) => void;
 };
 
 const createDataListener = <T extends {}>(
@@ -90,6 +95,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     const [vehicleUsageRecords, setVehicleUsageRecords] = useState<{ [key: string]: VehicleUsageRecord }>({});
     const [timesheetsById, setTimesheetsById] = useState<Record<string, Timesheet>>({});
     const [jobProgressById, setJobProgressById] = useState<Record<string, JobProgress>>({});
+    const [documentMovementsById, setDocumentMovementsById] = useState<Record<string, DocumentMovement>>({});
 
     const plannerEvents = useMemo(() => Object.values(plannerEventsById), [plannerEventsById]);
     const dailyPlannerComments = useMemo(() => Object.values(dailyPlannerCommentsById), [dailyPlannerCommentsById]);
@@ -97,8 +103,9 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     const jobRecordPlants = useMemo(() => Object.values(jobRecordPlantsById), [jobRecordPlantsById]);
     const timesheets = useMemo(() => Object.values(timesheetsById), [timesheetsById]);
     const jobProgress = useMemo(() => Object.values(jobProgressById), [jobProgressById]);
+    const documentMovements = useMemo(() => Object.values(documentMovementsById), [documentMovementsById]);
 
-    const jmsAndTimesheetNotificationCount = useMemo(() => {
+    const trackerNotificationCount = useMemo(() => {
       if (!user) return 0;
       let count = 0;
 
@@ -111,16 +118,21 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
           }
       });
 
-      // JMS steps awaiting my action
       jobProgress.forEach(job => {
           const currentStep = job.steps.find(s => s.status === 'Pending' || s.isReturned);
           if (currentStep && currentStep.assigneeId === user.id) {
               count++;
           }
       });
+      
+      documentMovements.forEach(doc => {
+        if (doc.status === 'Pending' && doc.assigneeId === user.id) {
+          count++;
+        }
+      });
 
       return count;
-    }, [user, timesheets, jobProgress]);
+    }, [user, timesheets, jobProgress, documentMovements]);
     
     const addPlannerEventComment = useCallback((plannerUserId: string, day: string, eventId: string, text: string) => {
         if (!user) return;
@@ -142,7 +154,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         updates[`dailyPlannerComments/${dayCommentId}/day`] = day;
         updates[`dailyPlannerComments/${dayCommentId}/lastUpdated`] = new Date().toISOString();
         
-        // Mark as unread for other participants
         const event = plannerEvents.find(e => e.id === eventId);
         if (event) {
             const participants = new Set([event.creatorId, event.userId]);
@@ -182,10 +193,8 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const eventWithId = { ...eventData, id: newRef.key! };
         set(newRef, eventWithId);
         
-        // Mark as read for creator
         update(ref(rtdb, `plannerEvents/${newRef.key}/viewedBy`), { [eventData.creatorId]: true });
 
-        // Add a comment if it's a delegation
         if (eventData.creatorId !== eventData.userId) {
             const dayStr = format(new Date(eventData.date), 'yyyy-MM-dd');
             const commentText = `Event "${eventData.title}" delegated by ${users.find(u => u.id === eventData.creatorId)?.name || 'Unknown'}`;
@@ -314,7 +323,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const prevMonthData = prevMonthSnapshot.val();
         const updates: { [key: string]: any } = {};
     
-        // Carry forward plant assignments
         if (prevMonthData.records) {
             for (const profileId in prevMonthData.records) {
                 const plant = prevMonthData.records[profileId]?.plant;
@@ -324,7 +332,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             }
         }
     
-        // ✅ Carry forward plant order SAFELY
         if (prevMonthData.plantsOrder) {
             for (const plantName in prevMonthData.plantsOrder) {
                 updates[`jobRecords/${monthKey}/plantsOrder/${plantName}`] =
@@ -413,8 +420,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const previousStatus = timesheetsById[id]?.status;
     
         if (updates.status === 'Pending' && previousStatus === 'Rejected') {
-          // When resubmitting, only reset the workflow part of the state,
-          // keeping the rejection info intact for the audit trail.
           updates.acknowledgedById = undefined;
           updates.acknowledgedDate = undefined;
           updates.sentToOfficeById = undefined;
@@ -467,7 +472,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             updates[`${basePath}/officeAcknowledgedById`] = user.id;
             updates[`${basePath}/officeAcknowledgedDate`] = new Date().toISOString();
         } else if (status === 'Rejected' && timesheetsById[timesheetId]?.status !== 'Sent To Office') {
-            // Only reset acknowledgement if it wasn't already sent to office
             updates[`${basePath}/acknowledgedById`] = null;
             updates[`${basePath}/acknowledgedDate`] = null;
         }
@@ -688,7 +692,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const updates: { [key: string]: any } = {};
         const currentStepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
     
-        // 1. Update current step
         updates[`${currentStepPath}/status`] = 'Completed';
         updates[`${currentStepPath}/completedAt`] = new Date().toISOString();
         updates[`${currentStepPath}/completedBy`] = user.id;
@@ -699,7 +702,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             customFields: completionCustomFields || null,
         };
     
-        // 2. Create and add new step
         const newStep: JobStep = {
             ...nextStepData,
             dueDate: nextStepData.dueDate || null,
@@ -709,7 +711,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         };
         updates[`jobProgress/${jobId}/steps/${job.steps.length}`] = newStep;
     
-        // 3. Update job metadata
         updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
         updates[`jobProgress/${jobId}/status`] = 'In Progress';
         
@@ -723,7 +724,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             addJobStepComment(jobId, currentStepId, completionComment);
         }
         
-        // 4. Notify new assignee
         const newAssignee = users.find(u => u.id === newStep.assigneeId);
         if (newAssignee?.email) {
             const htmlBody = `
@@ -794,7 +794,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   
       toast({ title: "Step Reassigned", description: `Assigned to ${newAssignee.name}.` });
   
-      // Notify new assignee
       if (newAssignee.email) {
           const htmlBody = `
               <p>A job step in "${job.title}" has been reassigned to you by <strong>${user.name}</strong>.</p>
@@ -929,7 +928,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     
         toast({ title: "Job Reopened", description: "A new step has been added to the job." });
         
-        // Notify new assignee
         const newAssignee = users.find(u => u.id === newStep.assigneeId);
         if (newAssignee?.email) {
             const htmlBody = `
@@ -1014,6 +1012,66 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             });
         }
     }, [user, jobProgressById, toast, users, notificationSettings]);
+
+    const addDocumentMovement = useCallback((data: { title: string; assigneeId: string; comment?: string }) => {
+      if (!user) return;
+      const newRef = push(ref(rtdb, 'documentMovements'));
+      const now = new Date().toISOString();
+      const newMovement: Omit<DocumentMovement, 'id'> = {
+        title: data.title,
+        creatorId: user.id,
+        assigneeId: data.assigneeId,
+        createdAt: now,
+        lastUpdated: now,
+        status: 'Pending',
+        comments: data.comment ? [{
+          id: 'c0',
+          userId: user.id,
+          text: data.comment,
+          date: now,
+          eventId: newRef.key!
+        }] : [],
+      };
+      set(newRef, newMovement);
+    }, [user]);
+
+    const addDocumentMovementComment = useCallback((movementId: string, text: string) => {
+      if (!user) return;
+      const newCommentRef = push(ref(rtdb, `documentMovements/${movementId}/comments`));
+      const newComment: Omit<Comment, 'id'> = {
+        id: newCommentRef.key!,
+        userId: user.id,
+        text,
+        date: new Date().toISOString(),
+        eventId: movementId,
+      };
+      set(newCommentRef, newComment);
+      update(ref(rtdb, `documentMovements/${movementId}`), { lastUpdated: new Date().toISOString() });
+    }, [user]);
+  
+    const acknowledgeDocumentMovement = useCallback((movementId: string, comment?: string) => {
+      if (!user) return;
+      update(ref(rtdb, `documentMovements/${movementId}`), {
+        status: 'Acknowledged',
+        acknowledgedAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString(),
+      });
+      if (comment) {
+        addDocumentMovementComment(movementId, comment);
+      }
+    }, [user, addDocumentMovementComment]);
+  
+    const completeDocumentMovement = useCallback((movementId: string, comment?: string) => {
+      if (!user) return;
+      update(ref(rtdb, `documentMovements/${movementId}`), {
+        status: 'Completed',
+        completedAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString(),
+      });
+       if (comment) {
+        addDocumentMovementComment(movementId, comment);
+      }
+    }, [user, addDocumentMovementComment]);
     
     useEffect(() => {
         const unsubscribers = [
@@ -1036,14 +1094,15 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
                 setVehicleUsageRecords(data);
             }),
             createDataListener('timesheets', setTimesheetsById),
-            createDataListener('jobProgress', setJobProgressById)
+            createDataListener('jobProgress', setJobProgressById),
+            createDataListener('documentMovements', setDocumentMovementsById),
         ];
         return () => unsubscribers.forEach(unsubscribe => unsubscribe());
     }, []);
 
     const contextValue: PlannerContextType = {
-        plannerEvents, dailyPlannerComments, jobSchedules, jobRecords, jobRecordPlants, vehicleUsageRecords, timesheets, jobProgress,
-        jmsAndTimesheetNotificationCount,
+        plannerEvents, dailyPlannerComments, jobSchedules, jobRecords, jobRecordPlants, vehicleUsageRecords, timesheets, jobProgress, documentMovements,
+        trackerNotificationCount,
         addPlannerEvent, updatePlannerEvent, deletePlannerEvent,
         getExpandedPlannerEvents, addPlannerEventComment,
         markSinglePlannerCommentAsRead, dismissPendingUpdate,
@@ -1059,6 +1118,10 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         updateTimesheetStatus,
         deleteTimesheet,
         addTimesheetComment,
+        addDocumentMovement,
+        acknowledgeDocumentMovement,
+        completeDocumentMovement,
+        addDocumentMovementComment
     };
 
     return <PlannerContext.Provider value={contextValue}>{children}</PlannerContext.Provider>;
