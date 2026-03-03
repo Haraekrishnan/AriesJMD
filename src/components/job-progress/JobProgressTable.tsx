@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -56,6 +57,24 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
               {row.original.plantUnit && <p className="text-xs text-muted-foreground">{row.original.plantUnit}</p>}
             </div>
           )
+        }
+      },
+      {
+        accessorKey: 'jmsNo',
+        header: 'JMS No.',
+        cell: ({ row }) => row.original.jmsNo || 'N/A'
+      },
+      {
+        accessorKey: 'amount',
+        header: 'Value',
+        cell: ({ row }) => {
+          const amount = row.original.amount;
+          return amount ? new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+          }).format(amount) : 'N/A';
         }
       },
       {
