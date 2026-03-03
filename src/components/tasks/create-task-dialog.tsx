@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -60,11 +61,11 @@ export default function CreateTaskDialog() {
     let usersToDisplay: User[];
 
     if (privilegedRoles.includes(user.role)) {
-      // These roles can assign to anyone (except Admin/Manager)
-      usersToDisplay = users.filter(u => u.role !== 'Admin' && u.role !== 'Manager');
+      // These roles can assign to anyone (except Manager)
+      usersToDisplay = users.filter(u => u.role !== 'Manager');
     } else {
       // Other roles can only assign to users they can see in their hierarchy, excluding themselves
-      usersToDisplay = getVisibleUsers().filter(u => u.id !== user.id && u.role !== 'Admin' && u.role !== 'Manager');
+      usersToDisplay = getVisibleUsers().filter(u => u.id !== user.id && u.role !== 'Manager');
     }
     
     return usersToDisplay.map(u => ({ value: u.id, label: u.name }));

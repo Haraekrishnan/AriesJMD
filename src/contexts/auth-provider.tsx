@@ -420,8 +420,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const getAssignableUsers = useCallback(() => {
     if (!user) return [];
-    // Allow assigning to anyone except for Admin and Manager roles.
-    return users.filter(u => u.role !== 'Admin' && u.role !== 'Manager');
+    // Allow assigning to anyone except for Manager roles.
+    return users.filter(u => u.role !== 'Manager');
   }, [user, users]);
   
   const clearInventoryTransferHistory = useCallback(() => {

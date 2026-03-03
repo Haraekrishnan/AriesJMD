@@ -36,7 +36,7 @@ export default function ReassignStepDialog({ isOpen, setIsOpen, job, step }: Rea
     const [popoverOpen, setPopoverOpen] = useState(false);
 
     const assignableUsers = useMemo(() => {
-        return getAssignableUsers().filter(u => u.id !== user?.id && u.role !== 'Manager');
+        return getAssignableUsers().filter(u => u.id !== user?.id);
     }, [getAssignableUsers, user]);
 
     const form = useForm<ReassignFormValues>({
