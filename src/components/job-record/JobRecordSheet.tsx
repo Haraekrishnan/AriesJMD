@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
@@ -9,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Settings, Search, MessageSquare, ArrowRightLeft } from 'lucide-react';
-import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO, isSameMonth, isValid, parse } from 'date-fns';
+import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO, isSameMonth, isValid, parse, getDay } from 'date-fns';
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -496,31 +495,25 @@ export default function JobRecordSheet() {
                 cell2.alignment = { horizontal: "center", vertical: "middle" };
                 cell2.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D9D9D9" } };
                 
-                // 🔥 Set row height to match logo
                 sheet.getRow(1).height = 35;
                 sheet.getRow(2).height = 25;
 
-                // 🔥 STEP 2 — Insert the logo AFTER the rows exist
                 const logoId = workbook.addImage({
                     buffer: logoBuffer,
                     extension: "png",
                 });
                 
-                // Pixel size → perfect match (4.23 cm × 1.05 cm)
                 const logoWidth = 160;
                 const logoHeight = 40;
                 
-                // 🔥 Now place logo EXACTLY spanning rows 1–2 vertically centered
                 sheet.addImage(logoId, {
                     tl: { col: 0.2, row: 0.3 },
                     ext: { width: logoWidth, height: logoHeight },
                     editAs: "absolute",
                 });
                 
-                // Optional: blank spacer row
                 sheet.addRow([]);
     
-                // ---- Headers ----
                 const dayHeadersExcel = Array.from({ length: totalDays }, (_, i) => i + 1);
                 const header = [
                     "S.No",
@@ -551,7 +544,6 @@ export default function JobRecordSheet() {
                     };
                 });
     
-                // ---- Employee Rows ----
                 profiles.forEach((profile, index) => {
                     const record = jobRecords[monthKey]?.records?.[profile.id] || {};
                     const employeeRecord = record.days || {};
@@ -628,7 +620,6 @@ export default function JobRecordSheet() {
     
                     const row = sheet.addRow(rowData);
     
-                    // Add comments to day cells
                     dayHeadersExcel.forEach((day, dIndex) => {
                         const notes: string[] = [];
                         if (dailyOvertime[day]) notes.push(`Overtime: ${dailyOvertime[day]} Hours`);
@@ -636,7 +627,6 @@ export default function JobRecordSheet() {
                         if (notes.length > 0) row.getCell(dIndex + 3).note = notes.join("\n");
                     });
     
-                    // Borders
                     row.eachCell(cell => {
                         cell.border = {
                             top: { style: "thin" },
@@ -648,12 +638,10 @@ export default function JobRecordSheet() {
                     });
                 });
     
-                // ---- Column Widths ----
                 sheet.getColumn(2).width = 32;
                 for (let i = 3; i <= 2 + totalDays; i++) { sheet.getColumn(i).width = 7; }
                 for (let i = 3 + totalDays; i <= header.length; i++) { sheet.getColumn(i).width = 12; }
     
-                 // ---- Enable Wrap Text Globally ----
                  sheet.eachRow({ includeEmpty: true }, row => {
                     row.eachCell({ includeEmpty: true }, cell => {
                       if (!cell.alignment) cell.alignment = {};
@@ -666,7 +654,6 @@ export default function JobRecordSheet() {
                     });
                   });
     
-                // ---- Apply Conditional Job Code Colors ----
                 sheet.eachRow((row) => {
                     row.eachCell((cell) => {
                         if (typeof cell.value === "string") {
@@ -688,7 +675,6 @@ export default function JobRecordSheet() {
                     });
                 });
     
-                 // ---- Legend ----
                  const manDaysCount: Record<string, number> = {};
                  const uniqueJobCodes = Array.from(new Map(jobCodes.map(item => [item.code, item])).values());
                  uniqueJobCodes.forEach(jc => (manDaysCount[jc.code] = 0));
@@ -704,7 +690,7 @@ export default function JobRecordSheet() {
                  const legendRows = uniqueJobCodes.map(jc => ({ jc, count: manDaysCount[jc.code] || 0 })).filter(x => x.count > 0);
      
                  if (legendRows.length > 0) {
-                    sheet.addRow([]); // spacing before legend
+                    sheet.addRow([]);
                     const headerRowLegend = sheet.addRow([]);
 
                     const legendStartCol = Math.floor((totalCols - (1 + 15 + 2 + 3)) / 2) + 1;
@@ -1212,3 +1198,5 @@ export default function JobRecordSheet() {
     );
 }
 
+
+  

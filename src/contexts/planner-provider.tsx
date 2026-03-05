@@ -320,7 +320,10 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const monthKey = format(currentMonth, 'yyyy-MM');
         const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
     
+        // Fetch both previous and current month data directly inside the function
         const prevSnapshot = await get(ref(rtdb, `jobRecords/${prevMonthKey}`));
+        const currentSnapshot = await get(ref(rtdb, `jobRecords/${monthKey}`));
+    
         if (!prevSnapshot.exists()) {
             toast({
                 title: "No Data Found",
@@ -331,24 +334,22 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         }
     
         const prevData = prevSnapshot.val();
+        const currentData = currentSnapshot.val() || {}; // Use empty object if it doesn't exist
+    
         const updates: Record<string, any> = {};
     
         // --- COPY PLANT ASSIGNMENT ---
         if (prevData.records) {
             for (const profileId in prevData.records) {
-    
                 const prevPlant = prevData.records[profileId]?.plant;
-    
                 if (!prevPlant) continue;
     
-                const currentPlant =
-                    jobRecords[monthKey]?.records?.[profileId]?.plant;
+                // Check against the fresh data
+                const currentPlant = currentData.records?.[profileId]?.plant;
     
-                // Only copy if not already set
+                // Only copy if not already set in the current month's data
                 if (!currentPlant) {
-                    updates[
-                        `jobRecords/${monthKey}/records/${profileId}/plant`
-                    ] = prevPlant;
+                    updates[`jobRecords/${monthKey}/records/${profileId}/plant`] = prevPlant;
                 }
             }
         }
@@ -356,14 +357,11 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         // --- COPY PLANT ORDER ---
         if (prevData.plantsOrder) {
             for (const plant in prevData.plantsOrder) {
-    
-                const currentOrder =
-                    jobRecords[monthKey]?.plantsOrder?.[plant];
+                // Check against the fresh data
+                const currentOrder = currentData.plantsOrder?.[plant];
     
                 if (!currentOrder) {
-                    updates[
-                        `jobRecords/${monthKey}/plantsOrder/${plant}`
-                    ] = prevData.plantsOrder[plant];
+                    updates[`jobRecords/${monthKey}/plantsOrder/${plant}`] = prevData.plantsOrder[plant];
                 }
             }
         }
@@ -382,7 +380,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             title: "Carry Forward Complete",
             description: "Plant assignments and order copied successfully.",
         });
-    }, [jobRecords, toast]);
+    }, [toast]);
     
     const saveVehicleUsageRecord = useCallback(async (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => {
         if (!user) return;
@@ -1225,3 +1223,5 @@ export const usePlanner = (): PlannerContextType => {
   }
   return context;
 };
+
+  
