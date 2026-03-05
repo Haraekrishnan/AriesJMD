@@ -321,7 +321,14 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const prevMonthKey = format(prevMonthDate, 'yyyy-MM');
     
         const prevMonthSnapshot = await get(ref(rtdb, `jobRecords/${prevMonthKey}`));
-        if (!prevMonthSnapshot.exists()) return;
+        if (!prevMonthSnapshot.exists()) {
+            toast({
+                title: "No Data Found",
+                description: "There is no job record data from the previous month to carry forward.",
+                variant: "destructive",
+            });
+            return;
+        }
     
         const prevMonthData = prevMonthSnapshot.val();
         const updates: { [key: string]: any } = {};
@@ -344,8 +351,17 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     
         if (Object.keys(updates).length > 0) {
             await update(ref(rtdb), updates);
+            toast({
+                title: "Carry Forward Complete",
+                description: "Previous month's plant assignments have been carried over to the current month.",
+            });
+        } else {
+            toast({
+                title: "Nothing to Carry Forward",
+                description: "The previous month had no plant assignments to carry over.",
+            });
         }
-    }, []);
+    }, [toast]);
     
     const saveVehicleUsageRecord = useCallback(async (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => {
         if (!user) return;
@@ -757,6 +773,8 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     
         const stepIndex = job.steps.findIndex(s => s.id === stepId);
         if (stepIndex === -1) return;
+
+        if (job.steps[stepIndex].name !== 'JMS Hard copy submitted') return;
     
         const updates: { [key: string]: any } = {};
         const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
