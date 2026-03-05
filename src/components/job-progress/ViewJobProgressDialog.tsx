@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import { CheckCircle, Clock, Circle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X, MessageSquare, Trash2, ArrowRight, ArrowUp, ArrowDown, XCircle } from 'lucide-react';
+import { CheckCircle, Clock, Circle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X, MessageSquare, Trash2, ArrowRight, ArrowUp, ArrowDown, XCircle, AlertTriangle } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
@@ -236,8 +236,6 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
     
     const completedStepNames = new Set(job.steps.filter(s => s.status === 'Completed').map(s => s.name));
     const availableNextSteps = JOB_PROGRESS_STEPS.filter(step => !completedStepNames.has(step));
-    
-    const isFinalizingStep = currentStep.name === 'JMS Hard copy submitted';
 
     const handleFormSubmit = (data: NextStepFormValues) => {
         addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, data.jmsNo ? { jmsNo: data.jmsNo } : undefined, {
@@ -257,7 +255,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
         <div className="p-4 border rounded-md mt-2 bg-muted/20">
             <h5 className="font-semibold text-sm mb-2">Complete This Step</h5>
             
-            {isFinalizingStep ? (
+            {currentStep.name === 'JMS Hard copy submitted' ? (
                  <div className="space-y-3">
                     <div className="space-y-1">
                         <Label className="text-xs">Final Completion Notes (Optional)</Label>
@@ -674,3 +672,5 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         </>
     )
 }
+
+    
