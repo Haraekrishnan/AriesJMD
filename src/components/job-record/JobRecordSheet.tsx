@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -841,7 +841,7 @@ export default function JobRecordSheet() {
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                             {canCarryForward && (
-                                <Button onClick={() => carryForwardPlantAssignments(monthKey)} variant="outline" disabled={!isCurrentMonth || isCurrentSheetLocked}>
+                                <Button onClick={() => carryForwardPlantAssignments(currentMonth)} variant="outline" disabled={!isCurrentMonth || isCurrentSheetLocked}>
                                     <ArrowRightLeft className="mr-2 h-4 w-4"/> Carry Forward
                                 </Button>
                             )}

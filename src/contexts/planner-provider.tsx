@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -38,7 +39,7 @@ type PlannerContextType = {
   unlockJobRecordSheet: (monthKey: string) => void;
   addJobRecordPlant: (name: string) => void;
   deleteJobRecordPlant: (id: string) => void;
-  carryForwardPlantAssignments: (monthKey: string) => void;
+  carryForwardPlantAssignments: (currentMonth: Date) => void;
   saveVehicleUsageRecord: (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => Promise<void>;
   lockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
   unlockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
@@ -316,9 +317,9 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         remove(ref(rtdb, `jobRecordPlants/${id}`));
     }, []);
     
-    const carryForwardPlantAssignments = useCallback(async (monthKey: string) => {
-        const prevMonthDate = subMonths(new Date(monthKey), 1);
-        const prevMonthKey = format(prevMonthDate, 'yyyy-MM');
+    const carryForwardPlantAssignments = useCallback(async (currentMonth: Date) => {
+        const monthKey = format(currentMonth, 'yyyy-MM');
+        const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
     
         const prevMonthSnapshot = await get(ref(rtdb, `jobRecords/${prevMonthKey}`));
         if (!prevMonthSnapshot.exists()) {
@@ -774,7 +775,10 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const stepIndex = job.steps.findIndex(s => s.id === stepId);
         if (stepIndex === -1) return;
 
-        if (job.steps[stepIndex].name !== 'JMS Hard copy submitted') return;
+        if (job.steps[stepIndex].name !== 'JMS Hard copy submitted') {
+            toast({ variant: 'destructive', title: 'Incorrect Final Step', description: 'Can only finalize on "JMS Hard copy submitted" step.'});
+            return;
+        }
     
         const updates: { [key: string]: any } = {};
         const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
