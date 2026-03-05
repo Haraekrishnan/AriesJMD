@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -50,7 +51,7 @@ type PlannerContextType = {
   addJobStepComment: (jobId: string, stepId: string, commentText: string) => void;
   reassignJobStep: (jobId: string, stepId: string, newAssigneeId: string, comment: string) => void;
   assignJobStep: (jobId: string, stepId: string, assigneeId: string) => void;
-  completeJobAsFinalStep: (jobId: string, stepId: string, comment: string) => void;
+  finalizeJob: (jobId: string, stepId: string, comment: string) => void;
   returnJobStep: (jobId: string, stepId: string, reason: string) => void;
   reopenJob: (jobId: string, reason: string, newStepName: string, newStepAssigneeId: string) => void;
   addTimesheet: (data: Omit<Timesheet, 'id' | 'submitterId' | 'submissionDate' | 'status'>) => void;
@@ -749,7 +750,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         }
     }, [user, jobProgressById, users, addJobStepComment, notificationSettings, toast, can.manage_job_progress]);
 
-    const completeJobAsFinalStep = useCallback((jobId: string, stepId: string, comment: string) => {
+    const finalizeJob = useCallback((jobId: string, stepId: string, comment: string) => {
         if (!user) return;
         const job = jobProgressById[jobId];
         if (!job) return;
@@ -760,35 +761,20 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const updates: { [key: string]: any } = {};
         const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
     
-        // Complete the current step
         updates[`${stepPath}/status`] = 'Completed';
         updates[`${stepPath}/completedAt`] = new Date().toISOString();
         updates[`${stepPath}/completedBy`] = user.id;
     
-        // Add the final step, already completed
-        const finalStep: JobStep = {
-            id: `step-${job.steps.length}`,
-            name: 'JMS Hard copy submitted',
-            assigneeId: user.id, // The user completing is the one submitting
-            status: 'Completed',
-            description: 'Final submission of the hard copy.',
-            dueDate: null,
-            completedAt: new Date().toISOString(),
-            completedBy: user.id,
-            isReturned: false,
-        };
-        updates[`jobProgress/${jobId}/steps/${job.steps.length}`] = finalStep;
-        
-        // Update the overall job status
         updates[`jobProgress/${jobId}/status`] = 'Completed';
         updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
-        
+    
         update(ref(rtdb), updates);
     
-        // Add completion comment to the original step
-        addJobStepComment(jobId, stepId, `Completed step. Finalizing job. ${comment}`);
+        if (comment) {
+            addJobStepComment(jobId, stepId, comment);
+        }
+        
         toast({ title: "Job Completed", description: "JMS has been successfully finalized." });
-    
     }, [user, jobProgressById, addJobStepComment, toast]);
     
     const reassignJobStep = useCallback((jobId: string, stepId: string, newAssigneeId: string, comment: string) => {
@@ -1020,8 +1006,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     
     }, [user, jobProgressById, addJobStepComment, toast, users, notificationSettings]);
 
-    const markJobStepAsFinal = useCallback(() => {}, []);
-
     const addDocumentMovement = useCallback((data: { title: string; assigneeId: string; comment?: string }) => {
       if (!user) return;
       const newRef = push(ref(rtdb, 'documentMovements'));
@@ -1174,7 +1158,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         saveVehicleUsageRecord, lockVehicleUsageSheet, unlockVehicleUsageSheet,
         createJobProgress, updateJobProgress, deleteJobProgress, updateJobStep, updateJobStepStatus,
         addAndCompleteStep, reassignJobStep, assignJobStep,
-        completeJobAsFinalStep, returnJobStep, reopenJob,
+        finalizeJob, returnJobStep, reopenJob,
         addTimesheet,
         updateTimesheet,
         updateTimesheetStatus,
