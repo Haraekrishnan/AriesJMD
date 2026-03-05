@@ -298,7 +298,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         set(ref(rtdb, path), value);
     }, []);
     
-
     const lockJobRecordSheet = useCallback((monthKey: string) => {
         update(ref(rtdb, `jobRecords/${monthKey}`), { isLocked: true });
     }, []);
@@ -324,13 +323,15 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         if (!prevSnapshot.exists()) {
             toast({
                 title: "No Data Found",
-                description: "Previous month's job record not found to carry forward.",
+                description: "Previous month's job record not found.",
                 variant: "destructive",
             });
             return;
         }
     
         const prevData = prevSnapshot.val();
+        const currentData = (await get(ref(rtdb, `jobRecords/${monthKey}`))).val();
+    
         const updates: Record<string, any> = {};
     
         // --- COPY PLANT ASSIGNMENT ---
@@ -339,9 +340,9 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
                 const prevPlant = prevData.records[profileId]?.plant;
                 if (!prevPlant) continue;
     
-                const currentPlantSnapshot = await get(ref(rtdb, `jobRecords/${monthKey}/records/${profileId}/plant`));
-                const currentPlant = currentPlantSnapshot.val();
+                const currentPlant = currentData?.records?.[profileId]?.plant;
     
+                // Only copy if not already set or is 'Unassigned'
                 if (!currentPlant || currentPlant === 'Unassigned') {
                     updates[`jobRecords/${monthKey}/records/${profileId}/plant`] = prevPlant;
                 }
@@ -358,7 +359,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         if (Object.keys(updates).length === 0) {
             toast({
                 title: "Nothing to Carry Forward",
-                description: "Plant assignments and order already seem to exist for this month.",
+                description: "Plant assignments already exist for this month.",
             });
             return;
         }
@@ -367,7 +368,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     
         toast({
             title: "Carry Forward Complete",
-            description: "Plant assignments and order have been copied to the current month.",
+            description: "Plant assignments and order copied successfully.",
         });
     }, [toast]);
     
@@ -649,55 +650,33 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     }, [user, jobProgressById, addJobStepComment]);
 
     const updateJobStepStatus = useCallback((jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string, completionDetails?: { attachmentUrl?: string; customFields?: Record<string, any> }) => {
-        const job = jobProgressById[jobId];
-        if (!job || !user) return;
+      const job = jobProgressById[jobId];
+      if (!job || !user) return;
+  
+      const currentStepIndex = job.steps.findIndex(s => s.id === stepId);
+      if (currentStepIndex === -1) return;
+  
+      const stepPath = `jobProgress/${jobId}/steps/${currentStepIndex}`;
+      const updates: { [key: string]: any } = {
+          [`${stepPath}/status`]: newStatus,
+          [`jobProgress/${jobId}/lastUpdated`]: new Date().toISOString(),
+      };
+      
+      if (newStatus === 'Acknowledged') {
+          updates[`${stepPath}/acknowledgedAt`] = new Date().toISOString();
+          updates[`${stepPath}/isReturned`] = null;
+      }
+      
+      if (job.status === 'Not Started' && newStatus === 'Acknowledged') {
+          updates[`jobProgress/${jobId}/status`] = 'In Progress';
+      }
 
-        const stepIndex = job.steps.findIndex(s => s.id === stepId);
-        if (stepIndex === -1) return;
-        const currentStep = job.steps[stepIndex];
-
-        const updates: { [key: string]: any } = {};
-        const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
-
-        if (!currentStep.assigneeId && (newStatus === 'Acknowledged' || newStatus === 'Completed')) {
-            updates[`${stepPath}/assigneeId`] = user.id;
-        }
-
-        updates[`${stepPath}/status`] = newStatus;
-        updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
-        
-        if (newStatus === 'Acknowledged') {
-            updates[`${stepPath}/acknowledgedAt`] = new Date().toISOString();
-            updates[`${stepPath}/isReturned`] = null; // Clear the flag
-        } else if (newStatus === 'Completed') {
-            updates[`${stepPath}/completedAt`] = new Date().toISOString();
-            updates[`${stepPath}/completedBy`] = user.id;
-            updates[`${stepPath}/completionDetails`] = {
-                date: new Date().toISOString(),
-                notes: comment || '',
-                attachmentUrl: completionDetails?.attachmentUrl || null,
-                customFields: completionDetails?.customFields || null,
-            };
-
-            if (stepIndex < job.steps.length - 1) {
-                updates[`jobProgress/${jobId}/steps/${stepIndex + 1}/status`] = 'Pending';
-            }
-        }
-        
-        const allStepsCompleted = job.steps.every((step, index) => 
-            index === stepIndex ? newStatus === 'Completed' : step.status === 'Completed'
-        );
-
-        if (job.status === 'Not Started' && (newStatus === 'Acknowledged' || newStatus === 'Completed')) {
-            updates[`jobProgress/${jobId}/status`] = 'In Progress';
-        }
-
-        update(ref(rtdb), updates);
-
-        if (comment) {
-            addJobStepComment(jobId, stepId, comment);
-        }
-    }, [user, jobProgressById, addJobStepComment]);
+      if (comment) {
+          addJobStepComment(jobId, stepId, comment);
+      }
+      
+      update(ref(rtdb), updates);
+  }, [user, jobProgressById, addJobStepComment]);
     
     const addAndCompleteStep = useCallback((jobId: string, currentStepId: string, completionComment: string | undefined, completionAttachment: { name: string; url: string; } | undefined, completionCustomFields: Record<string, any> | undefined, nextStepData: Omit<JobStep, 'id'|'status'>) => {
         if (!user) return;
@@ -731,7 +710,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     
         const newStep: JobStep = {
             ...nextStepData,
-            dueDate: nextStepData.dueDate || null,
+            dueDate: nextStepData.dueDate?.toISOString() || null,
             assigneeId: nextStepData.assigneeId || null,
             id: `step-${job.steps.length}`,
             status: 'Pending',
@@ -774,49 +753,41 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         }
     }, [user, jobProgressById, users, addJobStepComment, notificationSettings, toast, can.manage_job_progress]);
 
-    const finalizeJob = useCallback((jobId: string, currentStepId: string, comment: string) => {
+    const finalizeJob = useCallback((jobId: string, stepId: string, comment: string) => {
         if (!user) return;
         const job = jobProgressById[jobId];
         if (!job) return;
-    
-        const currentStepIndex = job.steps.findIndex(s => s.id === currentStepId);
-        if (currentStepIndex === -1) return;
-        
+
         const updates: { [key: string]: any } = {};
-    
-        // 1. Complete the current step
-        const currentStepPath = `jobProgress/${jobId}/steps/${currentStepIndex}`;
-        updates[`${currentStepPath}/status`] = 'Completed';
-        updates[`${currentStepPath}/completedAt`] = new Date().toISOString();
-        updates[`${currentStepPath}/completedBy`] = user.id;
+        const stepIndex = job.steps.findIndex(s => s.id === stepId);
+        if (stepIndex === -1) return;
+
+        const currentStep = job.steps[stepIndex];
+        const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
+
+        // Mark the final step itself as completed
+        updates[`${stepPath}/status`] = 'Completed';
+        updates[`${stepPath}/completedAt`] = new Date().toISOString();
+        updates[`${stepPath}/completedBy`] = user.id;
+
+        // Also mark as acknowledged if it was pending
+        if(currentStep.status === 'Pending') {
+            updates[`${stepPath}/acknowledgedAt`] = new Date().toISOString();
+        }
+
+        // Add the comment
         if (comment) {
-            const newCommentRef = push(ref(rtdb, `${currentStepPath}/comments`));
-            updates[`${currentStepPath}/comments/${newCommentRef.key}`] = {
+            const newCommentRef = push(ref(rtdb, `${stepPath}/comments`));
+            updates[`${stepPath}/comments/${newCommentRef.key}`] = {
                 id: newCommentRef.key, userId: user.id, text: comment, date: new Date().toISOString(), eventId: jobId
             };
         }
-    
-        // 2. Add and complete the final "Hard copy submitted" step
-        const newStepId = `step-${job.steps.length}`;
-        const finalStep: JobStep = {
-            id: newStepId,
-            name: 'JMS Hard copy submitted',
-            assigneeId: user.id, // self-assigned
-            status: 'Completed',
-            description: 'Job finalized.',
-            dueDate: null,
-            completedAt: new Date().toISOString(),
-            completedBy: user.id,
-            acknowledgedAt: new Date().toISOString()
-        };
-        updates[`jobProgress/${jobId}/steps/${job.steps.length}`] = finalStep;
-        
-        // 3. Mark the whole job as completed
+
+        // Mark the whole job as completed
         updates[`jobProgress/${jobId}/status`] = 'Completed';
         updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
-    
+
         update(ref(rtdb), updates);
-    
         toast({ title: "Job Completed", description: "JMS has been successfully finalized." });
     }, [user, jobProgressById, toast]);
     

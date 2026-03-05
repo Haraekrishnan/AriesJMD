@@ -98,7 +98,7 @@ export default function JobRecordSheet() {
         };
     
         runAutoCarryForward();
-    }, [currentMonth, jobRecords, carryForwardPlantAssignments, monthKey, prevMonthKey]);
+    }, [currentMonth, jobRecords, carryForwardPlantAssignments, prevMonthKey, monthKey]);
 
 
     const filteredAndGroupedProfiles = useMemo(() => {
@@ -814,7 +814,7 @@ export default function JobRecordSheet() {
         savePlantOrder(monthKey, activeTab, newOrderIds);
     };
 
-    const dayHeaders = Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1);
+    const dayHeaders = useMemo(() => Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1), [currentMonth]);
 
     const handleDeleteJobCode = (id: string) => {
         deleteJobCode(id);
@@ -1053,7 +1053,7 @@ export default function JobRecordSheet() {
                                                                     <TooltipTrigger className="h-3 w-3">
                                                                         <Clock className="h-full w-full text-blue-500" />
                                                                     </TooltipTrigger>
-                                                                    <TooltipContent><p>${overtimeForDay} hours OT</p></TooltipContent>
+                                                                    <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
                                                                 </Tooltip>
                                                             )}
                                                             {commentForDay && (
@@ -1061,7 +1061,7 @@ export default function JobRecordSheet() {
                                                                     <TooltipTrigger className="h-3 w-3">
                                                                         <MessageSquare className="h-full w-full text-green-500" />
                                                                     </TooltipTrigger>
-                                                                    <TooltipContent><p>${commentForDay}</p></TooltipContent>
+                                                                    <TooltipContent><p>{commentForDay}</p></TooltipContent>
                                                                 </Tooltip>
                                                             )}
                                                         </div>
@@ -1166,7 +1166,7 @@ export default function JobRecordSheet() {
                 <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="item-1">
                         <AccordionTrigger className="p-3 text-sm font-semibold hover:no-underline">
-                            <div className="flex items-center gap-2"><Info className="h-4 w-4"/>Job Code Legend & Man-Days Count for ${searchTerm ? "All Plants" : activeTab}</div>
+                            <div className="flex items-center gap-2"><Info className="h-4 w-4"/>Job Code Legend & Man-Days Count for {searchTerm ? "All Plants" : activeTab}</div>
                         </AccordionTrigger>
                         <AccordionContent>
                             <div className="p-4 pt-0">

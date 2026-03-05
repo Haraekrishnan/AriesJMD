@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -320,7 +319,14 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                 <div className="flex justify-end gap-2">
                     <Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
                     {nextStepName === 'JMS Hard copy submitted' ? (
-                        <Button type="button" size="sm" onClick={handleFinalize}>Finalize Job</Button>
+                         <Alert>
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle>Final Step</AlertTitle>
+                            <AlertDescription>
+                                Completing this will finalize the entire job.
+                                <Button type="button" size="sm" onClick={handleFinalize} className="w-full mt-2">Finalize Job</Button>
+                            </AlertDescription>
+                        </Alert>
                     ) : (
                         <Button type="submit" size="sm" disabled={!nextStepName}>Complete & Assign Next</Button>
                     )}
@@ -582,8 +588,14 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                     <div className="flex justify-end gap-2 mt-4">
                                                         {canPerformAction && (
                                                             <>
-                                                                {step.status === 'Pending' && <Button size="sm" onClick={() => updateJobStepStatus(job.id, step.id, 'Acknowledged', 'Acknowledged step.')}>Acknowledge</Button>}
-                                                                {step.status === 'Acknowledged' && <Button size="sm" onClick={() => setShowNextStepForm(step.id)}>Complete Step</Button>}
+                                                                {step.name === 'JMS Hard copy submitted' && step.status === 'Pending' ? (
+                                                                    <Button size="sm" onClick={() => finalizeJob(job.id, step.id, 'JMS Finalized with Hard Copy.')}>Acknowledge & Finalize</Button>
+                                                                ) : (
+                                                                    <>
+                                                                        {step.status === 'Pending' && <Button size="sm" onClick={() => updateJobStepStatus(job.id, step.id, 'Acknowledged', 'Acknowledged step.')}>Acknowledge</Button>}
+                                                                        {step.status === 'Acknowledged' && <Button size="sm" onClick={() => setShowNextStepForm(step.id)}>Complete Step</Button>}
+                                                                    </>
+                                                                )}
                                                                 <Button variant="outline" size="sm" onClick={() => setReturningStep(step)}>Return Step</Button>
                                                             </>
                                                         )}
@@ -654,5 +666,3 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         </>
     )
 }
-
-    

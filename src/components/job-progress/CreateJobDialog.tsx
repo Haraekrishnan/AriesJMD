@@ -3,7 +3,7 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,9 +32,17 @@ import { ScrollArea } from '../ui/scroll-area';
 
 const jobStepSchema = z.object({
   name: z.enum(JOB_PROGRESS_STEPS, { required_error: 'Step name is required' }),
-  assigneeId: z.string().min(1, 'Assignee is required.'),
+  assigneeId: z.string().optional(),
   description: z.string().optional(),
   dueDate: z.date().optional().nullable(),
+}).refine(data => {
+    if (data.name === 'JMS Hard copy submitted') {
+        return true;
+    }
+    return !!data.assigneeId;
+}, {
+    message: 'Assignee is required for this step.',
+    path: ['assigneeId'],
 });
 
 const jobSchema = z.object({
@@ -67,6 +75,14 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
         steps: [{ name: 'JMS created', assigneeId: undefined, description: '', dueDate: null }]
     }
   });
+  
+  const watchedStepName = form.watch('steps.0.name');
+
+  useEffect(() => {
+    if (watchedStepName === 'JMS Hard copy submitted') {
+      form.setValue('steps.0.assigneeId', user!.id);
+    }
+  }, [watchedStepName, form, user]);
 
   const assignableUsers = useMemo(() => {
     return users.filter(u => u.role !== 'Manager');
@@ -129,7 +145,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
               control={form.control}
               name={`${fieldName}.assigneeId`}
               render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
+                <Select value={field.value} onValueChange={field.onChange} disabled={watchedStepName === 'JMS Hard copy submitted'}>
                   <SelectTrigger>
                     <SelectValue placeholder="Unassigned" />
                   </SelectTrigger>
