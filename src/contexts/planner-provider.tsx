@@ -42,12 +42,13 @@ type PlannerContextType = {
   saveVehicleUsageRecord: (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => Promise<void>;
   lockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
   unlockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
-  createJobProgress: (data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[]; projectId?: string; plantUnit?: string; workOrderNo?: string; foNo?: string; amount?: number; dateFrom?: string | null; dateTo?: string | null; }) => void;
+  createJobProgress: (data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[]; projectId?: string; plantUnit?: string; workOrderNo?: string; foNo?: string; jmsNo?: string; amount?: number; dateFrom?: string | null; dateTo?: string | null; }) => void;
   updateJobProgress: (jobId: string, data: Partial<Omit<JobProgress, 'id' | 'steps' | 'creatorId' | 'createdAt'>>) => void;
   deleteJobProgress: (jobId: string) => void;
   updateJobStep: (jobId: string, stepId: string, newStepData: Partial<JobStep>) => void;
   updateJobStepStatus: (jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string, completionDetails?: { attachmentUrl?: string; customFields?: Record<string, any> }) => void;
   addAndCompleteStep: (jobId: string, currentStepId: string, completionComment: string | undefined, completionAttachment: { name: string; url: string; } | undefined, completionCustomFields: Record<string, any> | undefined, nextStepData: Omit<JobStep, 'id'|'status'>) => void;
+  completeAndFinalizeJob: (jobId: string, currentStepId: string, finalizationComment: string) => void;
   addJobStepComment: (jobId: string, stepId: string, commentText: string) => void;
   reassignJobStep: (jobId: string, stepId: string, newAssigneeId: string, comment: string) => void;
   assignJobStep: (jobId: string, stepId: string, assigneeId: string) => void;
@@ -323,33 +324,30 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         if (!prevSnapshot.exists()) {
             toast({
                 title: "No Data Found",
-                description: "Previous month's job record not found.",
+                description: "Previous month job record not found.",
                 variant: "destructive",
             });
             return;
         }
     
         const prevData = prevSnapshot.val();
-        const currentData = (await get(ref(rtdb, `jobRecords/${monthKey}`))).val();
-    
+        
         const updates: Record<string, any> = {};
     
-        // --- COPY PLANT ASSIGNMENT ---
         if (prevData.records) {
             for (const profileId in prevData.records) {
                 const prevPlant = prevData.records[profileId]?.plant;
                 if (!prevPlant) continue;
     
-                const currentPlant = currentData?.records?.[profileId]?.plant;
+                const currentPlantSnapshot = await get(ref(rtdb, `jobRecords/${monthKey}/records/${profileId}/plant`));
+                const currentPlant = currentPlantSnapshot.val();
     
-                // Only copy if not already set or is 'Unassigned'
                 if (!currentPlant || currentPlant === 'Unassigned') {
                     updates[`jobRecords/${monthKey}/records/${profileId}/plant`] = prevPlant;
                 }
             }
         }
     
-        // --- COPY PLANT ORDER ---
         if (prevData.plantsOrder) {
             for (const plant in prevData.plantsOrder) {
                 updates[`jobRecords/${monthKey}/plantsOrder/${plant}`] = prevData.plantsOrder[plant];
@@ -551,7 +549,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         remove(ref(rtdb, `timesheets/${timesheetId}`));
     }, []);
 
-    const createJobProgress = useCallback((data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[]; projectId?: string; plantUnit?: string; workOrderNo?: string; foNo?: string; amount?: number; dateFrom?: string | null; dateTo?: string | null; }) => {
+    const createJobProgress = useCallback((data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[]; projectId?: string; plantUnit?: string; workOrderNo?: string; foNo?: string; jmsNo?: string; amount?: number; dateFrom?: string | null; dateTo?: string | null; }) => {
         if (!user) return;
         const newRef = push(ref(rtdb, 'jobProgress'));
         const now = new Date().toISOString();
@@ -575,6 +573,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
           plantUnit: data.plantUnit,
           workOrderNo: data.workOrderNo,
           foNo: data.foNo,
+          jmsNo: data.jmsNo,
           amount: data.amount,
           dateFrom: data.dateFrom,
           dateTo: data.dateTo,
@@ -678,80 +677,127 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       update(ref(rtdb), updates);
   }, [user, jobProgressById, addJobStepComment]);
     
-    const addAndCompleteStep = useCallback((jobId: string, currentStepId: string, completionComment: string | undefined, completionAttachment: { name: string; url: string; } | undefined, completionCustomFields: Record<string, any> | undefined, nextStepData: Omit<JobStep, 'id'|'status'>) => {
-        if (!user) return;
-        const job = jobProgressById[jobId];
-        if (!job) return;
-    
-        const stepIndex = job.steps.findIndex(s => s.id === currentStepId);
-        if (stepIndex === -1) return;
+  const addAndCompleteStep = useCallback((jobId: string, currentStepId: string, completionComment: string | undefined, completionAttachment: { name: string; url: string; } | undefined, completionCustomFields: Record<string, any> | undefined, nextStepData: Omit<JobStep, 'id'|'status'>) => {
+    if (!user) return;
+    const job = jobProgressById[jobId];
+    if (!job) return;
 
-        const currentStep = job.steps[stepIndex];
-        const isProjectMember = user.projectIds?.includes(job.projectId || '');
-        const canActOnUnassigned = !currentStep.assigneeId && isProjectMember;
+    const stepIndex = job.steps.findIndex(s => s.id === currentStepId);
+    if (stepIndex === -1) return;
 
-        if (currentStep.assigneeId !== user.id && !canActOnUnassigned && user.role !== 'Admin' && !can.manage_job_progress) {
-            toast({ variant: 'destructive', title: 'Not authorized to complete this step.' });
-            return;
-        }
+    const currentStep = job.steps[stepIndex];
+    const isProjectMember = user.projectIds?.includes(job.projectId || '');
+    const canActOnUnassigned = !currentStep.assigneeId && isProjectMember;
+
+    if (currentStep.assigneeId !== user.id && !canActOnUnassigned && user.role !== 'Admin' && !can.manage_job_progress) {
+        toast({ variant: 'destructive', title: 'Not authorized to complete this step.' });
+        return;
+    }
+
+    const updates: { [key: string]: any } = {};
+    const currentStepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
+
+    updates[`${currentStepPath}/status`] = 'Completed';
+    updates[`${currentStepPath}/acknowledgedAt`] = job.steps[stepIndex].acknowledgedAt || new Date().toISOString();
+    updates[`${currentStepPath}/completedAt`] = new Date().toISOString();
+    updates[`${currentStepPath}/completedBy`] = user.id;
+    updates[`${currentStepPath}/completionDetails`] = {
+        date: new Date().toISOString(),
+        notes: completionComment || '',
+        attachmentUrl: completionAttachment?.url || null,
+        customFields: completionCustomFields || null,
+    };
+
+    const newStep: JobStep = {
+        ...nextStepData,
+        dueDate: nextStepData.dueDate?.toISOString() || null,
+        assigneeId: nextStepData.assigneeId || null,
+        id: `step-${job.steps.length}`,
+        status: 'Pending',
+    };
+    updates[`jobProgress/${jobId}/steps/${job.steps.length}`] = newStep;
+
+    updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
+    updates[`jobProgress/${jobId}/status`] = 'In Progress';
     
-        const updates: { [key: string]: any } = {};
-        const currentStepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
+    if (completionCustomFields?.jmsNo) {
+        updates[`jobProgress/${jobId}/jmsNo`] = completionCustomFields.jmsNo;
+    }
+
+    update(ref(rtdb), updates);
+
+    if (completionComment) {
+        addJobStepComment(jobId, currentStepId, completionComment);
+    }
     
-        updates[`${currentStepPath}/status`] = 'Completed';
-        updates[`${currentStepPath}/completedAt`] = new Date().toISOString();
-        updates[`${currentStepPath}/completedBy`] = user.id;
-        updates[`${currentStepPath}/completionDetails`] = {
-            date: new Date().toISOString(),
-            notes: completionComment || '',
-            attachmentUrl: completionAttachment?.url || null,
-            customFields: completionCustomFields || null,
+    const newAssignee = users.find(u => u.id === newStep.assigneeId);
+    if (newAssignee?.email) {
+        const htmlBody = `
+            <p>A new step in the job "${job.title}" has been assigned to you by <strong>${user.name}</strong>.</p>
+            <hr>
+            <h3>Step: ${newStep.name}</h3>
+            <p>${newStep.description}</p>
+            ${newStep.dueDate ? `<p><strong>Due Date:</strong> ${format(new Date(newStep.dueDate), 'PPP')}</p>` : ''}
+            <p>Please review the job in the app.</p>
+            <a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Job</a>
+        `;
+        sendNotificationEmail({
+            to: [newAssignee.email],
+            subject: `New Job Step Assigned: ${job.title}`,
+            htmlBody: htmlBody,
+            notificationSettings,
+            event: 'onNewTask',
+            involvedUser: newAssignee,
+            creatorUser: user,
+        });
+    }
+}, [user, jobProgressById, users, addJobStepComment, notificationSettings, toast, can.manage_job_progress]);
+
+const completeAndFinalizeJob = useCallback((jobId: string, currentStepId: string, finalizationComment: string) => {
+    if (!user) return;
+    const job = jobProgressById[jobId];
+    if (!job) return;
+
+    const updates: { [key: string]: any } = {};
+    
+    // 1. Complete the current step
+    const currentStepIndex = job.steps.findIndex(s => s.id === currentStepId);
+    if (currentStepIndex === -1) return;
+    const currentStepPath = `jobProgress/${jobId}/steps/${currentStepIndex}`;
+    updates[`${currentStepPath}/status`] = 'Completed';
+    updates[`${currentStepPath}/acknowledgedAt`] = job.steps[currentStepIndex].acknowledgedAt || new Date().toISOString();
+    updates[`${currentStepPath}/completedAt`] = new Date().toISOString();
+    updates[`${currentStepPath}/completedBy`] = user.id;
+
+    // Add comment to current step
+    if (finalizationComment) {
+        const newCommentRef = push(ref(rtdb, `${currentStepPath}/comments`));
+        updates[`${currentStepPath}/comments/${newCommentRef.key}`] = {
+            id: newCommentRef.key!, userId: user.id, text: finalizationComment, date: new Date().toISOString(), eventId: jobId
         };
+    }
     
-        const newStep: JobStep = {
-            ...nextStepData,
-            dueDate: nextStepData.dueDate?.toISOString() || null,
-            assigneeId: nextStepData.assigneeId || null,
-            id: `step-${job.steps.length}`,
-            status: 'Pending',
-        };
-        updates[`jobProgress/${jobId}/steps/${job.steps.length}`] = newStep;
+    // 2. Create and complete the final step
+    const finalStep: JobStep = {
+        id: `step-${job.steps.length}`,
+        name: 'JMS Hard copy submitted',
+        assigneeId: user.id, // Assign to current user
+        status: 'Completed',
+        description: 'Job finalized.',
+        dueDate: null,
+        acknowledgedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        completedBy: user.id,
+    };
+    updates[`jobProgress/${jobId}/steps/${job.steps.length}`] = finalStep;
     
-        updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
-        updates[`jobProgress/${jobId}/status`] = 'In Progress';
-        
-        if (completionCustomFields?.jmsNo) {
-            updates[`jobProgress/${jobId}/jmsNo`] = completionCustomFields.jmsNo;
-        }
+    // 3. Mark the whole job as completed
+    updates[`jobProgress/${jobId}/status`] = 'Completed';
+    updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
     
-        update(ref(rtdb), updates);
-    
-        if (completionComment) {
-            addJobStepComment(jobId, currentStepId, completionComment);
-        }
-        
-        const newAssignee = users.find(u => u.id === newStep.assigneeId);
-        if (newAssignee?.email) {
-            const htmlBody = `
-                <p>A new step in the job "${job.title}" has been assigned to you by <strong>${user.name}</strong>.</p>
-                <hr>
-                <h3>Step: ${newStep.name}</h3>
-                <p>${newStep.description}</p>
-                ${newStep.dueDate ? `<p><strong>Due Date:</strong> ${format(new Date(newStep.dueDate), 'PPP')}</p>` : ''}
-                <p>Please review the job in the app.</p>
-                <a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Job</a>
-            `;
-            sendNotificationEmail({
-                to: [newAssignee.email],
-                subject: `New Job Step Assigned: ${job.title}`,
-                htmlBody: htmlBody,
-                notificationSettings,
-                event: 'onNewTask',
-                involvedUser: newAssignee,
-                creatorUser: user,
-            });
-        }
-    }, [user, jobProgressById, users, addJobStepComment, notificationSettings, toast, can.manage_job_progress]);
+    update(ref(rtdb), updates);
+    toast({ title: "Job Finalized", description: "The JMS has been successfully completed." });
+}, [user, jobProgressById, toast]);
 
     const finalizeJob = useCallback((jobId: string, stepId: string, comment: string) => {
         if (!user) return;
@@ -1171,7 +1217,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         deleteJobRecordPlant, carryForwardPlantAssignments,
         saveVehicleUsageRecord, lockVehicleUsageSheet, unlockVehicleUsageSheet,
         createJobProgress, updateJobProgress, deleteJobProgress, updateJobStep, updateJobStepStatus,
-        addAndCompleteStep, reassignJobStep, assignJobStep,
+        addAndCompleteStep, completeAndFinalizeJob, reassignJobStep, assignJobStep,
         finalizeJob, returnJobStep, reopenJob,
         addTimesheet,
         updateTimesheet,

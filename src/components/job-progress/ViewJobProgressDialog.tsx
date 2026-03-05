@@ -211,7 +211,7 @@ const nextStepSchema = z.object({
 type NextStepFormValues = z.infer<typeof nextStepSchema>;
   
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
-    const { user, addAndCompleteStep, finalizeJob, getAssignableUsers } = useAppContext();
+    const { user, addAndCompleteStep, completeAndFinalizeJob, getAssignableUsers } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
    
     const assignableUsersForNextStep = useMemo(() => {
@@ -244,10 +244,17 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
         });
         onSave();
     };
-   
+
+    const handleFinalize = () => {
+        completeAndFinalizeJob(job.id, currentStep.id, completionComment || `Job finalized by ${user?.name}.`);
+        onSave();
+    };
+
+    const isFinalStepSelected = nextStepName === 'JMS Hard copy submitted';
+
     return (
         <div className="p-4 border rounded-md mt-2 bg-muted/20">
-            <h5 className="font-semibold text-sm mb-2">Acknowledge Completion & Create Next Step</h5>
+            <h5 className="font-semibold text-sm mb-2">Complete Step &amp; Define Next Action</h5>
             
             <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-3">
                 <div className="space-y-1">
@@ -275,7 +282,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                     {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
                 </div>
                  
-                 {nextStepName && (
+                 {!isFinalStepSelected && nextStepName && (
                     <>
                          {showJmsNoField && (
                              <div className="space-y-1">
@@ -313,9 +320,24 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                     </>
                  )}
 
+                {isFinalStepSelected && (
+                    <Alert>
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Final Step</AlertTitle>
+                        <AlertDescription>
+                            This will finalize the entire job. No further steps can be added.
+                        </AlertDescription>
+                    </Alert>
+                )}
+
+
                 <div className="flex justify-end gap-2">
                     <Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
-                    <Button type="submit" size="sm" disabled={!nextStepName}>Acknowledge & Assign Next</Button>
+                    {isFinalStepSelected ? (
+                        <Button type="button" size="sm" onClick={handleFinalize}>Finalize Job</Button>
+                    ) : (
+                        <Button type="submit" size="sm" disabled={!nextStepName}>Complete & Assign Next</Button>
+                    )}
                 </div>
             </form>
         </div>
@@ -330,13 +352,14 @@ interface ViewJobProgressDialogProps {
 }
 
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
-    const { user, users, projects, jobProgress, updateJobProgress, updateJobStep, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, finalizeJob, reassignJobStep, returnJobStep, deleteJobProgress, addAndCompleteStep } = useAppContext();
+    const { user, users, projects, jobProgress, updateJobProgress, updateJobStep, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, finalizeJob, reassignJobStep, returnJobStep, deleteJobProgress, addAndCompleteStep, completeAndFinalizeJob } = useAppContext();
     const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
     const [returningStep, setReturningStep] = useState<JobStep | null>(null);
     const [isReopenDialogOpen, setIsReopenDialogOpen] = useState(false);
     const [editingStepId, setEditingStepId] = useState<string | null>(null);
     const [editingStepName, setEditingStepName] = useState('');
     const [isEditingHeader, setIsEditingHeader] = useState(false);
+    const [newComment, setNewComment] = useState('');
     const { toast } = useToast();
 
     const job = useMemo(() => {
@@ -490,7 +513,8 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                   ? step.comments 
                                   : Object.values(step.comments || {});
 
-                                const shouldShowNextStepForm = canPerformAction && step.status === 'Acknowledged';
+                                const isFinalStep = step.name === 'JMS Hard copy submitted';
+                                const shouldShowNextStepForm = canPerformAction && (step.status === 'Pending' || step.status === 'Acknowledged') && !isFinalStep;
 
                                 return (
                                     <div key={step.id} className="relative flex items-start gap-6">
@@ -568,17 +592,20 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                     </Accordion>
                                                 )}
 
-                                               {shouldShowNextStepForm ? (
-                                                  <AddNextStepForm job={job} currentStep={step} onCancel={() => setIsOpen(false)} onSave={() => setIsOpen(false)} />
+                                                {shouldShowNextStepForm ? (
+                                                    <AddNextStepForm job={job} currentStep={step} onCancel={() => setIsOpen(false)} onSave={() => setIsOpen(false)} />
+                                                ) : isFinalStep && canPerformAction ? (
+                                                    <div className="mt-3 space-y-2">
+                                                        <Label className="text-xs">Finalization Comment (Optional)</Label>
+                                                        <Textarea value={newComment} onChange={e => setNewComment(e.target.value)} rows={2} />
+                                                        <Button onClick={() => finalizeJob(job.id, step.id, newComment || `Final step completed by ${user?.name}.`)} className="w-full">
+                                                            Acknowledge & Finalize
+                                                        </Button>
+                                                    </div>
                                                 ) : (
-                                                  <div className="flex justify-end gap-2 mt-4">
-                                                      {canPerformAction && (
-                                                          <>
-                                                              {step.status === 'Pending' && <Button size="sm" onClick={() => updateJobStepStatus(job.id, step.id, 'Acknowledged', 'Acknowledged step.')}>Acknowledge</Button>}
-                                                          </>
-                                                      )}
-                                                      {step.status !== 'Completed' && <Button variant="outline" size="sm" onClick={() => setReturningStep(step)}>Return Step</Button>}
-                                                  </div>
+                                                    <div className="flex justify-end gap-2 mt-4">
+                                                        {step.status !== 'Completed' && <Button variant="outline" size="sm" onClick={() => setReturningStep(step)}>Return Step</Button>}
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
