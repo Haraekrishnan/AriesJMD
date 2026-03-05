@@ -37,7 +37,7 @@ const statusConfig: { [key in JobStepStatus]: { icon?: React.ElementType, color:
   'Completed': { icon: CheckCircle, color: 'text-green-500', label: 'Completed' },
   'Skipped': { icon: XCircle, color: 'text-gray-500', label: 'Skipped' },
 };
-
+  
 const jobDetailsSchema = z.object({
     title: z.string().min(3, 'JMS title is required'),
     projectId: z.string().min(1, 'Project is required'),
@@ -50,9 +50,9 @@ const jobDetailsSchema = z.object({
     dateTo: z.date().optional().nullable(),
 });
 type JobDetailsFormValues = z.infer<typeof jobDetailsSchema>;
-
+  
 const unassignedSteps: string[] = [];
-
+  
 const reopenSchema = z.object({
   reason: z.string().min(10, "A detailed reason for reopening is required."),
   newStepName: z.string().min(1, "A name for the new step is required."),
@@ -67,31 +67,31 @@ const reopenSchema = z.object({
     message: "Please specify the step name when selecting 'Others'.",
     path: ["otherStepName"],
 });
-
-
+  
+  
 type ReopenFormValues = z.infer<typeof reopenSchema>;
-
+  
 const ReopenJobDialog = ({ isOpen, setIsOpen, job, reopenJob }: { isOpen: boolean; setIsOpen: (open: boolean) => void; job: JobProgress; reopenJob: (jobId: string, reason: string, newStepName: string, newStepAssigneeId: string) => void; }) => {
     const { users } = useAppContext();
     const [popoverOpen, setPopoverOpen] = useState(false);
-
+  
     const assignableUsers = useMemo(() => {
         return users.filter(u => u.role !== 'Manager');
     }, [users]);
-
+  
     const form = useForm<ReopenFormValues>({
         resolver: zodResolver(reopenSchema),
         defaultValues: { reason: '', newStepName: '', otherStepName: '', newStepAssigneeId: '' }
     });
-
+  
     const watchedStepName = form.watch('newStepName');
-
+  
     const onSubmit = (data: ReopenFormValues) => {
         const stepName = data.newStepName === 'Others' ? data.otherStepName! : data.newStepName;
         reopenJob(job.id, data.reason, stepName, data.newStepAssigneeId);
         setIsOpen(false);
     };
-
+  
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogContent onInteractOutside={(e) => e.preventDefault()}>
@@ -218,11 +218,11 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
         if (!user) return [];
         return getAssignableUsers();
     }, [user, getAssignableUsers]);
-
+   
     const form = useForm<NextStepFormValues>({
         resolver: zodResolver(nextStepSchema),
     });
-
+   
     useEffect(() => {
         form.reset();
     }, [currentStep, form]);
@@ -235,7 +235,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
       
     const completedStepNames = new Set(job.steps.filter(s => s.status === 'Completed').map(s => s.name));
     const availableNextSteps = JOB_PROGRESS_STEPS.filter(step => !completedStepNames.has(step));
-
+   
     const handleFormSubmit = (data: NextStepFormValues) => {
         addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, data.jmsNo ? { jmsNo: data.jmsNo } : undefined, {
             ...data,
@@ -244,15 +244,10 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
         });
         onSave();
     };
-
-    const handleFinalize = () => {
-        finalizeJob(job.id, currentStep.id, completionComment || `Final step completed by ${user?.name}.`);
-        onSave();
-    };
-
+   
     return (
         <div className="p-4 border rounded-md mt-2 bg-muted/20">
-            <h5 className="font-semibold text-sm mb-2">Complete This Step</h5>
+            <h5 className="font-semibold text-sm mb-2">Acknowledge Completion & Create Next Step</h5>
             
             <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-3">
                 <div className="space-y-1">
@@ -280,7 +275,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                     {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
                 </div>
                  
-                 {nextStepName && nextStepName !== 'JMS Hard copy submitted' && (
+                 {nextStepName && (
                     <>
                          {showJmsNoField && (
                              <div className="space-y-1">
@@ -289,22 +284,24 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                                 {form.formState.errors.jmsNo && <p className="text-xs text-destructive">{form.formState.errors.jmsNo.message}</p>}
                             </div>
                          )}
-                         <div className="space-y-1">
-                            <Label className="text-xs">Assign To</Label>
-                            <Controller
-                                name="assigneeId"
-                                control={form.control}
-                                render={({ field }) => (
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
-                                        <SelectContent>
-                                            {assignableUsersForNextStep.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                )}
-                            />
-                            {form.formState.errors.assigneeId && <p className="text-xs text-destructive">{form.formState.errors.assigneeId.message}</p>}
-                        </div>
+                         {nextStepName !== 'JMS Hard copy submitted' && (
+                            <div className="space-y-1">
+                                <Label className="text-xs">Assign To</Label>
+                                <Controller
+                                    name="assigneeId"
+                                    control={form.control}
+                                    render={({ field }) => (
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
+                                            <SelectContent>
+                                                {assignableUsersForNextStep.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                />
+                                {form.formState.errors.assigneeId && <p className="text-xs text-destructive">{form.formState.errors.assigneeId.message}</p>}
+                            </div>
+                         )}
                          <div className="space-y-1">
                             <Label className="text-xs">Description (Optional)</Label>
                             <Textarea {...form.register('description')} rows={2}/>
@@ -318,18 +315,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
 
                 <div className="flex justify-end gap-2">
                     <Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
-                    {nextStepName === 'JMS Hard copy submitted' ? (
-                         <Alert>
-                            <AlertTriangle className="h-4 w-4" />
-                            <AlertTitle>Final Step</AlertTitle>
-                            <AlertDescription>
-                                Completing this will finalize the entire job.
-                                <Button type="button" size="sm" onClick={handleFinalize} className="w-full mt-2">Finalize Job</Button>
-                            </AlertDescription>
-                        </Alert>
-                    ) : (
-                        <Button type="submit" size="sm" disabled={!nextStepName}>Complete & Assign Next</Button>
-                    )}
+                    <Button type="submit" size="sm" disabled={!nextStepName}>Acknowledge & Assign Next</Button>
                 </div>
             </form>
         </div>
@@ -344,11 +330,9 @@ interface ViewJobProgressDialogProps {
 }
 
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
-    const { user, users, projects, jobProgress, updateJobProgress, updateJobStep, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, finalizeJob, reassignJobStep, returnJobStep, deleteJobProgress } = useAppContext();
+    const { user, users, projects, jobProgress, updateJobProgress, updateJobStep, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, finalizeJob, reassignJobStep, returnJobStep, deleteJobProgress, addAndCompleteStep } = useAppContext();
     const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
     const [returningStep, setReturningStep] = useState<JobStep | null>(null);
-    const [newAssigneeId, setNewAssigneeId] = useState<string>('');
-    const [showNextStepForm, setShowNextStepForm] = useState<string | null>(null);
     const [isReopenDialogOpen, setIsReopenDialogOpen] = useState(false);
     const [editingStepId, setEditingStepId] = useState<string | null>(null);
     const [editingStepName, setEditingStepName] = useState('');
@@ -502,9 +486,11 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
 
                                 const canModifyStepName = (user?.role === 'Admin' || user?.id === job.creatorId) && job.status !== 'Completed';
 
-                                const commentsArray = Array.isArray(step.comments)
-                                  ? step.comments
+                                const commentsArray = Array.isArray(step.comments) 
+                                  ? step.comments 
                                   : Object.values(step.comments || {});
+
+                                const shouldShowNextStepForm = canPerformAction && step.status === 'Acknowledged';
 
                                 return (
                                     <div key={step.id} className="relative flex items-start gap-6">
@@ -582,24 +568,17 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                     </Accordion>
                                                 )}
 
-                                                {showNextStepForm === step.id ? (
-                                                    <AddNextStepForm job={job} currentStep={step} onCancel={() => setShowNextStepForm(null)} onSave={() => setShowNextStepForm(null)} />
+                                               {shouldShowNextStepForm ? (
+                                                  <AddNextStepForm job={job} currentStep={step} onCancel={() => setIsOpen(false)} onSave={() => setIsOpen(false)} />
                                                 ) : (
-                                                    <div className="flex justify-end gap-2 mt-4">
-                                                        {canPerformAction && (
-                                                            <>
-                                                                {step.name === 'JMS Hard copy submitted' && step.status === 'Pending' ? (
-                                                                    <Button size="sm" onClick={() => finalizeJob(job.id, step.id, 'JMS Finalized with Hard Copy.')}>Acknowledge & Finalize</Button>
-                                                                ) : (
-                                                                    <>
-                                                                        {step.status === 'Pending' && <Button size="sm" onClick={() => updateJobStepStatus(job.id, step.id, 'Acknowledged', 'Acknowledged step.')}>Acknowledge</Button>}
-                                                                        {step.status === 'Acknowledged' && <Button size="sm" onClick={() => setShowNextStepForm(step.id)}>Complete Step</Button>}
-                                                                    </>
-                                                                )}
-                                                                <Button variant="outline" size="sm" onClick={() => setReturningStep(step)}>Return Step</Button>
-                                                            </>
-                                                        )}
-                                                    </div>
+                                                  <div className="flex justify-end gap-2 mt-4">
+                                                      {canPerformAction && (
+                                                          <>
+                                                              {step.status === 'Pending' && <Button size="sm" onClick={() => updateJobStepStatus(job.id, step.id, 'Acknowledged', 'Acknowledged step.')}>Acknowledge</Button>}
+                                                          </>
+                                                      )}
+                                                      {step.status !== 'Completed' && <Button variant="outline" size="sm" onClick={() => setReturningStep(step)}>Return Step</Button>}
+                                                  </div>
                                                 )}
                                             </div>
                                         </div>

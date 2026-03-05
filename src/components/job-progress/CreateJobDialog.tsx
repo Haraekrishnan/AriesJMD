@@ -51,6 +51,7 @@ const jobSchema = z.object({
   plantUnit: z.string().optional(),
   workOrderNo: z.string().optional(),
   foNo: z.string().optional(),
+  jmsNo: z.string().optional(),
   amount: z.coerce.number().optional(),
   dateFrom: z.date().optional().nullable(),
   dateTo: z.date().optional().nullable(),
@@ -95,6 +96,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
       plantUnit: data.plantUnit,
       workOrderNo: data.workOrderNo,
       foNo: data.foNo,
+      jmsNo: data.jmsNo,
       amount: data.amount,
       dateFrom: data.dateFrom?.toISOString() ?? null,
       dateTo: data.dateTo?.toISOString() ?? null,
@@ -248,6 +250,10 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
                  <div className="space-y-1">
                     <Label>Amount</Label>
                     <Input type="number" {...form.register('amount')} />
+                </div>
+                 <div className="space-y-1">
+                    <Label>JMS No.</Label>
+                    <Input {...form.register('jmsNo')} />
                 </div>
               </div>
 
