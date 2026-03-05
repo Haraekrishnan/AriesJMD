@@ -324,34 +324,28 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         if (!prevSnapshot.exists()) {
             toast({
                 title: "No Data Found",
-                description: "Previous month job record not found.",
+                description: "Previous month's job record not found.",
                 variant: "destructive",
             });
             return;
         }
     
         const prevData = prevSnapshot.val();
-        
-        const currentSnapshot = await get(ref(rtdb, `jobRecords/${monthKey}`));
-        const currentData = currentSnapshot.val() || {};
+        const currentData = jobRecords[monthKey] || {};
     
         const updates: Record<string, any> = {};
     
         // --- COPY PLANT ASSIGNMENT ---
         if (prevData.records) {
             for (const profileId in prevData.records) {
-    
                 const prevPlant = prevData.records[profileId]?.plant;
-    
                 if (!prevPlant) continue;
     
-                const currentPlant =
-                    currentData.records?.[profileId]?.plant;
+                const currentPlant = currentData.records?.[profileId]?.plant;
     
+                // Only copy if not already set or is 'Unassigned'
                 if (!currentPlant || currentPlant === 'Unassigned') {
-                    updates[
-                        `jobRecords/${monthKey}/records/${profileId}/plant`
-                    ] = prevPlant;
+                    updates[`jobRecords/${monthKey}/records/${profileId}/plant`] = prevPlant;
                 }
             }
         }
@@ -359,16 +353,14 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         // --- COPY PLANT ORDER ---
         if (prevData.plantsOrder) {
             for (const plant in prevData.plantsOrder) {
-                updates[
-                    `jobRecords/${monthKey}/plantsOrder/${plant}`
-                ] = prevData.plantsOrder[plant];
+                 updates[`jobRecords/${monthKey}/plantsOrder/${plant}`] = prevData.plantsOrder[plant];
             }
         }
     
         if (Object.keys(updates).length === 0) {
             toast({
                 title: "Nothing to Carry Forward",
-                description: "Plant assignments seem to be up-to-date for this month.",
+                description: "Plant assignments and order already exist for this month.",
             });
             return;
         }
@@ -379,7 +371,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             title: "Carry Forward Complete",
             description: "Plant assignments and order copied successfully.",
         });
-    }, [toast]);
+    }, [jobRecords, toast]);
     
     const saveVehicleUsageRecord = useCallback(async (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => {
         if (!user) return;
@@ -1222,5 +1214,3 @@ export const usePlanner = (): PlannerContextType => {
   }
   return context;
 };
-
-  

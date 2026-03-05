@@ -68,6 +68,38 @@ export default function JobRecordSheet() {
         endCell: null,
         fillValue: '',
     });
+    
+    useEffect(() => {
+        const runAutoCarryForward = async () => {
+            const prevData = jobRecords[prevMonthKey];
+            const currentData = jobRecords[monthKey];
+    
+            if (!prevData) return;
+    
+            let missingAssignments = false;
+    
+            if (prevData.records) {
+                for (const profileId in prevData.records) {
+                    const prevPlant = prevData.records[profileId]?.plant;
+    
+                    const currentPlant =
+                        currentData?.records?.[profileId]?.plant;
+    
+                    if (prevPlant && !currentPlant) {
+                        missingAssignments = true;
+                        break;
+                    }
+                }
+            }
+    
+            if (missingAssignments) {
+                await carryForwardPlantAssignments(currentMonth);
+            }
+        };
+    
+        runAutoCarryForward();
+    }, [currentMonth, jobRecords, carryForwardPlantAssignments, monthKey, prevMonthKey]);
+
 
     const filteredAndGroupedProfiles = useMemo(() => {
         const filtered = searchTerm
@@ -179,6 +211,37 @@ export default function JobRecordSheet() {
         return () => window.removeEventListener('mouseup', handleMouseUp);
     }, [handleMouseUp]);
     
+    const getSelectionRange = () => {
+        if (!dragState.isDragging || !dragState.startCell || !dragState.endCell) return null;
+        const profiles = filteredAndGroupedProfiles[activeTab] || [];
+        const startIndex = profiles.findIndex(p => p.id === dragState.startCell!.profileId);
+        const endIndex = profiles.findIndex(p => p.id === dragState.endCell!.profileId);
+    
+        if (startIndex === -1 || endIndex === -1) return null;
+
+        return {
+            minRow: Math.min(startIndex, endIndex),
+            maxRow: Math.max(startIndex, endIndex),
+            minCol: Math.min(dragState.startCell.day, dragState.endCell.day),
+            maxCol: Math.max(dragState.startCell.day, dragState.endCell.day),
+        };
+    };
+    
+    const selectionRange = getSelectionRange();
+    
+    const isCellInSelection = (profileId: string, day: number) => {
+        if (!selectionRange) return false;
+        const profiles = filteredAndGroupedProfiles[activeTab] || [];
+        const rowIndex = profiles.findIndex(p => p.id === profileId);
+        if(rowIndex === -1) return false;
+        return (
+            rowIndex >= selectionRange.minRow &&
+            rowIndex <= selectionRange.maxRow &&
+            day >= selectionRange.minCol &&
+            day <= selectionRange.maxCol
+        );
+    };
+
     const handleCellKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, profileId: string, day: number, type: 'status' | 'overtime' | 'comment') => {
         const { key } = e;
         const profiles = filteredAndGroupedProfiles[activeTab] || [];
@@ -247,65 +310,6 @@ export default function JobRecordSheet() {
         setSundayDutyStates(newSundayDutyStates);
     }, [jobRecords, monthKey]);
     
-    useEffect(() => {
-        const runAutoCarryForward = async () => {
-            const prevData = jobRecords[prevMonthKey];
-            const currentData = jobRecords[monthKey];
-    
-            if (!prevData) return;
-    
-            let missingAssignments = false;
-    
-            if (prevData.records) {
-                for (const profileId in prevData.records) {
-                    const prevPlant = prevData.records[profileId]?.plant;
-                    const currentPlant = currentData?.records?.[profileId]?.plant;
-    
-                    if (prevPlant && !currentPlant) {
-                        missingAssignments = true;
-                        break;
-                    }
-                }
-            }
-    
-            if (missingAssignments) {
-                await carryForwardPlantAssignments(currentMonth);
-            }
-        };
-    
-        runAutoCarryForward();
-    }, [currentMonth, jobRecords, carryForwardPlantAssignments, monthKey, prevMonthKey]);
-
-    const getSelectionRange = () => {
-        if (!dragState.isDragging || !dragState.startCell || !dragState.endCell) return null;
-        const profiles = filteredAndGroupedProfiles[activeTab] || [];
-        const startIndex = profiles.findIndex(p => p.id === dragState.startCell!.profileId);
-        const endIndex = profiles.findIndex(p => p.id === dragState.endCell!.profileId);
-    
-        if (startIndex === -1 || endIndex === -1) return null;
-
-        return {
-            minRow: Math.min(startIndex, endIndex),
-            maxRow: Math.max(startIndex, endIndex),
-            minCol: Math.min(dragState.startCell.day, dragState.endCell.day),
-            maxCol: Math.max(dragState.startCell.day, dragState.endCell.day),
-        };
-    };
-    
-    const selectionRange = getSelectionRange();
-    
-    const isCellInSelection = (profileId: string, day: number) => {
-        if (!selectionRange) return false;
-        const profiles = filteredAndGroupedProfiles[activeTab] || [];
-        const rowIndex = profiles.findIndex(p => p.id === profileId);
-        if(rowIndex === -1) return false;
-        return (
-            rowIndex >= selectionRange.minRow &&
-            rowIndex <= selectionRange.maxRow &&
-            day >= selectionRange.minCol &&
-            day <= selectionRange.maxCol
-        );
-    };
 
     const handleStatusChange = useCallback((employeeId: string, day: number, value: string) => {
         const code = (value || '').toUpperCase() ?? '';
@@ -644,7 +648,7 @@ export default function JobRecordSheet() {
                         const notes: string[] = [];
                         if (dailyOvertime[day]) notes.push(`Overtime: ${dailyOvertime[day]} Hours`);
                         if (dailyComments[day]) notes.push(`Comment: ${dailyComments[day]}`);
-                        if (notes.length > 0) row.getCell(dIndex + 3).note = notes.join("\n");
+                        if (notes.length > 0) row.getCell(dIndex + 3).note = notes.join("\\n");
                     });
     
                     row.eachCell(cell => {
@@ -916,9 +920,7 @@ export default function JobRecordSheet() {
                                                         <AlertDialogTitle>Delete Plant "{plant.name}"?</AlertDialogTitle>
                                                         <AlertDialogDescription>This will move all assigned employees to "Unassigned". This action cannot be undone.</AlertDialogDescription>
                                                     </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeletePlant(plant)}>Delete Plant</AlertDialogAction>
-                                                    </AlertDialogFooter>
+                                                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeletePlant(plant)}>Delete Plant</AlertDialogAction></AlertDialogFooter>
                                                 </AlertDialogContent>
                                             </AlertDialog>
                                         )}
@@ -1051,7 +1053,7 @@ export default function JobRecordSheet() {
                                                                     <TooltipTrigger className="h-3 w-3">
                                                                         <Clock className="h-full w-full text-blue-500" />
                                                                     </TooltipTrigger>
-                                                                    <TooltipContent><p>{overtimeForDay} hours OT</p></TooltipContent>
+                                                                    <TooltipContent><p>${overtimeForDay} hours OT</p></TooltipContent>
                                                                 </Tooltip>
                                                             )}
                                                             {commentForDay && (
@@ -1059,7 +1061,7 @@ export default function JobRecordSheet() {
                                                                     <TooltipTrigger className="h-3 w-3">
                                                                         <MessageSquare className="h-full w-full text-green-500" />
                                                                     </TooltipTrigger>
-                                                                    <TooltipContent><p>{commentForDay}</p></TooltipContent>
+                                                                    <TooltipContent><p>${commentForDay}</p></TooltipContent>
                                                                 </Tooltip>
                                                             )}
                                                         </div>
@@ -1164,7 +1166,7 @@ export default function JobRecordSheet() {
                 <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="item-1">
                         <AccordionTrigger className="p-3 text-sm font-semibold hover:no-underline">
-                            <div className="flex items-center gap-2"><Info className="h-4 w-4"/>Job Code Legend & Man-Days Count for {searchTerm ? "All Plants" : activeTab}</div>
+                            <div className="flex items-center gap-2"><Info className="h-4 w-4"/>Job Code Legend & Man-Days Count for ${searchTerm ? "All Plants" : activeTab}</div>
                         </AccordionTrigger>
                         <AccordionContent>
                             <div className="p-4 pt-0">
@@ -1217,5 +1219,3 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
-  
