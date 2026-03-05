@@ -249,12 +249,32 @@ export default function JobRecordSheet() {
     
     useEffect(() => {
         const runAutoCarryForward = async () => {
-            if (!jobRecords[monthKey]) {
+            const prevData = jobRecords[prevMonthKey];
+            const currentData = jobRecords[monthKey];
+    
+            if (!prevData) return;
+    
+            let missingAssignments = false;
+    
+            if (prevData.records) {
+                for (const profileId in prevData.records) {
+                    const prevPlant = prevData.records[profileId]?.plant;
+                    const currentPlant = currentData?.records?.[profileId]?.plant;
+    
+                    if (prevPlant && !currentPlant) {
+                        missingAssignments = true;
+                        break;
+                    }
+                }
+            }
+    
+            if (missingAssignments) {
                 await carryForwardPlantAssignments(currentMonth);
             }
         };
+    
         runAutoCarryForward();
-    }, [currentMonth, carryForwardPlantAssignments, jobRecords, monthKey]);
+    }, [currentMonth, jobRecords, carryForwardPlantAssignments, monthKey, prevMonthKey]);
 
     const getSelectionRange = () => {
         if (!dragState.isDragging || !dragState.startCell || !dragState.endCell) return null;
@@ -1197,6 +1217,5 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
-
 
   

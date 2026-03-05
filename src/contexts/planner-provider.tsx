@@ -320,10 +320,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const monthKey = format(currentMonth, 'yyyy-MM');
         const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
     
-        // Fetch both previous and current month data directly inside the function
         const prevSnapshot = await get(ref(rtdb, `jobRecords/${prevMonthKey}`));
-        const currentSnapshot = await get(ref(rtdb, `jobRecords/${monthKey}`));
-    
         if (!prevSnapshot.exists()) {
             toast({
                 title: "No Data Found",
@@ -334,22 +331,27 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         }
     
         const prevData = prevSnapshot.val();
-        const currentData = currentSnapshot.val() || {}; // Use empty object if it doesn't exist
+        
+        const currentSnapshot = await get(ref(rtdb, `jobRecords/${monthKey}`));
+        const currentData = currentSnapshot.val() || {};
     
         const updates: Record<string, any> = {};
     
         // --- COPY PLANT ASSIGNMENT ---
         if (prevData.records) {
             for (const profileId in prevData.records) {
+    
                 const prevPlant = prevData.records[profileId]?.plant;
+    
                 if (!prevPlant) continue;
     
-                // Check against the fresh data
-                const currentPlant = currentData.records?.[profileId]?.plant;
+                const currentPlant =
+                    currentData.records?.[profileId]?.plant;
     
-                // Only copy if not already set in the current month's data
-                if (!currentPlant) {
-                    updates[`jobRecords/${monthKey}/records/${profileId}/plant`] = prevPlant;
+                if (!currentPlant || currentPlant === 'Unassigned') {
+                    updates[
+                        `jobRecords/${monthKey}/records/${profileId}/plant`
+                    ] = prevPlant;
                 }
             }
         }
@@ -357,19 +359,16 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         // --- COPY PLANT ORDER ---
         if (prevData.plantsOrder) {
             for (const plant in prevData.plantsOrder) {
-                // Check against the fresh data
-                const currentOrder = currentData.plantsOrder?.[plant];
-    
-                if (!currentOrder) {
-                    updates[`jobRecords/${monthKey}/plantsOrder/${plant}`] = prevData.plantsOrder[plant];
-                }
+                updates[
+                    `jobRecords/${monthKey}/plantsOrder/${plant}`
+                ] = prevData.plantsOrder[plant];
             }
         }
     
         if (Object.keys(updates).length === 0) {
             toast({
                 title: "Nothing to Carry Forward",
-                description: "Plant assignments already exist for this month.",
+                description: "Plant assignments seem to be up-to-date for this month.",
             });
             return;
         }
