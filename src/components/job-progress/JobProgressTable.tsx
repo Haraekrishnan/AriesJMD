@@ -169,10 +169,14 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
         header: 'Current Step',
         accessorFn: (row) => {
             if (row.status === 'Completed') {
+                const lastStep = row.steps[row.steps.length - 1];
+                if (lastStep?.status === 'Completed') {
+                    return lastStep.name;
+                }
                 return 'Completed';
             }
             const returnedStep = row.steps.find(s => s.isReturned === true);
-            if(returnedStep) return 'Returned';
+            if(returnedStep) return returnedStep.name;
             const pendingStep = row.steps.find(s => s.status === 'Pending');
             if(pendingStep) return pendingStep.name;
             const acknowledgedStep = row.steps.find(s => s.status === 'Acknowledged');
@@ -180,19 +184,21 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             return row.status;
         },
         cell: ({ row }) => {
+            const stepName = row.getValue('status') as string;
+            
+            let variant: 'success' | 'destructive' | 'default' | 'warning' | 'secondary' = 'secondary';
             if (row.original.status === 'Completed') {
-                return <Badge variant="success">Completed</Badge>;
+              variant = 'success';
+            } else {
+              const returnedStep = row.original.steps.find(s => s.isReturned === true);
+              const pendingStep = row.original.steps.find(s => s.status === 'Pending');
+              const acknowledgedStep = row.original.steps.find(s => s.status === 'Acknowledged');
+              if (returnedStep) variant = 'destructive';
+              else if (acknowledgedStep) variant = 'default';
+              else if (pendingStep) variant = 'warning';
             }
-            const returnedStep = row.original.steps.find(s => s.isReturned === true);
-            const pendingStep = row.original.steps.find(s => s.status === 'Pending');
-            const acknowledgedStep = row.original.steps.find(s => s.status === 'Acknowledged');
-
-            const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
             
-            const variant = returnedStep ? 'destructive' : (acknowledgedStep ? 'default' : (pendingStep ? 'warning' : 'secondary'));
-            const text = currentStep ? currentStep.name : row.original.status;
-            
-            return <Badge variant={variant}>{text}</Badge>
+            return <Badge variant={variant}>{stepName}</Badge>
         }
       },
       {

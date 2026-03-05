@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -750,6 +749,48 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         }
     }, [user, jobProgressById, users, addJobStepComment, notificationSettings, toast, can.manage_job_progress]);
 
+    const completeJobAsFinalStep = useCallback((jobId: string, stepId: string, comment: string) => {
+        if (!user) return;
+        const job = jobProgressById[jobId];
+        if (!job) return;
+    
+        const stepIndex = job.steps.findIndex(s => s.id === stepId);
+        if (stepIndex === -1) return;
+    
+        const updates: { [key: string]: any } = {};
+        const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
+    
+        // Complete the current step
+        updates[`${stepPath}/status`] = 'Completed';
+        updates[`${stepPath}/completedAt`] = new Date().toISOString();
+        updates[`${stepPath}/completedBy`] = user.id;
+    
+        // Add the final step, already completed
+        const finalStep: JobStep = {
+            id: `step-${job.steps.length}`,
+            name: 'JMS Hard copy submitted',
+            assigneeId: user.id, // The user completing is the one submitting
+            status: 'Completed',
+            description: 'Final submission of the hard copy.',
+            dueDate: null,
+            completedAt: new Date().toISOString(),
+            completedBy: user.id,
+            isReturned: false,
+        };
+        updates[`jobProgress/${jobId}/steps/${job.steps.length}`] = finalStep;
+        
+        // Update the overall job status
+        updates[`jobProgress/${jobId}/status`] = 'Completed';
+        updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
+        
+        update(ref(rtdb), updates);
+    
+        // Add completion comment to the original step
+        addJobStepComment(jobId, stepId, `Completed step. Finalizing job. ${comment}`);
+        toast({ title: "Job Completed", description: "JMS has been successfully finalized." });
+    
+    }, [user, jobProgressById, addJobStepComment, toast]);
+    
     const reassignJobStep = useCallback((jobId: string, stepId: string, newAssigneeId: string, comment: string) => {
       if (!user) return;
       const job = jobProgressById[jobId];
@@ -859,101 +900,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         }
     }, [user, jobProgressById, users, addJobStepComment, notificationSettings]);
 
-    const completeJobAsFinalStep = useCallback((jobId: string, stepId: string, comment: string) => {
-        if (!user) return;
-        const job = jobProgressById[jobId];
-        if (!job) return;
-
-        const stepIndex = job.steps.findIndex(s => s.id === stepId);
-        if (stepIndex === -1) return;
-        const currentStep = job.steps[stepIndex];
-        const isProjectMember = user.projectIds?.includes(job.projectId || '');
-        const canActOnUnassigned = !currentStep.assigneeId && isProjectMember;
-        const isCurrentUserAssignee = user.id === currentStep.assigneeId;
-
-        const canFinalizeRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
-        const isAuthorizedRole = canFinalizeRoles.includes(user.role);
-        const isCreator = user.id === job.creatorId;
-
-        if (!isAuthorizedRole && !isCreator && !isCurrentUserAssignee && !canActOnUnassigned) {
-             toast({ title: "Permission Denied", variant: "destructive" });
-             return;
-        }
-
-        const updates: { [key: string]: any } = {};
-        const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
-
-        updates[`${stepPath}/status`] = 'Completed';
-        updates[`${stepPath}/completedAt`] = new Date().toISOString();
-        updates[`${stepPath}/completedBy`] = user.id;
-        updates[`jobProgress/${jobId}/status`] = 'Completed';
-        updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
-
-        update(ref(rtdb), updates);
-
-        addJobStepComment(jobId, stepId, comment);
-        toast({ title: "Job Completed", description: "This JMS has been marked as complete." });
-
-    }, [user, jobProgressById, addJobStepComment, toast]);
-    
-    const reopenJob = useCallback((jobId: string, reason: string, newStepName: string, newStepAssigneeId: string) => {
-        if (!user) return;
-        const job = jobProgressById[jobId];
-        if (!job) return;
-    
-        const canReopenRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
-        const canReopen = canReopenRoles.includes(user.role) || user.id === job.creatorId;
-    
-        if (!canReopen) {
-            toast({ title: "Permission Denied", variant: "destructive" });
-            return;
-        }
-    
-        const newStep: JobStep = {
-            id: `step-${job.steps.length}`,
-            name: newStepName,
-            assigneeId: newStepAssigneeId,
-            status: 'Pending',
-            description: `Job reopened by ${user.name}.`,
-            dueDate: null,
-        };
-    
-        const updates: { [key: string]: any } = {};
-        updates[`jobProgress/${jobId}/status`] = 'In Progress';
-        updates[`jobProgress/${jobId}/isReopened`] = true;
-        updates[`jobProgress/${jobId}/steps/${job.steps.length}`] = newStep;
-        updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
-    
-        update(ref(rtdb), updates);
-    
-        const reopenComment = `Job reopened by ${user.name}. Reason: ${reason}`;
-        addJobStepComment(jobId, newStep.id, reopenComment);
-    
-        toast({ title: "Job Reopened", description: "A new step has been added to the job." });
-        
-        const newAssignee = users.find(u => u.id === newStep.assigneeId);
-        if (newAssignee?.email) {
-            const htmlBody = `
-                <p>The job "${job.title}" has been reopened and a new step has been assigned to you by <strong>${user.name}</strong>.</p>
-                <hr>
-                <h3>Step: ${newStep.name}</h3>
-                <p><strong>Reason for Reopening:</strong> ${reason}</p>
-                <p>Please review the job in the app.</p>
-                <a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Job</a>
-            `;
-            sendNotificationEmail({
-                to: [newAssignee.email],
-                subject: `Job Reopened & Step Assigned: ${job.title}`,
-                htmlBody: htmlBody,
-                notificationSettings,
-                event: 'onNewTask',
-                involvedUser: newAssignee,
-                creatorUser: user,
-            });
-        }
-    
-    }, [user, jobProgressById, addJobStepComment, toast, users, notificationSettings]);
-
     const returnJobStep = useCallback((jobId: string, stepId: string, reason: string) => {
         if (!user) return;
         const job = jobProgressById[jobId];
@@ -1015,6 +961,66 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             });
         }
     }, [user, jobProgressById, toast, users, notificationSettings]);
+
+    const reopenJob = useCallback((jobId: string, reason: string, newStepName: string, newStepAssigneeId: string) => {
+        if (!user) return;
+        const job = jobProgressById[jobId];
+        if (!job) return;
+    
+        const canReopenRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+        const canReopen = canReopenRoles.includes(user.role) || user.id === job.creatorId;
+    
+        if (!canReopen) {
+            toast({ title: "Permission Denied", variant: "destructive" });
+            return;
+        }
+    
+        const newStep: JobStep = {
+            id: `step-${job.steps.length}`,
+            name: newStepName,
+            assigneeId: newStepAssigneeId,
+            status: 'Pending',
+            description: `Job reopened by ${user.name}.`,
+            dueDate: null,
+        };
+    
+        const updates: { [key: string]: any } = {};
+        updates[`jobProgress/${jobId}/status`] = 'In Progress';
+        updates[`jobProgress/${jobId}/isReopened`] = true;
+        updates[`jobProgress/${jobId}/steps/${job.steps.length}`] = newStep;
+        updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
+    
+        update(ref(rtdb), updates);
+    
+        const reopenComment = `Job reopened by ${user.name}. Reason: ${reason}`;
+        addJobStepComment(jobId, newStep.id, reopenComment);
+    
+        toast({ title: "Job Reopened", description: "A new step has been added to the job." });
+        
+        const newAssignee = users.find(u => u.id === newStep.assigneeId);
+        if (newAssignee?.email) {
+            const htmlBody = `
+                <p>The job "${job.title}" has been reopened and a new step has been assigned to you by <strong>${user.name}</strong>.</p>
+                <hr>
+                <h3>Step: ${newStep.name}</h3>
+                <p><strong>Reason for Reopening:</strong> ${reason}</p>
+                <p>Please review the job in the app.</p>
+                <a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Job</a>
+            `;
+            sendNotificationEmail({
+                to: [newAssignee.email],
+                subject: `Job Reopened & Step Assigned: ${job.title}`,
+                htmlBody: htmlBody,
+                notificationSettings,
+                event: 'onNewTask',
+                involvedUser: newAssignee,
+                creatorUser: user,
+            });
+        }
+    
+    }, [user, jobProgressById, addJobStepComment, toast, users, notificationSettings]);
+
+    const markJobStepAsFinal = useCallback(() => {}, []);
 
     const addDocumentMovement = useCallback((data: { title: string; assigneeId: string; comment?: string }) => {
       if (!user) return;
