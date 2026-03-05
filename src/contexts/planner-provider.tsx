@@ -324,15 +324,13 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         if (!prevSnapshot.exists()) {
             toast({
                 title: "No Data Found",
-                description: "Previous month's job record not found.",
+                description: "Previous month's job record not found to carry forward.",
                 variant: "destructive",
             });
             return;
         }
     
         const prevData = prevSnapshot.val();
-        const currentData = jobRecords[monthKey] || {};
-    
         const updates: Record<string, any> = {};
     
         // --- COPY PLANT ASSIGNMENT ---
@@ -341,9 +339,9 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
                 const prevPlant = prevData.records[profileId]?.plant;
                 if (!prevPlant) continue;
     
-                const currentPlant = currentData.records?.[profileId]?.plant;
+                const currentPlantSnapshot = await get(ref(rtdb, `jobRecords/${monthKey}/records/${profileId}/plant`));
+                const currentPlant = currentPlantSnapshot.val();
     
-                // Only copy if not already set or is 'Unassigned'
                 if (!currentPlant || currentPlant === 'Unassigned') {
                     updates[`jobRecords/${monthKey}/records/${profileId}/plant`] = prevPlant;
                 }
@@ -353,14 +351,14 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         // --- COPY PLANT ORDER ---
         if (prevData.plantsOrder) {
             for (const plant in prevData.plantsOrder) {
-                 updates[`jobRecords/${monthKey}/plantsOrder/${plant}`] = prevData.plantsOrder[plant];
+                updates[`jobRecords/${monthKey}/plantsOrder/${plant}`] = prevData.plantsOrder[plant];
             }
         }
     
         if (Object.keys(updates).length === 0) {
             toast({
                 title: "Nothing to Carry Forward",
-                description: "Plant assignments and order already exist for this month.",
+                description: "Plant assignments and order already seem to exist for this month.",
             });
             return;
         }
@@ -369,9 +367,9 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     
         toast({
             title: "Carry Forward Complete",
-            description: "Plant assignments and order copied successfully.",
+            description: "Plant assignments and order have been copied to the current month.",
         });
-    }, [jobRecords, toast]);
+    }, [toast]);
     
     const saveVehicleUsageRecord = useCallback(async (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => {
         if (!user) return;
@@ -776,37 +774,51 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         }
     }, [user, jobProgressById, users, addJobStepComment, notificationSettings, toast, can.manage_job_progress]);
 
-    const finalizeJob = useCallback((jobId: string, stepId: string, comment: string) => {
+    const finalizeJob = useCallback((jobId: string, currentStepId: string, comment: string) => {
         if (!user) return;
         const job = jobProgressById[jobId];
         if (!job) return;
     
-        const stepIndex = job.steps.findIndex(s => s.id === stepId);
-        if (stepIndex === -1) return;
-
-        if (job.steps[stepIndex].name !== 'JMS Hard copy submitted') {
-            toast({ variant: 'destructive', title: 'Incorrect Final Step', description: 'Can only finalize on "JMS Hard copy submitted" step.'});
-            return;
+        const currentStepIndex = job.steps.findIndex(s => s.id === currentStepId);
+        if (currentStepIndex === -1) return;
+        
+        const updates: { [key: string]: any } = {};
+    
+        // 1. Complete the current step
+        const currentStepPath = `jobProgress/${jobId}/steps/${currentStepIndex}`;
+        updates[`${currentStepPath}/status`] = 'Completed';
+        updates[`${currentStepPath}/completedAt`] = new Date().toISOString();
+        updates[`${currentStepPath}/completedBy`] = user.id;
+        if (comment) {
+            const newCommentRef = push(ref(rtdb, `${currentStepPath}/comments`));
+            updates[`${currentStepPath}/comments/${newCommentRef.key}`] = {
+                id: newCommentRef.key, userId: user.id, text: comment, date: new Date().toISOString(), eventId: jobId
+            };
         }
     
-        const updates: { [key: string]: any } = {};
-        const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
-    
-        updates[`${stepPath}/status`] = 'Completed';
-        updates[`${stepPath}/completedAt`] = new Date().toISOString();
-        updates[`${stepPath}/completedBy`] = user.id;
-    
+        // 2. Add and complete the final "Hard copy submitted" step
+        const newStepId = `step-${job.steps.length}`;
+        const finalStep: JobStep = {
+            id: newStepId,
+            name: 'JMS Hard copy submitted',
+            assigneeId: user.id, // self-assigned
+            status: 'Completed',
+            description: 'Job finalized.',
+            dueDate: null,
+            completedAt: new Date().toISOString(),
+            completedBy: user.id,
+            acknowledgedAt: new Date().toISOString()
+        };
+        updates[`jobProgress/${jobId}/steps/${job.steps.length}`] = finalStep;
+        
+        // 3. Mark the whole job as completed
         updates[`jobProgress/${jobId}/status`] = 'Completed';
         updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
     
         update(ref(rtdb), updates);
     
-        if (comment) {
-            addJobStepComment(jobId, stepId, comment);
-        }
-        
         toast({ title: "Job Completed", description: "JMS has been successfully finalized." });
-    }, [user, jobProgressById, addJobStepComment, toast]);
+    }, [user, jobProgressById, toast]);
     
     const reassignJobStep = useCallback((jobId: string, stepId: string, newAssigneeId: string, comment: string) => {
       if (!user) return;
