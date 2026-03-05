@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -321,48 +320,69 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const monthKey = format(currentMonth, 'yyyy-MM');
         const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
     
-        const prevMonthSnapshot = await get(ref(rtdb, `jobRecords/${prevMonthKey}`));
-        if (!prevMonthSnapshot.exists()) {
+        const prevSnapshot = await get(ref(rtdb, `jobRecords/${prevMonthKey}`));
+        if (!prevSnapshot.exists()) {
             toast({
                 title: "No Data Found",
-                description: "There is no job record data from the previous month to carry forward.",
+                description: "Previous month job record not found.",
                 variant: "destructive",
             });
             return;
         }
     
-        const prevMonthData = prevMonthSnapshot.val();
-        const updates: { [key: string]: any } = {};
+        const prevData = prevSnapshot.val();
+        const updates: Record<string, any> = {};
     
-        if (prevMonthData.records) {
-            for (const profileId in prevMonthData.records) {
-                const plant = prevMonthData.records[profileId]?.plant;
-                if (plant) {
-                    updates[`jobRecords/${monthKey}/records/${profileId}/plant`] = plant;
+        // --- COPY PLANT ASSIGNMENT ---
+        if (prevData.records) {
+            for (const profileId in prevData.records) {
+    
+                const prevPlant = prevData.records[profileId]?.plant;
+    
+                if (!prevPlant) continue;
+    
+                const currentPlant =
+                    jobRecords[monthKey]?.records?.[profileId]?.plant;
+    
+                // Only copy if not already set
+                if (!currentPlant) {
+                    updates[
+                        `jobRecords/${monthKey}/records/${profileId}/plant`
+                    ] = prevPlant;
                 }
             }
         }
     
-        if (prevMonthData.plantsOrder) {
-            for (const plantName in prevMonthData.plantsOrder) {
-                updates[`jobRecords/${monthKey}/plantsOrder/${plantName}`] =
-                    prevMonthData.plantsOrder[plantName];
+        // --- COPY PLANT ORDER ---
+        if (prevData.plantsOrder) {
+            for (const plant in prevData.plantsOrder) {
+    
+                const currentOrder =
+                    jobRecords[monthKey]?.plantsOrder?.[plant];
+    
+                if (!currentOrder) {
+                    updates[
+                        `jobRecords/${monthKey}/plantsOrder/${plant}`
+                    ] = prevData.plantsOrder[plant];
+                }
             }
         }
     
-        if (Object.keys(updates).length > 0) {
-            await update(ref(rtdb), updates);
-            toast({
-                title: "Carry Forward Complete",
-                description: "Previous month's plant assignments have been carried over to the current month.",
-            });
-        } else {
+        if (Object.keys(updates).length === 0) {
             toast({
                 title: "Nothing to Carry Forward",
-                description: "The previous month had no plant assignments to carry over.",
+                description: "Plant assignments already exist for this month.",
             });
+            return;
         }
-    }, [toast]);
+    
+        await update(ref(rtdb), updates);
+    
+        toast({
+            title: "Carry Forward Complete",
+            description: "Plant assignments and order copied successfully.",
+        });
+    }, [jobRecords, toast]);
     
     const saveVehicleUsageRecord = useCallback(async (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => {
         if (!user) return;

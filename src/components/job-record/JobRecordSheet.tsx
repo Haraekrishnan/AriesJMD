@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Settings, Search, MessageSquare, ArrowRightLeft } from 'lucide-react';
-import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO, isSameMonth, isValid, parse, sub } from 'date-fns';
+import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO, isSameMonth, isValid, parse } from 'date-fns';
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -104,10 +104,15 @@ export default function JobRecordSheet() {
                 groups[plantName].sort((a, b) => {
                     const indexA = order.indexOf(a.id);
                     const indexB = order.indexOf(b.id);
-                    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-                    if (indexA !== -1) return -1;
-                    if (indexB !== -1) return 1;
-                    return 0; // Keep original order for those not in the list
+                
+                    if (indexA === -1 && indexB === -1) {
+                        return a.name.localeCompare(b.name);
+                    }
+                
+                    if (indexA === -1) return 1;
+                    if (indexB === -1) return -1;
+                
+                    return indexA - indexB;
                 });
             }
         });
@@ -242,6 +247,15 @@ export default function JobRecordSheet() {
         setCommentStates(newCommentStates);
         setSundayDutyStates(newSundayDutyStates);
     }, [jobRecords, monthKey]);
+    
+    useEffect(() => {
+        const runAutoCarryForward = async () => {
+            if (!jobRecords[monthKey]) {
+                await carryForwardPlantAssignments(currentMonth);
+            }
+        };
+        runAutoCarryForward();
+    }, [currentMonth, carryForwardPlantAssignments, jobRecords, monthKey]);
 
     const getSelectionRange = () => {
         if (!dragState.isDragging || !dragState.startCell || !dragState.endCell) return null;
@@ -1197,3 +1211,4 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
