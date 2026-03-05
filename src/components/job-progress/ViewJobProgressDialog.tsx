@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -27,6 +28,7 @@ import { cn } from '@/lib/utils';
 import { JOB_PROGRESS_STEPS, REOPEN_JOB_STEPS } from '@/lib/types';
 import ReturnStepDialog from './ReturnStepDialog';
 import ReassignStepDialog from './ReassignStepDialog';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
 
 const statusConfig: { [key in JobStepStatus]: { icon?: React.ElementType, color: string, label: string } } = {
@@ -234,6 +236,8 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
     
     const completedStepNames = new Set(job.steps.filter(s => s.status === 'Completed').map(s => s.name));
     const availableNextSteps = JOB_PROGRESS_STEPS.filter(step => !completedStepNames.has(step));
+    
+    const isFinalizingStep = currentStep.name === 'JMS Hard copy submitted';
 
     const handleFormSubmit = (data: NextStepFormValues) => {
         addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, data.jmsNo ? { jmsNo: data.jmsNo } : undefined, {
@@ -253,7 +257,25 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
         <div className="p-4 border rounded-md mt-2 bg-muted/20">
             <h5 className="font-semibold text-sm mb-2">Complete This Step</h5>
             
-            {availableNextSteps.length > 0 ? (
+            {isFinalizingStep ? (
+                 <div className="space-y-3">
+                    <div className="space-y-1">
+                        <Label className="text-xs">Final Completion Notes (Optional)</Label>
+                        <Textarea value={completionComment} onChange={e => setCompletionComment(e.target.value)} rows={2} />
+                    </div>
+                    <Alert>
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Final Step</AlertTitle>
+                        <AlertDescription>
+                            Completing this will finalize the entire job.
+                        </AlertDescription>
+                    </Alert>
+                    <div className="flex justify-end gap-2">
+                        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
+                        <Button type="button" size="sm" onClick={handleFinalize}>Finalize Job</Button>
+                    </div>
+                </div>
+            ) : (
                 <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-3">
                     <div className="space-y-1">
                         <Label className="text-xs">Completion Notes (Optional)</Label>
@@ -323,24 +345,6 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                         <Button type="submit" size="sm">Complete & Assign Next</Button>
                     </div>
                 </form>
-            ) : (
-                 <div className="space-y-3">
-                    <div className="space-y-1">
-                        <Label className="text-xs">Final Completion Notes (Optional)</Label>
-                        <Textarea value={completionComment} onChange={e => setCompletionComment(e.target.value)} rows={2} />
-                    </div>
-                    <Alert>
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>Final Step</AlertTitle>
-                        <AlertDescription>
-                            This is the last step in the workflow. Completing it will finalize the job.
-                        </AlertDescription>
-                    </Alert>
-                    <div className="flex justify-end gap-2">
-                        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
-                        <Button type="button" size="sm" onClick={handleFinalize}>Finalize Job</Button>
-                    </div>
-                </div>
             )}
         </div>
     );
