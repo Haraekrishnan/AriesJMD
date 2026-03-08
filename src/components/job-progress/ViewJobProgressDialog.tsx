@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -51,7 +52,7 @@ const jobDetailsSchema = z.object({
   });
 type JobDetailsFormValues = z.infer<typeof jobDetailsSchema>;
     
-const unassignedSteps: string[] = [];
+const unassignedSteps: string[] = ['JMS Hard copy submitted'];
     
 const reopenSchema = z.object({
     reason: z.string().min(10, "A detailed reason for reopening is required."),
@@ -192,7 +193,7 @@ const nextStepSchema = z.object({
   dueDate: z.date().optional().nullable(),
   jmsNo: z.string().optional(),
 }).refine(data => {
-    if (unassignedSteps.includes(data.name) || data.name === 'JMS Hard copy submitted') {
+    if (unassignedSteps.includes(data.name)) {
         return true;
     }
     return !!data.assigneeId;
@@ -376,7 +377,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
       });
     
       useEffect(() => {
-        if (job && !isEditingHeader) {
+        if (job && isOpen) { // Only reset when dialog opens
           form.reset({
             title: job.title,
             projectId: job.projectId,
@@ -389,7 +390,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
             dateTo: job.dateTo ? parseISO(job.dateTo) : null,
           });
         }
-      }, [job, isEditingHeader, form, isOpen]);
+      }, [job, isOpen, form]);
     
       const onHeaderSubmit = (data: JobDetailsFormValues) => {
           updateJobProgress(job.id, {
@@ -404,7 +405,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
 
     const canEditJob = useMemo(() => {
       if (!user || !job) return false;
-      const canEditRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+      const canEditRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller', 'Supervisor', 'Senior Safety Supervisor'];
       return (canEditRoles.includes(user.role) || user.id === job.creatorId);
     }, [user, job]);
     
@@ -444,15 +445,16 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
             <DialogContent className="max-w-4xl h-[90vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
                 <DialogHeader>
                     <form onSubmit={form.handleSubmit(onHeaderSubmit)}>
-                        <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                                <DialogTitle className="flex items-center gap-2">
-                                    {isEditingHeader ? (
-                                        <Input {...form.register('title')} className="text-2xl font-bold p-0 h-auto border-0 shadow-none focus-visible:ring-0" />
-                                    ) : (
-                                        `JMS Details: ${job.title}`
-                                    )}
-                                </DialogTitle>
+                         <div className="flex justify-between items-start">
+                            <div className="flex-1 pr-4">
+                                {isEditingHeader ? (
+                                    <div className="space-y-1 mb-2">
+                                        <Label htmlFor="jms-title-edit" className="text-sm">JMS Title</Label>
+                                        <Input id="jms-title-edit" {...form.register('title')} className="text-xl font-bold h-9" />
+                                    </div>
+                                ) : (
+                                    <DialogTitle>{job.title}</DialogTitle>
+                                )}
                                 <DialogDescription>Created by {creator?.name} on {format(parseISO(job.createdAt), 'PPP')}</DialogDescription>
                             </div>
                             <div className="flex items-center gap-2">
@@ -505,10 +507,13 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const Icon = statusConfig[step.status]?.icon || Circle;
                                 const isEditingThisStep = editingStepId === step.id;
                                 
-                                const canPerformAction = (user?.id === step.assigneeId && step.status !== 'Completed');
+                                const isSelfAssigned = user?.id === step.assigneeId && user?.id === job.creatorId;
+                                const canAcknowledge = (user?.id === step.assigneeId && (step.status === 'Pending' || step.isReturned)) && !isSelfAssigned;
+                                const canPerformAction = (user?.id === step.assigneeId && step.status === 'Acknowledged');
+                                
                                 const isCreator = user?.id === job.creatorId;
                                 const isFinalStep = step.name === 'JMS Hard copy submitted';
-                                const canReturnStep = (canReassign || isCreator) && step.status !== 'Completed' && !canPerformAction;
+                                const canReturnStep = (canReassign || isCreator) && step.status !== 'Completed' && !canPerformAction && !canAcknowledge;
 
                                 const canModifyStepName = (user?.role === 'Admin' || user?.id === job.creatorId) && job.status !== 'Completed';
 
@@ -593,15 +598,15 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                 )}
 
                                                 <div className="mt-4">
-                                                     {canPerformAction && (step.status === 'Pending' || step.isReturned) && (
-                                                        <Button onClick={() => updateJobStepStatus(job.id, step.id, 'Acknowledged', 'Step acknowledged.')} className="w-full">
+                                                    {canAcknowledge && (
+                                                        <Button onClick={() => updateJobStepStatus(job.id, step.id, 'Acknowledged', `${user?.name} acknowledged the step.`)} className="w-full">
                                                             Acknowledge
                                                         </Button>
                                                     )}
-                                                     {canPerformAction && step.status === 'Acknowledged' && !isFinalStep && (
+                                                     {canPerformAction && !isFinalStep && (
                                                         <AddNextStepForm job={job} currentStep={step} onCancel={() => setIsOpen(false)} onSave={() => setIsOpen(false)} />
                                                     )}
-                                                     {(canPerformAction || (isFinalStep && canEditJob)) && isFinalStep && step.status !== 'Completed' && (
+                                                     {((canPerformAction && isFinalStep) || (isFinalStep && canEditJob)) && step.status !== 'Completed' && (
                                                         <div className="space-y-2">
                                                             <Label className="text-xs">Finalization Comment (Optional)</Label>
                                                             <Textarea value={newComment} onChange={e => setNewComment(e.target.value)} rows={2} />
