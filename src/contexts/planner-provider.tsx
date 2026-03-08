@@ -788,21 +788,7 @@ const completeAndFinalizeJob = useCallback((jobId: string, currentStepId: string
         };
     }
     
-    // 2. Create and complete the final step
-    const finalStep: JobStep = {
-        id: `step-${job.steps.length}`,
-        name: 'JMS Hard copy submitted',
-        assigneeId: user.id, // Assign to current user
-        status: 'Completed',
-        description: 'Job finalized.',
-        dueDate: null,
-        acknowledgedAt: new Date().toISOString(),
-        completedAt: new Date().toISOString(),
-        completedBy: user.id,
-    };
-    updates[`jobProgress/${jobId}/steps/${job.steps.length}`] = finalStep;
-    
-    // 3. Mark the whole job as completed
+    // 2. Mark the whole job as completed
     updates[`jobProgress/${jobId}/status`] = 'Completed';
     updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
     
@@ -1202,7 +1188,7 @@ const completeAndFinalizeJob = useCallback((jobId: string, currentStepId: string
             onValue(ref(rtdb, 'jobRecords'), (snapshot) => {
                 const data = snapshot.val() || {};
                 const monthRecords = Object.fromEntries(
-                    Object.entries(data).filter(([key]) => /^\d{4}-\d{2}$/.test(key))
+                    Object.entries(data).filter(([key]) => /^d{4}-d{2}$/.test(key))
                 );
                 setJobRecords(monthRecords);
             }),

@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -505,16 +506,16 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const Icon = statusConfig[step.status]?.icon || Circle;
                                 const isEditingThisStep = editingStepId === step.id;
                                 
-                                const canPerformAction = (user?.id === step.assigneeId && step.status !== 'Completed') || (job.status !== 'Completed' && !step.assigneeId && (user?.projectIds?.includes(job.projectId || '') || can.manage_job_progress));
+                                const canPerformAction = (user?.id === step.assigneeId && step.status !== 'Completed');
+                                const isCreator = user?.id === job.creatorId;
+                                const isFinalStep = step.name === 'JMS Hard copy submitted';
+                                const canReturnStep = (canReassign || isCreator) && step.status !== 'Completed' && !canPerformAction;
 
                                 const canModifyStepName = (user?.role === 'Admin' || user?.id === job.creatorId) && job.status !== 'Completed';
 
                                 const commentsArray = Array.isArray(step.comments) 
                                   ? step.comments 
                                   : Object.values(step.comments || {});
-
-                                const isFinalStep = step.name === 'JMS Hard copy submitted';
-                                const shouldShowNextStepForm = canPerformAction && (step.status === 'Pending' || step.status === 'Acknowledged') && !isFinalStep;
 
                                 return (
                                     <div key={step.id} className="relative flex items-start gap-6">
@@ -592,21 +593,30 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                     </Accordion>
                                                 )}
 
-                                                {shouldShowNextStepForm ? (
-                                                    <AddNextStepForm job={job} currentStep={step} onCancel={() => setIsOpen(false)} onSave={() => setIsOpen(false)} />
-                                                ) : isFinalStep && canPerformAction ? (
-                                                    <div className="mt-3 space-y-2">
-                                                        <Label className="text-xs">Finalization Comment (Optional)</Label>
-                                                        <Textarea value={newComment} onChange={e => setNewComment(e.target.value)} rows={2} />
-                                                        <Button onClick={() => finalizeJob(job.id, step.id, newComment || `Final step completed by ${user?.name}.`)} className="w-full">
-                                                            Acknowledge & Finalize
-                                                        </Button>
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex justify-end gap-2 mt-4">
-                                                        {step.status !== 'Completed' && <Button variant="outline" size="sm" onClick={() => setReturningStep(step)}>Return Step</Button>}
-                                                    </div>
-                                                )}
+                                                 <div className="mt-4">
+                                                    {canPerformAction ? (
+                                                        step.status === 'Pending' && !isFinalStep ? (
+                                                            <Button onClick={() => updateJobStepStatus(job.id, step.id, 'Acknowledged', 'Step acknowledged.')} className="w-full">
+                                                                Acknowledge
+                                                            </Button>
+                                                        ) : step.status === 'Acknowledged' && !isFinalStep ? (
+                                                            <AddNextStepForm job={job} currentStep={step} onCancel={() => setIsOpen(false)} onSave={() => setIsOpen(false)} />
+                                                        ) : isFinalStep ? (
+                                                            <div className="space-y-2">
+                                                                <Label className="text-xs">Finalization Comment (Optional)</Label>
+                                                                <Textarea value={newComment} onChange={e => setNewComment(e.target.value)} rows={2} />
+                                                                <Button onClick={() => finalizeJob(job.id, step.id, newComment || `Job finalized by ${user?.name}.`)} className="w-full">
+                                                                    Acknowledge & Finalize
+                                                                </Button>
+                                                            </div>
+                                                        ) : null
+                                                    ) : null}
+                                                    {canReturnStep && (
+                                                        <div className="flex justify-end">
+                                                            <Button variant="outline" size="sm" onClick={() => setReturningStep(step)}>Return Step</Button>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
