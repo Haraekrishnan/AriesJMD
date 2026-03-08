@@ -49,8 +49,8 @@ export default function JobProgressPage() {
   const [timesheetSearchTerm, setTimesheetSearchTerm] = useState('');
   const [docSearchTerm, setDocSearchTerm] = useState('');
 
-  const [jmsView, setJmsView] = useState<'board' | 'list'>(user?.viewPreferences?.jmsTracker || 'board');
-  const [timesheetView, setTimesheetView] = useState<'board' | 'list'>(user?.viewPreferences?.timesheetTracker || 'board');
+  const [jmsView, setJmsView] = useState<'board' | 'list'>(user?.viewPreferences?.jmsTracker || 'list');
+  const [timesheetView, setTimesheetView] = useState<'board' | 'list'>(user?.viewPreferences?.timesheetTracker || 'list');
 
   const assignableUsers = useMemo(() => {
     return getVisibleUsers().filter(u => u.role !== 'Manager');
@@ -311,7 +311,7 @@ export default function JobProgressPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
                                 <DropdownMenuLabel>Default View</DropdownMenuLabel>
-                                <DropdownMenuRadioGroup value={user?.viewPreferences?.jmsTracker || 'board'} onValueChange={handleJmsDefaultViewChange}>
+                                <DropdownMenuRadioGroup value={user?.viewPreferences?.jmsTracker || 'list'} onValueChange={handleJmsDefaultViewChange}>
                                 <DropdownMenuRadioItem value="board">Board</DropdownMenuRadioItem>
                                 <DropdownMenuRadioItem value="list">List</DropdownMenuRadioItem>
                                 </DropdownMenuRadioGroup>
@@ -368,7 +368,7 @@ export default function JobProgressPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
                                 <DropdownMenuLabel>Default View</DropdownMenuLabel>
-                                <DropdownMenuRadioGroup value={user?.viewPreferences?.timesheetTracker || 'board'} onValueChange={handleTimesheetDefaultViewChange}>
+                                <DropdownMenuRadioGroup value={user?.viewPreferences?.timesheetTracker || 'list'} onValueChange={handleTimesheetDefaultViewChange}>
                                 <DropdownMenuRadioItem value="board">Board</DropdownMenuRadioItem>
                                 <DropdownMenuRadioItem value="list">List</DropdownMenuRadioItem>
                                 </DropdownMenuRadioGroup>
