@@ -40,177 +40,152 @@ const statusConfig: { [key in JobStepStatus]: { icon?: React.ElementType, color:
 };
   
 const jobDetailsSchema = z.object({
-    title: z.string().min(3, 'JMS title is required'),
-    projectId: z.string().min(1, 'Project is required'),
-    plantUnit: z.string().optional(),
-    workOrderNo: z.string().optional(),
-    foNo: z.string().optional(),
-    jmsNo: z.string().optional(),
-    amount: z.coerce.number().optional(),
-    dateFrom: z.date().optional().nullable(),
-    dateTo: z.date().optional().nullable(),
-});
+      title: z.string().min(3, 'JMS title is required'),
+      projectId: z.string().min(1, 'Project is required'),
+      plantUnit: z.string().optional(),
+      workOrderNo: z.string().optional(),
+      foNo: z.string().optional(),
+      jmsNo: z.string().optional(),
+      amount: z.coerce.number().optional(),
+      dateFrom: z.date().optional().nullable(),
+      dateTo: z.date().optional().nullable(),
+  });
 type JobDetailsFormValues = z.infer<typeof jobDetailsSchema>;
-  
+    
 const unassignedSteps: string[] = [];
-  
+    
 const reopenSchema = z.object({
-  reason: z.string().min(10, "A detailed reason for reopening is required."),
-  newStepName: z.string().min(1, "A name for the new step is required."),
-  otherStepName: z.string().optional(),
-  newStepAssigneeId: z.string().min(1, "An assignee for the new step is required."),
-}).refine(data => {
-    if (data.newStepName === 'Others') {
-        return data.otherStepName && data.otherStepName.length > 0;
-    }
-    return true;
-}, {
-    message: "Please specify the step name when selecting 'Others'.",
-    path: ["otherStepName"],
-});
-  
-  
+    reason: z.string().min(10, "A detailed reason for reopening is required."),
+    newStepName: z.string().min(1, "A name for the new step is required."),
+    otherStepName: z.string().optional(),
+    newStepAssigneeId: z.string().min(1, "An assignee for the new step is required."),
+  }).refine(data => {
+      if (data.newStepName === 'Others') {
+          return data.otherStepName && data.otherStepName.length > 0;
+      }
+      return true;
+  }, {
+      message: "Please specify the step name when selecting 'Others'.",
+      path: ["otherStepName"],
+  });
+    
+    
 type ReopenFormValues = z.infer<typeof reopenSchema>;
-  
+    
 const ReopenJobDialog = ({ isOpen, setIsOpen, job, reopenJob }: { isOpen: boolean; setIsOpen: (open: boolean) => void; job: JobProgress; reopenJob: (jobId: string, reason: string, newStepName: string, newStepAssigneeId: string) => void; }) => {
-    const { users } = useAppContext();
-    const [popoverOpen, setPopoverOpen] = useState(false);
-  
-    const assignableUsers = useMemo(() => {
-        return users.filter(u => u.role !== 'Manager');
-    }, [users]);
-  
-    const form = useForm<ReopenFormValues>({
-        resolver: zodResolver(reopenSchema),
-        defaultValues: { reason: '', newStepName: '', otherStepName: '', newStepAssigneeId: '' }
-    });
-  
-    const watchedStepName = form.watch('newStepName');
-  
-    const onSubmit = (data: ReopenFormValues) => {
-        const stepName = data.newStepName === 'Others' ? data.otherStepName! : data.newStepName;
-        reopenJob(job.id, data.reason, stepName, data.newStepAssigneeId);
-        setIsOpen(false);
-    };
-  
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent onInteractOutside={(e) => e.preventDefault()}>
-                <DialogHeader>
-                    <DialogTitle>Reopen JMS: {job.title}</DialogTitle>
-                    <DialogDescription>Provide a reason for reopening and create a new initial step.</DialogDescription>
-                </DialogHeader>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="reason">Reason for Reopening</Label>
-                        <Textarea id="reason" {...form.register('reason')} />
-                        {form.formState.errors.reason && <p className="text-xs text-destructive">{form.formState.errors.reason.message}</p>}
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="newStepName">New Step Name</Label>
-                        <Controller
-                            name="newStepName"
-                            control={form.control}
-                            render={({ field }) => (
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select a step..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {REOPEN_JOB_STEPS.map(step => (
-                                            <SelectItem key={step} value={step}>{step}</SelectItem>
-                                        ))}
-                                        <SelectItem value="Others">Others (Specify)</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            )}
-                        />
-                        {form.formState.errors.newStepName && <p className="text-xs text-destructive">{form.formState.errors.newStepName.message}</p>}
-                    </div>
-  
-                    {watchedStepName === 'Others' && (
-                         <div className="space-y-2">
-                            <Label htmlFor="otherStepName">Specify Step Name</Label>
-                            <Input id="otherStepName" {...form.register('otherStepName')} />
-                            {form.formState.errors.otherStepName && <p className="text-xs text-destructive">{form.formState.errors.otherStepName.message}</p>}
-                        </div>
-                    )}
-                    <div className="space-y-2">
-                        <Label>Assign New Step To</Label>
-                        <Controller
-                            name="newStepAssigneeId"
-                            control={form.control}
-                            render={({ field }) => (
-                                <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-                                    <PopoverTrigger asChild>
-                                        <Button variant="outline" role="combobox" className="w-full justify-between">
-                                            {field.value ? assignableUsers.find(u => u.id === field.value)?.name : "Select new assignee..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Search users..." />
-                                            <CommandList>
-                                                <CommandEmpty>No users found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {assignableUsers.map(user => (
-                                                        <CommandItem
-                                                            key={user.id}
-                                                            value={user.name}
-                                                            onSelect={() => {
-                                                                form.setValue('newStepAssigneeId', user.id);
-                                                                setPopoverOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check className={cn("mr-2 h-4 w-4", user.id === field.value ? "opacity-100" : "opacity-0")} />
-                                                            {user.name}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                            )}
-                        />
-                         {form.formState.errors.newStepAssigneeId && <p className="text-xs text-destructive">{form.formState.errors.newStepAssigneeId.message}</p>}
-                    </div>
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                        <Button type="submit">Reopen and Add Step</Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
-    );
-};
-  
-const nextStepSchema = z.object({
-  name: z.string().min(1, 'Step name is required'),
-  assigneeId: z.string().optional(),
-  description: z.string().optional(),
-  dueDate: z.date().optional().nullable(),
-  jmsNo: z.string().optional(),
-}).refine(data => {
-    if (unassignedSteps.includes(data.name) || data.name === 'JMS Hard copy submitted') {
-        return true;
-    }
-    return !!data.assigneeId;
-}, {
-    message: 'Assignee is required for this step.',
-    path: ['assigneeId'],
-}).refine(data => {
-    if (data.name === 'JMS no created') {
-        return !!data.jmsNo && data.jmsNo.length > 0;
-    }
-    return true;
-}, {
-    message: 'JMS No. is required for this step.',
-    path: ['jmsNo'],
-});
-type NextStepFormValues = z.infer<typeof nextStepSchema>;
-  
+      const { users } = useAppContext();
+      const [popoverOpen, setPopoverOpen] = useState(false);
+    
+      const assignableUsers = useMemo(() => {
+          return users.filter(u => u.role !== 'Manager');
+      }, [users]);
+    
+      const form = useForm<ReopenFormValues>({
+          resolver: zodResolver(reopenSchema),
+          defaultValues: { reason: '', newStepName: '', otherStepName: '', newStepAssigneeId: '' }
+      });
+    
+      const watchedStepName = form.watch('newStepName');
+    
+      const onSubmit = (data: ReopenFormValues) => {
+          const stepName = data.newStepName === 'Others' ? data.otherStepName! : data.newStepName;
+          reopenJob(job.id, data.reason, stepName, data.newStepAssigneeId);
+          setIsOpen(false);
+      };
+    
+      return (
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
+              <DialogContent onInteractOutside={(e) => e.preventDefault()}>
+                  <DialogHeader>
+                      <DialogTitle>Reopen JMS: {job.title}</DialogTitle>
+                      <DialogDescription>Provide a reason for reopening and create a new initial step.</DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+                      <div className="space-y-2">
+                          <Label htmlFor="reason">Reason for Reopening</Label>
+                          <Textarea id="reason" {...form.register('reason')} />
+                          {form.formState.errors.reason && <p className="text-xs text-destructive">{form.formState.errors.reason.message}</p>}
+                      </div>
+                      <div className="space-y-2">
+                          <Label htmlFor="newStepName">New Step Name</Label>
+                          <Controller
+                              name="newStepName"
+                              control={form.control}
+                              render={({ field }) => (
+                                  <Select onValueChange={field.onChange} value={field.value}>
+                                      <SelectTrigger>
+                                          <SelectValue placeholder="Select a step..." />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                          {REOPEN_JOB_STEPS.map(step => (
+                                              <SelectItem key={step} value={step}>{step}</SelectItem>
+                                          ))}
+                                          <SelectItem value="Others">Others (Specify)</SelectItem>
+                                      </SelectContent>
+                                  </Select>
+                              )}
+                          />
+                          {form.formState.errors.newStepName && <p className="text-xs text-destructive">{form.formState.errors.newStepName.message}</p>}
+                      </div>
+    
+                      {watchedStepName === 'Others' && (
+                           <div className="space-y-2">
+                              <Label htmlFor="otherStepName">Specify Step Name</Label>
+                              <Input id="otherStepName" {...form.register('otherStepName')} />
+                              {form.formState.errors.otherStepName && <p className="text-xs text-destructive">{form.formState.errors.otherStepName.message}</p>}
+                          </div>
+                      )}
+                      <div className="space-y-2">
+                          <Label>Assign New Step To</Label>
+                          <Controller
+                              name="newStepAssigneeId"
+                              control={form.control}
+                              render={({ field }) => (
+                                  <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                                      <PopoverTrigger asChild>
+                                          <Button variant="outline" role="combobox" className="w-full justify-between">
+                                              {field.value ? assignableUsers.find(u => u.id === field.value)?.name : "Select new assignee..."}
+                                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                          </Button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                          <Command>
+                                              <CommandInput placeholder="Search users..." />
+                                              <CommandList>
+                                                  <CommandEmpty>No users found.</CommandEmpty>
+                                                  <CommandGroup>
+                                                      {assignableUsers.map(user => (
+                                                          <CommandItem
+                                                              key={user.id}
+                                                              value={user.name}
+                                                              onSelect={() => {
+                                                                  form.setValue('newStepAssigneeId', user.id);
+                                                                  setPopoverOpen(false);
+                                                              }}
+                                                          >
+                                                              <Check className={cn("mr-2 h-4 w-4", user.id === field.value ? "opacity-100" : "opacity-0")} />
+                                                              {user.name}
+                                                          </CommandItem>
+                                                      ))}
+                                                  </CommandGroup>
+                                              </CommandList>
+                                          </Command>
+                                      </PopoverContent>
+                                  </Popover>
+                              )}
+                          />
+                           {form.formState.errors.newStepAssigneeId && <p className="text-xs text-destructive">{form.formState.errors.newStepAssigneeId.message}</p>}
+                      </div>
+                      <DialogFooter>
+                          <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+                          <Button type="submit">Reopen and Add Step</Button>
+                      </DialogFooter>
+                  </form>
+              </DialogContent>
+          </Dialog>
+      );
+  };
+    
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
     const { user, addAndCompleteStep, completeAndFinalizeJob, getAssignableUsers } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
@@ -326,7 +301,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                         <AlertTriangle className="h-4 w-4" />
                         <AlertTitle>Final Step</AlertTitle>
                         <AlertDescription>
-                            This will finalize the entire job. No further steps can be added.
+                            Completing this will finalize the entire job.
                         </AlertDescription>
                     </Alert>
                 )}
@@ -377,7 +352,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
       });
     
       useEffect(() => {
-        if (job) {
+        if (job && !isEditingHeader) {
           form.reset({
             title: job.title,
             projectId: job.projectId,
@@ -390,7 +365,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
             dateTo: job.dateTo ? parseISO(job.dateTo) : null,
           });
         }
-      }, [job, form, isOpen]);
+      }, [job, form, isOpen, isEditingHeader]);
     
       const onHeaderSubmit = (data: JobDetailsFormValues) => {
           updateJobProgress(job.id, {
@@ -593,23 +568,21 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                     </Accordion>
                                                 )}
 
-                                                 <div className="mt-4">
-                                                    {canPerformAction ? (
-                                                        step.status === 'Pending' && !isFinalStep ? (
-                                                            <Button onClick={() => updateJobStepStatus(job.id, step.id, 'Acknowledged', 'Step acknowledged.')} className="w-full">
-                                                                Acknowledge
+                                                <div className="mt-4">
+                                                     {canPerformAction && step.status === 'Pending' && !isFinalStep ? (
+                                                        <Button onClick={() => updateJobStepStatus(job.id, step.id, 'Acknowledged', 'Step acknowledged.')} className="w-full">
+                                                            Acknowledge
+                                                        </Button>
+                                                    ) : canPerformAction && step.status === 'Acknowledged' && !isFinalStep ? (
+                                                        <AddNextStepForm job={job} currentStep={step} onCancel={() => setIsOpen(false)} onSave={() => setIsOpen(false)} />
+                                                    ) : (canPerformAction || (isFinalStep && canEditJob)) && isFinalStep ? (
+                                                        <div className="space-y-2">
+                                                            <Label className="text-xs">Finalization Comment (Optional)</Label>
+                                                            <Textarea value={newComment} onChange={e => setNewComment(e.target.value)} rows={2} />
+                                                            <Button onClick={() => finalizeJob(job.id, step.id, newComment || `Job finalized by ${user?.name}.`)} className="w-full">
+                                                                Acknowledge & Finalize
                                                             </Button>
-                                                        ) : step.status === 'Acknowledged' && !isFinalStep ? (
-                                                            <AddNextStepForm job={job} currentStep={step} onCancel={() => setIsOpen(false)} onSave={() => setIsOpen(false)} />
-                                                        ) : isFinalStep ? (
-                                                            <div className="space-y-2">
-                                                                <Label className="text-xs">Finalization Comment (Optional)</Label>
-                                                                <Textarea value={newComment} onChange={e => setNewComment(e.target.value)} rows={2} />
-                                                                <Button onClick={() => finalizeJob(job.id, step.id, newComment || `Job finalized by ${user?.name}.`)} className="w-full">
-                                                                    Acknowledge & Finalize
-                                                                </Button>
-                                                            </div>
-                                                        ) : null
+                                                        </div>
                                                     ) : null}
                                                     {canReturnStep && (
                                                         <div className="flex justify-end">
