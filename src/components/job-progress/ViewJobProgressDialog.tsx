@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -186,6 +185,31 @@ const ReopenJobDialog = ({ isOpen, setIsOpen, job, reopenJob }: { isOpen: boolea
       );
   };
     
+const nextStepSchema = z.object({
+  name: z.string().min(1, 'Step name is required'),
+  assigneeId: z.string().optional(),
+  description: z.string().optional(),
+  dueDate: z.date().optional().nullable(),
+  jmsNo: z.string().optional(),
+}).refine(data => {
+    if (unassignedSteps.includes(data.name) || data.name === 'JMS Hard copy submitted') {
+        return true;
+    }
+    return !!data.assigneeId;
+}, {
+    message: 'Assignee is required for this step.',
+    path: ['assigneeId'],
+}).refine(data => {
+    if (data.name === 'JMS no created') {
+        return !!data.jmsNo && data.jmsNo.length > 0;
+    }
+    return true;
+}, {
+    message: 'JMS No. is required for this step.',
+    path: ['jmsNo'],
+});
+type NextStepFormValues = z.infer<typeof nextStepSchema>;
+  
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
     const { user, addAndCompleteStep, completeAndFinalizeJob, getAssignableUsers } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
@@ -365,7 +389,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
             dateTo: job.dateTo ? parseISO(job.dateTo) : null,
           });
         }
-      }, [job, form, isOpen, isEditingHeader]);
+      }, [job, isEditingHeader, form, isOpen]);
     
       const onHeaderSubmit = (data: JobDetailsFormValues) => {
           updateJobProgress(job.id, {
@@ -569,13 +593,15 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                 )}
 
                                                 <div className="mt-4">
-                                                     {canPerformAction && step.status === 'Pending' && !isFinalStep ? (
+                                                     {canPerformAction && (step.status === 'Pending' || step.isReturned) && (
                                                         <Button onClick={() => updateJobStepStatus(job.id, step.id, 'Acknowledged', 'Step acknowledged.')} className="w-full">
                                                             Acknowledge
                                                         </Button>
-                                                    ) : canPerformAction && step.status === 'Acknowledged' && !isFinalStep ? (
+                                                    )}
+                                                     {canPerformAction && step.status === 'Acknowledged' && !isFinalStep && (
                                                         <AddNextStepForm job={job} currentStep={step} onCancel={() => setIsOpen(false)} onSave={() => setIsOpen(false)} />
-                                                    ) : (canPerformAction || (isFinalStep && canEditJob)) && isFinalStep ? (
+                                                    )}
+                                                     {(canPerformAction || (isFinalStep && canEditJob)) && isFinalStep && step.status !== 'Completed' && (
                                                         <div className="space-y-2">
                                                             <Label className="text-xs">Finalization Comment (Optional)</Label>
                                                             <Textarea value={newComment} onChange={e => setNewComment(e.target.value)} rows={2} />
@@ -583,7 +609,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                                 Acknowledge & Finalize
                                                             </Button>
                                                         </div>
-                                                    ) : null}
+                                                    )}
                                                     {canReturnStep && (
                                                         <div className="flex justify-end">
                                                             <Button variant="outline" size="sm" onClick={() => setReturningStep(step)}>Return Step</Button>
