@@ -79,12 +79,6 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
   
   const watchedStepName = form.watch('steps.0.name');
 
-  useEffect(() => {
-    if (watchedStepName === 'JMS Hard copy submitted') {
-      form.setValue('steps.0.assigneeId', user!.id);
-    }
-  }, [watchedStepName, form, user]);
-
   const assignableUsers = useMemo(() => {
     return users.filter(u => u.role !== 'Manager');
   }, [users]);

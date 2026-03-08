@@ -316,10 +316,10 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         remove(ref(rtdb, `jobRecordPlants/${id}`));
     }, []);
     
-    const carryForwardPlantAssignments = useCallback(async (currentMonth: Date) => {
+     const carryForwardPlantAssignments = useCallback(async (currentMonth: Date) => {
         const monthKey = format(currentMonth, 'yyyy-MM');
         const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
-    
+
         const prevSnapshot = await get(ref(rtdb, `jobRecords/${prevMonthKey}`));
         if (!prevSnapshot.exists()) {
             toast({
@@ -329,31 +329,39 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             });
             return;
         }
-    
+
         const prevData = prevSnapshot.val();
-        
         const updates: Record<string, any> = {};
-    
+
+        // --- COPY PLANT ASSIGNMENT ---
         if (prevData.records) {
             for (const profileId in prevData.records) {
+
                 const prevPlant = prevData.records[profileId]?.plant;
+
                 if (!prevPlant) continue;
-    
-                const currentPlantSnapshot = await get(ref(rtdb, `jobRecords/${monthKey}/records/${profileId}/plant`));
-                const currentPlant = currentPlantSnapshot.val();
-    
+
+                const currentPlant =
+                    jobRecords[monthKey]?.records?.[profileId]?.plant;
+
+                // Only copy if not already set or is 'Unassigned'
                 if (!currentPlant || currentPlant === 'Unassigned') {
-                    updates[`jobRecords/${monthKey}/records/${profileId}/plant`] = prevPlant;
+                    updates[
+                        `jobRecords/${monthKey}/records/${profileId}/plant`
+                    ] = prevPlant;
                 }
             }
         }
-    
+
+        // --- ALWAYS COPY PLANT ORDER ---
         if (prevData.plantsOrder) {
             for (const plant in prevData.plantsOrder) {
-                updates[`jobRecords/${monthKey}/plantsOrder/${plant}`] = prevData.plantsOrder[plant];
+                updates[
+                    `jobRecords/${monthKey}/plantsOrder/${plant}`
+                ] = prevData.plantsOrder[plant];
             }
         }
-    
+
         if (Object.keys(updates).length === 0) {
             toast({
                 title: "Nothing to Carry Forward",
@@ -361,14 +369,14 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             });
             return;
         }
-    
+
         await update(ref(rtdb), updates);
-    
+
         toast({
             title: "Carry Forward Complete",
             description: "Plant assignments and order copied successfully.",
         });
-    }, [toast]);
+    }, [jobRecords, toast]);
     
     const saveVehicleUsageRecord = useCallback(async (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => {
         if (!user) return;
@@ -708,12 +716,15 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         customFields: completionCustomFields || null,
     };
 
+    const isSelfAssigning = nextStepData.assigneeId === user.id;
+
     const newStep: JobStep = {
         ...nextStepData,
         dueDate: nextStepData.dueDate?.toISOString() || null,
         assigneeId: nextStepData.assigneeId || null,
         id: `step-${job.steps.length}`,
-        status: 'Pending',
+        status: isSelfAssigning ? 'Acknowledged' : 'Pending',
+        acknowledgedAt: isSelfAssigning ? new Date().toISOString() : null,
     };
     updates[`jobProgress/${jobId}/steps/${job.steps.length}`] = newStep;
 
@@ -773,7 +784,7 @@ const completeAndFinalizeJob = useCallback((jobId: string, currentStepId: string
     if (finalizationComment) {
         const newCommentRef = push(ref(rtdb, `${currentStepPath}/comments`));
         updates[`${currentStepPath}/comments/${newCommentRef.key}`] = {
-            id: newCommentRef.key!, userId: user.id, text: finalizationComment, date: new Date().toISOString(), eventId: jobId
+            id: newCommentRef.key, userId: user.id, text: finalizationComment, date: new Date().toISOString(), eventId: jobId
         };
     }
     
