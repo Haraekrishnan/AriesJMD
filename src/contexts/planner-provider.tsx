@@ -1188,7 +1188,7 @@ const completeAndFinalizeJob = useCallback((jobId: string, currentStepId: string
             onValue(ref(rtdb, 'jobRecords'), (snapshot) => {
                 const data = snapshot.val() || {};
                 const monthRecords = Object.fromEntries(
-                    Object.entries(data).filter(([key]) => /^d{4}-d{2}$/.test(key))
+                    Object.entries(data).filter(([key]) => /^\d{4}-\d{2}$/.test(key))
                 );
                 setJobRecords(monthRecords);
             }),
