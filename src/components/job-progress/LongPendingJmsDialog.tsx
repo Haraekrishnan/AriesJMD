@@ -1,3 +1,4 @@
+
 'use client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -22,10 +23,10 @@ export default function LongPendingJmsDialog({ isOpen, setIsOpen, longPendingJob
               These jobs have not been updated in over 3 days.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 overflow-hidden mt-4">
+          <div className="flex-1 min-h-0 mt-4">
              <JobProgressTable jobs={longPendingJobs} onViewJob={onViewJob} />
           </div>
-          <DialogFooter className="mt-auto">
+          <DialogFooter className="mt-auto pt-4 border-t">
             <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
