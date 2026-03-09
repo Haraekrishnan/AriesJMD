@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -26,7 +27,7 @@ interface InventoryFiltersProps {
 const detailedStatusOptions: InventoryItemStatus[] = ['In Use', 'In Store', 'Damaged', 'Expired', 'Moved to another project', 'Quarantine'];
 
 export default function InventoryFilters({ onApplyFilters, initialFilters }: InventoryFiltersProps) {
-    const { projects, inventoryItems, user, can } = useAppContext();
+    const { projects, inventoryItems, user } = useAppContext();
     const [filters, setFilters] = useState<InventoryFilterValues>(initialFilters);
 
     const itemNames = Array.from(new Set(inventoryItems.filter(item => item.category === 'General').map(item => item.name)));
@@ -49,7 +50,7 @@ export default function InventoryFilters({ onApplyFilters, initialFilters }: Inv
         });
     };
     
-    const canViewAllProjects = can.manage_inventory || user?.role === 'Admin';
+    const canViewAllProjects = user?.role === 'Admin' || user?.role === 'Manager';
 
     return (
         <div className="flex flex-wrap gap-4 items-center">

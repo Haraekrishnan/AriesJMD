@@ -68,7 +68,7 @@ const categoryOptions: InventoryCategory[] = ['General', 'Daily Consumable', 'Jo
 const excludedLocations = ['Store', 'Office', 'Kitchen Duty'];
 
 export default function AddItemDialog({ isOpen, setIsOpen }: AddItemDialogProps) {
-  const { projects, addInventoryItem, inventoryItems } = useAppContext();
+  const { projects, addInventoryItem, inventoryItems, user, can } = useAppContext();
   const { toast } = useToast();
 
   const itemNames = useMemo(() => Array.from(new Set(inventoryItems.map(item => item.name))), [inventoryItems]);
@@ -93,6 +93,10 @@ export default function AddItemDialog({ isOpen, setIsOpen }: AddItemDialogProps)
     if (!selectedProject) return false;
     return !excludedLocations.includes(selectedProject.name);
   }, [selectedProject]);
+
+
+  const canManageAllProjects = user?.role === 'Admin' || user?.role === 'Manager';
+  const availableProjects = canManageAllProjects ? projects : projects.filter(p => user?.projectIds?.includes(p.id));
 
 
   useEffect(() => {
@@ -208,7 +212,7 @@ export default function AddItemDialog({ isOpen, setIsOpen }: AddItemDialogProps)
                     {status !== 'Moved to another project' ? (
                         <div>
                             <Label>Location</Label>
-                            <Controller control={form.control} name="projectId" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select location..."/></SelectTrigger><SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>)}/>
+                            <Controller control={form.control} name="projectId" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select location..."/></SelectTrigger><SelectContent>{availableProjects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>)}/>
                             {form.formState.errors.projectId && <p className="text-xs text-destructive">{form.formState.errors.projectId.message}</p>}
                         </div>
                     ) : (

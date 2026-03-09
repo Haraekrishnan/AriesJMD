@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -66,8 +67,10 @@ export default function StoreInventoryPage() {
         const thirtyDaysFromNow = addDays(now, 30);
         const notifications: { message: string, item: InventoryItem }[] = [];
 
+        const canViewAllProjects = user?.role === 'Admin' || user?.role === 'Manager';
+
         const userVisibleItems = inventoryItems.filter(item => {
-            if (can.manage_inventory || user?.role === 'Admin') return true;
+            if (canViewAllProjects) return true;
             return user?.projectIds?.includes(item.projectId);
         });
 
@@ -100,11 +103,11 @@ export default function StoreInventoryPage() {
             // Sort logic to prioritize more urgent items, e.g., expired > expiring soon
             return 0; // Simple for now
         });
-    }, [inventoryItems, can.manage_inventory, user, projects]);
+    }, [inventoryItems, user, projects]);
 
 
     const filteredItems = useMemo(() => {
-        const userCanManage = can.manage_inventory || user?.role === 'Admin';
+        const canViewAllProjects = user?.role === 'Admin' || user?.role === 'Manager';
         
         return inventoryItems.filter(item => {
             if (item.isArchived) return false;
@@ -113,7 +116,7 @@ export default function StoreInventoryPage() {
             }
 
             // Project visibility filter
-            if (!userCanManage) {
+            if (!canViewAllProjects) {
                 if (!user?.projectIds || !user.projectIds.includes(item.projectId)) {
                     return false;
                 }
@@ -126,7 +129,7 @@ export default function StoreInventoryPage() {
                 }
             }
 
-            const { name, status, projectId, search, updatedDateRange } = filters;
+            const { name, status, search, updatedDateRange } = filters;
             
             // Name filter
             if (name !== 'all' && item.name !== name) return false;
@@ -159,7 +162,7 @@ export default function StoreInventoryPage() {
             
             return true;
         });
-    }, [inventoryItems, filters, user, can.manage_inventory, projects]);
+    }, [inventoryItems, filters, user, projects]);
 
     const summaryData = useMemo(() => {
         const data: {[itemName: string]: {[projectId: string]: number, total: number}} = {};

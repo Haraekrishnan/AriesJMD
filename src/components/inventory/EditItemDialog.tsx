@@ -70,7 +70,7 @@ const excludedLocations = ['Store', 'Office', 'Kitchen Duty'];
 
 
 export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDialogProps) {
-  const { updateInventoryItem, projects, inventoryItems } = useAppContext();
+  const { updateInventoryItem, projects, inventoryItems, user, can } = useAppContext();
   const { toast } = useToast();
   
   const itemNames = useMemo(() => Array.from(new Set(inventoryItems.map(item => item.name))), [inventoryItems]);
@@ -90,6 +90,9 @@ export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDial
     if (!selectedProject) return false;
     return !excludedLocations.includes(selectedProject.name);
   }, [selectedProject]);
+
+  const canManageAllProjects = user?.role === 'Admin' || user?.role === 'Manager';
+  const availableProjects = canManageAllProjects ? projects : projects.filter(p => user?.projectIds?.includes(p.id));
 
 
   useEffect(() => {
@@ -224,7 +227,7 @@ export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDial
                      {status !== 'Moved to another project' ? (
                         <div>
                             <Label>Location</Label>
-                            <Controller control={form.control} name="projectId" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select location..."/></SelectTrigger><SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>)}/>
+                            <Controller control={form.control} name="projectId" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select location..."/></SelectTrigger><SelectContent>{availableProjects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>)}/>
                             {form.formState.errors.projectId && <p className="text-xs text-destructive">{form.formState.errors.projectId.message}</p>}
                         </div>
                     ) : (
