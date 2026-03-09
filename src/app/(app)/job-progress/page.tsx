@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -199,17 +200,28 @@ export default function JobProgressPage() {
       return user.projectIds.includes(ts.projectId);
     });
 
-    if (!timesheetSearchTerm) return visibleTimesheets;
-    
-    const lowercasedTerm = timesheetSearchTerm.toLowerCase();
+    if (timesheetSearchTerm) {
+        const lowercasedTerm = timesheetSearchTerm.toLowerCase();
+        return visibleTimesheets.filter(ts => {
+            const project = projects.find(p => p.id === ts.projectId);
+            return (
+                (project && project.name.toLowerCase().includes(lowercasedTerm)) ||
+                (ts.plantUnit && ts.plantUnit.toLowerCase().includes(lowercasedTerm))
+            );
+        });
+    }
+
+    // If not searching, filter by current month
     return visibleTimesheets.filter(ts => {
-        const project = projects.find(p => p.id === ts.projectId);
-        return (
-            (project && project.name.toLowerCase().includes(lowercasedTerm)) ||
-            (ts.plantUnit && ts.plantUnit.toLowerCase().includes(lowercasedTerm))
-        );
+        const tsStartDate = parseISO(ts.startDate);
+        const tsEndDate = parseISO(ts.endDate);
+        if (!isValid(tsStartDate) || !isValid(tsEndDate)) return false;
+
+        return isSameMonth(tsStartDate, currentMonth) ||
+               isSameMonth(tsEndDate, currentMonth) ||
+               (isBefore(tsStartDate, startOfMonth(currentMonth)) && isAfter(tsEndDate, endOfMonth(currentMonth)));
     });
-  }, [timesheets, user, timesheetSearchTerm, projects]);
+  }, [timesheets, user, timesheetSearchTerm, projects, currentMonth]);
   
   const filteredDocuments = useMemo(() => {
     if (!docSearchTerm) return documentMovements;
@@ -229,6 +241,16 @@ export default function JobProgressPage() {
     setViewingJob(job);
   };
   
+  const handleViewTimesheet = (timesheet: Timesheet) => {
+    if (timesheetSearchTerm) {
+      const tsDate = parseISO(timesheet.startDate);
+      if (!isSameMonth(tsDate, currentMonth)) {
+        setCurrentMonth(startOfMonth(tsDate));
+      }
+    }
+    setViewingTimesheet(timesheet);
+  };
+
   const changeMonth = (amount: number) => {
     setCurrentMonth(prev => addMonths(prev, amount));
   };
@@ -387,9 +409,9 @@ export default function JobProgressPage() {
               </div>
           </div>
           {timesheetView === 'board' ? (
-            <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={setViewingTimesheet} />
+            <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
           ) : (
-            <TimesheetTrackerTable timesheets={filteredTimesheets} />
+            <TimesheetTrackerTable timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
           )}
         </TabsContent>
          <TabsContent value="documents" className="flex-1 overflow-hidden">

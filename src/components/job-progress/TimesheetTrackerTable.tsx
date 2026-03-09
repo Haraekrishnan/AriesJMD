@@ -39,13 +39,16 @@ const statusVariantMap: Record<
   Rejected: 'destructive',
 };
 
+interface TimesheetTrackerTableProps {
+  timesheets: Timesheet[];
+  onViewTimesheet: (timesheet: Timesheet) => void;
+}
+
 export default function TimesheetTrackerTable({
   timesheets,
-}: {
-  timesheets: Timesheet[];
-}) {
+  onViewTimesheet,
+}: TimesheetTrackerTableProps) {
   const { users, projects } = useAppContext();
-  const [viewingTimesheet, setViewingTimesheet] = useState<Timesheet | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
   
   const columns: ColumnDef<Timesheet>[] = useMemo(
@@ -119,10 +122,10 @@ export default function TimesheetTrackerTable({
       },
       {
         id: 'actions',
-        cell: ({ row }) => <div className="text-right"><Button variant="outline" size="sm" onClick={() => setViewingTimesheet(row.original)}><Eye className="mr-2 h-4 w-4" /> View</Button></div>
+        cell: ({ row }) => <div className="text-right"><Button variant="outline" size="sm" onClick={() => onViewTimesheet(row.original)}><Eye className="mr-2 h-4 w-4" /> View</Button></div>
       }
     ],
-    [users, projects]
+    [users, projects, onViewTimesheet]
   );
   
   const table = useReactTable({
@@ -143,42 +146,33 @@ export default function TimesheetTrackerTable({
   }
 
   return (
-    <>
-        <ScrollArea className="h-[calc(100vh-28rem)]">
-            <Table className="text-sm">
-                <TableHeader>
-                    {table.getHeaderGroups().map(headerGroup => (
-                        <TableRow key={headerGroup.id}>
-                            {headerGroup.headers.map(header => (
-                                <TableHead key={header.id}>
-                                    {header.isPlaceholder
-                                        ? null
-                                        : flexRender(header.column.columnDef.header, header.getContext())}
-                                </TableHead>
-                            ))}
-                        </TableRow>
-                    ))}
-                </TableHeader>
-                <TableBody>
-                    {table.getRowModel().rows.map(row => (
-                        <TableRow key={row.id}>
-                            {row.getVisibleCells().map(cell => (
-                                <TableCell key={cell.id}>
-                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                </TableCell>
-                            ))}
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        </ScrollArea>
-      {viewingTimesheet && (
-        <ViewTimesheetDialog
-          isOpen={!!viewingTimesheet}
-          setIsOpen={() => setViewingTimesheet(null)}
-          timesheet={viewingTimesheet}
-        />
-      )}
-    </>
+    <ScrollArea className="h-[calc(100vh-28rem)]">
+        <Table className="text-sm">
+            <TableHeader>
+                {table.getHeaderGroups().map(headerGroup => (
+                    <TableRow key={headerGroup.id}>
+                        {headerGroup.headers.map(header => (
+                            <TableHead key={header.id}>
+                                {header.isPlaceholder
+                                    ? null
+                                    : flexRender(header.column.columnDef.header, header.getContext())}
+                            </TableHead>
+                        ))}
+                    </TableRow>
+                ))}
+            </TableHeader>
+            <TableBody>
+                {table.getRowModel().rows.map(row => (
+                    <TableRow key={row.id}>
+                        {row.getVisibleCells().map(cell => (
+                            <TableCell key={cell.id}>
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </TableCell>
+                        ))}
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
+    </ScrollArea>
   );
 }
