@@ -55,24 +55,38 @@ export default function LongPendingJmsDialog({ isOpen, setIsOpen, longPendingJob
                             </div>
                             <p className="text-xs text-muted-foreground whitespace-nowrap pl-4">{formatDistanceToNow(parseISO(job.lastUpdated), { addSuffix: true })}</p>
                         </div>
-                        {currentStep && (
-                            <div className="mt-2 pt-2 border-t text-xs space-y-1">
-                                <div className="flex items-center gap-2">
-                                    <span className="font-semibold text-muted-foreground">Current Step:</span>
-                                    <Badge variant={
-                                        returnedStep ? 'destructive' 
-                                        : acknowledgedStep ? 'default' 
-                                        : 'secondary'
-                                    }>
-                                        {currentStep.name}
-                                    </Badge>
+                        {currentStep && (() => {
+                            let statusLabel = '';
+                            let statusVariant: 'destructive' | 'default' | 'warning' = 'warning';
+
+                            if (returnedStep) {
+                                statusLabel = 'Returned';
+                                statusVariant = 'destructive';
+                            } else if (acknowledgedStep) {
+                                statusLabel = 'In Progress';
+                                statusVariant = 'default';
+                            } else if (pendingStep) {
+                                statusLabel = 'Pending';
+                                statusVariant = 'warning';
+                            }
+
+                            return (
+                                <div className="mt-2 pt-2 border-t text-xs space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-semibold text-muted-foreground">Current Step:</span>
+                                        <span>{currentStep.name}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-semibold text-muted-foreground">Status:</span>
+                                        <Badge variant={statusVariant}>{statusLabel}</Badge>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-semibold text-muted-foreground">With:</span>
+                                        <span>{assignee ? assignee.name : 'Unassigned'}</span>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="font-semibold text-muted-foreground">With:</span>
-                                    <span>{assignee ? assignee.name : 'Unassigned'}</span>
-                                </div>
-                            </div>
-                        )}
+                            );
+                        })()}
                     </div>
                   )
                 }) : (
