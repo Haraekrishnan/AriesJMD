@@ -24,12 +24,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return;
     } 
     
-    if (user.status === 'locked') {
-      if (pathname !== '/status') {
-        router.replace('/status');
-      }
-    } else if (pathname === '/status') {
-      router.replace('/dashboard');
+    if (user.status === 'locked' && pathname !== '/status') {
+      router.replace('/status');
     }
   }, [user, loading, router, pathname]);
 

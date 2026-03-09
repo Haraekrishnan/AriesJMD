@@ -18,7 +18,7 @@ export default function StatusPage() {
     if (!loading) {
       if (!user) {
         router.replace('/login');
-      } else if (user.status !== 'locked') {
+      } else if (user.status && user.status !== 'locked') {
         router.replace('/dashboard');
       }
     }

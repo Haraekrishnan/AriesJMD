@@ -54,7 +54,7 @@ export default function NewAnnouncementDialog() {
   const canCreateAnnouncement = useMemo(() => {
     if (!user) return false;
     const userRole = roles.find(r => r.name === user.role);
-    return userRole?.permissions.includes('manage_announcements');
+    return userRole?.permissions?.includes('manage_announcements') || false;
   }, [user, roles]);
 
   if (!canCreateAnnouncement) return null;
