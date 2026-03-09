@@ -1,12 +1,13 @@
 
 'use client';
-import { useState, useMemo, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { usePlanner } from '@/contexts/planner-provider';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -15,14 +16,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format, startOfDay } from 'date-fns';
-import { PlusCircle, CalendarIcon, Users } from 'lucide-react';
+import { CalendarIcon } from 'lucide-react';
+import type { PlannerEvent } from '@/lib/types';
 import { Label } from '../ui/label';
 
 const eventSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
   date: z.date({ required_error: 'Date is required' }).refine(date => startOfDay(date) >= startOfDay(new Date()), {
-    message: "Cannot create an event in the past."
+    message: "Cannot edit an event to a past date."
   }),
   frequency: z.enum(['once', 'daily', 'weekly', 'weekends', 'monthly', 'daily-except-sundays']),
   userId: z.string().min(1, 'Please select an employee for this event'),
@@ -30,100 +32,76 @@ const eventSchema = z.object({
 
 type EventFormValues = z.infer<typeof eventSchema>;
 
-interface CreateEventDialogProps {
-  isDelegating?: boolean;
-  isPlanning?: boolean;
+interface EditEventDialogProps {
+    isOpen: boolean;
+    setIsOpen: (open: boolean) => void;
+    event: PlannerEvent;
 }
 
-export default function CreateEventDialog({ isDelegating = false, isPlanning = false }: CreateEventDialogProps) {
-  const { user, addPlannerEvent, getVisibleUsers } = useAppContext();
+export default function EditEventDialog({ isOpen, setIsOpen, event }: EditEventDialogProps) {
+  const { getVisibleUsers } = useAuth();
+  const { updatePlannerEvent } = usePlanner();
   const { toast } = useToast();
-  const [isOpen, setIsOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-
+  
   const assignableUsers = useMemo(() => {
     return getVisibleUsers().filter(u => u.role !== 'Manager');
   }, [getVisibleUsers]);
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
-    defaultValues: {
-      frequency: 'once',
-      userId: user?.id,
-    },
   });
-
+  
   useEffect(() => {
-    if (isOpen) {
-      form.reset({
-        frequency: 'once',
-        userId: isDelegating ? '' : user?.id,
-        title: '',
-        description: '',
-      });
+    if (event) {
+        form.reset({
+            ...event,
+            description: event.description || '',
+            date: event.date ? new Date(event.date) : new Date(),
+        });
     }
-  }, [isOpen, isDelegating, user, form]);
+  }, [event, form]);
 
   const onSubmit = (data: EventFormValues) => {
-    addPlannerEvent({
+    updatePlannerEvent({
+      ...event,
       ...data,
       date: data.date.toISOString(),
-      creatorId: user!.id,
     });
-    const toastMessage = isDelegating ? 'Event Delegated' : 'Event Created';
     toast({
-      title: toastMessage,
-      description: `"${data.title}" has been added to the schedule.`,
+      title: 'Event Updated',
+      description: `"${data.title}" has been updated.`,
     });
     setIsOpen(false);
   };
-  
-  const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
-  };
-  
-  const dialogTitle = isDelegating ? "Delegate Event" : "Add Personal Planning";
-  const dialogDescription = isDelegating 
-    ? "Assign an event to another user's planner."
-    : "Add a new event or note to your own planner.";
-  const buttonText = isDelegating ? "Delegate Event" : "Add Planning";
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button>
-          {isDelegating ? <Users className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-          {buttonText}
-        </Button>
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{dialogTitle}</DialogTitle>
-          <DialogDescription>{dialogDescription}</DialogDescription>
+          <DialogTitle>Edit Event</DialogTitle>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
-          {isDelegating && (
-            <div>
-              <Label>Delegate To</Label>
-              <Controller
-                control={form.control}
-                name="userId"
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger><SelectValue placeholder="Select an employee" /></SelectTrigger>
-                    <SelectContent>
-                      {assignableUsers.map(u => (
+          <div>
+            <Label>Event For</Label>
+            <Controller
+              control={form.control}
+              name="userId"
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <SelectTrigger><SelectValue placeholder="Select an employee" /></SelectTrigger>
+                  <SelectContent>
+                    {assignableUsers.map(u => (
                         <SelectItem key={u.id} value={u.id} disabled={u.status === 'locked'}>
-                          {u.name}{u.status === 'locked' && ' (Locked)'}
+                            {u.name}{u.status === 'locked' && ' (Locked)'}
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {form.formState.errors.userId && <p className="text-xs text-destructive">{form.formState.errors.userId.message}</p>}
-            </div>
-          )}
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {form.formState.errors.userId && <p className="text-xs text-destructive">{form.formState.errors.userId.message}</p>}
+          </div>
 
           <div>
             <Label>Title</Label>
@@ -151,15 +129,15 @@ export default function CreateEventDialog({ isDelegating = false, isPlanning = f
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
                     <Calendar 
-                        mode="single" 
-                        selected={field.value} 
-                        onSelect={(date) => {
-                            field.onChange(date);
-                            setIsCalendarOpen(false);
-                        }} 
-                        initialFocus 
+                      mode="single" 
+                      selected={field.value} 
+                      onSelect={(date) => {
+                        field.onChange(date);
+                        setIsCalendarOpen(false);
+                      }} 
+                      initialFocus 
                     />
-                    </PopoverContent>
+                  </PopoverContent>
                 </Popover>
               )}
             />
@@ -188,8 +166,8 @@ export default function CreateEventDialog({ isDelegating = false, isPlanning = f
           </div>
           
           <DialogFooter>
-             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit">{buttonText}</Button>
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+            <Button type="submit">Save Changes</Button>
           </DialogFooter>
         </form>
       </DialogContent>

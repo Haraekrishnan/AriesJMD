@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -81,8 +82,8 @@ export default function CreateTimesheetDialog({ isOpen, setIsOpen }: CreateTimes
                       <SelectTrigger><SelectValue placeholder="Select a recipient" /></SelectTrigger>
                       <SelectContent>
                         {assignableUsers.map(u => (
-                          <SelectItem key={u.id} value={u.id}>
-                            {u.name}
+                          <SelectItem key={u.id} value={u.id} disabled={u.status === 'locked'}>
+                            {u.name} {u.status === 'locked' && <span className="text-muted-foreground">(Locked)</span>}
                           </SelectItem>
                         ))}
                       </SelectContent>

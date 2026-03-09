@@ -24,7 +24,7 @@ import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import Link from 'next/link';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { uploadFile } from '@/lib/storage';
 
@@ -390,19 +390,25 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                                     <CommandGroup>
                                     {assignableUsers.map(option => {
                                         const isSelected = field.value.includes(option.value);
+                                        const userOption = users.find(u => u.id === option.value);
+                                        const isLocked = userOption?.status === 'locked';
                                         return (
                                         <CommandItem
                                             key={option.value}
+                                            disabled={isLocked}
                                             onSelect={() => {
+                                            if(isLocked) return;
                                             if (isSelected) {
                                                 field.onChange(field.value.filter(id => id !== option.value));
                                             } else {
                                                 field.onChange([...field.value, option.value]);
                                             }
                                             }}
+                                            className={cn(isLocked && "text-muted-foreground cursor-not-allowed")}
                                         >
                                             <Check className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100" : "opacity-0"}`} />
                                             {option.label}
+                                            {isLocked && <Badge variant="destructive" className="ml-auto">Locked</Badge>}
                                         </CommandItem>
                                         );
                                     })}

@@ -230,7 +230,11 @@ export default function CreateInspectionDialog({ isOpen, setIsOpen }: CreateInsp
                      <Controller name="reviewedById" control={form.control} render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
                             <SelectTrigger><SelectValue placeholder="Select reviewer..."/></SelectTrigger>
-                            <SelectContent>{reviewers.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
+                            <SelectContent>{reviewers.map(r => 
+                                <SelectItem key={r.id} value={r.id} disabled={r.status === 'locked'}>
+                                    {r.name} {r.status === 'locked' && <span className="text-muted-foreground">(Locked)</span>}
+                                </SelectItem>
+                            )}</SelectContent>
                         </Select>
                     )}/>
                     {form.formState.errors.reviewedById && <p className="text-xs text-destructive">{form.formState.errors.reviewedById.message}</p>}

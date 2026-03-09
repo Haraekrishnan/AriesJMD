@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { ChevronsUpDown, Check } from 'lucide-react';
 import { Badge } from '../ui/badge';
+import { cn } from '@/lib/utils';
 
 const employeeSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -148,7 +149,11 @@ export default function EditEmployeeDialog({ isOpen, setIsOpen, user: userToEdit
                       <SelectTrigger><SelectValue placeholder="Assign a supervisor" /></SelectTrigger>
                       <SelectContent>
                           <SelectItem value="none">No Supervisor</SelectItem>
-                          {possibleSupervisors.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                          {possibleSupervisors.map(s => (
+                            <SelectItem key={s.id} value={s.id} disabled={s.status === 'locked'}>
+                                {s.name} {s.status === 'locked' && <span className="text-muted-foreground">(Locked)</span>}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   )}

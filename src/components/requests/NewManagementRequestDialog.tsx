@@ -18,6 +18,7 @@ import { Check, ChevronsUpDown } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { type Role } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 const requestSchema = z.object({
   toUserId: z.string().min(1, 'Please select a recipient'),
@@ -94,7 +95,11 @@ export default function NewManagementRequestDialog({ isOpen, setIsOpen }: NewMan
                     <Select onValueChange={field.onChange} value={field.value}>
                       <SelectTrigger><SelectValue placeholder="Select a recipient" /></SelectTrigger>
                       <SelectContent>
-                        {possibleRecipients.map(u => <SelectItem key={u.id} value={u.id}>{u.name} ({u.role})</SelectItem>)}
+                        {possibleRecipients.map(u => (
+                            <SelectItem key={u.id} value={u.id} disabled={u.status === 'locked'}>
+                                {u.name} ({u.role}) {u.status === 'locked' && <span className="text-muted-foreground">(Locked)</span>}
+                            </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   )}
@@ -121,25 +126,32 @@ export default function NewManagementRequestDialog({ isOpen, setIsOpen }: NewMan
                               <CommandList>
                                   <CommandEmpty>No users available.</CommandEmpty>
                                   <CommandGroup>
-                                      {ccRecipients.map(u => (
-                                          <CommandItem
-                                              key={u.id}
-                                              value={u.name}
-                                              onSelect={() => {
-                                                  const newSelection = [...selectedCcUserIds];
-                                                  const index = newSelection.indexOf(u.id);
-                                                  if (index > -1) {
-                                                      newSelection.splice(index, 1);
-                                                  } else {
-                                                      newSelection.push(u.id);
-                                                  }
-                                                  form.setValue('ccUserIds', newSelection);
-                                              }}
-                                          >
-                                              <Check className={`mr-2 h-4 w-4 ${selectedCcUserIds.includes(u.id) ? 'opacity-100' : 'opacity-0'}`} />
-                                              {u.name} ({u.role})
-                                          </CommandItem>
-                                      ))}
+                                      {ccRecipients.map(u => {
+                                          const isSelected = selectedCcUserIds.includes(u.id);
+                                          return (
+                                            <CommandItem
+                                                key={u.id}
+                                                value={u.name}
+                                                onSelect={() => {
+                                                    if (u.status === 'locked') return;
+                                                    const newSelection = [...selectedCcUserIds];
+                                                    const index = newSelection.indexOf(u.id);
+                                                    if (index > -1) {
+                                                        newSelection.splice(index, 1);
+                                                    } else {
+                                                        newSelection.push(u.id);
+                                                    }
+                                                    form.setValue('ccUserIds', newSelection);
+                                                }}
+                                                disabled={u.status === 'locked'}
+                                                className={cn(u.status === 'locked' && 'text-muted-foreground cursor-not-allowed')}
+                                            >
+                                                <Check className={`mr-2 h-4 w-4 ${isSelected ? 'opacity-100' : 'opacity-0'}`} />
+                                                {u.name} ({u.role})
+                                                {u.status === 'locked' && <Badge variant="destructive" className="ml-auto">Locked</Badge>}
+                                            </CommandItem>
+                                          );
+                                      })}
                                   </CommandGroup>
                               </CommandList>
                           </Command>
