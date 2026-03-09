@@ -1,3 +1,4 @@
+
 'use client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -58,7 +59,13 @@ export default function LongPendingJmsDialog({ isOpen, setIsOpen, longPendingJob
                             <div className="mt-2 pt-2 border-t text-xs space-y-1">
                                 <div className="flex items-center gap-2">
                                     <span className="font-semibold text-muted-foreground">Current Step:</span>
-                                    <Badge variant={returnedStep ? 'destructive' : 'secondary'}>{currentStep.name}</Badge>
+                                    <Badge variant={
+                                        returnedStep ? 'destructive' 
+                                        : acknowledgedStep ? 'default' 
+                                        : 'secondary'
+                                    }>
+                                        {currentStep.name}
+                                    </Badge>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="font-semibold text-muted-foreground">With:</span>
