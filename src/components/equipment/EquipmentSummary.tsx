@@ -2,7 +2,7 @@
 'use client';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
-import { HardHat, Scan, Layers, Camera, Wind, Smartphone, Laptop, Sparkles, Radio } from 'lucide-react';
+import { HardHat, Scan, Layers, Camera, Wind, Smartphone, Laptop, Sparkles, Radio, SimCard } from 'lucide-react';
 import StatCard from '../dashboard/stat-card';
 
 export default function EquipmentSummary() {
@@ -29,9 +29,14 @@ export default function EquipmentSummary() {
     const dftStatus = calculateStatus(dftMachines);
     const cameraStatus = calculateStatus(digitalCameras);
     const anemometerStatus = calculateStatus(anemometers);
-    const mobileStatus = calculateStatus(mobileSims);
     const weldingStatus = calculateStatus(weldingMachines || []);
     const walkieTalkieStatus = calculateStatus(walkieTalkies || []);
+    
+    const mobiles = mobileSims.filter(item => item.type === 'Mobile' || item.type === 'Mobile with SIM');
+    const sims = mobileSims.filter(item => item.type === 'SIM');
+    const mobileStatus = calculateStatus(mobiles);
+    const simStatus = calculateStatus(sims);
+
 
     return [
       { name: 'UT Machines', count: utMachines.length, icon: Scan, description: `${utStatus.active} active, ${utStatus.idle} idle` },
@@ -40,14 +45,15 @@ export default function EquipmentSummary() {
       { name: 'Walkie Talkies', count: (walkieTalkies || []).length, icon: Radio, description: `${walkieTalkieStatus.active} active, ${walkieTalkieStatus.idle} idle` },
       { name: 'Digital Cameras', count: digitalCameras.length, icon: Camera, description: `${cameraStatus.active} active, ${cameraStatus.idle} idle` },
       { name: 'Anemometers', count: anemometers.length, icon: Wind, description: `${anemometerStatus.active} active, ${anemometerStatus.idle} idle` },
-      { name: 'Mobiles & SIMs', count: mobileSims.length, icon: Smartphone, description: `${mobileStatus.active} active, ${mobileStatus.idle} inactive` },
+      { name: 'Mobiles', count: mobiles.length, icon: Smartphone, description: `${mobileStatus.active} active, ${mobileStatus.idle} inactive` },
+      { name: 'SIMs', count: sims.length, icon: SimCard, description: `${simStatus.active} active, ${simStatus.idle} inactive` },
       { name: 'Laptops & Desktops', count: laptopsDesktops.length, icon: Laptop, description: `Total ${laptopsDesktops.length}` },
       { name: 'Other Equipment', count: otherEquipments.length, icon: HardHat, description: `Total ${otherEquipments.length}` },
     ];
   }, [utMachines, dftMachines, digitalCameras, anemometers, mobileSims, laptopsDesktops, otherEquipments, weldingMachines, walkieTalkies]);
 
   return (
-    <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
+    <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
         {equipmentCounts.map(item => (
             <StatCard 
                 key={item.name}

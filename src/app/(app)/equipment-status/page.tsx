@@ -201,7 +201,7 @@ export default function EquipmentStatusPage() {
     const filteredDigitalCameras = useMemo(() => applyFilters(digitalCameras), [digitalCameras, filters]);
     const filteredAnemometers = useMemo(() => applyFilters(anemometers), [anemometers, filters]);
     
-    const filteredMobileSims = useMemo(() => {
+    const baseFilteredMobileSims = useMemo(() => {
         let items = applyFilters(mobileSims);
         if (mobileSearchTerm) {
             const lowercasedTerm = mobileSearchTerm.toLowerCase();
@@ -221,6 +221,14 @@ export default function EquipmentStatusPage() {
         }
         return items;
     }, [mobileSims, filters, mobileSearchTerm, users, manpowerProfiles]);
+
+    const filteredMobiles = useMemo(() => {
+        return baseFilteredMobileSims.filter(item => item.type === 'Mobile' || item.type === 'Mobile with SIM');
+    }, [baseFilteredMobileSims]);
+
+    const filteredSims = useMemo(() => {
+        return baseFilteredMobileSims.filter(item => item.type === 'SIM' || item.type === 'Mobile with SIM');
+    }, [baseFilteredMobileSims]);
 
     const filteredLaptopsDesktops = useMemo(() => applyFilters(laptopsDesktops), [laptopsDesktops, filters]);
     const filteredOtherEquipments = useMemo(() => applyFilters(otherEquipments), [otherEquipments, filters]);
@@ -573,7 +581,7 @@ export default function EquipmentStatusPage() {
             { header: 'Status', key: 'status', width: 15 },
             { header: 'Aries ID', key: 'ariesId', width: 20 },
             { header: 'Remarks', key: 'remarks', width: 40 },
-        ], filteredMobileSims.map((item, i) => ({
+        ], baseFilteredMobileSims.map((item, i) => ({
             sl: i + 1,
             type: item.type,
             provider: item.make || item.simProvider || 'N/A',
@@ -616,7 +624,8 @@ export default function EquipmentStatusPage() {
             case 'dft-machines': setIsAddDftMachineOpen(true); break;
             case 'digital-camera': setIsAddDigitalCameraOpen(true); break;
             case 'anemometer': setIsAddAnemometerOpen(true); break;
-            case 'mobile-sim': setIsAddMobileSimOpen(true); break;
+            case 'mobiles': setIsAddMobileSimOpen(true); break;
+            case 'sims': setIsAddMobileSimOpen(true); break;
             case 'laptops-desktops': setIsAddLaptopDesktopOpen(true); break;
             case 'pneumatic-drilling-machine': setIsAddPneumaticDrillingMachineOpen(true); break;
             case 'pneumatic-angle-grinder': setIsAddPneumaticAngleGrinderOpen(true); break;
@@ -779,7 +788,8 @@ export default function EquipmentStatusPage() {
                             <TabsTrigger value="walkie-talkie">Walkie Talkie</TabsTrigger>
                             <TabsTrigger value="digital-camera">Digital Camera</TabsTrigger>
                             <TabsTrigger value="anemometer">Anemometer</TabsTrigger>
-                            <TabsTrigger value="mobile-sim">Mobile &amp; SIM</TabsTrigger>
+                            <TabsTrigger value="mobiles">Mobiles</TabsTrigger>
+                            <TabsTrigger value="sims">SIMs</TabsTrigger>
                             <TabsTrigger value="laptops-desktops">Laptops &amp; Desktops</TabsTrigger>
                             <TabsTrigger value="pneumatic-drilling-machine">Pneumatic Drilling</TabsTrigger>
                             <TabsTrigger value="pneumatic-angle-grinder">Pneumatic Grinder</TabsTrigger>
@@ -826,12 +836,12 @@ export default function EquipmentStatusPage() {
                                 <CardContent><AnemometerTable items={filteredAnemometers} onEdit={handleEditAnemometer} /></CardContent>
                             </Card>
                         </TabsContent>
-                        <TabsContent value="mobile-sim" className="mt-4 space-y-4">
+                        <TabsContent value="mobiles" className="mt-4 space-y-4">
                             <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2">
                                 <div className="relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
-                                        placeholder="Search by number, IMEI, Aries ID, or name..."
+                                        placeholder="Search by IMEI, Aries ID, or name..."
                                         className="pl-9"
                                         value={mobileSearchTerm}
                                         onChange={(e) => setMobileSearchTerm(e.target.value)}
@@ -839,8 +849,25 @@ export default function EquipmentStatusPage() {
                                 </div>
                             </div>
                             <Card>
-                                <CardHeader><CardTitle>Mobile &amp; SIM Allotment</CardTitle><CardDescription>List of all company-provided mobiles and SIM cards.</CardDescription></CardHeader>
-                                <CardContent><MobileSimTable items={filteredMobileSims} onEdit={handleEditMobileSim} /></CardContent>
+                                <CardHeader><CardTitle>Mobile Allotment</CardTitle><CardDescription>List of all company-provided mobile devices.</CardDescription></CardHeader>
+                                <CardContent><MobileSimTable items={filteredMobiles} onEdit={handleEditMobileSim} /></CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="sims" className="mt-4 space-y-4">
+                            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Search by number, Aries ID, or name..."
+                                        className="pl-9"
+                                        value={mobileSearchTerm}
+                                        onChange={(e) => setMobileSearchTerm(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            <Card>
+                                <CardHeader><CardTitle>SIM Card Allotment</CardTitle><CardDescription>List of all company-provided SIM cards.</CardDescription></CardHeader>
+                                <CardContent><MobileSimTable items={filteredSims} onEdit={handleEditMobileSim} /></CardContent>
                             </Card>
                         </TabsContent>
                         <TabsContent value="laptops-desktops" className="mt-4 space-y-4">
