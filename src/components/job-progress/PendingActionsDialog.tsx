@@ -1,5 +1,3 @@
-
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -67,15 +65,19 @@ export default function PendingActionsDialog({ isOpen, setIsOpen, onViewJob, onV
             <TabsContent value="jms" className="flex-1 overflow-auto mt-2">
               <ScrollArea className="h-full">
                 <div className="space-y-2 p-1">
-                  {pendingJms.length > 0 ? pendingJms.map(job => (
-                    <div key={job.id} className="border p-3 rounded-lg flex justify-between items-center cursor-pointer hover:bg-muted/50" onClick={() => onViewJob(job)}>
-                      <div>
-                        <p className="font-semibold">{job.title}</p>
-                        <p className="text-sm text-muted-foreground">Project: {projects.find(p => p.id === job.projectId)?.name || 'N/A'}</p>
+                  {pendingJms.length > 0 ? pendingJms.map(job => {
+                    const project = projects.find(p => p.id === job.projectId);
+                    const locationText = [project?.name, job.plantUnit].filter(Boolean).join(' / ');
+                    return (
+                      <div key={job.id} className="border p-3 rounded-lg flex justify-between items-center cursor-pointer hover:bg-muted/50" onClick={() => onViewJob(job)}>
+                        <div>
+                          <p className="font-semibold">{locationText || 'N/A'}</p>
+                          <p className="text-sm text-muted-foreground">{job.title}</p>
+                        </div>
+                        <Badge>{format(parseISO(job.lastUpdated), 'dd MMM')}</Badge>
                       </div>
-                      <Badge>{format(parseISO(job.lastUpdated), 'dd MMM')}</Badge>
-                    </div>
-                  )) : (
+                    )
+                  }) : (
                     <p className="text-muted-foreground text-center py-8">No pending JMS steps.</p>
                   )}
                 </div>
