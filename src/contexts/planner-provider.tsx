@@ -562,21 +562,29 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         if (!user) return;
         const newRef = push(ref(rtdb, 'jobProgress'));
         const now = new Date().toISOString();
+        
+        const isFirstStepSelfAssigned = data.steps.length > 0 && data.steps[0].assigneeId === user.id;
 
-        const initialSteps: JobStep[] = (data.steps || []).map((step, index) => ({
-            ...step,
-            id: `step-${index}`,
-            status: index === 0 ? 'Pending' : 'Not Started',
-            assigneeId: step.assigneeId || null,
-            dueDate: step.dueDate || null,
-        }));
-
+        const initialSteps: JobStep[] = (data.steps || []).map((step, index) => {
+            const isFirstStep = index === 0;
+            const isSelfAssigned = isFirstStep && step.assigneeId === user.id;
+    
+            return {
+                ...step,
+                id: `step-${index}`,
+                status: isSelfAssigned ? 'Acknowledged' : (isFirstStep ? 'Pending' : 'Not Started'),
+                assigneeId: step.assigneeId || null,
+                dueDate: step.dueDate || null,
+                acknowledgedAt: isSelfAssigned ? now : null,
+            };
+        });
+    
         const newJob: Omit<JobProgress, 'id'> = {
           title: data.title,
           creatorId: user.id,
           createdAt: now,
           lastUpdated: now,
-          status: 'Not Started',
+          status: isFirstStepSelfAssigned ? 'In Progress' : 'Not Started',
           steps: initialSteps,
           projectId: data.projectId,
           plantUnit: data.plantUnit,
@@ -1018,12 +1026,15 @@ const completeAndFinalizeJob = useCallback((jobId: string, currentStepId: string
             toast({ title: "Permission Denied", variant: "destructive" });
             return;
         }
+
+        const isSelfAssigned = newStepAssigneeId === user.id;
     
         const newStep: JobStep = {
             id: `step-${job.steps.length}`,
             name: newStepName,
             assigneeId: newStepAssigneeId,
-            status: 'Pending',
+            status: isSelfAssigned ? 'Acknowledged' : 'Pending',
+            acknowledgedAt: isSelfAssigned ? new Date().toISOString() : null,
             description: `Job reopened by ${user.name}.`,
             dueDate: null,
         };
@@ -1188,15 +1199,17 @@ const completeAndFinalizeJob = useCallback((jobId: string, currentStepId: string
             createDataListener('jobRecordPlants', setJobRecordPlantsById),
             onValue(ref(rtdb, 'jobRecords'), (snapshot) => {
                 const data = snapshot.val();
-                const monthRecords: { [key: string]: JobRecord } = {};
                 if (data && typeof data === 'object') {
-                    for (const key in data) {
-                        if (Object.prototype.hasOwnProperty.call(data, key) && /^\d{4}-\d{2}$/.test(key)) {
-                            monthRecords[key] = data[key];
-                        }
+                  const monthRecords: { [key: string]: JobRecord } = {};
+                  for (const key in data) {
+                    if (Object.prototype.hasOwnProperty.call(data, key) && /^\d{4}-\d{2}$/.test(key)) {
+                      monthRecords[key] = data[key];
                     }
+                  }
+                  setJobRecords(monthRecords);
+                } else {
+                  setJobRecords({});
                 }
-                setJobRecords(monthRecords);
             }),
              onValue(ref(rtdb, 'vehicleUsageRecords'), (snapshot) => {
                 const data = snapshot.val() || {};
@@ -1246,3 +1259,4 @@ export const usePlanner = (): PlannerContextType => {
   }
   return context;
 };
+
