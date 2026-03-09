@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -45,6 +46,7 @@ export default function JobProgressPage() {
   
   const [jmsSearchTerm, setJmsSearchTerm] = useState('');
   const [jmsAssigneeFilter, setJmsAssigneeFilter] = useState('all');
+  const [jmsProjectFilter, setJmsProjectFilter] = useState('all');
   const [timesheetSearchTerm, setTimesheetSearchTerm] = useState('');
   const [timesheetSubmitterFilter, setTimesheetSubmitterFilter] = useState('all');
   const [timesheetProjectFilter, setTimesheetProjectFilter] = useState('all');
@@ -120,41 +122,10 @@ export default function JobProgressPage() {
   const filteredJobs = useMemo(() => {
     let jobs = visibleJobs;
 
-    if (jmsSearchTerm) {
-      // Global search: ignores month filter, but includes assignee filter
-      return jobs.filter(job => {
-        let assigneeMatch = true;
-        if (jmsAssigneeFilter !== 'all') {
-          const returnedStep = job.steps.find(s => s.isReturned === true);
-          const pendingStep = job.steps.find(s => s.status === 'Pending');
-          const acknowledgedStep = job.steps.find(s => s.status === 'Acknowledged');
-          const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
-          
-          if (job.status === 'Completed') {
-              const lastStep = job.steps[job.steps.length - 1];
-              const completerId = lastStep?.completedBy;
-              assigneeMatch = completerId === jmsAssigneeFilter;
-          } else {
-              assigneeMatch = currentStep?.assigneeId === jmsAssigneeFilter;
-          }
-        }
-        
-        const lowercasedTerm = jmsSearchTerm.toLowerCase();
-        const project = projects.find(p => p.id === job.projectId);
-        const amountStr = job.amount?.toString() || '';
-        const searchMatch = (
-            job.title.toLowerCase().includes(lowercasedTerm) ||
-            (job.jmsNo && job.jmsNo.toLowerCase().includes(lowercasedTerm)) ||
-            (project && project.name.toLowerCase().includes(lowercasedTerm)) ||
-            (job.plantUnit && job.plantUnit.toLowerCase().includes(lowercasedTerm)) ||
-            amountStr.includes(lowercasedTerm)
-        );
-
-        return assigneeMatch && searchMatch;
-      });
+    // Apply project and assignee filters first
+    if (jmsProjectFilter !== 'all') {
+      jobs = jobs.filter(job => job.projectId === jmsProjectFilter);
     }
-    
-    // No global search, so apply assignee filter and then month filter.
     if (jmsAssigneeFilter !== 'all') {
       jobs = jobs.filter(job => {
         const returnedStep = job.steps.find(s => s.isReturned === true);
@@ -172,7 +143,23 @@ export default function JobProgressPage() {
       });
     }
 
-    // Filter by month
+    // Then, if there's a search term, apply it globally (ignoring month)
+    if (jmsSearchTerm) {
+      const lowercasedTerm = jmsSearchTerm.toLowerCase();
+      return jobs.filter(job => {
+        const project = projects.find(p => p.id === job.projectId);
+        const amountStr = job.amount?.toString() || '';
+        return (
+            job.title.toLowerCase().includes(lowercasedTerm) ||
+            (job.jmsNo && job.jmsNo.toLowerCase().includes(lowercasedTerm)) ||
+            (project && project.name.toLowerCase().includes(lowercasedTerm)) ||
+            (job.plantUnit && job.plantUnit.toLowerCase().includes(lowercasedTerm)) ||
+            amountStr.includes(lowercasedTerm)
+        );
+      });
+    }
+    
+    // Otherwise, filter by month
     jobs = jobs.filter(job => {
         const jobStartDate = job.dateFrom ? parseISO(job.dateFrom) : parseISO(job.createdAt);
         const jobEndDate = job.dateTo ? parseISO(job.dateTo) : null;
@@ -187,7 +174,7 @@ export default function JobProgressPage() {
     });
 
     return jobs;
-  }, [visibleJobs, jmsSearchTerm, jmsAssigneeFilter, projects, currentMonth]);
+  }, [visibleJobs, jmsSearchTerm, jmsAssigneeFilter, jmsProjectFilter, projects, currentMonth]);
 
 
   const filteredTimesheets = useMemo(() => {
@@ -335,6 +322,13 @@ export default function JobProgressPage() {
                           onChange={e => setJmsSearchTerm(e.target.value)}
                       />
                   </div>
+                  <Select value={jmsProjectFilter} onValueChange={setJmsProjectFilter}>
+                    <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by project..." /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Projects</SelectItem>
+                        {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                   <Select value={jmsAssigneeFilter} onValueChange={setJmsAssigneeFilter}>
                       <SelectTrigger className="w-[200px]">
                           <SelectValue placeholder="Filter by assignee..." />

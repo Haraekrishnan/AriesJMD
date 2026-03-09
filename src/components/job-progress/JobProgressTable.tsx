@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -35,7 +36,7 @@ const statusVariantMap: { [key in JobProgressStatus]: 'default' | 'secondary' | 
 
 export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   const { users, projects } = useAppContext();
-  const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: true }]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: false }]);
   
   const columns: ColumnDef<JobProgress>[] = useMemo(
     () => [
