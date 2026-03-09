@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -47,6 +46,8 @@ export default function JobProgressPage() {
   const [jmsSearchTerm, setJmsSearchTerm] = useState('');
   const [jmsAssigneeFilter, setJmsAssigneeFilter] = useState('all');
   const [timesheetSearchTerm, setTimesheetSearchTerm] = useState('');
+  const [timesheetSubmitterFilter, setTimesheetSubmitterFilter] = useState('all');
+  const [timesheetProjectFilter, setTimesheetProjectFilter] = useState('all');
   const [docSearchTerm, setDocSearchTerm] = useState('');
 
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
@@ -190,7 +191,7 @@ export default function JobProgressPage() {
 
 
   const filteredTimesheets = useMemo(() => {
-    const visibleTimesheets = timesheets.filter(ts => {
+    let visibleTimesheets = timesheets.filter(ts => {
       const canViewAll = user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Document Controller';
       if (canViewAll) return true;
 
@@ -200,14 +201,17 @@ export default function JobProgressPage() {
       return user.projectIds.includes(ts.projectId);
     });
 
+    if (timesheetSubmitterFilter !== 'all') {
+        visibleTimesheets = visibleTimesheets.filter(ts => ts.submitterId === timesheetSubmitterFilter);
+    }
+    if (timesheetProjectFilter !== 'all') {
+        visibleTimesheets = visibleTimesheets.filter(ts => ts.projectId === timesheetProjectFilter);
+    }
+
     if (timesheetSearchTerm) {
         const lowercasedTerm = timesheetSearchTerm.toLowerCase();
-        return visibleTimesheets.filter(ts => {
-            const project = projects.find(p => p.id === ts.projectId);
-            return (
-                (project && project.name.toLowerCase().includes(lowercasedTerm)) ||
-                (ts.plantUnit && ts.plantUnit.toLowerCase().includes(lowercasedTerm))
-            );
+        visibleTimesheets = visibleTimesheets.filter(ts => {
+            return (ts.plantUnit && ts.plantUnit.toLowerCase().includes(lowercasedTerm));
         });
     }
 
@@ -221,7 +225,7 @@ export default function JobProgressPage() {
                isSameMonth(tsEndDate, currentMonth) ||
                (isBefore(tsStartDate, startOfMonth(currentMonth)) && isAfter(tsEndDate, endOfMonth(currentMonth)));
     });
-  }, [timesheets, user, timesheetSearchTerm, projects, currentMonth]);
+  }, [timesheets, user, timesheetSearchTerm, projects, currentMonth, timesheetSubmitterFilter, timesheetProjectFilter]);
   
   const filteredDocuments = useMemo(() => {
     if (!docSearchTerm) return documentMovements;
@@ -258,6 +262,12 @@ export default function JobProgressPage() {
   const handleTodayClick = () => {
     setCurrentMonth(startOfMonth(new Date()));
   };
+
+    const allSubmitters = useMemo(() => {
+        const submitterIds = new Set(timesheets.map(ts => ts.submitterId));
+        return users.filter(u => submitterIds.has(u.id));
+    }, [timesheets, users]);
+
 
   return (
     <div className="space-y-4 h-full flex flex-col">
@@ -373,14 +383,30 @@ export default function JobProgressPage() {
         </TabsContent>
         <TabsContent value="timesheets" className="flex-1 overflow-hidden flex flex-col">
           <div className="flex justify-between items-center pt-2 pb-4">
-              <div className="relative w-full sm:w-auto max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                    placeholder="Search by project or unit..."
-                    className="pl-9"
-                    value={timesheetSearchTerm}
-                    onChange={e => setTimesheetSearchTerm(e.target.value)}
-                />
+              <div className="flex gap-2 items-center">
+                <div className="relative w-full sm:w-auto max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                      placeholder="Search by unit..."
+                      className="pl-9"
+                      value={timesheetSearchTerm}
+                      onChange={e => setTimesheetSearchTerm(e.target.value)}
+                  />
+                </div>
+                 <Select value={timesheetProjectFilter} onValueChange={setTimesheetProjectFilter}>
+                    <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by project..." /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Projects</SelectItem>
+                        {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+                 <Select value={timesheetSubmitterFilter} onValueChange={setTimesheetSubmitterFilter}>
+                    <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by submitter..." /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Submitters</SelectItem>
+                        {allSubmitters.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                </Select>
               </div>
               <div className="flex items-center gap-2">
                 <Button variant={timesheetView === 'board' ? 'secondary' : 'outline'} size="icon" onClick={() => setTimesheetView('board')}><LayoutGrid className="h-4 w-4" /></Button>
