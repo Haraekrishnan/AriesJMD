@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -119,9 +118,9 @@ export default function JobProgressPage() {
   const filteredJobs = useMemo(() => {
     let jobs = visibleJobs;
 
-    // Filter by search term and assignee first if they exist
-    if (jmsSearchTerm || jmsAssigneeFilter !== 'all') {
-      jobs = jobs.filter(job => {
+    if (jmsSearchTerm) {
+      // Global search: ignores month filter, but includes assignee filter
+      return jobs.filter(job => {
         let assigneeMatch = true;
         if (jmsAssigneeFilter !== 'all') {
           const returnedStep = job.steps.find(s => s.isReturned === true);
@@ -138,37 +137,52 @@ export default function JobProgressPage() {
           }
         }
         
-        let searchMatch = true;
-        if (jmsSearchTerm) {
-            const lowercasedTerm = jmsSearchTerm.toLowerCase();
-            const project = projects.find(p => p.id === job.projectId);
-            const amountStr = job.amount?.toString() || '';
-            searchMatch = (
-                job.title.toLowerCase().includes(lowercasedTerm) ||
-                (job.jmsNo && job.jmsNo.toLowerCase().includes(lowercasedTerm)) ||
-                (project && project.name.toLowerCase().includes(lowercasedTerm)) ||
-                (job.plantUnit && job.plantUnit.toLowerCase().includes(lowercasedTerm)) ||
-                amountStr.includes(lowercasedTerm)
-            );
-        }
+        const lowercasedTerm = jmsSearchTerm.toLowerCase();
+        const project = projects.find(p => p.id === job.projectId);
+        const amountStr = job.amount?.toString() || '';
+        const searchMatch = (
+            job.title.toLowerCase().includes(lowercasedTerm) ||
+            (job.jmsNo && job.jmsNo.toLowerCase().includes(lowercasedTerm)) ||
+            (project && project.name.toLowerCase().includes(lowercasedTerm)) ||
+            (job.plantUnit && job.plantUnit.toLowerCase().includes(lowercasedTerm)) ||
+            amountStr.includes(lowercasedTerm)
+        );
 
         return assigneeMatch && searchMatch;
       });
-    } else {
-        // If no search, filter by month
-        jobs = jobs.filter(job => {
-            const jobStartDate = job.dateFrom ? parseISO(job.dateFrom) : parseISO(job.createdAt);
-            const jobEndDate = job.dateTo ? parseISO(job.dateTo) : null;
-            if (!isValid(jobStartDate)) return false;
-
-            if (jobEndDate && isValid(jobEndDate)) {
-                return isSameMonth(jobStartDate, currentMonth) || 
-                       isSameMonth(jobEndDate, currentMonth) ||
-                       (isBefore(jobStartDate, startOfMonth(currentMonth)) && isAfter(jobEndDate, endOfMonth(currentMonth)));
-            }
-            return isSameMonth(jobStartDate, currentMonth);
-        });
     }
+    
+    // No global search, so apply assignee filter and then month filter.
+    if (jmsAssigneeFilter !== 'all') {
+      jobs = jobs.filter(job => {
+        const returnedStep = job.steps.find(s => s.isReturned === true);
+        const pendingStep = job.steps.find(s => s.status === 'Pending');
+        const acknowledgedStep = job.steps.find(s => s.status === 'Acknowledged');
+        const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
+        
+        if (job.status === 'Completed') {
+            const lastStep = job.steps[job.steps.length - 1];
+            const completerId = lastStep?.completedBy;
+            return completerId === jmsAssigneeFilter;
+        } else {
+            return currentStep?.assigneeId === jmsAssigneeFilter;
+        }
+      });
+    }
+
+    // Filter by month
+    jobs = jobs.filter(job => {
+        const jobStartDate = job.dateFrom ? parseISO(job.dateFrom) : parseISO(job.createdAt);
+        const jobEndDate = job.dateTo ? parseISO(job.dateTo) : null;
+        if (!isValid(jobStartDate)) return false;
+
+        if (jobEndDate && isValid(jobEndDate)) {
+            return isSameMonth(jobStartDate, currentMonth) || 
+                   isSameMonth(jobEndDate, currentMonth) ||
+                   (isBefore(jobStartDate, startOfMonth(currentMonth)) && isAfter(jobEndDate, endOfMonth(currentMonth)));
+        }
+        return isSameMonth(jobStartDate, currentMonth);
+    });
 
     return jobs;
   }, [visibleJobs, jmsSearchTerm, jmsAssigneeFilter, projects, currentMonth]);
@@ -252,13 +266,11 @@ export default function JobProgressPage() {
                     )}
                 </Button>
             )}
-            {activeTab === 'jms' && !jmsSearchTerm && (
-                <div className="flex items-center gap-1">
-                    <Button variant="outline" size="icon" onClick={() => changeMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
-                    <Button variant="outline" className="w-32" onClick={handleTodayClick}>{format(currentMonth, 'MMMM yyyy')}</Button>
-                    <Button variant="outline" size="icon" onClick={() => changeMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
-                </div>
-            )}
+            <div className="flex items-center gap-1">
+                <Button variant="outline" size="icon" onClick={() => changeMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
+                <Button variant="outline" className="w-32" onClick={handleTodayClick}>{format(currentMonth, 'MMMM yyyy')}</Button>
+                <Button variant="outline" size="icon" onClick={() => changeMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
+            </div>
             {canCreateJms && (
               <Button onClick={() => setIsCreateJobOpen(true)}>
                   <PlusCircle className="mr-2 h-4 w-4" /> Create New JMS
@@ -298,7 +310,9 @@ export default function JobProgressPage() {
                       <SelectContent>
                           <SelectItem value="all">All Assignees</SelectItem>
                           {assignableUsers.map(u => (
-                              <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                              <SelectItem key={u.id} value={u.id} disabled={u.status === 'locked'}>
+                                  {u.name}{u.status === 'locked' && ' (Locked)'}
+                              </SelectItem>
                           ))}
                       </SelectContent>
                   </Select>
