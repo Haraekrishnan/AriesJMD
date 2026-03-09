@@ -220,12 +220,12 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   });
 
   if (jobs.length === 0) {
-    return <p className="text-center text-muted-foreground py-8">No jobs found for the selected month.</p>;
+    return <p className="text-center text-muted-foreground py-8">No jobs found.</p>;
   }
 
   return (
     <ScrollArea className="h-full">
-        <Table>
+        <Table className="text-sm">
           <TableHeader>
             {table.getHeaderGroups().map(headerGroup => (
               <TableRow key={headerGroup.id}>

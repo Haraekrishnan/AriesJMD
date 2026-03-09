@@ -243,7 +243,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
                     <Input {...form.register('foNo')} />
                 </div>
                  <div className="space-y-1">
-                    <Label>Amount</Label>
+                    <Label>Value</Label>
                     <Input type="number" {...form.register('amount')} />
                 </div>
                  <div className="space-y-1">

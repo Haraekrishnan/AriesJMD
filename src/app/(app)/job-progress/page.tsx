@@ -4,11 +4,11 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Bell, Clock, Folder, List, LayoutGrid, Settings, X, Info, Search } from 'lucide-react';
+import { PlusCircle, Bell, Clock, Folder, List, LayoutGrid, Settings, X, Info, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress, Timesheet, Role, DocumentMovement } from '@/lib/types';
-import { format, startOfMonth, addMonths, subMonths, isSameMonth, parseISO, isBefore, isAfter, startOfToday, differenceInDays } from 'date-fns';
+import { format, startOfMonth, addMonths, subMonths, isSameMonth, parseISO, isBefore, isAfter, startOfToday, differenceInDays, endOfMonth, isValid } from 'date-fns';
 import CreateTimesheetDialog from '@/components/job-progress/CreateTimesheetDialog';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -49,6 +49,7 @@ export default function JobProgressPage() {
   const [timesheetSearchTerm, setTimesheetSearchTerm] = useState('');
   const [docSearchTerm, setDocSearchTerm] = useState('');
 
+  const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
   const [jmsView, setJmsView] = useState<'board' | 'list'>(user?.viewPreferences?.jmsTracker || 'list');
   const [timesheetView, setTimesheetView] = useState<'board' | 'list'>(user?.viewPreferences?.timesheetTracker || 'list');
 
@@ -115,21 +116,25 @@ export default function JobProgressPage() {
   }), [jobProgress, user, projects]);
 
   const filteredJobs = useMemo(() => {
-    return visibleJobs.filter(job => {
+    let jobs = visibleJobs;
+
+    // Filter by search term and assignee first if they exist
+    if (jmsSearchTerm || jmsAssigneeFilter !== 'all') {
+      jobs = jobs.filter(job => {
         let assigneeMatch = true;
         if (jmsAssigneeFilter !== 'all') {
-            const returnedStep = job.steps.find(s => s.isReturned === true);
-            const pendingStep = job.steps.find(s => s.status === 'Pending');
-            const acknowledgedStep = job.steps.find(s => s.status === 'Acknowledged');
-            const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
-            
-            if (job.status === 'Completed') {
-                const lastStep = job.steps[job.steps.length - 1];
-                const completerId = lastStep?.completedBy;
-                assigneeMatch = completerId === jmsAssigneeFilter;
-            } else {
-                assigneeMatch = currentStep?.assigneeId === jmsAssigneeFilter;
-            }
+          const returnedStep = job.steps.find(s => s.isReturned === true);
+          const pendingStep = job.steps.find(s => s.status === 'Pending');
+          const acknowledgedStep = job.steps.find(s => s.status === 'Acknowledged');
+          const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
+          
+          if (job.status === 'Completed') {
+              const lastStep = job.steps[job.steps.length - 1];
+              const completerId = lastStep?.completedBy;
+              assigneeMatch = completerId === jmsAssigneeFilter;
+          } else {
+              assigneeMatch = currentStep?.assigneeId === jmsAssigneeFilter;
+          }
         }
         
         let searchMatch = true;
@@ -147,9 +152,26 @@ export default function JobProgressPage() {
         }
 
         return assigneeMatch && searchMatch;
-    });
-  
-  }, [visibleJobs, user, jmsSearchTerm, jmsAssigneeFilter, projects]);
+      });
+    } else {
+        // If no search, filter by month
+        jobs = jobs.filter(job => {
+            const jobStartDate = job.dateFrom ? parseISO(job.dateFrom) : parseISO(job.createdAt);
+            const jobEndDate = job.dateTo ? parseISO(job.dateTo) : null;
+            if (!isValid(jobStartDate)) return false;
+
+            if (jobEndDate && isValid(jobEndDate)) {
+                return isSameMonth(jobStartDate, currentMonth) || 
+                       isSameMonth(jobEndDate, currentMonth) ||
+                       (isBefore(jobStartDate, startOfMonth(currentMonth)) && isAfter(jobEndDate, endOfMonth(currentMonth)));
+            }
+            return isSameMonth(jobStartDate, currentMonth);
+        });
+    }
+
+    return jobs;
+  }, [visibleJobs, jmsSearchTerm, jmsAssigneeFilter, projects, currentMonth]);
+
 
   const filteredTimesheets = useMemo(() => {
     const visibleTimesheets = timesheets.filter(ts => {
@@ -182,6 +204,23 @@ export default function JobProgressPage() {
 
 
   const canViewLongPending = user && ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role);
+  
+  const handleViewJob = (job: JobProgress) => {
+    const jobDate = parseISO(job.dateFrom || job.createdAt);
+    // If there's a search term active and the job is not in the current month, switch months
+    if (jmsSearchTerm && !isSameMonth(jobDate, currentMonth)) {
+        setCurrentMonth(startOfMonth(jobDate));
+    }
+    setViewingJob(job);
+  };
+  
+  const changeMonth = (amount: number) => {
+    setCurrentMonth(prev => addMonths(prev, amount));
+  };
+  
+  const handleTodayClick = () => {
+    setCurrentMonth(startOfMonth(new Date()));
+  };
 
   return (
     <div className="space-y-4 h-full flex flex-col">
@@ -233,20 +272,6 @@ export default function JobProgressPage() {
           <TabsTrigger value="documents">Document Tracker</TabsTrigger>
         </TabsList>
         <TabsContent value="jms" className="flex-1 overflow-hidden flex flex-col">
-           {showViewNotice && (
-                <div className="relative mt-4 mb-2">
-                    <Alert className="pr-12 border-blue-500/50 text-blue-900 bg-blue-50 dark:border-blue-700 dark:text-blue-200 dark:bg-blue-900/30">
-                        <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        <AlertTitle className="font-semibold text-blue-800 dark:text-blue-100">New! List View & Default Settings</AlertTitle>
-                        <AlertDescription className="text-blue-700 dark:text-blue-300">
-                            You can now switch between Board and List views. Use the <Settings className="inline h-4 w-4" /> icon to set your preferred default view for this tracker.
-                        </AlertDescription>
-                    </Alert>
-                    <Button variant="ghost" size="icon" className="absolute top-1/2 -translate-y-1/2 right-2 h-8 w-8 text-blue-800 dark:text-blue-100 hover:bg-blue-100 dark:hover:bg-blue-900" onClick={() => setShowViewNotice(false)}>
-                        <X className="h-4 w-4" />
-                    </Button>
-                </div>
-            )}
            <div className="flex justify-between items-center pt-2 pb-4">
               <div className="flex gap-2 items-center">
                   <div className="relative w-full sm:w-auto max-w-sm">
@@ -269,6 +294,11 @@ export default function JobProgressPage() {
                           ))}
                       </SelectContent>
                   </Select>
+                   <div className="flex items-center gap-1">
+                      <Button variant="outline" size="icon" onClick={() => changeMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
+                      <Button variant="outline" className="w-32" onClick={handleTodayClick}>{format(currentMonth, 'MMMM yyyy')}</Button>
+                      <Button variant="outline" size="icon" onClick={() => changeMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
+                    </div>
               </div>
               <div className="flex items-center gap-2">
                 <Button variant={jmsView === 'board' ? 'secondary' : 'outline'} size="icon" onClick={() => setJmsView('board')}><LayoutGrid className="h-4 w-4" /></Button>
@@ -297,26 +327,12 @@ export default function JobProgressPage() {
               </div>
           </div>
           {jmsView === 'board' ? (
-            <JobProgressBoard jobs={filteredJobs} onViewJob={setViewingJob} />
+            <JobProgressBoard jobs={filteredJobs} onViewJob={handleViewJob} />
           ) : (
-            <JobProgressTable jobs={filteredJobs} onViewJob={setViewingJob} />
+            <JobProgressTable jobs={filteredJobs} onViewJob={handleViewJob} />
           )}
         </TabsContent>
         <TabsContent value="timesheets" className="flex-1 overflow-hidden flex flex-col">
-          {showViewNotice && (
-              <div className="relative mt-4 mb-2">
-                    <Alert className="pr-12 border-blue-500/50 text-blue-900 bg-blue-50 dark:border-blue-700 dark:text-blue-200 dark:bg-blue-900/30">
-                        <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        <AlertTitle className="font-semibold text-blue-800 dark:text-blue-100">New! List View & Default Settings</AlertTitle>
-                        <AlertDescription className="text-blue-700 dark:text-blue-300">
-                            You can now switch between Board and List views. Use the <Settings className="inline h-4 w-4" /> icon to set your preferred default view for this tracker.
-                        </AlertDescription>
-                    </Alert>
-                    <Button variant="ghost" size="icon" className="absolute top-1/2 -translate-y-1/2 right-2 h-8 w-8 text-blue-800 dark:text-blue-100 hover:bg-blue-100 dark:hover:bg-blue-900" onClick={() => setShowViewNotice(false)}>
-                        <X className="h-4 w-4" />
-                    </Button>
-                </div>
-          )}
           <div className="flex justify-between items-center pt-2 pb-4">
               <div className="relative w-full sm:w-auto max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -403,7 +419,7 @@ export default function JobProgressPage() {
       <PendingActionsDialog 
         isOpen={isPendingDialogOpen} 
         setIsOpen={setIsPendingDialogOpen} 
-        onViewJob={setViewingJob}
+        onViewJob={handleViewJob}
         onViewTimesheet={setViewingTimesheet}
         onViewDocument={setViewingDocument}
       />
@@ -411,7 +427,7 @@ export default function JobProgressPage() {
         isOpen={isLongPendingDialogOpen}
         setIsOpen={setIsLongPendingDialogOpen}
         longPendingJobs={longPendingJobs}
-        onViewJob={setViewingJob}
+        onViewJob={handleViewJob}
       />
     </div>
   );
