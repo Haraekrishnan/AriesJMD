@@ -99,6 +99,19 @@ export default function TimesheetTrackerTable({
         cell: ({ row }) => <div className="text-center font-semibold">{row.original.numberOfTimesheets}</div>
       },
       {
+        accessorKey: 'submissionDate',
+        header: ({ column }) => (
+            <div className="flex items-center cursor-pointer" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+              Submitted Date <ArrowUpDown className="ml-2 h-4 w-4" />
+            </div>
+        ),
+        cell: ({ row }) => (
+          <div className="whitespace-nowrap">
+            {format(parseISO(row.original.submissionDate), 'dd MMM, yyyy')}
+          </div>
+        )
+      },
+      {
         accessorKey: 'status',
         header: 'Status',
         cell: ({ row }) => <Badge variant={statusVariantMap[row.original.status]}>{row.original.status}</Badge>
@@ -106,7 +119,7 @@ export default function TimesheetTrackerTable({
       {
         id: 'lastUpdated',
         header: ({ column }) => (
-            <div className="flex items-center cursor-pointer" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+            <div className="flex items-center cursor-pointer" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
               Last Updated <ArrowUpDown className="ml-2 h-4 w-4" />
             </div>
         ),
@@ -173,6 +186,6 @@ export default function TimesheetTrackerTable({
                 ))}
             </TableBody>
         </Table>
-    </ScrollArea>
+      </ScrollArea>
   );
 }
