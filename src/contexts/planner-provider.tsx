@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -1186,10 +1187,15 @@ const completeAndFinalizeJob = useCallback((jobId: string, currentStepId: string
             createDataListener('jobSchedules', setJobSchedulesById),
             createDataListener('jobRecordPlants', setJobRecordPlantsById),
             onValue(ref(rtdb, 'jobRecords'), (snapshot) => {
-                const data = snapshot.val() || {};
-                const monthRecords = Object.fromEntries(
-                    Object.entries(data).filter(([key]) => /^\d{4}-\d{2}$/.test(key))
-                );
+                const data = snapshot.val();
+                const monthRecords: { [key: string]: JobRecord } = {};
+                if (data && typeof data === 'object') {
+                    for (const key in data) {
+                        if (Object.prototype.hasOwnProperty.call(data, key) && /^\d{4}-\d{2}$/.test(key)) {
+                            monthRecords[key] = data[key];
+                        }
+                    }
+                }
                 setJobRecords(monthRecords);
             }),
              onValue(ref(rtdb, 'vehicleUsageRecords'), (snapshot) => {
