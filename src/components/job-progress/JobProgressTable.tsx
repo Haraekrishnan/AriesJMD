@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -36,7 +35,7 @@ const statusVariantMap: { [key in JobProgressStatus]: 'default' | 'secondary' | 
 
 export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   const { users, projects } = useAppContext();
-  const [sorting, setSorting] = useState<SortingState>([{ id: 'lastUpdated', desc: true }]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: true }]);
   
   const columns: ColumnDef<JobProgress>[] = useMemo(
     () => [
@@ -158,15 +157,15 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
         }
       },
       { 
-        accessorKey: 'lastUpdated', 
+        accessorKey: 'createdAt', 
         header: ({ column }) => (
           <div className="flex items-center cursor-pointer" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-            Last Updated <ArrowUpDown className="ml-2 h-4 w-4" />
+            Created <ArrowUpDown className="ml-2 h-4 w-4" />
           </div>
         ),
         cell: ({ row }) => (
             <div className="text-xs whitespace-nowrap text-muted-foreground">
-                {formatDistanceToNow(parseISO(row.original.lastUpdated), { addSuffix: true })}
+                {formatDistanceToNow(parseISO(row.original.createdAt), { addSuffix: true })}
             </div>
         )
       },
