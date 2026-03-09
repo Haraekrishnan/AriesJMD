@@ -74,7 +74,7 @@ export default function LongPendingJmsDialog({ isOpen, setIsOpen, longPendingJob
                                 <div className="mt-2 pt-2 border-t text-xs space-y-1">
                                     <div className="flex items-center gap-2">
                                         <span className="font-semibold text-muted-foreground">Current Step:</span>
-                                        <span>{currentStep.name}</span>
+                                        <Badge variant="outline">{currentStep.name}</Badge>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="font-semibold text-muted-foreground">Status:</span>
