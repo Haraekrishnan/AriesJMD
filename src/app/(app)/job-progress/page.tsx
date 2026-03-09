@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Bell, Clock, Folder, List, LayoutGrid, Settings, X, Info, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PlusCircle, Bell, Clock, Folder, List, LayoutGrid, Settings, X, Info, Search, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress, Timesheet, Role, DocumentMovement } from '@/lib/types';
@@ -28,6 +28,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
@@ -254,6 +255,20 @@ export default function JobProgressPage() {
         const submitterIds = new Set(timesheets.map(ts => ts.submitterId));
         return users.filter(u => submitterIds.has(u.id));
     }, [timesheets, users]);
+    
+    if (!can.view_job_progress) {
+      return (
+         <Card className="w-full max-w-md mx-auto mt-20">
+             <CardHeader className="text-center items-center">
+                 <div className="mx-auto bg-destructive/10 p-3 rounded-full w-fit mb-4">
+                     <AlertTriangle className="h-10 w-10 text-destructive" />
+                 </div>
+                 <CardTitle>Access Denied</CardTitle>
+                 <CardDescription>You do not have permission to view the JMS Tracker.</CardDescription>
+             </CardHeader>
+         </Card>
+     );
+    }
 
 
   return (
