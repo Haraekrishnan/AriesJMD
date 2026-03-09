@@ -91,6 +91,11 @@ export default function TimesheetTrackerTable({
         )
       },
       {
+        accessorKey: 'numberOfTimesheets',
+        header: 'Qty',
+        cell: ({ row }) => <div className="text-center font-semibold">{row.original.numberOfTimesheets}</div>
+      },
+      {
         accessorKey: 'status',
         header: 'Status',
         cell: ({ row }) => <Badge variant={statusVariantMap[row.original.status]}>{row.original.status}</Badge>
