@@ -1,8 +1,14 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAppContext } from '@/contexts/app-provider';
@@ -18,7 +24,7 @@ import {
     useReactTable,
     SortingState,
   } from "@tanstack/react-table"
-import { ScrollArea } from '../ui/scroll-area';
+import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 
@@ -229,7 +235,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   }
 
   return (
-    <ScrollArea className="h-full">
+    <ScrollArea className="h-full whitespace-nowrap">
         <Table className="text-sm">
           <TableHeader>
             {table.getHeaderGroups().map(headerGroup => (
@@ -260,6 +266,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             ))}
           </TableBody>
         </Table>
+        <ScrollBar orientation="horizontal" />
       </ScrollArea>
   );
 }
