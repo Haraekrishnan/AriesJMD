@@ -125,6 +125,7 @@ export const ALL_PERMISSIONS = [
   'view_manpower_list',
   'approve_store_requests',
   'manage_inventory',
+  'view_inventory',
   'manage_equipment_status',
   'manage_announcements',
   'create_broadcast',
@@ -1009,97 +1010,6 @@ export type Timesheet = {
     rejectedDate?: string;
     rejectionReason?: string;
     comments?: { [key: string]: Comment };
-};
-
-// POWER TOOLS
-export type PneumaticDrillingMachine = {
-  id: string;
-  serialNumber: string;
-  ariesId?: string;
-  projectId: string;
-  status: string;
-  remarks?: string;
-};
-
-export type PneumaticAngleGrinder = {
-  id: string;
-  serialNumber: string;
-  ariesId?: string;
-  projectId: string;
-  status: string;
-  remarks?: string;
-};
-
-export type WiredDrillingMachine = {
-  id: string;
-  serialNumber: string;
-  ariesId?: string;
-  projectId: string;
-  status: string;
-  remarks?: string;
-};
-
-export type CordlessDrillingMachine = {
-  id: string;
-  serialNumber: string;
-  ariesId?: string;
-  projectId: string;
-  status: string;
-  remarks?: string;
-};
-
-export type WiredAngleGrinder = {
-  id: string;
-  serialNumber: string;
-  ariesId?: string;
-  projectId: string;
-  status: string;
-  remarks?: string;
-};
-
-export type CordlessAngleGrinder = {
-  id: string;
-  serialNumber: string;
-  ariesId?: string;
-  projectId: string;
-  status: string;
-  remarks?: string;
-};
-
-export type CordlessReciprocatingSaw = {
-  id: string;
-  serialNumber: string;
-  ariesId?: string;
-  projectId: string;
-  status: string;
-  remarks?: string;
-};
-
-export type NotificationEventKey = 
-  | 'onNewTask' 
-  | 'onTaskStatusUpdate' 
-  | 'onTaskComment' 
-  | 'onTaskForApproval' 
-  | 'onTaskApproved' 
-  | 'onTaskReturned'
-  | 'onInternalRequest'
-  | 'onInternalRequestUpdate'
-  | 'onPpeRequest'
-  | 'onManagementRequest'
-  | 'onUnlockRequest';
-
-export type NotificationEventSettings = {
-  enabled: boolean;
-  notifyInvolvedUser: boolean; // e.g., the assignee
-  notifyCreator: boolean;
-  additionalRecipients?: string; // comma-separated emails
-};
-
-export type NotificationSettings = {
-  additionalRecipients?: string;
-  events?: {
-    [key in NotificationEventKey]?: NotificationEventSettings;
-  };
 };
 
 export type DocumentMovementStatus = 'Pending' | 'Acknowledged' | 'Returned' | 'Completed';

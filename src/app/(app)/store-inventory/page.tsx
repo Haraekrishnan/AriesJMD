@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -56,6 +57,19 @@ export default function StoreInventoryPage() {
     
     const [selectedItemsForTransfer, setSelectedItemsForTransfer] = useState<InventoryItem[]>([]);
 
+    if (!can.view_inventory && !can.manage_inventory) {
+        return (
+            <Card className="w-full max-w-md mx-auto mt-20">
+                <CardHeader className="text-center items-center">
+                    <div className="mx-auto bg-destructive/10 p-3 rounded-full w-fit mb-4">
+                        <AlertTriangle className="h-10 w-10 text-destructive" />
+                    </div>
+                    <CardTitle>Access Denied</CardTitle>
+                    <CardDescription>You do not have permission to view the Store Inventory.</CardDescription>
+                </CardHeader>
+            </Card>
+        );
+    }
 
     const canManageInventory = useMemo(() => {
         if (!user) return false;
