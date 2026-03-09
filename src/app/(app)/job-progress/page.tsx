@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Search, Bell, FileDown, Clock, Folder, List, LayoutGrid, Settings, X, Info } from 'lucide-react';
+import { PlusCircle, Bell, Clock, Folder, List, LayoutGrid, Settings, X, Info, Search } from 'lucide-react';
 import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress, Timesheet, Role, DocumentMovement } from '@/lib/types';
@@ -43,7 +44,6 @@ export default function JobProgressPage() {
   const [isLongPendingDialogOpen, setIsLongPendingDialogOpen] = useState(false);
   const [showViewNotice, setShowViewNotice] = useState(true);
   
-  const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
   const [jmsSearchTerm, setJmsSearchTerm] = useState('');
   const [jmsAssigneeFilter, setJmsAssigneeFilter] = useState('all');
   const [timesheetSearchTerm, setTimesheetSearchTerm] = useState('');
@@ -96,45 +96,26 @@ export default function JobProgressPage() {
     });
   }, [jobProgress, user]);
 
-  const changeMonth = (amount: number) => {
-    setCurrentMonth(prev => addMonths(prev, amount));
-  };
-  
-  const canGoToPreviousMonth = useMemo(() => {
-    const firstDayOfCurrentMonth = startOfMonth(currentMonth);
-    return isAfter(firstDayOfCurrentMonth, implementationStartDate);
-  }, [currentMonth]);
+  const visibleJobs = useMemo(() => jobProgress.filter(job => {
+    const canViewAll = user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Document Controller';
+    if (canViewAll) return true;
+    
+    const isAssignee = job.steps.some(step => step.assigneeId === user?.id);
+    if (isAssignee) return true;
 
-  const canGoToNextMonth = useMemo(() => {
-    return isBefore(startOfMonth(currentMonth), startOfToday());
-  }, [currentMonth]);
+    if (job.creatorId === user?.id) return true;
+    
+    if (!user?.projectIds) return false;
+    
+    return user.projectIds.some(userProjectId => {
+      if (job.projectId === userProjectId) return true;
+      const project = projects.find(p => p.id === job.projectId);
+      return project && user.projectIds?.includes(project.name);
+    });
+  }), [jobProgress, user, projects]);
 
   const filteredJobs = useMemo(() => {
-    const visibleJobs = jobProgress.filter(job => {
-      const canViewAll = user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Document Controller';
-      if (canViewAll) return true;
-      
-      const isAssignee = job.steps.some(step => step.assigneeId === user?.id);
-      if (isAssignee) return true;
-
-      if (job.creatorId === user?.id) return true;
-      
-      if (!user?.projectIds) return false;
-      
-      return user.projectIds.some(userProjectId => {
-        if (job.projectId === userProjectId) return true;
-        const project = projects.find(p => p.id === job.projectId);
-        return project && user.projectIds?.includes(project.name);
-      });
-    });
-  
-    const jobsInMonth = visibleJobs.filter(job => {
-      const dateToCompare = job.dateFrom ? parseISO(job.dateFrom) : parseISO(job.createdAt);
-      return isSameMonth(dateToCompare, currentMonth);
-    });
-  
-    return jobsInMonth.filter(job => {
-        // Assignee Filter
+    return visibleJobs.filter(job => {
         let assigneeMatch = true;
         if (jmsAssigneeFilter !== 'all') {
             const returnedStep = job.steps.find(s => s.isReturned === true);
@@ -151,23 +132,24 @@ export default function JobProgressPage() {
             }
         }
         
-        // Search Term Filter
         let searchMatch = true;
         if (jmsSearchTerm) {
             const lowercasedTerm = jmsSearchTerm.toLowerCase();
             const project = projects.find(p => p.id === job.projectId);
+            const amountStr = job.amount?.toString() || '';
             searchMatch = (
                 job.title.toLowerCase().includes(lowercasedTerm) ||
                 (job.jmsNo && job.jmsNo.toLowerCase().includes(lowercasedTerm)) ||
                 (project && project.name.toLowerCase().includes(lowercasedTerm)) ||
-                (job.plantUnit && job.plantUnit.toLowerCase().includes(lowercasedTerm))
+                (job.plantUnit && job.plantUnit.toLowerCase().includes(lowercasedTerm)) ||
+                amountStr.includes(lowercasedTerm)
             );
         }
 
         return assigneeMatch && searchMatch;
     });
   
-  }, [jobProgress, currentMonth, user, jmsSearchTerm, jmsAssigneeFilter, projects]);
+  }, [visibleJobs, user, jmsSearchTerm, jmsAssigneeFilter, projects]);
 
   const filteredTimesheets = useMemo(() => {
     const visibleTimesheets = timesheets.filter(ts => {
@@ -180,25 +162,23 @@ export default function JobProgressPage() {
       return user.projectIds.includes(ts.projectId);
     });
 
-    const timesheetsInMonth = visibleTimesheets.filter(ts => isSameMonth(parseISO(ts.submissionDate), currentMonth));
-
-    if (!timesheetSearchTerm) return timesheetsInMonth;
+    if (!timesheetSearchTerm) return visibleTimesheets;
+    
     const lowercasedTerm = timesheetSearchTerm.toLowerCase();
-    return timesheetsInMonth.filter(ts => {
+    return visibleTimesheets.filter(ts => {
         const project = projects.find(p => p.id === ts.projectId);
         return (
             (project && project.name.toLowerCase().includes(lowercasedTerm)) ||
             (ts.plantUnit && ts.plantUnit.toLowerCase().includes(lowercasedTerm))
         );
     });
-  }, [timesheets, currentMonth, user, timesheetSearchTerm, projects]);
+  }, [timesheets, user, timesheetSearchTerm, projects]);
   
   const filteredDocuments = useMemo(() => {
-    const documentsInMonth = documentMovements.filter(doc => isSameMonth(parseISO(doc.createdAt), currentMonth));
-    if (!docSearchTerm) return documentsInMonth;
+    if (!docSearchTerm) return documentMovements;
     const lowercasedTerm = docSearchTerm.toLowerCase();
-    return documentsInMonth.filter(doc => doc.title.toLowerCase().includes(lowercasedTerm));
-  }, [documentMovements, currentMonth, docSearchTerm]);
+    return documentMovements.filter(doc => doc.title.toLowerCase().includes(lowercasedTerm));
+  }, [documentMovements, docSearchTerm]);
 
 
   const canViewLongPending = user && ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role);
@@ -232,15 +212,6 @@ export default function JobProgressPage() {
                     )}
                 </Button>
             )}
-            <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth}>
-                    <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-lg font-semibold w-32 text-center">{format(currentMonth, 'MMMM yyyy')}</span>
-                <Button variant="outline" size="icon" onClick={() => changeMonth(1)} disabled={!canGoToNextMonth}>
-                    <ChevronRight className="h-4 w-4" />
-                </Button>
-            </div>
             {canCreateJms && (
               <Button onClick={() => setIsCreateJobOpen(true)}>
                   <PlusCircle className="mr-2 h-4 w-4" /> Create New JMS
@@ -281,7 +252,7 @@ export default function JobProgressPage() {
                   <div className="relative w-full sm:w-auto max-w-sm">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                          placeholder="Search by title, JMS no, project..."
+                          placeholder="Search by Job Desc, JMS no, project, amount..."
                           className="pl-9"
                           value={jmsSearchTerm}
                           onChange={e => setJmsSearchTerm(e.target.value)}

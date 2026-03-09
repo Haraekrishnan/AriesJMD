@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -40,11 +41,6 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   const columns: ColumnDef<JobProgress>[] = useMemo(
     () => [
       {
-        accessorKey: 'title',
-        header: 'JMS Title',
-        cell: ({ row }) => <span className="font-medium">{row.original.title}</span>
-      },
-      {
         id: 'project',
         header: 'Project/Unit',
         accessorFn: (row) => projects.find(p => p.id === row.projectId)?.name || '',
@@ -57,6 +53,11 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             </div>
           )
         }
+      },
+      {
+        accessorKey: 'title',
+        header: 'Job Description',
+        cell: ({ row }) => <span className="font-medium">{row.original.title}</span>
       },
       {
         accessorKey: 'dateFrom',

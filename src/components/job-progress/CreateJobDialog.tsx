@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm, Controller } from 'react-hook-form';
@@ -46,7 +47,7 @@ const jobStepSchema = z.object({
 });
 
 const jobSchema = z.object({
-  title: z.string().min(3, 'JMS title is required'),
+  title: z.string().min(3, 'Job description is required'),
   projectId: z.string().min(1, 'Project is required'),
   plantUnit: z.string().optional(),
   workOrderNo: z.string().optional(),
@@ -179,7 +180,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
       <DialogContent className="sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Create New JMS</DialogTitle>
-          <DialogDescription>Define the JMS title and its first step to begin the workflow.</DialogDescription>
+          <DialogDescription>Define the job description and its first step to begin the workflow.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
@@ -187,8 +188,8 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1 md:col-span-3">
-                    <Label htmlFor="job-title" className="font-semibold">JMS Title</Label>
-                    <Input id="job-title" {...form.register('title')} />
+                    <Label htmlFor="title" className="font-semibold">Job Description</Label>
+                    <Input id="title" {...form.register('title')} />
                     {form.formState.errors.title && <p className="text-xs text-destructive mt-1">{form.formState.errors.title.message}</p>}
                 </div>
                 <div className="space-y-1">
