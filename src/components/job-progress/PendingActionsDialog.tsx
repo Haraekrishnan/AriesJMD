@@ -28,13 +28,19 @@ export default function PendingActionsDialog({ isOpen, setIsOpen, onViewJob, onV
 
   const pendingJms = useMemo(() => {
     if (!user) return [];
-    return jobProgress.filter(job => job.steps.some(step => step.assigneeId === user.id && (step.status === 'Pending' || step.isReturned)));
+    return jobProgress.filter(job => {
+        if (job.status === 'Completed') return false;
+        return job.steps.some(step => 
+            step.assigneeId === user.id && 
+            (step.status === 'Pending' || step.isReturned || step.status === 'Acknowledged')
+        )
+    });
   }, [user, jobProgress]);
 
   const pendingTimesheets = useMemo(() => {
     if (!user) return [];
     return timesheets.filter(ts => {
-        const isRecipientAction = (ts.status === 'Pending' && ts.submittedToId === user.id);
+        const isRecipientAction = ts.submittedToId === user.id && (ts.status === 'Pending' || ts.status === 'Acknowledged');
         const isOfficeAction = (ts.status === 'Sent To Office' && canAcknowledgeOffice);
         const isSubmitterAction = (ts.status === 'Rejected' && ts.submitterId === user.id);
         return isRecipientAction || isOfficeAction || isSubmitterAction;
@@ -43,7 +49,7 @@ export default function PendingActionsDialog({ isOpen, setIsOpen, onViewJob, onV
 
   const pendingDocuments = useMemo(() => {
     if (!user) return [];
-    return documentMovements.filter(doc => doc.assigneeId === user.id && (doc.status === 'Pending' || doc.status === 'Returned'));
+    return documentMovements.filter(doc => doc.assigneeId === user.id && (doc.status === 'Pending' || doc.status === 'Returned' || doc.status === 'Acknowledged'));
   }, [user, documentMovements]);
 
 
@@ -51,9 +57,9 @@ export default function PendingActionsDialog({ isOpen, setIsOpen, onViewJob, onV
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-2xl h-full max-h-[80vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Pending Actions</DialogTitle>
+            <DialogTitle>My Actionable Items</DialogTitle>
             <DialogDescription>
-              These items are waiting for your acknowledgment or action.
+              These items are awaiting your acknowledgment or next action.
             </DialogDescription>
           </DialogHeader>
           <Tabs defaultValue="jms" className="flex-1 flex flex-col overflow-hidden">
