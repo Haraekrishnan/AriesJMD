@@ -22,7 +22,6 @@ import DftMachineLogManagerDialog from '@/components/dft-machine/DftMachineLogMa
 import AddLaptopDesktopDialog from '@/components/laptops-desktops/AddLaptopDesktopDialog';
 import LaptopDesktopTable from '@/components/laptops-desktops/LaptopDesktopTable';
 import EditLaptopDesktopDialog from '@/components/laptops-desktops/EditLaptopDesktopDialog';
-import AddMobileSimDialog from '@/components/mobile-sim/AddMobileSimDialog';
 import EditMobileSimDialog from '@/components/mobile-sim/EditMobileSimDialog';
 import MobileSimTable from '@/components/mobile-sim/MobileSimTable';
 import ViewCertificateRequestDialog from '@/components/inventory/ViewCertificateRequestDialog';
@@ -82,6 +81,8 @@ import WeldingMachineTable from '@/components/welding-machine/WeldingMachineTabl
 import AddWalkieTalkieDialog from '@/components/walkie-talkie/AddWalkieTalkieDialog';
 import EditWalkieTalkieDialog from '@/components/walkie-talkie/EditWalkieTalkieDialog';
 import WalkieTalkieTable from '@/components/walkie-talkie/WalkieTalkieTable';
+import AddMobileDialog from '@/components/mobile-sim/AddMobileDialog';
+import AddSimDialog from '@/components/mobile-sim/AddSimDialog';
 
 export default function EquipmentStatusPage() {
     const { user, users, can } = useAuth();
@@ -109,7 +110,8 @@ export default function EquipmentStatusPage() {
     const [selectedDftMachine, setSelectedDftMachine] = useState<DftMachine | null>(null);
     
     // Mobile/SIM State
-    const [isAddMobileSimOpen, setIsAddMobileSimOpen] = useState(false);
+    const [isAddMobileOpen, setIsAddMobileOpen] = useState(false);
+    const [isAddSimOpen, setIsAddSimOpen] = useState(false);
     const [isEditMobileSimOpen, setIsEditMobileSimOpen] = useState(false);
     const [selectedMobileSim, setSelectedMobileSim] = useState<MobileSim | null>(null);
     
@@ -624,8 +626,8 @@ export default function EquipmentStatusPage() {
             case 'dft-machines': setIsAddDftMachineOpen(true); break;
             case 'digital-camera': setIsAddDigitalCameraOpen(true); break;
             case 'anemometer': setIsAddAnemometerOpen(true); break;
-            case 'mobiles': setIsAddMobileSimOpen(true); break;
-            case 'sims': setIsAddMobileSimOpen(true); break;
+            case 'mobiles': setIsAddMobileOpen(true); break;
+            case 'sims': setIsAddSimOpen(true); break;
             case 'laptops-desktops': setIsAddLaptopDesktopOpen(true); break;
             case 'pneumatic-drilling-machine': setIsAddPneumaticDrillingMachineOpen(true); break;
             case 'pneumatic-angle-grinder': setIsAddPneumaticAngleGrinderOpen(true); break;
@@ -936,7 +938,8 @@ export default function EquipmentStatusPage() {
             {selectedDftMachine && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && (<EditDftMachineDialog isOpen={isEditDftMachineOpen} setIsOpen={setIsEditDftMachineOpen} machine={selectedDftMachine} />)}
             {selectedDftMachine && (<DftMachineLogManagerDialog isOpen={isDftLogManagerOpen} setIsOpen={setIsDftLogManagerOpen} machine={selectedDftMachine} />)}
 
-            <AddMobileSimDialog isOpen={isAddMobileSimOpen} setIsOpen={setIsAddMobileSimOpen} />
+            <AddMobileDialog isOpen={isAddMobileOpen} setIsOpen={setIsAddMobileOpen} />
+            <AddSimDialog isOpen={isAddSimOpen} setIsOpen={setIsAddSimOpen} />
             {selectedMobileSim && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && (<EditMobileSimDialog isOpen={isEditMobileSimOpen} setIsOpen={setIsEditMobileSimOpen} item={selectedMobileSim} />)}
         
             <AddLaptopDesktopDialog isOpen={isAddLaptopDesktopOpen} setIsOpen={setIsAddLaptopDesktopOpen} />
