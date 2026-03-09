@@ -52,6 +52,7 @@ export default function JobProgressPage() {
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
   const [jmsView, setJmsView] = useState<'board' | 'list'>(user?.viewPreferences?.jmsTracker || 'list');
   const [timesheetView, setTimesheetView] = useState<'board' | 'list'>(user?.viewPreferences?.timesheetTracker || 'list');
+  const [activeTab, setActiveTab] = useState('jms');
 
   const assignableUsers = useMemo(() => {
     return getVisibleUsers().filter(u => u.role !== 'Manager');
@@ -251,6 +252,13 @@ export default function JobProgressPage() {
                     )}
                 </Button>
             )}
+            {activeTab === 'jms' && !jmsSearchTerm && (
+                <div className="flex items-center gap-1">
+                    <Button variant="outline" size="icon" onClick={() => changeMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
+                    <Button variant="outline" className="w-32" onClick={handleTodayClick}>{format(currentMonth, 'MMMM yyyy')}</Button>
+                    <Button variant="outline" size="icon" onClick={() => changeMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
+                </div>
+            )}
             {canCreateJms && (
               <Button onClick={() => setIsCreateJobOpen(true)}>
                   <PlusCircle className="mr-2 h-4 w-4" /> Create New JMS
@@ -265,7 +273,7 @@ export default function JobProgressPage() {
         </div>
       </div>
       
-      <Tabs defaultValue="jms" className="flex-1 flex flex-col">
+      <Tabs defaultValue="jms" onValueChange={setActiveTab} className="flex-1 flex flex-col">
         <TabsList className="shrink-0 grid w-full grid-cols-3">
           <TabsTrigger value="jms">JMS Tracker</TabsTrigger>
           <TabsTrigger value="timesheets">Timesheet Tracker</TabsTrigger>
@@ -277,7 +285,7 @@ export default function JobProgressPage() {
                   <div className="relative w-full sm:w-auto max-w-sm">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                          placeholder="Search by Job Desc, JMS no, project, amount..."
+                          placeholder="Search Job Desc, JMS no, project, amount..."
                           className="pl-9"
                           value={jmsSearchTerm}
                           onChange={e => setJmsSearchTerm(e.target.value)}
@@ -294,11 +302,6 @@ export default function JobProgressPage() {
                           ))}
                       </SelectContent>
                   </Select>
-                   <div className="flex items-center gap-1">
-                      <Button variant="outline" size="icon" onClick={() => changeMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
-                      <Button variant="outline" className="w-32" onClick={handleTodayClick}>{format(currentMonth, 'MMMM yyyy')}</Button>
-                      <Button variant="outline" size="icon" onClick={() => changeMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
-                    </div>
               </div>
               <div className="flex items-center gap-2">
                 <Button variant={jmsView === 'board' ? 'secondary' : 'outline'} size="icon" onClick={() => setJmsView('board')}><LayoutGrid className="h-4 w-4" /></Button>
