@@ -54,6 +54,11 @@ export default function TimesheetTrackerTable({
   const columns: ColumnDef<Timesheet>[] = useMemo(
     () => [
       {
+        id: 'slNo',
+        header: 'Sl.No.',
+        cell: ({ row }) => row.index + 1,
+      },
+      {
         id: 'project',
         header: 'Project/Unit',
         accessorFn: (row) => projects.find(p => p.id === row.projectId)?.name || '',

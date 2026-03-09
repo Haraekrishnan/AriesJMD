@@ -41,6 +41,11 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   const columns: ColumnDef<JobProgress>[] = useMemo(
     () => [
       {
+        id: 'slNo',
+        header: 'Sl.No.',
+        cell: ({ row }) => row.index + 1,
+      },
+      {
         id: 'project',
         header: 'Project/Unit',
         accessorFn: (row) => projects.find(p => p.id === row.projectId)?.name || '',
