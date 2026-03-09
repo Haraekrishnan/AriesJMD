@@ -42,7 +42,7 @@ const itemStatusVariant: Record<InternalRequestItemStatus, 'default' | 'secondar
     Rejected: 'destructive',
 };
 
-const RequestCard = ({ req }: { req: PpeRequest }) => {
+const RequestCard = ({ req }: { req: PpeRequest; }) => {
     const { user, users, manpowerProfiles, projects, updatePpeRequestStatus, addPpeRequestComment, markPpeRequestAsViewed, deletePpeRequest, deletePpeAttachment, ppeStock, resolvePpeDispute } = useAppContext();
     const [selectedRequest, setSelectedRequest] = useState<PpeRequest | null>(null);
     const [editingRequest, setEditingRequest] = useState<PpeRequest | null>(null);
@@ -211,7 +211,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                     </div>
                 )}
 
-                <Accordion type="single" collapsible className="w-full" onValueChange={() => handleAccordionToggle(req.id)}>
+                <Accordion type="single" collapsible className="w-full mt-2" onValueChange={() => handleAccordionToggle(req.id)}>
                     <AccordionItem value={req.id} className="border-none">
                         <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">View Comment History</AccordionTrigger>
                         <AccordionContent className="pt-2 text-muted-foreground">
@@ -223,7 +223,7 @@ const RequestCard = ({ req }: { req: PpeRequest }) => {
                                     <div key={i} className="flex items-start gap-2">
                                         <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
                                         <div className="text-xs bg-background p-2 rounded-md w-full">
-                                            <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
+                                            <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{format(new Date(c.date), 'dd MMM, yyyy p')}</p></div>
                                             <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
                                         </div>
                                     </div>
@@ -435,10 +435,12 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
     const active: PpeRequest[] = [];
     const completed: PpeRequest[] = [];
     requests.forEach(req => {
-      if (req.status === 'Issued' || req.status === 'Rejected') {
-        completed.push(req);
-      } else {
+      const isRejectedButActive = req.status === 'Rejected' && !req.acknowledgedByRequester;
+      
+      if (isRejectedButActive || !['Issued', 'Rejected'].includes(req.status)) {
         active.push(req);
+      } else {
+        completed.push(req);
       }
     });
     return { activeRequests: active, completedRequests: completed };
@@ -447,7 +449,9 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
   useEffect(() => {
     if (isCompletedOpen && user) {
         completedRequests.forEach(req => {
-            if (req.requesterId === user.id && !req.viewedByRequester) {
+            const comments = Array.isArray(req.comments) ? req.comments : Object.values(req.comments || {});
+            const hasUnread = comments.some(c => c.userId !== user.id && !c.viewedBy?.[user.id]);
+            if (req.requesterId === user.id && (!req.acknowledgedByRequester || hasUnread)) {
                 markPpeRequestAsViewed(req.id);
             }
         });
@@ -475,11 +479,11 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
         <Accordion type="single" collapsible className="w-full" onValueChange={(value) => setIsCompletedOpen(!!value)}>
           <AccordionItem value="completed-requests" className="border rounded-md">
             <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline font-semibold text-lg">
-               Completed &amp; Rejected Requests ({completedRequests.length})
+               Completed & Acknowledged Requests ({completedRequests.length})
             </AccordionTrigger>
             <AccordionContent className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {completedRequests.map((req, index) => <RequestCard key={req.id || index} req={req} />)}
+                {completedRequests.map((req, index) => <RequestCard key={req.id || index} req={req} isCompletedSection={true} />)}
               </div>
             </AccordionContent>
           </AccordionItem>
@@ -488,5 +492,3 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
     </div>
   );
 }
-
-    

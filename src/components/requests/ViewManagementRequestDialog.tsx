@@ -230,7 +230,7 @@ export default function ViewManagementRequestDialog({ isOpen, setIsOpen, request
                           <div key={index} className="flex items-start gap-3">
                             <Avatar className="h-8 w-8"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
                             <div className="bg-muted p-3 rounded-lg w-full">
-                              <div className="flex justify-between items-center"><p className="font-semibold text-sm">{commentUser?.name}</p><p className="text-xs text-muted-foreground">{date && isValid(date) ? formatDistanceToNow(date, { addSuffix: true }) : 'Invalid date'}</p></div>
+                              <div className="flex justify-between items-center"><p className="font-semibold text-sm">{commentUser?.name}</p><p className="text-xs text-muted-foreground">{date && isValid(date) ? format(date, 'dd MMM yyyy, p') : 'Invalid date'}</p></div>
                               <p className="text-sm text-foreground/80 mt-1 whitespace-pre-wrap">{comment.text}</p>
                             </div>
                           </div>

@@ -10,7 +10,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { format, formatDistanceToNow, parseISO } from 'date-fns';
+import { format, formatDistanceToNow, parseISO, isValid } from 'date-fns';
 import { CheckCircle, Clock, Circle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X, MessageSquare, Trash2, ArrowRight, ArrowUp, ArrowDown, XCircle, AlertTriangle } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
@@ -569,8 +569,8 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                 )}
 
                                                 <div className="mt-2 text-xs text-muted-foreground">
-                                                  {step.acknowledgedAt && <p>Acknowledged: {formatDistanceToNow(parseISO(step.acknowledgedAt), { addSuffix: true })}</p>}
-                                                  {step.completedAt && <p>Completed: {formatDistanceToNow(parseISO(step.completedAt), { addSuffix: true })} by {users.find(u => u.id === step.completedBy)?.name}</p>}
+                                                  {step.acknowledgedAt && <p>Acknowledged: {format(parseISO(step.acknowledgedAt), 'dd MMM yyyy, p')}</p>}
+                                                  {step.completedAt && <p>Completed: {format(parseISO(step.completedAt), 'dd MMM yyyy, p')} by {users.find(u => u.id === step.completedBy)?.name}</p>}
                                                 </div>
                                                 
                                                 {commentsArray.length > 0 && (
@@ -581,11 +581,12 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                                 <div className="space-y-2">
                                                                     {commentsArray.map((c, i) => {
                                                                         const commentUser = users.find(u => u.id === c.userId);
+                                                                        const date = c.date ? parseISO(c.date) : null;
                                                                         return (
                                                                             <div key={i} className="flex items-start gap-2">
                                                                                 <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
                                                                                 <div className="text-xs bg-background p-2 rounded-md w-full border">
-                                                                                    <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
+                                                                                    <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{date && isValid(date) ? format(date, 'dd MMM yyyy, p') : 'Invalid date'}</p></div>
                                                                                     <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
                                                                                 </div>
                                                                             </div>

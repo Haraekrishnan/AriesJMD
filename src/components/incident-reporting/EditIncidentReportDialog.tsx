@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow, isValid, parseISO } from 'date-fns';
 import { Send, UserPlus, FileDown, Layers, Trash2 } from 'lucide-react';
-import type { IncidentReport, IncidentStatus, Role } from '@/lib/types';
+import type { IncidentReport, IncidentStatus, Role, Comment } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Label } from '../ui/label';
@@ -31,12 +31,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 const statusVariant: { [key in IncidentStatus]: "default" | "secondary" | "destructive" | "outline" } = {
     'New': 'destructive',
     'Under Investigation': 'default',
-    'Action Pending': 'outline',
+    'Action Taken': 'outline',
     'Resolved': 'secondary',
     'Closed': 'secondary',
 }
 
-const statusOptions: IncidentStatus[] = ['New', 'Under Investigation', 'Action Pending', 'Resolved', 'Closed'];
+const statusOptions: IncidentStatus[] = ['New', 'Under Investigation', 'Action Taken', 'Resolved', 'Closed'];
 
 interface EditIncidentReportDialogProps {
   isOpen: boolean;
@@ -252,7 +252,7 @@ export default function EditIncidentReportDialog({ isOpen, setIsOpen, incidentId
                         <div key={index} className="flex items-start gap-3">
                           <Avatar className="h-8 w-8"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
                           <div className="bg-muted p-3 rounded-lg w-full">
-                            <div className="flex justify-between items-center"><p className="font-semibold text-sm">{commentUser?.name}</p><p className="text-xs text-muted-foreground">{date && isValid(date) ? formatDistanceToNow(date, { addSuffix: true }) : 'Invalid date'}</p></div>
+                            <div className="flex justify-between items-center"><p className="font-semibold text-sm">{commentUser?.name}</p><p className="text-xs text-muted-foreground">{date && isValid(date) ? format(date, 'dd MMM, yyyy p') : 'Invalid date'}</p></div>
                             <p className="text-sm text-foreground/80 mt-1 whitespace-pre-wrap">{comment.text}</p>
                           </div>
                         </div>

@@ -90,7 +90,7 @@ const TimelineItem = ({
         <p className="font-semibold leading-none">{title}</p>
         {!isPending && (
             <p className="text-xs text-muted-foreground mt-0.5">
-                by {actorName} on {format(parseISO(date), 'dd MMM, yyyy')}
+                by {actorName} on {format(parseISO(date), 'dd MMM, yyyy p')}
             </p>
         )}
         {children}
