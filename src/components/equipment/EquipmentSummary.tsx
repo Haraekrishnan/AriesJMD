@@ -2,7 +2,7 @@
 'use client';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
-import { HardHat, Scan, Layers, Camera, Wind, Smartphone, Laptop, Sparkles, Radio, SimCard } from 'lucide-react';
+import { HardHat, Scan, Layers, Camera, Wind, Smartphone, Laptop, Sparkles, Radio, CreditCard } from 'lucide-react';
 import StatCard from '../dashboard/stat-card';
 
 export default function EquipmentSummary() {
@@ -46,7 +46,7 @@ export default function EquipmentSummary() {
       { name: 'Digital Cameras', count: digitalCameras.length, icon: Camera, description: `${cameraStatus.active} active, ${cameraStatus.idle} idle` },
       { name: 'Anemometers', count: anemometers.length, icon: Wind, description: `${anemometerStatus.active} active, ${anemometerStatus.idle} idle` },
       { name: 'Mobiles', count: mobiles.length, icon: Smartphone, description: `${mobileStatus.active} active, ${mobileStatus.idle} inactive` },
-      { name: 'SIMs', count: sims.length, icon: SimCard, description: `${simStatus.active} active, ${simStatus.idle} inactive` },
+      { name: 'SIMs', count: sims.length, icon: CreditCard, description: `${simStatus.active} active, ${simStatus.idle} inactive` },
       { name: 'Laptops & Desktops', count: laptopsDesktops.length, icon: Laptop, description: `Total ${laptopsDesktops.length}` },
       { name: 'Other Equipment', count: otherEquipments.length, icon: HardHat, description: `Total ${otherEquipments.length}` },
     ];
