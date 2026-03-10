@@ -143,8 +143,6 @@ const plannerNotificationCount =
 
     const canApproveTransfers = can.approve_store_requests;
     const pendingInventoryTransferRequestCount = canApproveTransfers ? (inventoryTransferRequests || []).filter(r => r.status === 'Pending' || r.status === 'Disputed').length : 0;
-
-    const pendingLogbookRequestCount = can.manage_logbook ? (logbookRequests || []).filter(r => r.status === 'Pending').length : 0;
     
     const pendingDamageReportCount = can.manage_inventory ? (damageReports || []).filter(r => r.status === 'Pending').length : 0;
 
@@ -160,7 +158,7 @@ const plannerNotificationCount =
       incidentReporting: incidentNotificationCount,
       vendorLedger: pendingPaymentApprovalCount,
       account: pendingFeedbackCount + pendingUnlockRequestCount,
-      manpower: pendingLogbookRequestCount
+      manpower: 0,
     };
   }, [
     user, can, tasks, certificateRequests, plannerEvents,

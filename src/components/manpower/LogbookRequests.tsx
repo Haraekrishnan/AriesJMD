@@ -31,7 +31,7 @@ const RequestDetailsDialog = ({ request, isOpen, onOpenChange, onAction, onComme
   onAction: (requestId: string, status: 'Completed' | 'Rejected', comment: string) => void;
   onComment: (requestId: string, text: string, notify?: boolean) => void;
 }) => {
-    const { user, users, manpowerProfiles, can, deleteLogbookRequest } = useAppContext();
+    const { user, users, manpowerProfiles, can } = useAppContext();
     const [comment, setComment] = useState('');
     const [rejectionComment, setRejectionComment] = useState('');
     const { toast } = useToast();
@@ -41,7 +41,6 @@ const RequestDetailsDialog = ({ request, isOpen, onOpenChange, onAction, onComme
     const commentsArray = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
     
     const isApprover = can.manage_logbook;
-    const canDelete = user?.role === 'Admin';
 
     const handleConfirmAction = (status: 'Completed' | 'Rejected') => {
         if (status === 'Rejected' && !rejectionComment.trim()) {
@@ -56,11 +55,6 @@ const RequestDetailsDialog = ({ request, isOpen, onOpenChange, onAction, onComme
       if (!comment.trim()) return;
       onComment(request.id, comment, true);
       setComment('');
-    };
-
-    const handleDelete = () => {
-        deleteLogbookRequest(request.id);
-        onOpenChange(false);
     };
 
     return (
@@ -112,46 +106,27 @@ const RequestDetailsDialog = ({ request, isOpen, onOpenChange, onAction, onComme
                 </div>
                 <DialogFooter className="flex-col sm:flex-row sm:justify-between items-center w-full">
                   <div>
-                    <div className="flex gap-2">
-                        {isApprover && request.status === 'Pending' && (
-                            <div className="flex gap-2">
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button size="sm" variant="destructive">Reject</Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Reject Request?</AlertDialogTitle>
-                                            <AlertDialogDescription>Please provide a comment for rejecting this request.</AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <Textarea value={rejectionComment} onChange={(e) => setRejectionComment(e.target.value)} placeholder="Rejection reason..." />
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleConfirmAction('Rejected')}>Confirm Rejection</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                                <Button size="sm" onClick={() => handleConfirmAction('Completed')}>Approve</Button>
-                            </div>
-                        )}
-                         {canDelete && (
+                    {isApprover && request.status === 'Pending' && (
+                        <div className="flex gap-2">
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button size="sm" variant="destructive"><Trash2 className="mr-2 h-4 w-4"/>Delete</Button>
+                                    <Button size="sm" variant="destructive">Reject</Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
-                                        <AlertDialogTitle>Delete Request?</AlertDialogTitle>
-                                        <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                                        <AlertDialogTitle>Reject Request?</AlertDialogTitle>
+                                        <AlertDialogDescription>Please provide a comment for rejecting this request.</AlertDialogDescription>
                                     </AlertDialogHeader>
+                                    <Textarea value={rejectionComment} onChange={(e) => setRejectionComment(e.target.value)} placeholder="Rejection reason..." />
                                     <AlertDialogFooter>
                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction onClick={handleDelete}>Confirm Delete</AlertDialogAction>
+                                        <AlertDialogAction onClick={() => handleConfirmAction('Rejected')}>Confirm Rejection</AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>
-                        )}
-                    </div>
+                            <Button size="sm" onClick={() => handleConfirmAction('Completed')}>Approve</Button>
+                        </div>
+                    )}
                   </div>
                   <DialogClose asChild>
                     <Button type="button" variant="secondary">Close</Button>
@@ -173,7 +148,7 @@ const RequestsTable = ({ requests }: { requests: LogbookRequest[] }) => {
     };
 
     const handleView = (request: LogbookRequest) => {
-        if (request.requesterId === user?.id && request.viewedBy && !request.viewedBy[user!.id]) {
+        if (request.requesterId === user?.id && !request.viewedBy[user!.id]) {
             markLogbookRequestAsViewed(request.id);
         }
         setViewingRequest(request);
@@ -200,7 +175,7 @@ const RequestsTable = ({ requests }: { requests: LogbookRequest[] }) => {
               const employee = manpowerProfiles.find(p => p.id === req.manpowerId);
               const requester = users.find(u => u.id === req.requesterId);
               const isMyRequest = req.requesterId === user?.id;
-              const hasUnread = isMyRequest && req.status !== 'Pending' && (!req.viewedBy || !req.viewedBy[user!.id]);
+              const hasUnread = isMyRequest && !req.viewedBy[user!.id] && req.status !== 'Pending';
               
               return (
                 <TableRow key={req.id} className={hasUnread ? "font-bold bg-blue-50 dark:bg-blue-900/20" : ""}>
@@ -251,56 +226,54 @@ const RequestsTable = ({ requests }: { requests: LogbookRequest[] }) => {
 export default function LogbookRequests() {
   const { user, can, logbookRequests, myLogbookRequestUpdates } = useAppContext();
 
-  const { pendingRequests, myRequests, allRequests } = useMemo(() => {
-    if (!user) return { pendingRequests: [], myRequests: [], allRequests: [] };
+  const { pendingRequests, myRequests } = useMemo(() => {
+    if (!user) return { pendingRequests: [], myRequests: [] };
     
-    const sortedRequests = [...logbookRequests].sort((a,b) => parseISO(b.requestDate).getTime() - parseISO(a.requestDate).getTime());
+    const pending = (can.manage_logbook)
+        ? logbookRequests.filter(r => r.status === 'Pending').sort((a,b) => parseISO(b.requestDate).getTime() - parseISO(a.requestDate).getTime())
+        : [];
+    
+    const my = logbookRequests.filter(r => r.requesterId === user.id).sort((a,b) => parseISO(b.requestDate).getTime() - parseISO(a.requestDate).getTime());
 
-    const canManage = can.manage_logbook;
-    
-    const pending = canManage ? sortedRequests.filter(r => r.status === 'Pending') : [];
-    
-    const my = sortedRequests.filter(r => r.requesterId === user.id);
-    
-    const all = canManage ? sortedRequests : [];
-
-    return { pendingRequests: pending, myRequests: my, allRequests: all };
+    return { pendingRequests: pending, myRequests: my };
   }, [logbookRequests, can.manage_logbook, user]);
+
+  const showTabs = can.manage_logbook && myRequests.length > 0;
+  
+  if (pendingRequests.length === 0 && myRequests.length === 0) {
+    return null;
+  }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Logbook Requests</CardTitle>
         <CardDescription>
-            {can.manage_logbook ? 'Manage all logbook requests.' : 'Track your logbook requests.'}
+            {showTabs ? 'Manage pending requests and view your own requests.' : (can.manage_logbook ? 'Review and action these requests.' : 'Track the status of your logbook requests.')}
         </CardDescription>
       </CardHeader>
       <CardContent>
-          {can.manage_logbook ? (
+          {showTabs ? (
             <Tabs defaultValue="pending">
               <TabsList>
                 <TabsTrigger value="pending">
-                    Pending
+                    Pending for me
                     {pendingRequests.length > 0 && <Badge className="ml-2">{pendingRequests.length}</Badge>}
                 </TabsTrigger>
-                <TabsTrigger value="all">All ({allRequests.length})</TabsTrigger>
-                {myRequests.length > 0 && (
-                  <TabsTrigger value="my-requests">
+                <TabsTrigger value="my-requests">
                     My Requests
                     {myLogbookRequestUpdates > 0 && <Badge variant="destructive" className="ml-2">{myLogbookRequestUpdates}</Badge>}
-                  </TabsTrigger>
-                )}
+                </TabsTrigger>
               </TabsList>
               <TabsContent value="pending" className="mt-4"><RequestsTable requests={pendingRequests} /></TabsContent>
-              <TabsContent value="all" className="mt-4"><RequestsTable requests={allRequests} /></TabsContent>
-              {myRequests.length > 0 && (
-                <TabsContent value="my-requests" className="mt-4"><RequestsTable requests={myRequests} /></TabsContent>
-              )}
+              <TabsContent value="my-requests" className="mt-4"><RequestsTable requests={myRequests} /></TabsContent>
             </Tabs>
           ) : (
-            <RequestsTable requests={myRequests} />
+            <RequestsTable requests={can.manage_logbook ? pendingRequests : myRequests} />
           )}
       </CardContent>
     </Card>
   );
 }
+
+    

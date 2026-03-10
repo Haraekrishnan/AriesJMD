@@ -6,8 +6,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import ManpowerSummaryTable from '@/components/manpower/ManpowerSummaryTable';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Users, Calendar as CalendarIcon, Plane, Book, History, FileText } from 'lucide-react';
-import ManpowerLogDialog from '@/components/manpower/ManpowerLogDialog';
+import { PlusCircle, Users, Calendar as CalendarIcon, Plane, Book, History } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { format, sub } from 'date-fns';
@@ -15,10 +14,7 @@ import ManpowerLogReportDownloads from '@/components/manpower/ManpowerLogReportD
 import Link from 'next/link';
 import { Calendar } from '@/components/ui/calendar';
 import ManpowerSummaryReportDownloads from '@/components/manpower/ManpowerSummaryReportDownloads';
-import LogLeaveDialog from '@/components/manpower/LogLeaveDialog';
 import LogbookRegisterDialog from '@/components/manpower/LogbookRegisterDialog';
-import LogbookRequestDialog from '@/components/manpower/LogbookRequestDialog';
-import LogbookRequests from '@/components/manpower/LogbookRequests';
 import LogbookHistoryDialog from '@/components/manpower/LogbookHistoryDialog';
 import ManpowerSummary from '@/components/manpower/ManpowerSummary';
 import { Role } from '@/lib/types';
@@ -26,7 +22,6 @@ import { Role } from '@/lib/types';
 export default function ManpowerPage() {
     const { user, can } = useAppContext();
     const [isLogbookRegisterOpen, setIsLogbookRegisterOpen] = useState(false);
-    const [isLogbookRequestOpen, setIsLogbookRequestOpen] = useState(false);
     const [isLogbookHistoryOpen, setIsLogbookHistoryOpen] = useState(false);
     const [reportDateRange, setReportDateRange] = useState<DateRange | undefined>();
     const [summaryDate, setSummaryDate] = useState<Date | undefined>(new Date());
@@ -57,15 +52,10 @@ export default function ManpowerPage() {
                             <Button variant="outline" onClick={() => setIsLogbookRegisterOpen(true)}><Book className="mr-2 h-4 w-4" /> Logbook Register</Button>
                         </>
                     )}
-                    {can.request_logbook && (
-                      <Button onClick={() => setIsLogbookRequestOpen(true)}><FileText className="mr-2 h-4 w-4" /> Request Logbook</Button>
-                    )}
                 </div>
             </div>
 
             <ManpowerSummary />
-
-            <LogbookRequests />
 
             <Card>
                 <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
@@ -156,7 +146,6 @@ export default function ManpowerPage() {
                     <LogbookHistoryDialog isOpen={isLogbookHistoryOpen} setIsOpen={setIsLogbookHistoryOpen} />
                 </>
             )}
-             <LogbookRequestDialog isOpen={isLogbookRequestOpen} setIsOpen={setIsLogbookRequestOpen} />
         </div>
     );
 }

@@ -25,8 +25,6 @@ import IssuePpeDialog from '@/components/manpower/IssuePpeDialog';
 import MemoReportDialog from '@/components/manpower/MemoReportDialog';
 import LogbookRegisterDialog from '@/components/manpower/LogbookRegisterDialog';
 import LogbookHistoryDialog from '@/components/manpower/LogbookHistoryDialog';
-import LogbookRequests from '@/components/manpower/LogbookRequests';
-import LogbookSummary from '@/components/manpower/LogbookSummary';
 import UpcomingLeaveReport from '@/components/manpower/UpcomingLeaveReport';
 
 
@@ -262,7 +260,6 @@ export default function ManpowerListPage() {
                 </div>
             </div>
 
-            <LogbookRequests />
             <TradeSummary />
             
             {can.manage_manpower_list && overdueLeaves.length > 0 && (
@@ -458,4 +455,3 @@ export default function ManpowerListPage() {
         </div>
     );
 }
-
