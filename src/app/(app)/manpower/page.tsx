@@ -6,7 +6,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import ManpowerSummaryTable from '@/components/manpower/ManpowerSummaryTable';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Users, Calendar as CalendarIcon, Plane, Book, History } from 'lucide-react';
+import { PlusCircle, Users, Calendar as CalendarIcon, Plane, Book, History, FileText } from 'lucide-react';
 import ManpowerLogDialog from '@/components/manpower/ManpowerLogDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
@@ -56,6 +56,9 @@ export default function ManpowerPage() {
                             <Button variant="outline" onClick={() => setIsLogbookHistoryOpen(true)}><History className="mr-2 h-4 w-4"/> Logbook History</Button>
                             <Button variant="outline" onClick={() => setIsLogbookRegisterOpen(true)}><Book className="mr-2 h-4 w-4" /> Logbook Register</Button>
                         </>
+                    )}
+                    {can.request_logbook && (
+                      <Button onClick={() => setIsLogbookRequestOpen(true)}><FileText className="mr-2 h-4 w-4" /> Request Logbook</Button>
                     )}
                 </div>
             </div>
@@ -153,6 +156,7 @@ export default function ManpowerPage() {
                     <LogbookHistoryDialog isOpen={isLogbookHistoryOpen} setIsOpen={setIsLogbookHistoryOpen} />
                 </>
             )}
+             <LogbookRequestDialog isOpen={isLogbookRequestOpen} setIsOpen={setIsLogbookRequestOpen} />
         </div>
     );
 }

@@ -151,6 +151,7 @@ export const ALL_PERMISSIONS = [
   'perform_inventory_inspection',
   'manage_user_lock_status',
   'manage_logbook',
+  'request_logbook',
   'manage_signatures',
   'view_inventory_database',
   'manage_inventory_database',

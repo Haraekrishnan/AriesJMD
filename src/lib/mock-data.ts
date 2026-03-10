@@ -25,7 +25,7 @@ export const ROLES: RoleDefinition[] = [
       'manage_equipment_status',
       'manage_announcements', 'view_performance_reports', 'view_activity_logs',
       'log_manpower', 'manage_job_schedule', 'manage_vendors', 'manage_payments', 'view_ppe_requests',
-      'manage_job_record', 'manage_purchase_register', 'manage_igp_ogp'
+      'manage_job_record', 'manage_purchase_register', 'manage_igp_ogp', 'request_logbook'
     ],
     isEditable: false,
   },
@@ -40,7 +40,7 @@ export const ROLES: RoleDefinition[] = [
       'manage_announcements', 'view_performance_reports', 'view_activity_logs',
       'log_manpower', 'manage_job_schedule', 'prepare_master_schedule', 'manage_igp_ogp',
       'manage_ppe_request', 'view_internal_store_request', 'manage_store_requests',
-      'manage_job_record', 'manage_tp_certification'
+      'manage_job_record', 'manage_tp_certification', 'request_logbook'
     ],
     isEditable: false,
   },
@@ -48,7 +48,7 @@ export const ROLES: RoleDefinition[] = [
     id: 'role-supervisor',
     name: 'Supervisor',
     permissions: [
-      'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements', 'view_performance_reports', 'manage_manpower', 'log_manpower', 'manage_job_schedule', 'manage_job_record', 'view_inventory'
+      'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements', 'view_performance_reports', 'manage_manpower', 'log_manpower', 'manage_job_schedule', 'manage_job_record', 'view_inventory', 'request_logbook'
     ],
     isEditable: false,
   },
@@ -56,7 +56,7 @@ export const ROLES: RoleDefinition[] = [
     id: 'role-ndt-supervisor',
     name: 'NDT Supervisor',
     permissions: [
-      'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements', 'view_performance_reports', 'manage_manpower', 'log_manpower', 'manage_job_schedule', 'manage_job_record', 'manage_equipment_status', 'view_inventory'
+      'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements', 'view_performance_reports', 'manage_manpower', 'log_manpower', 'manage_job_schedule', 'manage_job_record', 'manage_equipment_status', 'view_inventory', 'request_logbook'
     ],
     isEditable: true,
   },
@@ -64,20 +64,20 @@ export const ROLES: RoleDefinition[] = [
     id: 'role-hse',
     name: 'Senior Safety Supervisor',
     permissions: [
-      'manage_tasks', 'manage_planner', 'manage_incidents', 'view_performance_reports', 'manage_equipment_status', 'view_inventory'
+      'manage_tasks', 'manage_planner', 'manage_incidents', 'view_performance_reports', 'manage_equipment_status', 'view_inventory', 'request_logbook'
     ],
     isEditable: false,
   },
   {
     id: 'role-jr-supervisor',
     name: 'Junior Supervisor',
-    permissions: ['view_performance_reports', 'log_manpower', 'manage_job_record', 'view_inventory'],
+    permissions: ['view_performance_reports', 'log_manpower', 'manage_job_record', 'view_inventory', 'request_logbook'],
     isEditable: false,
   },
   {
     id: 'role-jr-hse',
     name: 'Safety Supervisor',
-    permissions: ['view_performance_reports'],
+    permissions: ['view_performance_reports', 'request_logbook'],
     isEditable: false,
   },
     {
@@ -90,20 +90,20 @@ export const ROLES: RoleDefinition[] = [
       'view_performance_reports',
       'manage_vehicles',
       'manage_igp_ogp', 'view_ppe_requests', 'manage_ppe_stock', 'manage_tp_certification',
-      'view_internal_store_request', 'manage_logbook'
+      'view_internal_store_request', 'manage_logbook', 'request_logbook'
     ],
     isEditable: false,
   },
   {
     id: 'role-asst-store-incharge',
     name: 'Assistant Store Incharge',
-    permissions: ['manage_inventory', 'view_inventory', 'view_performance_reports', 'manage_tasks', 'manage_equipment_status'],
+    permissions: ['manage_inventory', 'view_inventory', 'view_performance_reports', 'manage_tasks', 'manage_equipment_status', 'request_logbook'],
     isEditable: false,
   },
   {
     id: 'role-team-member',
     name: 'Team Member',
-    permissions: ['manage_tasks'],
+    permissions: ['manage_tasks', 'request_logbook'],
     isEditable: true,
   },
   {
@@ -112,7 +112,7 @@ export const ROLES: RoleDefinition[] = [
     permissions: [
         'manage_manpower_list', 'manage_tasks', 'log_manpower',
         'manage_ppe_request', 'view_internal_store_request', 'manage_store_requests',
-        'manage_job_record', 'view_inventory'
+        'manage_job_record', 'view_inventory', 'request_logbook'
     ],
     isEditable: true,
   }
