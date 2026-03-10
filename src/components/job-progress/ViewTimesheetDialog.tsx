@@ -398,6 +398,9 @@ export default function ViewTimesheetDialog({
     addTimesheetComment(timesheet.id, text);
     setNewComment('');
   };
+  
+  const submitter = users.find(u => u.id === timesheet.submitterId);
+  const project = projects.find(p => p.id === timesheet.projectId);
 
   return (
     <>
@@ -405,34 +408,51 @@ export default function ViewTimesheetDialog({
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Timesheet Details</DialogTitle>
+             <DialogDescription>
+                Submitted by {submitter?.name} on {format(parseISO(timesheet.submissionDate), 'dd MMM, yyyy')}
+            </DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-1 md:grid-cols-[1fr,200px] gap-4 pt-4 border-t">
-          <div className="space-y-0">
-              {timelineEvents.map((event, index) => (
-                  <TimelineItem
-                      key={index}
-                      icon={event.icon}
-                      title={event.type}
-                      actorName={event.actor?.name}
-                      date={event.date}
-                      isLast={index === timelineEvents.length - 1 && pendingSteps.length === 0}
-                  >
-                      {event.comment && (
-                          <div className="text-xs mt-1 p-2 bg-destructive/10 text-destructive rounded-md font-medium">
-                              <strong>Reason:</strong> {event.comment}
-                          </div>
-                      )}
-                  </TimelineItem>
-              ))}
-              {pendingSteps.map((step, index) => (
-                  <TimelineItem
-                      key={`pending-${index}`}
-                      icon={step.icon}
-                      title={step.title}
-                      isLast={index === pendingSteps.length - 1}
-                  />
-              ))}
-          </div>
+            <div className="py-4 grid grid-cols-3 gap-4 text-sm border-y">
+                <div>
+                    <p className="font-semibold">Location</p>
+                    <p className="text-muted-foreground">{project?.name} - {timesheet.plantUnit}</p>
+                </div>
+                <div>
+                    <p className="font-semibold">Period</p>
+                    <p className="text-muted-foreground">{format(parseISO(timesheet.startDate), 'dd MMM')} - {format(parseISO(timesheet.endDate), 'dd MMM, yyyy')}</p>
+                </div>
+                <div>
+                    <p className="font-semibold">Quantity</p>
+                    <p className="text-muted-foreground">{timesheet.numberOfTimesheets}</p>
+                </div>
+            </div>
+          <div className="grid grid-cols-1 md:grid-cols-[1fr,200px] gap-4 pt-4">
+            <div className="space-y-0">
+                {timelineEvents.map((event, index) => (
+                    <TimelineItem
+                        key={index}
+                        icon={event.icon}
+                        title={event.type}
+                        actorName={event.actor?.name}
+                        date={event.date}
+                        isLast={index === timelineEvents.length - 1 && pendingSteps.length === 0}
+                    >
+                        {event.comment && (
+                            <div className="text-xs mt-1 p-2 bg-destructive/10 text-destructive rounded-md font-medium">
+                                <strong>Reason:</strong> {event.comment}
+                            </div>
+                        )}
+                    </TimelineItem>
+                ))}
+                {pendingSteps.map((step, index) => (
+                    <TimelineItem
+                        key={`pending-${index}`}
+                        icon={step.icon}
+                        title={step.title}
+                        isLast={index === pendingSteps.length - 1}
+                    />
+                ))}
+            </div>
             <div className="flex flex-col items-center justify-center gap-4 p-4 bg-muted/50 rounded-md">
               <h4 className="font-semibold text-sm">Next Action</h4>
               {getAction() || (
