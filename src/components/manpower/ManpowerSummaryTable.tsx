@@ -19,7 +19,7 @@ interface EditableCell {
 }
 
 export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTableProps) {
-  const { projects, manpowerLogs, addManpowerLog, updateManpowerLog } = useAppContext();
+  const { projects, manpowerLogs, addManpowerLog, updateManpowerLog, can } = useAppContext();
   const { toast } = useToast();
   const [editableData, setEditableData] = useState<Record<string, Partial<any>>>({});
 
@@ -154,6 +154,7 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
                             value={editableData[row.projectId]?.openingManpower ?? 0}
                             onChange={(e) => handleInputChange(row.projectId, 'openingManpower', e.target.value)}
                             onBlur={() => handleBlur(row.projectId)}
+                            disabled={!can.log_manpower}
                         />
                     </TableCell>
                     <TableCell>
@@ -163,6 +164,7 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
                             value={editableData[row.projectId]?.countIn ?? 0}
                             onChange={(e) => handleInputChange(row.projectId, 'countIn', e.target.value)}
                             onBlur={() => handleBlur(row.projectId)}
+                            disabled={!can.log_manpower}
                         />
                     </TableCell>
                     <TableCell>
@@ -172,6 +174,7 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
                             value={editableData[row.projectId]?.countOut ?? 0}
                             onChange={(e) => handleInputChange(row.projectId, 'countOut', e.target.value)}
                             onBlur={() => handleBlur(row.projectId)}
+                            disabled={!can.log_manpower}
                         />
                     </TableCell>
                     <TableCell>
@@ -181,6 +184,7 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
                             onChange={(e) => handleInputChange(row.projectId, 'reason', e.target.value)}
                             onBlur={() => handleBlur(row.projectId)}
                             placeholder="Reason for change..."
+                            disabled={!can.log_manpower}
                         />
                     </TableCell>
                     <TableCell className="text-center font-bold">{row.total}</TableCell>
@@ -191,6 +195,7 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
                             value={editableData[row.projectId]?.countOnLeave ?? 0}
                             onChange={(e) => handleInputChange(row.projectId, 'countOnLeave', e.target.value)}
                             onBlur={() => handleBlur(row.projectId)}
+                            disabled={!can.log_manpower}
                         />
                     </TableCell>
                     <TableCell className="text-center font-bold">{row.active}</TableCell>
