@@ -27,9 +27,11 @@ import {
 } from '@/components/ui/select';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { useToast } from '@/hooks/use-toast';
-import { JOB_PROGRESS_STEPS } from '@/lib/types';
+import { JOB_PROGRESS_STEPS, JobProgress } from '@/lib/types';
 import type { DateRange } from 'react-day-picker';
 import { ScrollArea } from '../ui/scroll-area';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { isSameDay, parseISO } from 'date-fns';
 
 const jobStepSchema = z.object({
   name: z.enum(JOB_PROGRESS_STEPS, { required_error: 'Step name is required' }),
@@ -68,8 +70,10 @@ interface Props {
 }
 
 export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
-  const { user, users, projects, createJobProgress } = useAppContext();
+  const { user, users, projects, createJobProgress, jobProgress } = useAppContext();
   const { toast } = useToast();
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [duplicateJobs, setDuplicateJobs] = useState<string[]>([]);
 
   const form = useForm<JobFormValues>({
     resolver: zodResolver(jobSchema),
@@ -84,7 +88,29 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
     return users.filter(u => u.role !== 'Manager');
   }, [users]);
 
-  const onSubmit = (data: JobFormValues) => {
+  const checkForDuplicates = (data: JobFormValues): string[] => {
+    const conflicts: string[] = [];
+    jobProgress.forEach(job => {
+        let matchingFields: string[] = [];
+
+        if (data.jmsNo && job.jmsNo && data.jmsNo === job.jmsNo) {
+            matchingFields.push("JMS No.");
+        }
+        if (data.projectId === job.projectId && data.plantUnit === job.plantUnit && data.amount === job.amount) {
+            matchingFields.push("Project, Plant/Unit, and Amount");
+        }
+        if (data.dateFrom && job.dateFrom && isSameDay(data.dateFrom, parseISO(job.dateFrom))) {
+            matchingFields.push("Start Date");
+        }
+        
+        if (matchingFields.length > 0) {
+            conflicts.push(`Existing job "${job.title}" has matching fields: ${matchingFields.join(', ')}.`);
+        }
+    });
+    return conflicts;
+  };
+
+  const handleCreate = (data: JobFormValues) => {
     createJobProgress({
       title: data.title,
       projectId: data.projectId,
@@ -99,6 +125,16 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
     });
     toast({ title: 'JMS Created', description: data.title });
     setIsOpen(false);
+  };
+
+  const onSubmit = (data: JobFormValues) => {
+    const duplicates = checkForDuplicates(data);
+    if (duplicates.length > 0) {
+        setDuplicateJobs(duplicates);
+        setIsConfirming(true);
+    } else {
+        handleCreate(data);
+    }
   };
 
   const handleOpenChange = (open: boolean) => {
@@ -176,6 +212,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
         <DialogHeader>
@@ -264,5 +301,25 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
         </form>
       </DialogContent>
     </Dialog>
+    <AlertDialog open={isConfirming} onOpenChange={setIsConfirming}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Potential Duplicate Found</AlertDialogTitle>
+                <AlertDialogDescription>
+                    One or more existing jobs have similar details. Please review the conflicts below before proceeding.
+                    <ul className="list-disc list-inside mt-2 text-sm text-foreground bg-muted p-2 rounded-md">
+                        {duplicateJobs.map((d,i) => <li key={i}>{d}</li>)}
+                    </ul>
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => { handleCreate(form.getValues()) }}>Create Anyway</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
+
+    
