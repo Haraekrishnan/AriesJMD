@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -257,43 +258,16 @@ export default function LogbookRequests() {
 
     const canManage = can.manage_logbook;
     
-    const pending = canManage
-        ? sortedRequests.filter(r => r.status === 'Pending')
-        : [];
+    const pending = canManage ? sortedRequests.filter(r => r.status === 'Pending') : [];
     
     const my = sortedRequests.filter(r => r.requesterId === user.id);
     
-    const all = user.role === 'Admin' ? sortedRequests : [];
+    const all = canManage ? sortedRequests : [];
 
     return { pendingRequests: pending, myRequests: my, allRequests: all };
   }, [logbookRequests, can.manage_logbook, user]);
 
-  const showTabsForManager = can.manage_logbook && myRequests.length > 0;
-  
-  if (user?.role === 'Admin') {
-    return (
-        <Card>
-          <CardHeader>
-            <CardTitle>Logbook Requests</CardTitle>
-            <CardDescription>
-                Manage all logbook requests.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="all">
-              <TabsList>
-                <TabsTrigger value="all">All ({allRequests.length})</TabsTrigger>
-                <TabsTrigger value="pending">Pending ({pendingRequests.length})</TabsTrigger>
-              </TabsList>
-              <TabsContent value="all" className="mt-4"><RequestsTable requests={allRequests} /></TabsContent>
-              <TabsContent value="pending" className="mt-4"><RequestsTable requests={pendingRequests} /></TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-    );
-  }
-
-  if (pendingRequests.length === 0 && myRequests.length === 0) {
+  if (!can.manage_logbook && myRequests.length === 0) {
     return null;
   }
 
@@ -302,28 +276,34 @@ export default function LogbookRequests() {
       <CardHeader>
         <CardTitle>Logbook Requests</CardTitle>
         <CardDescription>
-            {showTabsForManager ? 'Manage pending requests and view your own requests.' : (can.manage_logbook ? 'Review and action these requests.' : 'Track the status of your logbook requests.')}
+          {can.manage_logbook ? 'Manage all logbook requests.' : 'Track your logbook requests.'}
         </CardDescription>
       </CardHeader>
       <CardContent>
-          {showTabsForManager ? (
-            <Tabs defaultValue="pending">
-              <TabsList>
-                <TabsTrigger value="pending">
-                    Pending for me
-                    {pendingRequests.length > 0 && <Badge className="ml-2">{pendingRequests.length}</Badge>}
-                </TabsTrigger>
+        {can.manage_logbook ? (
+          <Tabs defaultValue="pending">
+            <TabsList>
+              <TabsTrigger value="pending">
+                Pending
+                {pendingRequests.length > 0 && <Badge className="ml-2">{pendingRequests.length}</Badge>}
+              </TabsTrigger>
+              <TabsTrigger value="all">All ({allRequests.length})</TabsTrigger>
+              {myRequests.length > 0 && (
                 <TabsTrigger value="my-requests">
-                    My Requests
-                    {myLogbookRequestUpdates > 0 && <Badge variant="destructive" className="ml-2">{myLogbookRequestUpdates}</Badge>}
+                  My Requests
+                  {myLogbookRequestUpdates > 0 && <Badge variant="destructive" className="ml-2">{myLogbookRequestUpdates}</Badge>}
                 </TabsTrigger>
-              </TabsList>
-              <TabsContent value="pending" className="mt-4"><RequestsTable requests={pendingRequests} /></TabsContent>
+              )}
+            </TabsList>
+            <TabsContent value="pending" className="mt-4"><RequestsTable requests={pendingRequests} /></TabsContent>
+            <TabsContent value="all" className="mt-4"><RequestsTable requests={allRequests} /></TabsContent>
+            {myRequests.length > 0 && (
               <TabsContent value="my-requests" className="mt-4"><RequestsTable requests={myRequests} /></TabsContent>
-            </Tabs>
-          ) : (
-            <RequestsTable requests={can.manage_logbook ? pendingRequests : myRequests} />
-          )}
+            )}
+          </Tabs>
+        ) : (
+          <RequestsTable requests={myRequests} />
+        )}
       </CardContent>
     </Card>
   );
