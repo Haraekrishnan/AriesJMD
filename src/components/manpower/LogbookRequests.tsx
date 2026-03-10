@@ -173,7 +173,7 @@ const RequestsTable = ({ requests }: { requests: LogbookRequest[] }) => {
     };
 
     const handleView = (request: LogbookRequest) => {
-        if (request.requesterId === user?.id && !request.viewedBy[user!.id]) {
+        if (request.requesterId === user?.id && request.viewedBy && !request.viewedBy[user!.id]) {
             markLogbookRequestAsViewed(request.id);
         }
         setViewingRequest(request);
@@ -251,50 +251,54 @@ const RequestsTable = ({ requests }: { requests: LogbookRequest[] }) => {
 export default function LogbookRequests() {
   const { user, can, logbookRequests, myLogbookRequestUpdates } = useAppContext();
 
-  const { pendingRequests, myRequests } = useMemo(() => {
-    if (!user) return { pendingRequests: [], myRequests: [] };
+  const { pendingRequests, myRequests, allRequests } = useMemo(() => {
+    if (!user) return { pendingRequests: [], myRequests: [], allRequests: [] };
     
-    const pending = (can.manage_logbook)
-        ? logbookRequests.filter(r => r.status === 'Pending').sort((a,b) => parseISO(b.requestDate).getTime() - parseISO(a.requestDate).getTime())
-        : [];
-    
-    const my = logbookRequests.filter(r => r.requesterId === user.id).sort((a,b) => parseISO(b.requestDate).getTime() - parseISO(a.requestDate).getTime());
+    const sortedRequests = [...logbookRequests].sort((a,b) => parseISO(b.requestDate).getTime() - parseISO(a.requestDate).getTime());
 
-    return { pendingRequests: pending, myRequests: my };
+    const canManage = can.manage_logbook;
+    
+    const pending = canManage ? sortedRequests.filter(r => r.status === 'Pending') : [];
+    
+    const my = sortedRequests.filter(r => r.requesterId === user.id);
+    
+    const all = canManage ? sortedRequests : [];
+
+    return { pendingRequests: pending, myRequests: my, allRequests: all };
   }, [logbookRequests, can.manage_logbook, user]);
-
-  const showTabs = can.manage_logbook && myRequests.length > 0;
-  
-  if (pendingRequests.length === 0 && myRequests.length === 0) {
-    return null;
-  }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Logbook Requests</CardTitle>
         <CardDescription>
-            {showTabs ? 'Manage pending requests and view your own requests.' : (can.manage_logbook ? 'Review and action these requests.' : 'Track the status of your logbook requests.')}
+            {can.manage_logbook ? 'Manage all logbook requests.' : 'Track your logbook requests.'}
         </CardDescription>
       </CardHeader>
       <CardContent>
-          {showTabs ? (
+          {can.manage_logbook ? (
             <Tabs defaultValue="pending">
               <TabsList>
                 <TabsTrigger value="pending">
-                    Pending for me
+                    Pending
                     {pendingRequests.length > 0 && <Badge className="ml-2">{pendingRequests.length}</Badge>}
                 </TabsTrigger>
-                <TabsTrigger value="my-requests">
+                <TabsTrigger value="all">All ({allRequests.length})</TabsTrigger>
+                {myRequests.length > 0 && (
+                  <TabsTrigger value="my-requests">
                     My Requests
                     {myLogbookRequestUpdates > 0 && <Badge variant="destructive" className="ml-2">{myLogbookRequestUpdates}</Badge>}
-                </TabsTrigger>
+                  </TabsTrigger>
+                )}
               </TabsList>
               <TabsContent value="pending" className="mt-4"><RequestsTable requests={pendingRequests} /></TabsContent>
-              <TabsContent value="my-requests" className="mt-4"><RequestsTable requests={myRequests} /></TabsContent>
+              <TabsContent value="all" className="mt-4"><RequestsTable requests={allRequests} /></TabsContent>
+              {myRequests.length > 0 && (
+                <TabsContent value="my-requests" className="mt-4"><RequestsTable requests={myRequests} /></TabsContent>
+              )}
             </Tabs>
           ) : (
-            <RequestsTable requests={can.manage_logbook ? pendingRequests : myRequests} />
+            <RequestsTable requests={myRequests} />
           )}
       </CardContent>
     </Card>
