@@ -31,7 +31,7 @@ const RequestDetailsDialog = ({ request, isOpen, onOpenChange, onAction, onComme
   onAction: (requestId: string, status: 'Completed' | 'Rejected', comment: string) => void;
   onComment: (requestId: string, text: string, notify?: boolean) => void;
 }) => {
-    const { user, users, manpowerProfiles, can } = useAppContext();
+    const { user, users, manpowerProfiles, can, deleteLogbookRequest } = useAppContext();
     const [comment, setComment] = useState('');
     const [rejectionComment, setRejectionComment] = useState('');
     const { toast } = useToast();
@@ -41,6 +41,7 @@ const RequestDetailsDialog = ({ request, isOpen, onOpenChange, onAction, onComme
     const commentsArray = Array.isArray(request.comments) ? request.comments : (request.comments ? Object.values(request.comments) : []);
     
     const isApprover = can.manage_logbook;
+    const canDelete = user?.role === 'Admin';
 
     const handleConfirmAction = (status: 'Completed' | 'Rejected') => {
         if (status === 'Rejected' && !rejectionComment.trim()) {
@@ -55,6 +56,11 @@ const RequestDetailsDialog = ({ request, isOpen, onOpenChange, onAction, onComme
       if (!comment.trim()) return;
       onComment(request.id, comment, true);
       setComment('');
+    };
+
+    const handleDelete = () => {
+        deleteLogbookRequest(request.id);
+        onOpenChange(false);
     };
 
     return (
@@ -106,27 +112,46 @@ const RequestDetailsDialog = ({ request, isOpen, onOpenChange, onAction, onComme
                 </div>
                 <DialogFooter className="flex-col sm:flex-row sm:justify-between items-center w-full">
                   <div>
-                    {isApprover && request.status === 'Pending' && (
-                        <div className="flex gap-2">
+                    <div className="flex gap-2">
+                        {isApprover && request.status === 'Pending' && (
+                            <div className="flex gap-2">
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button size="sm" variant="destructive">Reject</Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Reject Request?</AlertDialogTitle>
+                                            <AlertDialogDescription>Please provide a comment for rejecting this request.</AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <Textarea value={rejectionComment} onChange={(e) => setRejectionComment(e.target.value)} placeholder="Rejection reason..." />
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleConfirmAction('Rejected')}>Confirm Rejection</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                                <Button size="sm" onClick={() => handleConfirmAction('Completed')}>Approve</Button>
+                            </div>
+                        )}
+                         {canDelete && (
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button size="sm" variant="destructive">Reject</Button>
+                                    <Button size="sm" variant="destructive"><Trash2 className="mr-2 h-4 w-4"/>Delete</Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
-                                        <AlertDialogTitle>Reject Request?</AlertDialogTitle>
-                                        <AlertDialogDescription>Please provide a comment for rejecting this request.</AlertDialogDescription>
+                                        <AlertDialogTitle>Delete Request?</AlertDialogTitle>
+                                        <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
                                     </AlertDialogHeader>
-                                    <Textarea value={rejectionComment} onChange={(e) => setRejectionComment(e.target.value)} placeholder="Rejection reason..." />
                                     <AlertDialogFooter>
                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleConfirmAction('Rejected')}>Confirm Rejection</AlertDialogAction>
+                                        <AlertDialogAction onClick={handleDelete}>Confirm Delete</AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>
-                            <Button size="sm" onClick={() => handleConfirmAction('Completed')}>Approve</Button>
-                        </div>
-                    )}
+                        )}
+                    </div>
                   </div>
                   <DialogClose asChild>
                     <Button type="button" variant="secondary">Close</Button>
@@ -175,7 +200,7 @@ const RequestsTable = ({ requests }: { requests: LogbookRequest[] }) => {
               const employee = manpowerProfiles.find(p => p.id === req.manpowerId);
               const requester = users.find(u => u.id === req.requesterId);
               const isMyRequest = req.requesterId === user?.id;
-              const hasUnread = isMyRequest && !req.viewedBy[user!.id] && req.status !== 'Pending';
+              const hasUnread = isMyRequest && req.status !== 'Pending' && (!req.viewedBy || !req.viewedBy[user!.id]);
               
               return (
                 <TableRow key={req.id} className={hasUnread ? "font-bold bg-blue-50 dark:bg-blue-900/20" : ""}>
@@ -275,5 +300,3 @@ export default function LogbookRequests() {
     </Card>
   );
 }
-
-    
