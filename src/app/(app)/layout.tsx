@@ -24,28 +24,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return;
     } 
     
-    if (user.status === 'locked' && pathname !== '/status') {
+    if (user.status === 'locked') {
       router.replace('/status');
     }
   }, [user, loading, router, pathname]);
 
-  if (loading || !user) {
+  if (loading || !user || user.status === 'locked') {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
           <Skeleton className="h-12 w-12 rounded-full" />
           <div className="space-y-2">
-            <p className="text-muted-foreground">Loading...</p>
+            <p className="text-muted-foreground">Redirecting...</p>
             <Skeleton className="h-4 w-[250px]" />
             <Skeleton className="h-4 w-[200px]" />
           </div>
         </div>
       </div>
     );
-  }
-  
-  if (user.status === 'locked') {
-      return children;
   }
 
   return (

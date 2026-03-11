@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, Dispatch, SetStateAction, useMemo } from 'react';
 import { User, RoleDefinition, Permission, ALL_PERMISSIONS, PasswordResetRequest, UnlockRequest, Feedback, DailyPlannerComment, PlannerEvent, Role } from '@/lib/types';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, get, query, orderByChild, equalTo, update, push, set, remove } from 'firebase/database';
 import useLocalStorage from '@/hooks/use-local-storage';
@@ -99,7 +99,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const { toast } = useToast();
   const router = useRouter();
-  const pathname = usePathname();
 
   const can: PermissionsObject = useMemo(() => {
     const userRole = roles.find(r => r.name === user?.role);
@@ -180,7 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) addActivityLog(user.id, 'User Logged Out');
     setStoredUserId(null);
     setUser(null);
-    router.push('/login');
+    router.replace('/login');
   }, [user, setStoredUserId, router, addActivityLog]);
 
   const updateUser = useCallback((updatedUser: User) => {
@@ -464,30 +463,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!storedUserId) {
         setLoading(false);
+    } else {
+      const userRef = ref(rtdb, `users/${storedUserId}`);
+      onValue(userRef, (snapshot) => {
+        if(snapshot.exists()) {
+          setUser({ id: snapshot.key, ...snapshot.val() });
+        } else {
+          // User might have been deleted, log them out
+          logout();
+        }
+        setLoading(false);
+      });
     }
 
     return () => unsubscribers.forEach(unsubscribe => unsubscribe());
-  }, [storedUserId]);
-
-  useEffect(() => {
-    if (loading) return;
-
-    if (storedUserId && users.length > 0) {
-      const foundUser = users.find(u => u.id === storedUserId);
-      if (foundUser) {
-        setUser(foundUser);
-        if (foundUser.status === 'locked' && pathname !== '/status') {
-          router.replace('/status');
-        } else if (foundUser.status !== 'locked' && (pathname === '/status' || pathname === '/login')) {
-          router.replace('/dashboard');
-        }
-      } else {
-        logout();
-      }
-    } else if (!storedUserId && pathname !== '/login') {
-      router.replace('/login');
-    }
-  }, [storedUserId, users, logout, router, pathname, loading]);
+  }, [storedUserId, logout]);
 
   const contextValue: AuthContextType = {
     user, loading, users, roles, passwordResetRequests, unlockRequests, can, appName, appLogo, activeTheme, plannerNotificationCount,
