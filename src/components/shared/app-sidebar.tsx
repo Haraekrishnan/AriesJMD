@@ -53,9 +53,9 @@ export function AppSidebar() {
     internalRequests, managementRequests, incidentReports,
     ppeRequests, payments, feedback, unlockRequests,
     inventoryTransferRequests, dailyPlannerComments, logbookRequests,
-    pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount,
+    pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestRequestCount,
     damageReports,
-    jmsAndTimesheetNotificationCount
+    trackerNotificationCount
   } = useAppContext();
   const pathname = usePathname();
 
@@ -149,7 +149,7 @@ const plannerNotificationCount =
     return {
       myRequests: pendingInternalRequestCount + updatedInternalRequestCount + pendingPpeRequestCount + updatedPpeRequestCount,
       manageTasks: myNewTaskCount + pendingTaskApprovalCount + myPendingTaskRequestCount,
-      jmsTracker: jmsAndTimesheetNotificationCount,
+      jmsTracker: trackerNotificationCount || 0,
       storeInventory: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount,
       equipment: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length,
       damageReports: pendingDamageReportCount,
@@ -166,7 +166,7 @@ const plannerNotificationCount =
     ppeRequests, payments, feedback, unlockRequests,
     inventoryTransferRequests, dailyPlannerComments, logbookRequests,
     myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount,
-    jmsAndTimesheetNotificationCount,
+    trackerNotificationCount,
   ]);
   
   const navItems = useMemo(() => [
