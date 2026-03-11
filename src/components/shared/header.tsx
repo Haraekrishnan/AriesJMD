@@ -122,7 +122,7 @@ const plannerNotificationCount =
     return {
       myRequests: pendingInternalRequestCount + updatedInternalRequestCount + pendingPpeRequestCount + updatedPpeRequestCount,
       manageTasks: myNewTaskCount + pendingTaskApprovalCount + myPendingTaskRequestCount,
-      jmsTracker: trackerNotificationCount,
+      jmsTracker: trackerNotificationCount || 0,
       storeInventory: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount,
       equipment: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length,
       damageReports: pendingDamageReportCount,
