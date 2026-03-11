@@ -89,25 +89,39 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
   }, [users]);
 
   const checkForDuplicates = (data: JobFormValues): string[] => {
-    const conflicts: string[] = [];
-    jobProgress.forEach(job => {
-        let matchingFields: string[] = [];
+    const conflicts = new Set<string>();
 
-        if (data.jmsNo && job.jmsNo && data.jmsNo === job.jmsNo) {
-            matchingFields.push("JMS No.");
+    const newJmsNo = data.jmsNo?.trim().toLowerCase();
+    const newTitle = data.title.trim().toLowerCase();
+    const newPlantUnit = (data.plantUnit || '').trim().toLowerCase();
+
+    for (const job of jobProgress) {
+        const existingJmsNo = job.jmsNo?.trim().toLowerCase();
+        const existingTitle = job.title.trim().toLowerCase();
+        const existingPlantUnit = (job.plantUnit || '').trim().toLowerCase();
+
+        // Check 1: Exact JMS No. match (high confidence)
+        if (newJmsNo && newJmsNo.length > 0 && newJmsNo === existingJmsNo) {
+            conflicts.add(`A job with the same JMS No. ("${job.jmsNo}") already exists: "${job.title}".`);
         }
-        if (data.projectId === job.projectId && data.plantUnit === job.plantUnit && data.amount === job.amount) {
-            matchingFields.push("Project, Plant/Unit, and Amount");
-        }
-        if (data.dateFrom && job.dateFrom && isSameDay(data.dateFrom, parseISO(job.dateFrom))) {
-            matchingFields.push("Start Date");
-        }
+
+        // Check 2: Strong "core" duplicate match (high confidence)
+        const coreDetailsMatch = newTitle === existingTitle &&
+                                 data.projectId === job.projectId &&
+                                 newPlantUnit === existingPlantUnit &&
+                                 data.amount === job.amount;
         
-        if (matchingFields.length > 0) {
-            conflicts.push(`Existing job "${job.title}" has matching fields: ${matchingFields.join(', ')}.`);
+        if (coreDetailsMatch) {
+            // If dates also match, it's almost certainly a duplicate
+            if (data.dateFrom && job.dateFrom && isSameDay(data.dateFrom, parseISO(job.dateFrom))) {
+                 conflicts.add(`An identical job may already exist: "${job.title}" (Same title, project, amount, and start date).`);
+            } else {
+                 conflicts.add(`A very similar job exists: "${job.title}" (Same title, project, and amount).`);
+            }
         }
-    });
-    return conflicts;
+    }
+
+    return Array.from(conflicts);
   };
 
   const handleCreate = (data: JobFormValues) => {
@@ -321,5 +335,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
     </>
   );
 }
+
+    
 
     
