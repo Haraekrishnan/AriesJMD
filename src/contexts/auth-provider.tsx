@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, Dispatch, SetStateAction, useMemo } from 'react';
+import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, Dispatch, SetStateAction, useMemo, useRef } from 'react';
 import { User, RoleDefinition, Permission, ALL_PERMISSIONS, PasswordResetRequest, UnlockRequest, Feedback, DailyPlannerComment, PlannerEvent, Role } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { rtdb } from '@/lib/rtdb';
@@ -180,11 +180,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [setStoredUserId, addActivityLog]);
 
   const logout = useCallback(() => {
-    if (user) addActivityLog(user.id, 'User Logged Out');
     setStoredUserId(null);
     setUser(null);
     router.replace('/login');
-  }, [user, setStoredUserId, router, addActivityLog]);
+  }, [setStoredUserId, router]);
+  
+  const prevUserRef = useRef<User | null>();
+  useEffect(() => {
+    if (prevUserRef.current && !user) {
+      addActivityLog(prevUserRef.current.id, 'User Logged Out');
+    }
+    prevUserRef.current = user;
+  }, [user, addActivityLog]);
+
 
   const updateUser = useCallback((updatedUser: User) => {
     const { id, ...data } = updatedUser;
@@ -261,16 +269,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             resetCode: code,
         });
         
-        // This feature is currently disabled
-        // if (targetUser.email) {
-        //     sendNotificationEmail({
-        //         to: [targetUser.email], 
-        //         subject:`Your Password Reset Code`, 
-        //         htmlBody: `<p>Your password reset code is: <strong>${code}</strong></p><p>This code will expire. Please use it to reset your password in the app.</p>`,
-        //         notificationSettings: {} as any, // Placeholder for now
-        //         event: 'onPasswordReset', // This might need a new event type
-        //     });
-        // }
         return true;
     }, []);
   
@@ -310,17 +308,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const newRequestRef = push(ref(rtdb, 'unlockRequests'));
     set(newRequestRef, { userId, userName, date: new Date().toISOString(), status: 'pending' });
 
-    const admins = users.filter(u => u.role === 'Admin' && u.email);
-    admins.forEach(admin => {
-        // Disabled for now
-        // sendNotificationEmail({
-        //     to: [admin.email!],
-        //     subject: `Account Unlock Request from ${userName}`,
-        //     htmlBody: `<p>User <strong>${userName}</strong> (ID: ${userId}) has requested to have their account unlocked. Please log in to the admin panel to review the request.</p>`,
-        //     notificationSettings: {} as any, // Placeholder
-        //     event: 'onUnlockRequest',
-        // });
-    });
   }, [users]);
   
   const resolveUnlockRequest = useCallback((requestId: string, userId: string) => {
@@ -453,11 +440,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (data) {
           setAppName(currentAppName => {
             const newName = data.appName || 'Aries Marine';
-            return newName === currentAppName ? currentAppName : newName;
+            if (newName === currentAppName) return currentAppName;
+            return newName;
           });
           setAppLogo(currentAppLogo => {
             const newLogo = data.appLogo || null;
-            return newLogo === currentAppLogo ? currentAppLogo : newLogo;
+            if (newLogo === currentAppLogo) return currentAppLogo;
+            return newLogo;
           });
         }
       }),
@@ -478,15 +467,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
     } else {
       const userRef = ref(rtdb, `users/${storedUserId}`);
-      onValue(userRef, (snapshot) => {
+      const unsubscribeUser = onValue(userRef, (snapshot) => {
         if(snapshot.exists()) {
-          setUser({ id: snapshot.key, ...snapshot.val() });
+          const userData = { id: snapshot.key!, ...snapshot.val() };
+          setUser(currentUser => {
+            if (JSON.stringify(currentUser) === JSON.stringify(userData)) {
+              return currentUser;
+            }
+            return userData;
+          });
         } else {
-          // User might have been deleted, log them out
           logout();
         }
         setLoading(false);
       });
+      unsubscribers.push(unsubscribeUser);
     }
 
     return () => unsubscribers.forEach(unsubscribe => unsubscribe());
@@ -509,3 +504,5 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
+    
