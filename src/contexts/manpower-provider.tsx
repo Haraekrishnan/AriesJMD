@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -57,17 +58,20 @@ const createDataListener = <T extends {}>(
     setData: Dispatch<SetStateAction<Record<string, T>>>,
 ) => {
     const dbRef = ref(rtdb, path);
-    const listeners = [
-        onValue(dbRef, (snapshot) => {
-            const data = snapshot.val() || {};
-            const processedData = Object.keys(data).reduce((acc, key) => {
-                acc[key] = { ...data[key], id: key };
-                return acc;
-            }, {} as Record<string, T>);
-            setData(processedData);
-        })
-    ];
-    return () => listeners.forEach(listener => listener());
+    const listener = onValue(dbRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        const processedData = Object.keys(data).reduce((acc, key) => {
+            acc[key] = { ...data[key], id: key };
+            return acc;
+        }, {} as Record<string, T>);
+        setData(currentData => {
+            if (JSON.stringify(currentData) === JSON.stringify(processedData)) {
+                return currentData;
+            }
+            return processedData;
+        });
+    });
+    return () => listener();
 };
 
 const ManpowerContext = createContext<ManpowerContextType | undefined>(undefined);
