@@ -20,7 +20,13 @@ export function DecorationContextProvider({ children }: { children: ReactNode })
     useEffect(() => {
         const themeRef = ref(rtdb, 'decorations/activeTheme');
         const unsubscribe = onValue(themeRef, (snapshot) => {
-            setActiveTheme(snapshot.val() || 'none');
+            const newTheme = snapshot.val() || 'none';
+            setActiveTheme(currentTheme => {
+                if (currentTheme === newTheme) {
+                    return currentTheme;
+                }
+                return newTheme;
+            });
         });
         return () => unsubscribe();
     }, []);
