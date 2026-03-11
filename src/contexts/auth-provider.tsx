@@ -1,8 +1,9 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, Dispatch, SetStateAction, useMemo, useRef } from 'react';
-import { User, RoleDefinition, Permission, ALL_PERMISSIONS, PasswordResetRequest, UnlockRequest, Feedback, DailyPlannerComment, PlannerEvent, Role } from '@/lib/types';
+import { User, RoleDefinition, Permission, ALL_PERMISSIONS, PasswordResetRequest, UnlockRequest, Feedback, DailyPlannerComment, PlannerEvent, Role, NotificationSettings } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, get, query, orderByChild, equalTo, update, push, set, remove } from 'firebase/database';
@@ -166,13 +167,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (foundUser.status === 'locked' || foundUser.status === 'deactivated') {
             setUser(foundUser);
             setStoredUserId(foundUser.id);
+            setLoading(false);
+            return { success: true, user: foundUser };
         } else {
             setStoredUserId(foundUser.id);
             setUser(foundUser);
             addActivityLog(foundUser.id, 'User Logged In');
+            setLoading(false);
+            return { success: true, user: foundUser };
         }
-        setLoading(false);
-        return { success: true, user: foundUser };
       }
     }
     setLoading(false);
@@ -182,16 +185,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     setStoredUserId(null);
     setUser(null);
-    router.replace('/login');
-  }, [setStoredUserId, router]);
+  }, [setStoredUserId]);
   
   const prevUserRef = useRef<User | null>();
   useEffect(() => {
     if (prevUserRef.current && !user) {
       addActivityLog(prevUserRef.current.id, 'User Logged Out');
+      router.replace('/login');
     }
     prevUserRef.current = user;
-  }, [user, addActivityLog]);
+  }, [user, addActivityLog, router]);
 
 
   const updateUser = useCallback((updatedUser: User) => {
@@ -249,28 +252,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, updateUser, toast]);
 
-    const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
-        const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
-        const snapshot = await get(usersRef);
-        if (!snapshot.exists()) return false;
-        
-        const userData = snapshot.val();
-        const userId = Object.keys(userData)[0];
-        const targetUser = { id: userId, ...userData[userId] };
+  const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
+    const usersRef = query(ref(rtdb, 'users'), orderByChild('email'), equalTo(email));
+    const snapshot = await get(usersRef);
+    if (!snapshot.exists()) return false;
 
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
-        
-        const newRequestRef = push(ref(rtdb, 'passwordResetRequests'));
-        await set(newRequestRef, {
-            userId: targetUser.id,
-            email: targetUser.email,
-            date: new Date().toISOString(),
-            status: 'pending',
-            resetCode: code,
+    const userData = snapshot.val();
+    const userId = Object.keys(userData)[0];
+    const targetUser = { id: userId, ...userData[userId] };
+
+    const settingsSnapshot = await get(ref(rtdb, 'settings/notificationSettings'));
+    const notificationSettings: NotificationSettings = settingsSnapshot.val() || { events: {}, additionalRecipients: '' };
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    const newRequestRef = push(ref(rtdb, 'passwordResetRequests'));
+    await set(newRequestRef, {
+        userId: targetUser.id,
+        email: targetUser.email,
+        date: new Date().toISOString(),
+        status: 'pending',
+        resetCode: code,
+    });
+
+    const htmlBody = `
+        <p>You requested a password reset. Your one-time reset code is:</p>
+        <h2 style="text-align: center; letter-spacing: 5px; font-size: 24px; margin: 20px 0;">${code}</h2>
+        <p>If you did not request this, you can safely ignore this email.</p>
+    `;
+
+    try {
+        await sendNotificationEmail({
+            to: [targetUser.email],
+            subject: "Your Password Reset Code",
+            htmlBody: htmlBody,
+            notificationSettings,
+            event: 'onPasswordReset', 
+            involvedUser: targetUser,
+            creatorUser: null,
         });
-        
-        return true;
-    }, []);
+    } catch(e) {
+        console.error("Failed to send password reset email:", e);
+    }
+    
+    return true;
+  }, []);
   
   const resolveResetRequest = useCallback((requestId: string) => {
     update(ref(rtdb, `passwordResetRequests/${requestId}`), { status: 'handled' });

@@ -184,6 +184,33 @@ export type ActivityLog = {
   details?: string;
 };
 
+export type NotificationEventKey =
+  | 'onNewTask'
+  | 'onTaskStatusUpdate'
+  | 'onTaskStatusSubmitted'
+  | 'onTaskApproved'
+  | 'onTaskReturned'
+  | 'onTaskComment'
+  | 'onInternalRequest'
+  | 'onInternalRequestUpdate'
+  | 'onPpeRequest'
+  | 'onPpeRequestUpdate'
+  | 'onManagementRequest'
+  | 'onPasswordReset';
+
+export type NotificationSettings = {
+  additionalRecipients?: string;
+  events?: {
+    [key in NotificationEventKey]?: {
+      enabled: boolean;
+      additionalRecipients?: string;
+      notifyInvolvedUser?: boolean;
+      notifyCreator?: boolean;
+    };
+  };
+};
+
+
 export type VehicleStatus = 'Active' | 'In Maintenance' | 'Left the Project';
 export type Vehicle = {
   id:string;
