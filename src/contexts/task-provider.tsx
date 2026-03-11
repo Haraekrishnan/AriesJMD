@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -40,7 +41,12 @@ const createDataListener = <T extends {}>(
             acc[key] = { ...data[key], id: key };
             return acc;
         }, {} as Record<string, T>);
-        setData(processedData);
+        setData(currentData => {
+            if (JSON.stringify(currentData) === JSON.stringify(processedData)) {
+                return currentData;
+            }
+            return processedData;
+        });
     });
     return () => listener();
 };

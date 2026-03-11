@@ -81,7 +81,12 @@ const createDataListener = <T extends {}>(
             acc[key] = { ...data[key], id: key };
             return acc;
         }, {} as Record<string, T>);
-        setData(processedData);
+        setData(currentData => {
+            if (JSON.stringify(currentData) === JSON.stringify(processedData)) {
+                return currentData;
+            }
+            return processedData;
+        });
     });
     return () => listener();
 };
@@ -1259,4 +1264,5 @@ export const usePlanner = (): PlannerContextType => {
   }
   return context;
 };
+
 
