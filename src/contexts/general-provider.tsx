@@ -171,6 +171,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
       userId: user.id,
       text,
       date: new Date().toISOString(),
+      eventId: feedbackId,
     });
     // Mark as unread for the original user if someone else comments
     const feedbackItem = feedbackById[feedbackId];
@@ -417,7 +418,13 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
       createDataListener('managementRequests', setManagementRequestsById),
       createDataListener('feedback', setFeedbackById),
       onValue(ref(rtdb, 'settings/notificationSettings'), (snapshot) => {
-        setNotificationSettings(snapshot.val() || { events: {}, additionalRecipients: '' });
+        const newSettings = snapshot.val() || { events: {}, additionalRecipients: '' };
+        setNotificationSettings(currentSettings => {
+            if (JSON.stringify(currentSettings) === JSON.stringify(newSettings)) {
+                return currentSettings;
+            }
+            return newSettings;
+        });
       }),
     ];
 
@@ -455,3 +462,4 @@ export const useGeneral = (): GeneralContextType => {
 };
 
     
+

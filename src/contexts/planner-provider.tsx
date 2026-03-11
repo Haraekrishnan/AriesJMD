@@ -1198,27 +1198,40 @@ const completeAndFinalizeJob = useCallback((jobId: string, currentStepId: string
             createDataListener('plannerEvents', setPlannerEventsById),
             onValue(ref(rtdb, 'dailyPlannerComments'), (snapshot) => {
                 const data = snapshot.val() || {};
-                setDailyPlannerCommentsById(data);
+                setDailyPlannerCommentsById(currentData => {
+                    if (JSON.stringify(currentData) === JSON.stringify(data)) {
+                        return currentData;
+                    }
+                    return data;
+                });
             }),
             createDataListener('jobSchedules', setJobSchedulesById),
             createDataListener('jobRecordPlants', setJobRecordPlantsById),
             onValue(ref(rtdb, 'jobRecords'), (snapshot) => {
                 const data = snapshot.val();
+                let monthRecords: { [key: string]: JobRecord } = {};
                 if (data && typeof data === 'object') {
-                  const monthRecords: { [key: string]: JobRecord } = {};
-                  for (const key in data) {
-                    if (Object.prototype.hasOwnProperty.call(data, key) && /^\d{4}-\d{2}$/.test(key)) {
-                      monthRecords[key] = data[key];
+                    for (const key in data) {
+                        if (Object.prototype.hasOwnProperty.call(data, key) && /^\d{4}-\d{2}$/.test(key)) {
+                            monthRecords[key] = data[key];
+                        }
                     }
-                  }
-                  setJobRecords(monthRecords);
-                } else {
-                  setJobRecords({});
                 }
+                setJobRecords(currentRecords => {
+                    if (JSON.stringify(currentRecords) === JSON.stringify(monthRecords)) {
+                        return currentRecords;
+                    }
+                    return monthRecords;
+                });
             }),
              onValue(ref(rtdb, 'vehicleUsageRecords'), (snapshot) => {
                 const data = snapshot.val() || {};
-                setVehicleUsageRecords(data);
+                setVehicleUsageRecords(currentData => {
+                    if (JSON.stringify(currentData) === JSON.stringify(data)) {
+                        return currentData;
+                    }
+                    return data;
+                });
             }),
             createDataListener('timesheets', setTimesheetsById),
             createDataListener('jobProgress', setJobProgressById),
@@ -1264,5 +1277,6 @@ export const usePlanner = (): PlannerContextType => {
   }
   return context;
 };
+
 
 

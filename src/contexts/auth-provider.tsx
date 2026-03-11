@@ -164,14 +164,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (foundUser.password === pass) {
         if (foundUser.status === 'locked' || foundUser.status === 'deactivated') {
+            setUser(foundUser);
+            setStoredUserId(foundUser.id);
+        } else {
             setStoredUserId(foundUser.id);
             setUser(foundUser);
-            setLoading(false);
-            return { success: true, user: foundUser };
+            addActivityLog(foundUser.id, 'User Logged In');
         }
-        setStoredUserId(foundUser.id);
-        setUser(foundUser);
-        addActivityLog(foundUser.id, 'User Logged In');
         setLoading(false);
         return { success: true, user: foundUser };
       }
@@ -452,17 +451,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       onValue(ref(rtdb, 'branding'), (snapshot) => {
         const data = snapshot.val();
         if (data) {
-          setAppName(data.appName || 'Aries Marine');
-          setAppLogo(data.appLogo || null);
+          setAppName(currentAppName => {
+            const newName = data.appName || 'Aries Marine';
+            return newName === currentAppName ? currentAppName : newName;
+          });
+          setAppLogo(currentAppLogo => {
+            const newLogo = data.appLogo || null;
+            return newLogo === currentAppLogo ? currentAppLogo : newLogo;
+          });
         }
       }),
       onValue(ref(rtdb, 'decorations/activeTheme'), (snapshot) => {
-        setActiveTheme(snapshot.val() || 'none');
+        const newTheme = snapshot.val() || 'none';
+        setActiveTheme(currentTheme => newTheme === currentTheme ? currentTheme : newTheme);
       }),
       createDataListener('plannerEvents', setPlannerEventsById),
       onValue(ref(rtdb, 'dailyPlannerComments'), (snapshot) => {
           const data = snapshot.val() || {};
-          setDailyPlannerCommentsById(data);
+          setDailyPlannerCommentsById(currentData => {
+            if (JSON.stringify(currentData) === JSON.stringify(data)) {
+                return currentData;
+            }
+            return data;
+        });
       }),
     ];
 
