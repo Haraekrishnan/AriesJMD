@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -9,7 +8,12 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Menu, ShieldAlert, History, Ship, LogOut, LayoutDashboard, Send, CheckSquare, CalendarCheck, ShoppingCart, Warehouse, ArrowRightLeft, Package, HardHat, Car, Home, CalendarDays, CalendarCheck, Package, CreditCard, Briefcase, ShoppingCart, ArrowRightLeft, HelpCircle, ClipboardList, Download, MessageSquare, Hammer, Radio, Users, FileText } from 'lucide-react';
+import {
+  Menu, ShieldAlert, History, Ship, LogOut, LayoutDashboard, Send, CheckSquare,
+  CalendarCheck, ShoppingCart, Warehouse, ArrowRightLeft, Package, HardHat, Car,
+  Home, CalendarDays, Briefcase, HelpCircle, ClipboardList, Download,
+  MessageSquare, Hammer, Radio, Users, FileText, Trophy, TrendingUp, User as UserIcon
+} from 'lucide-react';
 import AnnouncementApprovalDialog from '../announcements/AnnouncementApprovalDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import NewAnnouncementDialog from '../announcements/NewAnnouncementDialog';
@@ -27,7 +31,7 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
       internalRequests, managementRequests, incidentReports,
       ppeRequests, payments, feedback, unlockRequests,
       inventoryTransferRequests, dailyPlannerComments,
-      pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount,
+      pendingTaskApprovalCount, myNewTaskCount,
       damageReports,
       trackerNotificationCount
     } = useAppContext();
@@ -122,7 +126,7 @@ const plannerNotificationCount =
 
     return {
       myRequests: pendingInternalRequestCount + updatedInternalRequestCount + pendingPpeRequestCount + updatedPpeRequestCount,
-      manageTasks: myNewTaskCount + pendingTaskApprovalCount + myPendingTaskRequestCount,
+      manageTasks: myNewTaskCount + pendingTaskApprovalCount,
       jmsTracker: trackerNotificationCount || 0,
       storeInventory: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount,
       equipment: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length,
@@ -139,8 +143,8 @@ const plannerNotificationCount =
     internalRequests, managementRequests, incidentReports, damageReports,
     ppeRequests, payments, feedback, unlockRequests,
     inventoryTransferRequests, dailyPlannerComments,
-    myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount,
-    trackerNotificationCount
+    myNewTaskCount, pendingTaskApprovalCount,
+    trackerNotificationCount,
   ]);
     
     const navItems = [

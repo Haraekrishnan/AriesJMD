@@ -149,7 +149,7 @@ const plannerNotificationCount =
 
     return {
       myRequests: pendingInternalRequestCount + updatedInternalRequestCount + pendingPpeRequestCount + updatedPpeRequestCount,
-      manageTasks: myNewTaskCount + pendingTaskApprovalCount + myPendingTaskRequestCount,
+      manageTasks: myNewTaskCount + pendingTaskApprovalCount,
       jmsTracker: trackerNotificationCount || 0,
       storeInventory: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount,
       equipment: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length,
@@ -166,7 +166,7 @@ const plannerNotificationCount =
     internalRequests, managementRequests, incidentReports, damageReports,
     ppeRequests, payments, feedback, unlockRequests,
     inventoryTransferRequests, dailyPlannerComments,
-    myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount,
+    myNewTaskCount, pendingTaskApprovalCount,
     trackerNotificationCount,
   ]);
   
