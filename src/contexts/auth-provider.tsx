@@ -463,18 +463,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }),
       onValue(ref(rtdb, 'decorations/activeTheme'), (snapshot) => {
         const newTheme = snapshot.val() || 'none';
-        setActiveTheme(currentTheme => newTheme === currentTheme ? currentTheme : newTheme);
-      }),
-      createDataListener('plannerEvents', setPlannerEventsById),
-      onValue(ref(rtdb, 'dailyPlannerComments'), (snapshot) => {
-          const data = snapshot.val() || {};
-          setDailyPlannerCommentsById(currentData => {
-            if (JSON.stringify(currentData) === JSON.stringify(data)) {
-                return currentData;
+        setActiveTheme(currentTheme => {
+            if (currentTheme === newTheme) {
+                return currentTheme;
             }
-            return data;
+            return newTheme;
         });
       }),
+      createDataListener('plannerEvents', setPlannerEventsById),
+      createDataListener('dailyPlannerComments', setDailyPlannerCommentsById),
     ];
 
     if (!storedUserId) {

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { usePathname } from 'next/navigation';
@@ -52,8 +53,8 @@ export function AppSidebar() {
     tasks, certificateRequests, plannerEvents,
     internalRequests, managementRequests, incidentReports,
     ppeRequests, payments, feedback, unlockRequests,
-    inventoryTransferRequests, dailyPlannerComments, logbookRequests,
-    pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount,
+    inventoryTransferRequests, dailyPlannerComments,
+    pendingTaskApprovalCount, myNewTaskCount,
     damageReports,
     trackerNotificationCount
   } = useAppContext();
@@ -164,7 +165,7 @@ const plannerNotificationCount =
     user, can, tasks, certificateRequests, plannerEvents,
     internalRequests, managementRequests, incidentReports, damageReports,
     ppeRequests, payments, feedback, unlockRequests,
-    inventoryTransferRequests, dailyPlannerComments, logbookRequests,
+    inventoryTransferRequests, dailyPlannerComments,
     myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount,
     trackerNotificationCount,
   ]);

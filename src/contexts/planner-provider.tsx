@@ -1196,15 +1196,7 @@ const completeAndFinalizeJob = useCallback((jobId: string, currentStepId: string
     useEffect(() => {
         const unsubscribers = [
             createDataListener('plannerEvents', setPlannerEventsById),
-            onValue(ref(rtdb, 'dailyPlannerComments'), (snapshot) => {
-                const data = snapshot.val() || {};
-                setDailyPlannerCommentsById(currentData => {
-                    if (JSON.stringify(currentData) === JSON.stringify(data)) {
-                        return currentData;
-                    }
-                    return data;
-                });
-            }),
+            createDataListener('dailyPlannerComments', setDailyPlannerCommentsById),
             createDataListener('jobSchedules', setJobSchedulesById),
             createDataListener('jobRecordPlants', setJobRecordPlantsById),
             onValue(ref(rtdb, 'jobRecords'), (snapshot) => {
@@ -1277,6 +1269,7 @@ export const usePlanner = (): PlannerContextType => {
   }
   return context;
 };
+
 
 
 
