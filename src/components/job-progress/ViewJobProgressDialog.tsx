@@ -246,13 +246,6 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
         onSave();
     };
 
-    const handleFinalize = () => {
-        completeAndFinalizeJob(job.id, currentStep.id, completionComment || `Job finalized by ${user?.name}.`);
-        onSave();
-    };
-
-    const isFinalStepSelected = nextStepName === 'JMS Hard copy submitted';
-
     return (
         <div className="p-4 border rounded-md mt-2 bg-muted/20">
             <h5 className="font-semibold text-sm mb-2">Complete Step &amp; Define Next Action</h5>
@@ -283,7 +276,7 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                     {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
                 </div>
                  
-                 {!isFinalStepSelected && nextStepName && (
+                 {nextStepName && (
                     <>
                          {showJmsNoField && (
                              <div className="space-y-1">
@@ -321,24 +314,9 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                     </>
                  )}
 
-                {isFinalStepSelected && (
-                    <Alert>
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>Final Step</AlertTitle>
-                        <AlertDescription>
-                            Completing this will finalize the entire job.
-                        </AlertDescription>
-                    </Alert>
-                )}
-
-
                 <div className="flex justify-end gap-2">
                     <Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
-                    {isFinalStepSelected ? (
-                        <Button type="button" size="sm" onClick={handleFinalize}>Finalize Job</Button>
-                    ) : (
-                        <Button type="submit" size="sm" disabled={!nextStepName}>Complete & Assign Next</Button>
-                    )}
+                    <Button type="submit" size="sm" disabled={!nextStepName}>Complete & Assign Next</Button>
                 </div>
             </form>
         </div>
