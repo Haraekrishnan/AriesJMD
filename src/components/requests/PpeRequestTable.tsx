@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
@@ -6,8 +5,8 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle, Save, MessagesSquare, ShieldX, Send, Undo2, MessageSquare } from 'lucide-react';
-import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import type { PpeRequest, PpeRequestStatus, ManpowerProfile, Comment, InternalRequestItemStatus } from '@/lib/types';
+import { format, formatDistanceToNow, parseISO, isAfter, addYears } from 'date-fns';
+import type { PpeRequest, PpeRequestStatus, ManpowerProfile, Comment, InternalRequestItemStatus, Role } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -435,12 +434,11 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
     const active: PpeRequest[] = [];
     const completed: PpeRequest[] = [];
     requests.forEach(req => {
-      const isRejectedButActive = req.status === 'Rejected' && !req.acknowledgedByRequester;
-      
-      if (isRejectedButActive || !['Issued', 'Rejected'].includes(req.status)) {
-        active.push(req);
-      } else {
+      const completedStatuses: PpeRequestStatus[] = ['Issued', 'Rejected'];
+      if (completedStatuses.includes(req.status)) {
         completed.push(req);
+      } else {
+        active.push(req);
       }
     });
     return { activeRequests: active, completedRequests: completed };
