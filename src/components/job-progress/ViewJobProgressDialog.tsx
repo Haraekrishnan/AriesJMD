@@ -212,7 +212,7 @@ const nextStepSchema = z.object({
   type NextStepFormValues = z.infer<typeof nextStepSchema>;
     
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
-    const { user, addAndCompleteStep, completeAndFinalizeJob, getAssignableUsers } = useAppContext();
+    const { user, addAndCompleteStep, getAssignableUsers } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
    
     const assignableUsersForNextStep = useMemo(() => {
@@ -331,7 +331,7 @@ interface ViewJobProgressDialogProps {
 }
 
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
-    const { user, users, projects, jobProgress, updateJobProgress, updateJobStep, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, finalizeJob, reassignJobStep, returnJobStep, deleteJobProgress, addAndCompleteStep, completeAndFinalizeJob } = useAppContext();
+    const { user, users, projects, jobProgress, updateJobProgress, updateJobStep, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, finalizeJob, reassignJobStep, returnJobStep, deleteJobProgress, addAndCompleteStep } = useAppContext();
     const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
     const [returningStep, setReturningStep] = useState<JobStep | null>(null);
     const [isReopenDialogOpen, setIsReopenDialogOpen] = useState(false);
@@ -484,13 +484,13 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const assignee = users.find(u => u.id === step.assigneeId);
                                 const Icon = statusConfig[step.status]?.icon || Circle;
                                 const isEditingThisStep = editingStepId === step.id;
+                                const isFinalStep = step.name === 'JMS Hard copy submitted';
                                 
                                 const isSelfAssigned = user?.id === step.assigneeId && user?.id === job.creatorId;
                                 const canAcknowledge = (user?.id === step.assigneeId && (step.status === 'Pending' || step.isReturned)) && !isSelfAssigned;
                                 const canPerformAction = (user?.id === step.assigneeId && step.status === 'Acknowledged') || (isSelfAssigned && step.status === 'Acknowledged');
                                 
                                 const isCreator = user?.id === job.creatorId;
-                                const isFinalStep = step.name === 'JMS Hard copy submitted';
                                 const canReturnStep = (canReassign || isCreator) && step.status !== 'Completed' && !canPerformAction && !canAcknowledge;
 
                                 const canModifyStepName = (user?.role === 'Admin' || user?.id === job.creatorId) && job.status !== 'Completed';

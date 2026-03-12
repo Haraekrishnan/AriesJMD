@@ -49,7 +49,6 @@ type PlannerContextType = {
   updateJobStep: (jobId: string, stepId: string, newStepData: Partial<JobStep>) => void;
   updateJobStepStatus: (jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string, completionDetails?: { attachmentUrl?: string; customFields?: Record<string, any> }) => void;
   addAndCompleteStep: (jobId: string, currentStepId: string, completionComment: string | undefined, completionAttachment: { name: string; url: string; } | undefined, completionCustomFields: Record<string, any> | undefined, nextStepData: Omit<JobStep, 'id'|'status'>) => void;
-  completeAndFinalizeJob: (jobId: string, currentStepId: string, finalizationComment: string) => void;
   addJobStepComment: (jobId: string, stepId: string, commentText: string) => void;
   reassignJobStep: (jobId: string, stepId: string, newAssigneeId: string, comment: string) => void;
   assignJobStep: (jobId: string, stepId: string, assigneeId: string) => void;
@@ -778,38 +777,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     }
 }, [user, jobProgressById, users, addJobStepComment, notificationSettings, toast, can.manage_job_progress]);
 
-const completeAndFinalizeJob = useCallback((jobId: string, currentStepId: string, finalizationComment: string) => {
-    if (!user) return;
-    const job = jobProgressById[jobId];
-    if (!job) return;
-
-    const updates: { [key: string]: any } = {};
-    
-    // 1. Complete the current step
-    const currentStepIndex = job.steps.findIndex(s => s.id === currentStepId);
-    if (currentStepIndex === -1) return;
-    const currentStepPath = `jobProgress/${jobId}/steps/${currentStepIndex}`;
-    updates[`${currentStepPath}/status`] = 'Completed';
-    updates[`${currentStepPath}/acknowledgedAt`] = job.steps[currentStepIndex].acknowledgedAt || new Date().toISOString();
-    updates[`${currentStepPath}/completedAt`] = new Date().toISOString();
-    updates[`${currentStepPath}/completedBy`] = user.id;
-
-    // Add comment to current step
-    if (finalizationComment) {
-        const newCommentRef = push(ref(rtdb, `${currentStepPath}/comments`));
-        updates[`${currentStepPath}/comments/${newCommentRef.key}`] = {
-            id: newCommentRef.key, userId: user.id, text: finalizationComment, date: new Date().toISOString(), eventId: jobId
-        };
-    }
-    
-    // 2. Mark the whole job as completed
-    updates[`jobProgress/${jobId}/status`] = 'Completed';
-    updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
-    
-    update(ref(rtdb), updates);
-    toast({ title: "Job Finalized", description: "The JMS has been successfully completed." });
-}, [user, jobProgressById, toast]);
-
     const finalizeJob = useCallback((jobId: string, stepId: string, comment: string) => {
         if (!user) return;
         const job = jobProgressById[jobId];
@@ -1243,7 +1210,8 @@ const completeAndFinalizeJob = useCallback((jobId: string, currentStepId: string
         deleteJobRecordPlant, carryForwardPlantAssignments,
         saveVehicleUsageRecord, lockVehicleUsageSheet, unlockVehicleUsageSheet,
         createJobProgress, updateJobProgress, deleteJobProgress, updateJobStep, updateJobStepStatus,
-        addAndCompleteStep, completeAndFinalizeJob, reassignJobStep, assignJobStep,
+        addAndCompleteStep,
+        addJobStepComment, reassignJobStep, assignJobStep,
         finalizeJob, returnJobStep, reopenJob,
         addTimesheet,
         updateTimesheet,
@@ -1269,7 +1237,3 @@ export const usePlanner = (): PlannerContextType => {
   }
   return context;
 };
-
-
-
-
