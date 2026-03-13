@@ -42,7 +42,7 @@ const statusVariantMap: { [key in JobProgressStatus]: 'default' | 'secondary' | 
 
 export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   const { users, projects } = useAppContext();
-  const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: false }]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: true }]);
   
   const columns: ColumnDef<JobProgress>[] = useMemo(
     () => [
@@ -106,7 +106,10 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                 const lastStep = row.steps[row.steps.length - 1];
                 return users.find(u => u.id === lastStep?.completedBy)?.name || 'Completed';
             }
-            const currentStep = row.steps.find(s => s.status === 'Pending' || s.isReturned) || row.steps.find(s => s.status === 'Acknowledged');
+            const returnedStep = row.steps.find(s => s.isReturned === true);
+            const pendingStep = row.steps.find(s => s.status === 'Pending');
+            const acknowledgedStep = row.steps.find(s => s.status === 'Acknowledged');
+            const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
             return users.find(u => u.id === currentStep?.assigneeId)?.name || '';
         },
         cell: ({ row }) => {
@@ -139,6 +142,40 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                     <span className="truncate">{assignee.name}</span>
                 </div>
             ) : <span className="text-muted-foreground">Unassigned</span>;
+        }
+      },
+      {
+        id: 'duration',
+        header: 'Pending Since',
+        cell: ({ row }) => {
+            const job = row.original;
+            if (job.status === 'Completed') {
+                return <span className="text-muted-foreground">-</span>;
+            }
+    
+            const returnedStep = job.steps.find(s => s.isReturned);
+            const pendingStep = job.steps.find(s => s.status === 'Pending');
+            const acknowledgedStep = job.steps.find(s => s.status === 'Acknowledged');
+    
+            let dateToCompare: string | null | undefined = null;
+    
+            if (returnedStep && returnedStep.returnDetails?.date) {
+                dateToCompare = returnedStep.returnDetails.date;
+            } else if (acknowledgedStep && acknowledgedStep.acknowledgedAt) {
+                dateToCompare = acknowledgedStep.acknowledgedAt;
+            } else {
+                dateToCompare = job.lastUpdated; 
+            }
+    
+            if (!dateToCompare) {
+                return <span className="text-muted-foreground">-</span>;
+            }
+    
+            return (
+                <div className="text-xs whitespace-nowrap text-muted-foreground">
+                    {formatDistanceToNow(parseISO(dateToCompare), { addSuffix: true })}
+                </div>
+            );
         }
       },
       {
@@ -218,7 +255,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
         cell: ({ row }) => <div className="text-right"><Button variant="outline" size="sm" onClick={() => onViewJob(row.original)}><Eye className="mr-2 h-4 w-4" /> View</Button></div>
       }
     ],
-    [projects, users]
+    [projects, users, onViewJob]
   );
   
   const table = useReactTable({
