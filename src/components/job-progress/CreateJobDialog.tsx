@@ -295,7 +295,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
                 </div>
                  <div className="space-y-1">
                     <Label>Value</Label>
-                    <Input type="number" {...form.register('amount')} />
+                    <Input type="number" step="0.01" {...form.register('amount')} />
                 </div>
                  <div className="space-y-1">
                     <Label>JMS No.</Label>
@@ -335,7 +335,3 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
     </>
   );
 }
-
-    
-
-    

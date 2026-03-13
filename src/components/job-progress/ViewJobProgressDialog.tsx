@@ -368,7 +368,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
             dateTo: job.dateTo ? parseISO(job.dateTo) : null,
           });
         }
-      }, [job, isOpen]); // Only re-run when these change
+      }, [job, isOpen, form]);
     
       const onHeaderSubmit = (data: JobDetailsFormValues) => {
           updateJobProgress(job.id, {
@@ -451,7 +451,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                     <div className="space-y-1"><Label>WO No</Label><Input {...form.register('workOrderNo')} /></div>
                                     <div className="space-y-1"><Label>FO No</Label><Input {...form.register('foNo')} /></div>
                                     <div className="space-y-1"><Label>JMS No</Label><Input {...form.register('jmsNo')} /></div>
-                                    <div className="space-y-1"><Label>Amount</Label><Input type="number" {...form.register('amount')} /></div>
+                                    <div className="space-y-1"><Label>Value</Label><Input type="number" step="0.01" {...form.register('amount')} /></div>
                                     <div className="space-y-1"><Label>From</Label><Controller name="dateFrom" control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} /></div>
                                     <div className="space-y-1"><Label>To</Label><Controller name="dateTo" control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} /></div>
                                 </>
