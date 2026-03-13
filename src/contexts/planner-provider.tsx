@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -571,7 +570,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
 
         const initialSteps: JobStep[] = (data.steps || []).map((step, index) => {
             const isFirstStep = index === 0;
-            const isSelfAssigned = isFirstStep && step.assigneeId === user.id;
+            const isSelfAssigned = isFirstStep && !!(step.assigneeId && user && step.assigneeId === user.id);
     
             return {
                 ...step,
@@ -729,7 +728,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         customFields: completionCustomFields || null,
     };
 
-    const isSelfAssigning = nextStepData.assigneeId === user.id;
+    const isSelfAssigning = !!(nextStepData.assigneeId && user && nextStepData.assigneeId === user.id);
 
     const newStep: JobStep = {
         ...nextStepData,
@@ -781,39 +780,21 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         if (!user) return;
         const job = jobProgressById[jobId];
         if (!job) return;
-
-        const updates: { [key: string]: any } = {};
         const stepIndex = job.steps.findIndex(s => s.id === stepId);
         if (stepIndex === -1) return;
-
-        const currentStep = job.steps[stepIndex];
-        const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
-
-        // Mark the final step itself as completed
-        updates[`${stepPath}/status`] = 'Completed';
-        updates[`${stepPath}/completedAt`] = new Date().toISOString();
-        updates[`${stepPath}/completedBy`] = user.id;
-
-        // Also mark as acknowledged if it was pending
-        if(currentStep.status === 'Pending') {
-            updates[`${stepPath}/acknowledgedAt`] = new Date().toISOString();
+        if (job.steps[stepIndex].name !== 'JMS Hard copy submitted') {
+            toast({ title: "Cannot Finalize", description: "Job can only be finalized at the 'JMS Hard copy submitted' step.", variant: 'destructive'});
+            return;
         }
-
-        // Add the comment
-        if (comment) {
-            const newCommentRef = push(ref(rtdb, `${stepPath}/comments`));
-            updates[`${stepPath}/comments/${newCommentRef.key}`] = {
-                id: newCommentRef.key, userId: user.id, text: comment, date: new Date().toISOString(), eventId: jobId
-            };
-        }
-
-        // Mark the whole job as completed
-        updates[`jobProgress/${jobId}/status`] = 'Completed';
-        updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
-
-        update(ref(rtdb), updates);
+        
+        updateJobStepStatus(jobId, stepId, 'Completed', comment);
+        
+        update(ref(rtdb, `jobProgress/${jobId}`), { 
+            status: 'Completed',
+            lastUpdated: new Date().toISOString()
+        });
         toast({ title: "Job Completed", description: "JMS has been successfully finalized." });
-    }, [user, jobProgressById, toast]);
+    }, [user, jobProgressById, toast, updateJobStepStatus]);
     
     const reassignJobStep = useCallback((jobId: string, stepId: string, newAssigneeId: string, comment: string) => {
       if (!user) return;
@@ -999,7 +980,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             return;
         }
 
-        const isSelfAssigned = newStepAssigneeId === user.id;
+        const isSelfAssigned = !!(newStepAssigneeId && user && newStepAssigneeId === user.id);
     
         const newStep: JobStep = {
             id: `step-${job.steps.length}`,
