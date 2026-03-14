@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import { ThumbsUp, ThumbsDown, SendToBack, CheckCircle, AlertTriangle, Trash2, FilePlus, UserCheck, FileDown, Edit } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, SendToBack, CheckCircle, AlertTriangle, Trash2, FilePlus, UserCheck, FileDown, Edit, Search } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import GenerateTpCertDialog from '../inventory/GenerateTpCertDialog';
 import TransferReportDownloads from './TransferReportDownloads';
 import NewInventoryTransferRequestDialog from './new-inventory-transfer-request-dialog';
+import { Input } from '../ui/input';
 
 interface PendingTransfersProps {
   onEditRequest: (request: InventoryTransferRequest) => void;
@@ -24,7 +25,7 @@ interface PendingTransfersProps {
 
 
 const RequestCard = ({ req, onEditRequest }: { req: InventoryTransferRequest; onEditRequest: (request: InventoryTransferRequest) => void; }) => {
-    const { user, users, projects, can, approveInventoryTransferRequest, rejectInventoryTransferRequest, deleteInventoryTransferRequest, addTpCertList, resolveInternalRequestDispute, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims } = useAppContext();
+    const { user, users, projects, can, approveInventoryTransferRequest, rejectInventoryTransferRequest, deleteInventoryTransferRequest, addTpCertList, resolveInternalRequestDispute, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies } = useAppContext();
     const { toast } = useToast();
     const [rejectionRequestId, setRejectionRequestId] = useState<string | null>(null);
     const [comment, setComment] = useState('');
@@ -59,8 +60,9 @@ const RequestCard = ({ req, onEditRequest }: { req: InventoryTransferRequest; on
     
     const allItems = useMemo(() => [
         ...inventoryItems, ...utMachines, ...dftMachines, ...digitalCameras, 
-        ...anemometers, ...otherEquipments, ...laptopsDesktops, ...mobileSims
-      ], [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims]);
+        ...anemometers, ...otherEquipments, ...laptopsDesktops, ...mobileSims,
+        ...weldingMachines, ...walkieTalkies
+      ], [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies]);
       
     const itemSummary = req.items.reduce((acc, item) => {
         acc[item.name] = (acc[item.name] || 0) + 1;
@@ -186,8 +188,9 @@ const RequestCard = ({ req, onEditRequest }: { req: InventoryTransferRequest; on
 };
 
 export default function PendingTransfers({ onEditRequest }: PendingTransfersProps) {
-  const { user, inventoryTransferRequests, projects, can } = useAppContext();
+  const { user, inventoryTransferRequests, projects, can, inventoryItems } = useAppContext();
   const [editingTpList, setEditingTpList] = useState<Partial<TpCertList> | null>(null);
+  const [historySearchTerm, setHistorySearchTerm] = useState('');
 
   const { forApproval, myActiveRequests, allCompletedRequests } = useMemo(() => {
     if (!user) return { forApproval: [], myActiveRequests: [], allCompletedRequests: [] };
@@ -231,6 +234,23 @@ export default function PendingTransfers({ onEditRequest }: PendingTransfersProp
         allCompletedRequests: completed.sort((a,b) => (b.approvalDate || b.requestDate).localeCompare(a.approvalDate || a.requestDate)),
     };
   }, [inventoryTransferRequests, user, can.approve_store_requests, projects]);
+
+  const filteredCompletedRequests = useMemo(() => {
+    if (!historySearchTerm) {
+        return allCompletedRequests;
+    }
+    const lowercasedTerm = historySearchTerm.toLowerCase();
+    return allCompletedRequests.filter(req => 
+        req.items.some(item => {
+            const fullItem = inventoryItems.find(i => i.id === item.itemId);
+            return (
+                (item.serialNumber?.toLowerCase().includes(lowercasedTerm)) ||
+                (item.ariesId?.toLowerCase().includes(lowercasedTerm)) ||
+                ((fullItem as any)?.chestCrollNo?.toLowerCase().includes(lowercasedTerm))
+            );
+        })
+    );
+  }, [allCompletedRequests, historySearchTerm, inventoryItems]);
   
 
   if (forApproval.length === 0 && myActiveRequests.length === 0 && allCompletedRequests.length === 0) {
@@ -269,8 +289,17 @@ export default function PendingTransfers({ onEditRequest }: PendingTransfersProp
                       </AccordionTrigger>
                   </div>
               <AccordionContent className="p-2 space-y-2">
+                <div className="relative max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search by Serial, Aries ID, or Chest Croll No..."
+                        className="pl-9"
+                        value={historySearchTerm}
+                        onChange={(e) => setHistorySearchTerm(e.target.value)}
+                    />
+                </div>
                 <Accordion type="multiple" className="w-full space-y-2">
-                    {allCompletedRequests.map(req => <RequestCard key={req.id} req={req} onEditRequest={onEditRequest} />)}
+                    {filteredCompletedRequests.map(req => <RequestCard key={req.id} req={req} onEditRequest={onEditRequest} />)}
                 </Accordion>
               </AccordionContent>
             </AccordionItem>
