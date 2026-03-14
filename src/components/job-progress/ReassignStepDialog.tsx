@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,6 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { ChevronsUpDown, Check } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { cn } from '@/lib/utils';
+import { Badge } from '../ui/badge';
 
 const reassignSchema = z.object({
   newAssigneeId: z.string().min(1, "Please select a new assignee."),
@@ -76,19 +78,26 @@ export default function ReassignStepDialog({ isOpen, setIsOpen, job, step }: Rea
                                             <CommandList>
                                                 <CommandEmpty>No users found.</CommandEmpty>
                                                 <CommandGroup>
-                                                    {assignableUsers.map(user => (
-                                                        <CommandItem
-                                                            key={user.id}
-                                                            value={user.name}
-                                                            onSelect={() => {
-                                                                form.setValue('newAssigneeId', user.id);
-                                                                setPopoverOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check className={cn("mr-2 h-4 w-4", user.id === field.value ? "opacity-100" : "opacity-0")} />
-                                                            {user.name}
-                                                        </CommandItem>
-                                                    ))}
+                                                    {assignableUsers.map(user => {
+                                                        const isLocked = user.status === 'locked';
+                                                        return (
+                                                            <CommandItem
+                                                                key={user.id}
+                                                                value={user.name}
+                                                                onSelect={() => {
+                                                                    if (isLocked) return;
+                                                                    form.setValue('newAssigneeId', user.id);
+                                                                    setPopoverOpen(false);
+                                                                }}
+                                                                disabled={isLocked}
+                                                                className={cn(isLocked && "text-muted-foreground cursor-not-allowed")}
+                                                            >
+                                                                <Check className={cn("mr-2 h-4 w-4", user.id === field.value ? "opacity-100" : "opacity-0")} />
+                                                                {user.name}
+                                                                {isLocked && <Badge variant="destructive" className="ml-auto">Locked</Badge>}
+                                                            </CommandItem>
+                                                        )
+                                                    })}
                                                 </CommandGroup>
                                             </CommandList>
                                         </Command>
