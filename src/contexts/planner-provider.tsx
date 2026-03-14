@@ -782,7 +782,9 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         if (!job) return;
         const stepIndex = job.steps.findIndex(s => s.id === stepId);
         if (stepIndex === -1) return;
-        if (job.steps[stepIndex].name !== 'JMS Hard copy submitted') {
+        
+        const currentStep = job.steps[stepIndex];
+        if (currentStep.name !== 'JMS Hard copy submitted') {
             toast({ title: "Cannot Finalize", description: "Job can only be finalized at the 'JMS Hard copy submitted' step.", variant: 'destructive'});
             return;
         }
@@ -805,8 +807,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       if (stepIndex === -1) return;
   
       const currentStep = job.steps[stepIndex];
-      const assignableUsers = getAssignableUsers();
-
+  
       const canReassignRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
       if (!canReassignRoles.includes(user.role)) {
           toast({ title: 'Not authorized', variant: 'destructive' });
@@ -817,14 +818,15 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       const newAssignee = users.find(u => u.id === newAssigneeId);
       if (!newAssignee) return;
       
+      const isSelfReassign = newAssigneeId === user.id;
       const reassignComment = `${user.name} reassigned this step from ${oldAssignee?.name || 'Previous Assignee'} to ${newAssignee.name}. Reason: ${comment}`;
   
       const updates: { [key: string]: any } = {};
       const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
   
       updates[`${stepPath}/assigneeId`] = newAssigneeId;
-      updates[`${stepPath}/status`] = 'Pending';
-      updates[`${stepPath}/acknowledgedAt`] = null; // Reset acknowledgment
+      updates[`${stepPath}/status`] = isSelfReassign ? 'Acknowledged' : 'Pending';
+      updates[`${stepPath}/acknowledgedAt`] = isSelfReassign ? new Date().toISOString() : null;
       updates[`${stepPath}/isReturned`] = null;
   
       const newCommentRef = push(ref(rtdb, `${stepPath}/comments`));
@@ -843,7 +845,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   
       toast({ title: "Step Reassigned", description: `Assigned to ${newAssignee.name}.` });
   
-      if (newAssignee.email) {
+      if (newAssignee.email && !isSelfReassign) {
           const htmlBody = `
               <p>A job step in "${job.title}" has been reassigned to you by <strong>${user.name}</strong>.</p>
               <hr>
@@ -862,7 +864,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
               creatorUser: user,
           });
       }
-    }, [user, jobProgressById, users, toast, notificationSettings, getAssignableUsers, addJobStepComment]);
+    }, [user, jobProgressById, users, toast, notificationSettings]);
 
     const assignJobStep = useCallback((jobId: string, stepId: string, assigneeId: string) => {
         if (!user) return;
