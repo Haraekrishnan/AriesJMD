@@ -295,7 +295,11 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
                                         <Select onValueChange={field.onChange} value={field.value}>
                                             <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
                                             <SelectContent>
-                                                {assignableUsersForNextStep.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                                                {assignableUsersForNextStep.map(u => (
+                                                    <SelectItem key={u.id} value={u.id} disabled={u.status === 'locked'}>
+                                                        {u.name} {u.status === 'locked' && <span className="text-muted-foreground">(Locked)</span>}
+                                                    </SelectItem>
+                                                ))}
                                             </SelectContent>
                                         </Select>
                                     )}
