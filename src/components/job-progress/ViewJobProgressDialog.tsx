@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -488,7 +489,6 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const assignee = users.find(u => u.id === step.assigneeId);
                                 const Icon = statusConfig[step.status]?.icon || Circle;
                                 const isEditingThisStep = editingStepId === step.id;
-                                const isFinalStep = step.name === 'JMS Hard copy submitted';
                                 
                                 const isSelfAssigned = user?.id === step.assigneeId && user?.id === job.creatorId;
                                 const canAcknowledge = (user?.id === step.assigneeId && (step.status === 'Pending' || step.isReturned)) && !isSelfAssigned;
@@ -586,13 +586,8 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                             Acknowledge
                                                         </Button>
                                                     )}
-                                                     {canPerformAction && !isFinalStep && (
+                                                     {canPerformAction && (
                                                         <AddNextStepForm job={job} currentStep={step} onCancel={() => setIsOpen(false)} onSave={() => setIsOpen(false)} />
-                                                    )}
-                                                    {canPerformAction && isFinalStep && step.status !== 'Completed' && (
-                                                        <Button onClick={() => finalizeJob(job.id, step.id, `Job finalized by ${user?.name}.`)} className="w-full">
-                                                            Acknowledge & Finalize
-                                                        </Button>
                                                     )}
                                                     {canReturnStep && (
                                                         <div className="flex justify-end">
@@ -617,7 +612,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
-                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                         <AlertDialogDescription>This will permanently delete this JMS and all its steps. This action cannot be undone.</AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>

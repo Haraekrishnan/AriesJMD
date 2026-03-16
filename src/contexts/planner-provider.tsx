@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -715,19 +716,52 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     }
 
     const updates: { [key: string]: any } = {};
+    const nowISO = new Date().toISOString();
     const currentStepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
 
+    // Mark current step as completed
     updates[`${currentStepPath}/status`] = 'Completed';
-    updates[`${currentStepPath}/acknowledgedAt`] = job.steps[stepIndex].acknowledgedAt || new Date().toISOString();
-    updates[`${currentStepPath}/completedAt`] = new Date().toISOString();
+    updates[`${currentStepPath}/completedAt`] = nowISO;
     updates[`${currentStepPath}/completedBy`] = user.id;
     updates[`${currentStepPath}/completionDetails`] = {
-        date: new Date().toISOString(),
+        date: nowISO,
         notes: completionComment || '',
         attachmentUrl: completionAttachment?.url || null,
         customFields: completionCustomFields || null,
     };
 
+    if (completionComment) {
+        addJobStepComment(jobId, currentStepId, completionComment);
+    }
+    
+    if (completionCustomFields?.jmsNo) {
+        updates[`jobProgress/${jobId}/jmsNo`] = completionCustomFields.jmsNo;
+    }
+
+    // Special handling for the final step
+    if (nextStepData.name === 'JMS Hard copy submitted') {
+        const finalStep: JobStep = {
+            ...nextStepData,
+            id: `step-${job.steps.length}`,
+            status: 'Completed',
+            completedAt: nowISO,
+            completedBy: user.id,
+            description: `Job finalized upon hard copy submission by ${user.name}.`,
+            assigneeId: user.id,
+            dueDate: null,
+        };
+        updates[`jobProgress/${jobId}/steps/${job.steps.length}`] = finalStep;
+        
+        updates[`jobProgress/${jobId}/status`] = 'Completed';
+        updates[`jobProgress/${jobId}/lastUpdated`] = nowISO;
+        
+        update(ref(rtdb), updates);
+        
+        toast({ title: "Job Completed", description: "JMS has been successfully finalized." });
+        return; // Exit early
+    }
+
+    // Default logic for creating a new step
     const isSelfAssigning = !!(nextStepData.assigneeId && user && nextStepData.assigneeId === user.id);
 
     const newStep: JobStep = {
@@ -736,30 +770,23 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         assigneeId: nextStepData.assigneeId || null,
         id: `step-${job.steps.length}`,
         status: isSelfAssigning ? 'Acknowledged' : 'Pending',
-        acknowledgedAt: isSelfAssigning ? new Date().toISOString() : null,
+        acknowledgedAt: isSelfAssigning ? nowISO : null,
     };
     updates[`jobProgress/${jobId}/steps/${job.steps.length}`] = newStep;
 
-    updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
+    updates[`jobProgress/${jobId}/lastUpdated`] = nowISO;
     updates[`jobProgress/${jobId}/status`] = 'In Progress';
     
-    if (completionCustomFields?.jmsNo) {
-        updates[`jobProgress/${jobId}/jmsNo`] = completionCustomFields.jmsNo;
-    }
-
     update(ref(rtdb), updates);
 
-    if (completionComment) {
-        addJobStepComment(jobId, currentStepId, completionComment);
-    }
-    
+    // Notification logic for the new step
     const newAssignee = users.find(u => u.id === newStep.assigneeId);
-    if (newAssignee?.email) {
+    if (newAssignee?.email && !isSelfAssigning) { // Don't notify on self-assignment
         const htmlBody = `
             <p>A new step in the job "${job.title}" has been assigned to you by <strong>${user.name}</strong>.</p>
             <hr>
             <h3>Step: ${newStep.name}</h3>
-            <p>${newStep.description}</p>
+            <p>${newStep.description || ''}</p>
             ${newStep.dueDate ? `<p><strong>Due Date:</strong> ${format(new Date(newStep.dueDate), 'PPP')}</p>` : ''}
             <p>Please review the job in the app.</p>
             <a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Job</a>
