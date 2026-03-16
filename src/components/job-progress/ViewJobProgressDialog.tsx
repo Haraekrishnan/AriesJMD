@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -321,7 +320,9 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
 
                 <div className="flex justify-end gap-2">
                     <Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
-                    <Button type="submit" size="sm" disabled={!nextStepName}>Complete & Assign Next</Button>
+                    <Button type="submit" size="sm" disabled={!nextStepName}>
+                        {nextStepName === 'JMS Hard copy submitted' ? 'Complete & Finalize JMS' : 'Complete & Assign Next'}
+                    </Button>
                 </div>
             </form>
         </div>
