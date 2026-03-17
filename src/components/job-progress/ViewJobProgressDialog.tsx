@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -488,6 +487,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                         <div className="space-y-8">
                             {job.steps.map((step, index) => {
                                 const assignee = users.find(u => u.id === step.assigneeId);
+                                const assigner = index === 0 ? creator : users.find(u => u.id === job.steps[index - 1]?.completedBy);
                                 const Icon = statusConfig[step.status]?.icon || Circle;
                                 const isEditingThisStep = editingStepId === step.id;
                                 
@@ -532,16 +532,27 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                     </Badge>
                                                 </div>
 
-                                                <div className="mt-3 pt-3 border-t text-sm">
+                                                <div className="mt-3 pt-3 border-t text-sm space-y-2">
                                                   <p className="flex items-center gap-2">
                                                     <strong>Assignee:</strong> 
                                                     {assignee ? (
-                                                      <span className="flex items-center gap-1"><Avatar className="h-5 w-5"><AvatarImage src={assignee.avatar} /><AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback></Avatar>{assignee.name}</span>
+                                                        <span className="flex items-center gap-1"><Avatar className="h-5 w-5"><AvatarImage src={assignee.avatar} /><AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback></Avatar>{assignee.name}</span>
                                                     ) : 'Unassigned'}
                                                     {canReassign && <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReassigningStep(step)}><UserRoundCog className="h-4 w-4 text-blue-600"/></Button>}
                                                   </p>
+                                                  {assigner && (
+                                                    <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                      Assigned by <Avatar className="h-4 w-4"><AvatarImage src={assigner.avatar} /><AvatarFallback>{assigner.name.charAt(0)}</AvatarFallback></Avatar> {assigner.name}
+                                                    </p>
+                                                  )}
                                                   {step.dueDate && <p><strong>Due:</strong> {format(parseISO(step.dueDate), 'dd MMM yyyy')}</p>}
                                                 </div>
+                                                
+                                                <div className="mt-2 text-xs text-muted-foreground space-y-1">
+                                                  {step.acknowledgedAt && <p className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-blue-500"/>Acknowledged on {format(parseISO(step.acknowledgedAt), 'dd MMM yyyy, p')}</p>}
+                                                  {step.completedAt && <p className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-green-500"/>Completed by {users.find(u => u.id === step.completedBy)?.name} on {format(parseISO(step.completedAt), 'dd MMM yyyy, p')}</p>}
+                                                </div>
+
 
                                                 {step.isReturned && step.returnDetails && (
                                                     <div className="mt-3 p-3 bg-destructive/10 border border-destructive/20 rounded-md text-sm">
@@ -550,11 +561,6 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                         <p className="text-xs text-muted-foreground mt-1">{formatDistanceToNow(parseISO(step.returnDetails.date), { addSuffix: true })}</p>
                                                     </div>
                                                 )}
-
-                                                <div className="mt-2 text-xs text-muted-foreground">
-                                                  {step.acknowledgedAt && <p>Acknowledged: {format(parseISO(step.acknowledgedAt), 'dd MMM yyyy, p')}</p>}
-                                                  {step.completedAt && <p>Completed: {format(parseISO(step.completedAt), 'dd MMM yyyy, p')} by {users.find(u => u.id === step.completedBy)?.name}</p>}
-                                                </div>
                                                 
                                                 {commentsArray.length > 0 && (
                                                     <Accordion type="single" collapsible className="w-full mt-2 text-xs">
@@ -583,7 +589,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
 
                                                 <div className="mt-4">
                                                      {canAcknowledge && (
-                                                        <Button onClick={() => updateJobStepStatus(job.id, step.id, 'Acknowledged', `${user?.name} acknowledged the step.`)} className="w-full">
+                                                        <Button onClick={() => updateJobStepStatus(job.id, step.id, 'Acknowledged')} className="w-full">
                                                             Acknowledge
                                                         </Button>
                                                     )}
