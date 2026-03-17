@@ -15,14 +15,20 @@ export default function StatusPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.replace('/login');
-      } else if (user.status && user.status !== 'locked') {
-        router.replace('/dashboard');
-      }
+    if (loading) {
+      return;
+    }
+
+    if (!user) {
+      router.replace('/login');
+      return;
+    }
+
+    if (user.status !== 'locked') {
+      router.replace('/dashboard');
     }
   }, [user, loading, router]);
+
 
   const handleUnlockRequest = () => {
     if (user) {
@@ -34,7 +40,7 @@ export default function StatusPage() {
     }
   };
 
-  if (loading || !user || (user && user.status !== 'locked')) {
+  if (loading || !user || user.status !== 'locked') {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="text-center space-y-2">

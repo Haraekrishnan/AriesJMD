@@ -53,19 +53,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
         <ManpowerProvider>
           <ConsumableProvider>
             <TaskProvider>
-              <PlannerProvider>
-                <PurchaseProvider>
-                  <InventoryProvider>
-                    <AccommodationProvider>
-                      <DecorationContextProvider>
-                        <CombinedProvider>
-                          {children}
-                        </CombinedProvider>
-                      </DecorationContextProvider>
-                    </AccommodationProvider>
-                  </InventoryProvider>
-                </PurchaseProvider>
-              </PlannerProvider>
+                <PlannerProvider>
+                  <PurchaseProvider>
+                    <InventoryProvider>
+                      <AccommodationProvider>
+                        <DecorationContextProvider>
+                          <CombinedProvider>
+                            {children}
+                          </CombinedProvider>
+                        </DecorationContextProvider>
+                      </AccommodationProvider>
+                    </InventoryProvider>
+                  </PurchaseProvider>
+                </PlannerProvider>
             </TaskProvider>
           </ConsumableProvider>
         </ManpowerProvider>
