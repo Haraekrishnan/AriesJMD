@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -192,7 +193,7 @@ const nextStepSchema = z.object({
     dueDate: z.date().optional().nullable(),
     jmsNo: z.string().optional(),
   }).refine(data => {
-      if (unassignedSteps.includes(data.name) || data.name === 'JMS Hard copy submitted') {
+      if (unassignedSteps.includes(data.name)) {
           return true;
       }
       return !!data.assigneeId;
@@ -211,7 +212,7 @@ const nextStepSchema = z.object({
   type NextStepFormValues = z.infer<typeof nextStepSchema>;
     
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
-    const { user, addAndCompleteStep, getAssignableUsers } = useAppContext();
+    const { user, addAndCompleteStep, getAssignableUsers, finalizeJob } = useAppContext();
     const [completionComment, setCompletionComment] = useState('');
    
     const assignableUsersForNextStep = useMemo(() => {
@@ -237,11 +238,15 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
     const availableNextSteps = JOB_PROGRESS_STEPS.filter(step => !completedStepNames.has(step));
    
     const handleFormSubmit = (data: NextStepFormValues) => {
-        addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, data.jmsNo ? { jmsNo: data.jmsNo } : undefined, {
-            ...data,
-            dueDate: data.dueDate?.toISOString() || null,
-            assigneeId: data.assigneeId || null,
-        });
+        if (data.name === 'JMS Hard copy submitted') {
+            finalizeJob(job.id, currentStep.id, completionComment || "Final hard copy submitted.");
+        } else {
+            addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, data.jmsNo ? { jmsNo: data.jmsNo } : undefined, {
+                ...data,
+                dueDate: data.dueDate?.toISOString() || null,
+                assigneeId: data.assigneeId || null,
+            });
+        }
         onSave();
     };
 
@@ -491,10 +496,9 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const Icon = statusConfig[step.status]?.icon || Circle;
                                 const isEditingThisStep = editingStepId === step.id;
                                 
-                                const isSelfAssigned = user?.id === step.assigneeId && user?.id === job.creatorId;
-                                const canAcknowledge = (user?.id === step.assigneeId && (step.status === 'Pending' || step.isReturned)) && !isSelfAssigned;
-                                const canPerformAction = (user?.id === step.assigneeId && step.status === 'Acknowledged') || (isSelfAssigned && step.status === 'Acknowledged');
-                                
+                                const canAcknowledge = user?.id === step.assigneeId && (step.status === 'Pending' || step.isReturned);
+                                const canPerformAction = user?.id === step.assigneeId && step.status === 'Acknowledged';
+
                                 const isCreator = user?.id === job.creatorId;
                                 const canReturnStep = (canReassign || isCreator) && step.status !== 'Completed' && !canPerformAction && !canAcknowledge;
 
