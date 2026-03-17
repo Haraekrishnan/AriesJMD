@@ -994,6 +994,13 @@ export type JobStep = {
         reason: string;
     };
     comments?: { [key: string]: Comment };
+    reassignmentInfo?: {
+        reassignedBy: string;
+        reassignedAt: string; // ISO
+        fromUserId: string | null;
+        toUserId: string;
+        reason: string;
+    } | null;
 };
 
 export type JobProgress = {

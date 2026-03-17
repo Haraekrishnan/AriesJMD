@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -496,7 +497,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const Icon = statusConfig[step.status]?.icon || Circle;
                                 const isEditingThisStep = editingStepId === step.id;
                                 
-                                const canAcknowledge = user?.id === step.assigneeId && (step.status === 'Pending' || step.isReturned);
+                                const canAcknowledge = user?.id === step.assigneeId && (step.status === 'Pending' || !!step.isReturned);
                                 const canPerformAction = user?.id === step.assigneeId && step.status === 'Acknowledged';
 
                                 const isCreator = user?.id === job.creatorId;
@@ -507,6 +508,9 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const commentsArray = Array.isArray(step.comments) 
                                   ? step.comments 
                                   : Object.values(step.comments || {});
+                                
+                                const reassignment = step.reassignmentInfo;
+                                const reassigner = reassignment ? users.find(u => u.id === reassignment.reassignedBy) : null;
 
                                 return (
                                     <div key={step.id} className="relative flex items-start gap-6">
@@ -537,27 +541,35 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                 </div>
 
                                                 <div className="mt-3 pt-3 border-t text-sm space-y-2">
-                                                  <p className="flex items-center gap-2">
-                                                    <strong>Assignee:</strong> 
-                                                    {assignee ? (
-                                                        <span className="flex items-center gap-1"><Avatar className="h-5 w-5"><AvatarImage src={assignee.avatar} /><AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback></Avatar>{assignee.name}</span>
-                                                    ) : 'Unassigned'}
-                                                    {canReassign && <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReassigningStep(step)}><UserRoundCog className="h-4 w-4 text-blue-600"/></Button>}
-                                                  </p>
-                                                  {assigner && (
-                                                    <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                      Assigned by <Avatar className="h-4 w-4"><AvatarImage src={assigner.avatar} /><AvatarFallback>{assigner.name.charAt(0)}</AvatarFallback></Avatar> {assigner.name}
+                                                    <p className="flex items-center gap-2">
+                                                        <strong>Assignee:</strong> 
+                                                        {assignee ? (
+                                                            <span className="flex items-center gap-1"><Avatar className="h-5 w-5"><AvatarImage src={assignee.avatar} /><AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback></Avatar>{assignee.name}</span>
+                                                        ) : 'Unassigned'}
+                                                        {canReassign && <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReassigningStep(step)}><UserRoundCog className="h-4 w-4 text-blue-600"/></Button>}
                                                     </p>
-                                                  )}
-                                                  {step.dueDate && <p><strong>Due:</strong> {format(parseISO(step.dueDate), 'dd MMM yyyy')}</p>}
+                                                    {assigner && (
+                                                        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                                            <ArrowRight className="h-3 w-3" />
+                                                            Assigned by <Avatar className="h-4 w-4"><AvatarImage src={assigner.avatar} /><AvatarFallback>{assigner.name.charAt(0)}</AvatarFallback></Avatar> {assigner.name}
+                                                        </p>
+                                                    )}
+                                                    {reassignment && reassigner && (
+                                                        <div className="text-xs text-muted-foreground pt-1">
+                                                            <p className="flex items-center gap-1.5">
+                                                                <UserRoundCog className="h-3 w-3 text-blue-600"/>
+                                                                Reassigned by <Avatar className="h-4 w-4"><AvatarImage src={reassigner.avatar} /><AvatarFallback>{reassigner.name.charAt(0)}</AvatarFallback></Avatar>
+                                                                <strong>{reassigner.name}</strong> on {format(parseISO(reassignment.reassignedAt), 'dd MMM, p')}
+                                                            </p>
+                                                            {reassignment.reason && <p className="mt-1 pl-1 border-l-2 ml-1.5 pl-2">{reassignment.reason}</p>}
+                                                        </div>
+                                                    )}
+                                                    <div className="pt-1 text-xs text-muted-foreground space-y-1">
+                                                        {step.acknowledgedAt && <p className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-blue-500"/>Acknowledged on {format(parseISO(step.acknowledgedAt), 'dd MMM yyyy, p')}</p>}
+                                                        {step.completedAt && <p className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-green-500"/>Completed by {users.find(u => u.id === step.completedBy)?.name} on {format(parseISO(step.completedAt), 'dd MMM yyyy, p')}</p>}
+                                                    </div>
                                                 </div>
                                                 
-                                                <div className="mt-2 text-xs text-muted-foreground space-y-1">
-                                                  {step.acknowledgedAt && <p className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-blue-500"/>Acknowledged on {format(parseISO(step.acknowledgedAt), 'dd MMM yyyy, p')}</p>}
-                                                  {step.completedAt && <p className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-green-500"/>Completed by {users.find(u => u.id === step.completedBy)?.name} on {format(parseISO(step.completedAt), 'dd MMM yyyy, p')}</p>}
-                                                </div>
-
-
                                                 {step.isReturned && step.returnDetails && (
                                                     <div className="mt-3 p-3 bg-destructive/10 border border-destructive/20 rounded-md text-sm">
                                                         <p className="font-semibold text-destructive flex items-center gap-2"><Undo2 className="h-4 w-4" /> Returned by {users.find(u => u.id === step.returnDetails!.returnedBy)?.name}</p>

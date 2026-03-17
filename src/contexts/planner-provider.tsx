@@ -846,8 +846,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       if (!newAssignee) return;
       
       const isSelfReassign = newAssigneeId === user.id;
-      const reassignComment = `${user.name} reassigned this step from ${oldAssignee?.name || 'Previous Assignee'} to ${newAssignee.name}. Reason: ${comment}`;
-  
+      
       const updates: { [key: string]: any } = {};
       const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
   
@@ -855,16 +854,15 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       updates[`${stepPath}/status`] = isSelfReassign ? 'Acknowledged' : 'Pending';
       updates[`${stepPath}/acknowledgedAt`] = isSelfReassign ? new Date().toISOString() : null;
       updates[`${stepPath}/isReturned`] = null;
-  
-      const newCommentRef = push(ref(rtdb, `${stepPath}/comments`));
-      const newComment: Omit<Comment, 'id'> = {
-          id: newCommentRef.key!,
-          userId: user.id,
-          text: reassignComment,
-          date: new Date().toISOString(),
-          eventId: jobId,
+
+      // Add structured reassignment info
+      updates[`${stepPath}/reassignmentInfo`] = {
+        reassignedBy: user.id,
+        reassignedAt: new Date().toISOString(),
+        fromUserId: oldAssignee?.id || null,
+        toUserId: newAssigneeId,
+        reason: comment,
       };
-      updates[`${stepPath}/comments/${newCommentRef.key}`] = newComment;
       
       updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
   
