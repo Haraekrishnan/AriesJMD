@@ -696,6 +696,20 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       
       update(ref(rtdb), updates);
   }, [user, jobProgressById, addJobStepComment]);
+  
+  const finalizeJob = useCallback((jobId: string, stepId: string, comment: string) => {
+    if (!user) return;
+    const job = jobProgressById[jobId];
+    if (!job) return;
+    
+    const updates: { [key: string]: any } = {};
+
+    updates[`jobProgress/${jobId}/status`] = 'Completed';
+    updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
+    
+    update(ref(rtdb), updates);
+    toast({ title: "Job Completed", description: "JMS has been successfully finalized." });
+}, [user, jobProgressById, toast]);
     
   const addAndCompleteStep = useCallback((jobId: string, currentStepId: string, completionComment: string | undefined, completionAttachment: { name: string; url: string; } | undefined, completionCustomFields: Record<string, any> | undefined, nextStepData: Omit<JobStep, 'id'|'status'>) => {
     if (!user) return;
@@ -785,20 +799,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     }
 }, [user, jobProgressById, users, addJobStepComment, notificationSettings, toast, can.manage_job_progress, finalizeJob]);
 
-    const finalizeJob = useCallback((jobId: string, stepId: string, comment: string) => {
-        if (!user) return;
-        const job = jobProgressById[jobId];
-        if (!job) return;
-        
-        const updates: { [key: string]: any } = {};
-
-        updates[`jobProgress/${jobId}/status`] = 'Completed';
-        updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
-        
-        update(ref(rtdb), updates);
-        toast({ title: "Job Completed", description: "JMS has been successfully finalized." });
-    }, [user, jobProgressById, toast]);
-    
     const reassignJobStep = useCallback((jobId: string, stepId: string, newAssigneeId: string, comment: string) => {
         if (!user) return;
         const job = jobProgressById[jobId];
@@ -904,7 +904,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             });
         }
     }, [user, jobProgressById, users, addJobStepComment, notificationSettings]);
-
+    
     const returnJobStep = useCallback((jobId: string, stepId: string, reason: string) => {
         if (!user) return;
         const job = jobProgressById[jobId];
