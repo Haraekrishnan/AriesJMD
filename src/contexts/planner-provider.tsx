@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -740,25 +739,8 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
 
     // Special handling for the final step
     if (nextStepData.name === 'JMS Hard copy submitted') {
-        const finalStep: JobStep = {
-            ...nextStepData,
-            id: `step-${job.steps.length}`,
-            status: 'Completed',
-            completedAt: nowISO,
-            completedBy: user.id,
-            description: `Job finalized upon hard copy submission by ${user.name}.`,
-            assigneeId: user.id,
-            dueDate: null,
-        };
-        updates[`jobProgress/${jobId}/steps/${job.steps.length}`] = finalStep;
-        
-        updates[`jobProgress/${jobId}/status`] = 'Completed';
-        updates[`jobProgress/${jobId}/lastUpdated`] = nowISO;
-        
-        update(ref(rtdb), updates);
-        
-        toast({ title: "Job Completed", description: "JMS has been successfully finalized." });
-        return; // Exit early
+        finalizeJob(jobId, currentStepId, completionComment || 'Final step completed.');
+        return; 
     }
 
     // Default logic for creating a new step
@@ -801,94 +783,85 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             creatorUser: user,
         });
     }
-}, [user, jobProgressById, users, addJobStepComment, notificationSettings, toast, can.manage_job_progress]);
+}, [user, jobProgressById, users, addJobStepComment, notificationSettings, toast, can.manage_job_progress, finalizeJob]);
 
     const finalizeJob = useCallback((jobId: string, stepId: string, comment: string) => {
         if (!user) return;
         const job = jobProgressById[jobId];
         if (!job) return;
-        const stepIndex = job.steps.findIndex(s => s.id === stepId);
-        if (stepIndex === -1) return;
         
-        const currentStep = job.steps[stepIndex];
-        if (currentStep.name !== 'JMS Hard copy submitted') {
-            toast({ title: "Cannot Finalize", description: "Job can only be finalized at the 'JMS Hard copy submitted' step.", variant: 'destructive'});
-            return;
-        }
+        const updates: { [key: string]: any } = {};
+
+        updates[`jobProgress/${jobId}/status`] = 'Completed';
+        updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
         
-        updateJobStepStatus(jobId, stepId, 'Completed', comment);
-        
-        update(ref(rtdb, `jobProgress/${jobId}`), { 
-            status: 'Completed',
-            lastUpdated: new Date().toISOString()
-        });
+        update(ref(rtdb), updates);
         toast({ title: "Job Completed", description: "JMS has been successfully finalized." });
-    }, [user, jobProgressById, toast, updateJobStepStatus]);
+    }, [user, jobProgressById, toast]);
     
     const reassignJobStep = useCallback((jobId: string, stepId: string, newAssigneeId: string, comment: string) => {
-      if (!user) return;
-      const job = jobProgressById[jobId];
-      if (!job) return;
-  
-      const stepIndex = job.steps.findIndex(s => s.id === stepId);
-      if (stepIndex === -1) return;
-  
-      const currentStep = job.steps[stepIndex];
-  
-      const canReassignRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
-      if (!canReassignRoles.includes(user.role)) {
-          toast({ title: 'Not authorized', variant: 'destructive' });
-          return;
-      }
-  
-      const oldAssignee = users.find(u => u.id === currentStep.assigneeId);
-      const newAssignee = users.find(u => u.id === newAssigneeId);
-      if (!newAssignee) return;
-      
-      const isSelfReassign = newAssigneeId === user.id;
-      
-      const updates: { [key: string]: any } = {};
-      const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
-  
-      updates[`${stepPath}/assigneeId`] = newAssigneeId;
-      updates[`${stepPath}/status`] = isSelfReassign ? 'Acknowledged' : 'Pending';
-      updates[`${stepPath}/acknowledgedAt`] = isSelfReassign ? new Date().toISOString() : null;
-      updates[`${stepPath}/isReturned`] = null;
+        if (!user) return;
+        const job = jobProgressById[jobId];
+        if (!job) return;
 
-      // Add structured reassignment info
-      updates[`${stepPath}/reassignmentInfo`] = {
-        reassignedBy: user.id,
-        reassignedAt: new Date().toISOString(),
-        fromUserId: oldAssignee?.id || null,
-        toUserId: newAssigneeId,
-        reason: comment,
-      };
-      
-      updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
-  
-      update(ref(rtdb), updates);
-  
-      toast({ title: "Step Reassigned", description: `Assigned to ${newAssignee.name}.` });
-  
-      if (newAssignee.email && !isSelfReassign) {
-          const htmlBody = `
-              <p>A job step in "${job.title}" has been reassigned to you by <strong>${user.name}</strong>.</p>
-              <hr>
-              <h3>Step: ${currentStep.name}</h3>
-              <p><strong>Reason:</strong> ${comment}</p>
-              <p>Please review the job in the app and acknowledge the step.</p>
-              <a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Job</a>
-          `;
-          sendNotificationEmail({
-              to: [newAssignee.email],
-              subject: `Job Step Reassigned: ${job.title}`,
-              htmlBody: htmlBody,
-              notificationSettings,
-              event: 'onNewTask',
-              involvedUser: newAssignee,
-              creatorUser: user,
-          });
-      }
+        const stepIndex = job.steps.findIndex(s => s.id === stepId);
+        if (stepIndex === -1) return;
+
+        const currentStep = job.steps[stepIndex];
+
+        const canReassignRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+        if (!canReassignRoles.includes(user.role)) {
+            toast({ title: 'Not authorized', variant: 'destructive' });
+            return;
+        }
+
+        const oldAssignee = users.find(u => u.id === currentStep.assigneeId);
+        const newAssignee = users.find(u => u.id === newAssigneeId);
+        if (!newAssignee) return;
+        
+        const isSelfReassign = newAssigneeId === user.id;
+        
+        const updates: { [key: string]: any } = {};
+        const stepPath = `jobProgress/${jobId}/steps/${stepIndex}`;
+    
+        updates[`${stepPath}/assigneeId`] = newAssigneeId;
+        updates[`${stepPath}/status`] = isSelfReassign ? 'Acknowledged' : 'Pending';
+        updates[`${stepPath}/acknowledgedAt`] = isSelfReassign ? new Date().toISOString() : null;
+        updates[`${stepPath}/isReturned`] = null;
+
+        updates[`${stepPath}/reassignmentInfo`] = {
+          reassignedBy: user.id,
+          reassignedAt: new Date().toISOString(),
+          fromUserId: oldAssignee?.id || null,
+          toUserId: newAssigneeId,
+          reason: comment,
+        };
+        
+        updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
+    
+        update(ref(rtdb), updates);
+    
+        toast({ title: "Step Reassigned", description: `Assigned to ${newAssignee.name}.` });
+    
+        if (newAssignee.email && !isSelfReassign) {
+            const htmlBody = `
+                <p>A job step in "${job.title}" has been reassigned to you by <strong>${user.name}</strong>.</p>
+                <hr>
+                <h3>Step: ${currentStep.name}</h3>
+                <p><strong>Reason:</strong> ${comment}</p>
+                <p>Please review the job in the app and acknowledge the step.</p>
+                <a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Job</a>
+            `;
+            sendNotificationEmail({
+                to: [newAssignee.email],
+                subject: `Job Step Reassigned: ${job.title}`,
+                htmlBody: htmlBody,
+                notificationSettings,
+                event: 'onNewTask',
+                involvedUser: newAssignee,
+                creatorUser: user,
+            });
+        }
     }, [user, jobProgressById, users, toast, notificationSettings]);
 
     const assignJobStep = useCallback((jobId: string, stepId: string, assigneeId: string) => {
@@ -1015,7 +988,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             assigneeId: newStepAssigneeId,
             status: isSelfAssigned ? 'Acknowledged' : 'Pending',
             acknowledgedAt: isSelfAssigned ? new Date().toISOString() : null,
-            description: `Job reopened by ${user.name}.`,
+            description: `Job reopened by ${user.name}. Reason: ${reason}`,
             dueDate: null,
         };
     
@@ -1026,9 +999,6 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         updates[`jobProgress/${jobId}/lastUpdated`] = new Date().toISOString();
     
         update(ref(rtdb), updates);
-    
-        const reopenComment = `Job reopened by ${user.name}. Reason: ${reason}`;
-        addJobStepComment(jobId, newStep.id, reopenComment);
     
         toast({ title: "Job Reopened", description: "A new step has been added to the job." });
         
@@ -1053,7 +1023,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             });
         }
     
-    }, [user, jobProgressById, addJobStepComment, toast, users, notificationSettings]);
+    }, [user, jobProgressById, toast, users, notificationSettings]);
 
     const addDocumentMovement = useCallback((data: { title: string; assigneeId: string; comment?: string }) => {
       if (!user) return;

@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -239,15 +238,11 @@ const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgr
     const availableNextSteps = JOB_PROGRESS_STEPS.filter(step => !completedStepNames.has(step));
    
     const handleFormSubmit = (data: NextStepFormValues) => {
-        if (data.name === 'JMS Hard copy submitted') {
-            finalizeJob(job.id, currentStep.id, completionComment || "Final hard copy submitted.");
-        } else {
-            addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, data.jmsNo ? { jmsNo: data.jmsNo } : undefined, {
-                ...data,
-                dueDate: data.dueDate?.toISOString() || null,
-                assigneeId: data.assigneeId || null,
-            });
-        }
+        addAndCompleteStep(job.id, currentStep.id, completionComment, undefined, data.jmsNo ? { jmsNo: data.jmsNo } : undefined, {
+            ...data,
+            dueDate: data.dueDate?.toISOString() || null,
+            assigneeId: data.assigneeId || null,
+        });
         onSave();
     };
 
@@ -497,7 +492,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const Icon = statusConfig[step.status]?.icon || Circle;
                                 const isEditingThisStep = editingStepId === step.id;
                                 
-                                const canAcknowledge = user?.id === step.assigneeId && (step.status === 'Pending' || !!step.isReturned);
+                                const canAcknowledge = (user?.id === step.assigneeId || user?.id === creator?.supervisorId) && (step.status === 'Pending' || !!step.isReturned);
                                 const canPerformAction = user?.id === step.assigneeId && step.status === 'Acknowledged';
 
                                 const isCreator = user?.id === job.creatorId;
