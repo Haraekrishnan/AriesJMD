@@ -493,7 +493,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 const isEditingThisStep = editingStepId === step.id;
                                 
                                 const canAcknowledge = (user?.id === step.assigneeId || user?.id === creator?.supervisorId) && (step.status === 'Pending' || !!step.isReturned);
-                                const canPerformAction = user?.id === step.assigneeId && step.status === 'Acknowledged';
+                                const canPerformAction = user?.id === step.assigneeId && step.status === 'Acknowledged' && job.status !== 'Completed';
 
                                 const isCreator = user?.id === job.creatorId;
                                 const canReturnStep = (canReassign || isCreator) && step.status !== 'Completed' && !canPerformAction && !canAcknowledge;
