@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
@@ -428,7 +429,7 @@ export default function JobRecordSheet() {
 
     const allTabs = useMemo(() => {
         const plantTabs = plantProjects.map(p => p.name);
-        return canViewUnassigned ? ['Unassigned', ...plantTabs] : plantTabs;
+        return canViewUnassigned ? [...plantTabs, 'Unassigned'] : plantTabs;
     }, [plantProjects, canViewUnassigned]);
     
     const canGoToPreviousMonth = useMemo(() => {
