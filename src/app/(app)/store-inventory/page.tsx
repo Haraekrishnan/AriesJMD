@@ -49,7 +49,7 @@ export default function StoreInventoryPage() {
 
     const [filters, setFilters] = useState({
         name: 'all',
-        status: 'all',
+        status: 'Active',
         projectId: 'all',
         search: '',
         updatedDateRange: undefined,
