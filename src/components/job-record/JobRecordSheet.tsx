@@ -45,7 +45,7 @@ export default function JobRecordSheet() {
     const [isReorderMode, setIsReorderMode] = useState(false);
     const [editingJobCode, setEditingJobCode] = useState<JobCode | null>(null);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-    const [activeTab, setActiveTab] = useState('Unassigned');
+    const [activeTab, setActiveTab] = useState<string | undefined>();
     const [searchTerm, setSearchTerm] = useState('');
     const [jobCodeSearchTerm, setJobCodeSearchTerm] = useState('');
     const { toast } = useToast();
@@ -177,7 +177,7 @@ export default function JobRecordSheet() {
 
     const handleMouseUp = useCallback(() => {
         if (dragState.isDragging && dragState.startCell && dragState.endCell && dragState.fillValue) {
-            const profiles = filteredAndGroupedProfiles[activeTab] || [];
+            const profiles = filteredAndGroupedProfiles[activeTab || ''] || [];
             const startIndex = profiles.findIndex(p => p.id === dragState.startCell!.profileId);
             const endIndex = profiles.findIndex(p => p.id === dragState.endCell!.profileId);
 
@@ -214,7 +214,7 @@ export default function JobRecordSheet() {
     
     const getSelectionRange = () => {
         if (!dragState.isDragging || !dragState.startCell || !dragState.endCell) return null;
-        const profiles = filteredAndGroupedProfiles[activeTab] || [];
+        const profiles = filteredAndGroupedProfiles[activeTab || ''] || [];
         const startIndex = profiles.findIndex(p => p.id === dragState.startCell!.profileId);
         const endIndex = profiles.findIndex(p => p.id === dragState.endCell!.profileId);
     
@@ -232,7 +232,7 @@ export default function JobRecordSheet() {
     
     const isCellInSelection = (profileId: string, day: number) => {
         if (!selectionRange) return false;
-        const profiles = filteredAndGroupedProfiles[activeTab] || [];
+        const profiles = filteredAndGroupedProfiles[activeTab || ''] || [];
         const rowIndex = profiles.findIndex(p => p.id === profileId);
         if(rowIndex === -1) return false;
         return (
@@ -245,7 +245,7 @@ export default function JobRecordSheet() {
 
     const handleCellKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, profileId: string, day: number, type: 'status' | 'overtime' | 'comment') => {
         const { key } = e;
-        const profiles = filteredAndGroupedProfiles[activeTab] || [];
+        const profiles = filteredAndGroupedProfiles[activeTab || ''] || [];
         const profileIndex = profiles.findIndex(p => p.id === profileId);
 
         const focusCell = (pId: string, d: number, t: 'status' | 'overtime' | 'comment') => {
@@ -404,12 +404,26 @@ export default function JobRecordSheet() {
         return (jobRecordPlants || []).sort((a,b) => a.name.localeCompare(b.name));
     }, [jobRecordPlants]);
 
-    useEffect(() => {
-        if (plantProjects.length > 0 && !plantProjects.some(p => p.name === activeTab) && activeTab !== 'Unassigned') {
-            setActiveTab('Unassigned');
-        }
-    }, [plantProjects, activeTab]);
+    const canViewUnassigned = useMemo(() => {
+        if (!user) return false;
+        return user.role === 'Admin' || can.manage_job_record;
+    }, [user, can.manage_job_record]);
+
+    const allTabs = useMemo(() => {
+        const plantTabs = plantProjects.map(p => p.name);
+        return canViewUnassigned ? [...plantTabs, 'Unassigned'] : plantTabs;
+    }, [plantProjects, canViewUnassigned]);
     
+    useEffect(() => {
+        // Set the initial active tab only if it hasn't been set and there are tabs available
+        if (!activeTab && allTabs.length > 0) {
+            setActiveTab(allTabs[0]);
+        } else if (activeTab && !allTabs.includes(activeTab)) {
+            // If the active tab gets deleted, fall back to the first available tab
+            setActiveTab(allTabs[0] || undefined);
+        }
+    }, [allTabs, activeTab]);
+
     const toggleRow = (profileId: string) => {
         setExpandedRows(prev => {
             const newSet = new Set(prev);
@@ -421,16 +435,6 @@ export default function JobRecordSheet() {
             return newSet;
         });
     };
-    
-    const canViewUnassigned = useMemo(() => {
-        if (!user) return false;
-        return user.role === 'Admin' || can.manage_job_record;
-    }, [user, can.manage_job_record]);
-
-    const allTabs = useMemo(() => {
-        const plantTabs = plantProjects.map(p => p.name);
-        return canViewUnassigned ? [...plantTabs, 'Unassigned'] : plantTabs;
-    }, [plantProjects, canViewUnassigned]);
     
     const canGoToPreviousMonth = useMemo(() => {
       const firstDayOfCurrentMonth = startOfMonth(currentMonth);
@@ -459,7 +463,7 @@ export default function JobRecordSheet() {
         const counts: { [key: string]: number } = {};
         jobCodes.forEach(jc => counts[jc.code] = 0);
 
-        const profilesInTab = searchTerm ? Object.values(filteredAndGroupedProfiles).flat() : (filteredAndGroupedProfiles[activeTab] || []);
+        const profilesInTab = searchTerm ? Object.values(filteredAndGroupedProfiles).flat() : (filteredAndGroupedProfiles[activeTab || ''] || []);
         profilesInTab.forEach(p => {
             const record = jobRecords[monthKey]?.records?.[p.id];
             const days = record?.days || {};
@@ -798,7 +802,7 @@ export default function JobRecordSheet() {
     };
     
     const handleMoveRow = (profileId: string, direction: 'up' | 'down') => {
-        const currentProfiles = filteredAndGroupedProfiles[activeTab];
+        const currentProfiles = filteredAndGroupedProfiles[activeTab || ''] || [];
         if (!currentProfiles) return;
 
         const index = currentProfiles.findIndex(p => p.id === profileId);
@@ -812,7 +816,7 @@ export default function JobRecordSheet() {
         newOrder.splice(targetIndex, 0, movedItem);
 
         const newOrderIds = newOrder.map(p => p.id);
-        savePlantOrder(monthKey, activeTab, newOrderIds);
+        savePlantOrder(monthKey, activeTab || '', newOrderIds);
     };
 
     const dayHeaders = useMemo(() => Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1), [currentMonth]);
@@ -895,14 +899,14 @@ export default function JobRecordSheet() {
                                 </AlertDialog>
                             )}
                             {user?.role === 'Admin' && isCurrentSheetLocked && (
-                                <Button variant="secondary" onClick={() => unlockJobRecordSheet(monthKey)}>
+                                <Button variant="secondary" onClick={() => unlockVehicleUsageSheet(monthKey)}>
                                     <Unlock className="mr-2 h-4 w-4" /> Unlock
                                 </Button>
                             )}
                         </div>
                     </div>
                     <ScrollArea className="w-full">
-                         <Tabs value={activeTab} onValueChange={setActiveTab}>
+                         <Tabs value={activeTab || ''} onValueChange={setActiveTab}>
                             <TabsList className="w-full justify-start h-auto">
                                 {allTabs.map(plantName => {
                                     const plant = plantProjects.find(p => p.name === plantName);
@@ -956,7 +960,7 @@ export default function JobRecordSheet() {
                             </TableRow>
                         </thead>
                         <TableBody>
-                            {(searchTerm ? searchResults : (filteredAndGroupedProfiles[activeTab] || [])).map((profile, index) => {
+                            {(searchTerm ? searchResults : (filteredAndGroupedProfiles[activeTab || ''] || [])).map((profile, index) => {
                                 const record = jobRecords[monthKey]?.records?.[profile.id] || {};
                                 const prevMonthRecord = jobRecords[prevMonthKey]?.records?.[profile.id] || {};
                                 const plant = record.plant ?? prevMonthRecord.plant ?? 'Unassigned';
@@ -997,7 +1001,7 @@ export default function JobRecordSheet() {
                                                 {isReorderMode && (
                                                     <div className="flex flex-col">
                                                         <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => handleMoveRow(profile.id, 'up')} disabled={index === 0}><ArrowUp className="h-3 w-3"/></Button>
-                                                        <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => handleMoveRow(profile.id, 'down')} disabled={index === (filteredAndGroupedProfiles[activeTab]?.length || 0) - 1}><ArrowDown className="h-3 w-3"/></Button>
+                                                        <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => handleMoveRow(profile.id, 'down')} disabled={index === (filteredAndGroupedProfiles[activeTab || '']?.length || 0) - 1}><ArrowDown className="h-3 w-3"/></Button>
                                                     </div>
                                                 )}
                                             </div>
@@ -1167,7 +1171,7 @@ export default function JobRecordSheet() {
                 <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="item-1">
                         <AccordionTrigger className="p-3 text-sm font-semibold hover:no-underline">
-                            <div className="flex items-center gap-2"><Info className="h-4 w-4"/>Job Code Legend & Man-Days Count for {searchTerm ? "All Plants" : activeTab}</div>
+                            <div className="flex items-center gap-2"><Info className="h-4 w-4"/>Job Code Legend & Man-Days Count for {searchTerm ? "All Plants" : activeTab || ''}</div>
                         </AccordionTrigger>
                         <AccordionContent>
                             <div className="p-4 pt-0">
