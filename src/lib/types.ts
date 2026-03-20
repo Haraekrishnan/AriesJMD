@@ -156,7 +156,8 @@ export const ALL_PERMISSIONS = [
   'manage_inventory_database',
   'manage_vehicle_usage',
   'manage_job_progress',
-  'view_job_progress'
+  'view_job_progress',
+  'view_all',
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];

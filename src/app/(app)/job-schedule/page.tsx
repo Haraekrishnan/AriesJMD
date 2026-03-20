@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -55,7 +56,7 @@ export default function JobSchedulePage() {
         }
     };
 
-    if (!can.manage_job_schedule) {
+    if (!can.manage_job_schedule && !can.view_all) {
         return (
             <Card className="w-full max-w-md mx-auto mt-20">
                <CardHeader className="text-center items-center">
@@ -63,7 +64,7 @@ export default function JobSchedulePage() {
                        <AlertTriangle className="h-10 w-10 text-destructive" />
                    </div>
                    <CardTitle>Access Denied</CardTitle>
-                   <CardDescription>You do not have permission to view the job schedule.</CardDescription>
+                   <CardDescription>You do not have permission to view this page.</CardDescription>
                </CardHeader>
            </Card>
         );

@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -216,7 +217,7 @@ export default function ManpowerListPage() {
         setIsExtendLeaveOpen(true);
     };
 
-    if (!can.manage_manpower_list && !can.view_manpower_list) {
+    if (!can.manage_manpower_list && !can.view_manpower_list && !can.view_all) {
         return (
             <Card className="w-full max-w-md mx-auto mt-20">
                 <CardHeader className="text-center items-center">
@@ -224,7 +225,7 @@ export default function ManpowerListPage() {
                         <AlertTriangle className="h-10 w-10 text-destructive" />
                     </div>
                     <CardTitle>Access Denied</CardTitle>
-                    <CardDescription>You do not have permission to manage the manpower list.</CardDescription>
+                    <CardDescription>You do not have permission to view this page.</CardDescription>
                 </CardHeader>
             </Card>
         );

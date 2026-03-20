@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -30,7 +31,7 @@ export default function InventoryDatabasePage() {
     }, [inventoryCategories, activeTab]);
 
 
-    if (!can.view_inventory_database) {
+    if (!can.view_inventory_database && !can.view_all) {
         return (
              <Card className="w-full max-w-md mx-auto mt-20">
                <CardHeader className="text-center items-center">
@@ -38,7 +39,7 @@ export default function InventoryDatabasePage() {
                        <AlertTriangle className="h-10 w-10 text-destructive" />
                    </div>
                    <CardTitle>Access Denied</CardTitle>
-                   <CardDescription>You do not have permission to view the inventory database.</CardDescription>
+                   <CardDescription>You do not have permission to view this page.</CardDescription>
                </CardHeader>
            </Card>
         )

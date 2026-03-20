@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { useConsumable } from '@/contexts/consumable-provider';
@@ -59,6 +60,8 @@ export default function ConsumablesPage() {
     const allowedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller', 'Store in Charge', 'Assistant Store Incharge'];
     return allowedRoles.includes(user.role);
   }, [user]);
+  
+  const canViewConsumables = useMemo(() => canManageConsumables || can.view_all, [canManageConsumables, can.view_all]);
 
   const { dailyConsumables, jobConsumables, summary, consumptionMetrics } = useMemo(() => {
     let lowStockItems = 0;
@@ -134,7 +137,7 @@ export default function ConsumablesPage() {
     return 'success';
   };
   
-   if (!canManageConsumables) {
+   if (!canViewConsumables) {
         return (
            <Card className="w-full max-w-md mx-auto mt-20">
                <CardHeader className="text-center items-center">

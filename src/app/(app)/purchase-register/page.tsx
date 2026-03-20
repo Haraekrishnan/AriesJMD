@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -77,7 +78,7 @@ export default function PurchaseRegisterPage() {
     }
 
 
-    if (!can.manage_purchase_register) {
+    if (!can.manage_purchase_register && !can.view_all) {
         return (
             <Card className="w-full max-w-md mx-auto mt-20">
                <CardHeader className="text-center items-center">
@@ -85,7 +86,7 @@ export default function PurchaseRegisterPage() {
                        <AlertTriangle className="h-10 w-10 text-destructive" />
                    </div>
                    <CardTitle>Access Denied</CardTitle>
-                   <CardDescription>You do not have permission to manage the purchase register.</CardDescription>
+                   <CardDescription>You do not have permission to view this page.</CardDescription>
                </CardHeader>
            </Card>
         );

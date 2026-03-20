@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +11,7 @@ import { AlertTriangle } from 'lucide-react';
 export default function IgpOgpPage() {
     const { can, igpOgpRecords } = useAppContext();
 
-    if (!can.manage_igp_ogp) {
+    if (!can.manage_igp_ogp && !can.view_all) {
         return (
             <Card className="w-full max-w-md mx-auto mt-20">
                <CardHeader className="text-center items-center">
@@ -18,7 +19,7 @@ export default function IgpOgpPage() {
                        <AlertTriangle className="h-10 w-10 text-destructive" />
                    </div>
                    <CardTitle>Access Denied</CardTitle>
-                   <CardDescription>You do not have permission to manage the IGP/OGP Register.</CardDescription>
+                   <CardDescription>You do not have permission to view this page.</CardDescription>
                </CardHeader>
            </Card>
         );

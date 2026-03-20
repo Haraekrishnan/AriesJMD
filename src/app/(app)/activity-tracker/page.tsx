@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -11,13 +12,13 @@ export default function ActivityTrackerPage() {
     const visibleLogs = useMemo(() => {
         const sortedLogs = [...activityLogs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         if (!user) return [];
-        if (can.view_activity_logs) {
+        if (can.view_activity_logs || can.view_all) {
             return sortedLogs;
         }
         return sortedLogs.filter(log => log.userId === user.id);
-    }, [activityLogs, user, can.view_activity_logs]);
+    }, [activityLogs, user, can.view_activity_logs, can.view_all]);
 
-    if (!can.view_activity_logs) {
+    if (!can.view_activity_logs && !can.view_all) {
         return (
             <Card className="w-full max-w-md mx-auto mt-20">
                 <CardHeader className="text-center items-center">

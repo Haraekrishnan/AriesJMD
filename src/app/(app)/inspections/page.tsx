@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -32,7 +33,7 @@ export default function InspectionsPage() {
     });
   }, [inspectionChecklists, searchTerm, inventoryItems]);
 
-  if (!canPerformInspection) {
+  if (!canPerformInspection && !can.view_all) {
     return (
         <Card className="w-full max-w-md mx-auto mt-20">
            <CardHeader className="text-center items-center">
@@ -40,7 +41,7 @@ export default function InspectionsPage() {
                    <AlertTriangle className="h-10 w-10 text-destructive" />
                </div>
                <CardTitle>Access Denied</CardTitle>
-               <CardDescription>You do not have permission to perform inspections.</CardDescription>
+               <CardDescription>You do not have permission to view this page.</CardDescription>
            </CardHeader>
        </Card>
     );
@@ -55,10 +56,12 @@ export default function InspectionsPage() {
           </h1>
           <p className="text-muted-foreground">Create and manage semi-annual inspection checklists.</p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          New Inspection
-        </Button>
+        {canPerformInspection && (
+            <Button onClick={() => setIsCreateOpen(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                New Inspection
+            </Button>
+        )}
       </div>
 
       <Card>
@@ -119,7 +122,7 @@ export default function InspectionsPage() {
         </CardContent>
       </Card>
 
-      <CreateInspectionDialog isOpen={isCreateOpen} setIsOpen={setIsCreateOpen} />
+      {canPerformInspection && <CreateInspectionDialog isOpen={isCreateOpen} setIsOpen={setIsCreateOpen} />}
       {viewingChecklist && (
         <ViewInspectionDialog
           isOpen={!!viewingChecklist}

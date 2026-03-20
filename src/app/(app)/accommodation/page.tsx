@@ -112,7 +112,7 @@ export default function AccommodationPage() {
         setIsEditRoomOpen(true);
     };
 
-    if (!can.manage_accommodation) {
+    if (!can.manage_accommodation && !can.view_all) {
         return (
            <Card className="w-full max-w-md mx-auto mt-20">
                <CardHeader className="text-center items-center">
@@ -120,7 +120,7 @@ export default function AccommodationPage() {
                        <AlertTriangle className="h-10 w-10 text-destructive" />
                    </div>
                    <CardTitle>Access Denied</CardTitle>
-                   <CardDescription>You do not have permission to manage accommodation.</CardDescription>
+                   <CardDescription>You do not have permission to view this page.</CardDescription>
                </CardHeader>
            </Card>
        );

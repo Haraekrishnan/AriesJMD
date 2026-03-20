@@ -107,7 +107,7 @@ export default function VehicleStatusPage() {
         setIsAddDriverOpen(true);
     };
 
-    if (!can.manage_vehicles) {
+    if (!can.manage_vehicles && !can.view_all) {
         return (
             <Card className="w-full max-w-md mx-auto mt-20">
                 <CardHeader className="text-center items-center">
@@ -115,7 +115,7 @@ export default function VehicleStatusPage() {
                         <AlertTriangle className="h-10 w-10 text-destructive" />
                     </div>
                     <CardTitle>Access Denied</CardTitle>
-                    <CardDescription>You do not have permission to manage fleet.</CardDescription>
+                    <CardDescription>You do not have permission to view this page.</CardDescription>
                 </CardHeader>
             </Card>
         );

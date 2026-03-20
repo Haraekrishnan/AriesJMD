@@ -1,23 +1,24 @@
 
+
 'use client';
 import { useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Notebook } from 'lucide-react';
+import { Notebook, AlertTriangle } from 'lucide-react';
 import VehicleUsageSheet from '@/components/vehicle-usage-summary/VehicleUsageSheet';
 
 export default function VehicleUsageSummaryPage() {
     const { can } = useAppContext();
 
-    if (!can.manage_vehicle_usage) {
+    if (!can.manage_vehicle_usage && !can.view_all) {
         return (
             <Card className="w-full max-w-md mx-auto mt-20">
                <CardHeader className="text-center items-center">
                    <div className="mx-auto bg-destructive/10 p-3 rounded-full w-fit mb-4">
-                       <Notebook className="h-10 w-10 text-destructive" />
+                       <AlertTriangle className="h-10 w-10 text-destructive" />
                    </div>
                    <CardTitle>Access Denied</CardTitle>
-                   <CardDescription>You do not have permission to view vehicle usage summaries.</CardDescription>
+                   <CardDescription>You do not have permission to view this page.</CardDescription>
                </CardHeader>
            </Card>
         );
