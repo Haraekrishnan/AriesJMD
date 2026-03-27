@@ -127,6 +127,7 @@ export const ALL_PERMISSIONS = [
   'manage_inventory',
   'view_inventory',
   'manage_equipment_status',
+  'manage_equipments',
   'manage_announcements',
   'create_broadcast',
   'view_performance_reports',
