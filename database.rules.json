@@ -43,8 +43,8 @@
       ".write": true
     },
     "inventoryItems": {
-      ".read": true,
-      ".write": true
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "inventory_harness": {
       ".read": "auth != null",
@@ -180,6 +180,34 @@
         ".write": true
     },
     "inspectionChecklists": {
+        ".read": true,
+        ".write": true
+    },
+    "pneumaticDrillingMachines": {
+        ".read": true,
+        ".write": true
+    },
+    "pneumaticAngleGrinders": {
+        ".read": true,
+        ".write": true
+    },
+    "wiredDrillingMachines": {
+        ".read": true,
+        ".write": true
+    },
+    "cordlessDrillingMachines": {
+        ".read": true,
+        ".write": true
+    },
+    "wiredAngleGrinders": {
+        ".read": true,
+        ".write": true
+    },
+    "cordlessAngleGrinders": {
+        ".read": true,
+        ".write": true
+    },
+    "cordlessReciprocatingSaws": {
         ".read": true,
         ".write": true
     }

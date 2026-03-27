@@ -591,6 +591,70 @@ export type WalkieTalkie = {
   remarks?: string;
 }
 
+export type PneumaticDrillingMachine = {
+  id: string;
+  serialNumber: string;
+  ariesId?: string;
+  projectId: string;
+  status: string;
+  remarks?: string;
+}
+
+export type PneumaticAngleGrinder = {
+  id: string;
+  serialNumber: string;
+  ariesId?: string;
+  projectId: string;
+  status: string;
+  remarks?: string;
+}
+
+export type WiredDrillingMachine = {
+  id: string;
+  serialNumber: string;
+  ariesId?: string;
+  projectId: string;
+  status: string;
+  remarks?: string;
+}
+
+export type CordlessDrillingMachine = {
+  id: string;
+  serialNumber: string;
+  ariesId?: string;
+  projectId: string;
+  status: string;
+  remarks?: string;
+}
+
+export type WiredAngleGrinder = {
+  id: string;
+  serialNumber: string;
+  ariesId?: string;
+  projectId: string;
+  status: string;
+  remarks?: string;
+}
+
+export type CordlessAngleGrinder = {
+  id: string;
+  serialNumber: string;
+  ariesId?: string;
+  projectId: string;
+  status: string;
+  remarks?: string;
+}
+
+export type CordlessReciprocatingSaw = {
+  id: string;
+  serialNumber: string;
+  ariesId?: string;
+  projectId: string;
+  status: string;
+  remarks?: string;
+}
+
+
 export type MachineLog = {
     id: string;
     machineId: string;
