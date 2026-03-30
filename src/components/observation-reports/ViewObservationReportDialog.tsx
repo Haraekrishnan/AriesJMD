@@ -40,7 +40,6 @@ export default function ViewObservationReportDialog({ isOpen, setIsOpen, report 
   const { toast } = useToast();
 
   const reporter = users.find(u => u.id === report.reporterId);
-  const supervisor = users.find(u => u.id === report.supervisorId);
   const project = projects.find(p => p.id === report.projectId);
 
   const canManage = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor';
@@ -92,7 +91,7 @@ export default function ViewObservationReportDialog({ isOpen, setIsOpen, report 
               <div className="grid grid-cols-2 gap-4 text-sm p-4 border rounded-md">
                 <div><span className="font-semibold">Project:</span> {project?.name}</div>
                 <div><span className="font-semibold">Location:</span> {report.location}</div>
-                <div><span className="font-semibold">Supervisor:</span> {supervisor?.name}</div>
+                <div><span className="font-semibold">Supervisor:</span> {report.supervisorName}</div>
                 <div><span className="font-semibold">Site In-charge:</span> {report.siteInChargeName}</div>
                 <div className="col-span-2"><span className="font-semibold">Job:</span> {report.jobDescription}</div>
               </div>

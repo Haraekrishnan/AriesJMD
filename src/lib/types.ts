@@ -1137,7 +1137,7 @@ export type ObservationReport = {
   visitTime: string; // HH:mm
   projectId: string;
   location: string;
-  supervisorId: string;
+  supervisorName: string;
   siteInChargeName: string;
   jobDescription: string;
   goodPractices?: string;

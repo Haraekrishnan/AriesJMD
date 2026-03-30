@@ -23,7 +23,7 @@ const reportSchema = z.object({
   visitTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Please enter a valid time in HH:mm format."),
   projectId: z.string().min(1, 'Project is required'),
   location: z.string().min(1, 'Location is required'),
-  supervisorId: z.string().min(1, 'Supervisor is required'),
+  supervisorName: z.string().min(1, 'Supervisor is required'),
   siteInChargeName: z.string().min(1, 'Site In-charge is required'),
   jobDescription: z.string().min(1, 'Job description is required'),
   goodPractices: z.string().optional(),
@@ -45,16 +45,6 @@ export default function NewObservationReportDialog({ isOpen, setIsOpen }: NewObs
   const form = useForm<FormValues>({
     resolver: zodResolver(reportSchema),
   });
-
-  const supervisors = useMemo(() => {
-    const supervisorRoles: Role[] = ['Supervisor', 'RA Level 3', 'Senior Safety Supervisor'];
-    return users.filter(u => supervisorRoles.includes(u.role));
-  }, [users]);
-  
-  const siteInCharges = useMemo(() => {
-    const inChargeRoles: Role[] = ['Project Coordinator', 'Manager'];
-    return users.filter(u => inChargeRoles.includes(u.role));
-  }, [users]);
 
   const onSubmit = async (data: FormValues) => {
     try {
@@ -120,26 +110,12 @@ export default function NewObservationReportDialog({ isOpen, setIsOpen }: NewObs
                      <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                            <Label>Supervisor / L3 Name</Label>
-                            <Controller name="supervisorId" control={form.control} render={({ field }) => (
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <SelectTrigger><SelectValue placeholder="Select Supervisor" /></SelectTrigger>
-                                    <SelectContent>
-                                        {supervisors.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            )}/>
-                             {form.formState.errors.supervisorId && <p className="text-xs text-destructive">{form.formState.errors.supervisorId.message}</p>}
+                            <Input {...form.register('supervisorName')} />
+                             {form.formState.errors.supervisorName && <p className="text-xs text-destructive">{form.formState.errors.supervisorName.message}</p>}
                         </div>
                         <div className="space-y-2">
                             <Label>Site In-charge Name</Label>
-                             <Controller name="siteInChargeName" control={form.control} render={({ field }) => (
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <SelectTrigger><SelectValue placeholder="Select Site In-charge" /></SelectTrigger>
-                                    <SelectContent>
-                                        {siteInCharges.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            )}/>
+                             <Input {...form.register('siteInChargeName')} />
                              {form.formState.errors.siteInChargeName && <p className="text-xs text-destructive">{form.formState.errors.siteInChargeName.message}</p>}
                         </div>
                     </div>

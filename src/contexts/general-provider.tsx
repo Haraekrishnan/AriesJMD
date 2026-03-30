@@ -412,7 +412,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb, `managementRequests/${requestId}/readBy`), { [user.id]: true });
     }, [user]);
 
-  const addObservationReport = useCallback((reportData: Omit<ObservationReport, 'id'|'reporterId'|'createdAt'|'status'|'closedAt'|'comments'>) => {
+  const addObservationReport = useCallback((reportData: Omit<ObservationReport, 'id'|'reporterId'|'createdAt'|'status'|'closedAt'|'comments'|'supervisorId'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'observationReports'));
     const newReport: Omit<ObservationReport, 'id'> = {
