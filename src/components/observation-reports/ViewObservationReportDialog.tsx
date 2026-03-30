@@ -1,5 +1,3 @@
-
-
 'use client';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
@@ -63,7 +61,7 @@ export default function ViewObservationReportDialog({ isOpen, setIsOpen, report 
       toast({ title: "Reason required", description: "Please provide a reason for reopening.", variant: 'destructive'});
       return;
     }
-    updateObservationReport(report.id, { status: 'Open', closedAt: undefined });
+    updateObservationReport(report.id, { status: 'Open', closedAt: null });
     addObservationComment(report.id, `Report reopened by ${user?.name}. Reason: ${reopenReason}`);
     toast({ title: "Report Reopened" });
   };
@@ -153,7 +151,3 @@ export default function ViewObservationReportDialog({ isOpen, setIsOpen, report 
     </Dialog>
   );
 }
-
-    
-
-    
