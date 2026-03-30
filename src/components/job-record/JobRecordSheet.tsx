@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Settings, Search, MessageSquare, ArrowRightLeft } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO, isSameMonth, isValid, parse, getDay } from 'date-fns';
-import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -26,6 +25,8 @@ import EditJobCodeDialog from './EditJobCodeDialog';
 import AddJobRecordPlantDialog from './AddJobRecordPlantDialog';
 import { ScrollArea } from '../ui/scroll-area';
 import { JOB_CODE_COLORS } from '@/lib/job-codes';
+import * as ExcelJS from 'exceljs';
+
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
 
@@ -101,6 +102,14 @@ export default function JobRecordSheet() {
         runAutoCarryForward();
     }, [currentMonth, jobRecords, carryForwardPlantAssignments, prevMonthKey, monthKey]);
 
+    const plantProjects = useMemo(() => {
+        return (jobRecordPlants || []).sort((a,b) => a.name.localeCompare(b.name));
+    }, [jobRecordPlants]);
+
+    const canViewUnassigned = useMemo(() => {
+        if (!user) return false;
+        return user.role === 'Admin' || can.manage_job_record;
+    }, [user, can.manage_job_record]);
 
     const filteredAndGroupedProfiles = useMemo(() => {
         const filtered = searchTerm
@@ -112,22 +121,34 @@ export default function JobRecordSheet() {
         };
 
         const groups: { [key: string]: ManpowerProfile[] } = {};
-        const plantNames = (jobRecordPlants || []).map(p => p.name);
-        const availablePlants = new Set(plantNames);
-        availablePlants.add('Unassigned');
+        
+        // Use the memoized and sorted plantProjects for stable order
+        const orderedPlantNames = plantProjects.map(p => p.name);
+
+        // Initialize groups in a stable order
+        orderedPlantNames.forEach(p => { groups[p] = []; });
+        if (canViewUnassigned) {
+            groups['Unassigned'] = [];
+        }
     
-        availablePlants.forEach(p => { groups[p] = []; });
-    
+        // Group profiles
         filtered.forEach(profile => {
             const plantAssignment = getPlantForProfile(profile.id);
             if (groups[plantAssignment]) {
                 groups[plantAssignment].push(profile);
-            } else {
+            } else if (canViewUnassigned) {
+                // If a profile's plant no longer exists, push to Unassigned
                 groups['Unassigned'].push(profile);
             }
         });
     
-        Object.keys(groups).forEach(plantName => {
+        // Sort each group based on saved order or alphabetically, iterating in a stable order
+        const allGroupNames = [...orderedPlantNames];
+        if (canViewUnassigned) {
+            allGroupNames.push('Unassigned');
+        }
+
+        allGroupNames.forEach(plantName => {
             const currentOrder = jobRecords[monthKey]?.plantsOrder?.[plantName];
             const prevOrder = jobRecords[prevMonthKey]?.plantsOrder?.[plantName];
             const order = currentOrder || prevOrder;
@@ -146,12 +167,14 @@ export default function JobRecordSheet() {
                 
                     return indexA - indexB;
                 });
+            } else {
+                 groups[plantName].sort((a, b) => a.name.localeCompare(b.name));
             }
         });
         
         return groups;
     
-    }, [manpowerProfiles, jobRecords, monthKey, prevMonthKey, searchTerm, jobRecordPlants]);
+    }, [manpowerProfiles, jobRecords, monthKey, prevMonthKey, searchTerm, plantProjects, canViewUnassigned]);
 
     const batchUpdateJobRecords = useCallback((updates: { profileId: string; day: number; code: string }[]) => {
         updates.forEach(update => {
@@ -400,26 +423,16 @@ export default function JobRecordSheet() {
         }
     };
     
-    const plantProjects = useMemo(() => {
-        return (jobRecordPlants || []).sort((a,b) => a.name.localeCompare(b.name));
-    }, [jobRecordPlants]);
-
-    const canViewUnassigned = useMemo(() => {
-        if (!user) return false;
-        return user.role === 'Admin' || can.manage_job_record;
-    }, [user, can.manage_job_record]);
-
     const allTabs = useMemo(() => {
         const plantTabs = plantProjects.map(p => p.name);
-        return canViewUnassigned ? [...plantTabs, 'Unassigned'] : plantTabs;
+        const tabs = canViewUnassigned ? [...plantTabs, 'Unassigned'] : plantTabs;
+        return tabs;
     }, [plantProjects, canViewUnassigned]);
     
     useEffect(() => {
-        // Set the initial active tab only if it hasn't been set and there are tabs available
-        if (!activeTab && allTabs.length > 0) {
+        if (activeTab === undefined && allTabs.length > 0) {
             setActiveTab(allTabs[0]);
         } else if (activeTab && !allTabs.includes(activeTab)) {
-            // If the active tab gets deleted, fall back to the first available tab
             setActiveTab(allTabs[0] || undefined);
         }
     }, [allTabs, activeTab]);
@@ -899,7 +912,7 @@ export default function JobRecordSheet() {
                                 </AlertDialog>
                             )}
                             {user?.role === 'Admin' && isCurrentSheetLocked && (
-                                <Button variant="secondary" onClick={() => unlockVehicleUsageSheet(monthKey)}>
+                                <Button variant="secondary" onClick={() => unlockJobRecordSheet(monthKey)}>
                                     <Unlock className="mr-2 h-4 w-4" /> Unlock
                                 </Button>
                             )}
