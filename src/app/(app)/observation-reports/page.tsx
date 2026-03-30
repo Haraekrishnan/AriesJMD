@@ -1,16 +1,22 @@
 
+
 'use client';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ShieldCheck, PlusCircle, AlertTriangle } from 'lucide-react';
 import NewObservationReportDialog from '@/components/observation-reports/NewObservationReportDialog';
 import ObservationReportList from '@/components/observation-reports/ObservationReportList';
+import ObservationSummary from '@/components/observation-reports/ObservationSummary';
 
 export default function ObservationReportsPage() {
   const { can } = useAppContext();
   const [isNewReportOpen, setIsNewReportOpen] = useState(false);
+
+  const canCreate = can.manage_safety_observations || ['Admin', 'Manager', 'Project Coordinator', 'Supervisor', 'Senior Safety Supervisor', 'Safety Supervisor'].includes(String(useAppContext().user?.role));
+  const canViewSummary = ['Admin', 'Manager', 'Project Coordinator', 'Senior Safety Supervisor'].includes(String(useAppContext().user?.role));
+
 
   if (!can.manage_safety_observations) {
     return (
@@ -35,10 +41,14 @@ export default function ObservationReportsPage() {
           </h1>
           <p className="text-muted-foreground">Log and review safety observations from various sites.</p>
         </div>
-        <Button onClick={() => setIsNewReportOpen(true)}>
-          <PlusCircle className="mr-2 h-4 w-4" /> New Report
-        </Button>
+        {canCreate && (
+          <Button onClick={() => setIsNewReportOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" /> New Report
+          </Button>
+        )}
       </div>
+      
+      {canViewSummary && <ObservationSummary />}
 
       <Card>
         <CardHeader>
@@ -54,5 +64,7 @@ export default function ObservationReportsPage() {
     </div>
   );
 }
+
+    
 
     

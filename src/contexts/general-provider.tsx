@@ -62,8 +62,9 @@ type GeneralContextType = {
   addManagementRequestComment: (requestId: string, commentText: string, ccUserIds?: string[]) => void;
   markManagementRequestAsViewed: (requestId: string) => void;
   
-  addObservationReport: (reportData: Omit<ObservationReport, 'id' | 'reporterId' | 'createdAt' | 'status'>) => void;
+  addObservationReport: (reportData: Omit<ObservationReport, 'id' | 'reporterId' | 'createdAt' | 'status' | 'closedAt' | 'comments'>) => void;
   updateObservationReport: (reportId: string, updates: Partial<ObservationReport>) => void;
+  addObservationComment: (reportId: string, text: string) => void;
   deleteObservationReport: (reportId: string) => void;
 };
 
@@ -411,18 +412,19 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb, `managementRequests/${requestId}/readBy`), { [user.id]: true });
     }, [user]);
 
-  const addObservationReport = useCallback((reportData: Omit<ObservationReport, 'id'|'reporterId'|'createdAt'|'status'>) => {
+  const addObservationReport = useCallback((reportData: Omit<ObservationReport, 'id'|'reporterId'|'createdAt'|'status'|'closedAt'|'comments'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'observationReports'));
     const newReport: Omit<ObservationReport, 'id'> = {
         ...reportData,
         reporterId: user.id,
         createdAt: new Date().toISOString(),
-        status: 'Open'
+        status: 'Open',
+        comments: [],
     };
     set(newRef, newReport);
-    addActivityLog(user.id, 'Safety Observation Reported', `Site: ${reportData.siteName}`);
-  }, [user, addActivityLog]);
+    addActivityLog(user.id, 'Safety Observation Reported', `Project: ${projects.find(p => p.id === reportData.projectId)?.name}`);
+  }, [user, addActivityLog, projects]);
   
   const updateObservationReport = useCallback((reportId: string, updates: Partial<ObservationReport>) => {
     update(ref(rtdb, `observationReports/${reportId}`), updates);
@@ -431,6 +433,19 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   const deleteObservationReport = useCallback((reportId: string) => {
     if (user?.role !== 'Admin') return;
     remove(ref(rtdb, `observationReports/${reportId}`));
+  }, [user]);
+
+  const addObservationComment = useCallback((reportId: string, text: string) => {
+    if (!user) return;
+    const newCommentRef = push(ref(rtdb, `observationReports/${reportId}/comments`));
+    const newComment: Omit<Comment, 'id'> = {
+      id: newCommentRef.key!,
+      userId: user.id,
+      text,
+      date: new Date().toISOString(),
+      eventId: reportId,
+    };
+    set(newCommentRef, newComment);
   }, [user]);
 
 
@@ -479,7 +494,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
     addFeedback, updateFeedbackStatus, deleteFeedback, addFeedbackComment, markFeedbackAsViewed,
     addDocument, updateDocument, deleteDocument, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addUsersToIncidentReport,
     addManagementRequest, updateManagementRequest, forwardManagementRequest, deleteManagementRequest, addManagementRequestComment, markManagementRequestAsViewed,
-    addObservationReport, updateObservationReport, deleteObservationReport,
+    addObservationReport, updateObservationReport, deleteObservationReport, addObservationComment,
   };
 
   return <GeneralContext.Provider value={contextValue}>{children}</GeneralContext.Provider>;
@@ -496,5 +511,7 @@ export const useGeneral = (): GeneralContextType => {
     
 
 
+
+    
 
     

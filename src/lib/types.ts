@@ -1135,15 +1135,20 @@ export type ObservationReport = {
   createdAt: string; // ISO
   visitDate: string; // ISO
   visitTime: string; // HH:mm
-  siteName: string;
+  projectId: string;
   location: string;
+  supervisorId: string;
+  siteInChargeName: string;
   jobDescription: string;
   goodPractices?: string;
   unsafeActs?: string;
   unsafeConditions?: string;
   correctiveActions?: string;
   status: 'Open' | 'Closed';
-  photos?: string[]; // array of URLs
+  closedAt?: string; // ISO
+  comments?: Comment[];
 };
+
+    
 
     
