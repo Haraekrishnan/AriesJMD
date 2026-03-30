@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -10,7 +11,7 @@ import useLocalStorage from '@/hooks/use-local-storage';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { uploadFile } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
-import { Announcement, ActivityLog, IncidentReport, Comment, DownloadableDocument, Project, JobCode, Vehicle, Driver, NotificationSettings, Broadcast, ManagementRequest, ManagementRequestStatus } from '@/lib/types';
+import { Announcement, ActivityLog, IncidentReport, Comment, DownloadableDocument, Project, JobCode, Vehicle, Driver, NotificationSettings, Broadcast, ManagementRequest, ManagementRequestStatus, ObservationReport } from '@/lib/types';
 import { JOB_CODES as INITIAL_JOB_CODES } from '@/lib/mock-data';
 import { useAuth } from './auth-provider';
 
@@ -24,6 +25,7 @@ type GeneralContextType = {
   announcements: Announcement[];
   broadcasts: Broadcast[];
   incidentReports: IncidentReport[];
+  observationReports: ObservationReport[];
   downloadableDocuments: DownloadableDocument[];
   vehicles: Vehicle[];
   drivers: Driver[];
@@ -59,6 +61,10 @@ type GeneralContextType = {
   deleteManagementRequest: (requestId: string) => void;
   addManagementRequestComment: (requestId: string, commentText: string, ccUserIds?: string[]) => void;
   markManagementRequestAsViewed: (requestId: string) => void;
+  
+  addObservationReport: (reportData: Omit<ObservationReport, 'id' | 'reporterId' | 'createdAt' | 'status'>) => void;
+  updateObservationReport: (reportId: string, updates: Partial<ObservationReport>) => void;
+  deleteObservationReport: (reportId: string) => void;
 };
 
 // --- HELPER FUNCTIONS ---
@@ -98,6 +104,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   const [announcementsById, setAnnouncementsById] = useState<Record<string, Announcement>>({});
   const [broadcastsById, setBroadcastsById] = useState<Record<string, Broadcast>>({});
   const [incidentReportsById, setIncidentReportsById] = useState<Record<string, IncidentReport>>({});
+  const [observationReportsById, setObservationReportsById] = useState<Record<string, ObservationReport>>({});
   const [downloadableDocumentsById, setDownloadableDocumentsById] = useState<Record<string, DownloadableDocument>>({});
   const [vehiclesById, setVehiclesById] = useState<Record<string, Vehicle>>({});
   const [driversById, setDriversById] = useState<Record<string, Driver>>({});
@@ -111,6 +118,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   const announcements = useMemo(() => Object.values(announcementsById), [announcementsById]);
   const broadcasts = useMemo(() => Object.values(broadcastsById), [broadcastsById]);
   const incidentReports = useMemo(() => Object.values(incidentReportsById), [incidentReportsById]);
+  const observationReports = useMemo(() => Object.values(observationReportsById), [observationReportsById]);
   const downloadableDocuments = useMemo(() => Object.values(downloadableDocumentsById), [downloadableDocumentsById]);
   const vehicles = useMemo(() => Object.values(vehiclesById), [vehiclesById]);
   const drivers = useMemo(() => Object.values(driversById), [driversById]);
@@ -335,7 +343,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
                 subject: `New Request: ${data.subject}`,
                 htmlBody,
                 notificationSettings,
-                event: 'onNewTask', 
+                event: 'onManagementRequest'
             });
         }
     }, [user, users, notificationSettings]);
@@ -403,6 +411,28 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb, `managementRequests/${requestId}/readBy`), { [user.id]: true });
     }, [user]);
 
+  const addObservationReport = useCallback((reportData: Omit<ObservationReport, 'id'|'reporterId'|'createdAt'|'status'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'observationReports'));
+    const newReport: Omit<ObservationReport, 'id'> = {
+        ...reportData,
+        reporterId: user.id,
+        createdAt: new Date().toISOString(),
+        status: 'Open'
+    };
+    set(newRef, newReport);
+    addActivityLog(user.id, 'Safety Observation Reported', `Site: ${reportData.siteName}`);
+  }, [user, addActivityLog]);
+  
+  const updateObservationReport = useCallback((reportId: string, updates: Partial<ObservationReport>) => {
+    update(ref(rtdb, `observationReports/${reportId}`), updates);
+  }, []);
+
+  const deleteObservationReport = useCallback((reportId: string) => {
+    if (user?.role !== 'Admin') return;
+    remove(ref(rtdb, `observationReports/${reportId}`));
+  }, [user]);
+
 
   useEffect(() => {
     const unsubscribers = [
@@ -412,6 +442,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
       createDataListener('announcements', setAnnouncementsById),
       createDataListener('broadcasts', setBroadcastsById),
       createDataListener('incidentReports', setIncidentReportsById),
+      createDataListener('observationReports', setObservationReportsById),
       createDataListener('downloadableDocuments', setDownloadableDocumentsById),
       createDataListener('vehicles', setVehiclesById),
       createDataListener('drivers', setDriversById),
@@ -443,11 +474,12 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const contextValue: GeneralContextType = {
-    projects, jobCodes, activityLogs, announcements, broadcasts, incidentReports, downloadableDocuments, vehicles, drivers, notificationSettings, feedback, managementRequests,
+    projects, jobCodes, activityLogs, announcements, broadcasts, incidentReports, observationReports, downloadableDocuments, vehicles, drivers, notificationSettings, feedback, managementRequests,
     addProject, updateProject, deleteProject, addJobCode, updateJobCode, deleteJobCode,
     addFeedback, updateFeedbackStatus, deleteFeedback, addFeedbackComment, markFeedbackAsViewed,
     addDocument, updateDocument, deleteDocument, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addUsersToIncidentReport,
     addManagementRequest, updateManagementRequest, forwardManagementRequest, deleteManagementRequest, addManagementRequestComment, markManagementRequestAsViewed,
+    addObservationReport, updateObservationReport, deleteObservationReport,
   };
 
   return <GeneralContext.Provider value={contextValue}>{children}</GeneralContext.Provider>;
@@ -463,3 +495,6 @@ export const useGeneral = (): GeneralContextType => {
 
     
 
+
+
+    

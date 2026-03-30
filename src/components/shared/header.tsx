@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -12,7 +13,7 @@ import {
   Menu, ShieldAlert, History, Ship, LogOut, LayoutDashboard, Send, CheckSquare,
   CalendarCheck, ShoppingCart, Warehouse, ArrowRightLeft, Package, HardHat, Car,
   Home, CalendarDays, Briefcase, HelpCircle, ClipboardList, Download,
-  MessageSquare, Hammer, Radio, Users, FileText, Trophy, TrendingUp, User as UserIcon
+  MessageSquare, Hammer, Radio, Users, FileText, Trophy, TrendingUp, User as UserIcon, ShieldCheck
 } from 'lucide-react';
 import AnnouncementApprovalDialog from '../announcements/AnnouncementApprovalDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -165,6 +166,7 @@ const plannerNotificationCount =
       { href: '/planner', icon: CalendarDays, label: 'Planner', notificationCount: notificationCounts.planner || 0, show: true },
       { href: '/manpower', icon: Users, label: 'Manpower', notificationCount: notificationCounts.manpower || 0, show: true },
       { href: '/accommodation', icon: Home, label: 'Accommodation', notificationCount: 0, show: true },
+      { href: '/observation-reports', icon: ShieldCheck, label: 'Observation Reports', notificationCount: 0, show: can.manage_safety_observations },
       { href: '/downloads', icon: Download, label: 'Forms & Documents', notificationCount: 0, show: true },
       { href: '/vendor-management', icon: Briefcase, label: 'Vendor Ledger', notificationCount: notificationCounts.vendorLedger || 0, show: can.manage_vendors },
       { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0, show: true },
@@ -239,6 +241,7 @@ export default function Header() {
     if (pathname.startsWith('/damage-reports')) return 'Damage Reports';
     if (pathname.startsWith('/incident-reporting')) return 'Incident Reporting';
     if (pathname.startsWith('/job-progress')) return 'JMS Tracker';
+    if (pathname.startsWith('/observation-reports')) return 'Observation Reports';
     const name = pathname.split('/').pop()?.replace(/-/g, ' ');
     if (!name || name === 'app') return 'Dashboard';
     if (name === 'downloads') return 'Forms & Documents';
@@ -345,3 +348,6 @@ export default function Header() {
     </>
   );
 }
+
+
+    

@@ -2,7 +2,7 @@
 
 'use client';
 
-import type { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, DailyPlannerComment, InternalRequest, ManagementRequest, InventoryItem, CertificateRequest, ManpowerLog, UTMachine, Vehicle, ManpowerProfile, Trade, DftMachine, MobileSim, LaptopDesktop, Driver, Announcement, IncidentReport, Building, IgpOgpRecord, PpeInwardRecord, JobRecordPlant, JobCode } from './types';
+import type { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, DailyPlannerComment, InternalRequest, ManagementRequest, InventoryItem, CertificateRequest, ManpowerLog, UTMachine, Vehicle, ManpowerProfile, Trade, DftMachine, MobileSim, LaptopDesktop, Driver, Announcement, IncidentReport, Building, IgpOgpRecord, PpeInwardRecord, JobRecordPlant, JobCode, ObservationReport } from './types';
 import { sub, add, format } from 'date-fns';
 import { ALL_PERMISSIONS } from './types';
 
@@ -64,7 +64,7 @@ export const ROLES: RoleDefinition[] = [
     id: 'role-hse',
     name: 'Senior Safety Supervisor',
     permissions: [
-      'manage_tasks', 'manage_planner', 'manage_incidents', 'view_performance_reports', 'manage_equipment_status', 'view_inventory'
+      'manage_tasks', 'manage_planner', 'manage_incidents', 'view_performance_reports', 'manage_equipment_status', 'view_inventory', 'manage_safety_observations'
     ],
     isEditable: false,
   },
@@ -77,7 +77,7 @@ export const ROLES: RoleDefinition[] = [
   {
     id: 'role-jr-hse',
     name: 'Safety Supervisor',
-    permissions: ['view_performance_reports'],
+    permissions: ['view_performance_reports', 'manage_safety_observations'],
     isEditable: false,
   },
     {
@@ -326,13 +326,14 @@ export const MANAGEMENT_REQUESTS: ManagementRequest[] = [
     {
         id: 'mreq-1',
         requesterId: '13', 
-        recipientId: '4', 
+        toUserId: '4', 
         subject: 'Request for additional training',
         body: 'I would like to request enrollment in the advanced project management course to improve my skills.',
         status: 'Pending',
-        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        lastUpdated: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        creatorId: '13',
         comments: [],
-        viewedByRequester: true,
+        readBy: {},
     }
 ];
 
@@ -502,6 +503,7 @@ export const ACTIVITY_LOGS: ActivityLog[] = [
 
 export const ANNOUNCEMENTS: Announcement[] = [];
 export const INCIDENTS: IncidentReport[] = [];
+export const OBSERVATION_REPORTS: ObservationReport[] = [];
 export const PPE_INWARD_HISTORY: PpeInwardRecord[] = [];
 
 export const BUILDINGS: Building[] = [
@@ -532,3 +534,5 @@ export const BUILDINGS: Building[] = [
 ];
 
 export const IGP_OGP_RECORDS: IgpOgpRecord[] = [];
+
+    

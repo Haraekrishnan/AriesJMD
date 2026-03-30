@@ -1,4 +1,5 @@
 
+
 {
   "rules": {
     ".read": false,
@@ -41,6 +42,10 @@
     "incidentReports": {
       ".read": true,
       ".write": true
+    },
+    "observationReports": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "inventoryItems": {
       ".read": "auth != null",
@@ -213,6 +218,9 @@
     }
   }
 }
+
+
+    
 
 
     

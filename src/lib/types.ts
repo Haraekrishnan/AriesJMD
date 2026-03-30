@@ -159,6 +159,7 @@ export const ALL_PERMISSIONS = [
   'manage_job_progress',
   'view_job_progress',
   'view_all',
+  'manage_safety_observations',
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -1127,3 +1128,22 @@ export type DocumentMovement = {
   acknowledgedAt?: string;
   completedAt?: string;
 };
+
+export type ObservationReport = {
+  id: string;
+  reporterId: string;
+  createdAt: string; // ISO
+  visitDate: string; // ISO
+  visitTime: string; // HH:mm
+  siteName: string;
+  location: string;
+  jobDescription: string;
+  goodPractices?: string;
+  unsafeActs?: string;
+  unsafeConditions?: string;
+  correctiveActions?: string;
+  status: 'Open' | 'Closed';
+  photos?: string[]; // array of URLs
+};
+
+    

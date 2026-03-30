@@ -35,6 +35,7 @@ import {
   Download,
   MessageSquare,
   Hammer,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -188,6 +189,7 @@ const plannerNotificationCount =
     { href: '/planner', icon: CalendarDays, label: 'Planner', notificationCount: notificationCounts.planner || 0, show: true },
     { href: '/manpower', icon: Users, label: 'Manpower', notificationCount: notificationCounts.manpower || 0, show: true },
     { href: '/accommodation', icon: Home, label: 'Accommodation', notificationCount: 0, show: true },
+    { href: '/observation-reports', icon: ShieldCheck, label: 'Observation Reports', notificationCount: 0, show: can.manage_safety_observations },
     { href: '/downloads', icon: Download, label: 'Forms & Documents', notificationCount: 0, show: true },
     { href: '/vendor-management', icon: Briefcase, label: 'Vendor Ledger', notificationCount: notificationCounts.vendorLedger || 0, show: can.manage_vendors },
     { href: '/performance', icon: TrendingUp, label: 'Performance', notificationCount: 0, show: true },
@@ -257,3 +259,6 @@ const plannerNotificationCount =
     </aside>
   );
 }
+
+
+    
