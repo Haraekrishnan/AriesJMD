@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { formatDistanceToNow, isValid } from 'date-fns';
+import { Trash2 } from 'lucide-react';
 
 const Section = ({ title, content }: { title: string, content?: string }) => {
     if (!content) return null;
@@ -31,7 +32,7 @@ interface ViewObservationReportDialogProps {
 }
 
 export default function ViewObservationReportDialog({ isOpen, setIsOpen, report }: ViewObservationReportDialogProps) {
-  const { users, user, projects, updateObservationReport, addObservationComment } = useAppContext();
+  const { users, user, projects, updateObservationReport, addObservationComment, deleteObservationReport } = useAppContext();
   const [correctiveActions, setCorrectiveActions] = useState(report.correctiveActions || '');
   const [reopenReason, setReopenReason] = useState('');
   const [newComment, setNewComment] = useState('');
@@ -42,6 +43,7 @@ export default function ViewObservationReportDialog({ isOpen, setIsOpen, report 
 
   const canManage = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor';
   const isReporter = user?.id === report.reporterId;
+  const canDelete = user?.role === 'Admin';
   
   const commentsArray = Array.isArray(report.comments) ? report.comments : (report.comments ? Object.values(report.comments) : []);
 
@@ -71,6 +73,12 @@ export default function ViewObservationReportDialog({ isOpen, setIsOpen, report 
       addObservationComment(report.id, newComment);
       setNewComment('');
   }
+
+  const handleDelete = () => {
+    deleteObservationReport(report.id);
+    toast({ title: 'Report Deleted', variant: 'destructive' });
+    setIsOpen(false);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -127,7 +135,7 @@ export default function ViewObservationReportDialog({ isOpen, setIsOpen, report 
           </div>
         </ScrollArea>
         <DialogFooter className="mt-auto pt-4 border-t justify-between">
-            <div>
+            <div className="flex items-center gap-2">
               {canManage && report.status === 'Closed' && (
                 <AlertDialog>
                     <AlertDialogTrigger asChild><Button variant="destructive">Reopen Report</Button></AlertDialogTrigger>
@@ -137,6 +145,21 @@ export default function ViewObservationReportDialog({ isOpen, setIsOpen, report 
                         <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction onClick={handleReopen}>Reopen</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+              )}
+               {canDelete && (
+                <AlertDialog>
+                    <AlertDialogTrigger asChild><Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4"/> Delete</Button></AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                          <AlertDialogDescription>This action will permanently delete this report. This cannot be undone.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDelete}>Delete Report</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
