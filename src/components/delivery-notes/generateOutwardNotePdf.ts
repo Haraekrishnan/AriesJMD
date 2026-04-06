@@ -7,6 +7,7 @@ import type { DeliveryNote } from '@/lib/types';
 
 export function generateOutwardNotePdf(note: DeliveryNote) {
   const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
 
   // Header
   doc.setFontSize(18);
