@@ -28,6 +28,21 @@ async function fetchImageAsBase64(url: string): Promise<string> {
     }
 }
 
+function writeTextOnLines(
+  doc: jsPDF,
+  text: string,
+  x: number,
+  startY: number,
+  lineSpacing: number,
+  maxWidth: number,
+  maxLines: number
+) {
+  const lines = doc.splitTextToSize(text || '', maxWidth);
+
+  for (let i = 0; i < Math.min(lines.length, maxLines); i++) {
+    doc.text(lines[i], x, startY + (i * lineSpacing));
+  }
+}
 
 export async function generateOutwardNotePdf(note: DeliveryNote) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
@@ -60,64 +75,87 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
   // TO
   doc.setFont('helvetica', 'bold');
   doc.text('To:', 50, startY);
-  doc.setFont('helvetica', 'normal');
-  doc.text(note.toAddress || '', 50, startY + 12, { maxWidth: 150 });
 
   // FROM
   doc.setFont('helvetica', 'bold');
   doc.text('From:', 250, startY);
-  doc.setFont('helvetica', 'normal');
-  doc.text(note.fromAddress || '', 250, startY + 12, { maxWidth: 150 });
+  
+  const lineStartY = startY + 22;
 
-  // TO/FROM LINES
-  const lineStartY = startY + 25;
+  // DRAW LINES (TO)
   for (let i = 0; i < 5; i++) {
     doc.line(50, lineStartY + i * 12, 210, lineStartY + i * 12);
   }
+
+  // DRAW LINES (FROM)
   for (let i = 0; i < 5; i++) {
     doc.line(250, lineStartY + i * 12, 410, lineStartY + i * 12);
   }
+
+  doc.setFont('helvetica', 'normal');
   
+  writeTextOnLines(
+    doc,
+    note.toAddress || '',
+    50,
+    lineStartY - 3,
+    12,
+    140,
+    5
+  );
+
+  writeTextOnLines(
+    doc,
+    note.fromAddress || '',
+    250,
+    lineStartY - 3,
+    12,
+    140,
+    5
+  );
+
+
   // RIGHT SIDE DETAILS
   const rightX = 400;
+
   doc.setFont('helvetica', 'bold');
   doc.text('Delivery Note No.:', rightX, startY + 10);
   doc.text('Aries Ref No.:', rightX, startY + 25);
   doc.text('Delivery Date:', rightX, startY + 40);
-  
+
   doc.setFont('helvetica', 'normal');
   doc.text(note.deliveryNoteNumber, rightX + 120, startY + 10);
   doc.text(note.ariesRefNo || '-', rightX + 120, startY + 25);
   doc.text(format(new Date(note.deliveryDate), 'dd-MM-yyyy'), rightX + 120, startY + 40);
 
-
-  // 4. TYPE OF SERVICE (SEPARATE BOX)
+  // ================= TYPE OF SERVICE =================
   const serviceY = 155;
-  doc.setLineWidth(0.8);
-  doc.rect(40, serviceY, 515, 22);
+  const tableLeft = 40;
+  const tableWidth = 515;
 
-  doc.setFontSize(9);
+  doc.setLineWidth(0.8);
+  doc.rect(tableLeft, serviceY, tableWidth, 22);
+  
   doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
   doc.text('TYPE OF SERVICE:', 45, serviceY + 14);
 
   doc.setFont('helvetica', 'normal');
   doc.text(note.serviceType || '', 160, serviceY + 14);
-  
-  // 5. MANUAL TABLE DRAWING
+
+  // ================= TABLE =================
   const tableTop = serviceY + 22;
-  const tableLeft = 40;
-  const tableWidth = 515;
-  const headerHeight = 25;
   const tableHeight = 360;
+
+  const col1 = tableLeft + 50;   
+  const col2 = tableLeft + 130;  
+  const col3 = tableLeft + 405;  
+
+  const headerHeight = 25;
 
   // Header Box
   doc.setLineWidth(0.8);
   doc.rect(tableLeft, tableTop, tableWidth, headerHeight);
-
-  // Column positions
-  const col1 = tableLeft + 60;
-  const col2 = tableLeft + 170;
-  const col3 = tableLeft + 430;
 
   // Vertical header lines
   doc.line(col1, tableTop, col1, tableTop + headerHeight);
@@ -130,7 +168,7 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
   doc.text('Sr. No', tableLeft + 10, tableTop + 17);
   doc.text('QUANTITY', col1 + 10, tableTop + 17);
   doc.text('DESCRIPTION', col2 + 90, tableTop + 17);
-  doc.text('REMARKS', col3 + 15, tableTop + 17);
+  doc.text('REMARKS', col3 + 20, tableTop + 17);
 
   // Main Table Body Box
   doc.rect(tableLeft, tableTop + headerHeight, tableWidth, tableHeight);
@@ -145,14 +183,15 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
   if (note.items?.length) {
       const item = note.items[0];
       doc.setFont('helvetica', 'normal');
-      doc.text('1', tableLeft + 20, rowY);
+      doc.text('1', tableLeft + 15, rowY);
       doc.text(String(item.quantity), col1 + 20, rowY);
       doc.text(item.description || '', col2 + 10, rowY);
       doc.text(item.remarks || '', col3 + 10, rowY);
   }
 
-  // 6. FOOTER
-  const footerY = pageHeight - 120;
+  // ================= FOOTER =================
+  const footerY = pageHeight - 130;
+  
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.text('Received the above Items', 330, footerY - 15);
@@ -174,12 +213,12 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
   doc.text('Signature:', rightFooterX, footerY + 40);
   doc.text('Date:', rightFooterX, footerY + 60);
 
-  // 7. BOTTOM LINE
+  // ================= BOTTOM LINE =================
   doc.setFontSize(7);
   doc.setTextColor(120);
   doc.text('Ref.: QHSE/P 11/CL 03/Rev 06/01 Aug 2020', 40, pageHeight - 25);
   doc.text('Page 1 of 1', pageWidth - 40, pageHeight - 25, { align: 'right' });
 
-  // 8. SAVE
+  // ================= SAVE =================
   doc.save(`Delivery_Note_${note.deliveryNoteNumber}.pdf`);
 }
