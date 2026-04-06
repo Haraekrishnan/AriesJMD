@@ -1,4 +1,3 @@
-
 'use client';
 
 import jsPDF from 'jspdf';
@@ -62,17 +61,16 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
   // TO
   doc.setFont('helvetica', 'bold');
   doc.text('To:', 50, startY);
+  doc.setFont('helvetica', 'normal');
+  doc.text(note.toAddress, 50, startY + 12, { maxWidth: 150 });
 
-  for (let i = 0; i < 4; i++) {
-    doc.line(50, startY + 12 + i * 12, 200, startY + 12 + i * 12);
-  }
 
   // FROM
+  doc.setFont('helvetica', 'bold');
   doc.text('From:', 250, startY);
+  doc.setFont('helvetica', 'normal');
+  doc.text(note.fromAddress, 250, startY + 12, { maxWidth: 150 });
 
-  for (let i = 0; i < 4; i++) {
-    doc.line(250, startY + 12 + i * 12, 400, startY + 12 + i * 12);
-  }
 
   // ✅ 4. FIX RIGHT DETAILS (CRITICAL ALIGNMENT)
   const rightX = 420;
@@ -104,50 +102,57 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
   // ================= TABLE =================
   const tableStartY = serviceY + 18;
 
-  const head = [['Sr. No', 'QUANTITY', 'DESCRIPTION', 'REMARKS']];
-  const body = (note.items || []).map((item, i) => [
-    i + 1,
-    item.quantity,
-    item.description,
-    item.remarks || '',
-  ]);
-
   (doc as any).autoTable({
-    head,
-    body,
     startY: tableStartY,
+  
+    // ✅ FORCE TABLE POSITION (VERY IMPORTANT)
+    margin: { left: 40 },
+  
+    tableWidth: 515, // EXACT WIDTH (A4 - margins)
+  
+    head: [['Sr. No', 'QUANTITY', 'DESCRIPTION', 'REMARKS']],
+  
+    body: (note.items || []).map((item, i) => [
+      i + 1,
+      item.quantity,
+      item.description || '',
+      item.remarks || '',
+    ]),
+  
     theme: 'grid',
-    tableWidth: pageWidth - 80,
-    margin: { left: margin, right: margin },
-
+  
     styles: {
       fontSize: 9,
       lineWidth: 0.5,
-      lineColor: 0,
-      cellPadding: 4,
+      lineColor: [0, 0, 0],
+      cellPadding: 3,
+      valign: 'middle',
+      overflow: 'linebreak',
     },
-
+  
     headStyles: {
-      fillColor: [230, 230, 230],
+      fillColor: [220, 220, 220],
       textColor: 0,
       halign: 'center',
+      valign: 'middle',
       fontStyle: 'bold',
     },
-
-    // ✅ 6. TABLE — MATCH COLUMN WIDTH EXACTLY
+  
+    // 🔥 LOCK COLUMN WIDTHS (THIS FIXES YOUR ISSUE)
     columnStyles: {
-      0: { cellWidth: 45, halign: 'center' },   // Sr No
+      0: { cellWidth: 50, halign: 'center' },   // Sr No
       1: { cellWidth: 80, halign: 'center' },   // Quantity
-      2: { cellWidth: 260 },                   // Description
-      3: { cellWidth: 85 },                    // Remarks
+      2: { cellWidth: 275, halign: 'left' },    // Description
+      3: { cellWidth: 110, halign: 'left' },    // Remarks
     },
-
-    // ✅ 7. FORCE FULL TABLE HEIGHT (IMPORTANT FIX)
+  
     didDrawPage: () => {
+      // OUTER BOX EXACT MATCH
       doc.setLineWidth(0.8);
-      doc.rect(40, tableStartY, pageWidth - 80, 360); // EXACT FORM HEIGHT
+      doc.rect(40, tableStartY, 515, 360);
     }
   });
+  
 
   // ✅ 8. FOOTER PERFECT ALIGNMENT
   const footerY = pageHeight - 120;
