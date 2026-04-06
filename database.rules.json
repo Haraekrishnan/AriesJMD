@@ -188,6 +188,10 @@
         ".read": true,
         ".write": true
     },
+    "deliveryNotes": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
     "pneumaticDrillingMachines": {
         ".read": true,
         ".write": true
