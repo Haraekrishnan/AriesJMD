@@ -13,7 +13,8 @@ import {
   Menu, ShieldAlert, History, Ship, LogOut, LayoutDashboard, Send, CheckSquare,
   CalendarCheck, ShoppingCart, Warehouse, ArrowRightLeft, Package, HardHat, Car,
   Home, CalendarDays, Briefcase, HelpCircle, ClipboardList, Download,
-  MessageSquare, Hammer, Radio, Users, FileText, Trophy, TrendingUp, User as UserIcon, ShieldCheck
+  MessageSquare, Hammer, Radio, Users, FileText, Trophy, TrendingUp, User as UserIcon, ShieldCheck,
+  Truck
 } from 'lucide-react';
 import AnnouncementApprovalDialog from '../announcements/AnnouncementApprovalDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -158,6 +159,7 @@ const plannerNotificationCount =
       { href: '/job-progress', icon: ClipboardList, label: 'JMS Tracker', notificationCount: notificationCounts.jmsTracker || 0, show: can.view_job_progress },
       { href: '/purchase-register', icon: ShoppingCart, label: 'Purchase Register', notificationCount: 0, show: true },
       { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: notificationCounts.storeInventory || 0, show: true },
+      { href: '/delivery-notes', icon: Truck, label: 'Delivery Notes', notificationCount: 0, show: can.manage_delivery_notes },
       { href: '/consumables', icon: Package, label: 'Consumables', notificationCount: 0, show: false },
       { href: '/igp-ogp', icon: ArrowRightLeft, label: 'IGP/OGP Register', notificationCount: 0, show: false },
       { href: '/ppe-stock', icon: Package, label: 'PPE Stock', notificationCount: 0, show: false },
@@ -242,6 +244,7 @@ export default function Header() {
     if (pathname.startsWith('/incident-reporting')) return 'Incident Reporting';
     if (pathname.startsWith('/job-progress')) return 'JMS Tracker';
     if (pathname.startsWith('/observation-reports')) return 'Observation Reports';
+    if (pathname.startsWith('/delivery-notes')) return 'Delivery Notes';
     const name = pathname.split('/').pop()?.replace(/-/g, ' ');
     if (!name || name === 'app') return 'Dashboard';
     if (name === 'downloads') return 'Forms & Documents';

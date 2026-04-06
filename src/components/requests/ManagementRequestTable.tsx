@@ -29,12 +29,12 @@ export default function ManagementRequestTable({ requests }: ManagementRequestTa
   }
 
   // This component is now essentially a placeholder as its functionality
-  // has been moved to the new /directives page.
+  // has been moved to the new /delivery-notes page.
   // It will show a message if any old data still exists.
 
   return (
     <div className="text-center py-10 text-muted-foreground">
-        This feature has been replaced by the new "Directives" system.
+        This feature has been replaced by the new "Delivery Notes" system.
     </div>
   );
 }

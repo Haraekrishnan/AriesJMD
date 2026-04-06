@@ -160,6 +160,7 @@ export const ALL_PERMISSIONS = [
   'view_job_progress',
   'view_all',
   'manage_safety_observations',
+  'manage_delivery_notes',
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -1147,6 +1148,35 @@ export type ObservationReport = {
   status: 'Open' | 'Closed';
   closedAt?: string; // ISO
   comments?: Comment[];
+};
+
+export type DeliveryNoteItem = {
+    id: string; // Could be inventory item id or just a random id for manual entries
+    description: string;
+    quantity: number;
+    remarks?: string;
+};
+
+export type DeliveryNote = {
+    id: string;
+    type: 'Inward' | 'Outward';
+    creatorId: string;
+    createdAt: string; // ISO
+    deliveryDate: string; // ISO
+    deliveryNoteNumber: string;
+    ariesRefNo?: string;
+    fromAddress: string;
+    toAddress: string;
+    serviceType?: string;
+    
+    // For Outward
+    items?: DeliveryNoteItem[];
+
+    // For Inward
+    attachmentUrl?: string;
+
+    // For Outward signed copy
+    signedAttachmentUrl?: string;
 };
 
     
