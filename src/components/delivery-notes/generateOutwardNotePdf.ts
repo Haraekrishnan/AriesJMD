@@ -3,7 +3,7 @@
 
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import type { DeliveryNote } from '@/lib/types';
 
 declare module 'jspdf' {
@@ -38,65 +38,71 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
 
   const margin = 40;
 
-  // ================= HEADER =================
+  // ✅ 1. ADD FULL PAGE BORDER (VERY IMPORTANT)
+  doc.setLineWidth(1);
+  doc.rect(20, 20, pageWidth - 40, pageHeight - 40);
+
+  // ✅ 2. FIX HEADER ALIGNMENT
   const logo = await fetchImageAsBase64('/images/Aries_logo.png');
   if (logo) {
-    doc.addImage(logo, 'PNG', margin, 30, 90, 25);
+    doc.addImage(logo, 'PNG', 30, 30, 100, 30);
   }
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
+  doc.setFontSize(14);
   doc.setTextColor(120);
-  doc.text('Delivery Note', pageWidth - margin, 45, { align: 'right' });
+  doc.text('Delivery Note', pageWidth - 60, 45, { align: 'right' });
 
-  // ================= TO / FROM SECTION =================
+
+  // ✅ 3. FIX TO / FROM PERFECTLY
+  const startY = 90;
   doc.setFontSize(9);
   doc.setTextColor(0);
 
-  const topY = 90;
-
-  // To
+  // TO
   doc.setFont('helvetica', 'bold');
-  doc.text('To:', margin, topY);
+  doc.text('To:', 50, startY);
 
   for (let i = 0; i < 4; i++) {
-    doc.line(margin, topY + 10 + i * 12, margin + 180, topY + 10 + i * 12);
+    doc.line(50, startY + 12 + i * 12, 200, startY + 12 + i * 12);
   }
 
-  // From
-  doc.text('From:', margin + 220, topY);
+  // FROM
+  doc.text('From:', 250, startY);
 
   for (let i = 0; i < 4; i++) {
-    doc.line(margin + 220, topY + 10 + i * 12, margin + 380, topY + 10 + i * 12);
+    doc.line(250, startY + 12 + i * 12, 400, startY + 12 + i * 12);
   }
 
-  // Details (Right side)
-  const dx = pageWidth - 200;
+  // ✅ 4. FIX RIGHT DETAILS (CRITICAL ALIGNMENT)
+  const rightX = 420;
 
-  doc.text('Delivery Note No.:', dx, topY + 10);
-  doc.text('Aries Ref No.:', dx, topY + 25);
-  doc.text('Delivery Date:', dx, topY + 40);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Delivery Note No.:', rightX, startY + 12);
+  doc.text('Aries Ref No.:', rightX, startY + 26);
+  doc.text('Delivery Date:', rightX, startY + 40);
 
   doc.setFont('helvetica', 'normal');
-  doc.text(note.deliveryNoteNumber, dx + 100, topY + 10);
-  doc.text(note.ariesRefNo || '-', dx + 100, topY + 25);
-  doc.text(format(new Date(note.deliveryDate), 'dd-MM-yyyy'), dx + 100, topY + 40);
+  doc.text(note.deliveryNoteNumber, rightX + 110, startY + 12);
+  doc.text(note.ariesRefNo || '-', rightX + 110, startY + 26);
+  doc.text(format(new Date(note.deliveryDate), 'dd-MM-yyyy'), rightX + 110, startY + 40);
 
-  // ================= TYPE OF SERVICE =================
+  // ✅ 5. TYPE OF SERVICE (MATCH BOX STYLE)
   const serviceY = 150;
 
+  doc.setLineWidth(0.8);
+  doc.rect(40, serviceY, pageWidth - 80, 18);
+
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.rect(margin, serviceY, pageWidth - 2 * margin, 20);
-  doc.text(
-    `TYPE OF SERVICE: ${note.serviceType || ''}`,
-    margin + 5,
-    serviceY + 14
-  );
+  doc.text('TYPE OF SERVICE:', 45, serviceY + 12);
+
+  doc.setFont('helvetica', 'normal');
+  doc.text(note.serviceType || '', 160, serviceY + 12);
+
 
   // ================= TABLE =================
-  const tableStartY = serviceY + 20;
-
-  const tableHeight = pageHeight - 300; // FIXED HEIGHT LIKE FORM
+  const tableStartY = serviceY + 18;
 
   const head = [['Sr. No', 'QUANTITY', 'DESCRIPTION', 'REMARKS']];
   const body = (note.items || []).map((item, i) => [
@@ -111,7 +117,7 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
     body,
     startY: tableStartY,
     theme: 'grid',
-    tableWidth: pageWidth - 2 * margin,
+    tableWidth: pageWidth - 80,
     margin: { left: margin, right: margin },
 
     styles: {
@@ -128,68 +134,54 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
       fontStyle: 'bold',
     },
 
+    // ✅ 6. TABLE — MATCH COLUMN WIDTH EXACTLY
     columnStyles: {
-      0: { cellWidth: 50, halign: 'center' },
-      1: { cellWidth: 80, halign: 'center' },
-      2: { cellWidth: 250 },
-      3: { cellWidth: 'auto' },
+      0: { cellWidth: 45, halign: 'center' },   // Sr No
+      1: { cellWidth: 80, halign: 'center' },   // Quantity
+      2: { cellWidth: 260 },                   // Description
+      3: { cellWidth: 85 },                    // Remarks
     },
 
-    didDrawPage: (data: any) => {
-      // FORCE OUTER BOX (IMPORTANT)
-      doc.rect(
-        margin,
-        tableStartY,
-        pageWidth - 2 * margin,
-        tableHeight
-      );
-    },
+    // ✅ 7. FORCE FULL TABLE HEIGHT (IMPORTANT FIX)
+    didDrawPage: () => {
+      doc.setLineWidth(0.8);
+      doc.rect(40, tableStartY, pageWidth - 80, 360); // EXACT FORM HEIGHT
+    }
   });
 
-  // ================= FOOTER =================
-  const footerY = pageHeight - 130;
+  // ✅ 8. FOOTER PERFECT ALIGNMENT
+  const footerY = pageHeight - 120;
 
-  doc.setFontSize(10);
+  // Received text (slightly right)
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
+  doc.text('Received the above Items', 360, footerY - 10);
 
-  doc.text('Received the above Items', pageWidth - 220, footerY - 10);
-
-  // Left
+  // LEFT
   doc.setFont('helvetica', 'bold');
-  doc.text('Aries Representative', margin, footerY);
+  doc.text('Aries Representative', 60, footerY);
 
   doc.setFont('helvetica', 'normal');
-  doc.text('Name:', margin, footerY + 20);
-  doc.text('Signature:', margin, footerY + 40);
-  doc.text('Date:', margin, footerY + 60);
+  doc.text('Name:', 60, footerY + 20);
+  doc.text('Signature:', 60, footerY + 40);
+  doc.text('Date:', 60, footerY + 60);
 
-  // Right
-  const rightX = pageWidth / 2 + 60;
-
+  // RIGHT
   doc.setFont('helvetica', 'bold');
-  doc.text('Client Representative', rightX, footerY);
+  doc.text('Client Representative', 330, footerY);
 
   doc.setFont('helvetica', 'normal');
-  doc.text('Name:', rightX, footerY + 20);
-  doc.text('Signature:', rightX, footerY + 40);
-  doc.text('Date:', rightX, footerY + 60);
+  doc.text('Name:', 330, footerY + 20);
+  doc.text('Signature:', 330, footerY + 40);
+  doc.text('Date:', 330, footerY + 60);
 
-  // ================= BOTTOM LINE =================
-  doc.setFontSize(8);
+  // ✅ 9. BOTTOM TEXT EXACT POSITION
+  doc.setFontSize(7);
   doc.setTextColor(120);
 
-  doc.text(
-    'Ref.: QHSE/P 11/CL 03/Rev 06/01 Aug 2020',
-    margin,
-    pageHeight - 20
-  );
+  doc.text('Ref.: QHSE/P 11/CL 03/Rev 06/01 Aug 2020', 40, pageHeight - 25);
+  doc.text('Page 1 of 1', pageWidth - 40, pageHeight - 25, { align: 'right' });
 
-  doc.text(
-    'Page 1 of 1',
-    pageWidth - margin,
-    pageHeight - 20,
-    { align: 'right' }
-  );
 
   // ================= SAVE =================
   doc.save(`Delivery_Note_${note.deliveryNoteNumber}.pdf`);
