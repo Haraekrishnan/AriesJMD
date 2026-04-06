@@ -58,7 +58,7 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
   doc.setFontSize(9);
   doc.setTextColor(0);
 
-  // TO
+  // To
   doc.setFont('helvetica', 'bold');
   doc.text('To:', 50, startY);
   doc.setFont('helvetica', 'normal');
@@ -99,60 +99,53 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
   doc.text(note.serviceType || '', 160, serviceY + 12);
 
 
-  // ================= TABLE =================
-  const tableStartY = serviceY + 18;
+  // ================= PERFECT STATIC TABLE =================
 
-  (doc as any).autoTable({
-    startY: tableStartY,
+  const tableTop = serviceY + 18;
+  const tableLeft = 40;
+  const tableWidth = 515;
+  const tableHeight = 360;
   
-    // ✅ FORCE TABLE POSITION (VERY IMPORTANT)
-    margin: { left: 40 },
+  // Outer box
+  doc.setLineWidth(0.8);
+  doc.rect(tableLeft, tableTop, tableWidth, tableHeight);
   
-    tableWidth: 515, // EXACT WIDTH (A4 - margins)
+  // Column positions (MATCH IMAGE EXACTLY)
+  const col1 = tableLeft + 50;   // Sr No
+  const col2 = tableLeft + 130;  // Quantity
+  const col3 = tableLeft + 405;  // Description end
   
-    head: [['Sr. No', 'QUANTITY', 'DESCRIPTION', 'REMARKS']],
+  // Vertical lines
+  doc.line(col1, tableTop, col1, tableTop + tableHeight);
+  doc.line(col2, tableTop, col2, tableTop + tableHeight);
+  doc.line(col3, tableTop, col3, tableTop + tableHeight);
   
-    body: (note.items || []).map((item, i) => [
-      i + 1,
-      item.quantity,
-      item.description || '',
-      item.remarks || '',
-    ]),
+  // Header row
+  const headerHeight = 25;
+  doc.line(tableLeft, tableTop + headerHeight, tableLeft + tableWidth, tableTop + headerHeight);
   
-    theme: 'grid',
+  // Header text
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
   
-    styles: {
-      fontSize: 9,
-      lineWidth: 0.5,
-      lineColor: [0, 0, 0],
-      cellPadding: 3,
-      valign: 'middle',
-      overflow: 'linebreak',
-    },
+  doc.text('Sr. No', tableLeft + 10, tableTop + 17);
+  doc.text('QUANTITY', col1 + 10, tableTop + 17);
+  doc.text('DESCRIPTION', col2 + 90, tableTop + 17);
+  doc.text('REMARKS', col3 + 20, tableTop + 17);
   
-    headStyles: {
-      fillColor: [220, 220, 220],
-      textColor: 0,
-      halign: 'center',
-      valign: 'middle',
-      fontStyle: 'bold',
-    },
+  // FIRST DATA ROW (ONLY ONE LIKE YOUR IMAGE)
+  const rowY = tableTop + headerHeight + 20;
   
-    // 🔥 LOCK COLUMN WIDTHS (THIS FIXES YOUR ISSUE)
-    columnStyles: {
-      0: { cellWidth: 50, halign: 'center' },   // Sr No
-      1: { cellWidth: 80, halign: 'center' },   // Quantity
-      2: { cellWidth: 275, halign: 'left' },    // Description
-      3: { cellWidth: 110, halign: 'left' },    // Remarks
-    },
+  doc.setFont('helvetica', 'normal');
   
-    didDrawPage: () => {
-      // OUTER BOX EXACT MATCH
-      doc.setLineWidth(0.8);
-      doc.rect(40, tableStartY, 515, 360);
-    }
-  });
+  if (note.items && note.items.length > 0) {
+    const item = note.items[0];
   
+    doc.text('1', tableLeft + 15, rowY);
+    doc.text(String(item.quantity), col1 + 20, rowY);
+    doc.text(item.description || '', col2 + 10, rowY);
+    doc.text(item.remarks || '', col3 + 10, rowY);
+  }
 
   // ✅ 8. FOOTER PERFECT ALIGNMENT
   const footerY = pageHeight - 120;
