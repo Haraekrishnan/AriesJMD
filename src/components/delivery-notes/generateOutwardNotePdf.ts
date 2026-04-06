@@ -1,3 +1,4 @@
+
 'use client';
 
 import jsPDF from 'jspdf';
@@ -58,18 +59,29 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
   doc.setFontSize(9);
   doc.setTextColor(0);
 
-  // To
+  // TO
   doc.setFont('helvetica', 'bold');
   doc.text('To:', 50, startY);
-  doc.setFont('helvetica', 'normal');
-  doc.text(note.toAddress, 50, startY + 12, { maxWidth: 150 });
 
+  doc.setFont('helvetica', 'normal');
+  doc.text(note.toAddress || '', 50, startY + 12, { maxWidth: 150 });
+
+  // DRAW LINES (MISSING IN YOUR PDF)
+  for (let i = 0; i < 4; i++) {
+    doc.line(50, startY + 18 + i * 12, 200, startY + 18 + i * 12);
+  }
 
   // FROM
   doc.setFont('helvetica', 'bold');
   doc.text('From:', 250, startY);
+
   doc.setFont('helvetica', 'normal');
-  doc.text(note.fromAddress, 250, startY + 12, { maxWidth: 150 });
+  doc.text(note.fromAddress || '', 250, startY + 12, { maxWidth: 150 });
+
+  // DRAW LINES
+  for (let i = 0; i < 4; i++) {
+    doc.line(250, startY + 18 + i * 12, 400, startY + 18 + i * 12);
+  }
 
 
   // ✅ 4. FIX RIGHT DETAILS (CRITICAL ALIGNMENT)
@@ -86,22 +98,25 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
   doc.text(format(new Date(note.deliveryDate), 'dd-MM-yyyy'), rightX + 110, startY + 40);
 
   // ✅ 5. TYPE OF SERVICE (MATCH BOX STYLE)
+  // OUTER BOX (FULL WIDTH)
   const serviceY = 150;
 
   doc.setLineWidth(0.8);
-  doc.rect(40, serviceY, pageWidth - 80, 18);
+  doc.rect(40, serviceY, 515, 22);
 
-  doc.setFontSize(9);
+  // TEXT INSIDE BOX (LEFT ALIGNED LIKE IMAGE)
   doc.setFont('helvetica', 'bold');
-  doc.text('TYPE OF SERVICE:', 45, serviceY + 12);
+  doc.setFontSize(9);
+  doc.text('TYPE OF SERVICE:', 45, serviceY + 14);
 
+  // VALUE
   doc.setFont('helvetica', 'normal');
-  doc.text(note.serviceType || '', 160, serviceY + 12);
+  doc.text(note.serviceType || '', 160, serviceY + 14);
 
 
   // ================= PERFECT STATIC TABLE =================
 
-  const tableTop = serviceY + 18;
+  const tableTop = serviceY + 22;
   const tableLeft = 40;
   const tableWidth = 515;
   const tableHeight = 360;
@@ -122,6 +137,8 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
   
   // Header row
   const headerHeight = 25;
+  // HEADER LINE (strong like form)
+  doc.setLineWidth(1);
   doc.line(tableLeft, tableTop + headerHeight, tableLeft + tableWidth, tableTop + headerHeight);
   
   // Header text
@@ -150,10 +167,10 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
   // ✅ 8. FOOTER PERFECT ALIGNMENT
   const footerY = pageHeight - 120;
 
-  // Received text (slightly right)
+  // Move slightly LEFT (important)
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text('Received the above Items', 360, footerY - 10);
+  doc.text('Received the above Items', 330, footerY - 15);
 
   // LEFT
   doc.setFont('helvetica', 'bold');
@@ -165,13 +182,15 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
   doc.text('Date:', 60, footerY + 60);
 
   // RIGHT
+  const rightFooterX = 320; // WAS TOO RIGHT
+
   doc.setFont('helvetica', 'bold');
-  doc.text('Client Representative', 330, footerY);
+  doc.text('Client Representative', rightFooterX, footerY);
 
   doc.setFont('helvetica', 'normal');
-  doc.text('Name:', 330, footerY + 20);
-  doc.text('Signature:', 330, footerY + 40);
-  doc.text('Date:', 330, footerY + 60);
+  doc.text('Name:', rightFooterX, footerY + 20);
+  doc.text('Signature:', rightFooterX, footerY + 40);
+  doc.text('Date:', rightFooterX, footerY + 60);
 
   // ✅ 9. BOTTOM TEXT EXACT POSITION
   doc.setFontSize(7);
