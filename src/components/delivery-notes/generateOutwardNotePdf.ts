@@ -139,8 +139,12 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
       },
       didDrawPage: (data) => {
           // Draw a box to represent the full height of the table area
-          doc.setDrawColor(0);
-          doc.rect(data.settings.margin.left, currentY, data.table.getWidth(), tableHeight);
+          const tableTopY = data.table.startY;
+          const boxHeight = tableBottomY - tableTopY;
+          if (boxHeight > 0) {
+            doc.setDrawColor(0);
+            doc.rect(data.table.x, tableTopY, data.table.width, boxHeight);
+          }
       }
   });
 
