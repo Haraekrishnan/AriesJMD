@@ -68,7 +68,7 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
 
   // DRAW LINES (MISSING IN YOUR PDF)
   for (let i = 0; i < 4; i++) {
-    doc.line(50, startY + 18 + i * 12, 200, startY + 18 + i * 12);
+    doc.line(50, startY + 22 + i * 12, 200, startY + 22 + i * 12);
   }
 
   // FROM
@@ -80,7 +80,7 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
 
   // DRAW LINES
   for (let i = 0; i < 4; i++) {
-    doc.line(250, startY + 18 + i * 12, 400, startY + 18 + i * 12);
+    doc.line(250, startY + 22 + i * 12, 400, startY + 22 + i * 12);
   }
 
 
@@ -98,27 +98,26 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
   doc.text(format(new Date(note.deliveryDate), 'dd-MM-yyyy'), rightX + 110, startY + 40);
 
   // ✅ 5. TYPE OF SERVICE (MATCH BOX STYLE)
-  // OUTER BOX (FULL WIDTH)
   const serviceY = 150;
+  const tableLeft = 40;
+  const tableWidth = 515;
 
+  // Draw ONLY TOP LINE (not full box)
   doc.setLineWidth(0.8);
-  doc.rect(40, serviceY, 515, 22);
-
-  // TEXT INSIDE BOX (LEFT ALIGNED LIKE IMAGE)
+  doc.line(tableLeft, serviceY, tableLeft + tableWidth, serviceY);
+  
+  // TEXT
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  doc.text('TYPE OF SERVICE:', 45, serviceY + 14);
-
-  // VALUE
+  doc.text('TYPE OF SERVICE:', 45, serviceY - 5);
+  
   doc.setFont('helvetica', 'normal');
-  doc.text(note.serviceType || '', 160, serviceY + 14);
+  doc.text(note.serviceType || '', 160, serviceY - 5);
 
 
   // ================= PERFECT STATIC TABLE =================
 
-  const tableTop = serviceY + 22;
-  const tableLeft = 40;
-  const tableWidth = 515;
+  const tableTop = serviceY;
   const tableHeight = 360;
   
   // Outer box
@@ -128,7 +127,7 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
   // Column positions (MATCH IMAGE EXACTLY)
   const col1 = tableLeft + 50;   // Sr No
   const col2 = tableLeft + 130;  // Quantity
-  const col3 = tableLeft + 405;  // Description end
+  const col3 = tableLeft + 395;  // Description end
   
   // Vertical lines
   doc.line(col1, tableTop, col1, tableTop + tableHeight);
@@ -136,7 +135,7 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
   doc.line(col3, tableTop, col3, tableTop + tableHeight);
   
   // Header row
-  const headerHeight = 25;
+  const headerHeight = 20;
   // HEADER LINE (strong like form)
   doc.setLineWidth(1);
   doc.line(tableLeft, tableTop + headerHeight, tableLeft + tableWidth, tableTop + headerHeight);
@@ -145,10 +144,10 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
   
-  doc.text('Sr. No', tableLeft + 10, tableTop + 17);
-  doc.text('QUANTITY', col1 + 10, tableTop + 17);
-  doc.text('DESCRIPTION', col2 + 90, tableTop + 17);
-  doc.text('REMARKS', col3 + 20, tableTop + 17);
+  doc.text('Sr. No', tableLeft + 10, tableTop + 15);
+  doc.text('QUANTITY', col1 + 10, tableTop + 15);
+  doc.text('DESCRIPTION', col2 + 90, tableTop + 15);
+  doc.text('REMARKS', col3 + 20, tableTop + 15);
   
   // FIRST DATA ROW (ONLY ONE LIKE YOUR IMAGE)
   const rowY = tableTop + headerHeight + 20;
