@@ -1,8 +1,7 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, PpeRequestStatus, Role, ConsumableInwardRecord, Directive, DirectiveStatus, DamageReport, User, NotificationSettings, DamageReportStatus, WeldingMachine, WalkieTalkie, PneumaticDrillingMachine, PneumaticAngleGrinder, WiredDrillingMachine, CordlessDrillingMachine, WiredAngleGrinder, CordlessAngleGrinder, CordlessReciprocatingSaw } from '@/lib/types';
+import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, PpeRequestStatus, Role, ConsumableInwardRecord, Directive, DirectiveStatus, DamageReport, User, NotificationSettings, DamageReportStatus, WeldingMachine, WalkieTalkie, PneumaticDrillingMachine, PneumaticAngleGrinder, WiredDrillingMachine, CordlessDrillingMachine, WiredAngleGrinder, CordlessAngleGrinder, CordlessReciprocatingSaw, DeliveryNote } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -100,6 +99,7 @@ type InventoryContextType = {
   tpCertLists: TpCertList[];
   inspectionChecklists: InspectionChecklist[];
   igpOgpRecords: IgpOgpRecord[];
+  deliveryNotes: DeliveryNote[];
   directives: Directive[];
   damageReports: DamageReport[];
 
@@ -234,6 +234,10 @@ type InventoryContextType = {
   addIgpOgpRecord: (record: Omit<IgpOgpRecord, 'id' | 'creatorId'>) => void;
   deleteIgpOgpRecord: (mrnNumber: string) => void;
 
+  addDeliveryNote: (note: Omit<DeliveryNote, 'id' | 'creatorId' | 'createdAt'>) => void;
+  updateDeliveryNote: (noteId: string, updates: Partial<DeliveryNote>) => void;
+  deleteDeliveryNote: (noteId: string) => void;
+
   addDamageReport: (reportData: Omit<DamageReport, 'id' | 'reporterId' | 'reportDate' | 'status' | 'attachmentDownloadUrl'>) => Promise<{ success: boolean; error?: string }>;
   updateDamageReportStatus: (reportId: string, status: DamageReportStatus, comment?: string) => void;
   deleteDamageReport: (reportId: string) => void;
@@ -298,6 +302,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const [tpCertListsById, setTpCertListsById] = useState<Record<string, TpCertList>>({});
     const [inspectionChecklistsById, setInspectionChecklistsById] = useState<Record<string, InspectionChecklist>>({});
     const [igpOgpRecordsById, setIgpOgpRecordsById] = useState<Record<string, IgpOgpRecord>>({});
+    const [deliveryNotesById, setDeliveryNotesById] = useState<Record<string, DeliveryNote>>({});
     const [damageReportsById, setDamageReportsById] = useState<Record<string, DamageReport>>({});
     const [directives, setDirectives] = useState<Directive[]>([]);
     
@@ -330,6 +335,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const tpCertLists = useMemo(() => Object.values(tpCertListsById), [tpCertListsById]);
     const inspectionChecklists = useMemo(() => Object.values(inspectionChecklistsById), [inspectionChecklistsById]);
     const igpOgpRecords = useMemo(() => Object.values(igpOgpRecordsById), [igpOgpRecordsById]);
+    const deliveryNotes = useMemo(() => Object.values(deliveryNotesById), [deliveryNotesById]);
     const damageReports = useMemo(() => Object.values(damageReportsById), [damageReportsById]);
 
     const pneumaticDrillingMachines = useMemo(() => Object.values(pneumaticDrillingMachinesById), [pneumaticDrillingMachinesById]);
@@ -1452,6 +1458,24 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb), updates);
     }, [user, igpOgpRecords]);
     
+    const addDeliveryNote = useCallback((note: Omit<DeliveryNote, 'id' | 'creatorId' | 'createdAt'>) => {
+        if(!user) return;
+        const newRef = push(ref(rtdb, 'deliveryNotes'));
+        set(newRef, {
+            ...note,
+            creatorId: user.id,
+            createdAt: new Date().toISOString(),
+        });
+    }, [user]);
+
+    const updateDeliveryNote = useCallback((noteId: string, updates: Partial<DeliveryNote>) => {
+        update(ref(rtdb, `deliveryNotes/${noteId}`), updates);
+    }, []);
+
+    const deleteDeliveryNote = useCallback((noteId: string) => {
+        remove(ref(rtdb, `deliveryNotes/${noteId}`));
+    }, []);
+    
     const updatePpeRequest = useCallback((request: PpeRequest, reason?: string) => {
         const { id, ...data } = request;
         update(ref(rtdb, `ppeRequests/${id}`), { ...data, attachmentUrl: data.attachmentUrl || null });
@@ -1609,6 +1633,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             createDataListener('tpCertLists', setTpCertListsById),
             createDataListener('inspectionChecklists', setInspectionChecklistsById),
             createDataListener('igpOgpRecords', setIgpOgpRecordsById),
+            createDataListener('deliveryNotes', setDeliveryNotesById),
             createDataListener('damageReports', setDamageReportsById),
             createDataListener('pneumaticDrillingMachines', setPneumaticDrillingMachinesById),
             createDataListener('pneumaticAngleGrinders', setPneumaticAngleGrindersById),
@@ -1622,7 +1647,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, []);
     
     const contextValue: InventoryContextType = {
-        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, weldingMachines, walkieTalkies, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory, directives: [], damageReports,
+        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, weldingMachines, walkieTalkies, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, deliveryNotes, consumableInwardHistory, directives: [], damageReports,
         pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws,
         addInventoryItem, addMultipleInventoryItems, batchAddInventoryItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInspectionItemGroup, updateMultipleInventoryItems, batchDeleteInventoryItems, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
         addInventoryTransferRequest, updateInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
@@ -1650,6 +1675,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         addTpCertList, updateTpCertList, deleteTpCertList,
         addInspectionChecklist, updateInspectionChecklist, deleteInspectionChecklist,
         addIgpOgpRecord, deleteIgpOgpRecord, addDamageReport, updateDamageReportStatus,
+        addDeliveryNote, updateDeliveryNote, deleteDeliveryNote,
         pendingConsumableRequestCount, updatedConsumableRequestCount,
         pendingGeneralRequestCount, updatedGeneralRequestCount,
         pendingPpeRequestCount, updatedPpeRequestCount,
