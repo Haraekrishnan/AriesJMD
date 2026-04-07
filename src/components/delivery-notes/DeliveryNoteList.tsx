@@ -34,7 +34,7 @@ export default function DeliveryNoteList({ type }: DeliveryNoteListProps) {
         (note.items && note.items.some(item => item.description.toLowerCase().includes(searchTerm.toLowerCase())));
 
       return typeMatch && dateMatch && searchMatch;
-    });
+    }).sort((a,b) => parseISO(b.deliveryDate).getTime() - parseISO(a.deliveryDate).getTime());
   }, [deliveryNotes, type, month, searchTerm]);
 
   const handleDelete = (noteId: string) => {

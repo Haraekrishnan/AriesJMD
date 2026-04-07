@@ -32,8 +32,12 @@ export default function ViewDeliveryNoteDialog({ isOpen, setIsOpen, note: initia
   };
   
   const handleDeleteAttachment = () => {
-    updateDeliveryNote(note.id, { signedAttachmentUrl: null });
-    toast({ title: 'Signed copy removed.', description: 'The delivery note status is now incomplete.' });
+    let attachmentField: 'signedAttachmentUrl' | 'attachmentUrl' = 'signedAttachmentUrl';
+    if (note.type === 'Inward') {
+        attachmentField = 'attachmentUrl';
+    }
+    updateDeliveryNote(note.id, { [attachmentField]: null });
+    toast({ title: 'Attachment removed.', variant: 'destructive' });
   };
   
   return (
@@ -52,7 +56,7 @@ export default function ViewDeliveryNoteDialog({ isOpen, setIsOpen, note: initia
             {note.ariesRefNo && <p><strong>Aries Ref. No:</strong> {note.ariesRefNo}</p>}
             {note.serviceType && <p><strong>Service Type:</strong> {note.serviceType}</p>}
 
-            {note.type === 'Outward' && (
+            {note.type === 'Outward' && note.items && note.items.length > 0 && (
               <div>
                 <h4 className="font-semibold mb-2">Items:</h4>
                 <ul className="list-disc list-inside space-y-1">
@@ -64,9 +68,32 @@ export default function ViewDeliveryNoteDialog({ isOpen, setIsOpen, note: initia
             )}
             
             {note.type === 'Inward' && note.attachmentUrl && (
-              <Button asChild variant="outline">
-                <a href={note.attachmentUrl} target="_blank" rel="noopener noreferrer"><Download className="mr-2 h-4 w-4"/>View Inward Note</a>
-              </Button>
+                <div className="flex items-center gap-2">
+                    <Button asChild variant="secondary" className="flex-1">
+                        <a href={note.attachmentUrl} target="_blank" rel="noopener noreferrer"><Download className="mr-2 h-4 w-4"/>View Inward Note</a>
+                    </Button>
+                     {user?.role === 'Admin' && (
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="icon">
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Attachment?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will remove the uploaded inward delivery note.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDeleteAttachment}>Delete Attachment</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    )}
+                </div>
             )}
 
             {note.type === 'Outward' && note.signedAttachmentUrl && (

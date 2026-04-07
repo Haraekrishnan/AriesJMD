@@ -13,7 +13,7 @@ import { DatePickerInput } from '../ui/date-picker-input';
 import { useState, useMemo } from 'react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { ScrollArea } from '../ui/scroll-area';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, Upload, Paperclip, X } from 'lucide-react';
 
 const deliveryNoteSchema = z.object({
   type: z.enum(['Inward', 'Outward']),
@@ -44,10 +44,11 @@ export default function CreateDeliveryNoteDialog({ isOpen, setIsOpen, type }: Cr
   const { addDeliveryNote } = useAppContext();
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(deliveryNoteSchema),
-    defaultValues: { type, items: type === 'Outward' ? [{ id: 'item-1', description: '', quantity: 1, remarks: '' }] : [] },
+    defaultValues: { type, items: type === 'Outward' ? [{ id: `item-${Date.now()}`, description: '', quantity: 1, remarks: '' }] : [] },
   });
   
   const { fields, append, remove } = useFieldArray({
@@ -55,17 +56,59 @@ export default function CreateDeliveryNoteDialog({ isOpen, setIsOpen, type }: Cr
     name: "items"
   });
 
-  const onSubmit = (data: FormValues) => {
-    addDeliveryNote({
-        ...data,
-        deliveryDate: data.deliveryDate.toISOString(),
-    });
-    toast({ title: 'Delivery Note Created' });
-    setIsOpen(false);
+  const onSubmit = async (data: FormValues) => {
+    setIsUploading(true);
+    let finalData: any = { ...data, attachmentUrl: data.attachmentUrl || '' };
+
+    try {
+        if (type === 'Inward' && attachmentFile) {
+            toast({ title: 'Uploading attachment...', description: 'Please wait.' });
+            const formData = new FormData();
+            formData.append("file", attachmentFile);
+            
+            const res = await fetch("/api/upload/dropbox", {
+                method: "POST",
+                body: formData,
+            });
+
+            const uploadData = await res.json();
+            
+            if (!res.ok || !uploadData.success) {
+                throw new Error(uploadData.error || 'File upload failed.');
+            }
+            finalData.attachmentUrl = uploadData.downloadLink;
+        }
+
+        addDeliveryNote({
+            ...finalData,
+            deliveryDate: data.deliveryDate.toISOString(),
+        });
+        toast({ title: 'Delivery Note Created' });
+        setIsOpen(false);
+    } catch (error: any) {
+        console.error("Submission failed:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Submission Failed',
+            description: error.message || 'Something went wrong.',
+        });
+    } finally {
+        setIsUploading(false);
+    }
   };
   
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setAttachmentFile(file);
+    }
+  };
+
   const handleOpenChange = (open: boolean) => {
-    if(!open) form.reset();
+    if(!open) {
+      form.reset();
+      setAttachmentFile(null);
+    }
     setIsOpen(open);
   }
 
@@ -108,14 +151,31 @@ export default function CreateDeliveryNoteDialog({ isOpen, setIsOpen, type }: Cr
                  {type === 'Inward' && (
                     <div className="space-y-2">
                         <Label>Attachment</Label>
-                        <Input type="file" />
+                        {attachmentFile ? (
+                          <div className="flex items-center justify-between p-2 rounded-md border text-sm">
+                            <div className="flex items-center gap-2 truncate">
+                              <Paperclip className="h-4 w-4"/>
+                              <span className="truncate">{attachmentFile.name}</span>
+                            </div>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAttachmentFile(null)}>
+                              <X className="h-4 w-4"/>
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="relative">
+                            <Button asChild variant="outline" size="sm">
+                              <Label htmlFor="inward-delivery-note-upload"><Upload className="mr-2 h-4 w-4"/> {isUploading ? 'Uploading...' : 'Upload File'}</Label>
+                            </Button>
+                            <Input id="inward-delivery-note-upload" type="file" onChange={handleFileChange} className="hidden" disabled={isUploading} />
+                          </div>
+                        )}
                     </div>
                  )}
              </div>
            </ScrollArea>
            <DialogFooter className="mt-auto pt-4 border-t">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit">Create Note</Button>
+            <Button type="submit" disabled={isUploading}>{isUploading ? 'Saving...' : 'Create Note'}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
