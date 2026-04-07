@@ -6,7 +6,6 @@ import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAppContext } from '@/contexts/app-provider';
 import type { DeliveryNote } from '@/lib/types';
-import { uploadFile } from '@/lib/storage';
 
 interface UploadSignedCopyDialogProps {
   isOpen: boolean;
@@ -32,15 +31,34 @@ export default function UploadSignedCopyDialog({ isOpen, setIsOpen, note }: Uplo
       return;
     }
     setIsUploading(true);
+    toast({ title: 'Uploading attachment...', description: 'Please wait.' });
+
+    const formData = new FormData();
+    formData.append("file", file);
+
     try {
-      const path = `delivery-notes/${note.id}/signed/${file.name}`;
-      const url = await uploadFile(file, path);
-      updateDeliveryNote(note.id, { signedAttachmentUrl: url });
+      const res = await fetch("/api/upload/dropbox", {
+        method: "POST",
+        body: formData,
+      });
+
+      const uploadData = await res.json();
+
+      if (!res.ok || !uploadData.success) {
+        throw new Error(uploadData.error || 'File upload failed.');
+      }
+      
+      updateDeliveryNote(note.id, { signedAttachmentUrl: uploadData.downloadLink });
       toast({ title: 'Signed copy uploaded successfully' });
       setIsOpen(false);
-    } catch (error) {
-      console.error(error);
-      toast({ title: 'Upload failed', variant: 'destructive' });
+
+    } catch (error: any) {
+      console.error("Upload failed:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Upload Failed',
+        description: error.message || 'Something went wrong.',
+      });
     } finally {
       setIsUploading(false);
     }

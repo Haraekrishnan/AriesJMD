@@ -75,7 +75,7 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
   // TO
   doc.setFont('helvetica', 'bold');
   doc.text('To:', 50, startY);
-  
+
   // FROM
   doc.setFont('helvetica', 'bold');
   doc.text('From:', 250, startY);
@@ -84,12 +84,12 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
 
   // DRAW LINES (TO)
   for (let i = 0; i < 5; i++) {
-    doc.line(50, lineStartY + i * 12, 210, lineStartY + i * 12);
+    doc.line(50, lineStartY + i * 12, 180, lineStartY + i * 12);
   }
 
   // DRAW LINES (FROM)
   for (let i = 0; i < 5; i++) {
-    doc.line(250, lineStartY + i * 12, 410, lineStartY + i * 12);
+    doc.line(250, lineStartY + i * 12, 360, lineStartY + i * 12);
   }
 
   doc.setFont('helvetica', 'normal');
@@ -124,81 +124,87 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
   doc.text('Delivery Date:', rightX, startY + 40);
 
   doc.setFont('helvetica', 'normal');
-  doc.text(note.deliveryNoteNumber, rightX + 120, startY + 10);
-  doc.text(note.ariesRefNo || '-', rightX + 120, startY + 25);
-  doc.text(format(new Date(note.deliveryDate), 'dd-MM-yyyy'), rightX + 120, startY + 40);
+  doc.text(note.deliveryNoteNumber, rightX + 95, startY + 10);
+  doc.text(note.ariesRefNo || '-', rightX + 95, startY + 25);
+  doc.text(format(new Date(note.deliveryDate), 'dd-MM-yyyy'), rightX + 95, startY + 40);
 
   // ================= TYPE OF SERVICE =================
-  const serviceY = 150;
+  const toFromEndY = lineStartY + (5 * 12); // last line
+const serviceY = toFromEndY + 20;         // proper gap BELOW lines
   const tableLeft = 40;
   const tableWidth = 515;
 
   doc.setLineWidth(0.8);
-  doc.line(tableLeft, serviceY, tableLeft + tableWidth, serviceY);
+  
   
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  doc.text('TYPE OF SERVICE:', 45, serviceY - 5);
-  
+  doc.setFont('helvetica', 'bold');
+doc.setFontSize(9);
+doc.text('TYPE OF SERVICE:', 40, serviceY);
+
+doc.setFont('helvetica', 'normal');
+doc.text(note.serviceType || '', 160, serviceY);
+
   doc.setFont('helvetica', 'normal');
-  doc.text(note.serviceType || '', 160, serviceY - 5);
   
+
   // ================= TABLE =================
-  const tableTop = serviceY;
-  
+  const tableTop = serviceY + 10;
   const tableHeight = 360;
 
-  // Outer box
-  doc.setLineWidth(0.8);
-  doc.rect(tableLeft, tableTop, tableWidth, tableHeight);
-
-  // Column positions (MATCH IMAGE EXACTLY)
   const col1 = tableLeft + 50;   
   const col2 = tableLeft + 130;  
-  const col3 = tableLeft + 395;  
+  const col3 = tableLeft + 405;  
 
-  // Vertical lines
-  doc.line(col1, tableTop, col1, tableTop + tableHeight);
-  doc.line(col2, tableTop, col2, tableTop + tableHeight);
-  doc.line(col3, tableTop, col3, tableTop + tableHeight);
+  const headerHeight = 25;
 
-  // Header row
-  const headerHeight = 20;
-  doc.setLineWidth(1);
-  doc.line(tableLeft, tableTop + headerHeight, tableLeft + tableWidth, tableTop + headerHeight);
+  // Header Box
+  doc.setLineWidth(0.8);
+  doc.rect(tableLeft, tableTop, tableWidth, headerHeight);
 
-  // Header text
+  // Vertical header lines
+  doc.line(col1, tableTop, col1, tableTop + headerHeight);
+  doc.line(col2, tableTop, col2, tableTop + headerHeight);
+  doc.line(col3, tableTop, col3, tableTop + headerHeight);
+  
+  // Header Text
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  doc.text('Sr. No', tableLeft + 10, tableTop + 15);
-  doc.text('QUANTITY', col1 + 10, tableTop + 15);
-  doc.text('DESCRIPTION', col2 + 90, tableTop + 15);
-  doc.text('REMARKS', col3 + 20, tableTop + 15);
+  doc.text('Sr. No', tableLeft + 10, tableTop + 17);
+  doc.text('QUANTITY', col1 + 10, tableTop + 17);
+  doc.text('DESCRIPTION', col2 + 90, tableTop + 17);
+  doc.text('REMARKS', col3 + 20, tableTop + 17);
 
-  // DATA ROWS
-  let currentY = tableTop + headerHeight + 20;
+  // Main Table Body Box
+  doc.rect(tableLeft, tableTop + headerHeight, tableWidth, tableHeight);
 
-  if (note.items && note.items.length > 0) {
-    doc.setFont('helvetica', 'normal');
-    note.items.forEach((item, index) => {
-        // This check prevents writing beyond the table's visible area
-        if (currentY < tableTop + tableHeight - 20) {
-            doc.text(String(index + 1), tableLeft + 15, currentY);
-            doc.text(String(item.quantity), col1 + 20, currentY);
-            doc.text(item.description || '', col2 + 10, currentY, { maxWidth: 260 });
-            doc.text(item.remarks || '', col3 + 10, currentY, { maxWidth: 100 });
-            currentY += 20; // Increment Y for the next item
-        }
-    });
-  }
+  // Vertical body lines
+  doc.line(col1, tableTop + headerHeight, col1, tableTop + headerHeight + tableHeight);
+  doc.line(col2, tableTop + headerHeight, col2, tableTop + headerHeight + tableHeight);
+  doc.line(col3, tableTop + headerHeight, col3, tableTop + headerHeight + tableHeight);
 
+  // First Row Data
+  let rowY = tableTop + headerHeight + 20;
+
+if (note.items?.length) {
+  note.items.forEach((item, index) => {
+
+    doc.text(String(index + 1), tableLeft + 15, rowY);
+    doc.text(String(item.quantity), col1 + 20, rowY);
+    doc.text(item.description || '', col2 + 10, rowY);
+    doc.text(item.remarks || '', col3 + 10, rowY);
+
+    rowY += 20; // move to next row
+  });
+}
 
   // ================= FOOTER =================
   const footerY = pageHeight - 130;
   
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text('Received the above Items', 330, footerY - 15);
+  doc.text('Received the above Items', 330, footerY - 30);
 
   // Left
   doc.setFont('helvetica', 'bold');
