@@ -6,7 +6,7 @@ import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { format, parseISO } from 'date-fns';
 import { Download, Upload, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { generateOutwardNotePdf } from './generateOutwardNotePdf';
 import UploadSignedCopyDialog from './UploadSignedCopyDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -18,10 +18,14 @@ interface ViewDeliveryNoteDialogProps {
   note: DeliveryNote;
 }
 
-export default function ViewDeliveryNoteDialog({ isOpen, setIsOpen, note }: ViewDeliveryNoteDialogProps) {
-  const { user, updateDeliveryNote } = useAppContext();
+export default function ViewDeliveryNoteDialog({ isOpen, setIsOpen, note: initialNote }: ViewDeliveryNoteDialogProps) {
+  const { user, deliveryNotes, updateDeliveryNote } = useAppContext();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const { toast } = useToast();
+  
+  const note = useMemo(() => {
+    return deliveryNotes.find(n => n.id === initialNote.id) || initialNote;
+  }, [deliveryNotes, initialNote]);
   
   const handleDownload = () => {
     generateOutwardNotePdf(note);
