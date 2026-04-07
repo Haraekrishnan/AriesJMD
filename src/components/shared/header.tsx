@@ -159,7 +159,7 @@ const plannerNotificationCount =
       { href: '/job-progress', icon: ClipboardList, label: 'JMS Tracker', notificationCount: notificationCounts.jmsTracker || 0, show: can.view_job_progress },
       { href: '/purchase-register', icon: ShoppingCart, label: 'Purchase Register', notificationCount: 0, show: true },
       { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: notificationCounts.storeInventory || 0, show: true },
-      { href: '/delivery-notes', icon: Truck, label: 'Delivery Notes', notificationCount: 0, show: can.manage_delivery_notes },
+      { href: '/delivery-notes', icon: Truck, label: 'Delivery Notes', notificationCount: 0, show: false },
       { href: '/consumables', icon: Package, label: 'Consumables', notificationCount: 0, show: false },
       { href: '/igp-ogp', icon: ArrowRightLeft, label: 'IGP/OGP Register', notificationCount: 0, show: false },
       { href: '/ppe-stock', icon: Package, label: 'PPE Stock', notificationCount: 0, show: false },
