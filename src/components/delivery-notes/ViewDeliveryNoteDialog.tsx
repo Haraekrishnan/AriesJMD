@@ -5,10 +5,12 @@ import type { DeliveryNote } from '@/lib/types';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { format, parseISO } from 'date-fns';
-import { Download, Upload } from 'lucide-react';
+import { Download, Upload, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { generateOutwardNotePdf } from './generateOutwardNotePdf';
 import UploadSignedCopyDialog from './UploadSignedCopyDialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 interface ViewDeliveryNoteDialogProps {
   isOpen: boolean;
@@ -17,10 +19,17 @@ interface ViewDeliveryNoteDialogProps {
 }
 
 export default function ViewDeliveryNoteDialog({ isOpen, setIsOpen, note }: ViewDeliveryNoteDialogProps) {
+  const { user, updateDeliveryNote } = useAppContext();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const { toast } = useToast();
   
   const handleDownload = () => {
     generateOutwardNotePdf(note);
+  };
+  
+  const handleDeleteAttachment = () => {
+    updateDeliveryNote(note.id, { signedAttachmentUrl: null });
+    toast({ title: 'Signed copy removed.', description: 'The delivery note status is now incomplete.' });
   };
   
   return (
@@ -57,9 +66,32 @@ export default function ViewDeliveryNoteDialog({ isOpen, setIsOpen, note }: View
             )}
 
             {note.type === 'Outward' && note.signedAttachmentUrl && (
-              <Button asChild variant="secondary">
-                <a href={note.signedAttachmentUrl} target="_blank" rel="noopener noreferrer"><Download className="mr-2 h-4 w-4"/>View Signed Copy</a>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button asChild variant="secondary" className="flex-1">
+                    <a href={note.signedAttachmentUrl} target="_blank" rel="noopener noreferrer"><Download className="mr-2 h-4 w-4"/>View Signed Copy</a>
+                </Button>
+                {user?.role === 'Admin' && (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="icon">
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Signed Copy?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This will remove the uploaded signed copy. The delivery note will become incomplete.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDeleteAttachment}>Delete Attachment</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
+              </div>
             )}
           </div>
           <DialogFooter className="justify-between">

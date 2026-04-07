@@ -5,20 +5,23 @@ import { useAppContext } from '@/contexts/app-provider';
 import type { DeliveryNote } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { Button } from '../ui/button';
-import { Search, Eye } from 'lucide-react';
+import { Search, Eye, CheckCircle, Trash2 } from 'lucide-react';
 import { Input } from '../ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import ViewDeliveryNoteDialog from './ViewDeliveryNoteDialog';
+import { cn } from '@/lib/utils';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 interface DeliveryNoteListProps {
   type: 'Inward' | 'Outward';
 }
 
 export default function DeliveryNoteList({ type }: DeliveryNoteListProps) {
-  const { deliveryNotes } = useAppContext();
+  const { deliveryNotes, user, deleteDeliveryNote } = useAppContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [viewingNote, setViewingNote] = useState<DeliveryNote | null>(null);
+  const { toast } = useToast();
 
   const filteredNotes = useMemo(() => {
     return deliveryNotes.filter(note => {
@@ -33,6 +36,11 @@ export default function DeliveryNoteList({ type }: DeliveryNoteListProps) {
       return typeMatch && dateMatch && searchMatch;
     });
   }, [deliveryNotes, type, month, searchTerm]);
+
+  const handleDelete = (noteId: string) => {
+    deleteDeliveryNote(noteId);
+    toast({ title: 'Delivery Note Deleted', variant: 'destructive' });
+  };
 
   return (
     <>
@@ -55,19 +63,46 @@ export default function DeliveryNoteList({ type }: DeliveryNoteListProps) {
       </div>
       <div className="border rounded-md">
         {filteredNotes.length > 0 ? (
-          filteredNotes.map(note => (
-            <div key={note.id} className="p-4 border-b last:border-b-0 flex justify-between items-center">
-              <div>
-                <p className="font-semibold">DN #{note.deliveryNoteNumber}</p>
-                <p className="text-sm text-muted-foreground">
-                  {format(parseISO(note.deliveryDate), 'PPP')} | From: {note.fromAddress} | To: {note.toAddress}
-                </p>
+          filteredNotes.map(note => {
+            const isCompleted = type === 'Outward' && !!note.signedAttachmentUrl;
+            return (
+              <div key={note.id} className={cn("p-4 border-b last:border-b-0 flex justify-between items-center", isCompleted && "bg-green-50 dark:bg-green-900/40")}>
+                <div className="flex items-center gap-3">
+                    {isCompleted && <CheckCircle className="h-5 w-5 text-green-600" />}
+                    <div>
+                        <p className="font-semibold">DN #{note.deliveryNoteNumber}</p>
+                        <p className="text-sm text-muted-foreground">
+                        {format(parseISO(note.deliveryDate), 'PPP')} | From: {note.fromAddress} | To: {note.toAddress}
+                        </p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setViewingNote(note)}>
+                    <Eye className="mr-2 h-4 w-4" /> View
+                  </Button>
+                  {user?.role === 'Admin' && (
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="icon" className="h-8 w-8">
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>This will permanently delete this delivery note. This action cannot be undone.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(note.id)}>Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    )}
+                </div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => setViewingNote(note)}>
-                <Eye className="mr-2 h-4 w-4" /> View
-              </Button>
-            </div>
-          ))
+            )
+          })
         ) : (
           <p className="text-center p-8 text-muted-foreground">No notes found for this period.</p>
         )}
