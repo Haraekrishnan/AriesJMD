@@ -118,9 +118,8 @@ export default function CreateDeliveryNoteDialog({ isOpen, setIsOpen, type }: Cr
         <DialogHeader>
           <DialogTitle>Create {type} Delivery Note</DialogTitle>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-y-hidden">
-           <ScrollArea className="flex-1 -mr-6 pr-6">
-             <div className="space-y-4 py-4 pr-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} id="delivery-note-form" className="flex-1 overflow-y-auto">
+             <div className="space-y-4 py-4 pr-4">
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2"><Label>Delivery Date</Label><Controller name="deliveryDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />{form.formState.errors.deliveryDate && <p className="text-xs text-destructive">{form.formState.errors.deliveryDate.message}</p>}</div>
                     <div className="space-y-2"><Label>Delivery Note Number</Label><Input {...form.register('deliveryNoteNumber')} />{form.formState.errors.deliveryNoteNumber && <p className="text-xs text-destructive">{form.formState.errors.deliveryNoteNumber.message}</p>}</div>
@@ -172,12 +171,11 @@ export default function CreateDeliveryNoteDialog({ isOpen, setIsOpen, type }: Cr
                     </div>
                  )}
              </div>
-           </ScrollArea>
-           <DialogFooter className="mt-auto pt-4 border-t">
-            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={isUploading}>{isUploading ? 'Saving...' : 'Create Note'}</Button>
-          </DialogFooter>
         </form>
+         <DialogFooter className="mt-auto pt-4 border-t shrink-0">
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+            <Button type="submit" form="delivery-note-form" disabled={isUploading}>{isUploading ? 'Saving...' : 'Create Note'}</Button>
+          </DialogFooter>
       </DialogContent>
     </Dialog>
   );
