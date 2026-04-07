@@ -261,7 +261,13 @@ export async function generateTpCertExcel(
   const certItems = buildCertItems(items, allItems);
   
   const workbook = existingWorkbook || new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet(sheetName || "TP Certification List", {
+  
+  // Sanitize sheet name
+  const sanitizedSheetName = (sheetName || "TP Certification List")
+    .replace(/[\\/*?:[\]]/g, "") // Remove invalid characters
+    .substring(0, 31); // Enforce 31-character limit
+
+  const worksheet = workbook.addWorksheet(sanitizedSheetName, {
     pageSetup: { paperSize: 9, orientation: "portrait" },
   });
 
