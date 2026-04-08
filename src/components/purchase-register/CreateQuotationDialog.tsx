@@ -148,7 +148,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen }: CreateQuota
                         <CardContent className="p-4 pt-0">
                             {itemFields.map((itemField, itemIndex) => (
                                 <div key={itemField.id} className="grid grid-cols-3 gap-4 items-center border-b py-2">
-                                    <Label className="text-sm">{itemField.description || `Item ${itemIndex + 1}`}</Label>
+                                    <Label className="text-sm">{form.watch(`items.${itemIndex}.description`) || `Item ${itemIndex + 1}`}</Label>
                                     <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.quantity`)} placeholder="Quantity"/>
                                     <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.rate`)} placeholder="Rate"/>
                                 </div>
