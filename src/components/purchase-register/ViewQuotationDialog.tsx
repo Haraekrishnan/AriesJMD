@@ -1,7 +1,7 @@
 'use client';
 import { useMemo } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../ui/dialog';
+import { Button } from '../ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Quotation } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
@@ -60,6 +60,14 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation }: Vi
         <div className="flex-1 overflow-auto">
           <Table>
             <TableHeader className="sticky top-0 bg-background z-10">
+              <TableRow>
+                <TableHead colSpan={3}></TableHead>
+                {quotation.vendors.map(vendor => (
+                  <TableHead key={vendor.id} colSpan={3} className="text-center font-semibold border-b p-2">
+                    {vendor.name}
+                  </TableHead>
+                ))}
+              </TableRow>
               <TableRow>
                 <TableHead className="w-[40px]">Sl.</TableHead>
                 <TableHead className="min-w-[200px]">Description</TableHead>
