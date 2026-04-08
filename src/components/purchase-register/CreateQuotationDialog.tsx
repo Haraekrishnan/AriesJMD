@@ -14,6 +14,7 @@ import { Separator } from '../ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Badge } from '../ui/badge';
 import { usePurchase } from '@/contexts/purchase-provider';
+import { Card, CardHeader, CardContent } from '../ui/card';
 
 const quotationItemSchema = z.object({
     id: z.string(),
