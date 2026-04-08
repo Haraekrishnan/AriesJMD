@@ -26,7 +26,7 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation }: Vi
   const calculatedTotals = useMemo(() => {
     return quotation.vendors.map(vendor => {
       const subTotal = vendor.quotes.reduce((acc, quote) => acc + (quote.quantity * quote.rate), 0);
-      const transport = parseFloat(vendor.transportation || '0') || 0;
+      const transport = vendor.transportation || 0;
       const totalBeforeGst = subTotal + transport;
       const gstAmount = totalBeforeGst * (vendor.gstPercent / 100);
       const grandTotal = totalBeforeGst + gstAmount;
@@ -61,9 +61,9 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation }: Vi
           <Table>
             <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
-                <TableHead colSpan={3}></TableHead>
+                <TableHead colSpan={3} className="p-2"></TableHead>
                 {quotation.vendors.map(vendor => (
-                  <TableHead key={vendor.id} colSpan={3} className="text-center font-semibold border-b p-2">
+                  <TableHead key={vendor.id} colSpan={3} className="text-center font-semibold border-x p-2">
                     {vendor.name}
                   </TableHead>
                 ))}
@@ -74,9 +74,9 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation }: Vi
                 <TableHead className="w-[60px]">UOM</TableHead>
                 {quotation.vendors.map(vendor => (
                   <React.Fragment key={vendor.id}>
-                    <TableHead className="text-center w-[80px]">Qty</TableHead>
+                    <TableHead className="text-center w-[80px] border-l">Qty</TableHead>
                     <TableHead className="text-center w-[100px]">Rate</TableHead>
-                    <TableHead className="text-right w-[120px]">Amount</TableHead>
+                    <TableHead className="text-right w-[120px] border-r">Amount</TableHead>
                   </React.Fragment>
                 ))}
               </TableRow>
@@ -91,9 +91,9 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation }: Vi
                     const quote = vendor.quotes.find(q => q.itemId === item.id);
                     return (
                       <React.Fragment key={vendor.id}>
-                        <TableCell className="text-center">{quote?.quantity || 0}</TableCell>
+                        <TableCell className="text-center border-l">{quote?.quantity || 0}</TableCell>
                         <TableCell className="text-center">{formatCurrency(quote?.rate || 0)}</TableCell>
-                        <TableCell className="text-right font-semibold">{formatCurrency((quote?.quantity || 0) * (quote?.rate || 0))}</TableCell>
+                        <TableCell className="text-right font-semibold border-r">{formatCurrency((quote?.quantity || 0) * (quote?.rate || 0))}</TableCell>
                       </React.Fragment>
                     );
                   })}
@@ -102,24 +102,24 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation }: Vi
               {/* --- FOOTER ROWS --- */}
               <TableRow className="font-bold bg-muted/50">
                   <TableCell colSpan={3} className="text-right">Sub-Total</TableCell>
-                  {calculatedTotals.map((total, i) => <TableCell key={i} colSpan={3} className="text-right">{formatCurrency(total.subTotal)}</TableCell>)}
+                  {calculatedTotals.map((total, i) => <TableCell key={i} colSpan={3} className="text-right border-x">{formatCurrency(total.subTotal)}</TableCell>)}
               </TableRow>
                <TableRow className="font-bold">
                   <TableCell colSpan={3} className="text-right">Transportation</TableCell>
-                  {quotation.vendors.map((v, i) => <TableCell key={i} colSpan={3} className="text-right">{v.transportation || '-'}</TableCell>)}
+                  {quotation.vendors.map((v, i) => <TableCell key={i} colSpan={3} className="text-right border-x">{v.transportation ? formatCurrency(v.transportation) : '-'}</TableCell>)}
               </TableRow>
-               <TableRow className="font-bold">
+               <TableRow className="font-bold bg-muted/50">
                   <TableCell colSpan={3} className="text-right">Total</TableCell>
-                  {calculatedTotals.map((total, i) => <TableCell key={i} colSpan={3} className="text-right">{formatCurrency(total.totalBeforeGst)}</TableCell>)}
+                  {calculatedTotals.map((total, i) => <TableCell key={i} colSpan={3} className="text-right border-x">{formatCurrency(total.totalBeforeGst)}</TableCell>)}
               </TableRow>
               <TableRow className="font-bold">
                   <TableCell colSpan={3} className="text-right">GST %</TableCell>
-                  {quotation.vendors.map((v, i) => <TableCell key={i} colSpan={3} className="text-right">{v.gstPercent}%</TableCell>)}
+                  {quotation.vendors.map((v, i) => <TableCell key={i} colSpan={3} className="text-right border-x">{v.gstPercent}%</TableCell>)}
               </TableRow>
-               <TableRow className="font-bold text-base">
+               <TableRow className="font-bold text-base bg-muted/50">
                   <TableCell colSpan={3} className="text-right">Grand Total</TableCell>
                   {calculatedTotals.map((total, i) => (
-                    <TableCell key={i} colSpan={3} className={cn("text-right", total.vendorId === l1VendorId && "bg-green-100 dark:bg-green-900/50")}>
+                    <TableCell key={i} colSpan={3} className={cn("text-right border-x", total.vendorId === l1VendorId && "bg-green-100 dark:bg-green-900/50")}>
                         <div className="flex items-center justify-end gap-2">
                            {total.vendorId === l1VendorId && <Crown className="h-4 w-4 text-green-600" />}
                            {formatCurrency(total.grandTotal)}

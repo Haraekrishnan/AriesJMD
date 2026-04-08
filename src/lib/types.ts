@@ -1196,7 +1196,7 @@ export type QuotationVendorDetails = {
     vendorId: string;
     name: string;
     quotes: QuotationQuote[];
-    transportation: string; // Can be a number or 'Included'
+    transportation?: number;
     gstPercent: number;
 };
 

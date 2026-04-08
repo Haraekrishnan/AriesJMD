@@ -31,7 +31,7 @@ const quotationVendorSchema = z.object({
         quantity: z.coerce.number().min(1),
         rate: z.coerce.number().min(0),
     })),
-    transportation: z.string().optional(),
+    transportation: z.coerce.number().optional(),
     gstPercent: z.coerce.number().min(0).max(100),
 });
 
@@ -67,6 +67,8 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen }: CreateQuota
     name: "vendors"
   });
 
+  const watchItems = form.watch('items');
+
   const onSubmit = (data: FormValues) => {
     addQuotation(data);
     toast({ title: "Price Comparison Created" });
@@ -84,7 +86,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen }: CreateQuota
         vendorId: '',
         name: '',
         quotes: itemFields.map(item => ({ itemId: item.id, quantity: 1, rate: 0 })),
-        transportation: '',
+        transportation: undefined,
         gstPercent: 0,
     });
   };
@@ -148,13 +150,13 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen }: CreateQuota
                         <CardContent className="p-4 pt-0">
                             {itemFields.map((itemField, itemIndex) => (
                                 <div key={itemField.id} className="grid grid-cols-3 gap-4 items-center border-b py-2">
-                                    <Label className="text-sm">{form.watch(`items.${itemIndex}.description`) || `Item ${itemIndex + 1}`}</Label>
+                                    <Label className="text-sm">{watchItems?.[itemIndex]?.description || `Item ${itemIndex + 1}`}</Label>
                                     <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.quantity`)} placeholder="Quantity"/>
                                     <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.rate`)} placeholder="Rate"/>
                                 </div>
                             ))}
                             <div className="grid grid-cols-2 gap-4 pt-4">
-                                <Input {...form.register(`vendors.${vendorIndex}.transportation`)} placeholder="Transportation Cost"/>
+                                <Input type="number" {...form.register(`vendors.${vendorIndex}.transportation`)} placeholder="Transportation Cost (Optional)"/>
                                 <Input type="number" {...form.register(`vendors.${vendorIndex}.gstPercent`)} placeholder="GST %"/>
                             </div>
                         </CardContent>
