@@ -219,6 +219,10 @@
     "cordlessReciprocatingSaws": {
         ".read": true,
         ".write": true
+    },
+    "quotations": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     }
   }
 }
@@ -228,3 +232,4 @@
 
 
     
+

@@ -1,5 +1,4 @@
 
-
 import type { User as FirebaseUser } from 'firebase/auth';
 
 // User & Auth
@@ -1179,6 +1178,37 @@ export type DeliveryNote = {
     signedAttachmentUrl?: string;
 };
 
-    
+export type QuotationItem = {
+    id: string;
+    description: string;
+    uom: string;
+};
+  
+export type QuotationQuote = {
+    itemId: string;
+    quantity: number;
+    rate: number;
+};
 
-    
+export type QuotationVendorDetails = {
+    id: string; 
+    vendorId: string;
+    name: string;
+    quotes: QuotationQuote[];
+    transportation: string; // Can be a number or 'Included'
+    gstPercent: number;
+};
+
+export type QuotationStatus = 'Pending' | 'PO Received' | 'Partially Purchased' | 'Completed';
+
+export type Quotation = {
+    id: string;
+    title: string;
+    creatorId: string;
+    createdAt: string; // ISO
+    status: QuotationStatus;
+    items: QuotationItem[];
+    vendors: QuotationVendorDetails[];
+    poNumber?: string;
+    poDate?: string; // ISO
+};
