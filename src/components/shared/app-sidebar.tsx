@@ -162,6 +162,7 @@ const plannerNotificationCount =
       vendorLedger: pendingPaymentApprovalCount,
       account: pendingFeedbackCount + pendingUnlockRequestCount,
       manpower: 0,
+      purchases: 0, // Placeholder
     };
   }, [
     user, can, tasks, certificateRequests, plannerEvents,
@@ -180,7 +181,7 @@ const plannerNotificationCount =
     { href: '/job-schedule', icon: CalendarCheck, label: 'Job Schedule', notificationCount: 0, show: can.manage_job_schedule },
     { href: '/job-record', icon: ClipboardList, label: 'Job Record', notificationCount: 0, show: true },
     { href: '/job-progress', icon: ClipboardList, label: 'JMS Tracker', notificationCount: notificationCounts.jmsTracker || 0, show: can.view_job_progress },
-    { href: '/purchase-register', icon: ShoppingCart, label: 'Purchase Register', notificationCount: 0, show: true },
+    { href: '/purchases', icon: ShoppingCart, label: 'Purchases', notificationCount: notificationCounts.purchases || 0, show: true },
     { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: notificationCounts.storeInventory || 0, show: true },
     { href: '/delivery-notes', icon: Truck, label: 'Delivery Notes', notificationCount: 0, show: false },
     { href: '/consumables', icon: Package, label: 'Consumables', notificationCount: 0, show: false },

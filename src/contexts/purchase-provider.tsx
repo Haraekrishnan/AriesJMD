@@ -3,7 +3,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { Vendor, Payment, PaymentStatus, PurchaseRegister, Comment } from '@/lib/types';
+import { Vendor, Payment, PaymentStatus, PurchaseRegister, Comment, Quotation } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -16,6 +16,7 @@ type PurchaseContextType = {
   payments: Payment[];
   purchaseRegisters: PurchaseRegister[];
   pendingPaymentApprovalCount: number;
+  quotations: Quotation[];
 
   addVendor: (vendorData: Omit<Vendor, 'id'>) => void;
   updateVendor: (vendor: Vendor) => void;
@@ -29,6 +30,10 @@ type PurchaseContextType = {
   updatePurchaseRegister: (purchase: PurchaseRegister) => void;
   deletePurchaseRegister: (id: string) => void;
   updatePurchaseRegisterPoNumber: (id: string, poNumber: string) => void;
+
+  addQuotation: (quotationData: Omit<Quotation, 'id' | 'creatorId' | 'createdAt' | 'status'>) => void;
+  updateQuotation: (quotation: Quotation) => void;
+  deleteQuotation: (quotationId: string) => void;
 };
 
 // --- HELPER FUNCTIONS ---
@@ -63,10 +68,12 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
     const [vendorsById, setVendorsById] = useState<Record<string, Vendor>>({});
     const [paymentsById, setPaymentsById] = useState<Record<string, Payment>>({});
     const [purchaseRegistersById, setPurchaseRegistersById] = useState<Record<string, PurchaseRegister>>({});
+    const [quotationsById, setQuotationsById] = useState<Record<string, Quotation>>({});
 
     const vendors = useMemo(() => Object.values(vendorsById), [vendorsById]);
     const payments = useMemo(() => Object.values(paymentsById), [paymentsById]);
     const purchaseRegisters = useMemo(() => Object.values(purchaseRegistersById), [purchaseRegistersById]);
+    const quotations = useMemo(() => Object.values(quotationsById), [quotationsById]);
     
     const pendingPaymentApprovalCount = useMemo(() => {
         if (!user || (user.role !== 'Admin' && user.role !== 'Manager')) return 0;
@@ -161,20 +168,45 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb, `purchaseRegisters/${id}`), { poNumber });
     }, []);
 
+    // Quotation Functions
+    const addQuotation = useCallback((quotationData: Omit<Quotation, 'id' | 'creatorId' | 'createdAt' | 'status'>) => {
+        if (!user) return;
+        const newRef = push(ref(rtdb, 'quotations'));
+        const newQuotation = {
+            ...quotationData,
+            creatorId: user.id,
+            createdAt: new Date().toISOString(),
+            status: 'Pending' as PaymentStatus,
+        };
+        set(newRef, newQuotation);
+    }, [user]);
+
+    const updateQuotation = useCallback((quotation: Quotation) => {
+        const { id, ...data } = quotation;
+        update(ref(rtdb, `quotations/${id}`), data);
+    }, []);
+
+    const deleteQuotation = useCallback((quotationId: string) => {
+        remove(ref(rtdb, `quotations/${quotationId}`));
+    }, []);
+
+
     useEffect(() => {
         const unsubscribers = [
             createDataListener('vendors', setVendorsById),
             createDataListener('payments', setPaymentsById),
             createDataListener('purchaseRegisters', setPurchaseRegistersById),
+            createDataListener('quotations', setQuotationsById),
         ];
         return () => unsubscribers.forEach(unsubscribe => unsubscribe());
     }, []);
     
     const contextValue: PurchaseContextType = {
-        vendors, payments, purchaseRegisters, pendingPaymentApprovalCount,
+        vendors, payments, purchaseRegisters, pendingPaymentApprovalCount, quotations,
         addVendor, updateVendor, deleteVendor,
         addPayment, updatePayment, deletePayment,
         addPurchaseRegister, updatePurchaseRegister, deletePurchaseRegister, updatePurchaseRegisterPoNumber,
+        addQuotation, updateQuotation, deleteQuotation,
     };
 
     return <PurchaseContext.Provider value={contextValue}>{children}</PurchaseContext.Provider>;

@@ -1,4 +1,5 @@
 
+
 {
   "rules": {
     ".read": false,
@@ -41,6 +42,10 @@
     "incidentReports": {
       ".read": true,
       ".write": true
+    },
+    "observationReports": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "inventoryItems": {
       ".read": "auth != null",
@@ -91,10 +96,6 @@
       ".write": true
     },
     "weldingMachines": {
-      ".read": true,
-      ".write": true
-    },
-    "walkieTalkies": {
       ".read": true,
       ".write": true
     },
@@ -186,10 +187,50 @@
     "inspectionChecklists": {
         ".read": true,
         ".write": true
+    },
+    "deliveryNotes": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "pneumaticDrillingMachines": {
+        ".read": true,
+        ".write": true
+    },
+    "pneumaticAngleGrinders": {
+        ".read": true,
+        ".write": true
+    },
+    "wiredDrillingMachines": {
+        ".read": true,
+        ".write": true
+    },
+    "cordlessDrillingMachines": {
+        ".read": true,
+        ".write": true
+    },
+    "wiredAngleGrinders": {
+        ".read": true,
+        ".write": true
+    },
+    "cordlessAngleGrinders": {
+        ".read": true,
+        ".write": true
+    },
+    "cordlessReciprocatingSaws": {
+        ".read": true,
+        ".write": true
+    },
+    "quotations": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     }
   }
 }
 
 
     
+
+
+    
+
 
