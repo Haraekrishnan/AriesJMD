@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../ui/dialog';
@@ -86,12 +85,11 @@ const ReceiveItemDialog = ({
 };
 
 export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: initialQuotation }: ViewQuotationDialogProps) {
-  const { users, updateQuotation, addConsumableInwardRecord, inventoryItems, updateInventoryItem, can } = useAppContext();
+  const { users, updateQuotation, addConsumableInwardRecord, inventoryItems, updateInventoryItem, can, quotations } = useAppContext();
   const { toast } = useToast();
   const [poNumber, setPoNumber] = useState(initialQuotation.poNumber || '');
   const [receivingInfo, setReceivingInfo] = useState<{ item: QuotationItem; vendor: QuotationVendorDetails; quote: QuotationQuote } | null>(null);
 
-  const { quotations } = useAppContext();
   const quotation = useMemo(() => {
     return quotations.find((q: Quotation) => q.id === initialQuotation.id) || initialQuotation;
   }, [quotations, initialQuotation]);
@@ -105,10 +103,12 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
         let totalTax = 0;
         quotation.items.forEach((item, itemIndex) => {
             let quote: QuotationQuote | undefined;
-            if (Array.isArray(vendor.quotes)) {
-                quote = vendor.quotes.find(q => q.itemId === item.id) || vendor.quotes[itemIndex];
+             if (Array.isArray(vendor.quotes)) {
+                quote = vendor.quotes.find(q => q.itemId === item.id || (q as any).id === item.id) || vendor.quotes[itemIndex];
             } else if (vendor.quotes) {
-                quote = (vendor.quotes as any)[item.id] ?? Object.values(vendor.quotes)[itemIndex];
+                quote = (vendor.quotes as any)[item.id] 
+                     || Object.values(vendor.quotes)[itemIndex] 
+                     || Object.values(vendor.quotes as any).find((q: any) => q.itemId === item.id || q.id === item.id);
             }
             if (quote) {
                 const amount = (quote.quantity || 0) * (quote.rate || 0);
@@ -130,17 +130,22 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
   }, [calculatedTotals]);
   
   const handleStatusChange = (newStatus: QuotationStatus) => {
+    if (newStatus === 'Approved' && !quotation.finalizedVendorId) {
+      if (l1VendorId) {
+        updateQuotation({ ...quotation, finalizedVendorId: l1VendorId, status: 'Approved' });
+        toast({ title: 'Quotation Approved', description: 'The lowest vendor has been automatically selected.' });
+      } else {
+        toast({ title: 'Cannot Approve', description: 'No valid L1 vendor could be determined.', variant: 'destructive'});
+      }
+      return;
+    }
+    
     if (newStatus === 'PO Sent' && !quotation.finalizedVendorId) {
-        toast({ title: 'Select a vendor first', description: 'You must select a final vendor before marking PO as Sent.', variant: 'destructive'});
+        toast({ title: 'Select a vendor first', description: 'You must approve the quotation to finalize a vendor before marking PO as Sent.', variant: 'destructive'});
         return;
     }
     updateQuotation({ ...quotation, status: newStatus });
     toast({ title: `Status updated to ${newStatus}` });
-  };
-  
-  const handleSelectVendor = (vendorId: string) => {
-      updateQuotation({ ...quotation, finalizedVendorId: vendorId, status: 'Approved' });
-      toast({ title: 'Vendor Finalized', description: 'You can now enter PO details or start receiving items.' });
   };
 
   const handlePoSave = () => {
@@ -197,7 +202,7 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
         <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
             <div className="flex items-center gap-4">
                 <Label>Status:</Label>
-                <Select value={quotation.status} onValueChange={(val) => handleStatusChange(val as QuotationStatus)}>
+                <Select value={quotation.status} onValueChange={(val) => handleStatusChange(val as QuotationStatus)} disabled={!canFinalize}>
                     <SelectTrigger className="w-[220px]"><SelectValue /></SelectTrigger>
                     <SelectContent>
                         {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
@@ -255,9 +260,11 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
                   {quotation.vendors.map((vendor, vendorIndex) => {
                     let quote: QuotationQuote | undefined;
                     if (Array.isArray(vendor.quotes)) {
-                        quote = vendor.quotes.find(q => q.itemId === item.id) || vendor.quotes[itemIndex];
+                        quote = vendor.quotes.find(q => q.itemId === item.id || (q as any).id === item.id) || vendor.quotes[itemIndex];
                     } else if (vendor.quotes) {
-                        quote = (vendor.quotes as any)[item.id] ?? Object.values(vendor.quotes)[itemIndex];
+                        quote = (vendor.quotes as any)[item.id] 
+                             || Object.values(vendor.quotes)[itemIndex] 
+                             || Object.values(vendor.quotes as any).find((q: any) => q.itemId === item.id || q.id === item.id);
                     }
                     const amount = (quote?.quantity || 0) * (quote?.rate || 0);
 
@@ -313,23 +320,6 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
                         <div className="flex items-center justify-end gap-2">
                            {total.vendorId === l1VendorId && <Crown className="h-4 w-4 text-green-600" />}
                            {formatCurrency(total.grandTotal)}
-                           {canFinalize && quotation.status === 'Pending' && !quotation.finalizedVendorId && (
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button size="sm" variant="success"><ThumbsUp className="h-4 w-4"/></Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Finalize Vendor?</AlertDialogTitle>
-                                            <AlertDialogDescription>This will approve the quotation and lock in this vendor for this purchase. Are you sure?</AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleSelectVendor(total.vendorId)}>Confirm</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                           )}
                            {quotation.finalizedVendorId === total.vendorId && <Badge variant="success">Finalized</Badge>}
                         </div>
                     </TableCell>
