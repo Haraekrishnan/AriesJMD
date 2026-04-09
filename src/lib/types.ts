@@ -1219,3 +1219,19 @@ export type Quotation = {
     poNumber?: string;
     poDate?: string; // ISO
 };
+
+export type RequestListItem = {
+    id: string;
+    requestNo: string;
+    status: string;
+    requestOn: string; // ISO date
+    deliveryDate: string; // ISO date
+    addedBy: string; // User name
+    doneBy?: string; // User name
+    toBeDoneBy: string; // User name
+    requestedBy: string; // User name
+    requirement: string;
+    jobNo?: string;
+    category?: string;
+    subDivision?: string;
+  };

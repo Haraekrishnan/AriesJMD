@@ -158,6 +158,7 @@ const plannerNotificationCount =
       { href: '/job-schedule', icon: CalendarCheck, label: 'Job Schedule', notificationCount: 0, show: can.manage_job_schedule },
       { href: '/job-record', icon: ClipboardList, label: 'Job Record', notificationCount: 0, show: true },
       { href: '/job-progress', icon: ClipboardList, label: 'JMS Tracker', notificationCount: notificationCounts.jmsTracker || 0, show: can.view_job_progress },
+      { href: '/request-list', icon: ClipboardList, label: 'Request List', notificationCount: 0, show: true },
       { href: '/purchases', icon: ShoppingCart, label: 'Purchases', notificationCount: notificationCounts.purchases || 0, show: true },
       { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: notificationCounts.storeInventory || 0, show: true },
       { href: '/delivery-notes', icon: Truck, label: 'Delivery Notes', notificationCount: 0, show: false },
@@ -247,6 +248,7 @@ export default function Header() {
     if (pathname.startsWith('/observation-reports')) return 'Observation Reports';
     if (pathname.startsWith('/delivery-notes')) return 'Delivery Notes';
     if (pathname.startsWith('/purchases')) return 'Purchases';
+    if (pathname.startsWith('/request-list')) return 'Request List';
     const name = pathname.split('/').pop()?.replace(/-/g, ' ');
     if (!name || name === 'app') return 'Dashboard';
     if (name === 'downloads') return 'Forms & Documents';
