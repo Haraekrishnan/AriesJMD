@@ -14,6 +14,8 @@ import { Separator } from '../ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { usePurchase } from '@/contexts/purchase-provider';
 import { Card, CardHeader, CardContent } from '../ui/card';
+import { useEffect } from 'react';
+import type { Quotation } from '@/lib/types';
 
 const quotationItemSchema = z.object({
     id: z.string(),
@@ -51,6 +53,7 @@ type FormValues = z.infer<typeof quotationSchema>;
 interface CreateQuotationDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  existingQuotation?: Quotation | null;
 }
 
 const VendorQuoteSection = ({ vendorIndex, control }: { vendorIndex: number; control: any }) => {
@@ -75,30 +78,58 @@ const VendorQuoteSection = ({ vendorIndex, control }: { vendorIndex: number; con
     )
 }
 
-export default function CreateQuotationDialog({ isOpen, setIsOpen }: CreateQuotationDialogProps) {
-  const { vendors, addQuotation } = usePurchase();
+export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuotation }: CreateQuotationDialogProps) {
+  const { vendors, addQuotation, updateQuotation } = usePurchase();
   const { toast } = useToast();
+  const isEditMode = !!existingQuotation;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(quotationSchema),
     defaultValues: { title: '', items: [], vendors: [] },
   });
 
-  const { fields: itemFields, append: appendItem, remove: removeItem } = useFieldArray({
+  const { fields: itemFields, append: appendItem, remove: removeItem, replace: replaceItems } = useFieldArray({
     control: form.control,
     name: "items"
   });
   
-  const { fields: vendorFields, append: appendVendor, remove: removeVendor } = useFieldArray({
+  const { fields: vendorFields, append: appendVendor, remove: removeVendor, replace: replaceVendors } = useFieldArray({
     control: form.control,
     name: "vendors"
   });
 
   const watchItems = form.watch('items');
 
+  useEffect(() => {
+    if (isOpen) {
+        if (existingQuotation) {
+            form.reset({
+                title: existingQuotation.title,
+                items: existingQuotation.items,
+                vendors: existingQuotation.vendors.map(v => ({
+                    ...v,
+                    quotes: Array.isArray(v.quotes) ? v.quotes : [],
+                    additionalCosts: Array.isArray(v.additionalCosts) ? v.additionalCosts : [],
+                }))
+            });
+        } else {
+            form.reset({
+                title: '',
+                items: [],
+                vendors: []
+            });
+        }
+    }
+  }, [isOpen, existingQuotation, form]);
+
   const onSubmit = (data: FormValues) => {
-    addQuotation(data);
-    toast({ title: "Price Comparison Created" });
+    if (isEditMode && existingQuotation) {
+        updateQuotation({ ...existingQuotation, ...data });
+        toast({ title: "Price Comparison Updated" });
+    } else {
+        addQuotation(data);
+        toast({ title: "Price Comparison Created" });
+    }
     setIsOpen(false);
   };
 
@@ -129,7 +160,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen }: CreateQuota
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>New Price Comparison</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Edit' : 'New'} Price Comparison</DialogTitle>
           <DialogDescription>Add items and vendors to compare quotes.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
@@ -202,7 +233,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen }: CreateQuota
           </ScrollArea>
           <DialogFooter className="pt-4 border-t">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit">Create Comparison</Button>
+            <Button type="submit">{isEditMode ? 'Save Changes' : 'Create Comparison'}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

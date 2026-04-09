@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppContext } from '@/contexts/app-provider';
-import { IndianRupee, PlusCircle, FileText } from 'lucide-react';
+import { IndianRupee, PlusCircle, FileText, Edit } from 'lucide-react';
 import PurchaseRegisterList from '@/components/purchase-register/PurchaseRegisterList';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import QuotationList from '@/components/purchase-register/QuotationList';
 import CreateQuotationDialog from '@/components/purchase-register/CreateQuotationDialog';
 import { usePurchase } from '@/contexts/purchase-provider';
+import { Quotation } from '@/lib/types';
 
 export default function PurchasesPage() {
     const { can, vendors, purchaseRegisters, quotations } = usePurchase();
@@ -26,6 +27,7 @@ export default function PurchasesPage() {
     const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>();
     const [isAddLedgerOpen, setIsAddLedgerOpen] = useState(false);
     const [isCreateQuotationOpen, setIsCreateQuotationOpen] = useState(false);
+    const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null);
 
     const availableYears = useMemo(() => {
         const years = new Set(purchaseRegisters.map(p => getYear(parseISO(p.date))));
@@ -78,6 +80,16 @@ export default function PurchasesPage() {
           maximumFractionDigits: 2,
         }).format(amount);
     }
+
+    const handleEditQuotation = (quotation: Quotation) => {
+        setEditingQuotation(quotation);
+        setIsCreateQuotationOpen(true);
+    };
+
+    const handleCloseDialog = () => {
+        setIsCreateQuotationOpen(false);
+        setEditingQuotation(null);
+    };
     
     return (
         <div className="space-y-8">
@@ -144,7 +156,7 @@ export default function PurchasesPage() {
                                         <SelectContent>
                                             {Array.from({length: 12}, (_, i) => <SelectItem key={i} value={(i + 1).toString()}>{format(new Date(2000, i), 'MMMM')}</SelectItem>)}
                                         </SelectContent>
-                                    </Select>
+                                     </Select>
                                 )}
                                 {filterType === 'custom' && (
                                     <DateRangePicker date={customDateRange} onDateChange={setCustomDateRange} />
@@ -164,14 +176,14 @@ export default function PurchasesPage() {
                             <CardDescription>Compare prices from different vendors before making a purchase.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <QuotationList quotations={quotations} />
+                            <QuotationList quotations={quotations} onEdit={handleEditQuotation} />
                         </CardContent>
                     </Card>
                 </TabsContent>
             </Tabs>
             
             <AddPurchaseLedgerDialog isOpen={isAddLedgerOpen} setIsOpen={setIsAddLedgerOpen} />
-            <CreateQuotationDialog isOpen={isCreateQuotationOpen} setIsOpen={setIsCreateQuotationOpen} />
+            <CreateQuotationDialog isOpen={isCreateQuotationOpen} setIsOpen={handleCloseDialog} existingQuotation={editingQuotation} />
         </div>
     );
 }

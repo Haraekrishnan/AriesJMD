@@ -4,11 +4,11 @@ import type { Quotation } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '../ui/card';
 import { Button } from '../ui/button';
 import { format, parseISO } from 'date-fns';
-import { FileDown, Eye } from 'lucide-react';
+import { FileDown, Eye, Edit } from 'lucide-react';
 import ViewQuotationDialog from './ViewQuotationDialog';
 import { exportToExcel } from './exportQuotationToExcel';
 
-export default function QuotationList({ quotations }: { quotations: Quotation[] }) {
+export default function QuotationList({ quotations, onEdit }: { quotations: Quotation[], onEdit: (q: Quotation) => void }) {
     const [viewingQuotation, setViewingQuotation] = useState<Quotation | null>(null);
 
     const handleExport = (quotation: Quotation) => {
@@ -36,6 +36,9 @@ export default function QuotationList({ quotations }: { quotations: Quotation[] 
                             <p>Status: {q.status}</p>
                         </CardContent>
                         <CardFooter className="justify-end gap-2">
+                            <Button variant="outline" size="sm" onClick={() => onEdit(q)}>
+                                <Edit className="mr-2 h-4 w-4"/> Edit
+                            </Button>
                             <Button variant="outline" size="sm" onClick={() => handleExport(q)}>
                                 <FileDown className="mr-2 h-4 w-4" /> Excel
                             </Button>
