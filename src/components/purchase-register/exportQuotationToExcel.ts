@@ -11,45 +11,47 @@ export const exportToExcel = async (quotation: Quotation) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Price Comparison");
 
-    // ===== TITLE =====
-    worksheet.mergeCells('A1:L1');
+    const vendorCount = quotation.vendors.length;
+    const colsPerVendor = 4; // QTY, UOM, RATE, AMOUNT
+    const totalColumns = 2 + (vendorCount * colsPerVendor); 
+
+    // ===== TITLE (dynamic width) =====
+    if (totalColumns > 1) {
+      worksheet.mergeCells(1, 1, 1, totalColumns);
+    }
     const title = worksheet.getCell('A1');
     title.value = 'PRICE COMPARISON - OFFICE & STORE CONTAINER';
     title.font = { bold: true, size: 14 };
-    title.alignment = { horizontal: 'center', vertical: 'middle' };
+    title.alignment = { horizontal: 'center' };
 
-    // ===== VENDOR GROUP HEADER (YELLOW) =====
-    const vendorRow = worksheet.addRow([
-        '', '', '',
-        quotation.vendors[0]?.name, '', '',
-        quotation.vendors[1]?.name, '', '',
-        quotation.vendors[2]?.name, '', ''
-    ]);
+    // ===== VENDOR HEADER (dynamic) =====
+    let vendorHeader: any[] = ['ITEM', 'DESCRIPTION'];
+    quotation.vendors.forEach(v => {
+        vendorHeader.push(v.name, '', '', '');
+    });
+    const vendorRow = worksheet.addRow(vendorHeader);
 
-    worksheet.mergeCells(`D${vendorRow.number}:F${vendorRow.number}`);
-    worksheet.mergeCells(`G${vendorRow.number}:I${vendorRow.number}`);
-    worksheet.mergeCells(`J${vendorRow.number}:L${vendorRow.number}`);
-
-    vendorRow.eachCell((cell, col) => {
-        if (col >= 4) {
-            cell.fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: 'FFFF00' } // Yellow
-            };
-            cell.font = { bold: true };
-            cell.alignment = { horizontal: 'center' };
-        }
+    // Merge each vendor block
+    let colStart = 3;
+    quotation.vendors.forEach(() => {
+        worksheet.mergeCells(vendorRow.number, colStart, vendorRow.number, colStart + 3);
+        const cell = vendorRow.getCell(colStart);
+        cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFFF00' }
+        };
+        cell.font = { bold: true };
+        cell.alignment = { horizontal: 'center' };
+        colStart += 4;
     });
 
     // ===== COLUMN HEADERS (BLUE) =====
-    const headerRow = worksheet.addRow([
-        'ITEM', 'DESCRIPTION', 'QTY', 'UOM',
-        'RATE', 'AMOUNT',
-        'QTY', 'UOM', 'RATE', 'AMOUNT',
-        'QTY', 'UOM', 'RATE', 'AMOUNT'
-    ]);
-
+    let header: string[] = ['ITEM', 'DESCRIPTION'];
+    quotation.vendors.forEach(() => {
+        header.push('QTY', 'UOM', 'RATE', 'AMOUNT');
+    });
+    const headerRow = worksheet.addRow(header);
     headerRow.eachCell(cell => {
         cell.fill = {
             type: 'pattern',
@@ -61,79 +63,132 @@ export const exportToExcel = async (quotation: Quotation) => {
     });
 
     // ===== ITEMS =====
-    quotation.items.forEach((item, index) => {
-        let row: any[] = [
-            index + 1,
+    quotation.items.forEach((item, itemIndex) => {
+        let rowData: any[] = [
+            itemIndex + 1,
             item.description
         ];
 
-        quotation.vendors.forEach(vendor => {
-            const q = vendor.quotes.find(q => q.itemId === item.id);
+        quotation.vendors.forEach((vendor) => {
+            let quote: any;
+            if (Array.isArray(vendor.quotes)) {
+              quote = vendor.quotes.find(q => q.itemId === item.id || (q as any).id === item.id) || vendor.quotes[itemIndex];
+            } else if (vendor.quotes) {
+              quote =
+                (vendor.quotes as any)[item.id] ||
+                Object.values(vendor.quotes)[itemIndex] ||
+                Object.values(vendor.quotes).find((q: any) => q.itemId === item.id || q.id === item.id);
+            }
 
-            row.push(
-                q?.quantity || 0,
+            rowData.push(
+                quote?.quantity || 0,
                 item.uom,
-                q?.rate || 0,
-                (q?.quantity || 0) * (q?.rate || 0)
+                quote?.rate || 0,
+                (quote?.quantity || 0) * (quote?.rate || 0)
             );
         });
 
-        const addedRow = worksheet.addRow(row);
+        const addedRow = worksheet.addRow(rowData);
 
-        // Currency format
-        [5,6,9,10,13,14].forEach(col => {
-            addedRow.getCell(col).numFmt = '₹ #,##0.00';
-        });
+        // Currency formatting for RATE and AMOUNT for each vendor
+        for (let i = 0; i < vendorCount; i++) {
+            const baseCol = 3 + (i * 4);
+            addedRow.getCell(baseCol + 2).numFmt = '₹ #,##0.00'; // RATE
+            addedRow.getCell(baseCol + 3).numFmt = '₹ #,##0.00'; // AMOUNT
+        }
     });
 
     // ===== TOTAL CALCULATIONS =====
-    const totals = quotation.vendors.map(v => {
-        const sub = v.quotes.reduce((a, q) => a + (q.quantity * q.rate), 0);
-        const tax = v.quotes.reduce((a, q) => a + (q.quantity * q.rate * (q.taxPercent / 100)), 0);
-        return {
-            sub,
-            tax,
-            grand: sub + tax
-        };
+    const totals = quotation.vendors.map(vendor => {
+      let subTotal = 0;
+      let totalTax = 0;
+
+      quotation.items.forEach((item, itemIndex) => {
+        let quote: any;
+        if (Array.isArray(vendor.quotes)) {
+          quote = vendor.quotes.find(q => q.itemId === item.id || (q as any).id === item.id) || vendor.quotes[itemIndex];
+        } else if (vendor.quotes) {
+          quote = (vendor.quotes as any)[item.id] || Object.values(vendor.quotes)[itemIndex];
+        }
+        
+        if (quote) {
+            const amount = (quote.quantity || 0) * (quote.rate || 0);
+            subTotal += amount;
+            totalTax += amount * ((quote.taxPercent || 0) / 100);
+        }
+      });
+    
+      const additionalCostsArray = Array.isArray(vendor.additionalCosts) ? vendor.additionalCosts : Object.values(vendor.additionalCosts || []);
+      const additionalCostsTotal = additionalCostsArray.reduce((acc, cost) => acc + (cost.value || 0), 0);
+
+      const grandTotal = subTotal + totalTax + additionalCostsTotal;
+      return {
+        subTotal,
+        totalTax,
+        additionalCosts: additionalCostsArray,
+        grandTotal,
+      };
     });
 
     const addRow = (label: string, values: number[]) => {
-        const row = worksheet.addRow(['', label, '', '',
-            values[0], '',
-            values[1], '',
-            values[2]
-        ]);
-
+        let rowData: any[] = ['', label];
+        // This creates empty cells to align the totals under each vendor's block
+        for (let i = 0; i < vendorCount; i++) {
+            rowData.push('', '', '', values[i] || 0);
+        }
+        const row = worksheet.addRow(rowData);
         row.font = { bold: true };
 
-        [5,7,9].forEach(col => {
-            row.getCell(col).numFmt = '₹ #,##0.00';
-        });
+        // Format the total value cells which are in the 'AMOUNT' column for each vendor
+        for (let i = 0; i < vendorCount; i++) {
+            const cellIndex = 2 + (i * 4) + 4; // 2 initial cols + (vendor blocks * cols per vendor) + offset to AMOUNT
+            row.getCell(cellIndex).numFmt = '₹ #,##0.00';
+            // Merge the cells for each vendor's total to span their block
+            worksheet.mergeCells(row.number, cellIndex - 3, row.number, cellIndex);
+            row.getCell(cellIndex - 3).alignment = { horizontal: 'right', vertical: 'middle' };
+        }
     };
 
-    worksheet.addRow([]);
 
-    addRow('Subtotal', totals.map(t => t.sub));
-    addRow('GST 18%', totals.map(t => t.tax));
-    addRow('Grand Total', totals.map(t => t.grand));
+    worksheet.addRow([]); // Spacer
 
-    // ===== COLUMN WIDTH =====
-    worksheet.columns.forEach(col => {
-        col.width = 15;
+    addRow('Subtotal', totals.map(t => t.subTotal));
+
+    const allCostNames = Array.from(new Set(totals.flatMap(t => t.additionalCosts.map(c => c.name))));
+    allCostNames.forEach(costName => {
+        if (costName) { // Ensure cost name is not empty
+            const costValues = totals.map(t => t.additionalCosts.find(c => c.name === costName)?.value || 0);
+            addRow(costName, costValues);
+        }
     });
 
+    addRow('GST', totals.map(t => t.totalTax));
+    addRow('Grand Total', totals.map(t => t.grandTotal));
+
+    // ===== COLUMN WIDTHS =====
+    worksheet.getColumn(1).width = 8; // Item No
+    worksheet.getColumn(2).width = 35; // Description
+    let col = 3;
+    for (let i = 0; i < vendorCount; i++) {
+      worksheet.getColumn(col++).width = 8; // QTY
+      worksheet.getColumn(col++).width = 8; // UOM
+      worksheet.getColumn(col++).width = 12; // RATE
+      worksheet.getColumn(col++).width = 15; // AMOUNT
+    }
+    
     // ===== BORDERS =====
     worksheet.eachRow(row => {
-        row.eachCell(cell => {
-            cell.border = {
-                top: { style: 'thin' },
-                left: { style: 'thin' },
-                bottom: { style: 'thin' },
-                right: { style: 'thin' }
-            };
-        });
+        if(row.values.length > 0) {
+            row.eachCell({ includeEmpty: true }, cell => {
+                if (cell.address.match(/^[A-Z]+1$/) && totalColumns > 1) return; // Skip title row border
+                cell.border = {
+                    top: { style: 'thin' }, left: { style: 'thin' },
+                    bottom: { style: 'thin' }, right: { style: 'thin' }
+                };
+            });
+        }
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), 'Price_Comparison.xlsx');
+    saveAs(new Blob([buffer]), `${quotation.title.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
 };
