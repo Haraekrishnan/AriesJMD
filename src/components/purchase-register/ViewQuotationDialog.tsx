@@ -25,16 +25,19 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation }: Vi
 
   const calculatedTotals = useMemo(() => {
     return quotation.vendors.map(vendor => {
-      const subTotal = vendor.quotes.reduce((acc, quote) => acc + (quote.quantity * quote.rate), 0);
-      const totalTax = vendor.quotes.reduce((acc, quote) => acc + (quote.quantity * quote.rate * (quote.taxPercent / 100)), 0);
-      const additionalCostsTotal = (vendor.additionalCosts || []).reduce((acc, cost) => acc + cost.value, 0);
+      const quotesArray = Array.isArray(vendor.quotes) ? vendor.quotes : Object.values(vendor.quotes || {});
+      const subTotal = quotesArray.reduce((acc, quote) => acc + ((quote.quantity || 0) * (quote.rate || 0)), 0);
+      const totalTax = quotesArray.reduce((acc, quote) => acc + ((quote.quantity || 0) * (quote.rate || 0) * ((quote.taxPercent || 0) / 100)), 0);
+      
+      const additionalCostsArray = Array.isArray(vendor.additionalCosts) ? vendor.additionalCosts : Object.values(vendor.additionalCosts || {});
+      const additionalCostsTotal = additionalCostsArray.reduce((acc, cost) => acc + (cost.value || 0), 0);
 
       const grandTotal = subTotal + totalTax + additionalCostsTotal;
       return {
         vendorId: vendor.vendorId,
         subTotal,
         totalTax,
-        additionalCosts: vendor.additionalCosts || [],
+        additionalCosts: additionalCostsArray,
         grandTotal,
       };
     });
@@ -88,7 +91,8 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation }: Vi
                   <TableCell className="font-medium">{item.description}</TableCell>
                   <TableCell>{item.uom}</TableCell>
                   {quotation.vendors.map(vendor => {
-                    const quote = vendor.quotes.find(q => q.itemId === item.id);
+                    const quotesArray = Array.isArray(vendor.quotes) ? vendor.quotes : Object.values(vendor.quotes || {});
+                    const quote = quotesArray.find(q => q.itemId === item.id);
                     const amount = (quote?.quantity || 0) * (quote?.rate || 0);
                     return (
                       <React.Fragment key={vendor.id}>
@@ -106,14 +110,19 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation }: Vi
                   <TableCell colSpan={3} className="text-right">Sub-Total</TableCell>
                   {calculatedTotals.map((total, i) => <TableCell key={i} colSpan={4} className="text-right border-x">{formatCurrency(total.subTotal)}</TableCell>)}
               </TableRow>
-              {(quotation.vendors.flatMap(v => v.additionalCosts || [])).length > 0 && Array.from(new Set(quotation.vendors.flatMap(v => v.additionalCosts?.map(c => c.name) || []))).map(costName => (
+              {
+                Array.from(new Set(calculatedTotals.flatMap(t => t.additionalCosts.map(c => c.name)))).map(costName => (
                   <TableRow key={costName}>
                       <TableCell colSpan={3} className="text-right">{costName}</TableCell>
-                      {calculatedTotals.map((total, vendorIndex) => (
-                          <TableCell key={vendorIndex} colSpan={4} className="text-right border-x">{formatCurrency(total.additionalCosts.find(c => c.name === costName)?.value || 0)}</TableCell>
-                      ))}
+                      {calculatedTotals.map((total, vendorIndex) => {
+                          const cost = total.additionalCosts.find(c => c.name === costName);
+                          return (
+                            <TableCell key={vendorIndex} colSpan={4} className="text-right border-x">{formatCurrency(cost?.value || 0)}</TableCell>
+                          )
+                      })}
                   </TableRow>
-              ))}
+                ))
+              }
                <TableRow className="font-bold">
                   <TableCell colSpan={3} className="text-right">Total Tax</TableCell>
                   {calculatedTotals.map((total, i) => <TableCell key={i} colSpan={4} className="text-right border-x">{formatCurrency(total.totalTax)}</TableCell>)}
