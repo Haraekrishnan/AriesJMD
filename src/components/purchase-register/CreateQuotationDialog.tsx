@@ -1,4 +1,3 @@
-
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,7 +25,7 @@ const quotationItemSchema = z.object({
     itemId: z.string().min(1, 'Item must be selected'),
     description: z.string().min(1, "Description is required"),
     uom: z.string().min(1, "UOM is required"),
-    itemType: z.string(),
+    itemType: z.string().min(1, 'Item Type is required'),
 });
 
 const additionalCostSchema = z.object({
@@ -44,6 +43,7 @@ const quotationVendorSchema = z.object({
         quantity: z.coerce.number().min(1),
         rate: z.coerce.number().min(0),
         taxPercent: z.coerce.number().min(0).max(100),
+        receivedQuantity: z.coerce.number().optional(),
     })),
     additionalCosts: z.array(additionalCostSchema).optional(),
 });
@@ -168,14 +168,27 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
   useEffect(() => {
     if (isOpen) {
         if (existingQuotation) {
-            const vendorsWithArrayQuotes = existingQuotation.vendors.map(vendor => {
-                const quotesAsArray = Array.isArray(vendor.quotes) ? vendor.quotes : Object.values(vendor.quotes || {});
-                return { ...vendor, quotes: quotesAsArray };
+            const items = existingQuotation.items || [];
+            const vendorsWithSyncedQuotes = (existingQuotation.vendors || []).map(vendor => {
+                const quotesAsObject = !Array.isArray(vendor.quotes) ? vendor.quotes : (vendor.quotes || []).reduce((acc, q) => { (acc as any)[q.itemId] = q; return acc; }, {});
+                
+                const syncedQuotes = items.map(item => {
+                    const existingQuote = quotesAsObject ? (quotesAsObject as any)[item.id] : undefined;
+                    return {
+                        itemId: item.id,
+                        quantity: existingQuote?.quantity ?? 1,
+                        rate: existingQuote?.rate ?? 0,
+                        taxPercent: existingQuote?.taxPercent ?? 0,
+                        receivedQuantity: existingQuote?.receivedQuantity ?? 0,
+                    };
+                });
+                return { ...vendor, quotes: syncedQuotes };
             });
+
             form.reset({
                 title: existingQuotation.title,
-                items: existingQuotation.items,
-                vendors: vendorsWithArrayQuotes,
+                items: items,
+                vendors: vendorsWithSyncedQuotes,
             });
         } else {
             form.reset({
@@ -193,16 +206,18 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
   
     vendors.forEach((vendor, vIndex) => {
         if (!vendor.quotes || vendor.quotes.length !== items.length) {
-            const updatedQuotes = items.map((item, i) => {
-                const existingQuote = vendor.quotes?.find(q => q.itemId === item.id);
+            const existingQuotesMap = new Map((vendor.quotes || []).map(q => [q.itemId, q]));
+            const newQuotes = items.map(item => {
+                const existingQuote = existingQuotesMap.get(item.id);
                 return {
                     itemId: item.id,
                     quantity: existingQuote?.quantity ?? 1,
                     rate: existingQuote?.rate ?? 0,
                     taxPercent: existingQuote?.taxPercent ?? 0,
+                    receivedQuantity: existingQuote?.receivedQuantity ?? 0,
                 };
             });
-            form.setValue(`vendors.${vIndex}.quotes`, updatedQuotes, { shouldDirty: true });
+            form.setValue(`vendors.${vIndex}.quotes`, newQuotes, { shouldDirty: true });
         }
     });
   }, [itemFields.length, form]);
@@ -230,7 +245,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
         id: `vendor-${Date.now()}`,
         vendorId: '',
         name: '',
-        quotes: itemFields.map(item => ({ itemId: item.id, quantity: 1, rate: 0, taxPercent: 0 })),
+        quotes: itemFields.map(item => ({ itemId: item.id, quantity: 1, rate: 0, taxPercent: 0, receivedQuantity: 0 })),
         additionalCosts: [],
     });
   };
@@ -279,7 +294,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                     <Popover open={popoverOpenState[index]} onOpenChange={(open) => setPopoverOpenState(prev => ({ ...prev, [index]: open }))}>
                                         <PopoverTrigger asChild>
                                             <Button variant="outline" className="w-full justify-start text-left font-normal">
-                                                {form.getValues(`items.${index}.description`) || "Select item..."}
+                                                <span className="truncate">{form.getValues(`items.${index}.description`) || "Select item..."}</span>
                                                 <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
                                             </Button>
                                         </PopoverTrigger>
