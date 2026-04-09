@@ -25,24 +25,28 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation }: Vi
 
   const calculatedTotals = useMemo(() => {
     return quotation.vendors.map(vendor => {
-      const subTotal = quotation.items.reduce((acc, item) => {
-        const quote = vendor.quotes?.[item.id];
-        if (quote) {
-          return acc + (quote.quantity || 0) * (quote.rate || 0);
-        }
-        return acc;
-      }, 0);
+        let subTotal = 0;
+        let totalTax = 0;
 
-      const totalTax = quotation.items.reduce((acc, item) => {
-        const quote = vendor.quotes?.[item.id];
-        if (quote) {
-          const amount = (quote.quantity || 0) * (quote.rate || 0);
-          return acc + (amount * ((quote.taxPercent || 0) / 100));
-        }
-        return acc;
-      }, 0);
+        quotation.items.forEach(item => {
+            let quote;
+            if (Array.isArray(vendor.quotes)) {
+                quote = vendor.quotes.find(q => q.itemId === item.id || q.id === item.id);
+            } else if (vendor.quotes) {
+                quote = (vendor.quotes as any)[item.id];
+                if (!quote) {
+                    quote = Object.values(vendor.quotes).find((q: any) => q.itemId === item.id || q.id === item.id);
+                }
+            }
+
+            if (quote) {
+                const amount = (quote.quantity || 0) * (quote.rate || 0);
+                subTotal += amount;
+                totalTax += amount * ((quote.taxPercent || 0) / 100);
+            }
+        });
       
-      const additionalCostsArray = Array.isArray(vendor.additionalCosts) ? vendor.additionalCosts : Object.values(vendor.additionalCosts || {});
+      const additionalCostsArray = Array.isArray(vendor.additionalCosts) ? vendor.additionalCosts : Object.values(vendor.additionalCosts || []);
       const additionalCostsTotal = additionalCostsArray.reduce((acc, cost) => acc + (cost.value || 0), 0);
 
       const grandTotal = subTotal + totalTax + additionalCostsTotal;
@@ -76,7 +80,9 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation }: Vi
           <Table>
             <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
-                <TableHead colSpan={3} className="p-2"></TableHead>
+                 <TableHead colSpan={3} className="p-2 text-center font-semibold border-x">
+                    Item Details
+                 </TableHead>
                 {quotation.vendors.map(vendor => (
                   <TableHead key={vendor.id} colSpan={4} className="text-center font-semibold border-x p-2">
                     {vendor.name}
@@ -104,11 +110,18 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation }: Vi
                   <TableCell className="font-medium">{item.description}</TableCell>
                   <TableCell>{item.uom}</TableCell>
                   {quotation.vendors.map(vendor => {
-                    const quote = Array.isArray(vendor.quotes)
-                      ? vendor.quotes.find(q => q.itemId === item.id)
-                      : vendor.quotes?.[item.id];
-                      
+                    let quote;
+                    if (Array.isArray(vendor.quotes)) {
+                        quote = vendor.quotes.find(q => q.itemId === item.id || q.id === item.id);
+                    } else if (vendor.quotes) {
+                        quote = (vendor.quotes as any)[item.id];
+                        if (!quote) {
+                            quote = Object.values(vendor.quotes).find((q: any) => q.itemId === item.id || q.id === item.id);
+                        }
+                    }
+                    
                     const amount = (quote?.quantity || 0) * (quote?.rate || 0);
+
                     return (
                       <React.Fragment key={vendor.id}>
                         <TableCell className="text-center border-l">{quote?.quantity || 0}</TableCell>
