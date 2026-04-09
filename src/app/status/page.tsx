@@ -15,15 +15,18 @@ export default function StatusPage() {
   const router = useRouter();
 
   useEffect(() => {
+    // If the context is still loading, wait.
     if (loading) {
       return;
     }
-
+    
+    // If loading is done and there's no user, they should be at the login page.
     if (!user) {
       router.replace('/login');
       return;
     }
 
+    // If the user is somehow not locked, send them to the dashboard.
     if (user.status !== 'locked') {
       router.replace('/dashboard');
     }

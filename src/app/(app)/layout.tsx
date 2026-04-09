@@ -31,7 +31,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading, router, pathname]);
 
-  if (loading || !user || user.status === 'locked') {
+  if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
@@ -44,6 +44,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     );
+  }
+
+  // If user is locked, we show a blank screen while redirecting
+  // to avoid showing a flash of the app UI.
+  if (user.status === 'locked') {
+    return null;
   }
 
   return (
