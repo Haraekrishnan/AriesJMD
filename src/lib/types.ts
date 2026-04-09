@@ -1181,8 +1181,10 @@ export type DeliveryNote = {
 
 export type QuotationItem = {
     id: string;
+    itemId: string;
     description: string;
     uom: string;
+    itemType: string;
 };
   
 export type QuotationQuote = {
@@ -1190,6 +1192,7 @@ export type QuotationQuote = {
     quantity: number;
     rate: number;
     taxPercent: number;
+    receivedQuantity?: number;
 };
 
 export type AdditionalCost = {
@@ -1206,7 +1209,7 @@ export type QuotationVendorDetails = {
     additionalCosts?: AdditionalCost[];
 };
 
-export type QuotationStatus = 'Pending' | 'PO Received' | 'Partially Purchased' | 'Completed';
+export type QuotationStatus = 'Pending' | 'Approved' | 'PO Sent' | 'Partially Received' | 'Completed' | 'Rejected';
 
 export type Quotation = {
     id: string;
@@ -1216,8 +1219,8 @@ export type Quotation = {
     status: QuotationStatus;
     items: QuotationItem[];
     vendors: QuotationVendorDetails[];
+    finalizedVendorId?: string;
     poNumber?: string;
-    poDate?: string; // ISO
 };
 
 export type RequestListItem = {

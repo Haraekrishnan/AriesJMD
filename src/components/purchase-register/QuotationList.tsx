@@ -1,6 +1,7 @@
+
 'use client';
 import { useState } from 'react';
-import type { Quotation } from '@/lib/types';
+import type { Quotation, QuotationStatus } from '@/lib/types';
 import { Button } from '../ui/button';
 import { format, parseISO } from 'date-fns';
 import { FileDown, Eye, Edit } from 'lucide-react';
@@ -16,6 +17,15 @@ import {
 } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
 import { useAppContext } from '@/contexts/app-provider';
+
+const statusVariant: { [key in QuotationStatus]: 'default' | 'secondary' | 'destructive' | 'success' | 'warning' } = {
+  Pending: 'secondary',
+  Approved: 'default',
+  'PO Sent': 'default',
+  'Partially Received': 'warning',
+  Completed: 'success',
+  Rejected: 'destructive',
+};
 
 export default function QuotationList({ quotations, onEdit }: { quotations: Quotation[], onEdit: (q: Quotation) => void }) {
     const [viewingQuotation, setViewingQuotation] = useState<Quotation | null>(null);
@@ -56,7 +66,7 @@ export default function QuotationList({ quotations, onEdit }: { quotations: Quot
                                     <TableCell className="font-medium">{q.title}</TableCell>
                                     <TableCell>{creator?.name || 'Unknown'}</TableCell>
                                     <TableCell>{format(parseISO(q.createdAt), 'dd MMM, yyyy')}</TableCell>
-                                    <TableCell><Badge variant="secondary">{q.status}</Badge></TableCell>
+                                    <TableCell><Badge variant={statusVariant[q.status] || 'secondary'}>{q.status}</Badge></TableCell>
                                     <TableCell className="text-center">{q.items.length}</TableCell>
                                     <TableCell className="text-center">{q.vendors.length}</TableCell>
                                     <TableCell className="text-right">
