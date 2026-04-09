@@ -108,7 +108,7 @@ export default function PurchasesPage() {
                 </div>
             </div>
 
-            <Tabs defaultValue="register">
+            <Tabs defaultValue="quotations">
                 <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="register">Purchase Register</TabsTrigger>
                     <TabsTrigger value="quotations">Price Comparison</TabsTrigger>
