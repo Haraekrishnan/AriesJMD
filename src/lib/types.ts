@@ -1189,15 +1189,21 @@ export type QuotationQuote = {
     itemId: string;
     quantity: number;
     rate: number;
+    taxPercent: number;
 };
+
+export type AdditionalCost = {
+  id: string;
+  name: string;
+  value: number;
+}
 
 export type QuotationVendorDetails = {
     id: string; 
     vendorId: string;
     name: string;
     quotes: QuotationQuote[];
-    transportation?: number;
-    gstPercent: number;
+    additionalCosts?: AdditionalCost[];
 };
 
 export type QuotationStatus = 'Pending' | 'PO Received' | 'Partially Purchased' | 'Completed';

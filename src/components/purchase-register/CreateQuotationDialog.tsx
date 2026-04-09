@@ -12,7 +12,6 @@ import { PlusCircle, Trash2, Users2, X } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Badge } from '../ui/badge';
 import { usePurchase } from '@/contexts/purchase-provider';
 import { Card, CardHeader, CardContent } from '../ui/card';
 
@@ -20,6 +19,12 @@ const quotationItemSchema = z.object({
     id: z.string(),
     description: z.string().min(1, "Required"),
     uom: z.string().min(1, "Required"),
+});
+
+const additionalCostSchema = z.object({
+    id: z.string(),
+    name: z.string().min(1, "Cost name is required"),
+    value: z.coerce.number().min(0, "Value must be non-negative"),
 });
 
 const quotationVendorSchema = z.object({
@@ -30,9 +35,9 @@ const quotationVendorSchema = z.object({
         itemId: z.string(),
         quantity: z.coerce.number().min(1),
         rate: z.coerce.number().min(0),
+        taxPercent: z.coerce.number().min(0).max(100),
     })),
-    transportation: z.coerce.number().optional(),
-    gstPercent: z.coerce.number().min(0).max(100),
+    additionalCosts: z.array(additionalCostSchema).optional(),
 });
 
 const quotationSchema = z.object({
@@ -46,6 +51,28 @@ type FormValues = z.infer<typeof quotationSchema>;
 interface CreateQuotationDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+}
+
+const VendorQuoteSection = ({ vendorIndex, control }: { vendorIndex: number; control: any }) => {
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: `vendors.${vendorIndex}.additionalCosts`
+    });
+
+    return (
+        <div className="space-y-2">
+            {fields.map((field, index) => (
+                <div key={field.id} className="flex gap-2 items-center">
+                    <Input {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.name`)} placeholder="Cost Name (e.g. Cess)" />
+                    <Input type="number" {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.value`)} placeholder="Value"/>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `cost-${Date.now()}`, name: '', value: 0 })}>
+                <PlusCircle className="h-4 w-4 mr-2"/> Add Cost
+            </Button>
+        </div>
+    )
 }
 
 export default function CreateQuotationDialog({ isOpen, setIsOpen }: CreateQuotationDialogProps) {
@@ -85,9 +112,8 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen }: CreateQuota
         id: `vendor-${Date.now()}`,
         vendorId: '',
         name: '',
-        quotes: itemFields.map(item => ({ itemId: item.id, quantity: 1, rate: 0 })),
-        transportation: undefined,
-        gstPercent: 0,
+        quotes: itemFields.map(item => ({ itemId: item.id, quantity: 1, rate: 0, taxPercent: 0 })),
+        additionalCosts: [],
     });
   };
 
@@ -148,21 +174,27 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen }: CreateQuota
                             <Button type="button" variant="ghost" size="icon" onClick={() => removeVendor(vendorIndex)}><X className="h-4 w-4"/></Button>
                         </CardHeader>
                         <CardContent className="p-4 pt-0">
+                             <div className="grid grid-cols-[3fr,1fr,1fr,1fr] gap-4 mb-2 font-medium text-sm">
+                                <span>Item</span>
+                                <span className="text-center">Quantity</span>
+                                <span className="text-center">Rate</span>
+                                <span className="text-center">Tax %</span>
+                            </div>
                             {itemFields.map((itemField, itemIndex) => (
-                                <div key={itemField.id} className="grid grid-cols-3 gap-4 items-center border-b py-2">
-                                    <Label className="text-sm">{watchItems?.[itemIndex]?.description || `Item ${itemIndex + 1}`}</Label>
-                                    <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.quantity`)} placeholder="Quantity"/>
+                                <div key={itemField.id} className="grid grid-cols-[3fr,1fr,1fr,1fr] gap-4 items-center border-b py-2 last:border-b-0">
+                                    <Label className="text-sm truncate">{watchItems?.[itemIndex]?.description || `Item ${itemIndex + 1}`}</Label>
+                                    <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.quantity`)} placeholder="Qty"/>
                                     <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.rate`)} placeholder="Rate"/>
+                                    <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.taxPercent`)} placeholder="Tax %" />
                                 </div>
                             ))}
-                            <div className="grid grid-cols-2 gap-4 pt-4">
-                                <Input type="number" {...form.register(`vendors.${vendorIndex}.transportation`)} placeholder="Transportation Cost (Optional)"/>
-                                <Input type="number" {...form.register(`vendors.${vendorIndex}.gstPercent`)} placeholder="GST %"/>
-                            </div>
+                            <Separator className="my-4"/>
+                            <h5 className="font-semibold text-sm mb-2">Additional Costs</h5>
+                            <VendorQuoteSection vendorIndex={vendorIndex} control={form.control} />
                         </CardContent>
                     </Card>
                    ))}
-                    <Button type="button" variant="outline" size="sm" onClick={handleAddVendor}><PlusCircle className="h-4 w-4 mr-2"/>Add Vendor</Button>
+                    <Button type="button" variant="outline" size="sm" onClick={handleAddVendor} disabled={itemFields.length === 0}><PlusCircle className="h-4 w-4 mr-2"/>Add Vendor</Button>
                     {form.formState.errors.vendors && <p className="text-xs text-destructive">{form.formState.errors.vendors.message || form.formState.errors.vendors.root?.message}</p>}
                  </div>
               </div>

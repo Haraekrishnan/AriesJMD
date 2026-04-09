@@ -172,11 +172,11 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
     const addQuotation = useCallback((quotationData: Omit<Quotation, 'id' | 'creatorId' | 'createdAt' | 'status'>) => {
         if (!user) return;
         const newRef = push(ref(rtdb, 'quotations'));
-        const newQuotation = {
+        const newQuotation: Omit<Quotation, 'id'> = {
             ...quotationData,
             creatorId: user.id,
             createdAt: new Date().toISOString(),
-            status: 'Pending' as PaymentStatus,
+            status: 'Pending',
         };
         set(newRef, newQuotation);
     }, [user]);
