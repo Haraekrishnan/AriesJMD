@@ -8,19 +8,24 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Trash2, Users2, X } from 'lucide-react';
+import { PlusCircle, Trash2, Users2, X, ChevronsUpDown, Check } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { usePurchase } from '@/contexts/purchase-provider';
 import { Card, CardHeader, CardContent } from '../ui/card';
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Quotation } from '@/lib/types';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { cn } from '@/lib/utils';
 
 const quotationItemSchema = z.object({
     id: z.string(),
-    description: z.string().min(1, "Required"),
-    uom: z.string().min(1, "Required"),
+    itemId: z.string().min(1, 'Item must be selected'),
+    description: z.string().min(1, "Description is required"),
+    uom: z.string().min(1, "UOM is required"),
+    itemType: z.string(),
 });
 
 const additionalCostSchema = z.object({
@@ -78,22 +83,83 @@ const VendorQuoteSection = ({ vendorIndex, control }: { vendorIndex: number; con
     )
 }
 
+type SearchableQuotationItem = {
+    id: string; // The actual item ID
+    name: string; // The display name
+    category: 'Store Inventory' | 'Equipment' | 'Consumables';
+    uom?: string;
+    itemType: string; // specific type for later reference
+};
+
 export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuotation }: CreateQuotationDialogProps) {
   const { vendors, addQuotation, updateQuotation } = usePurchase();
+  const { 
+    inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, 
+    weldingMachines, walkieTalkies, pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, 
+    cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws, consumableItems
+  } = useAppContext();
   const { toast } = useToast();
   const isEditMode = !!existingQuotation;
+
+  const [popoverOpenState, setPopoverOpenState] = useState<Record<number, boolean>>({});
+
+  const allItemsForQuote = useMemo(() => {
+    const all = [
+      ...inventoryItems
+        .filter((i) => i.category === 'General' && !i.isArchived)
+        .map((i) => ({ id: i.id, name: i.name, uom: i.unit || 'Nos', category: 'Store Inventory', itemType: 'Inventory' })),
+      ...consumableItems.map((i) => ({ id: i.id, name: i.name, uom: i.unit || 'pcs', category: 'Consumables', itemType: 'Inventory' })),
+      ...utMachines.map((i) => ({ id: i.id, name: i.machineName, uom: 'Nos', category: 'Equipment', itemType: 'UTMachine' })),
+      ...dftMachines.map((i) => ({ id: i.id, name: i.machineName, uom: 'Nos', category: 'Equipment', itemType: 'DftMachine' })),
+      ...digitalCameras.map((i) => ({ id: i.id, name: `${i.make} ${i.model}`, uom: 'Nos', category: 'Equipment', itemType: 'DigitalCamera' })),
+      ...anemometers.map((i) => ({ id: i.id, name: `${i.make} ${i.model}`, uom: 'Nos', category: 'Equipment', itemType: 'Anemometer' })),
+      ...laptopsDesktops.map((i) => ({ id: i.id, name: `${i.make} ${i.model}`, uom: 'Nos', category: 'Equipment', itemType: 'LaptopDesktop' })),
+      ...mobileSims.filter(i => i.type === 'Mobile' || i.type === 'Mobile with SIM').map(i => ({ id: i.id, name: `${i.make} ${i.model}`, uom: 'Nos', category: 'Equipment', itemType: 'MobileSim' })),
+      ...otherEquipments.map((i) => ({ id: i.id, name: i.equipmentName, uom: 'Nos', category: 'Equipment', itemType: 'OtherEquipment' })),
+      ...weldingMachines.map((i) => ({ id: i.id, name: `Welding Machine ${i.serialNumber}`, uom: 'Nos', category: 'Equipment', itemType: 'WeldingMachine' })),
+      ...walkieTalkies.map((i) => ({ id: i.id, name: `Walkie Talkie ${i.serialNumber}`, uom: 'Nos', category: 'Equipment', itemType: 'WalkieTalkie' })),
+      ...pneumaticDrillingMachines.map((i) => ({ id: i.id, name: `Pneumatic Drill ${i.serialNumber}`, uom: 'Nos', category: 'Equipment', itemType: 'PneumaticDrillingMachine' })),
+      ...pneumaticAngleGrinders.map((i) => ({ id: i.id, name: `Pneumatic Grinder ${i.serialNumber}`, uom: 'Nos', category: 'Equipment', itemType: 'PneumaticAngleGrinder' })),
+      ...wiredDrillingMachines.map((i) => ({ id: i.id, name: `Wired Drill ${i.serialNumber}`, uom: 'Nos', category: 'Equipment', itemType: 'WiredDrillingMachine' })),
+      ...cordlessDrillingMachines.map((i) => ({ id: i.id, name: `Cordless Drill ${i.serialNumber}`, uom: 'Nos', category: 'Equipment', itemType: 'CordlessDrillingMachine' })),
+      ...wiredAngleGrinders.map((i) => ({ id: i.id, name: `Wired Grinder ${i.serialNumber}`, uom: 'Nos', category: 'Equipment', itemType: 'WiredAngleGrinder' })),
+      ...cordlessAngleGrinders.map((i) => ({ id: i.id, name: `Cordless Grinder ${i.serialNumber}`, uom: 'Nos', category: 'Equipment', itemType: 'CordlessAngleGrinder' })),
+      ...cordlessReciprocatingSaws.map((i) => ({ id: i.id, name: `Reciprocating Saw ${i.serialNumber}`, uom: 'Nos', category: 'Equipment', itemType: 'CordlessReciprocatingSaw' })),
+    ];
+    // Create a Set of unique names to avoid duplicates in the dropdown
+    const uniqueNames = new Set(all.map(item => item.name));
+    // Filter the original array to keep only the first occurrence of each name
+    return Array.from(uniqueNames).map(name => all.find(item => item.name === name)!);
+  }, [
+    inventoryItems, consumableItems, utMachines, dftMachines, digitalCameras, anemometers, 
+    laptopsDesktops, mobileSims, otherEquipments, weldingMachines, walkieTalkies,
+    pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, 
+    cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, 
+    cordlessReciprocatingSaws
+  ]);
+
+  const groupedItems = useMemo(() => {
+      return allItemsForQuote.reduce((acc, item) => {
+          const category = item.category;
+          if (!acc[category]) {
+              acc[category] = [];
+          }
+          acc[category].push(item);
+          return acc;
+      }, {} as Record<string, SearchableQuotationItem[]>);
+  }, [allItemsForQuote]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(quotationSchema),
     defaultValues: { title: '', items: [], vendors: [] },
   });
 
-  const { fields: itemFields, append: appendItem, remove: removeItem, replace: replaceItems } = useFieldArray({
+  const { fields: itemFields, append: appendItem, remove: removeItem } = useFieldArray({
     control: form.control,
     name: "items"
   });
   
-  const { fields: vendorFields, append: appendVendor, remove: removeVendor, replace: replaceVendors } = useFieldArray({
+  const { fields: vendorFields, append: appendVendor, remove: removeVendor } = useFieldArray({
     control: form.control,
     name: "vendors"
   });
@@ -155,6 +221,14 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
         form.setValue(`vendors.${vendorIndex}.name`, vendor.name);
     }
   };
+  
+  const handleItemSelect = (index: number, item: SearchableQuotationItem) => {
+    form.setValue(`items.${index}.itemId`, item.id);
+    form.setValue(`items.${index}.description`, item.name);
+    form.setValue(`items.${index}.uom`, item.uom || 'Nos');
+    form.setValue(`items.${index}.itemType`, item.itemType);
+    setPopoverOpenState(prev => ({...prev, [index]: false}));
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -177,12 +251,47 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                 <div className="space-y-2 mt-2">
                     {itemFields.map((field, index) => (
                         <div key={field.id} className="flex gap-2 items-start">
-                            <Input {...form.register(`items.${index}.description`)} placeholder="Item Description" />
+                            <Controller
+                                name={`items.${index}.itemId`}
+                                control={form.control}
+                                render={({ field: controllerField }) => (
+                                    <Popover open={popoverOpenState[index]} onOpenChange={(open) => setPopoverOpenState(prev => ({ ...prev, [index]: open }))}>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="outline" className="w-full justify-start text-left font-normal">
+                                                {form.getValues(`items.${index}.description`) || "Select item..."}
+                                                <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                            <Command>
+                                                <CommandInput placeholder="Search all items..." />
+                                                <CommandList>
+                                                    <CommandEmpty>No items found.</CommandEmpty>
+                                                    {Object.entries(groupedItems).map(([category, items]) => (
+                                                        <CommandGroup key={category} heading={category}>
+                                                            {items.map(item => (
+                                                                <CommandItem
+                                                                    key={item.id}
+                                                                    value={item.name}
+                                                                    onSelect={() => handleItemSelect(index, item)}
+                                                                >
+                                                                    <Check className={cn("mr-2 h-4 w-4", form.getValues(`items.${index}.itemId`) === item.id ? "opacity-100" : "opacity-0")} />
+                                                                    {item.name}
+                                                                </CommandItem>
+                                                            ))}
+                                                        </CommandGroup>
+                                                    ))}
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                )}
+                            />
                             <Input {...form.register(`items.${index}.uom`)} placeholder="UOM" className="w-24"/>
                             <Button type="button" variant="destructive" size="icon" onClick={() => removeItem(index)}><Trash2 className="h-4 w-4"/></Button>
                         </div>
                     ))}
-                    <Button type="button" variant="outline" size="sm" onClick={() => appendItem({ id: `item-${Date.now()}`, description: '', uom: '' })}><PlusCircle className="h-4 w-4 mr-2"/>Add Item</Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => appendItem({ id: `item-${Date.now()}`, itemId: '', description: '', uom: '', itemType: '' })}><PlusCircle className="h-4 w-4 mr-2"/>Add Item</Button>
                     {form.formState.errors.items && <p className="text-xs text-destructive">{form.formState.errors.items.message || form.formState.errors.items.root?.message}</p>}
                 </div>
               </div>
