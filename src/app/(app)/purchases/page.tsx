@@ -170,15 +170,7 @@ export default function PurchasesPage() {
                 </TabsContent>
 
                 <TabsContent value="quotations" className="mt-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Quotation / Price Comparison</CardTitle>
-                            <CardDescription>Compare prices from different vendors before making a purchase.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <QuotationList quotations={quotations} onEdit={handleEditQuotation} />
-                        </CardContent>
-                    </Card>
+                    <QuotationList quotations={quotations} onEdit={handleEditQuotation} />
                 </TabsContent>
             </Tabs>
             

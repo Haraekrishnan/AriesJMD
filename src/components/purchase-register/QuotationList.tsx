@@ -1,4 +1,3 @@
-
 'use client';
 import { useState } from 'react';
 import type { Quotation, QuotationStatus } from '@/lib/types';
@@ -49,39 +48,35 @@ export default function QuotationList({ quotations, onEdit }: { quotations: Quot
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Title</TableHead>
-                            <TableHead>Created By</TableHead>
-                            <TableHead>Date</TableHead>
+                            <TableHead className="w-[50px]">SNO</TableHead>
+                            <TableHead>Request No</TableHead>
                             <TableHead>Status</TableHead>
-                            <TableHead className="text-center">Items</TableHead>
-                            <TableHead className="text-center">Vendors</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
+                            <TableHead>Next Action</TableHead>
+                            <TableHead>Request On</TableHead>
+                            <TableHead>Added By</TableHead>
+                            <TableHead>Requested By</TableHead>
+                            <TableHead>Requirement</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {quotations.map(q => {
+                        {quotations.map((q, index) => {
                             const creator = users.find(u => u.id === q.creatorId);
                             return (
                                 <TableRow key={q.id}>
-                                    <TableCell className="font-medium">{q.title}</TableCell>
-                                    <TableCell>{creator?.name || 'Unknown'}</TableCell>
-                                    <TableCell>{format(parseISO(q.createdAt), 'dd MMM, yyyy')}</TableCell>
+                                    <TableCell>{index + 1}</TableCell>
+                                    <TableCell>...{q.id.slice(-6)}</TableCell>
                                     <TableCell><Badge variant={statusVariant[q.status] || 'secondary'}>{q.status}</Badge></TableCell>
-                                    <TableCell className="text-center">{q.items.length}</TableCell>
-                                    <TableCell className="text-center">{q.vendors.length}</TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <Button variant="outline" size="sm" onClick={() => onEdit(q)}>
-                                                <Edit className="mr-2 h-4 w-4"/> Edit
-                                            </Button>
-                                            <Button variant="outline" size="sm" onClick={() => handleExport(q)}>
-                                                <FileDown className="mr-2 h-4 w-4" /> Excel
-                                            </Button>
-                                            <Button size="sm" onClick={() => setViewingQuotation(q)}>
-                                                <Eye className="mr-2 h-4 w-4" /> View
-                                            </Button>
+                                    <TableCell>
+                                        <div className="flex gap-1">
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewingQuotation(q)}><Eye className="h-4 w-4"/></Button>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(q)}><Edit className="h-4 w-4"/></Button>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleExport(q)}><FileDown className="h-4 w-4"/></Button>
                                         </div>
                                     </TableCell>
+                                    <TableCell>{format(parseISO(q.createdAt), 'yyyy-MM-dd')}</TableCell>
+                                    <TableCell>{creator?.name || 'Unknown'}</TableCell>
+                                    <TableCell>{creator?.name || 'Unknown'}</TableCell>
+                                    <TableCell className="font-medium max-w-xs truncate">{q.title}</TableCell>
                                 </TableRow>
                             );
                         })}
