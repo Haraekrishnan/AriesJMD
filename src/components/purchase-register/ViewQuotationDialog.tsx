@@ -28,15 +28,12 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation }: Vi
         let subTotal = 0;
         let totalTax = 0;
 
-        quotation.items.forEach(item => {
+        quotation.items.forEach((item, itemIndex) => {
             let quote;
             if (Array.isArray(vendor.quotes)) {
-                quote = vendor.quotes.find(q => q.itemId === item.id || q.id === item.id);
+                quote = vendor.quotes[itemIndex] || vendor.quotes.find(q => q.itemId === item.id || q.id === item.id);
             } else if (vendor.quotes) {
-                quote = (vendor.quotes as any)[item.id];
-                if (!quote) {
-                    quote = Object.values(vendor.quotes).find((q: any) => q.itemId === item.id || q.id === item.id);
-                }
+                quote = (vendor.quotes as any)[item.id] || Object.values(vendor.quotes)[itemIndex] || Object.values(vendor.quotes).find((q: any) => q.itemId === item.id || q.id === item.id);
             }
 
             if (quote) {
@@ -109,15 +106,12 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation }: Vi
                   <TableCell>{itemIndex + 1}</TableCell>
                   <TableCell className="font-medium">{item.description}</TableCell>
                   <TableCell>{item.uom}</TableCell>
-                  {quotation.vendors.map(vendor => {
+                  {quotation.vendors.map((vendor, vendorIndex) => {
                     let quote;
                     if (Array.isArray(vendor.quotes)) {
-                        quote = vendor.quotes.find(q => q.itemId === item.id || q.id === item.id);
+                        quote = vendor.quotes[itemIndex] || vendor.quotes.find(q => q.itemId === item.id || q.id === item.id);
                     } else if (vendor.quotes) {
-                        quote = (vendor.quotes as any)[item.id];
-                        if (!quote) {
-                            quote = Object.values(vendor.quotes).find((q: any) => q.itemId === item.id || q.id === item.id);
-                        }
+                        quote = (vendor.quotes as any)[item.id] || Object.values(vendor.quotes)[itemIndex] || Object.values(vendor.quotes).find((q: any) => q.itemId === item.id || q.id === item.id);
                     }
                     
                     const amount = (quote?.quantity || 0) * (quote?.rate || 0);
