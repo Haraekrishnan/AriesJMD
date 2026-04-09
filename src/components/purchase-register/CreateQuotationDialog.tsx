@@ -165,28 +165,17 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     name: "vendors"
   });
 
-  const watchItems = form.watch('items');
-  
   useEffect(() => {
     if (isOpen) {
         if (existingQuotation) {
+            const vendorsWithArrayQuotes = existingQuotation.vendors.map(vendor => {
+                const quotesAsArray = Array.isArray(vendor.quotes) ? vendor.quotes : Object.values(vendor.quotes || {});
+                return { ...vendor, quotes: quotesAsArray };
+            });
             form.reset({
                 title: existingQuotation.title,
                 items: existingQuotation.items,
-                vendors: existingQuotation.vendors.map(vendor => {
-                    const quotesAsArray = Array.isArray(vendor.quotes) 
-                        ? vendor.quotes 
-                        : (vendor.quotes ? Object.values(vendor.quotes) : []);
-                    const additionalCostsAsArray = Array.isArray(vendor.additionalCosts) 
-                        ? vendor.additionalCosts 
-                        : (vendor.additionalCosts ? Object.values(vendor.additionalCosts) : []);
-                    
-                    return {
-                        ...vendor,
-                        quotes: quotesAsArray,
-                        additionalCosts: additionalCostsAsArray,
-                    };
-                }),
+                vendors: vendorsWithArrayQuotes,
             });
         } else {
             form.reset({
@@ -203,20 +192,20 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     const vendors = form.getValues("vendors");
   
     vendors.forEach((vendor, vIndex) => {
-      const updatedQuotes = items.map((item, i) => {
-        const existing = vendor.quotes?.[i];
-  
-        return {
-          itemId: item.id,
-          quantity: existing?.quantity ?? 1,
-          rate: existing?.rate ?? 0,
-          taxPercent: existing?.taxPercent ?? 0,
-        };
-      });
-  
-      form.setValue(`vendors.${vIndex}.quotes`, updatedQuotes);
+        if (!vendor.quotes || vendor.quotes.length !== items.length) {
+            const updatedQuotes = items.map((item, i) => {
+                const existingQuote = vendor.quotes?.find(q => q.itemId === item.id);
+                return {
+                    itemId: item.id,
+                    quantity: existingQuote?.quantity ?? 1,
+                    rate: existingQuote?.rate ?? 0,
+                    taxPercent: existingQuote?.taxPercent ?? 0,
+                };
+            });
+            form.setValue(`vendors.${vIndex}.quotes`, updatedQuotes, { shouldDirty: true });
+        }
     });
-  }, [watchItems, form]);
+  }, [itemFields.length, form]);
 
 
   const onSubmit = (data: FormValues) => {
@@ -353,8 +342,8 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                 <span className="text-center">Tax %</span>
                             </div>
                             {itemFields.map((itemField, itemIndex) => (
-                                <div key={itemField.id} className="grid grid-cols-[3fr,1fr,1fr,1fr] gap-4 items-center border-b py-2 last:border-b-0">
-                                    <Label className="text-sm truncate">{watchItems?.[itemIndex]?.description || `Item ${itemIndex + 1}`}</Label>
+                                <div key={`${vendorIndex}-${itemIndex}`} className="grid grid-cols-[3fr,1fr,1fr,1fr] gap-4 items-center border-b py-2 last:border-b-0">
+                                    <Label className="text-sm truncate">{form.watch(`items.${itemIndex}.description`) || `Item ${itemIndex + 1}`}</Label>
                                     <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.quantity`, { valueAsNumber: true })} placeholder="Qty"/>
                                     <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.rate`, { valueAsNumber: true })} placeholder="Rate"/>
                                     <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.taxPercent`, { valueAsNumber: true })} placeholder="Tax %" />
