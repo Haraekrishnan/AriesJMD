@@ -173,36 +173,27 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
             form.reset({
                 title: existingQuotation.title,
                 items: existingQuotation.items,
-                vendors: existingQuotation.vendors.map(v => {
-                  let quotesArray: QuotationQuote[] = [];
-                  
-                  if (v.quotes) {
-                      quotesArray = existingQuotation.items.map((item, itemIndex) => {
-                          let quote: Partial<QuotationQuote> | undefined;
+                vendors: existingQuotation.vendors.map(vendor => {
+                    const quotesArray = existingQuotation.items.map(item => {
+                        const vendorQuotesArray = Array.isArray(vendor.quotes) ? vendor.quotes : (vendor.quotes ? Object.values(vendor.quotes) : []);
+                        const correspondingQuote = vendorQuotesArray.find(q => q && q.itemId === item.id);
+                        
+                        return {
+                            itemId: item.id,
+                            quantity: correspondingQuote?.quantity ?? 1,
+                            rate: correspondingQuote?.rate ?? 0,
+                            taxPercent: correspondingQuote?.taxPercent ?? 0,
+                        };
+                    });
+                    
+                    const additionalCostsArray = Array.isArray(vendor.additionalCosts) ? vendor.additionalCosts : (vendor.additionalCosts ? Object.values(vendor.additionalCosts) : []);
 
-                          if (Array.isArray(v.quotes)) {
-                            quote = v.quotes.find(q => q.itemId === item.id || (q as any).id === item.id) || v.quotes[itemIndex];
-                          } else if (typeof v.quotes === 'object') {
-                            quote = (v.quotes as any)[item.id] || 
-                                    (Object.values(v.quotes)[itemIndex] as Partial<QuotationQuote>) ||
-                                    Object.values(v.quotes).find((q: any) => q.itemId === item.id || q.id === item.id);
-                          }
-
-                          return {
-                              itemId: item.id,
-                              quantity: quote?.quantity ?? 1,
-                              rate: quote?.rate ?? 0,
-                              taxPercent: quote?.taxPercent ?? 0,
-                          };
-                      });
-                  }
-                  
-                  return {
-                    ...v,
-                    quotes: quotesArray,
-                    additionalCosts: Array.isArray(v.additionalCosts) ? v.additionalCosts : [],
-                }
-              })
+                    return {
+                        ...vendor,
+                        quotes: quotesArray,
+                        additionalCosts: additionalCostsArray,
+                    };
+                }),
             });
         } else {
             form.reset({
