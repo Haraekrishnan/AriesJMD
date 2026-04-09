@@ -73,7 +73,7 @@ const VendorQuoteSection = ({ vendorIndex, control }: { vendorIndex: number; con
             {fields.map((field, index) => (
                 <div key={field.id} className="flex gap-2 items-center">
                     <Input {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.name`)} placeholder="Cost Name (e.g. Cess)" />
-                    <Input type="number" {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.value`)} placeholder="Value"/>
+                    <Input type="number" {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.value`, { valueAsNumber: true })} placeholder="Value"/>
                     <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
                 </div>
             ))}
@@ -108,24 +108,24 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     const all = [
       ...inventoryItems
         .filter((i) => i.category === 'General' && !i.isArchived)
-        .map((i) => ({ id: i.id, name: i.name, uom: i.unit || 'Nos', category: 'Store Inventory', itemType: 'Inventory' })),
-      ...consumableItems.map((i) => ({ id: i.id, name: i.name, uom: i.unit || 'pcs', category: 'Consumables', itemType: 'Inventory' })),
-      ...utMachines.map((i) => ({ id: i.id, name: i.machineName, uom: 'Nos', category: 'Equipment', itemType: 'UTMachine' })),
-      ...dftMachines.map((i) => ({ id: i.id, name: i.machineName, uom: 'Nos', category: 'Equipment', itemType: 'DftMachine' })),
-      ...digitalCameras.map((i) => ({ id: i.id, name: `${i.make} ${i.model}`, uom: 'Nos', category: 'Equipment', itemType: 'DigitalCamera' })),
-      ...anemometers.map((i) => ({ id: i.id, name: `${i.make} ${i.model}`, uom: 'Nos', category: 'Equipment', itemType: 'Anemometer' })),
-      ...laptopsDesktops.map((i) => ({ id: i.id, name: `${i.make} ${i.model}`, uom: 'Nos', category: 'Equipment', itemType: 'LaptopDesktop' })),
-      ...mobileSims.filter(i => i.type === 'Mobile' || i.type === 'Mobile with SIM').map(i => ({ id: i.id, name: `${i.make} ${i.model}`, uom: 'Nos', category: 'Equipment', itemType: 'MobileSim' })),
-      ...otherEquipments.map((i) => ({ id: i.id, name: i.equipmentName, uom: 'Nos', category: 'Equipment', itemType: 'OtherEquipment' })),
-      ...weldingMachines.map((i) => ({ id: i.id, name: `Welding Machine ${i.serialNumber}`, uom: 'Nos', category: 'Equipment', itemType: 'WeldingMachine' })),
-      ...walkieTalkies.map((i) => ({ id: i.id, name: `Walkie Talkie ${i.serialNumber}`, uom: 'Nos', category: 'Equipment', itemType: 'WalkieTalkie' })),
-      ...pneumaticDrillingMachines.map((i) => ({ id: i.id, name: `Pneumatic Drill ${i.serialNumber}`, uom: 'Nos', category: 'Equipment', itemType: 'PneumaticDrillingMachine' })),
-      ...pneumaticAngleGrinders.map((i) => ({ id: i.id, name: `Pneumatic Grinder ${i.serialNumber}`, uom: 'Nos', category: 'Equipment', itemType: 'PneumaticAngleGrinder' })),
-      ...wiredDrillingMachines.map((i) => ({ id: i.id, name: `Wired Drill ${i.serialNumber}`, uom: 'Nos', category: 'Equipment', itemType: 'WiredDrillingMachine' })),
-      ...cordlessDrillingMachines.map((i) => ({ id: i.id, name: `Cordless Drill ${i.serialNumber}`, uom: 'Nos', category: 'Equipment', itemType: 'CordlessDrillingMachine' })),
-      ...wiredAngleGrinders.map((i) => ({ id: i.id, name: `Wired Grinder ${i.serialNumber}`, uom: 'Nos', category: 'Equipment', itemType: 'WiredAngleGrinder' })),
-      ...cordlessAngleGrinders.map((i) => ({ id: i.id, name: `Cordless Grinder ${i.serialNumber}`, uom: 'Nos', category: 'Equipment', itemType: 'CordlessAngleGrinder' })),
-      ...cordlessReciprocatingSaws.map((i) => ({ id: i.id, name: `Reciprocating Saw ${i.serialNumber}`, uom: 'Nos', category: 'Equipment', itemType: 'CordlessReciprocatingSaw' })),
+        .map((i) => ({ id: i.id, name: i.name, uom: i.unit || 'Nos', category: 'Store Inventory' as const, itemType: 'Inventory' })),
+      ...consumableItems.map((i) => ({ id: i.id, name: i.name, uom: i.unit || 'pcs', category: 'Consumables' as const, itemType: 'Inventory' })),
+      ...utMachines.map((i) => ({ id: i.id, name: i.machineName, uom: 'Nos', category: 'Equipment' as const, itemType: 'UTMachine' })),
+      ...dftMachines.map((i) => ({ id: i.id, name: i.machineName, uom: 'Nos', category: 'Equipment' as const, itemType: 'DftMachine' })),
+      ...digitalCameras.map((i) => ({ id: i.id, name: `${i.make} ${i.model}`, uom: 'Nos', category: 'Equipment' as const, itemType: 'DigitalCamera' })),
+      ...anemometers.map((i) => ({ id: i.id, name: `${i.make} ${i.model}`, uom: 'Nos', category: 'Equipment' as const, itemType: 'Anemometer' })),
+      ...laptopsDesktops.map((i) => ({ id: i.id, name: `${i.make} ${i.model}`, uom: 'Nos', category: 'Equipment' as const, itemType: 'LaptopDesktop' })),
+      ...mobileSims.filter(i => i.type === 'Mobile' || i.type === 'Mobile with SIM').map(i => ({ id: i.id, name: `${i.make} ${i.model}`, uom: 'Nos', category: 'Equipment' as const, itemType: 'MobileSim' })),
+      ...otherEquipments.map((i) => ({ id: i.id, name: i.equipmentName, uom: 'Nos', category: 'Equipment' as const, itemType: 'OtherEquipment' })),
+      ...weldingMachines.map((i) => ({ id: i.id, name: `Welding Machine ${i.serialNumber}`, uom: 'Nos', category: 'Equipment' as const, itemType: 'WeldingMachine' })),
+      ...walkieTalkies.map((i) => ({ id: i.id, name: `Walkie Talkie ${i.serialNumber}`, uom: 'Nos', category: 'Equipment' as const, itemType: 'WalkieTalkie' })),
+      ...pneumaticDrillingMachines.map((i) => ({ id: i.id, name: `Pneumatic Drill ${i.serialNumber}`, uom: 'Nos', category: 'Equipment' as const, itemType: 'PneumaticDrillingMachine' })),
+      ...pneumaticAngleGrinders.map((i) => ({ id: i.id, name: `Pneumatic Grinder ${i.serialNumber}`, uom: 'Nos', category: 'Equipment' as const, itemType: 'PneumaticAngleGrinder' })),
+      ...wiredDrillingMachines.map((i) => ({ id: i.id, name: `Wired Drill ${i.serialNumber}`, uom: 'Nos', category: 'Equipment' as const, itemType: 'WiredDrillingMachine' })),
+      ...cordlessDrillingMachines.map((i) => ({ id: i.id, name: `Cordless Drill ${i.serialNumber}`, uom: 'Nos', category: 'Equipment' as const, itemType: 'CordlessDrillingMachine' })),
+      ...wiredAngleGrinders.map((i) => ({ id: i.id, name: `Wired Grinder ${i.serialNumber}`, uom: 'Nos', category: 'Equipment' as const, itemType: 'WiredAngleGrinder' })),
+      ...cordlessAngleGrinders.map((i) => ({ id: i.id, name: `Cordless Grinder ${i.serialNumber}`, uom: 'Nos', category: 'Equipment' as const, itemType: 'CordlessAngleGrinder' })),
+      ...cordlessReciprocatingSaws.map((i) => ({ id: i.id, name: `Reciprocating Saw ${i.serialNumber}`, uom: 'Nos', category: 'Equipment' as const, itemType: 'CordlessReciprocatingSaw' })),
     ];
     // Create a Set of unique names to avoid duplicates in the dropdown
     const uniqueNames = new Set(all.map(item => item.name));
@@ -166,7 +166,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
   });
 
   const watchItems = form.watch('items');
-
+  
   useEffect(() => {
     if (isOpen) {
         if (existingQuotation) {
@@ -174,24 +174,17 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                 title: existingQuotation.title,
                 items: existingQuotation.items,
                 vendors: existingQuotation.vendors.map(vendor => {
-                    const quotesArray = existingQuotation.items.map(item => {
-                        const vendorQuotesArray = Array.isArray(vendor.quotes) ? vendor.quotes : (vendor.quotes ? Object.values(vendor.quotes) : []);
-                        const correspondingQuote = vendorQuotesArray.find(q => q && q.itemId === item.id);
-                        
-                        return {
-                            itemId: item.id,
-                            quantity: correspondingQuote?.quantity ?? 1,
-                            rate: correspondingQuote?.rate ?? 0,
-                            taxPercent: correspondingQuote?.taxPercent ?? 0,
-                        };
-                    });
+                    const quotesAsArray = Array.isArray(vendor.quotes) 
+                        ? vendor.quotes 
+                        : (vendor.quotes ? Object.values(vendor.quotes) : []);
+                    const additionalCostsAsArray = Array.isArray(vendor.additionalCosts) 
+                        ? vendor.additionalCosts 
+                        : (vendor.additionalCosts ? Object.values(vendor.additionalCosts) : []);
                     
-                    const additionalCostsArray = Array.isArray(vendor.additionalCosts) ? vendor.additionalCosts : (vendor.additionalCosts ? Object.values(vendor.additionalCosts) : []);
-
                     return {
                         ...vendor,
-                        quotes: quotesArray,
-                        additionalCosts: additionalCostsArray,
+                        quotes: quotesAsArray,
+                        additionalCosts: additionalCostsAsArray,
                     };
                 }),
             });
@@ -205,7 +198,29 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     }
   }, [isOpen, existingQuotation, form]);
 
+  useEffect(() => {
+    const items = form.getValues("items");
+    const vendors = form.getValues("vendors");
+  
+    vendors.forEach((vendor, vIndex) => {
+      const updatedQuotes = items.map((item, i) => {
+        const existing = vendor.quotes?.[i];
+  
+        return {
+          itemId: item.id,
+          quantity: existing?.quantity ?? 1,
+          rate: existing?.rate ?? 0,
+          taxPercent: existing?.taxPercent ?? 0,
+        };
+      });
+  
+      form.setValue(`vendors.${vIndex}.quotes`, updatedQuotes);
+    });
+  }, [watchItems, form]);
+
+
   const onSubmit = (data: FormValues) => {
+    console.log("FORM DATA:", data);
     if (isEditMode && existingQuotation) {
         updateQuotation({ ...existingQuotation, ...data });
         toast({ title: "Price Comparison Updated" });
@@ -340,9 +355,9 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                             {itemFields.map((itemField, itemIndex) => (
                                 <div key={itemField.id} className="grid grid-cols-[3fr,1fr,1fr,1fr] gap-4 items-center border-b py-2 last:border-b-0">
                                     <Label className="text-sm truncate">{watchItems?.[itemIndex]?.description || `Item ${itemIndex + 1}`}</Label>
-                                    <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.quantity`)} placeholder="Qty"/>
-                                    <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.rate`)} placeholder="Rate"/>
-                                    <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.taxPercent`)} placeholder="Tax %" />
+                                    <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.quantity`, { valueAsNumber: true })} placeholder="Qty"/>
+                                    <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.rate`, { valueAsNumber: true })} placeholder="Rate"/>
+                                    <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.taxPercent`, { valueAsNumber: true })} placeholder="Tax %" />
                                 </div>
                             ))}
                             <Separator className="my-4"/>
