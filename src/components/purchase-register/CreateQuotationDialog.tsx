@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { usePurchase } from '@/contexts/purchase-provider';
 import { Card, CardHeader, CardContent } from '../ui/card';
 import { useEffect, useMemo, useState } from 'react';
-import type { Quotation } from '@/lib/types';
+import type { Quotation, QuotationItem, QuotationQuote } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { cn } from '@/lib/utils';
@@ -172,11 +173,36 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
             form.reset({
                 title: existingQuotation.title,
                 items: existingQuotation.items,
-                vendors: existingQuotation.vendors.map(v => ({
+                vendors: existingQuotation.vendors.map(v => {
+                  let quotesArray: QuotationQuote[] = [];
+                  
+                  if (v.quotes) {
+                      quotesArray = existingQuotation.items.map((item, itemIndex) => {
+                          let quote: Partial<QuotationQuote> | undefined;
+
+                          if (Array.isArray(v.quotes)) {
+                            quote = v.quotes.find(q => q.itemId === item.id || (q as any).id === item.id) || v.quotes[itemIndex];
+                          } else if (typeof v.quotes === 'object') {
+                            quote = (v.quotes as any)[item.id] || 
+                                    (Object.values(v.quotes)[itemIndex] as Partial<QuotationQuote>) ||
+                                    Object.values(v.quotes).find((q: any) => q.itemId === item.id || q.id === item.id);
+                          }
+
+                          return {
+                              itemId: item.id,
+                              quantity: quote?.quantity ?? 1,
+                              rate: quote?.rate ?? 0,
+                              taxPercent: quote?.taxPercent ?? 0,
+                          };
+                      });
+                  }
+                  
+                  return {
                     ...v,
-                    quotes: Array.isArray(v.quotes) ? v.quotes : [],
+                    quotes: quotesArray,
                     additionalCosts: Array.isArray(v.additionalCosts) ? v.additionalCosts : [],
-                }))
+                }
+              })
             });
         } else {
             form.reset({
