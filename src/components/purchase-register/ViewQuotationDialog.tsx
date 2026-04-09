@@ -15,6 +15,7 @@ import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Badge } from '../ui/badge';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
 interface ViewQuotationDialogProps {
   isOpen: boolean;
@@ -129,23 +130,38 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
     return sorted[0].grandTotal > 0 ? sorted[0].vendorId : null;
   }, [calculatedTotals]);
   
-  const handleStatusChange = (newStatus: QuotationStatus) => {
-    if (newStatus === 'Approved' && !quotation.finalizedVendorId) {
-      if (l1VendorId) {
-        updateQuotation({ ...quotation, finalizedVendorId: l1VendorId, status: 'Approved' });
-        toast({ title: 'Quotation Approved', description: 'The lowest vendor has been automatically selected.' });
-      } else {
-        toast({ title: 'Cannot Approve', description: 'No valid L1 vendor could be determined.', variant: 'destructive'});
-      }
+ const handleStatusChange = (newStatus: QuotationStatus) => {
+    if (!canFinalize) return;
+
+    if (newStatus === 'PO Sent' && !quotation.finalizedVendorId) {
+        toast({ title: 'Vendor Not Finalized', description: 'Please approve the quotation and finalize a vendor before marking "PO Sent".', variant: 'destructive'});
+        return;
+    }
+    
+    if (quotation.finalizedVendorId && (newStatus === 'Pending' || newStatus === 'Rejected')) {
+      toast({ title: 'Action Not Allowed', description: 'Cannot change status backward after a vendor has been finalized.', variant: 'destructive' });
       return;
     }
     
-    if (newStatus === 'PO Sent' && !quotation.finalizedVendorId) {
-        toast({ title: 'Select a vendor first', description: 'You must approve the quotation to finalize a vendor before marking PO as Sent.', variant: 'destructive'});
-        return;
-    }
     updateQuotation({ ...quotation, status: newStatus });
     toast({ title: `Status updated to ${newStatus}` });
+  };
+  
+  const handleFinalizeVendor = (vendorId: string) => {
+    if (!canFinalize) return;
+    if (quotation.status !== 'Approved') {
+      toast({
+        variant: 'destructive',
+        title: 'Approval Required',
+        description: 'You must set the status to "Approved" before you can finalize a vendor.',
+      });
+      return;
+    }
+    updateQuotation({ ...quotation, finalizedVendorId: vendorId, status: 'PO Sent' });
+    toast({
+      title: 'Vendor Finalized & PO Sent',
+      description: 'The selected vendor has been finalized and the status is updated to "PO Sent".'
+    });
   };
 
   const handlePoSave = () => {
@@ -316,11 +332,40 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
                <TableRow className="font-bold text-base bg-muted/50">
                   <TableCell colSpan={3} className="text-right">Grand Total</TableCell>
                   {calculatedTotals.map((total, i) => (
-                    <TableCell key={i} colSpan={quotation.finalizedVendorId === total.vendorId ? 6 : 4} className={cn("text-right border-x", total.vendorId === l1VendorId && "bg-green-100 dark:bg-green-900/50")}>
-                        <div className="flex items-center justify-end gap-2">
-                           {total.vendorId === l1VendorId && <Crown className="h-4 w-4 text-green-600" />}
-                           {formatCurrency(total.grandTotal)}
-                           {quotation.finalizedVendorId === total.vendorId && <Badge variant="success">Finalized</Badge>}
+                    <TableCell key={i} colSpan={quotation.finalizedVendorId === total.vendorId ? 6 : 4} className={cn("text-right border-x", total.vendorId === l1VendorId && !quotation.finalizedVendorId && "bg-green-100 dark:bg-green-900/50", quotation.finalizedVendorId === total.vendorId && "bg-green-100 dark:bg-green-900/50")}>
+                        <div className="flex items-center justify-end gap-2 p-2">
+                           {total.vendorId === l1VendorId && !quotation.finalizedVendorId && (
+                               <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger><Crown className="h-4 w-4 text-yellow-500" /></TooltipTrigger>
+                                    <TooltipContent><p>Lowest Bid (L1)</p></TooltipContent>
+                                </Tooltip>
+                               </TooltipProvider>
+                           )}
+                           <span className="text-lg">{formatCurrency(total.grandTotal)}</span>
+                           {quotation.finalizedVendorId === total.vendorId ? (
+                                <Badge variant="success">Finalized</Badge>
+                           ) : (
+                               quotation.status === 'Approved' && canFinalize && (
+                                   <AlertDialog>
+                                       <AlertDialogTrigger asChild>
+                                           <Button size="sm" variant="default"><ThumbsUp className="h-4 w-4 mr-2" />Finalize</Button>
+                                       </AlertDialogTrigger>
+                                       <AlertDialogContent>
+                                           <AlertDialogHeader>
+                                               <AlertDialogTitle>Finalize Vendor?</AlertDialogTitle>
+                                               <AlertDialogDescription>
+                                                   This will select '{quotation.vendors.find(v => v.vendorId === total.vendorId)?.name}' as the final vendor and move the status to "PO Sent". This action cannot be easily undone.
+                                               </AlertDialogDescription>
+                                           </AlertDialogHeader>
+                                           <AlertDialogFooter>
+                                               <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                               <AlertDialogAction onClick={() => handleFinalizeVendor(total.vendorId)}>Confirm</AlertDialogAction>
+                                           </AlertDialogFooter>
+                                       </AlertDialogContent>
+                                   </AlertDialog>
+                               )
+                           )}
                         </div>
                     </TableCell>
                   ))}
