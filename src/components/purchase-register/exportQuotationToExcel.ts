@@ -9,92 +9,131 @@ const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { styl
 
 export const exportToExcel = async (quotation: Quotation) => {
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet(quotation.title.replace(/[\\/*?:]/g, "").substring(0, 31));
+    const worksheet = workbook.addWorksheet("Price Comparison");
 
-    // A1: PRICE COMPARISON
-    worksheet.mergeCells('A1:Z1');
-    const titleCell = worksheet.getCell('A1');
-    titleCell.value = 'PRICE COMPARISON';
-    titleCell.font = { name: 'Calibri', size: 16, bold: true };
-    titleCell.alignment = { horizontal: 'center' };
-    
-    // Vendor Names Header Row
-    let vendorHeader: (string | null)[] = ['', '', ''];
-    quotation.vendors.forEach(vendor => {
-        vendorHeader.push(vendor.name, '', '', '');
-    });
-    const vendorRow = worksheet.addRow(vendorHeader);
-    let vendorCol = 4;
-    quotation.vendors.forEach(() => {
-        worksheet.mergeCells(vendorRow.number, vendorCol, vendorRow.number, vendorCol + 3);
-        vendorRow.getCell(vendorCol).alignment = { horizontal: 'center' };
-        vendorRow.getCell(vendorCol).font = { bold: true };
-        vendorCol += 4;
-    });
-    vendorRow.commit();
+    // ===== TITLE =====
+    worksheet.mergeCells('A1:L1');
+    const title = worksheet.getCell('A1');
+    title.value = 'PRICE COMPARISON - OFFICE & STORE CONTAINER';
+    title.font = { bold: true, size: 14 };
+    title.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    // Header for items
-    let header = ['Sl. No', 'DESCRIPTION', 'UOM'];
-    quotation.vendors.forEach(() => {
-        header.push('QTY', 'RATE', 'TAX %', 'AMOUNT');
-    });
-    const headerRow = worksheet.addRow(header);
-    headerRow.eachCell(cell => {
-      cell.font = { bold: true };
-      cell.alignment = { horizontal: 'center' };
-    });
+    // ===== VENDOR GROUP HEADER (YELLOW) =====
+    const vendorRow = worksheet.addRow([
+        '', '', '',
+        quotation.vendors[0]?.name, '', '',
+        quotation.vendors[1]?.name, '', '',
+        quotation.vendors[2]?.name, '', ''
+    ]);
 
-    // Items
-    quotation.items.forEach((item, index) => {
-        let rowData: any[] = [index + 1, item.description, item.uom];
-        quotation.vendors.forEach(vendor => {
-            const quote = vendor.quotes.find(q => q.itemId === item.id);
-            rowData.push(quote?.quantity || 0, quote?.rate || 0, quote?.taxPercent || 0, (quote?.quantity || 0) * (quote?.rate || 0));
-        });
-        worksheet.addRow(rowData);
-    });
-    
-    // Totals logic
-    const calculatedTotals = quotation.vendors.map(vendor => {
-        const subTotal = vendor.quotes.reduce((acc, quote) => acc + (quote.quantity * quote.rate), 0);
-        const totalTax = vendor.quotes.reduce((acc, quote) => acc + (quote.quantity * quote.rate * (quote.taxPercent / 100)), 0);
-        const additionalCostsTotal = (vendor.additionalCosts || []).reduce((acc, cost) => acc + cost.value, 0);
-        const grandTotal = subTotal + totalTax + additionalCostsTotal;
-        return { vendorId: vendor.vendorId, subTotal, totalTax, additionalCosts: vendor.additionalCosts || [], grandTotal };
-    });
+    worksheet.mergeCells(`D${vendorRow.number}:F${vendorRow.number}`);
+    worksheet.mergeCells(`G${vendorRow.number}:I${vendorRow.number}`);
+    worksheet.mergeCells(`J${vendorRow.number}:L${vendorRow.number}`);
 
-    const addFooterRow = (label: string, dataExtractor: (total: typeof calculatedTotals[0], vendor: typeof quotation.vendors[0]) => string | number) => {
-        const newRow = worksheet.addRow([]);
-        newRow.getCell(3).value = label;
-        newRow.getCell(3).font = { bold: true };
-        newRow.getCell(3).alignment = { horizontal: 'right' };
-        
-        let currentCell = 4;
-        calculatedTotals.forEach((total, i) => {
-            const value = dataExtractor(total, quotation.vendors[i]);
-            const cell = newRow.getCell(currentCell + 3); // Amount column
-            cell.value = value;
-            cell.alignment = { horizontal: 'right' };
+    vendorRow.eachCell((cell, col) => {
+        if (col >= 4) {
+            cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFFF00' } // Yellow
+            };
             cell.font = { bold: true };
-            if (typeof value === 'number') {
-              cell.numFmt = '#,##0.00';
-            }
-            currentCell += 4;
+            cell.alignment = { horizontal: 'center' };
+        }
+    });
+
+    // ===== COLUMN HEADERS (BLUE) =====
+    const headerRow = worksheet.addRow([
+        'ITEM', 'DESCRIPTION', 'QTY', 'UOM',
+        'RATE', 'AMOUNT',
+        'QTY', 'UOM', 'RATE', 'AMOUNT',
+        'QTY', 'UOM', 'RATE', 'AMOUNT'
+    ]);
+
+    headerRow.eachCell(cell => {
+        cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: '305496' } // Blue
+        };
+        cell.font = { color: { argb: 'FFFFFF' }, bold: true };
+        cell.alignment = { horizontal: 'center' };
+    });
+
+    // ===== ITEMS =====
+    quotation.items.forEach((item, index) => {
+        let row: any[] = [
+            index + 1,
+            item.description
+        ];
+
+        quotation.vendors.forEach(vendor => {
+            const q = vendor.quotes.find(q => q.itemId === item.id);
+
+            row.push(
+                q?.quantity || 0,
+                item.uom,
+                q?.rate || 0,
+                (q?.quantity || 0) * (q?.rate || 0)
+            );
+        });
+
+        const addedRow = worksheet.addRow(row);
+
+        // Currency format
+        [5,6,9,10,13,14].forEach(col => {
+            addedRow.getCell(col).numFmt = '₹ #,##0.00';
+        });
+    });
+
+    // ===== TOTAL CALCULATIONS =====
+    const totals = quotation.vendors.map(v => {
+        const sub = v.quotes.reduce((a, q) => a + (q.quantity * q.rate), 0);
+        const tax = v.quotes.reduce((a, q) => a + (q.quantity * q.rate * (q.taxPercent / 100)), 0);
+        return {
+            sub,
+            tax,
+            grand: sub + tax
+        };
+    });
+
+    const addRow = (label: string, values: number[]) => {
+        const row = worksheet.addRow(['', label, '', '',
+            values[0], '',
+            values[1], '',
+            values[2]
+        ]);
+
+        row.font = { bold: true };
+
+        [5,7,9].forEach(col => {
+            row.getCell(col).numFmt = '₹ #,##0.00';
         });
     };
-    
-    worksheet.addRow([]); // Spacer
-    addFooterRow('Sub-Total', (total) => total.subTotal);
 
-    const allCostNames = Array.from(new Set(quotation.vendors.flatMap(v => v.additionalCosts?.map(ac => ac.name) || [])));
-    allCostNames.forEach(costName => {
-        addFooterRow(costName, (total) => total.additionalCosts.find(c => c.name === costName)?.value || 0);
+    worksheet.addRow([]);
+
+    addRow('Subtotal', totals.map(t => t.sub));
+    addRow('GST 18%', totals.map(t => t.tax));
+    addRow('Grand Total', totals.map(t => t.grand));
+
+    // ===== COLUMN WIDTH =====
+    worksheet.columns.forEach(col => {
+        col.width = 15;
     });
-    
-    addFooterRow('Total Tax', (total) => total.totalTax);
-    addFooterRow('Grand Total', (total) => total.grandTotal);
 
+    // ===== BORDERS =====
+    worksheet.eachRow(row => {
+        row.eachCell(cell => {
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            };
+        });
+    });
 
     const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `${quotation.title.replace(/ /g, "_")}.xlsx`);
+    saveAs(new Blob([buffer]), 'Price_Comparison.xlsx');
 };
