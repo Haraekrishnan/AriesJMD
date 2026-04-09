@@ -106,11 +106,11 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation }: Vi
                   <TableCell colSpan={3} className="text-right">Sub-Total</TableCell>
                   {calculatedTotals.map((total, i) => <TableCell key={i} colSpan={4} className="text-right border-x">{formatCurrency(total.subTotal)}</TableCell>)}
               </TableRow>
-              {calculatedTotals[0]?.additionalCosts.map((cost, costIndex) => (
-                  <TableRow key={cost.name}>
-                      <TableCell colSpan={3} className="text-right">{cost.name}</TableCell>
+              {(quotation.vendors.flatMap(v => v.additionalCosts || [])).length > 0 && Array.from(new Set(quotation.vendors.flatMap(v => v.additionalCosts?.map(c => c.name) || []))).map(costName => (
+                  <TableRow key={costName}>
+                      <TableCell colSpan={3} className="text-right">{costName}</TableCell>
                       {calculatedTotals.map((total, vendorIndex) => (
-                          <TableCell key={vendorIndex} colSpan={4} className="text-right border-x">{formatCurrency(total.additionalCosts.find(c => c.name === cost.name)?.value || 0)}</TableCell>
+                          <TableCell key={vendorIndex} colSpan={4} className="text-right border-x">{formatCurrency(total.additionalCosts.find(c => c.name === costName)?.value || 0)}</TableCell>
                       ))}
                   </TableRow>
               ))}
