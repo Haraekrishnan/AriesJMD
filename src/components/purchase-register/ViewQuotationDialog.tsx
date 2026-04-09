@@ -25,9 +25,22 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation }: Vi
 
   const calculatedTotals = useMemo(() => {
     return quotation.vendors.map(vendor => {
-      const quotesArray = Array.isArray(vendor.quotes) ? vendor.quotes : Object.values(vendor.quotes || {});
-      const subTotal = quotesArray.reduce((acc, quote) => acc + ((quote.quantity || 0) * (quote.rate || 0)), 0);
-      const totalTax = quotesArray.reduce((acc, quote) => acc + ((quote.quantity || 0) * (quote.rate || 0) * ((quote.taxPercent || 0) / 100)), 0);
+      const subTotal = quotation.items.reduce((acc, item) => {
+        const quote = vendor.quotes?.[item.id];
+        if (quote) {
+          return acc + (quote.quantity || 0) * (quote.rate || 0);
+        }
+        return acc;
+      }, 0);
+
+      const totalTax = quotation.items.reduce((acc, item) => {
+        const quote = vendor.quotes?.[item.id];
+        if (quote) {
+          const amount = (quote.quantity || 0) * (quote.rate || 0);
+          return acc + (amount * ((quote.taxPercent || 0) / 100));
+        }
+        return acc;
+      }, 0);
       
       const additionalCostsArray = Array.isArray(vendor.additionalCosts) ? vendor.additionalCosts : Object.values(vendor.additionalCosts || {});
       const additionalCostsTotal = additionalCostsArray.reduce((acc, cost) => acc + (cost.value || 0), 0);
@@ -91,12 +104,15 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation }: Vi
                   <TableCell className="font-medium">{item.description}</TableCell>
                   <TableCell>{item.uom}</TableCell>
                   {quotation.vendors.map(vendor => {
-                    const quote = vendor.quotes?.[item.id];
+                    const quote = Array.isArray(vendor.quotes)
+                      ? vendor.quotes.find(q => q.itemId === item.id)
+                      : vendor.quotes?.[item.id];
+                      
                     const amount = (quote?.quantity || 0) * (quote?.rate || 0);
                     return (
                       <React.Fragment key={vendor.id}>
                         <TableCell className="text-center border-l">{quote?.quantity || 0}</TableCell>
-                        <TableCell className="text-center">{formatCurrency(quote?.rate || 0)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(quote?.rate || 0)}</TableCell>
                         <TableCell className="text-center">{quote?.taxPercent || 0}%</TableCell>
                         <TableCell className="text-right font-semibold border-r">{formatCurrency(amount)}</TableCell>
                       </React.Fragment>
