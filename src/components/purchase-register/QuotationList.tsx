@@ -78,7 +78,7 @@ export default function QuotationList({ quotations, onEdit }: { quotations: Quot
                             <TableHead>Status</TableHead>
                             <TableHead>Next Action</TableHead>
                             <TableHead>Request On</TableHead>
-                            <TableHead>Added By</TableHead>
+                            <TableHead>Time</TableHead>
                             <TableHead>Requested By</TableHead>
                             <TableHead>Requirement</TableHead>
                         </TableRow>
@@ -116,7 +116,7 @@ export default function QuotationList({ quotations, onEdit }: { quotations: Quot
                                         </div>
                                     </TableCell>
                                     <TableCell>{format(parseISO(q.createdAt), 'yyyy-MM-dd')}</TableCell>
-                                    <TableCell>{creator?.name || 'Unknown'}</TableCell>
+                                    <TableCell>{format(parseISO(q.createdAt), 'p')}</TableCell>
                                     <TableCell>{creator?.name || 'Unknown'}</TableCell>
                                     <TableCell className="font-medium max-w-xs truncate">{q.title}</TableCell>
                                 </TableRow>
