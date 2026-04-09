@@ -91,8 +91,7 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation }: Vi
                   <TableCell className="font-medium">{item.description}</TableCell>
                   <TableCell>{item.uom}</TableCell>
                   {quotation.vendors.map(vendor => {
-                    const quotesArray = Array.isArray(vendor.quotes) ? vendor.quotes : Object.values(vendor.quotes || {});
-                    const quote = quotesArray.find(q => q.itemId === item.id);
+                    const quote = vendor.quotes?.[item.id];
                     const amount = (quote?.quantity || 0) * (quote?.rate || 0);
                     return (
                       <React.Fragment key={vendor.id}>
