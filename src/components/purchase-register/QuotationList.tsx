@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
 import { useAppContext } from '@/contexts/app-provider';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { useToast } from '@/hooks/use-toast';
 
 const statusVariant: { [key in QuotationStatus]: 'default' | 'secondary' | 'destructive' | 'success' | 'warning' } = {
   Pending: 'secondary',
@@ -26,12 +28,35 @@ const statusVariant: { [key in QuotationStatus]: 'default' | 'secondary' | 'dest
   Rejected: 'destructive',
 };
 
+const statusOptions: QuotationStatus[] = ['Pending', 'Approved', 'PO Sent', 'Partially Received', 'Completed', 'Rejected'];
+
 export default function QuotationList({ quotations, onEdit }: { quotations: Quotation[], onEdit: (q: Quotation) => void }) {
     const [viewingQuotation, setViewingQuotation] = useState<Quotation | null>(null);
-    const { users } = useAppContext();
+    const { users, can, updateQuotation } = useAppContext();
+    const { toast } = useToast();
 
     const handleExport = (quotation: Quotation) => {
         exportToExcel(quotation);
+    };
+
+    const handleStatusChange = (quotation: Quotation, newStatus: QuotationStatus) => {
+        if (!can.manage_purchase_register) {
+            toast({ title: "Permission Denied", variant: "destructive" });
+            return;
+        }
+
+        if (newStatus === 'PO Sent' && !quotation.finalizedVendorId) {
+            toast({ title: 'Vendor Not Finalized', description: 'Please approve a vendor before marking "PO Sent". View the item to finalize.', variant: 'destructive'});
+            return;
+        }
+        
+        if (quotation.finalizedVendorId && (newStatus === 'Pending' || newStatus === 'Rejected')) {
+          toast({ title: 'Action Not Allowed', description: 'Cannot change status backward after a vendor has been finalized.', variant: 'destructive' });
+          return;
+        }
+        
+        updateQuotation({ ...quotation, status: newStatus });
+        toast({ title: `Status updated to ${newStatus}` });
     };
 
     if (!quotations || quotations.length === 0) {
@@ -65,7 +90,24 @@ export default function QuotationList({ quotations, onEdit }: { quotations: Quot
                                 <TableRow key={q.id}>
                                     <TableCell>{index + 1}</TableCell>
                                     <TableCell>...{q.id.slice(-6)}</TableCell>
-                                    <TableCell><Badge variant={statusVariant[q.status] || 'secondary'}>{q.status}</Badge></TableCell>
+                                    <TableCell>
+                                        {can.manage_purchase_register ? (
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Badge variant={statusVariant[q.status] || 'secondary'} className="cursor-pointer">{q.status}</Badge>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent>
+                                                    {statusOptions.map(option => (
+                                                        <DropdownMenuItem key={option} onSelect={() => handleStatusChange(q, option)}>
+                                                            {option}
+                                                        </DropdownMenuItem>
+                                                    ))}
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        ) : (
+                                            <Badge variant={statusVariant[q.status] || 'secondary'}>{q.status}</Badge>
+                                        )}
+                                    </TableCell>
                                     <TableCell>
                                         <div className="flex gap-1">
                                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewingQuotation(q)}><Eye className="h-4 w-4"/></Button>
