@@ -28,24 +28,22 @@ const quotationItemSchema = z.object({
     itemType: z.string().min(1, 'Item Type is required'),
 });
 
-const additionalCostSchema = z.object({
-    id: z.string(),
-    name: z.string().min(1, "Cost name is required"),
-    value: z.coerce.number().min(0, "Value must be non-negative"),
-});
-
 const quotationVendorSchema = z.object({
     id: z.string(),
     vendorId: z.string().min(1, "Select vendor"),
     name: z.string(),
     quotes: z.array(z.object({
         itemId: z.string(),
-        quantity: z.coerce.number().min(1),
+        quantity: z.coerce.number().min(1, 'Qty > 0'),
         rate: z.coerce.number().min(0),
         taxPercent: z.coerce.number().min(0).max(100),
         receivedQuantity: z.coerce.number().optional(),
     })),
-    additionalCosts: z.array(additionalCostSchema).optional(),
+    additionalCosts: z.array(z.object({
+        id: z.string(),
+        name: z.string().min(1, "Cost name is required"),
+        value: z.coerce.number().min(0, "Value must be non-negative"),
+    })).optional(),
 });
 
 const quotationSchema = z.object({
@@ -62,7 +60,7 @@ interface CreateQuotationDialogProps {
   existingQuotation?: Quotation | null;
 }
 
-const VendorQuoteSection = ({ vendorIndex, control }: { vendorIndex: number; control: any }) => {
+const VendorQuoteSection = ({ vendorIndex, control, formState }: { vendorIndex: number; control: any; formState: any }) => {
     const { fields, append, remove } = useFieldArray({
         control,
         name: `vendors.${vendorIndex}.additionalCosts`
@@ -71,9 +69,19 @@ const VendorQuoteSection = ({ vendorIndex, control }: { vendorIndex: number; con
     return (
         <div className="space-y-2">
             {fields.map((field, index) => (
-                <div key={field.id} className="flex gap-2 items-center">
-                    <Input {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.name`)} placeholder="Cost Name (e.g. Cess)" />
-                    <Input type="number" {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.value`, { valueAsNumber: true })} placeholder="Value"/>
+                <div key={field.id} className="flex gap-2 items-start">
+                    <div className="flex-1">
+                      <Input {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.name`)} placeholder="Cost Name (e.g. Cess)" />
+                       {formState.errors.vendors?.[vendorIndex]?.additionalCosts?.[index]?.name && (
+                        <p className="text-xs text-destructive mt-1">{formState.errors.vendors[vendorIndex].additionalCosts[index].name.message}</p>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <Input type="number" {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.value`, { valueAsNumber: true, setValueAs: v => v === "" ? 0 : Number(v) })} placeholder="Value"/>
+                      {formState.errors.vendors?.[vendorIndex]?.additionalCosts?.[index]?.value && (
+                        <p className="text-xs text-destructive mt-1">{formState.errors.vendors[vendorIndex].additionalCosts[index].value.message}</p>
+                      )}
+                    </div>
                     <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
                 </div>
             ))}
@@ -168,17 +176,20 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
   useEffect(() => {
     if (isOpen) {
         if (existingQuotation) {
-            const items = existingQuotation.items || [];
+            const itemsFromQuote = existingQuotation.items || [];
+            
             const vendorsWithSyncedQuotes = (existingQuotation.vendors || []).map(vendor => {
-                const quotesAsObject = !Array.isArray(vendor.quotes) 
-                    ? vendor.quotes 
-                    : (vendor.quotes || []).reduce((acc: Record<string, QuotationQuote>, q) => {
-                        if (q && q.itemId) acc[q.itemId] = q;
-                        return acc;
-                      }, {});
-                
-                const syncedQuotes = items.map(item => {
-                    const existingQuote = quotesAsObject ? (quotesAsObject as any)[item.itemId] : undefined;
+                const quotesMap = new Map<string, QuotationQuote>();
+                if (vendor.quotes) {
+                    if (Array.isArray(vendor.quotes)) {
+                        vendor.quotes.forEach(q => q && quotesMap.set(q.itemId, q));
+                    } else { // It's an object from older data structure
+                        Object.values(vendor.quotes).forEach((q: any) => q && q.itemId && quotesMap.set(q.itemId, q));
+                    }
+                }
+
+                const syncedQuotes = itemsFromQuote.map(item => {
+                    const existingQuote = quotesMap.get(item.itemId);
                     return {
                         itemId: item.itemId,
                         quantity: existingQuote?.quantity ?? 1,
@@ -192,44 +203,43 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
 
             form.reset({
                 title: existingQuotation.title,
-                items: items,
+                items: itemsFromQuote,
                 vendors: vendorsWithSyncedQuotes,
             });
         } else {
-            form.reset({
-                title: '',
-                items: [],
-                vendors: []
-            });
+            form.reset({ title: '', items: [], vendors: [] });
         }
     }
-}, [isOpen, existingQuotation, form]);
+  }, [isOpen, existingQuotation, form]);
 
   useEffect(() => {
     const items = form.getValues("items");
     const vendors = form.getValues("vendors");
-  
+
     vendors.forEach((vendor, vIndex) => {
-      if (!vendor.quotes || vendor.quotes.length !== items.length) {
-        const existingQuotesMap = new Map((vendor.quotes || []).map(q => [q.itemId, q]));
-        const newQuotes = items.map(item => {
-            const existingQuote = existingQuotesMap.get(item.itemId);
-            return {
-                itemId: item.itemId,
-                quantity: existingQuote?.quantity ?? 1,
-                rate: existingQuote?.rate ?? 0,
-                taxPercent: existingQuote?.taxPercent ?? 0,
-                receivedQuantity: existingQuote?.receivedQuantity ?? 0,
-            };
-        });
-        form.setValue(`vendors.${vIndex}.quotes`, newQuotes, { shouldDirty: true });
-      }
+        if (!vendor.quotes || vendor.quotes.length !== items.length) {
+            const newQuotes = items.map((item) => {
+                const existingQuote = Array.isArray(vendor.quotes) ? vendor.quotes.find(q => q.itemId === item.itemId) : undefined;
+                return {
+                    itemId: item.itemId,
+                    quantity: existingQuote?.quantity ?? 1,
+                    rate: existingQuote?.rate ?? 0,
+                    taxPercent: existingQuote?.taxPercent ?? 0,
+                    receivedQuantity: existingQuote?.receivedQuantity ?? 0,
+                };
+            });
+            form.setValue(`vendors.${vIndex}.quotes`, newQuotes);
+        }
     });
   }, [itemFields.length, form]);
 
 
   const onSubmit = (data: FormValues) => {
     console.log("FORM DATA:", data);
+    if (!data.vendors.length || !data.items.length) {
+        toast({ title: "Missing items or vendors", variant: "destructive" });
+        return;
+    }
     if (isEditMode && existingQuotation) {
         updateQuotation({ ...existingQuotation, ...data });
         toast({ title: "Price Comparison Updated" });
@@ -278,7 +288,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
           <DialogTitle>{isEditMode ? 'Edit' : 'New'} Price Comparison</DialogTitle>
           <DialogDescription>Add items and vendors to compare quotes.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
+        <form onSubmit={form.handleSubmit(onSubmit, (errors) => console.log("FORM ERRORS:", errors))} className="flex-1 flex flex-col overflow-hidden">
           <ScrollArea className="flex-1 pr-6 -mr-6">
             <div className="space-y-6">
               <div>
@@ -347,10 +357,13 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                         <CardHeader className="flex-row items-center justify-between p-4">
                             <div className="flex items-center gap-4">
                                 <Users2 className="h-6 w-6"/>
-                                <Select onValueChange={(vendorId) => handleVendorSelect(vendorIndex, vendorId)} defaultValue={vendorField.vendorId}>
+                                <Select value={form.watch(`vendors.${vendorIndex}.vendorId`)} onValueChange={(vendorId) => handleVendorSelect(vendorIndex, vendorId)}>
                                     <SelectTrigger className="w-64"><SelectValue placeholder="Select Vendor"/></SelectTrigger>
                                     <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
                                 </Select>
+                                {form.formState.errors.vendors?.[vendorIndex]?.vendorId && (
+                                    <p className="text-xs text-destructive">Select a vendor</p>
+                                )}
                             </div>
                             <Button type="button" variant="ghost" size="icon" onClick={() => removeVendor(vendorIndex)}><X className="h-4 w-4"/></Button>
                         </CardHeader>
@@ -362,16 +375,25 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                 <span className="text-center">Tax %</span>
                             </div>
                             {itemFields.map((itemField, itemIndex) => (
-                                <div key={`${vendorIndex}-${itemIndex}`} className="grid grid-cols-[3fr,1fr,1fr,1fr] gap-4 items-center border-b py-2 last:border-b-0">
-                                    <Label className="text-sm truncate">{form.watch(`items.${itemIndex}.description`) || `Item ${itemIndex + 1}`}</Label>
-                                    <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.quantity`, { valueAsNumber: true })} placeholder="Qty"/>
-                                    <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.rate`, { valueAsNumber: true })} placeholder="Rate"/>
-                                    <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.taxPercent`, { valueAsNumber: true })} placeholder="Tax %" />
+                                <div key={`${vendorIndex}-${itemIndex}`} className="grid grid-cols-[3fr,1fr,1fr,1fr] gap-4 items-start border-b py-2 last:border-b-0">
+                                    <Label className="text-sm truncate pt-2">{form.watch(`items.${itemIndex}.description`) || `Item ${itemIndex + 1}`}</Label>
+                                    <div>
+                                        <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.quantity`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Qty"/>
+                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.quantity && <p className="text-xs text-destructive mt-1">Qty > 0</p>}
+                                    </div>
+                                    <div>
+                                        <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.rate`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Rate"/>
+                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.rate && <p className="text-xs text-destructive mt-1">Invalid Rate</p>}
+                                    </div>
+                                    <div>
+                                        <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.taxPercent`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Tax %" />
+                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.taxPercent && <p className="text-xs text-destructive mt-1">Invalid Tax</p>}
+                                    </div>
                                 </div>
                             ))}
                             <Separator className="my-4"/>
                             <h5 className="font-semibold text-sm mb-2">Additional Costs</h5>
-                            <VendorQuoteSection vendorIndex={vendorIndex} control={form.control} />
+                            <VendorQuoteSection vendorIndex={vendorIndex} control={form.control} formState={form.formState} />
                         </CardContent>
                     </Card>
                    ))}
