@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -173,6 +174,8 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     name: "vendors"
   });
 
+  const watchItems = form.watch("items");
+
   useEffect(() => {
     if (isOpen) {
         if (existingQuotation) {
@@ -189,11 +192,10 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                 }
 
                 const syncedQuotes = itemsFromQuote.map(item => {
-                    const key = item.itemId;
-                    const existingQuote = quotesMap.get(key);
+                    const existingQuote = quotesMap.get(item.itemId);
 
                     return {
-                        itemId: key,
+                        itemId: item.itemId,
                         quantity: existingQuote?.quantity ?? 1,
                         rate: existingQuote?.rate ?? 0,
                         taxPercent: existingQuote?.taxPercent ?? 0,
@@ -217,25 +219,24 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
   useEffect(() => {
     const items = form.getValues("items");
     const vendors = form.getValues("vendors");
-
+  
     vendors.forEach((vendor, vIndex) => {
-        if (!vendor.quotes || vendor.quotes.length !== items.length) {
-            const updatedQuotes = items.map((item, i) => ({
-                itemId: item.itemId,
-                quantity: vendor.quotes?.[i]?.quantity ?? 1,
-                rate: vendor.quotes?.[i]?.rate ?? 0,
-                taxPercent: vendor.quotes?.[i]?.taxPercent ?? 0,
-                receivedQuantity: vendor.quotes?.[i]?.receivedQuantity ?? 0,
-            }));
-    
-            form.setValue(`vendors.${vIndex}.quotes`, updatedQuotes);
-        }
+      if (!vendor.quotes || vendor.quotes.length !== items.length) {
+        const updatedQuotes = items.map((item, i) => ({
+          itemId: item.itemId,
+          quantity: vendor.quotes?.[i]?.quantity ?? 1,
+          rate: vendor.quotes?.[i]?.rate ?? 0,
+          taxPercent: vendor.quotes?.[i]?.taxPercent ?? 0,
+          receivedQuantity: vendor.quotes?.[i]?.receivedQuantity ?? 0,
+        }));
+  
+        form.setValue(`vendors.${vIndex}.quotes`, updatedQuotes);
+      }
     });
   }, [itemFields.length, form]);
 
 
   const onSubmit = (data: FormValues) => {
-    console.log("FORM DATA:", data);
     if (!data.vendors.length || !data.items.length) {
         toast({ title: "Missing items or vendors", variant: "destructive" });
         return;
