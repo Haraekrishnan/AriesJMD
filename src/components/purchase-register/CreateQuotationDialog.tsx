@@ -182,14 +182,14 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                 const quotesMap = new Map<string, QuotationQuote>();
                 if (Array.isArray(vendor.quotes)) {
                     vendor.quotes.forEach(q => {
-                        if (q && (q.itemId || (q as any).id)) {
-                            quotesMap.set(q.itemId || (q as any).id, q);
+                        if (q?.itemId) {
+                            quotesMap.set(q.itemId, q);
                         }
                     });
                 }
 
                 const syncedQuotes = itemsFromQuote.map(item => {
-                    const key = item.itemId || item.id;
+                    const key = item.itemId;
                     const existingQuote = quotesMap.get(key);
 
                     return {
@@ -310,7 +310,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                         <PopoverTrigger asChild>
                                             <Button variant="outline" className="w-full justify-start text-left font-normal">
                                                 <span className="truncate">{form.watch(`items.${index}.description`) || "Select item..."}</span>
-                                                <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
+                                                <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50"/>
                                             </Button>
                                         </PopoverTrigger>
                                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
