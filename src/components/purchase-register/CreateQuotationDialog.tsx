@@ -218,7 +218,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
 
     vendors.forEach((vendor, vIndex) => {
         if (!vendor.quotes || vendor.quotes.length !== items.length) {
-            const newQuotes = items.map((item) => {
+            const newQuotes = items.map((item, i) => {
                 const existingQuote = Array.isArray(vendor.quotes) ? vendor.quotes.find(q => q.itemId === item.itemId) : undefined;
                 return {
                     itemId: item.itemId,
@@ -288,7 +288,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
           <DialogTitle>{isEditMode ? 'Edit' : 'New'} Price Comparison</DialogTitle>
           <DialogDescription>Add items and vendors to compare quotes.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit, (errors) => console.log("FORM ERRORS:", errors))} className="flex-1 flex flex-col overflow-hidden">
+        <form onSubmit={form.handleSubmit(onSubmit, (errors) => { console.log("FORM ERRORS:", errors)})} className="flex-1 flex flex-col overflow-hidden">
           <ScrollArea className="flex-1 pr-6 -mr-6">
             <div className="space-y-6">
               <div>
@@ -309,7 +309,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                     <Popover open={popoverOpenState[index]} onOpenChange={(open) => setPopoverOpenState(prev => ({ ...prev, [index]: open }))}>
                                         <PopoverTrigger asChild>
                                             <Button variant="outline" className="w-full justify-start text-left font-normal">
-                                                <span className="truncate">{form.getValues(`items.${index}.description`) || "Select item..."}</span>
+                                                <span className="truncate">{form.watch(`items.${index}.description`) || "Select item..."}</span>
                                                 <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
                                             </Button>
                                         </PopoverTrigger>
@@ -362,7 +362,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                     <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
                                 </Select>
                                 {form.formState.errors.vendors?.[vendorIndex]?.vendorId && (
-                                    <p className="text-xs text-destructive">Select a vendor</p>
+                                    <p className="text-xs text-destructive">Select vendor</p>
                                 )}
                             </div>
                             <Button type="button" variant="ghost" size="icon" onClick={() => removeVendor(vendorIndex)}><X className="h-4 w-4"/></Button>
@@ -379,15 +379,15 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                     <Label className="text-sm truncate pt-2">{form.watch(`items.${itemIndex}.description`) || `Item ${itemIndex + 1}`}</Label>
                                     <div>
                                         <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.quantity`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Qty"/>
-                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.quantity && <p className="text-xs text-destructive mt-1">Qty > 0</p>}
+                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.quantity && <p className="text-xs text-destructive mt-1">Qty &gt; 0</p>}
                                     </div>
                                     <div>
                                         <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.rate`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Rate"/>
-                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.rate && <p className="text-xs text-destructive mt-1">Invalid Rate</p>}
+                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.rate && ( <p className="text-xs text-destructive mt-1">Invalid Rate</p> )}
                                     </div>
                                     <div>
                                         <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.taxPercent`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Tax %" />
-                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.taxPercent && <p className="text-xs text-destructive mt-1">Invalid Tax</p>}
+                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.taxPercent && ( <p className="text-xs text-destructive mt-1">Invalid Tax</p> )}
                                     </div>
                                 </div>
                             ))}
