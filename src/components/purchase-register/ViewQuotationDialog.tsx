@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../ui/dialog';
@@ -105,11 +106,11 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
         quotation.items.forEach((item, itemIndex) => {
             let quote: QuotationQuote | undefined;
              if (Array.isArray(vendor.quotes)) {
-                quote = vendor.quotes.find(q => q.itemId === item.id || (q as any).id === item.id) || vendor.quotes[itemIndex];
+                quote = vendor.quotes.find(q => q.itemId === item.itemId) || vendor.quotes[itemIndex];
             } else if (vendor.quotes) {
-                quote = (vendor.quotes as any)[item.id] 
+                quote = (vendor.quotes as any)[item.itemId] 
                      || Object.values(vendor.quotes)[itemIndex] 
-                     || Object.values(vendor.quotes as any).find((q: any) => q.itemId === item.id || q.id === item.id);
+                     || Object.values(vendor.quotes as any).find((q: any) => q.itemId === item.itemId);
             }
             if (quote) {
                 const amount = (quote.quantity || 0) * (quote.rate || 0);
@@ -178,7 +179,7 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
         v.id === vendor.id ? {
             ...v,
             quotes: v.quotes.map(q => 
-                q.itemId === item.id ? { ...q, receivedQuantity: newReceivedQty } : q
+                q.itemId === item.itemId ? { ...q, receivedQuantity: newReceivedQty } : q
             )
         } : v
     );
@@ -276,11 +277,11 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
                   {quotation.vendors.map((vendor, vendorIndex) => {
                     let quote: QuotationQuote | undefined;
                     if (Array.isArray(vendor.quotes)) {
-                        quote = vendor.quotes.find(q => q.itemId === item.id || (q as any).id === item.id) || vendor.quotes[itemIndex];
+                        quote = vendor.quotes.find(q => q.itemId === item.itemId) || vendor.quotes[itemIndex];
                     } else if (vendor.quotes) {
-                        quote = (vendor.quotes as any)[item.id] 
+                        quote = (vendor.quotes as any)[item.itemId] 
                              || Object.values(vendor.quotes)[itemIndex] 
-                             || Object.values(vendor.quotes as any).find((q: any) => q.itemId === item.id || q.id === item.id);
+                             || Object.values(vendor.quotes as any).find((q: any) => q.itemId === item.itemId);
                     }
                     const amount = (quote?.quantity || 0) * (quote?.rate || 0);
 
