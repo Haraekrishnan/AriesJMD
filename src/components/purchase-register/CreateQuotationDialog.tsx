@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { usePurchase } from '@/contexts/purchase-provider';
 import { Card, CardHeader, CardContent } from '../ui/card';
 import { useEffect, useMemo, useState } from 'react';
-import type { Quotation, QuotationItem, QuotationQuote } from '@/lib/types';
+import type { Quotation, QuotationItem, QuotationQuote, QuotationVendorDetails } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { cn } from '@/lib/utils';
@@ -170,12 +170,17 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
         if (existingQuotation) {
             const items = existingQuotation.items || [];
             const vendorsWithSyncedQuotes = (existingQuotation.vendors || []).map(vendor => {
-                const quotesAsObject = !Array.isArray(vendor.quotes) ? vendor.quotes : (vendor.quotes || []).reduce((acc, q) => { (acc as any)[q.itemId] = q; return acc; }, {});
+                const quotesAsObject = !Array.isArray(vendor.quotes) 
+                    ? vendor.quotes 
+                    : (vendor.quotes || []).reduce((acc: Record<string, QuotationQuote>, q) => {
+                        if (q && q.itemId) acc[q.itemId] = q;
+                        return acc;
+                      }, {});
                 
                 const syncedQuotes = items.map(item => {
-                    const existingQuote = quotesAsObject ? (quotesAsObject as any)[item.id] : undefined;
+                    const existingQuote = quotesAsObject ? (quotesAsObject as any)[item.itemId] : undefined;
                     return {
-                        itemId: item.id,
+                        itemId: item.itemId,
                         quantity: existingQuote?.quantity ?? 1,
                         rate: existingQuote?.rate ?? 0,
                         taxPercent: existingQuote?.taxPercent ?? 0,
@@ -198,27 +203,27 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
             });
         }
     }
-  }, [isOpen, existingQuotation, form]);
+}, [isOpen, existingQuotation, form]);
 
   useEffect(() => {
     const items = form.getValues("items");
     const vendors = form.getValues("vendors");
   
     vendors.forEach((vendor, vIndex) => {
-        if (!vendor.quotes || vendor.quotes.length !== items.length) {
-            const existingQuotesMap = new Map((vendor.quotes || []).map(q => [q.itemId, q]));
-            const newQuotes = items.map(item => {
-                const existingQuote = existingQuotesMap.get(item.id);
-                return {
-                    itemId: item.id,
-                    quantity: existingQuote?.quantity ?? 1,
-                    rate: existingQuote?.rate ?? 0,
-                    taxPercent: existingQuote?.taxPercent ?? 0,
-                    receivedQuantity: existingQuote?.receivedQuantity ?? 0,
-                };
-            });
-            form.setValue(`vendors.${vIndex}.quotes`, newQuotes, { shouldDirty: true });
-        }
+      if (!vendor.quotes || vendor.quotes.length !== items.length) {
+        const existingQuotesMap = new Map((vendor.quotes || []).map(q => [q.itemId, q]));
+        const newQuotes = items.map(item => {
+            const existingQuote = existingQuotesMap.get(item.itemId);
+            return {
+                itemId: item.itemId,
+                quantity: existingQuote?.quantity ?? 1,
+                rate: existingQuote?.rate ?? 0,
+                taxPercent: existingQuote?.taxPercent ?? 0,
+                receivedQuantity: existingQuote?.receivedQuantity ?? 0,
+            };
+        });
+        form.setValue(`vendors.${vIndex}.quotes`, newQuotes, { shouldDirty: true });
+      }
     });
   }, [itemFields.length, form]);
 
@@ -245,7 +250,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
         id: `vendor-${Date.now()}`,
         vendorId: '',
         name: '',
-        quotes: itemFields.map(item => ({ itemId: item.id, quantity: 1, rate: 0, taxPercent: 0, receivedQuantity: 0 })),
+        quotes: itemFields.map(item => ({ itemId: item.itemId, quantity: 1, rate: 0, taxPercent: 0, receivedQuantity: 0 })),
         additionalCosts: [],
     });
   };
