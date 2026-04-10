@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { useAppContext } from '@/contexts/app-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Upload, ChevronsUpDown, FilePen, FilePlus, FileText, ArrowRightLeft, Package, Hammer, CheckCircle, Database, AlertTriangle, Truck } from 'lucide-react';
+import { PlusCircle, Upload, ChevronsUpDown, FilePen, FilePlus, FileText, ArrowRightLeft, Package, Hammer, CheckCircle, Database, AlertTriangle, Truck, Inbox } from 'lucide-react';
 import InventoryTable from '@/components/inventory/InventoryTable';
 import AddItemDialog from '@/components/inventory/AddItemDialog';
 import ImportItemsDialog from '@/components/inventory/ImportItemsDialog';
@@ -31,10 +31,12 @@ import ActionRequiredReport from '@/components/inventory/ActionRequiredReport';
 import NewDamageReportDialog from '@/components/damage-reports/NewDamageReportDialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import AddInwardRecordDialog from '@/components/inventory/AddInwardRecordDialog';
+import InwardOutwardHistory from '@/components/inventory/InwardOutwardHistory';
 
 
 export default function StoreInventoryPage() {
-    const { user, users, roles, inventoryItems, projects, certificateRequests, acknowledgeFulfilledRequest, markFulfilledRequestsAsViewed, can, pendingInventoryTransferRequestCount, pendingDamageReportCount, revalidateExpiredItems } = useAppContext();
+    const { user, users, roles, inventoryItems, projects, certificateRequests, acknowledgeFulfilledRequest, markFulfilledRequestsAsViewed, can, pendingInventoryTransferRequestCount, pendingDamageReportCount, revalidateExpiredItems, inwardOutwardRecords } = useAppContext();
     const [isAddItemOpen, setIsAddItemOpen] = useState(false);
     const [isImportOpen, setIsImportOpen] = useState(false);
     const [isUpdateItemsOpen, setIsUpdateItemsOpen] = useState(false);
@@ -46,6 +48,7 @@ export default function StoreInventoryPage() {
     const [isNewDamageReportOpen, setIsNewDamageReportOpen] = useState(false);
     const [viewingCertRequest, setViewingCertRequest] = useState<CertificateRequest | null>(null);
     const [view, setView] = useState<'list' | 'summary'>('list');
+    const [isInwardOpen, setIsInwardOpen] = useState(false);
 
     const [filters, setFilters] = useState({
         name: 'all',
@@ -237,6 +240,7 @@ export default function StoreInventoryPage() {
                     )}
                     {canManageInventory && (
                         <>
+                            <Button onClick={() => setIsInwardOpen(true)} variant="outline"><Inbox className="mr-2 h-4 w-4"/>New Inward</Button>
                             <Button onClick={revalidateExpiredItems} variant="outline"><CheckCircle className="mr-2 h-4 w-4" />Check Validity</Button>
                             <Button onClick={() => setIsBulkInspectionUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4"/>Bulk Update Insp. Cert</Button>
                             <Button onClick={() => setIsBulkUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4" /> Bulk Update TP Cert</Button>
@@ -248,31 +252,44 @@ export default function StoreInventoryPage() {
                 </div>
             </div>
             
-            <Accordion type="single" collapsible className="w-full" defaultValue="inventory-transfers">
+            <Accordion type="multiple" className="w-full space-y-4">
                 <AccordionItem value="inventory-transfers">
-                    <AccordionTrigger className={cn("text-lg font-semibold", pendingInventoryTransferRequestCount > 0 && "text-destructive")}>
+                    <AccordionTrigger className={cn("text-lg font-semibold border rounded-lg p-4", pendingInventoryTransferRequestCount > 0 && "text-destructive border-destructive")}>
                         <div className="flex items-center gap-2">
                            {pendingInventoryTransferRequestCount > 0 && <AlertTriangle />}
                             Inventory Transfers
                             {pendingInventoryTransferRequestCount > 0 && <Badge variant="destructive">{pendingInventoryTransferRequestCount}</Badge>}
                         </div>
                     </AccordionTrigger>
-                    <AccordionContent>
+                    <AccordionContent className="p-4 border border-t-0 rounded-b-lg">
                         <PendingTransfers onEditRequest={openTransferRequestDialog} />
                     </AccordionContent>
                 </AccordionItem>
+
+                 <AccordionItem value="inward-outward-register">
+                    <AccordionTrigger className="text-lg font-semibold border rounded-lg p-4">
+                        <div className="flex items-center gap-2">
+                            <Inbox />
+                            Inward/Outward Register
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="p-4 border border-t-0 rounded-b-lg">
+                        <InwardOutwardHistory records={inwardOutwardRecords} />
+                    </AccordionContent>
+                </AccordionItem>
+                
                  {actionRequiredNotifications.length > 0 && (
                 <AccordionItem value="action-required">
-                    <AccordionTrigger className="text-lg font-semibold text-destructive">
+                    <AccordionTrigger className="text-lg font-semibold text-destructive border rounded-lg p-4 border-destructive">
                         <div className="flex items-center gap-2">
                             <AlertTriangle />
                             Action Required
                             <Badge variant="destructive">{actionRequiredNotifications.length}</Badge>
                         </div>
                     </AccordionTrigger>
-                    <AccordionContent>
-                        <Card>
-                            <CardHeader>
+                    <AccordionContent className="p-4 border border-t-0 rounded-b-lg border-destructive">
+                        <Card className="border-none shadow-none">
+                            <CardHeader className="p-0 pb-4">
                                 <div className="flex justify-between items-center">
                                     <div>
                                         <CardTitle>Items Requiring Attention</CardTitle>
@@ -281,7 +298,7 @@ export default function StoreInventoryPage() {
                                     <ActionRequiredReport notifications={actionRequiredNotifications} />
                                 </div>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="p-0">
                                 <ScrollArea className="h-64">
                                     <div className="space-y-2">
                                         {actionRequiredNotifications.map(({item, message}, index) => {
@@ -322,6 +339,7 @@ export default function StoreInventoryPage() {
 
 
             <AddItemDialog isOpen={isAddItemOpen} setIsOpen={setIsAddItemOpen} />
+            <AddInwardRecordDialog isOpen={isInwardOpen} setIsOpen={setIsInwardOpen} />
             <ImportItemsDialog isOpen={isImportOpen} setIsOpen={setIsImportOpen} />
             <UpdateItemsDialog isOpen={isUpdateItemsOpen} setIsOpen={setIsUpdateItemsOpen} />
             <BulkUpdateTpCertDialog isOpen={isBulkUpdateOpen} setIsOpen={setIsBulkUpdateOpen} />
@@ -338,4 +356,3 @@ export default function StoreInventoryPage() {
             {viewingCertRequest && ( <ViewCertificateRequestDialog request={viewingCertRequest} isOpen={!!viewingCertRequest} setIsOpen={() => setViewingCertRequest(null)} /> )}
         </div>
     );
-}

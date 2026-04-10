@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../ui/dialog';
@@ -17,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Badge } from '../ui/badge';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { usePurchase } from '@/contexts/purchase-provider';
 
 interface ViewQuotationDialogProps {
   isOpen: boolean;
@@ -87,7 +87,8 @@ const ReceiveItemDialog = ({
 };
 
 export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: initialQuotation }: ViewQuotationDialogProps) {
-  const { users, updateQuotation, addConsumableInwardRecord, inventoryItems, updateInventoryItem, can, quotations } = useAppContext();
+  const { users, can, addInwardOutwardRecord } = useAppContext();
+  const { updateQuotation, quotations } = usePurchase();
   const { toast } = useToast();
   const [poNumber, setPoNumber] = useState(initialQuotation.poNumber || '');
   const [receivingInfo, setReceivingInfo] = useState<{ item: QuotationItem; vendor: QuotationVendorDetails; quote: QuotationQuote } | null>(null);
@@ -190,16 +191,12 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
     
     updateQuotation({ ...quotation, vendors: updatedVendors, status: newStatus });
     
-    if (item.itemType === 'Inventory') {
-        const inventoryItem = inventoryItems.find(i => i.id === item.itemId);
-        if (inventoryItem) {
-            if (inventoryItem.category === 'Daily Consumable' || inventoryItem.category === 'Job Consumable') {
-                addConsumableInwardRecord(item.itemId, quantity, new Date());
-            } else {
-                updateInventoryItem({ ...inventoryItem, quantity: (inventoryItem.quantity || 0) + quantity });
-            }
-        }
-    }
+    addInwardOutwardRecord(
+        { itemId: item.itemId, itemType: item.itemType, name: item.description },
+        quantity,
+        'Inward',
+        `From Quotation: ${quotation.title}`
+    );
     
     toast({ title: `Received ${quantity} of ${item.description}`});
     setReceivingInfo(null);

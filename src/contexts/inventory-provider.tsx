@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -17,6 +18,19 @@ import { getStorage, ref as storageRef, deleteObject } from "firebase/storage";
 import { v4 as uuidv4 } from 'uuid';
 import { uploadFile } from '@/lib/storage';
 import { normalizeGoogleDriveLink } from '@/lib/utils';
+
+type InwardOutwardRecord = {
+    id: string;
+    itemId: string;
+    itemType: string;
+    itemName: string;
+    type: 'Inward' | 'Outward';
+    quantity: number;
+    date: string; // ISO
+    source: string;
+    remarks?: string;
+    userId: string;
+};
 
 const _addInternalRequestComment = (
     requestId: string,
@@ -103,6 +117,7 @@ type InventoryContextType = {
   deliveryNotes: DeliveryNote[];
   directives: Directive[];
   damageReports: DamageReport[];
+  inwardOutwardRecords: InwardOutwardRecord[];
 
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'lastUpdated'>) => void;
   addMultipleInventoryItems: (items: any[]) => number;
@@ -126,6 +141,7 @@ type InventoryContextType = {
   acknowledgeTransfer: (requestId: string) => void;
   clearInventoryTransferHistory: () => void;
   resolveInternalRequestDispute: (requestId: string, resolution: 'reissue' | 'reverse', comment: string) => void;
+  addInwardOutwardRecord: (itemInfo: { itemId: string; itemType: string; name: string; }, quantity: number, type: 'Inward' | 'Outward', source: string, remarks?: string) => void;
 
   addCertificateRequest: (requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => void;
   fulfillCertificateRequest: (requestId: string, comment: string) => void;
@@ -314,6 +330,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const [wiredAngleGrindersById, setWiredAngleGrindersById] = useState<Record<string, WiredAngleGrinder>>({});
     const [cordlessAngleGrindersById, setCordlessAngleGrindersById] = useState<Record<string, CordlessAngleGrinder>>({});
     const [cordlessReciprocatingSawsById, setCordlessReciprocatingSawsById] = useState<Record<string, CordlessReciprocatingSaw>>({});
+    const [inwardOutwardRecordsById, setInwardOutwardRecordsById] = useState<Record<string, InwardOutwardRecord>>({});
 
     // Memos
     const inventoryItems = useMemo(() => Object.values(inventoryItemsById), [inventoryItemsById]);
@@ -338,6 +355,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const igpOgpRecords = useMemo(() => Object.values(igpOgpRecordsById), [igpOgpRecordsById]);
     const deliveryNotes = useMemo(() => Object.values(deliveryNotesById), [deliveryNotesById]);
     const damageReports = useMemo(() => Object.values(damageReportsById), [damageReportsById]);
+    const inwardOutwardRecords = useMemo(() => Object.values(inwardOutwardRecordsById), [inwardOutwardRecordsById]);
 
     const pneumaticDrillingMachines = useMemo(() => Object.values(pneumaticDrillingMachinesById), [pneumaticDrillingMachinesById]);
     const pneumaticAngleGrinders = useMemo(() => Object.values(pneumaticAngleGrindersById), [pneumaticAngleGrindersById]);
@@ -1617,6 +1635,80 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             toast({ title: 'Success', description: 'All damage report database entries have been deleted.' });
         }
     }, [user, damageReportsById, toast]);
+
+    const addInwardOutwardRecord = useCallback((
+        itemInfo: { itemId: string; itemType: string; name: string },
+        quantity: number,
+        type: 'Inward' | 'Outward',
+        source: string,
+        remarks?: string
+    ) => {
+        if (!user) return;
+    
+        const newRecordRef = push(ref(rtdb, 'inwardOutwardRecords'));
+        const newRecord: Omit<InwardOutwardRecord, 'id'> = {
+            itemId: itemInfo.itemId,
+            itemType: itemInfo.itemType,
+            itemName: itemInfo.name,
+            type,
+            quantity,
+            date: new Date().toISOString(),
+            source,
+            remarks: remarks || '',
+            userId: user.id,
+        };
+        set(newRecordRef, newRecord);
+    
+        const typeToPathMap: Record<string, string> = {
+            Inventory: 'inventoryItems',
+            UTMachine: 'utMachines',
+            DftMachine: 'dftMachines',
+            DigitalCamera: 'digitalCameras',
+            Anemometer: 'anemometers',
+            OtherEquipment: 'otherEquipments',
+            LaptopDesktop: 'laptopsDesktops',
+            MobileSim: 'mobileSims',
+            WeldingMachine: 'weldingMachines',
+            WalkieTalkie: 'walkieTalkies',
+            PneumaticDrillingMachine: 'pneumaticDrillingMachines',
+            PneumaticAngleGrinder: 'pneumaticAngleGrinders',
+            WiredDrillingMachine: 'wiredDrillingMachines',
+            CordlessDrillingMachine: 'cordlessDrillingMachines',
+            WiredAngleGrinder: 'wiredAngleGrinders',
+            CordlessAngleGrinder: 'cordlessAngleGrinders',
+            CordlessReciprocatingSaw: 'cordlessReciprocatingSaws',
+        };
+        
+        const itemPath = typeToPathMap[itemInfo.itemType];
+        const itemId = itemInfo.itemId;
+        
+        if (itemPath) {
+            const itemRef = ref(rtdb, `${itemPath}/${itemId}`);
+            get(itemRef).then(snapshot => {
+                if (snapshot.exists()) {
+                    const itemToUpdate = snapshot.val();
+                    const updates: {[key: string]: any} = {};
+                    const storeProject = projects.find(p => p.name.toLowerCase() === 'store');
+                    
+                    const currentQuantity = itemToUpdate.quantity || 0;
+                    const newQuantity = type === 'Inward' ? currentQuantity + quantity : Math.max(0, currentQuantity - quantity);
+                    
+                    // Only update if quantity is a valid property on the item
+                    if (itemToUpdate.hasOwnProperty('quantity')) {
+                       updates[`${itemPath}/${itemId}/quantity`] = newQuantity;
+                    }
+    
+                    if (type === 'Inward' && storeProject) {
+                        updates[`${itemPath}/${itemId}/projectId`] = storeProject.id;
+                    }
+                    
+                    if (Object.keys(updates).length > 0) {
+                      update(ref(rtdb), updates);
+                    }
+                }
+            });
+        }
+    }, [user, projects, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies, pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws]);
     
     useEffect(() => {
         const unsubscribers = [
@@ -1649,15 +1741,17 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             createDataListener('wiredAngleGrinders', setWiredAngleGrindersById),
             createDataListener('cordlessAngleGrinders', setCordlessAngleGrindersById),
             createDataListener('cordlessReciprocatingSaws', setCordlessReciprocatingSawsById),
+            createDataListener('inwardOutwardRecords', setInwardOutwardRecordsById),
         ];
         return () => unsubscribers.forEach(unsubscribe => unsubscribe());
     }, []);
     
     const contextValue: InventoryContextType = {
-        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, weldingMachines, walkieTalkies, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, deliveryNotes, consumableInwardHistory, directives: [], damageReports,
+        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, weldingMachines, walkieTalkies, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, deliveryNotes, consumableInwardHistory, directives: [], damageReports, inwardOutwardRecords,
         pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws,
         addInventoryItem, addMultipleInventoryItems, batchAddInventoryItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInspectionItemGroup, updateMultipleInventoryItems, batchDeleteInventoryItems, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
         addInventoryTransferRequest, updateInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
+        addInwardOutwardRecord,
         addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest,
         addUTMachine, updateUTMachine, deleteUTMachine,
         addDftMachine, updateDftMachine, deleteDftMachine,
@@ -1701,3 +1795,524 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
+
+```
+  <change>
+    <file>src/app/(app)/store-inventory/page.tsx</file>
+    <content><![CDATA[
+
+'use client';
+
+import { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
+import { useAppContext } from '@/contexts/app-provider';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { PlusCircle, Upload, ChevronsUpDown, FilePen, FilePlus, FileText, ArrowRightLeft, Package, Hammer, CheckCircle, Database, AlertTriangle, Truck, Inbox } from 'lucide-react';
+import InventoryTable from '@/components/inventory/InventoryTable';
+import AddItemDialog from '@/components/inventory/AddItemDialog';
+import ImportItemsDialog from '@/components/inventory/ImportItemsDialog';
+import InventoryFilters from '@/components/inventory/InventoryFilters';
+import type { InventoryItem, CertificateRequest, Role, InventoryTransferRequest, InventoryItemStatus } from '@/lib/types';
+import { isAfter, isBefore, addDays, parseISO, isWithinInterval, subDays, format, isValid, isPast } from 'date-fns';
+import ViewCertificateRequestDialog from '@/components/inventory/ViewCertificateRequestDialog';
+import InventorySummary from '@/components/inventory/InventorySummary';
+import { Badge } from '@/components/ui/badge';
+import { formatDistanceToNow } from 'date-fns';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import InventoryReportDownloads from '@/components/inventory/InventoryReportDownloads';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import BulkUpdateTpCertDialog from '@/components/inventory/BulkUpdateTpCertDialog';
+import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
+import NewInventoryTransferRequestDialog from '@/components/requests/new-inventory-transfer-request-dialog';
+import PendingTransfers from '@/components/requests/PendingTransfers';
+import BulkUpdateInspectionDialog from '@/components/inventory/BulkUpdateInspectionDialog';
+import UpdateItemsDialog from '@/components/inventory/UpdateItemsDialog';
+import ActionRequiredReport from '@/components/inventory/ActionRequiredReport';
+import NewDamageReportDialog from '@/components/damage-reports/NewDamageReportDialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+import AddInwardRecordDialog from '@/components/inventory/AddInwardRecordDialog';
+import InwardOutwardHistory from '@/components/inventory/InwardOutwardHistory';
+
+
+export default function StoreInventoryPage() {
+    const { user, users, roles, inventoryItems, projects, certificateRequests, acknowledgeFulfilledRequest, markFulfilledRequestsAsViewed, can, pendingInventoryTransferRequestCount, pendingDamageReportCount, revalidateExpiredItems, inwardOutwardRecords } = useAppContext();
+    const [isAddItemOpen, setIsAddItemOpen] = useState(false);
+    const [isImportOpen, setIsImportOpen] = useState(false);
+    const [isUpdateItemsOpen, setIsUpdateItemsOpen] = useState(false);
+    const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
+    const [isBulkInspectionUpdateOpen, setIsBulkInspectionUpdateOpen] = useState(false);
+    const [isGenerateCertOpen, setIsGenerateCertOpen] = useState(false);
+    const [isTransferRequestOpen, setIsTransferRequestOpen] = useState(false);
+    const [editingTransferRequest, setEditingTransferRequest] = useState<InventoryTransferRequest | null>(null);
+    const [isNewDamageReportOpen, setIsNewDamageReportOpen] = useState(false);
+    const [viewingCertRequest, setViewingCertRequest] = useState<CertificateRequest | null>(null);
+    const [view, setView] = useState<'list' | 'summary'>('list');
+    const [isInwardOpen, setIsInwardOpen] = useState(false);
+
+    const [filters, setFilters] = useState({
+        name: 'all',
+        status: 'Active',
+        projectId: 'all',
+        search: '',
+        updatedDateRange: undefined,
+    });
+    
+    const [selectedItemsForTransfer, setSelectedItemsForTransfer] = useState<InventoryItem[]>([]);
+
+    if (!can.view_inventory && !can.manage_inventory) {
+        return (
+            <Card className="w-full max-w-md mx-auto mt-20">
+                <CardHeader className="text-center items-center">
+                    <div className="mx-auto bg-destructive/10 p-3 rounded-full w-fit mb-4">
+                        <AlertTriangle className="h-10 w-10 text-destructive" />
+                    </div>
+                    <CardTitle>Access Denied</CardTitle>
+                    <CardDescription>You do not have permission to view the Store Inventory.</CardDescription>
+                </CardHeader>
+            </Card>
+        );
+    }
+
+    const canManageInventory = useMemo(() => {
+        if (!user) return false;
+        return user.role === 'Admin' || can.manage_inventory;
+    }, [user, can]);
+    
+    const actionRequiredNotifications = useMemo(() => {
+        const now = new Date();
+        const thirtyDaysFromNow = addDays(now, 30);
+        const notifications: { message: string, item: InventoryItem }[] = [];
+
+        const canViewAllProjects = user?.role === 'Admin' || user?.role === 'Manager';
+
+        const userVisibleItems = inventoryItems.filter(item => {
+            if (canViewAllProjects) return true;
+            return user?.projectIds?.includes(item.projectId);
+        });
+
+        userVisibleItems.forEach(item => {
+            if (item.isArchived || item.status === 'Damaged' || item.status === 'Quarantine') return;
+
+            if (item.inspectionDueDate) {
+                const dueDate = parseISO(item.inspectionDueDate);
+                if (isValid(dueDate)) {
+                    if (isPast(dueDate)) {
+                        notifications.push({ message: `Inspection Expired: ${format(dueDate, 'dd-MM-yy')}`, item });
+                    } else if (isBefore(dueDate, thirtyDaysFromNow)) {
+                         notifications.push({ message: `Inspection Expires Soon: ${format(dueDate, 'dd-MM-yy')}`, item });
+                    }
+                }
+            }
+            if (item.tpInspectionDueDate) {
+                const dueDate = parseISO(item.tpInspectionDueDate);
+                if (isValid(dueDate)) {
+                    if (isPast(dueDate)) {
+                        notifications.push({ message: `TP Cert. Expired: ${format(dueDate, 'dd-MM-yy')}`, item });
+                    } else if (isBefore(dueDate, thirtyDaysFromNow)) {
+                         notifications.push({ message: `TP Cert. Expires Soon: ${format(dueDate, 'dd-MM-yy')}`, item });
+                    }
+                }
+            }
+        });
+
+        return notifications.sort((a,b) => {
+            // Sort logic to prioritize more urgent items, e.g., expired > expiring soon
+            return 0; // Simple for now
+        });
+    }, [inventoryItems, user, projects]);
+
+
+    const filteredItems = useMemo(() => {
+        const canViewAllProjects = user?.role === 'Admin' || user?.role === 'Manager';
+        
+        return inventoryItems.filter(item => {
+            if (item.isArchived) return false;
+            if (item.category === 'Daily Consumable' || item.category === 'Job Consumable') {
+                return false;
+            }
+
+            // Project visibility filter
+            if (!canViewAllProjects) {
+                if (!user?.projectIds || !user.projectIds.includes(item.projectId)) {
+                    return false;
+                }
+            }
+
+            // Apply selected project filter for ALL users (both admin and non-admin)
+            if (filters.projectId !== 'all') {
+                if (item.projectId !== filters.projectId) {
+                    return false;
+                }
+            }
+
+            const { name, status, search, updatedDateRange } = filters;
+            
+            // Name filter
+            if (name !== 'all' && item.name !== name) return false;
+
+            // Search filter
+            if (search && !(item.serialNumber?.toLowerCase().includes(search.toLowerCase()) || item.ariesId?.toLowerCase().includes(search.toLowerCase()) || item.chestCrollNo?.toLowerCase().includes(search.toLowerCase()))) {
+                return false;
+            }
+            
+            // Status filter
+            const inactiveStatuses: InventoryItemStatus[] = ['Damaged', 'Quarantine', 'Moved to another project'];
+            if (status === 'Active') {
+                if (inactiveStatuses.includes(item.status)) return false;
+            } else if (status === 'Inactive') {
+                if (!inactiveStatuses.includes(item.status)) return false;
+            } else if (status !== 'all') {
+                if (item.status !== status) return false;
+            }
+            
+            // Date range filter
+            if (updatedDateRange?.from) {
+                if (!item.lastUpdated) return false;
+                const updatedDate = parseISO(item.lastUpdated);
+                const from = updatedDateRange.from;
+                const to = updatedDateRange.to || from;
+                if (!isWithinInterval(updatedDate, { start: from, end: to })) {
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+    }, [inventoryItems, filters, user, projects]);
+
+    const summaryData = useMemo(() => {
+        const data: {[itemName: string]: {[projectId: string]: number, total: number}} = {};
+        filteredItems.forEach(item => {
+            if (!data[item.name]) {
+                data[item.name] = { total: 0 };
+                projects.forEach(p => {
+                    data[item.name][p.id] = 0;
+                });
+            }
+            data[item.name][item.projectId] = (data[item.name][item.projectId] || 0) + 1;
+            data[item.name].total += 1;
+        });
+        return Object.entries(data).map(([name, counts]) => ({ name, ...counts }));
+    }, [filteredItems, projects]);
+    
+    const openTransferRequestDialog = (request: InventoryTransferRequest | null) => {
+        if(request) {
+            setEditingTransferRequest(request);
+        } else {
+            setIsTransferRequestOpen(true);
+        }
+    }
+    
+    const closeTransferRequestDialog = () => {
+        setIsTransferRequestOpen(false);
+        setEditingTransferRequest(null);
+    }
+
+    return (
+        <div className="space-y-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Store Inventory</h1>
+                    <p className="text-muted-foreground">Manage and track all equipment and items.</p>
+                </div>
+                <div className="flex items-center flex-wrap gap-2">
+                    <Button asChild variant="outline"><Link href="/inventory-database"><Database className="mr-2 h-4 w-4"/> Inventory DB</Link></Button>
+                    <Button asChild variant="outline"><Link href="/consumables"><Package className="mr-2 h-4 w-4"/> Consumables</Link></Button>
+                    <Button asChild variant="outline"><Link href="/ppe-stock"><Package className="mr-2 h-4 w-4"/> PPE Stock</Link></Button>
+                    <Button asChild variant="outline"><Link href="/igp-ogp"><ArrowRightLeft className="mr-2 h-4 w-4"/> IGP/OGP Register</Link></Button>
+                    <Button asChild variant="outline"><Link href="/delivery-notes"><Truck className="mr-2 h-4 w-4"/> Delivery Notes</Link></Button>
+                    <Button asChild variant="outline"><Link href="/tp-certification"><FileText className="mr-2 h-4 w-4"/> TP Cert Lists</Link></Button>
+                    
+                    <Button onClick={() => setIsNewDamageReportOpen(true)} variant="destructive">
+                        <Hammer className="mr-2 h-4 w-4 stroke-black fill-white" /> Report Damage
+                    </Button>
+
+                    <Button onClick={() => setView(v => v === 'list' ? 'summary' : 'list')} variant="outline"><ChevronsUpDown className="mr-2 h-4 w-4" />{view === 'list' ? 'View Summary' : 'View List'}</Button>
+                    {selectedItemsForTransfer.length > 0 ? (
+                        <Button onClick={() => openTransferRequestDialog(null)}>
+                            <ArrowRightLeft className="mr-2 h-4 w-4" /> Transfer Selected ({selectedItemsForTransfer.length})
+                        </Button>
+                    ) : (
+                        <Button variant="outline" onClick={() => openTransferRequestDialog(null)}>
+                            <ArrowRightLeft className="mr-2 h-4 w-4" /> Transfer Items
+                        </Button>
+                    )}
+                    {canManageInventory && (
+                        <>
+                            <Button onClick={() => setIsInwardOpen(true)} variant="outline"><Inbox className="mr-2 h-4 w-4"/>New Inward</Button>
+                            <Button onClick={revalidateExpiredItems} variant="outline"><CheckCircle className="mr-2 h-4 w-4" />Check Validity</Button>
+                            <Button onClick={() => setIsBulkInspectionUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4"/>Bulk Update Insp. Cert</Button>
+                            <Button onClick={() => setIsBulkUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4" /> Bulk Update TP Cert</Button>
+                            <Button onClick={() => setIsGenerateCertOpen(true)} variant="outline"><FilePlus className="mr-2 h-4 w-4" /> Generate TP Cert List</Button>
+                            <Button onClick={() => setIsImportOpen(true)} variant="outline"><Upload className="mr-2 h-4 w-4" /> Import</Button>
+                            <Button onClick={() => setIsAddItemOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Add Item</Button>
+                        </>
+                    )}
+                </div>
+            </div>
+            
+            <Accordion type="multiple" className="w-full space-y-4">
+                <AccordionItem value="inventory-transfers">
+                    <AccordionTrigger className={cn("text-lg font-semibold border rounded-lg p-4", pendingInventoryTransferRequestCount > 0 && "text-destructive border-destructive")}>
+                        <div className="flex items-center gap-2">
+                           {pendingInventoryTransferRequestCount > 0 && <AlertTriangle />}
+                            Inventory Transfers
+                            {pendingInventoryTransferRequestCount > 0 && <Badge variant="destructive">{pendingInventoryTransferRequestCount}</Badge>}
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="p-4 border border-t-0 rounded-b-lg">
+                        <PendingTransfers onEditRequest={openTransferRequestDialog} />
+                    </AccordionContent>
+                </AccordionItem>
+
+                 <AccordionItem value="inward-outward-register">
+                    <AccordionTrigger className="text-lg font-semibold border rounded-lg p-4">
+                        <div className="flex items-center gap-2">
+                            <Inbox />
+                            Inward/Outward Register
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="p-4 border border-t-0 rounded-b-lg">
+                        <InwardOutwardHistory records={inwardOutwardRecords} />
+                    </AccordionContent>
+                </AccordionItem>
+                
+                 {actionRequiredNotifications.length > 0 && (
+                <AccordionItem value="action-required">
+                    <AccordionTrigger className="text-lg font-semibold text-destructive border rounded-lg p-4 border-destructive">
+                        <div className="flex items-center gap-2">
+                            <AlertTriangle />
+                            Action Required
+                            <Badge variant="destructive">{actionRequiredNotifications.length}</Badge>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="p-4 border border-t-0 rounded-b-lg border-destructive">
+                        <Card className="border-none shadow-none">
+                            <CardHeader className="p-0 pb-4">
+                                <div className="flex justify-between items-center">
+                                    <div>
+                                        <CardTitle>Items Requiring Attention</CardTitle>
+                                        <CardDescription>These items have certifications expiring soon or are already expired. Damaged or quarantined items are not shown here.</CardDescription>
+                                    </div>
+                                    <ActionRequiredReport notifications={actionRequiredNotifications} />
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <ScrollArea className="h-64">
+                                    <div className="space-y-2">
+                                        {actionRequiredNotifications.map(({item, message}, index) => {
+                                            const projectName = projects.find(p => p.id === item.projectId)?.name;
+                                            return (
+                                            <div key={`${item.id}-${index}`} className="flex items-center justify-between p-2 rounded-md bg-muted">
+                                                <div className="text-sm">
+                                                    <p className="font-semibold">
+                                                        {item.name} <span className="text-muted-foreground">(SN: {item.serialNumber})</span>
+                                                        {projectName && <span className="ml-2 font-normal text-muted-foreground">[{projectName}]</span>}
+                                                    </p>
+                                                    <p className="text-destructive">{message}</p>
+                                                </div>
+                                            </div>
+                                        )})}
+                                    </div>
+                                </ScrollArea>
+                            </CardContent>
+                        </Card>
+                    </AccordionContent>
+                </AccordionItem>
+            )}
+            </Accordion>
+            
+            <Card>
+                <CardHeader>
+                    <div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-4'>
+                    {view === 'list' ? (
+                        <InventoryFilters onApplyFilters={setFilters} initialFilters={filters} />
+                    ) : <CardTitle>General Inventory Summary</CardTitle>}
+                    <InventoryReportDownloads items={filteredItems} isSummary={view === 'summary'} summaryData={summaryData} />
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {view === 'list' ? <InventoryTable items={filteredItems} selectedItems={selectedItemsForTransfer} onSelectionChange={setSelectedItemsForTransfer} /> : <InventorySummary items={filteredItems} />}
+                </CardContent>
+            </Card>
+
+
+            <AddItemDialog isOpen={isAddItemOpen} setIsOpen={setIsAddItemOpen} />
+            <AddInwardRecordDialog isOpen={isInwardOpen} setIsOpen={setIsInwardOpen} />
+            <ImportItemsDialog isOpen={isImportOpen} setIsOpen={setIsImportOpen} />
+            <UpdateItemsDialog isOpen={isUpdateItemsOpen} setIsOpen={setIsUpdateItemsOpen} />
+            <BulkUpdateTpCertDialog isOpen={isBulkUpdateOpen} setIsOpen={setIsBulkUpdateOpen} />
+            <BulkUpdateInspectionDialog isOpen={isBulkInspectionUpdateOpen} setIsOpen={setIsBulkInspectionUpdateOpen} />
+            <GenerateTpCertDialog isOpen={isGenerateCertOpen} setIsOpen={setIsGenerateCertOpen} />
+            <NewInventoryTransferRequestDialog
+                isOpen={isTransferRequestOpen || !!editingTransferRequest}
+                setIsOpen={closeTransferRequestDialog}
+                preSelectedItems={selectedItemsForTransfer}
+                onClearSelection={() => setSelectedItemsForTransfer([])}
+                existingRequest={editingTransferRequest}
+            />
+            <NewDamageReportDialog isOpen={isNewDamageReportOpen} setIsOpen={setIsNewDamageReportOpen} />
+            {viewingCertRequest && ( <ViewCertificateRequestDialog request={viewingCertRequest} isOpen={!!viewingCertRequest} setIsOpen={() => setViewingCertRequest(null)} /> )}
+        </div>
+    );
+}
+
+```
+  <change>
+    <file>src/components/inventory/AddInwardRecordDialog.tsx</file>
+    <content><![CDATA['use client';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useAppContext } from '@/contexts/app-provider';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { Label } from '../ui/label';
+import { Textarea } from '../ui/textarea';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { ChevronsUpDown, Check } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { ScrollArea } from '../ui/scroll-area';
+import { cn } from '@/lib/utils';
+import { InventoryItem, UTMachine, DftMachine, DigitalCamera, Anemometer, OtherEquipment, LaptopDesktop, MobileSim, WeldingMachine, WalkieTalkie } from '@/lib/types';
+
+
+const inwardSchema = z.object({
+  itemInfo: z.object({
+    itemId: z.string(),
+    itemType: z.string(),
+    name: z.string(),
+  }).refine(data => data.itemId, { message: "You must select a specific item." }),
+  quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
+  remarks: z.string().optional(),
+});
+
+type FormValues = z.infer<typeof inwardSchema>;
+
+interface AddInwardRecordDialogProps {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+}
+
+type SearchableItem = (InventoryItem | UTMachine | DftMachine | DigitalCamera | Anemometer | OtherEquipment | LaptopDesktop | MobileSim | WeldingMachine | WalkieTalkie) & { itemType: string; };
+
+export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRecordDialogProps) {
+  const { 
+    addInwardOutwardRecord, inventoryItems, utMachines, dftMachines, digitalCameras, 
+    anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies 
+  } = useAppContext();
+  const { toast } = useToast();
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(inwardSchema),
+    defaultValues: { quantity: 1 }
+  });
+
+  const allItems = useMemo(() => {
+    const arr: SearchableItem[] = [];
+    inventoryItems.forEach((i) => arr.push({ ...i, itemType: "Inventory" }));
+    utMachines.forEach((i) => arr.push({ ...i, itemType: "UTMachine" }));
+    dftMachines.forEach((i) => arr.push({ ...i, itemType: "DftMachine" }));
+    digitalCameras.forEach((i) => arr.push({ ...i, itemType: "DigitalCamera" }));
+    anemometers.forEach((i) => arr.push({ ...i, itemType: "Anemometer" }));
+    otherEquipments.forEach((i) => arr.push({ ...i, itemType: "OtherEquipment" }));
+    laptopsDesktops.forEach((i) => arr.push({ ...i, itemType: "LaptopDesktop" }));
+    mobileSims.forEach((i) => arr.push({ ...i, itemType: "MobileSim" }));
+    weldingMachines.forEach((i) => arr.push({ ...i, itemType: "WeldingMachine" }));
+    walkieTalkies.forEach((i) => arr.push({ ...i, itemType: "WalkieTalkie" }));
+    return arr;
+  }, [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies]);
+
+  const filteredItems = useMemo(() => {
+    if (!searchTerm) return [];
+    const lowercasedTerm = searchTerm.toLowerCase();
+    return allItems.filter(item => 
+        (item.name?.toLowerCase().includes(lowercasedTerm)) ||
+        ((item as any).machineName?.toLowerCase().includes(lowercasedTerm)) ||
+        ((item as any).equipmentName?.toLowerCase().includes(lowercasedTerm)) ||
+        (item.serialNumber?.toLowerCase().includes(lowercasedTerm)) ||
+        (item.ariesId?.toLowerCase().includes(lowercasedTerm))
+    );
+  }, [allItems, searchTerm]);
+
+  const onSubmit = (data: FormValues) => {
+    addInwardOutwardRecord(data.itemInfo, data.quantity, 'Inward', 'Direct Entry', data.remarks);
+    toast({ title: 'Inward Record Added' });
+    setIsOpen(false);
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) form.reset();
+    setIsOpen(open);
+  };
+
+  const selectedItemInfo = form.watch('itemInfo');
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>New Inward Entry</DialogTitle>
+          <DialogDescription>Record new stock coming into the main store.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Item</Label>
+            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" className="w-full justify-between">
+                  {selectedItemInfo?.name || "Select an item..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                <Command>
+                  <CommandInput placeholder="Search by name, serial, or ID..." value={searchTerm} onValueChange={setSearchTerm}/>
+                  <CommandList>
+                    <CommandEmpty>No item found.</CommandEmpty>
+                    <CommandGroup>
+                      {filteredItems.map((item) => (
+                        <CommandItem
+                          key={item.id}
+                          value={item.name}
+                          onSelect={() => {
+                            form.setValue('itemInfo', { itemId: item.id, itemType: item.itemType, name: (item as any).name || (item as any).machineName || (item as any).equipmentName });
+                            setPopoverOpen(false);
+                          }}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4", selectedItemInfo?.itemId === item.id ? "opacity-100" : "opacity-0")} />
+                          {(item as any).name || (item as any).machineName || (item as any).equipmentName} (SN: {item.serialNumber})
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            {form.formState.errors.itemInfo && <p className="text-xs text-destructive">{form.formState.errors.itemInfo.message}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="quantity">Quantity</Label>
+            <Input id="quantity" type="number" {...form.register('quantity')} />
+            {form.formState.errors.quantity && <p className="text-xs text-destructive">{form.formState.errors.quantity.message}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="remarks">Remarks (Optional)</Label>
+            <Textarea id="remarks" {...form.register('remarks')} />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+            <Button type="submit">Add Inward Record</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
