@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -408,6 +409,12 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         };
     }, [user, ppeRequests]);
     
+    const allItems = useMemo(() => [
+      ...inventoryItems, ...utMachines, ...dftMachines, ...digitalCameras, 
+      ...anemometers, ...otherEquipments, ...laptopsDesktops, ...mobileSims,
+      ...weldingMachines, ...walkieTalkies
+    ], [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies]);
+    
     const addInternalRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean, subject?: string) => {
         if (!user) return;
         _addInternalRequestComment(requestId, commentText, user, internalRequestsById, users, notificationSettings, notify, subject);
@@ -770,7 +777,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const deleteTpCertList = useCallback((listId: string) => {
         remove(ref(rtdb, `tpCertLists/${listId}`));
     }, []);
-    
+
     const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
         if (!user) return;
         const newRequestRef = push(ref(rtdb, 'inventoryTransferRequests'));
@@ -904,7 +911,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 involvedUser: requester
             });
         }
-    }, [user, addActivityLog, addTpCertList, users, projects, notificationSettings]);
+    }, [user, addActivityLog, addTpCertList, users, projects, notificationSettings, allItems]);
     
     const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
         if (!user || !can.approve_store_requests) return;
