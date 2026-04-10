@@ -268,6 +268,27 @@ type InventoryContextType = {
   updatedPpeRequestCount: number;
 };
 
+const createDataListener = <T extends {}>(
+    path: string,
+    setData: React.Dispatch<React.SetStateAction<Record<string, T>>>,
+) => {
+    const dbRef = ref(rtdb, path);
+    const unsubscribe = onValue(dbRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        const processedData = Object.keys(data).reduce((acc, key) => {
+            acc[key] = { ...data[key], id: key };
+            return acc;
+        }, {} as Record<string, T>);
+        setData(currentData => {
+            if (JSON.stringify(currentData) === JSON.stringify(processedData)) {
+                return currentData;
+            }
+            return processedData;
+        });
+    });
+    return unsubscribe;
+};
+
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
 
 export function InventoryProvider({ children }: { children: ReactNode }) {
@@ -1790,3 +1811,5 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
+
+    
