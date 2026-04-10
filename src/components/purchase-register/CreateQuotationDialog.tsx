@@ -180,12 +180,8 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
             
             const vendorsWithSyncedQuotes = (existingQuotation.vendors || []).map(vendor => {
                 const quotesMap = new Map<string, QuotationQuote>();
-                if (vendor.quotes) {
-                    if (Array.isArray(vendor.quotes)) {
-                        vendor.quotes.forEach(q => q && quotesMap.set(q.itemId, q));
-                    } else { // It's an object from older data structure
-                        Object.values(vendor.quotes).forEach((q: any) => q && q.itemId && quotesMap.set(q.itemId, q));
-                    }
+                if (Array.isArray(vendor.quotes)) {
+                    vendor.quotes.forEach(q => q && q.itemId && quotesMap.set(q.itemId, q));
                 }
 
                 const syncedQuotes = itemsFromQuote.map(item => {
@@ -218,17 +214,15 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
 
     vendors.forEach((vendor, vIndex) => {
         if (!vendor.quotes || vendor.quotes.length !== items.length) {
-            const newQuotes = items.map((item, i) => {
-                const existingQuote = Array.isArray(vendor.quotes) ? vendor.quotes.find(q => q.itemId === item.itemId) : undefined;
-                return {
-                    itemId: item.itemId,
-                    quantity: existingQuote?.quantity ?? 1,
-                    rate: existingQuote?.rate ?? 0,
-                    taxPercent: existingQuote?.taxPercent ?? 0,
-                    receivedQuantity: existingQuote?.receivedQuantity ?? 0,
-                };
-            });
-            form.setValue(`vendors.${vIndex}.quotes`, newQuotes);
+            const updatedQuotes = items.map((item, i) => ({
+                itemId: item.itemId,
+                quantity: vendor.quotes?.[i]?.quantity ?? 1,
+                rate: vendor.quotes?.[i]?.rate ?? 0,
+                taxPercent: vendor.quotes?.[i]?.taxPercent ?? 0,
+                receivedQuantity: vendor.quotes?.[i]?.receivedQuantity ?? 0,
+            }));
+    
+            form.setValue(`vendors.${vIndex}.quotes`, updatedQuotes);
         }
     });
   }, [itemFields.length, form]);
@@ -288,7 +282,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
           <DialogTitle>{isEditMode ? 'Edit' : 'New'} Price Comparison</DialogTitle>
           <DialogDescription>Add items and vendors to compare quotes.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit, (errors) => { console.log("FORM ERRORS:", errors)})} className="flex-1 flex flex-col overflow-hidden">
+        <form onSubmit={form.handleSubmit(onSubmit, (errors) => {console.log("FORM ERRORS:", errors)})} className="flex-1 flex flex-col overflow-hidden">
           <ScrollArea className="flex-1 pr-6 -mr-6">
             <div className="space-y-6">
               <div>
