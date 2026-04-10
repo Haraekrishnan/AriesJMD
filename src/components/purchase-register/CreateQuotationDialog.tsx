@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Trash2, Users2, X, ChevronsUpDown, Check } from 'lucide-react';
+import { PlusCircle, Trash2, Users2, X, ChevronsUpDown, Check, AlertCircle } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -181,13 +181,19 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
             const vendorsWithSyncedQuotes = (existingQuotation.vendors || []).map(vendor => {
                 const quotesMap = new Map<string, QuotationQuote>();
                 if (Array.isArray(vendor.quotes)) {
-                    vendor.quotes.forEach(q => q && q.itemId && quotesMap.set(q.itemId, q));
+                    vendor.quotes.forEach(q => {
+                        if (q && (q.itemId || (q as any).id)) {
+                            quotesMap.set(q.itemId || (q as any).id, q);
+                        }
+                    });
                 }
 
                 const syncedQuotes = itemsFromQuote.map(item => {
-                    const existingQuote = quotesMap.get(item.itemId);
+                    const key = item.itemId || item.id;
+                    const existingQuote = quotesMap.get(key);
+
                     return {
-                        itemId: item.itemId,
+                        itemId: key,
                         quantity: existingQuote?.quantity ?? 1,
                         rate: existingQuote?.rate ?? 0,
                         taxPercent: existingQuote?.taxPercent ?? 0,
@@ -282,7 +288,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
           <DialogTitle>{isEditMode ? 'Edit' : 'New'} Price Comparison</DialogTitle>
           <DialogDescription>Add items and vendors to compare quotes.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit, (errors) => {console.log("FORM ERRORS:", errors)})} className="flex-1 flex flex-col overflow-hidden">
+        <form onSubmit={form.handleSubmit(onSubmit, (errors) => console.log("FORM ERRORS:", errors))} className="flex-1 flex flex-col overflow-hidden">
           <ScrollArea className="flex-1 pr-6 -mr-6">
             <div className="space-y-6">
               <div>
@@ -356,7 +362,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                     <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
                                 </Select>
                                 {form.formState.errors.vendors?.[vendorIndex]?.vendorId && (
-                                    <p className="text-xs text-destructive">Select vendor</p>
+                                  <p className="text-xs text-destructive">Select vendor</p>
                                 )}
                             </div>
                             <Button type="button" variant="ghost" size="icon" onClick={() => removeVendor(vendorIndex)}><X className="h-4 w-4"/></Button>
