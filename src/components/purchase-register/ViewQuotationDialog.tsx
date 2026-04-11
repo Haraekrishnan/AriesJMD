@@ -96,7 +96,7 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
   const quotation = useMemo(() => {
     return quotations.find((q: Quotation) => q.id === initialQuotation.id) || initialQuotation;
   }, [quotations, initialQuotation]);
-
+  
   const creator = users.find(u => u.id === quotation.creatorId);
   const canFinalize = can.manage_purchase_register;
 

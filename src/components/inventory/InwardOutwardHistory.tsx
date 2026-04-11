@@ -4,8 +4,9 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO } from 'date-fns';
+import { InwardOutwardRecord } from '@/lib/types';
 
-export default function InwardOutwardHistory({ records }: { records: any[] }) {
+export default function InwardOutwardHistory({ records }: { records: InwardOutwardRecord[] }) {
     const { users } = useAppContext();
 
     const sortedRecords = useMemo(() => {

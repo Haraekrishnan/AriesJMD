@@ -1238,3 +1238,16 @@ export type RequestListItem = {
     category?: string;
     subDivision?: string;
   };
+
+export type InwardOutwardRecord = {
+    id: string;
+    itemId: string;
+    itemType: string;
+    itemName: string;
+    type: 'Inward' | 'Outward';
+    quantity: number;
+    date: string; // ISO
+    source: string;
+    remarks?: string;
+    userId: string;
+};

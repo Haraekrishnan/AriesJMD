@@ -15,7 +15,7 @@ import { ChevronsUpDown, Check } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { InventoryItem, UTMachine, DftMachine, DigitalCamera, Anemometer, OtherEquipment, LaptopDesktop, MobileSim, WeldingMachine, WalkieTalkie } from '@/lib/types';
+import { InventoryItem, UTMachine, DftMachine, DigitalCamera, Anemometer, OtherEquipment, LaptopDesktop, MobileSim, WeldingMachine, WalkieTalkie, PneumaticDrillingMachine, PneumaticAngleGrinder, WiredDrillingMachine, CordlessDrillingMachine, WiredAngleGrinder, CordlessAngleGrinder, CordlessReciprocatingSaw } from '@/lib/types';
 
 
 const inwardSchema = z.object({
@@ -35,12 +35,14 @@ interface AddInwardRecordDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
-type SearchableItem = (InventoryItem | UTMachine | DftMachine | DigitalCamera | Anemometer | OtherEquipment | LaptopDesktop | MobileSim | WeldingMachine | WalkieTalkie) & { itemType: string; };
+type SearchableItem = (InventoryItem | UTMachine | DftMachine | DigitalCamera | Anemometer | OtherEquipment | LaptopDesktop | MobileSim | WeldingMachine | WalkieTalkie | PneumaticDrillingMachine | PneumaticAngleGrinder | WiredDrillingMachine | CordlessDrillingMachine | WiredAngleGrinder | CordlessAngleGrinder | CordlessReciprocatingSaw) & { itemType: string; };
 
 export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRecordDialogProps) {
   const { 
     addInwardOutwardRecord, inventoryItems, utMachines, dftMachines, digitalCameras, 
-    anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies 
+    anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies,
+    pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines,
+    wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws,
   } = useAppContext();
   const { toast } = useToast();
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -63,14 +65,21 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
     mobileSims.forEach((i) => arr.push({ ...i, itemType: "MobileSim" }));
     weldingMachines.forEach((i) => arr.push({ ...i, itemType: "WeldingMachine" }));
     walkieTalkies.forEach((i) => arr.push({ ...i, itemType: "WalkieTalkie" }));
+    pneumaticDrillingMachines.forEach((i) => arr.push({ ...i, itemType: "PneumaticDrillingMachine" }));
+    pneumaticAngleGrinders.forEach((i) => arr.push({ ...i, itemType: "PneumaticAngleGrinder" }));
+    wiredDrillingMachines.forEach((i) => arr.push({ ...i, itemType: "WiredDrillingMachine" }));
+    cordlessDrillingMachines.forEach((i) => arr.push({ ...i, itemType: "CordlessDrillingMachine" }));
+    wiredAngleGrinders.forEach((i) => arr.push({ ...i, itemType: "WiredAngleGrinder" }));
+    cordlessAngleGrinders.forEach((i) => arr.push({ ...i, itemType: "CordlessAngleGrinder" }));
+    cordlessReciprocatingSaws.forEach((i) => arr.push({ ...i, itemType: "CordlessReciprocatingSaw" }));
     return arr;
-  }, [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies]);
+  }, [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies, pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws]);
 
   const filteredItems = useMemo(() => {
     if (!searchTerm) return [];
     const lowercasedTerm = searchTerm.toLowerCase();
     return allItems.filter(item => 
-        (item.name?.toLowerCase().includes(lowercasedTerm)) ||
+        ((item as any).name?.toLowerCase().includes(lowercasedTerm)) ||
         ((item as any).machineName?.toLowerCase().includes(lowercasedTerm)) ||
         ((item as any).equipmentName?.toLowerCase().includes(lowercasedTerm)) ||
         (item.serialNumber?.toLowerCase().includes(lowercasedTerm)) ||
