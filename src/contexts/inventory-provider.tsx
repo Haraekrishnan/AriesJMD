@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -122,6 +120,7 @@ type InventoryContextType = {
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'lastUpdated'>) => void;
   addMultipleInventoryItems: (items: any[]) => number;
   batchAddInventoryItems: (items: Omit<InventoryItem, 'id' | 'lastUpdated'>[]) => void;
+  batchCreateAndLogItems: (itemsData: Partial<Omit<InventoryItem, 'id' | 'lastUpdated'>>[], source: string) => number;
   updateInventoryItem: (item: InventoryItem) => void;
   batchUpdateInventoryItems: (updates: { id: string; data: Partial<InventoryItem> }[]) => void;
   updateInventoryItemGroup: (itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => void;
@@ -501,7 +500,70 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         };
         set(newRef, dataToSave);
         addActivityLog(user.id, 'Inventory Item Added', `${itemData.name} (SN: ${itemData.serialNumber})`);
+
+        // ADD Inward Record
+        const newRecordRef = push(ref(rtdb, 'inwardOutwardRecords'));
+        const newRecord: Omit<InwardOutwardRecord, 'id'> = {
+            itemId: newRef.key!,
+            itemType: 'Inventory',
+            itemName: itemData.name,
+            type: 'Inward',
+            quantity: itemData.quantity || 1,
+            date: new Date().toISOString(),
+            source: 'Manual Entry (Single)',
+            remarks: itemData.remarks || '',
+            userId: user.id,
+        };
+        set(newRecordRef, newRecord);
+
     }, [user, addActivityLog]);
+
+    const batchCreateAndLogItems = useCallback((itemsData: Partial<Omit<InventoryItem, 'id' | 'lastUpdated'>>[], source: string): number => {
+        if (!user) return 0;
+        const updates: { [key: string]: any } = {};
+        const timestamp = new Date().toISOString();
+        const storeProject = projects.find(p => p.name.toLowerCase() === 'store');
+        const storeProjectId = storeProject ? storeProject.id : projects[0]?.id || '';
+    
+        itemsData.forEach(itemData => {
+            const newItemRef = push(ref(rtdb, 'inventoryItems'));
+            const newItemId = newItemRef.key!;
+    
+            const dataToSave: Partial<InventoryItem> = {
+                ...itemData,
+                name: itemData.name || 'Unknown',
+                serialNumber: itemData.serialNumber || `AUTOGEN-${Date.now()}`,
+                isArchived: false,
+                lastUpdated: timestamp,
+                status: 'In Store',
+                projectId: storeProjectId,
+                category: 'General',
+                quantity: 1, // Each item is unique and serialized
+            };
+            updates[`/inventoryItems/${newItemId}`] = dataToSave;
+    
+            const newRecordRef = push(ref(rtdb, 'inwardOutwardRecords'));
+            const newRecord: Omit<InwardOutwardRecord, 'id'> = {
+                itemId: newItemId,
+                itemType: 'Inventory',
+                itemName: dataToSave.name!,
+                type: 'Inward',
+                quantity: 1,
+                date: timestamp,
+                source: source,
+                remarks: itemData.remarks || '',
+                userId: user.id,
+            };
+            updates[`/inwardOutwardRecords/${newRecordRef.key}`] = newRecord;
+        });
+    
+        if (Object.keys(updates).length > 0) {
+            update(ref(rtdb), updates);
+            addActivityLog(user.id, "Batch Inventory Inward", `Created and logged ${itemsData.length} new items from source: ${source}.`);
+        }
+    
+        return itemsData.length;
+    }, [user, addActivityLog, projects]);
 
     const batchAddInventoryItems = useCallback((items: Omit<InventoryItem, 'id' | 'lastUpdated'>[]) => {
         if (!user) return;
@@ -1765,7 +1827,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const contextValue: InventoryContextType = {
         inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, weldingMachines, walkieTalkies, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, deliveryNotes, consumableInwardHistory, directives: [], damageReports, inwardOutwardRecords,
         pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws,
-        addInventoryItem, addMultipleInventoryItems, batchAddInventoryItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInspectionItemGroup, updateMultipleInventoryItems, batchDeleteInventoryItems, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
+        addInventoryItem, addMultipleInventoryItems, batchAddInventoryItems, batchCreateAndLogItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInspectionItemGroup, updateMultipleInventoryItems, batchDeleteInventoryItems, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
         addInventoryTransferRequest, updateInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
         addInwardOutwardRecord,
         addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest,
@@ -1811,5 +1873,3 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
-
-    
