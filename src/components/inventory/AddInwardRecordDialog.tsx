@@ -92,16 +92,6 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
     return arr;
   }, [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies, pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws]);
 
-  const filteredItems = useMemo(() => {
-    return allItems.filter(item => 
-        ((item as any).name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        ((item as any).machineName?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        ((item as any).equipmentName?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (item.serialNumber?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (item.ariesId?.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  }, [allItems, searchTerm]);
-
   const onSubmit = (data: FormValues) => {
     data.items.forEach(item => {
       addInwardOutwardRecord(item.itemInfo, item.quantity, 'Inward', data.source, item.remarks);
