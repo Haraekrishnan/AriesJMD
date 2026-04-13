@@ -1,5 +1,6 @@
+
 'use client';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAppContext } from '@/contexts/app-provider';
@@ -11,12 +12,18 @@ import { Label } from '../ui/label';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { useMemo } from 'react';
+import { DatePickerInput } from '../ui/date-picker-input';
+import { Separator } from '../ui/separator';
 
 const newItemSchema = z.object({
   id: z.string(),
   name: z.string().min(1, 'Name is required'),
   serialNumber: z.string().min(1, 'Serial is required'),
   ariesId: z.string().optional(),
+  erpId: z.string().optional(),
+  certification: z.string().optional(),
+  chestCrollNo: z.string().optional(),
+  purchaseDate: z.date().optional().nullable(),
   remarks: z.string().optional(),
 });
 
@@ -32,6 +39,18 @@ interface AddInwardRecordDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
+const generateDefaultItem = () => ({
+    id: `item-${Date.now()}-${Math.random()}`,
+    name: '',
+    serialNumber: '',
+    ariesId: '',
+    erpId: '',
+    certification: '',
+    chestCrollNo: '',
+    purchaseDate: null,
+    remarks: '',
+});
+
 export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRecordDialogProps) {
   const { batchCreateAndLogItems, inventoryItems } = useAppContext();
   const { toast } = useToast();
@@ -42,7 +61,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
     resolver: zodResolver(batchInwardSchema),
     defaultValues: {
       source: '',
-      items: [{ id: `item-${Date.now()}`, name: '', serialNumber: '', ariesId: '', remarks: '' }],
+      items: [generateDefaultItem()],
     },
   });
 
@@ -52,7 +71,10 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
   });
 
   const onSubmit = (data: FormValues) => {
-    const itemsToCreate = data.items.map(({ id, ...rest }) => rest);
+    const itemsToCreate = data.items.map(({ id, ...rest }) => ({
+        ...rest,
+        purchaseDate: rest.purchaseDate ? rest.purchaseDate.toISOString() : null,
+    }));
     const count = batchCreateAndLogItems(itemsToCreate, data.source);
     toast({ title: 'Batch Inward Successful', description: `${count} new items were created and logged.` });
     setIsOpen(false);
@@ -62,7 +84,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
     if (!open) {
       form.reset({
         source: '',
-        items: [{ id: `item-${Date.now()}`, name: '', serialNumber: '', ariesId: '', remarks: '' }],
+        items: [generateDefaultItem()],
       });
     }
     setIsOpen(open);
@@ -84,36 +106,60 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
             </div>
           </div>
           <div className="flex-1 overflow-hidden flex flex-col mt-4">
-            <div className="grid grid-cols-12 gap-2 font-medium text-xs text-muted-foreground px-4 pb-2 shrink-0">
-              <div className="col-span-3">Item Name</div>
-              <div className="col-span-3">Serial Number</div>
-              <div className="col-span-2">Aries ID</div>
-              <div className="col-span-3">Remarks</div>
-              <div className="col-span-1"></div>
-            </div>
             <ScrollArea className="flex-1 px-4">
               <div className="space-y-4">
                 <datalist id="item-names-list">
                   {itemNames.map(n => <option key={n} value={n} />)}
                 </datalist>
                 {fields.map((field, index) => (
-                  <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
-                    <div className="col-span-3">
-                      <Input {...form.register(`items.${index}.name`)} placeholder="e.g., Harness" list="item-names-list" />
-                      {form.formState.errors.items?.[index]?.name && <p className="text-xs text-destructive mt-1">{form.formState.errors.items?.[index]?.name?.message}</p>}
-                    </div>
-                    <div className="col-span-3">
-                      <Input {...form.register(`items.${index}.serialNumber`)} placeholder="Serial Number" />
-                      {form.formState.errors.items?.[index]?.serialNumber && <p className="text-xs text-destructive mt-1">{form.formState.errors.items?.[index]?.serialNumber?.message}</p>}
-                    </div>
-                    <div className="col-span-2">
-                      <Input {...form.register(`items.${index}.ariesId`)} placeholder="Aries ID" />
-                    </div>
-                    <div className="col-span-3">
-                      <Input {...form.register(`items.${index}.remarks`)} placeholder="Optional remarks" />
-                    </div>
-                    <div className="col-span-1 flex items-center h-full">
-                      <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                  <div key={field.id} className="p-4 border rounded-md relative bg-muted/30">
+                    <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => remove(index)}>
+                        <Trash2 className="h-4 w-4 text-destructive"/>
+                    </Button>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="space-y-2">
+                            <Label>Item Name</Label>
+                            <Input {...form.register(`items.${index}.name`)} placeholder="e.g., Harness" list="item-names-list" />
+                            {form.formState.errors.items?.[index]?.name && <p className="text-xs text-destructive mt-1">{form.formState.errors.items[index]?.name?.message}</p>}
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Serial Number</Label>
+                            <Input {...form.register(`items.${index}.serialNumber`)} placeholder="Serial Number" />
+                            {form.formState.errors.items?.[index]?.serialNumber && <p className="text-xs text-destructive mt-1">{form.formState.errors.items[index]?.serialNumber?.message}</p>}
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Aries ID</Label>
+                            <Input {...form.register(`items.${index}.ariesId`)} placeholder="Aries ID" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Chest Croll No.</Label>
+                            <Input {...form.register(`items.${index}.chestCrollNo`)} placeholder="Chest Croll No." />
+                        </div>
+                         <div className="space-y-2">
+                            <Label>ERP ID</Label>
+                            <Input {...form.register(`items.${index}.erpId`)} placeholder="ERP ID" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Certification</Label>
+                            <Input {...form.register(`items.${index}.certification`)} placeholder="Certification" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Purchase Date</Label>
+                            <Controller
+                                name={`items.${index}.purchaseDate`}
+                                control={form.control}
+                                render={({ field: dateField }) => (
+                                    <DatePickerInput
+                                        value={dateField.value || undefined}
+                                        onChange={dateField.onChange}
+                                    />
+                                )}
+                            />
+                        </div>
+                         <div className="space-y-2">
+                            <Label>Remarks</Label>
+                            <Input {...form.register(`items.${index}.remarks`)} placeholder="Optional remarks" />
+                        </div>
                     </div>
                   </div>
                 ))}
@@ -121,7 +167,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
             </ScrollArea>
           </div>
           <div className="px-4 pt-4 shrink-0">
-            <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `item-${Date.now()}`, name: '', serialNumber: '', ariesId: '', remarks: '' })}>
+            <Button type="button" variant="outline" size="sm" onClick={() => append(generateDefaultItem())}>
               <PlusCircle className="mr-2 h-4 w-4" />Add Row
             </Button>
             {form.formState.errors.items?.root && <p className="text-xs text-destructive pt-2">{form.formState.errors.items.root.message}</p>}
@@ -135,3 +181,4 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
     </Dialog>
   );
 }
+
