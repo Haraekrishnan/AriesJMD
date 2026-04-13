@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -9,10 +10,12 @@ import { Button } from '../ui/button';
 import { Edit, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import EditInwardOutwardDialog from './EditInwardOutwardDialog';
+import FinalizeInwardDialog from './FinalizeInwardDialog';
 
 export default function InwardOutwardHistory({ records }: { records: InwardOutwardRecord[] }) {
     const { user, users, can, deleteInwardOutwardRecord } = useAppContext();
     const [editingRecord, setEditingRecord] = useState<InwardOutwardRecord | null>(null);
+    const [finalizingRecord, setFinalizingRecord] = useState<InwardOutwardRecord | null>(null);
 
     const sortedRecords = useMemo(() => {
         return [...records].sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
@@ -59,9 +62,15 @@ export default function InwardOutwardHistory({ records }: { records: InwardOutwa
                              {(can.manage_inward_outward || user?.role === 'Admin') && (
                                 <TableCell className="text-right">
                                     <div className="flex gap-2 justify-end">
+                                      {record.status === 'Pending Details' ? (
+                                        <Button variant="secondary" size="sm" onClick={() => setFinalizingRecord(record)}>
+                                          Finalize
+                                        </Button>
+                                      ) : (
                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingRecord(record)} disabled={!can.manage_inward_outward}>
                                             <Edit className="h-4 w-4" />
                                         </Button>
+                                      )}
                                         {user?.role === 'Admin' && (
                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild>
@@ -93,6 +102,13 @@ export default function InwardOutwardHistory({ records }: { records: InwardOutwa
                 setIsOpen={() => setEditingRecord(null)}
                 record={editingRecord}
             />
+        )}
+        {finalizingRecord && (
+          <FinalizeInwardDialog
+            isOpen={!!finalizingRecord}
+            setIsOpen={() => setFinalizingRecord(null)}
+            record={finalizingRecord}
+          />
         )}
         </>
     )

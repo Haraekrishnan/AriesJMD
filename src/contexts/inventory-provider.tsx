@@ -151,6 +151,7 @@ type InventoryContextType = {
   addInwardOutwardRecord: (itemInfo: { itemId: string; itemType: string; name: string; }, quantity: number, type: 'Inward' | 'Outward', source: string, remarks?: string) => void;
   updateInwardOutwardRecord: (record: InwardOutwardRecord) => void;
   deleteInwardOutwardRecord: (recordId: string) => void;
+  finalizeInwardPurchase: (recordId: string, newItemsData: Partial<Omit<InventoryItem, 'id'>>[]) => void;
 
   addCertificateRequest: (requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => void;
   fulfillCertificateRequest: (requestId: string, comment: string) => void;
@@ -552,6 +553,37 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
     
         return itemsData.length;
+    }, [user, addActivityLog, projects]);
+    
+    const finalizeInwardPurchase = useCallback((recordId: string, newItemsData: Partial<Omit<InventoryItem, 'id'>>[]) => {
+      if (!user) return;
+  
+      const updates: { [key: string]: any } = {};
+      const timestamp = new Date().toISOString();
+      const storeProject = projects.find(p => p.name.toLowerCase() === 'store');
+      const storeProjectId = storeProject ? storeProject.id : projects[0]?.id || '';
+  
+      newItemsData.forEach(itemData => {
+          const newItemRef = push(ref(rtdb, 'inventoryItems'));
+          const newItemId = newItemRef.key!;
+          const dataToSave: Partial<InventoryItem> = {
+              ...itemData,
+              lastUpdated: timestamp,
+              status: 'In Store',
+              projectId: storeProjectId,
+              category: 'General',
+              quantity: 1,
+          };
+          updates[`/inventoryItems/${newItemId}`] = dataToSave;
+      });
+      
+      updates[`/inwardOutwardRecords/${recordId}/status`] = 'Completed';
+      updates[`/inwardOutwardRecords/${recordId}/finalizedAt`] = timestamp;
+      updates[`/inwardOutwardRecords/${recordId}/finalizedBy`] = user.id;
+  
+      update(ref(rtdb), updates);
+      addActivityLog(user.id, "Finalized Inward Purchase", `Finalized and created ${newItemsData.length} items for record ${recordId.slice(-6)}`);
+  
     }, [user, addActivityLog, projects]);
 
     const batchAddInventoryItems = useCallback((items: Omit<InventoryItem, 'id' | 'lastUpdated'>[]) => {
@@ -1894,7 +1926,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws,
         addInventoryItem, batchAddInventoryItems, batchCreateAndLogItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInspectionItemGroup, updateMultipleInventoryItems, batchDeleteInventoryItems, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
         addInventoryTransferRequest, updateInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
-        addInwardOutwardRecord, updateInwardOutwardRecord, deleteInwardOutwardRecord,
+        addInwardOutwardRecord, updateInwardOutwardRecord, deleteInwardOutwardRecord, finalizeInwardPurchase,
         addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest,
         addUTMachine, updateUTMachine, deleteUTMachine,
         addDftMachine, updateDftMachine, deleteDftMachine,
@@ -1926,7 +1958,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         resolveInternalRequestDispute,
         deleteDamageReport,
         deleteAllDamageReportsAndFiles,
-        addMultipleInventoryItems,
     };
 
     return <InventoryContext.Provider value={contextValue}>{children}</InventoryContext.Provider>;
