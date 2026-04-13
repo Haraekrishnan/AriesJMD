@@ -153,7 +153,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
                         </div>
                         <div className="space-y-2">
                             <Label>Chest Croll No.</Label>
-                            <Input {...form.register(`items.${index}.chestCrollNo`)} placeholder="Chest Croll No." />
+                            <Input {...form.register(`items.${index}.chestCrollNo`)} placeholder="For Harness only" />
                         </div>
                          <div className="space-y-2">
                             <Label>ERP ID</Label>
