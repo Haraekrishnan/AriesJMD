@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -572,64 +573,25 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
     }, [user, addActivityLog]);
 
-    const addMultipleInventoryItems = useCallback((itemsData: any[]): number => {
-        let importedCount = 0;
-        const updates: { [key: string]: any } = {};
-
-        itemsData.forEach(row => {
-            const serialNumber = row['SERIAL NUMBER'];
-            if (!serialNumber) return;
-
-            const existingItem = inventoryItems.find(i => i.serialNumber === serialNumber);
-            if (existingItem) return; // Skip existing items
-            
-            const parseDateExcel = (date: any): string | null => {
-                if (date instanceof Date && isValid(date)) {
-                    return date.toISOString();
-                }
-                return null;
-            }
-
-            const dataToSave: Partial<InventoryItem> = {
-                name: row['ITEM NAME'] || '',
-                serialNumber: serialNumber,
-                isArchived: false,
-                chestCrollNo: row['CHEST CROLL NO'] || null,
-                ariesId: row['ARIES ID'] || '',
-                inspectionDate: parseDateExcel(row['INSPECTION DATE']),
-                inspectionDueDate: parseDateExcel(row['INSPECTION DUE DATE']),
-                tpInspectionDueDate: parseDateExcel(row['TP INSPECTION DUE DATE']),
-                status: row['STATUS'] || 'In Store',
-                projectId: projects.find(p => p.name === row['PROJECT'])?.id || projects[0].id,
-                certificateUrl: row['TP Certificate Link'] || '',
-                inspectionCertificateUrl: row['Inspection Certificate Link'] || '',
-                lastUpdated: new Date().toISOString()
-            };
-            
-            const newRef = push(ref(rtdb, 'inventoryItems'));
-            updates[`/inventoryItems/${newRef.key}`] = dataToSave;
-            importedCount++;
-        });
-
-        if(Object.keys(updates).length > 0) {
-            update(ref(rtdb), updates);
-        }
-        return importedCount;
-    }, [inventoryItems, projects]);
-
     const updateInventoryItem = useCallback((item: InventoryItem) => {
+        if (!user) return;
         const { id, ...data } = item;
-        const updates = { 
-            ...data, 
-            lastUpdated: new Date().toISOString(),
-            movedToProjectId: data.movedToProjectId || null,
-            chestCrollNo: data.chestCrollNo || null,
-            erpId: data.erpId || null,
-            certification: data.certification || null,
-            purchaseDate: data.purchaseDate || null,
+        const updates: Partial<InventoryItem> & { lastUpdated: string } = {
+          ...data,
+          lastUpdated: new Date().toISOString(),
         };
+    
+        // Sanitize to remove undefined values before sending to Firebase
+        Object.keys(updates).forEach(keyStr => {
+            const key = keyStr as keyof typeof updates;
+            if (updates[key] === undefined) {
+                (updates as any)[key] = null;
+            }
+        });
+    
         update(ref(rtdb, `inventoryItems/${id}`), updates);
-    }, []);
+        addActivityLog(user.id, "Inventory Item Updated", `${item.name} (SN: ${item.serialNumber})`);
+      }, [user, addActivityLog]);
 
     const batchUpdateInventoryItems = useCallback((updates: { id: string, data: Partial<InventoryItem> }[]) => {
         if (!user) return;
@@ -682,6 +644,61 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         toast({ title: 'Bulk Update Successful', description: `Updated ${itemsToUpdate.length} items.` });
     }, [inventoryItems, toast]);
 
+    const addMultipleInventoryItems = useCallback((itemsData: any[]): number => {
+        if (!user) return 0;
+        const updates: { [key: string]: any } = {};
+        let importedCount = 0;
+    
+        const existingSerials = new Set(inventoryItems.map(i => i.serialNumber));
+    
+        itemsData.forEach(row => {
+            const serialNumber = String(row['SERIAL NUMBER'] || '').trim();
+            if (!serialNumber || existingSerials.has(serialNumber)) {
+                return; // Skip if no serial or if it already exists
+            }
+            
+            const parseDateExcel = (date: any): string | null => {
+                if (!date) return null;
+                if (date instanceof Date && isValid(date)) {
+                    return date.toISOString();
+                }
+                // Attempt to parse string dates if they exist
+                if (typeof date === 'string') {
+                  const parsed = parseISO(date);
+                  if (isValid(parsed)) return parsed.toISOString();
+                }
+                return null;
+            }
+    
+            const dataToSave: Partial<InventoryItem> = {
+                name: row['ITEM NAME'] || 'Unknown',
+                serialNumber: serialNumber,
+                chestCrollNo: row['CHEST CROLL NO'] || null,
+                ariesId: row['ARIES ID'] || null,
+                inspectionDate: parseDateExcel(row['INSPECTION DATE']),
+                inspectionDueDate: parseDateExcel(row['INSPECTION DUE DATE']),
+                tpInspectionDueDate: parseDateExcel(row['TP INSPECTION DUE DATE']),
+                status: row['STATUS'] || 'In Store',
+                projectId: projects.find(p => p.name === row['PROJECT'])?.id || projects.find(p => p.name === 'Store')?.id || '',
+                certificateUrl: row['TP Certificate Link'] || null,
+                inspectionCertificateUrl: row['Inspection Certificate Link'] || null,
+                isArchived: false,
+                lastUpdated: new Date().toISOString(),
+            };
+    
+            const newRef = push(ref(rtdb, 'inventoryItems'));
+            updates[`/inventoryItems/${newRef.key}`] = dataToSave;
+            importedCount++;
+        });
+    
+        if (Object.keys(updates).length > 0) {
+            update(ref(rtdb), updates);
+            addActivityLog(user.id, "Inventory Batch Import", `Imported ${importedCount} new items.`);
+        }
+    
+        return importedCount;
+    }, [user, inventoryItems, projects, addActivityLog]);
+    
     const updateMultipleInventoryItems = useCallback((itemsData: any[]): number => {
         let updatedCount = 0;
         const updates: { [key: string]: any } = {};
@@ -1783,48 +1800,48 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, [user, projects, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies, pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws]);
     
     const updateInwardOutwardRecord = useCallback((record: InwardOutwardRecord) => {
-      if (!user || !can.manage_inward_outward) {
-          toast({ title: 'Permission Denied', variant: 'destructive'});
-          return;
-      }
-      const { id, ...data } = record;
+        if (!user || !can.manage_inward_outward) {
+            toast({ title: 'Permission Denied', variant: 'destructive'});
+            return;
+        }
+        const { id, ...data } = record;
   
-      const originalRecord = inwardOutwardRecordsById[id];
-      if (!originalRecord) {
-          toast({ title: 'Record not found', variant: 'destructive'});
-          return;
-      }
+        const originalRecord = inwardOutwardRecordsById[id];
+        if (!originalRecord) {
+            toast({ title: 'Record not found', variant: 'destructive'});
+            return;
+        }
   
-      const quantityDifference = (data.quantity || 0) - (originalRecord.quantity || 0);
+        const quantityDifference = (data.quantity || 0) - (originalRecord.quantity || 0);
   
-      // Update the record
-      update(ref(rtdb, `inwardOutwardRecords/${id}`), data);
+        // Update the record
+        update(ref(rtdb, `inwardOutwardRecords/${id}`), data);
   
-      // Adjust item quantity if difference is not zero
-      if (quantityDifference !== 0) {
-          const itemPath = typeToPathMap[record.itemType];
-          if (itemPath) {
-              const itemRef = ref(rtdb, `${itemPath}/${record.itemId}`);
-              get(itemRef).then(snapshot => {
-                  if (snapshot.exists()) {
-                      const item = snapshot.val();
-                      // Only adjust quantity if the item is supposed to have a quantity
-                      if (item.hasOwnProperty('quantity')) {
-                          const currentQuantity = item.quantity || 0;
-                          let newQuantity;
-                          if (record.type === 'Inward') {
-                              newQuantity = currentQuantity + quantityDifference;
-                          } else { // Outward
-                              newQuantity = currentQuantity - quantityDifference;
-                          }
-                          set(ref(rtdb, `${itemPath}/${record.itemId}/quantity`), Math.max(0, newQuantity));
-                      }
-                  }
-              });
-          }
-      }
+        // Adjust item quantity if difference is not zero
+        if (quantityDifference !== 0) {
+            const itemPath = typeToPathMap[record.itemType];
+            if (itemPath) {
+                const itemRef = ref(rtdb, `${itemPath}/${record.itemId}`);
+                get(itemRef).then(snapshot => {
+                    if (snapshot.exists()) {
+                        const item = snapshot.val();
+                        // Only adjust quantity if the item is supposed to have a quantity
+                        if (item.hasOwnProperty('quantity')) {
+                            const currentQuantity = item.quantity || 0;
+                            let newQuantity;
+                            if (record.type === 'Inward') {
+                                newQuantity = currentQuantity + quantityDifference;
+                            } else { // Outward
+                                newQuantity = currentQuantity - quantityDifference;
+                            }
+                            set(ref(rtdb, `${itemPath}/${record.itemId}/quantity`), Math.max(0, newQuantity));
+                        }
+                    }
+                });
+            }
+        }
       
-      toast({ title: 'Record Updated'});
+        toast({ title: 'Record Updated'});
     }, [user, can.manage_inward_outward, toast, inwardOutwardRecordsById, typeToPathMap]);
     
     const deleteInwardOutwardRecord = useCallback((recordId: string) => {
@@ -1875,7 +1892,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const contextValue: InventoryContextType = {
         inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, weldingMachines, walkieTalkies, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, deliveryNotes, consumableInwardHistory, directives: [], damageReports, inwardOutwardRecords,
         pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws,
-        addInventoryItem, addMultipleInventoryItems, batchAddInventoryItems, batchCreateAndLogItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInspectionItemGroup, updateMultipleInventoryItems, batchDeleteInventoryItems, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
+        addInventoryItem, batchAddInventoryItems, batchCreateAndLogItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInspectionItemGroup, updateMultipleInventoryItems, batchDeleteInventoryItems, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
         addInventoryTransferRequest, updateInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
         addInwardOutwardRecord, updateInwardOutwardRecord, deleteInwardOutwardRecord,
         addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest,
@@ -1909,6 +1926,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         resolveInternalRequestDispute,
         deleteDamageReport,
         deleteAllDamageReportsAndFiles,
+        addMultipleInventoryItems,
     };
 
     return <InventoryContext.Provider value={contextValue}>{children}</InventoryContext.Provider>;

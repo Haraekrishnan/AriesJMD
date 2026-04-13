@@ -34,7 +34,7 @@ const editSchema = z.object({
   inspectionDate: z.date().optional().nullable(),
   inspectionDueDate: z.date().optional().nullable(),
   tpInspectionDueDate: z.date().optional().nullable(),
-  tpCertificateUrl: z.string().url().optional().or(z.literal('')),
+  certificateUrl: z.string().url().optional().or(z.literal('')),
   inspectionCertificateUrl: z.string().url().optional().or(z.literal('')),
 });
 
@@ -75,7 +75,7 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
         inspectionDate: item.inspectionDate ? parseISO(item.inspectionDate) : null,
         inspectionDueDate: item.inspectionDueDate ? parseISO(item.inspectionDueDate) : null,
         tpInspectionDueDate: item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : null,
-        tpCertificateUrl: item.tpCertificateUrl,
+        certificateUrl: item.certificateUrl,
         inspectionCertificateUrl: item.inspectionCertificateUrl,
       });
     }
@@ -105,6 +105,7 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
         inspectionDate: itemData.inspectionDate ? itemData.inspectionDate.toISOString() : null,
         inspectionDueDate: itemData.inspectionDueDate ? itemData.inspectionDueDate.toISOString() : null,
         tpInspectionDueDate: itemData.tpInspectionDueDate ? itemData.tpInspectionDueDate.toISOString() : null,
+        certificateUrl: itemData.certificateUrl,
     });
 
     toast({ title: 'Record Updated' });
@@ -195,7 +196,7 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
                         </div>
                          <div className="space-y-2 md:col-span-2">
                             <Label>TP Certificate URL</Label>
-                            <Input {...form.register(`tpCertificateUrl`)} placeholder="https://" />
+                            <Input {...form.register(`certificateUrl`)} placeholder="https://" />
                         </div>
                         <div className="space-y-2 md:col-span-2">
                             <Label>Inspection Certificate URL</Label>

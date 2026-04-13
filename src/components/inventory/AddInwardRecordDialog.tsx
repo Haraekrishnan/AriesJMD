@@ -27,7 +27,7 @@ const newItemSchema = z.object({
   inspectionDate: z.date().optional().nullable(),
   inspectionDueDate: z.date().optional().nullable(),
   tpInspectionDueDate: z.date().optional().nullable(),
-  tpCertificateUrl: z.string().url().optional().or(z.literal('')),
+  certificateUrl: z.string().url().optional().or(z.literal('')),
   inspectionCertificateUrl: z.string().url().optional().or(z.literal('')),
 });
 
@@ -56,7 +56,7 @@ const generateDefaultItem = () => ({
     inspectionDate: null,
     inspectionDueDate: null,
     tpInspectionDueDate: null,
-    tpCertificateUrl: '',
+    certificateUrl: '',
     inspectionCertificateUrl: '',
 });
 
@@ -92,7 +92,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
         inspectionDate: item.inspectionDate ? item.inspectionDate.toISOString() : null,
         inspectionDueDate: item.inspectionDueDate ? item.inspectionDueDate.toISOString() : null,
         tpInspectionDueDate: item.tpInspectionDueDate ? item.tpInspectionDueDate.toISOString() : null,
-        tpCertificateUrl: item.tpCertificateUrl || null,
+        certificateUrl: item.certificateUrl || null,
         inspectionCertificateUrl: item.inspectionCertificateUrl || null,
     }));
     const count = batchCreateAndLogItems(itemsToCreate, data.source);
@@ -181,7 +181,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
                         </div>
                          <div className="space-y-2 md:col-span-2">
                             <Label>TP Certificate URL</Label>
-                            <Input {...form.register(`items.${index}.tpCertificateUrl`)} placeholder="https://" />
+                            <Input {...form.register(`items.${index}.certificateUrl`)} placeholder="https://" />
                         </div>
                         <div className="space-y-2 md:col-span-2">
                             <Label>Inspection Certificate URL</Label>
