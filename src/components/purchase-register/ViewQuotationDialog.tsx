@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../ui/dialog';
@@ -87,8 +88,8 @@ const ReceiveItemDialog = ({
 };
 
 export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: initialQuotation }: ViewQuotationDialogProps) {
-  const { users, can, addInwardOutwardRecord } = useAppContext();
-  const { updateQuotation, quotations } = usePurchase();
+  const { users, can } = useAppContext();
+  const { updateQuotation, quotations, receiveQuoteItem } = usePurchase();
   const { toast } = useToast();
   const [poNumber, setPoNumber] = useState(initialQuotation.poNumber || '');
   const [receivingInfo, setReceivingInfo] = useState<{ item: QuotationItem; vendor: QuotationVendorDetails; quote: QuotationQuote } | null>(null);
@@ -173,32 +174,11 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
   
   const handleReceiveItem = (quantity: number) => {
     if (!receivingInfo) return;
-    const { item, vendor, quote } = receivingInfo;
-    const newReceivedQty = (quote.receivedQuantity || 0) + quantity;
-
-    const updatedVendors = quotation.vendors.map(v => 
-        v.id === vendor.id ? {
-            ...v,
-            quotes: v.quotes.map(q => 
-                q.itemId === item.itemId ? { ...q, receivedQuantity: newReceivedQty } : q
-            )
-        } : v
-    );
-
-    const finalizedVendor = updatedVendors.find(v => v.vendorId === quotation.finalizedVendorId);
-    const allItemsReceived = finalizedVendor?.quotes.every(q => (q.receivedQuantity || 0) >= q.quantity);
-    const newStatus = allItemsReceived ? 'Completed' : 'Partially Received';
+    const { item, vendor } = receivingInfo;
     
-    updateQuotation({ ...quotation, vendors: updatedVendors, status: newStatus });
+    receiveQuoteItem(quotation.id, vendor.vendorId, item.itemId, quantity);
     
-    addInwardOutwardRecord(
-        { itemId: item.itemId, itemType: item.itemType, name: item.description },
-        quantity,
-        'Inward',
-        `From Quotation: ${quotation.title}`
-    );
-    
-    toast({ title: `Received ${quantity} of ${item.description}`});
+    toast({ title: `Logged ${quantity} of ${item.description} as 'Pending Details'`});
     setReceivingInfo(null);
   };
   

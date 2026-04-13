@@ -3,7 +3,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { Vendor, Payment, PaymentStatus, PurchaseRegister, Comment, Quotation } from '@/lib/types';
+import { Vendor, Payment, PaymentStatus, PurchaseRegister, Comment, Quotation, InwardOutwardRecord } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -34,6 +34,7 @@ type PurchaseContextType = {
   addQuotation: (quotationData: Omit<Quotation, 'id' | 'creatorId' | 'createdAt' | 'status'>) => void;
   updateQuotation: (quotation: Quotation) => void;
   deleteQuotation: (quotationId: string) => void;
+  receiveQuoteItem: (quotationId: string, vendorId: string, itemId: string, quantity: number) => void;
 };
 
 // --- HELPER FUNCTIONS ---
@@ -190,6 +191,59 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
         remove(ref(rtdb, `quotations/${quotationId}`));
     }, []);
 
+    const receiveQuoteItem = useCallback((quotationId: string, vendorId: string, itemId: string, quantity: number) => {
+        if (!user) return;
+        const quotation = quotations.find(q => q.id === quotationId);
+        if (!quotation) return;
+
+        const vendor = quotation.vendors.find(v => v.vendorId === vendorId);
+        const item = quotation.items.find(i => i.itemId === itemId);
+        if (!vendor || !item) return;
+
+        const updates: { [key: string]: any } = {};
+        
+        // 1. Create Inward Record
+        const newInwardRef = push(ref(rtdb, 'inwardOutwardRecords'));
+        const inwardRecord: Omit<InwardOutwardRecord, 'id'> = {
+            itemId,
+            itemType: item.itemType,
+            itemName: item.description,
+            type: 'Inward',
+            quantity,
+            date: new Date().toISOString(),
+            source: `From Quotation - ${quotation.title}`,
+            userId: user.id,
+            status: 'Pending Details',
+            quotationId,
+            vendorId,
+        };
+        updates[`/inwardOutwardRecords/${newInwardRef.key}`] = inwardRecord;
+
+        // 2. Update Quotation received quantity
+        const vendorIndex = quotation.vendors.findIndex(v => v.id === vendor.id);
+        const quoteIndex = vendor.quotes.findIndex(q => q.itemId === itemId);
+        if(vendorIndex > -1 && quoteIndex > -1) {
+            const currentReceived = vendor.quotes[quoteIndex].receivedQuantity || 0;
+            const newReceived = currentReceived + quantity;
+            updates[`/quotations/${quotationId}/vendors/${vendorIndex}/quotes/${quoteIndex}/receivedQuantity`] = newReceived;
+
+            // 3. Update Quotation status
+            const allItemsReceived = quotation.vendors[vendorIndex].quotes.every(q => {
+                const received = q.itemId === itemId ? newReceived : (q.receivedQuantity || 0);
+                return received >= q.quantity;
+            });
+
+            if (allItemsReceived) {
+                updates[`/quotations/${quotationId}/status`] = 'Completed';
+            } else {
+                updates[`/quotations/${quotationId}/status`] = 'Partially Received';
+            }
+        }
+        
+        update(ref(rtdb), updates);
+
+    }, [user, quotations]);
+
 
     useEffect(() => {
         const unsubscribers = [
@@ -207,6 +261,7 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
         addPayment, updatePayment, deletePayment,
         addPurchaseRegister, updatePurchaseRegister, deletePurchaseRegister, updatePurchaseRegisterPoNumber,
         addQuotation, updateQuotation, deleteQuotation,
+        receiveQuoteItem,
     };
 
     return <PurchaseContext.Provider value={contextValue}>{children}</PurchaseContext.Provider>;

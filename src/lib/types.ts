@@ -1251,4 +1251,8 @@ export type InwardOutwardRecord = {
     source: string;
     remarks?: string;
     userId: string;
+    status?: 'Pending Details' | 'Completed';
+    quotationId?: string;
+    vendorId?: string;
+    finalizedItemIds?: string[];
 };
