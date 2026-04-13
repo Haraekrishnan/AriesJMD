@@ -974,7 +974,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 htmlBody,
                 notificationSettings,
                 event: 'onInternalRequestUpdate',
-                involvedUser: requester
+                involvedUser: requester,
+                creatorUser: user,
             });
         }
     }, [user, addActivityLog, addTpCertList, users, projects, notificationSettings, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies]);
@@ -1782,54 +1783,58 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, [user, projects, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies, pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws]);
     
     const updateInwardOutwardRecord = useCallback((record: InwardOutwardRecord) => {
-        if (!user || !can.manage_inward_outward) {
-            toast({ title: 'Permission Denied', variant: 'destructive'});
-            return;
-        }
-        const { id, ...data } = record;
-
-        const originalRecord = inwardOutwardRecordsById[id];
-        if (!originalRecord) {
-            toast({ title: 'Record not found', variant: 'destructive'});
-            return;
-        }
-
-        const quantityDifference = data.quantity - originalRecord.quantity;
-
-        // Update the record
-        update(ref(rtdb, `inwardOutwardRecords/${id}`), data);
-
-        // Adjust item quantity if difference is not zero
-        if (quantityDifference !== 0) {
-            const itemPath = typeToPathMap[record.itemType];
-            if (itemPath) {
-                const itemRef = ref(rtdb, `${itemPath}/${record.itemId}/quantity`);
-                get(itemRef).then(snapshot => {
-                    if (snapshot.exists()) {
-                        const currentQuantity = snapshot.val() || 0;
-                        let newQuantity;
-                        if (record.type === 'Inward') {
-                            newQuantity = currentQuantity + quantityDifference;
-                        } else { // Outward
-                            newQuantity = currentQuantity - quantityDifference;
-                        }
-                        set(itemRef, Math.max(0, newQuantity));
-                    }
-                });
-            }
-        }
-        
-        toast({ title: 'Record Updated'});
-      }, [user, can.manage_inward_outward, toast, inwardOutwardRecordsById]);
+      if (!user || !can.manage_inward_outward) {
+          toast({ title: 'Permission Denied', variant: 'destructive'});
+          return;
+      }
+      const { id, ...data } = record;
+  
+      const originalRecord = inwardOutwardRecordsById[id];
+      if (!originalRecord) {
+          toast({ title: 'Record not found', variant: 'destructive'});
+          return;
+      }
+  
+      const quantityDifference = (data.quantity || 0) - (originalRecord.quantity || 0);
+  
+      // Update the record
+      update(ref(rtdb, `inwardOutwardRecords/${id}`), data);
+  
+      // Adjust item quantity if difference is not zero
+      if (quantityDifference !== 0) {
+          const itemPath = typeToPathMap[record.itemType];
+          if (itemPath) {
+              const itemRef = ref(rtdb, `${itemPath}/${record.itemId}`);
+              get(itemRef).then(snapshot => {
+                  if (snapshot.exists()) {
+                      const item = snapshot.val();
+                      // Only adjust quantity if the item is supposed to have a quantity
+                      if (item.hasOwnProperty('quantity')) {
+                          const currentQuantity = item.quantity || 0;
+                          let newQuantity;
+                          if (record.type === 'Inward') {
+                              newQuantity = currentQuantity + quantityDifference;
+                          } else { // Outward
+                              newQuantity = currentQuantity - quantityDifference;
+                          }
+                          set(ref(rtdb, `${itemPath}/${record.itemId}/quantity`), Math.max(0, newQuantity));
+                      }
+                  }
+              });
+          }
+      }
+      
+      toast({ title: 'Record Updated'});
+    }, [user, can.manage_inward_outward, toast, inwardOutwardRecordsById, typeToPathMap]);
     
-      const deleteInwardOutwardRecord = useCallback((recordId: string) => {
+    const deleteInwardOutwardRecord = useCallback((recordId: string) => {
         if (!user || user.role !== 'Admin') {
             toast({ title: 'Permission Denied', description: 'Only Admins can delete these records.', variant: 'destructive'});
             return;
         }
         remove(ref(rtdb, `inwardOutwardRecords/${recordId}`));
         toast({ title: 'Record Deleted', variant: 'destructive'});
-      }, [user, toast]);
+    }, [user, toast]);
 
     useEffect(() => {
         const unsubscribers = [

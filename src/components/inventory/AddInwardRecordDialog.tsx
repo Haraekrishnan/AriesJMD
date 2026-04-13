@@ -1,4 +1,3 @@
-
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -81,12 +80,20 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
   });
 
   const onSubmit = (data: FormValues) => {
-    const itemsToCreate = data.items.map(({ id, ...rest }) => ({
-        ...rest,
-        purchaseDate: rest.purchaseDate ? rest.purchaseDate.toISOString() : null,
-        inspectionDate: rest.inspectionDate ? rest.inspectionDate.toISOString() : null,
-        inspectionDueDate: rest.inspectionDueDate ? rest.inspectionDueDate.toISOString() : null,
-        tpInspectionDueDate: rest.tpInspectionDueDate ? rest.tpInspectionDueDate.toISOString() : null,
+    const itemsToCreate = data.items.map(item => ({
+        name: item.name,
+        serialNumber: item.serialNumber,
+        ariesId: item.ariesId,
+        erpId: item.erpId,
+        certification: item.certification,
+        chestCrollNo: item.chestCrollNo,
+        remarks: item.remarks,
+        purchaseDate: item.purchaseDate ? item.purchaseDate.toISOString() : null,
+        inspectionDate: item.inspectionDate ? item.inspectionDate.toISOString() : null,
+        inspectionDueDate: item.inspectionDueDate ? item.inspectionDueDate.toISOString() : null,
+        tpInspectionDueDate: item.tpInspectionDueDate ? item.tpInspectionDueDate.toISOString() : null,
+        tpCertificateUrl: item.tpCertificateUrl || null,
+        inspectionCertificateUrl: item.inspectionCertificateUrl || null,
     }));
     const count = batchCreateAndLogItems(itemsToCreate, data.source);
     toast({ title: 'Batch Inward Successful', description: `${count} new items were created and logged.` });

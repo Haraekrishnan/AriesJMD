@@ -70,7 +70,7 @@ export default function InwardOutwardHistory({ records }: { records: InwardOutwa
                                                 <AlertDialogContent>
                                                     <AlertDialogHeader>
                                                         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                        <AlertDialogDescription>This will permanently delete this record. This cannot be undone.</AlertDialogDescription>
+                                                        <AlertDialogDescription>This will permanently delete this record. This action cannot be undone.</AlertDialogDescription>
                                                     </AlertDialogHeader>
                                                     <AlertDialogFooter>
                                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
