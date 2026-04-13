@@ -25,6 +25,11 @@ const newItemSchema = z.object({
   chestCrollNo: z.string().optional(),
   purchaseDate: z.date().optional().nullable(),
   remarks: z.string().optional(),
+  inspectionDate: z.date().optional().nullable(),
+  inspectionDueDate: z.date().optional().nullable(),
+  tpInspectionDueDate: z.date().optional().nullable(),
+  tpCertificateUrl: z.string().url().optional().or(z.literal('')),
+  inspectionCertificateUrl: z.string().url().optional().or(z.literal('')),
 });
 
 const batchInwardSchema = z.object({
@@ -49,6 +54,11 @@ const generateDefaultItem = () => ({
     chestCrollNo: '',
     purchaseDate: null,
     remarks: '',
+    inspectionDate: null,
+    inspectionDueDate: null,
+    tpInspectionDueDate: null,
+    tpCertificateUrl: '',
+    inspectionCertificateUrl: '',
 });
 
 export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRecordDialogProps) {
@@ -74,6 +84,9 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
     const itemsToCreate = data.items.map(({ id, ...rest }) => ({
         ...rest,
         purchaseDate: rest.purchaseDate ? rest.purchaseDate.toISOString() : null,
+        inspectionDate: rest.inspectionDate ? rest.inspectionDate.toISOString() : null,
+        inspectionDueDate: rest.inspectionDueDate ? rest.inspectionDueDate.toISOString() : null,
+        tpInspectionDueDate: rest.tpInspectionDueDate ? rest.tpInspectionDueDate.toISOString() : null,
     }));
     const count = batchCreateAndLogItems(itemsToCreate, data.source);
     toast({ title: 'Batch Inward Successful', description: `${count} new items were created and logged.` });
@@ -116,7 +129,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
                     <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => remove(index)}>
                         <Trash2 className="h-4 w-4 text-destructive"/>
                     </Button>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="space-y-2">
                             <Label>Item Name</Label>
                             <Input {...form.register(`items.${index}.name`)} placeholder="e.g., Harness" list="item-names-list" />
@@ -143,20 +156,31 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
                             <Label>Certification</Label>
                             <Input {...form.register(`items.${index}.certification`)} placeholder="Certification" />
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-2 md:col-span-2">
                             <Label>Purchase Date</Label>
-                            <Controller
-                                name={`items.${index}.purchaseDate`}
-                                control={form.control}
-                                render={({ field: dateField }) => (
-                                    <DatePickerInput
-                                        value={dateField.value || undefined}
-                                        onChange={dateField.onChange}
-                                    />
-                                )}
-                            />
+                            <Controller name={`items.${index}.purchaseDate`} control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Inspection Date</Label>
+                            <Controller name={`items.${index}.inspectionDate`} control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
                         </div>
                          <div className="space-y-2">
+                            <Label>Inspection Due Date</Label>
+                            <Controller name={`items.${index}.inspectionDueDate`} control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                            <Label>TP Inspection Due Date</Label>
+                            <Controller name={`items.${index}.tpInspectionDueDate`} control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
+                        </div>
+                         <div className="space-y-2 md:col-span-2">
+                            <Label>TP Certificate URL</Label>
+                            <Input {...form.register(`items.${index}.tpCertificateUrl`)} placeholder="https://" />
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                            <Label>Inspection Certificate URL</Label>
+                            <Input {...form.register(`items.${index}.inspectionCertificateUrl`)} placeholder="https://" />
+                        </div>
+                        <div className="space-y-2 md:col-span-4">
                             <Label>Remarks</Label>
                             <Input {...form.register(`items.${index}.remarks`)} placeholder="Optional remarks" />
                         </div>
@@ -181,4 +205,3 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
     </Dialog>
   );
 }
-

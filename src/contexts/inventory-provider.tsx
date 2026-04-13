@@ -1527,6 +1527,11 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     const deletePpeInwardRecord = useCallback((record: PpeInwardRecord) => {
         remove(ref(rtdb, `ppeInwardHistory/${record.id}`));
+        const itemRef = ref(rtdb, `inventoryItems/${record.itemId}/quantity`);
+        get(itemRef).then(snapshot => {
+            const currentQuantity = snapshot.val() || 0;
+            set(itemRef, Math.max(0, currentQuantity - record.quantity));
+        });
     }, []);
 
     const addIgpOgpRecord = useCallback((record: Omit<IgpOgpRecord, 'id' | 'creatorId'>) => {
@@ -1881,4 +1886,3 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
-
