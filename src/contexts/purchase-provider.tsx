@@ -3,7 +3,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { Vendor, Payment, PaymentStatus, PurchaseRegister, Comment, Quotation, InwardOutwardRecord } from '@/lib/types';
+import { Vendor, Payment, PaymentStatus, PurchaseRegister, Comment, Quotation, InwardOutwardRecord, Permission } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -11,12 +11,15 @@ import { useToast } from '@/hooks/use-toast';
 
 // --- TYPE DEFINITIONS ---
 
+type PermissionsObject = Record<Permission, boolean>;
+
 type PurchaseContextType = {
   vendors: Vendor[];
   payments: Payment[];
   purchaseRegisters: PurchaseRegister[];
   pendingPaymentApprovalCount: number;
   quotations: Quotation[];
+  can: PermissionsObject;
 
   addVendor: (vendorData: Omit<Vendor, 'id'>) => void;
   updateVendor: (vendor: Vendor) => void;
@@ -63,7 +66,7 @@ const createDataListener = <T extends {}>(
 const PurchaseContext = createContext<PurchaseContextType | undefined>(undefined);
 
 export function PurchaseProvider({ children }: { children: ReactNode }) {
-    const { user, addActivityLog } = useAuth();
+    const { user, addActivityLog, can } = useAuth();
     const { toast } = useToast();
 
     const [vendorsById, setVendorsById] = useState<Record<string, Vendor>>({});
@@ -188,8 +191,14 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const deleteQuotation = useCallback((quotationId: string) => {
+        if (!user || user.role !== 'Admin') {
+            toast({ title: "Permission Denied", variant: "destructive" });
+            return;
+        }
         remove(ref(rtdb, `quotations/${quotationId}`));
-    }, []);
+        toast({ title: "Price Comparison Deleted", variant: "destructive" });
+        if(user) addActivityLog(user.id, 'Price Comparison Deleted', `ID: ${quotationId}`);
+    }, [user, toast, addActivityLog]);
 
     const receiveQuoteItem = useCallback((quotationId: string, vendorId: string, itemId: string, quantity: number) => {
         if (!user) return;
@@ -256,7 +265,7 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
     }, []);
     
     const contextValue: PurchaseContextType = {
-        vendors, payments, purchaseRegisters, pendingPaymentApprovalCount, quotations,
+        vendors, payments, purchaseRegisters, pendingPaymentApprovalCount, quotations, can,
         addVendor, updateVendor, deleteVendor,
         addPayment, updatePayment, deletePayment,
         addPurchaseRegister, updatePurchaseRegister, deletePurchaseRegister, updatePurchaseRegisterPoNumber,

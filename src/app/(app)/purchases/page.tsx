@@ -1,8 +1,8 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAppContext } from '@/contexts/app-provider';
 import { IndianRupee, PlusCircle, FileText, Edit } from 'lucide-react';
 import PurchaseRegisterList from '@/components/purchase-register/PurchaseRegisterList';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -99,9 +99,11 @@ export default function PurchasesPage() {
                     <p className="text-muted-foreground">Log purchases and compare quotations.</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button onClick={() => setIsCreateQuotationOpen(true)} variant="outline">
-                        <FileText className="mr-2 h-4 w-4"/> New Price Comparison
-                    </Button>
+                    {can.manage_purchase_register && (
+                        <Button onClick={() => setIsCreateQuotationOpen(true)} variant="outline">
+                            <FileText className="mr-2 h-4 w-4"/> New Price Comparison
+                        </Button>
+                    )}
                     <Button onClick={() => setIsAddLedgerOpen(true)}>
                         <PlusCircle className="mr-2 h-4 w-4"/> Add Purchase
                     </Button>

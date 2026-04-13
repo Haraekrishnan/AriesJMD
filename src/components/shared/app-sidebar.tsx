@@ -37,6 +37,7 @@ import {
   Hammer,
   ShieldCheck,
   Truck,
+  Inbox,
 } from 'lucide-react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -58,7 +59,8 @@ export function AppSidebar() {
     inventoryTransferRequests, dailyPlannerComments,
     pendingTaskApprovalCount, myNewTaskCount,
     damageReports,
-    trackerNotificationCount
+    trackerNotificationCount,
+    inwardOutwardRecords
   } = useAppContext();
   const pathname = usePathname();
 
@@ -149,11 +151,15 @@ const plannerNotificationCount =
     
     const pendingDamageReportCount = can.manage_inventory ? (damageReports || []).filter(r => r.status === 'Pending').length : 0;
 
+    const canManageInwardOutward = can.manage_inward_outward;
+    const pendingFinalizationCount = canManageInwardOutward ? (inwardOutwardRecords || []).filter(r => r.status === 'Pending Details').length : 0;
+
+
     return {
       myRequests: pendingInternalRequestCount + updatedInternalRequestCount + pendingPpeRequestCount + updatedPpeRequestCount,
       manageTasks: myNewTaskCount + pendingTaskApprovalCount,
       jmsTracker: trackerNotificationCount || 0,
-      storeInventory: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount,
+      storeInventory: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount + pendingFinalizationCount,
       equipment: pendingEquipmentCertRequestCount + myFulfilledEquipmentCertRequests.length,
       damageReports: pendingDamageReportCount,
       planner: plannerNotificationCount,
@@ -170,7 +176,7 @@ const plannerNotificationCount =
     ppeRequests, payments, feedback, unlockRequests,
     inventoryTransferRequests, dailyPlannerComments,
     myNewTaskCount, pendingTaskApprovalCount,
-    trackerNotificationCount,
+    trackerNotificationCount, inwardOutwardRecords
   ]);
   
   const navItems = useMemo(() => [
@@ -204,22 +210,21 @@ const plannerNotificationCount =
   ], [can, notificationCounts]);
 
   return (
-    <aside className="hidden md:flex w-64 flex-col bg-card text-card-foreground border-r border-border h-screen fixed">
-      <div className="p-4">
+    <aside className="hidden md:flex flex-col h-full w-64 border-r bg-sidebar text-sidebar-foreground">
+      <div className="flex items-center justify-between p-4 border-b">
         <Link href="/dashboard" className="flex items-center gap-3">
             <div className="flex items-center justify-center h-8 w-8">
                 {appLogo ? (
-                  <img src={appLogo} alt={appName} className="h-full w-full object-contain" />
+                    <img src={appLogo} alt={appName} className="h-full w-full object-contain" />
                 ) : (
-                  <Ship className="h-8 w-8 text-primary" />
+                    <Ship className="h-8 w-8 text-primary" />
                 )}
             </div>
             <h1 className="text-xl font-bold">{appName}</h1>
         </Link>
       </div>
-      <div className="flex-1 min-h-0">
-        <ScrollArea className="h-full px-2">
-            <ul className="space-y-1 p-2">
+      <ScrollArea className="flex-1 px-2">
+          <ul className="space-y-1 p-2">
             {navItems.map(item => (
                 item.show && (
                 <li key={item.href}>
@@ -241,11 +246,9 @@ const plannerNotificationCount =
                 </li>
                 )
             ))}
-            </ul>
-        </ScrollArea>
-      </div>
-      <div className="p-4 mt-auto">
-        <Separator className="my-4" />
+          </ul>
+      </ScrollArea>
+      <div className="p-4 mt-auto border-t">
         <div className="flex items-center gap-3">
           <Avatar>
             <AvatarImage src={user?.avatar} alt={user?.name} data-ai-hint="user avatar" />
@@ -263,6 +266,3 @@ const plannerNotificationCount =
     </aside>
   );
 }
-
-
-    

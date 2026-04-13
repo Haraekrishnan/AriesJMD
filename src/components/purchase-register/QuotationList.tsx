@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { Quotation, QuotationStatus } from '@/lib/types';
 import { Button } from '../ui/button';
 import { format, parseISO } from 'date-fns';
-import { FileDown, Eye, Edit } from 'lucide-react';
+import { FileDown, Eye, Edit, Trash2 } from 'lucide-react';
 import ViewQuotationDialog from './ViewQuotationDialog';
 import { exportToExcel } from './exportQuotationToExcel';
 import {
@@ -19,6 +19,8 @@ import { Badge } from '@/components/ui/badge';
 import { useAppContext } from '@/contexts/app-provider';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { usePurchase } from '@/contexts/purchase-provider';
 
 const statusVariant: { [key in QuotationStatus]: 'default' | 'secondary' | 'destructive' | 'success' | 'warning' } = {
   Pending: 'secondary',
@@ -33,7 +35,8 @@ const statusOptions: QuotationStatus[] = ['Pending', 'Approved', 'PO Sent', 'Par
 
 export default function QuotationList({ quotations, onEdit }: { quotations: Quotation[], onEdit: (q: Quotation) => void }) {
     const [viewingQuotation, setViewingQuotation] = useState<Quotation | null>(null);
-    const { users, can, updateQuotation } = useAppContext();
+    const { users, can, updateQuotation, deleteQuotation } = usePurchase();
+    const { user } = useAppContext();
     const { toast } = useToast();
 
     const handleExport = (quotation: Quotation) => {
@@ -58,6 +61,14 @@ export default function QuotationList({ quotations, onEdit }: { quotations: Quot
         
         updateQuotation({ ...quotation, status: newStatus });
         toast({ title: `Status updated to ${newStatus}` });
+    };
+
+    const handleDelete = (quotationId: string) => {
+        deleteQuotation(quotationId);
+        toast({
+            title: "Price Comparison Deleted",
+            variant: "destructive",
+        });
     };
 
     if (!quotations || quotations.length === 0) {
@@ -112,8 +123,25 @@ export default function QuotationList({ quotations, onEdit }: { quotations: Quot
                                     <TableCell>
                                         <div className="flex gap-1">
                                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewingQuotation(q)}><Eye className="h-4 w-4"/></Button>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(q)}><Edit className="h-4 w-4"/></Button>
+                                            {can.manage_purchase_register && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(q)}><Edit className="h-4 w-4"/></Button>}
                                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleExport(q)}><FileDown className="h-4 w-4"/></Button>
+                                             {user?.role === 'Admin' && (
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Delete Comparison?</AlertDialogTitle>
+                                                            <AlertDialogDescription>This will permanently delete "{q.title}". This action cannot be undone.</AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => handleDelete(q.id)}>Delete</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            )}
                                         </div>
                                     </TableCell>
                                     <TableCell>{format(parseISO(q.createdAt), 'yyyy-MM-dd')}</TableCell>

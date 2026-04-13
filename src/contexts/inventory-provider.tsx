@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -1924,7 +1925,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const contextValue: InventoryContextType = {
         inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, weldingMachines, walkieTalkies, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, deliveryNotes, consumableInwardHistory, directives: [], damageReports, inwardOutwardRecords,
         pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws,
-        addInventoryItem, batchAddInventoryItems, batchCreateAndLogItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInspectionItemGroup, updateMultipleInventoryItems, batchDeleteInventoryItems, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
+        addInventoryItem, addMultipleInventoryItems, batchAddInventoryItems, batchCreateAndLogItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInspectionItemGroup, updateMultipleInventoryItems, batchDeleteInventoryItems, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
         addInventoryTransferRequest, updateInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
         addInwardOutwardRecord, updateInwardOutwardRecord, deleteInwardOutwardRecord, finalizeInwardPurchase,
         addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest,
