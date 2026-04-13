@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -892,7 +891,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             }
         });
     }, [user, addActivityLog, users, projects, notificationSettings]);
-
+    
     const updateInventoryTransferRequest = useCallback((request: InventoryTransferRequest) => {
         const { id, ...data } = request;
         const sanitizedItems = data.items.map(item => ({
@@ -1707,7 +1706,27 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             toast({ title: 'Success', description: 'All damage report database entries have been deleted.' });
         }
     }, [user, damageReportsById, toast]);
-
+    
+    const typeToPathMap: Record<string, string> = {
+        Inventory: 'inventoryItems',
+        UTMachine: 'utMachines',
+        DftMachine: 'dftMachines',
+        DigitalCamera: 'digitalCameras',
+        Anemometer: 'anemometers',
+        OtherEquipment: 'otherEquipments',
+        LaptopDesktop: 'laptopsDesktops',
+        MobileSim: 'mobileSims',
+        WeldingMachine: 'weldingMachines',
+        WalkieTalkie: 'walkieTalkies',
+        PneumaticDrillingMachine: 'pneumaticDrillingMachines',
+        PneumaticAngleGrinder: 'pneumaticAngleGrinders',
+        WiredDrillingMachine: 'wiredDrillingMachines',
+        CordlessDrillingMachine: 'cordlessDrillingMachines',
+        WiredAngleGrinder: 'wiredAngleGrinders',
+        CordlessAngleGrinder: 'cordlessAngleGrinders',
+        CordlessReciprocatingSaw: 'cordlessReciprocatingSaws',
+    };
+    
     const addInwardOutwardRecord = useCallback((
         itemInfo: { itemId: string; itemType: string; name: string; },
         quantity: number,
@@ -1731,26 +1750,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         };
         set(newRecordRef, newRecord);
     
-        const typeToPathMap: Record<string, string> = {
-            Inventory: 'inventoryItems',
-            UTMachine: 'utMachines',
-            DftMachine: 'dftMachines',
-            DigitalCamera: 'digitalCameras',
-            Anemometer: 'anemometers',
-            OtherEquipment: 'otherEquipments',
-            LaptopDesktop: 'laptopsDesktops',
-            MobileSim: 'mobileSims',
-            WeldingMachine: 'weldingMachines',
-            WalkieTalkie: 'walkieTalkies',
-            PneumaticDrillingMachine: 'pneumaticDrillingMachines',
-            PneumaticAngleGrinder: 'pneumaticAngleGrinders',
-            WiredDrillingMachine: 'wiredDrillingMachines',
-            CordlessDrillingMachine: 'cordlessDrillingMachines',
-            WiredAngleGrinder: 'wiredAngleGrinders',
-            CordlessAngleGrinder: 'cordlessAngleGrinders',
-            CordlessReciprocatingSaw: 'cordlessReciprocatingSaws',
-        };
-        
         const itemPath = typeToPathMap[itemInfo.itemType];
         const itemId = itemInfo.itemId;
         
@@ -1788,9 +1787,40 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             return;
         }
         const { id, ...data } = record;
+
+        const originalRecord = inwardOutwardRecordsById[id];
+        if (!originalRecord) {
+            toast({ title: 'Record not found', variant: 'destructive'});
+            return;
+        }
+
+        const quantityDifference = data.quantity - originalRecord.quantity;
+
+        // Update the record
         update(ref(rtdb, `inwardOutwardRecords/${id}`), data);
+
+        // Adjust item quantity if difference is not zero
+        if (quantityDifference !== 0) {
+            const itemPath = typeToPathMap[record.itemType];
+            if (itemPath) {
+                const itemRef = ref(rtdb, `${itemPath}/${record.itemId}/quantity`);
+                get(itemRef).then(snapshot => {
+                    if (snapshot.exists()) {
+                        const currentQuantity = snapshot.val() || 0;
+                        let newQuantity;
+                        if (record.type === 'Inward') {
+                            newQuantity = currentQuantity + quantityDifference;
+                        } else { // Outward
+                            newQuantity = currentQuantity - quantityDifference;
+                        }
+                        set(itemRef, Math.max(0, newQuantity));
+                    }
+                });
+            }
+        }
+        
         toast({ title: 'Record Updated'});
-      }, [user, can.manage_inward_outward, toast]);
+      }, [user, can.manage_inward_outward, toast, inwardOutwardRecordsById]);
     
       const deleteInwardOutwardRecord = useCallback((recordId: string) => {
         if (!user || user.role !== 'Admin') {
