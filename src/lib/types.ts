@@ -161,6 +161,7 @@ export const ALL_PERMISSIONS = [
   'view_all',
   'manage_safety_observations',
   'manage_delivery_notes',
+  'manage_inward_outward',
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];

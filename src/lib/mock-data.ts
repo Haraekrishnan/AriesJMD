@@ -40,7 +40,8 @@ export const ROLES: RoleDefinition[] = [
       'manage_announcements', 'view_performance_reports', 'view_activity_logs',
       'log_manpower', 'manage_job_schedule', 'prepare_master_schedule', 'manage_igp_ogp',
       'manage_ppe_request', 'view_internal_store_request', 'manage_store_requests',
-      'manage_job_record', 'manage_tp_certification', 'manage_delivery_notes'
+      'manage_job_record', 'manage_tp_certification', 'manage_delivery_notes',
+      'manage_inward_outward'
     ],
     isEditable: false,
   },
@@ -90,7 +91,8 @@ export const ROLES: RoleDefinition[] = [
       'view_performance_reports',
       'manage_vehicles',
       'manage_igp_ogp', 'view_ppe_requests', 'manage_ppe_stock', 'manage_tp_certification',
-      'view_internal_store_request', 'manage_store_requests', 'manage_logbook', 'manage_delivery_notes'
+      'view_internal_store_request', 'manage_store_requests', 'manage_logbook', 'manage_delivery_notes',
+      'manage_inward_outward'
     ],
     isEditable: false,
   },

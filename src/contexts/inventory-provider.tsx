@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, PpeRequestStatus, Role, ConsumableInwardRecord, Directive, DirectiveStatus, DamageReport, User, NotificationSettings, DamageReportStatus, WeldingMachine, WalkieTalkie, PneumaticDrillingMachine, PneumaticAngleGrinder, WiredDrillingMachine, CordlessDrillingMachine, WiredAngleGrinder, CordlessAngleGrinder, CordlessReciprocatingSaw, DeliveryNote } from '@/lib/types';
+import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, PpeRequestStatus, Role, ConsumableInwardRecord, Directive, DirectiveStatus, DamageReport, User, NotificationSettings, DamageReportStatus, WeldingMachine, WalkieTalkie, PneumaticDrillingMachine, PneumaticAngleGrinder, WiredDrillingMachine, CordlessDrillingMachine, WiredAngleGrinder, CordlessAngleGrinder, CordlessReciprocatingSaw, DeliveryNote, InwardOutwardRecord } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -16,19 +16,6 @@ import { getStorage, ref as storageRef, deleteObject } from "firebase/storage";
 import { v4 as uuidv4 } from 'uuid';
 import { uploadFile } from '@/lib/storage';
 import { normalizeGoogleDriveLink } from '@/lib/utils';
-
-type InwardOutwardRecord = {
-    id: string;
-    itemId: string;
-    itemType: string;
-    itemName: string;
-    type: 'Inward' | 'Outward';
-    quantity: number;
-    date: string; // ISO
-    source: string;
-    remarks?: string;
-    userId: string;
-};
 
 const _addInternalRequestComment = (
     requestId: string,
@@ -82,6 +69,26 @@ const _addInternalRequestComment = (
     }
 };
 
+const createDataListener = <T extends {}>(
+    path: string,
+    setData: React.Dispatch<React.SetStateAction<Record<string, T>>>,
+) => {
+    const dbRef = ref(rtdb, path);
+    const unsubscribe = onValue(dbRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        const processedData = Object.keys(data).reduce((acc, key) => {
+            acc[key] = { ...data[key], id: key };
+            return acc;
+        }, {} as Record<string, T>);
+        setData(currentData => {
+            if (JSON.stringify(currentData) === JSON.stringify(processedData)) {
+                return currentData;
+            }
+            return processedData;
+        });
+    });
+    return unsubscribe;
+};
 
 type InventoryContextType = {
   inventoryItems: InventoryItem[];
@@ -141,6 +148,8 @@ type InventoryContextType = {
   clearInventoryTransferHistory: () => void;
   resolveInternalRequestDispute: (requestId: string, resolution: 'reissue' | 'reverse', comment: string) => void;
   addInwardOutwardRecord: (itemInfo: { itemId: string; itemType: string; name: string; }, quantity: number, type: 'Inward' | 'Outward', source: string, remarks?: string) => void;
+  updateInwardOutwardRecord: (record: InwardOutwardRecord) => void;
+  deleteInwardOutwardRecord: (recordId: string) => void;
 
   addCertificateRequest: (requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => void;
   fulfillCertificateRequest: (requestId: string, comment: string) => void;
@@ -265,27 +274,6 @@ type InventoryContextType = {
   updatedGeneralRequestCount: number;
   pendingPpeRequestCount: number;
   updatedPpeRequestCount: number;
-};
-
-const createDataListener = <T extends {}>(
-    path: string,
-    setData: React.Dispatch<React.SetStateAction<Record<string, T>>>,
-) => {
-    const dbRef = ref(rtdb, path);
-    const unsubscribe = onValue(dbRef, (snapshot) => {
-        const data = snapshot.val() || {};
-        const processedData = Object.keys(data).reduce((acc, key) => {
-            acc[key] = { ...data[key], id: key };
-            return acc;
-        }, {} as Record<string, T>);
-        setData(currentData => {
-            if (JSON.stringify(currentData) === JSON.stringify(processedData)) {
-                return currentData;
-            }
-            return processedData;
-        });
-    });
-    return unsubscribe;
 };
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
@@ -917,9 +905,9 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
         if (!user) return;
         const allItems: any[] = [
-          ...inventoryItems, ...utMachines, ...dftMachines, ...digitalCameras, 
-          ...anemometers, ...otherEquipments, ...laptopsDesktops, ...mobileSims,
-          ...weldingMachines, ...walkieTalkies
+            ...inventoryItems, ...utMachines, ...dftMachines, ...digitalCameras,
+            ...anemometers, ...otherEquipments, ...laptopsDesktops, ...mobileSims,
+            ...weldingMachines, ...walkieTalkies
         ];
         const updates: { [key: string]: any } = {};
         updates[`inventoryTransferRequests/${request.id}/status`] = 'Completed';
@@ -1788,6 +1776,25 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
     }, [user, projects, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies, pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws]);
     
+    const updateInwardOutwardRecord = useCallback((record: InwardOutwardRecord) => {
+        if (!user || !can.manage_inward_outward) {
+            toast({ title: 'Permission Denied', variant: 'destructive'});
+            return;
+        }
+        const { id, ...data } = record;
+        update(ref(rtdb, `inwardOutwardRecords/${id}`), data);
+        toast({ title: 'Record Updated'});
+      }, [user, can.manage_inward_outward, toast]);
+    
+      const deleteInwardOutwardRecord = useCallback((recordId: string) => {
+        if (!user || user.role !== 'Admin') {
+            toast({ title: 'Permission Denied', description: 'Only Admins can delete these records.', variant: 'destructive'});
+            return;
+        }
+        remove(ref(rtdb, `inwardOutwardRecords/${recordId}`));
+        toast({ title: 'Record Deleted', variant: 'destructive'});
+      }, [user, toast]);
+
     useEffect(() => {
         const unsubscribers = [
             createDataListener('inventoryItems', setInventoryItemsById),
@@ -1829,7 +1836,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws,
         addInventoryItem, addMultipleInventoryItems, batchAddInventoryItems, batchCreateAndLogItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInspectionItemGroup, updateMultipleInventoryItems, batchDeleteInventoryItems, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
         addInventoryTransferRequest, updateInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
-        addInwardOutwardRecord,
+        addInwardOutwardRecord, updateInwardOutwardRecord, deleteInwardOutwardRecord,
         addCertificateRequest, fulfillCertificateRequest, addCertificateRequestComment, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest,
         addUTMachine, updateUTMachine, deleteUTMachine,
         addDftMachine, updateDftMachine, deleteDftMachine,
