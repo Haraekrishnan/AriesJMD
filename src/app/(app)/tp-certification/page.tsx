@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -116,6 +115,11 @@ export default function TpCertificationPage() {
         
         if (!canPerformAction) {
             toast({ title: "Permission Denied", description: "You cannot modify this step.", variant: 'destructive' });
+            return;
+        }
+
+        if (checked && currentIndex > currentMaxIndex + 1) {
+            toast({ title: "Action Denied", description: "Please complete the previous steps in order.", variant: 'destructive' });
             return;
         }
 
@@ -369,4 +373,3 @@ export default function TpCertificationPage() {
         </>
     );
 }
-
