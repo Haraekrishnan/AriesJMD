@@ -1,5 +1,5 @@
 'use client';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAppContext } from '@/contexts/app-provider';
@@ -7,23 +7,21 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Label } from '@/components/ui/label';
+import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import type { InwardOutwardRecord, InventoryItem } from '@/lib/types';
 import { useEffect, useMemo } from 'react';
 import { DatePickerInput } from '../ui/date-picker-input';
-import { parseISO } from 'date-fns';
+import { parseISO, isValid } from 'date-fns';
 import { useInventory } from '@/contexts/inventory-provider';
 import { ScrollArea } from '../ui/scroll-area';
+import { PlusCircle, Trash2 } from 'lucide-react';
+import { ref, update } from 'firebase/database';
+import { rtdb } from '@/lib/rtdb';
 
-const editSchema = z.object({
-  // Transaction fields
-  date: z.date(),
-  source: z.string().min(1),
-  quantity: z.coerce.number().min(1, "Quantity must be > 0"),
-  remarks: z.string().optional(),
-  
-  // Item fields
+
+const newItemSchema = z.object({
+  id: z.string(), // This is the inventory item ID for existing, or a temp ID for new
   name: z.string().min(1, 'Name is required'),
   serialNumber: z.string().min(1, 'Serial is required'),
   ariesId: z.string().optional(),
@@ -31,11 +29,19 @@ const editSchema = z.object({
   certification: z.string().optional(),
   chestCrollNo: z.string().optional(),
   purchaseDate: z.date().optional().nullable(),
+  remarks: z.string().optional(),
   inspectionDate: z.date().optional().nullable(),
   inspectionDueDate: z.date().optional().nullable(),
   tpInspectionDueDate: z.date().optional().nullable(),
   certificateUrl: z.string().url().optional().or(z.literal('')),
   inspectionCertificateUrl: z.string().url().optional().or(z.literal('')),
+});
+
+const editSchema = z.object({
+  date: z.date(),
+  source: z.string().min(1),
+  remarks: z.string().optional(),
+  items: z.array(newItemSchema).min(1, "At least one item is required."),
 });
 
 type FormValues = z.infer<typeof editSchema>;
@@ -47,68 +53,117 @@ interface EditInwardOutwardDialogProps {
 }
 
 export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: EditInwardOutwardDialogProps) {
-  const { updateInwardOutwardRecord, updateInventoryItem, inventoryItems } = useInventory();
+  const { inventoryItems, projects } = useInventory();
   const { toast } = useToast();
-
-  const item = useMemo(() => inventoryItems.find(i => i.id === record.itemId), [inventoryItems, record]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(editSchema),
   });
 
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "items"
+  });
+
   useEffect(() => {
-    if (record && item) {
-      form.reset({
-        // transaction data
-        date: parseISO(record.date),
-        source: record.source,
-        quantity: record.quantity,
-        remarks: record.remarks,
-        // item data
-        name: item.name,
-        serialNumber: item.serialNumber,
-        ariesId: item.ariesId,
-        erpId: item.erpId,
-        certification: item.certification,
-        chestCrollNo: item.chestCrollNo,
-        purchaseDate: item.purchaseDate ? parseISO(item.purchaseDate) : null,
-        inspectionDate: item.inspectionDate ? parseISO(item.inspectionDate) : null,
-        inspectionDueDate: item.inspectionDueDate ? parseISO(item.inspectionDueDate) : null,
-        tpInspectionDueDate: item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : null,
-        certificateUrl: item.certificateUrl,
-        inspectionCertificateUrl: item.inspectionCertificateUrl,
-      });
+    if (record && isOpen) {
+        const itemIds = record.finalizedItemIds || (record.itemId ? [record.itemId] : []);
+        const existingItems = itemIds.map(id => inventoryItems.find(i => i.id === id)).filter(Boolean) as InventoryItem[];
+        
+        form.reset({
+            date: parseISO(record.date),
+            source: record.source,
+            remarks: record.remarks,
+            items: existingItems.map(item => ({
+                id: item.id,
+                name: item.name,
+                serialNumber: item.serialNumber,
+                ariesId: item.ariesId || '',
+                erpId: item.erpId || '',
+                certification: item.certification || '',
+                chestCrollNo: item.chestCrollNo || '',
+                purchaseDate: item.purchaseDate ? parseISO(item.purchaseDate) : null,
+                remarks: item.remarks || '',
+                inspectionDate: item.inspectionDate ? parseISO(item.inspectionDate) : null,
+                inspectionDueDate: item.inspectionDueDate ? parseISO(item.inspectionDueDate) : null,
+                tpInspectionDueDate: item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : null,
+                certificateUrl: item.certificateUrl || '',
+                inspectionCertificateUrl: item.inspectionCertificateUrl || '',
+            }))
+        });
     }
-  }, [record, item, form, isOpen]);
+  }, [record, isOpen, inventoryItems, form]);
+
+  const generateNewItemFromRecord = (record: InwardOutwardRecord) => ({
+      id: `new-${Date.now()}-${Math.random()}`,
+      name: record.itemName,
+      serialNumber: '',
+      ariesId: '',
+      erpId: '',
+      certification: '',
+      chestCrollNo: '',
+      purchaseDate: record.date ? new Date(record.date) : null,
+      remarks: '',
+      inspectionDate: null,
+      inspectionDueDate: null,
+      tpInspectionDueDate: null,
+      certificateUrl: '',
+      inspectionCertificateUrl: '',
+  });
 
   const onSubmit = (data: FormValues) => {
-    if (!item) {
-        toast({ title: 'Error', description: 'Associated item not found.', variant: 'destructive'});
-        return;
-    }
+    const originalItemIds = new Set(record.finalizedItemIds || (record.itemId ? [record.itemId] : []));
+    const updates: { [key: string]: any } = {};
+    const now = new Date().toISOString();
     
-    // 1. Update the InwardOutwardRecord
-    updateInwardOutwardRecord({
+    let newFinalizedItemIds: string[] = [];
+
+    data.items.forEach(item => {
+        const itemData = {
+            ...item,
+            purchaseDate: item.purchaseDate?.toISOString() ?? null,
+            inspectionDate: item.inspectionDate?.toISOString() ?? null,
+            inspectionDueDate: item.inspectionDueDate?.toISOString() ?? null,
+            tpInspectionDueDate: item.tpInspectionDueDate?.toISOString() ?? null,
+        };
+
+        if (originalItemIds.has(item.id)) { // This is an existing item to update
+            const { id, ...restOfData } = itemData;
+            const path = `inventoryItems/${id}`;
+            Object.entries(restOfData).forEach(([key, value]) => {
+                updates[`${path}/${key}`] = value;
+            });
+            updates[`${path}/lastUpdated`] = now;
+            newFinalizedItemIds.push(id);
+        } else { // This is a new item to add
+            const { id, ...restOfData } = itemData;
+            const newRef = push(ref(rtdb, 'inventoryItems'));
+            const newItemId = newRef.key!;
+            updates[`inventoryItems/${newItemId}`] = {
+                ...restOfData,
+                category: 'General',
+                status: 'In Store',
+                projectId: projects.find(p => p.name === 'Store')?.id || '',
+                isArchived: false,
+                lastUpdated: now,
+            };
+            newFinalizedItemIds.push(newItemId);
+        }
+    });
+
+    updates[`inwardOutwardRecords/${record.id}`] = {
         ...record,
         date: data.date.toISOString(),
         source: data.source,
-        quantity: data.quantity,
-        remarks: data.remarks
-    });
+        quantity: newFinalizedItemIds.length,
+        remarks: data.remarks,
+        finalizedItemIds: newFinalizedItemIds,
+        status: 'Completed',
+    };
+    
+    update(ref(rtdb), updates);
 
-    // 2. Update the InventoryItem
-    const { date, source, quantity, remarks, ...itemData } = data;
-    updateInventoryItem({
-        ...item,
-        ...itemData,
-        purchaseDate: itemData.purchaseDate ? itemData.purchaseDate.toISOString() : null,
-        inspectionDate: itemData.inspectionDate ? itemData.inspectionDate.toISOString() : null,
-        inspectionDueDate: itemData.inspectionDueDate ? itemData.inspectionDueDate.toISOString() : null,
-        tpInspectionDueDate: itemData.tpInspectionDueDate ? itemData.tpInspectionDueDate.toISOString() : null,
-        certificateUrl: itemData.certificateUrl,
-    });
-
-    toast({ title: 'Record Updated' });
+    toast({ title: 'Record and Items Updated' });
     setIsOpen(false);
   };
   
@@ -125,87 +180,104 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
         <DialogHeader>
           <DialogTitle>Edit Inward Record</DialogTitle>
           <DialogDescription>
-            Update details for this transaction and its associated item.
+            Update details for this transaction and its associated items.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
-          <ScrollArea className="flex-1 pr-6 -mr-6">
-            <div className="space-y-4">
-                <h3 className="font-semibold text-lg border-b pb-2">Transaction Details</h3>
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                        <Label>Transaction Date</Label>
-                        <Controller name="date" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="quantity">Quantity</Label>
-                        <Input id="quantity" type="number" {...form.register('quantity')} />
-                        {form.formState.errors.quantity && <p className="text-xs text-destructive">{form.formState.errors.quantity.message}</p>}
-                    </div>
-                    <div className="space-y-2 md:col-span-3">
-                        <Label htmlFor="source">Source / Reason</Label>
-                        <Input id="source" {...form.register('source')} />
-                    </div>
-                     <div className="space-y-2 md:col-span-3">
-                        <Label htmlFor="remarks">Remarks</Label>
-                        <Textarea id="remarks" {...form.register('remarks')} />
-                    </div>
+          <div className="px-1 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label>Transaction Date</Label>
+                    <Controller name="date" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
                 </div>
-
-                <h3 className="font-semibold text-lg border-b pb-2 pt-4">Item Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="source">Source / Reason</Label>
+                    <Input id="source" {...form.register('source')} />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="remarks">Remarks</Label>
+                    <Textarea id="remarks" {...form.register('remarks')} />
+                </div>
+            </div>
+          </div>
+          <div className="flex-1 overflow-hidden flex flex-col mt-4">
+            <ScrollArea className="flex-1 px-4 -mx-4">
+              <div className="space-y-4">
+                {fields.map((field, index) => (
+                  <div key={field.id} className="p-4 border rounded-md relative bg-muted/30">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="font-bold">Item {index + 1}</h4>
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => remove(index)}>
+                        <Trash2 className="h-4 w-4 text-destructive"/>
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="space-y-2">
                             <Label>Item Name</Label>
-                            <Input {...form.register(`name`)} placeholder="e.g., Harness" />
+                            <Input {...form.register(`items.${index}.name`)} />
                         </div>
                         <div className="space-y-2">
                             <Label>Serial Number</Label>
-                            <Input {...form.register(`serialNumber`)} placeholder="Serial Number" />
+                            <Input {...form.register(`items.${index}.serialNumber`)} />
+                             {form.formState.errors.items?.[index]?.serialNumber && <p className="text-xs text-destructive mt-1">{form.formState.errors.items[index]?.serialNumber?.message}</p>}
                         </div>
                         <div className="space-y-2">
                             <Label>Aries ID</Label>
-                            <Input {...form.register(`ariesId`)} placeholder="Aries ID" />
+                            <Input {...form.register(`items.${index}.ariesId`)} />
                         </div>
                         <div className="space-y-2">
                             <Label>Chest Croll No.</Label>
-                            <Input {...form.register(`chestCrollNo`)} placeholder="Chest Croll No." />
+                            <Input {...form.register(`items.${index}.chestCrollNo`)} />
                         </div>
                          <div className="space-y-2">
                             <Label>ERP ID</Label>
-                            <Input {...form.register(`erpId`)} placeholder="ERP ID" />
+                            <Input {...form.register(`items.${index}.erpId`)} />
                         </div>
                         <div className="space-y-2">
                             <Label>Certification</Label>
-                            <Input {...form.register(`certification`)} placeholder="Certification" />
+                            <Input {...form.register(`items.${index}.certification`)} />
                         </div>
                         <div className="space-y-2 md:col-span-2">
                             <Label>Purchase Date</Label>
-                            <Controller name={`purchaseDate`} control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
+                            <Controller name={`items.${index}.purchaseDate`} control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
                         </div>
                         <div className="space-y-2">
                             <Label>Inspection Date</Label>
-                            <Controller name={`inspectionDate`} control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
+                            <Controller name={`items.${index}.inspectionDate`} control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
                         </div>
                          <div className="space-y-2">
                             <Label>Inspection Due Date</Label>
-                            <Controller name={`inspectionDueDate`} control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
+                            <Controller name={`items.${index}.inspectionDueDate`} control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
                         </div>
                         <div className="space-y-2 md:col-span-2">
                             <Label>TP Inspection Due Date</Label>
-                            <Controller name={`tpInspectionDueDate`} control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
+                            <Controller name={`items.${index}.tpInspectionDueDate`} control={form.control} render={({field}) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} />
                         </div>
                          <div className="space-y-2 md:col-span-2">
                             <Label>TP Certificate URL</Label>
-                            <Input {...form.register(`certificateUrl`)} placeholder="https://" />
+                            <Input {...form.register(`items.${index}.certificateUrl`)} />
                         </div>
                         <div className="space-y-2 md:col-span-2">
                             <Label>Inspection Certificate URL</Label>
-                            <Input {...form.register(`inspectionCertificateUrl`)} placeholder="https://" />
+                            <Input {...form.register(`items.${index}.inspectionCertificateUrl`)} />
+                        </div>
+                        <div className="space-y-2 md:col-span-4">
+                            <Label>Item Remarks</Label>
+                            <Input {...form.register(`items.${index}.remarks`)} />
                         </div>
                     </div>
-            </div>
-          </ScrollArea>
-          <DialogFooter>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+          <div className="px-4 pt-4 shrink-0">
+            <Button type="button" variant="outline" size="sm" onClick={() => append(generateNewItemFromRecord(record))}>
+              <PlusCircle className="mr-2 h-4 w-4" />Add Row
+            </Button>
+            {form.formState.errors.items?.root && <p className="text-xs text-destructive pt-2">{form.formState.errors.items.root.message}</p>}
+          </div>
+          <DialogFooter className="pt-4 mt-auto border-t px-6 pb-6 shrink-0">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit">Save Changes</Button>
           </DialogFooter>
