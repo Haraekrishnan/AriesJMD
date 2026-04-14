@@ -270,13 +270,17 @@ export default function TpCertificationPage() {
                                                 const canUserPerformAction = isAdmin || (user && permissions.includes(user.role as Role));
                                                 const isPreviousStepComplete = index === 0 || !!checklist[checklistItems[index - 1].key];
 
-                                                let isDisabled = !canUserPerformAction;
-                                                if (!isAdmin && canUserPerformAction) {
-                                                    if (!isChecked && !isPreviousStepComplete) {
+                                                let isDisabled = false;
+                                                if (!isAdmin) {
+                                                    if (!canUserPerformAction) {
                                                         isDisabled = true;
-                                                    }
-                                                    if (isChecked && index < maxIndex) {
-                                                        isDisabled = true;
+                                                    } else {
+                                                        if (!isChecked && !isPreviousStepComplete) {
+                                                            isDisabled = true;
+                                                        }
+                                                        if (isChecked && index < maxIndex) {
+                                                            isDisabled = true;
+                                                        }
                                                     }
                                                 }
 
