@@ -1,4 +1,3 @@
-
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,15 +8,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
+import { PlusCircle, Trash2 } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
-import type { InwardOutwardRecord, InventoryItem } from '@/lib/types';
+import { useMemo, useEffect } from 'react';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Separator } from '../ui/separator';
-import { useEffect } from 'react';
+import type { InwardOutwardRecord, InventoryItem } from '@/lib/types';
+import { useInventory } from '@/contexts/inventory-provider';
 
 const newItemSchema = z.object({
   id: z.string(),
-  name: z.string(),
+  name: z.string().min(1, 'Name is required'),
   serialNumber: z.string().min(1, 'Serial is required'),
   ariesId: z.string().optional(),
   erpId: z.string().optional(),
@@ -44,9 +45,28 @@ interface FinalizeInwardDialogProps {
   record: InwardOutwardRecord;
 }
 
+const generateNewItemFromRecord = (record: InwardOutwardRecord) => ({
+    id: `item-${Date.now()}-${Math.random()}`,
+    name: record.itemName,
+    serialNumber: '',
+    ariesId: '',
+    erpId: '',
+    certification: '',
+    chestCrollNo: '',
+    purchaseDate: record.date ? new Date(record.date) : null,
+    remarks: '',
+    inspectionDate: null,
+    inspectionDueDate: null,
+    tpInspectionDueDate: null,
+    certificateUrl: '',
+    inspectionCertificateUrl: '',
+});
+
 export default function FinalizeInwardDialog({ isOpen, setIsOpen, record }: FinalizeInwardDialogProps) {
-  const { finalizeInwardPurchase, projects } = useAppContext();
+  const { finalizeInwardPurchase, projects, inventoryItems } = useInventory();
   const { toast } = useToast();
+
+  const itemNames = useMemo(() => Array.from(new Set(inventoryItems.map(item => item.name))), [inventoryItems]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(finalizeSchema),
@@ -55,32 +75,17 @@ export default function FinalizeInwardDialog({ isOpen, setIsOpen, record }: Fina
     },
   });
 
-  useEffect(() => {
-    if (record) {
-      const newItems = Array.from({ length: record.quantity }, (_, i) => ({
-        id: `new-item-${i}`,
-        name: record.itemName,
-        serialNumber: '',
-        ariesId: '',
-        erpId: '',
-        certification: '',
-        chestCrollNo: '',
-        purchaseDate: record.date ? new Date(record.date) : null,
-        remarks: '',
-        inspectionDate: null,
-        inspectionDueDate: null,
-        tpInspectionDueDate: null,
-        certificateUrl: '',
-        inspectionCertificateUrl: '',
-      }));
-      form.reset({ items: newItems });
-    }
-  }, [record, form]);
-
-  const { fields } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: "items"
   });
+
+  useEffect(() => {
+    if (record && isOpen) {
+      const newItems = Array.from({ length: record.quantity }, () => generateNewItemFromRecord(record));
+      replace(newItems);
+    }
+  }, [record, isOpen, replace]);
 
   const onSubmit = (data: FormValues) => {
     const storeProject = projects.find(p => p.name === 'Store');
@@ -107,13 +112,13 @@ export default function FinalizeInwardDialog({ isOpen, setIsOpen, record }: Fina
     toast({ title: 'Inward Finalized', description: `${data.items.length} new items have been created.` });
     setIsOpen(false);
   };
-  
+
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       form.reset({ items: [] });
     }
     setIsOpen(open);
-  }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -127,10 +132,23 @@ export default function FinalizeInwardDialog({ isOpen, setIsOpen, record }: Fina
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
           <ScrollArea className="flex-1 px-4 -mx-4">
             <div className="space-y-4">
+              <datalist id="item-names-list">
+                {itemNames.map(n => <option key={n} value={n} />)}
+              </datalist>
               {fields.map((field, index) => (
                 <div key={field.id} className="p-4 border rounded-md relative bg-muted/30">
-                  <h4 className="font-bold mb-2">Item {index + 1} of {record.quantity}</h4>
-                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="font-bold">Item {index + 1}</h4>
+                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => remove(index)}>
+                        <Trash2 className="h-4 w-4 text-destructive"/>
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="space-y-2">
+                          <Label>Item Name</Label>
+                          <Input {...form.register(`items.${index}.name`)} placeholder="e.g., Harness" list="item-names-list" />
+                          {form.formState.errors.items?.[index]?.name && <p className="text-xs text-destructive mt-1">{form.formState.errors.items[index]?.name?.message}</p>}
+                      </div>
                       <div className="space-y-2">
                           <Label>Serial Number</Label>
                           <Input {...form.register(`items.${index}.serialNumber`)} placeholder="Serial Number" />
@@ -185,6 +203,12 @@ export default function FinalizeInwardDialog({ isOpen, setIsOpen, record }: Fina
               ))}
             </div>
           </ScrollArea>
+          <div className="px-4 pt-4 shrink-0">
+            <Button type="button" variant="outline" size="sm" onClick={() => append(generateNewItemFromRecord(record))}>
+              <PlusCircle className="mr-2 h-4 w-4" />Add Row
+            </Button>
+            {form.formState.errors.items?.root && <p className="text-xs text-destructive pt-2">{form.formState.errors.items.root.message}</p>}
+          </div>
           <DialogFooter className="pt-4 mt-auto border-t px-6 pb-6 shrink-0">
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
             <Button type="submit">Finalize & Create Items</Button>

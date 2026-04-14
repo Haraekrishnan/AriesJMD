@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -248,9 +247,6 @@ type InventoryContextType = {
   deletePpeAttachment: (requestId: string) => void;
   markPpeRequestAsViewed: (requestId: string) => void;
   updatePpeStock: (stockId: 'coveralls' | 'safetyShoes', data: { [key: string]: number } | number) => void;
-  addPpeInwardRecord: (record: Omit<PpeInwardRecord, 'id' | 'addedByUserId'>) => void;
-  updatePpeInwardRecord: (record: PpeInwardRecord) => void;
-  deletePpeInwardRecord: (record: PpeInwardRecord) => void;
   
   addTpCertList: (listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => void;
   updateTpCertList: (listData: TpCertList) => void;
@@ -502,6 +498,31 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         };
         set(newRecordRef, newRecord);
     }, [user]);
+    
+    const finalizeInwardPurchase = useCallback((recordId: string, newItemsData: Partial<Omit<InventoryItem, 'id'>>[]) => {
+        const record = inwardOutwardRecords.find(r => r.id === recordId);
+        if (!record || !user) return;
+        
+        const updates: { [key: string]: any } = {};
+        const itemsToCreate = newItemsData.map(itemData => {
+            const newRefKey = push(ref(rtdb, 'inventoryItems')).key;
+            if (!newRefKey) throw new Error("Could not generate key for new item");
+            const newItem: Partial<InventoryItem> = {
+                ...itemData,
+                lastUpdated: new Date().toISOString(),
+                isArchived: false,
+                category: 'General',
+            };
+            updates[`inventoryItems/${newRefKey}`] = newItem;
+            return newRefKey;
+        });
+    
+        updates[`inwardOutwardRecords/${recordId}/status`] = 'Completed';
+        updates[`inwardOutwardRecords/${recordId}/finalizedItemIds`] = itemsToCreate;
+        updates[`inwardOutwardRecords/${recordId}/quantity`] = newItemsData.length;
+    
+        update(ref(rtdb), updates);
+    }, [inwardOutwardRecords, user]);
 
     const receiveQuoteItem = useCallback((quotationId: string, vendorId: string, itemId: string, quantity: number) => {
         if (!user) return;
@@ -512,13 +533,19 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const item = quotation.items.find(i => i.itemId === itemId);
         if (!vendor || !item) return;
 
-        addInwardOutwardRecord(
-            { itemId: item.itemId, itemType: item.itemType, name: item.description },
-            quantity,
-            'Inward',
-            `From Quotation - ${quotation.title}`,
-            `Vendor: ${vendor.name}`
-        );
+        const isConsumable = consumableItemIds.has(item.itemId);
+
+        if (isConsumable) {
+            addConsumableInwardRecord(item.itemId, quantity, new Date());
+        } else {
+            addInwardOutwardRecord(
+                { itemId: item.itemId, itemType: item.itemType, name: item.description },
+                quantity,
+                'Inward',
+                `From Quotation - ${quotation.title}`,
+                `Vendor: ${vendor.name}`
+            );
+        }
 
         const vendorIndex = quotation.vendors.findIndex(v => v.id === vendor.id);
         const quoteIndex = vendor.quotes.findIndex(q => q.itemId === itemId);
@@ -538,7 +565,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             
             updateQuotation(updatedQuotation);
         }
-    }, [user, quotations, addInwardOutwardRecord, updateQuotation]);
+    }, [user, quotations, addInwardOutwardRecord, updateQuotation, consumableItemIds, addConsumableInwardRecord]);
     
     // ...
     // The rest of the inventory provider's functions
@@ -611,7 +638,6 @@ const clearInventoryTransferHistory = useCallback(() => {}, []);
 const resolveInternalRequestDispute = useCallback(() => {}, []);
 const updateInwardOutwardRecord = useCallback(() => {}, []);
 const deleteInwardOutwardRecord = useCallback(() => {}, []);
-const finalizeInwardPurchase = useCallback(() => {}, []);
 const addCertificateRequest = useCallback(() => {}, []);
 const fulfillCertificateRequest = useCallback(() => {}, []);
 const addCertificateRequestComment = useCallback(() => {}, []);
@@ -686,6 +712,7 @@ const markInternalRequestAsViewed = useCallback(() => {}, []);
 const acknowledgeInternalRequest = useCallback(() => {}, []);
 const addPpeRequest = useCallback(() => {}, []);
 const updatePpeRequest = useCallback(() => {}, []);
+const updatePpeRequestStatus = useCallback(() => {}, []);
 const resolvePpeDispute = useCallback(() => {}, []);
 const deletePpeRequest = useCallback(() => {}, []);
 const deletePpeAttachment = useCallback(() => {}, []);
