@@ -210,7 +210,7 @@ const plannerNotificationCount =
   ], [can, notificationCounts]);
 
   return (
-    <aside className="hidden md:flex flex-col h-full w-64 border-r bg-sidebar text-sidebar-foreground">
+    <aside className="hidden md:fixed md:flex flex-col h-full w-64 border-r bg-sidebar text-sidebar-foreground">
       <div className="flex items-center justify-between p-4 border-b">
         <Link href="/dashboard" className="flex items-center gap-3">
             <div className="flex items-center justify-center h-8 w-8">
