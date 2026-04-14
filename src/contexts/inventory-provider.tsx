@@ -130,7 +130,7 @@ type InventoryContextType = {
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'lastUpdated'>) => void;
   addMultipleInventoryItems: (items: any[]) => number;
   batchAddInventoryItems: (items: Omit<InventoryItem, 'id' | 'lastUpdated'>[]) => void;
-  batchCreateAndLogItems: (itemsData: Partial<Omit<InventoryItem, 'id' | 'lastUpdated'>>[], source: string) => number;
+  batchCreateAndLogItems: (itemsData: Partial<Omit<InventoryItem, 'id'>>[], source: string) => number;
   updateInventoryItem: (item: InventoryItem) => void;
   batchUpdateInventoryItems: (updates: { id: string; data: Partial<InventoryItem> }[]) => void;
   updateInventoryItemGroup: (itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => void;
@@ -544,52 +544,51 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     // The rest of the inventory provider's functions
     // ...
 
-// ... (I'll copy the existing implementations for the placeholder functions from the provided file)
-const addInventoryItem = useCallback(() => {}, []);
-const addMultipleInventoryItems = useCallback((itemsData: any[]) => {
-    let importedCount = 0;
-    const allSerialNumbers = new Set(inventoryItems.map(i => i.serialNumber));
-    const updates: { [key: string]: any } = {};
-
-    itemsData.forEach(row => {
-        const serial = row['SERIAL NUMBER'];
-        if (!serial || allSerialNumbers.has(serial)) return;
-        const itemName = row['ITEM NAME'];
-        if (!itemName) return;
-
-        const inspDate = row['INSPECTION DATE'];
-        const inspDueDate = row['INSPECTION DUE DATE'];
-        const tpDueDate = row['TP INSPECTION DUE DATE'];
-        
-        const dataToSave: Partial<InventoryItem> = {
-            name: itemName,
-            serialNumber: serial,
-            chestCrollNo: row['CHEST CROLL NO'] || '',
-            ariesId: row['ARIES ID'] || '',
-            status: row['STATUS'] || 'In Store',
-            projectId: projects.find(p => p.name === row['PROJECT'])?.id || projects.find(p => p.name === 'Store')?.id || '',
-            inspectionDate: inspDate && isValid(new Date(inspDate)) ? new Date(inspDate).toISOString() : '',
-            inspectionDueDate: inspDueDate && isValid(new Date(inspDueDate)) ? new Date(inspDueDate).toISOString() : '',
-            tpInspectionDueDate: tpDueDate && isValid(new Date(tpDueDate)) ? new Date(tpDueDate).toISOString() : '',
-            certificateUrl: row['TP Certificate Link'] || '',
-            inspectionCertificateUrl: row['Inspection Certificate Link'] || '',
-            lastUpdated: new Date().toISOString(),
-            isArchived: false,
-            category: 'General',
-        };
-
-        const newRef = push(ref(rtdb, 'inventoryItems'));
-        updates[`/inventoryItems/${newRef.key}`] = dataToSave;
-        importedCount++;
-        allSerialNumbers.add(serial);
-    });
-
-    if (Object.keys(updates).length > 0) {
-        update(ref(rtdb), updates);
-    }
-    return importedCount;
-}, [inventoryItems, projects]);
-
+    const addInventoryItem = useCallback(() => {}, []);
+    const addMultipleInventoryItems = useCallback((itemsData: any[]): number => {
+      let importedCount = 0;
+      const allSerialNumbers = new Set(inventoryItems.map(i => i.serialNumber).filter(Boolean));
+      const updates: { [key: string]: any } = {};
+  
+      itemsData.forEach(row => {
+          const serial = row['SERIAL NUMBER'];
+          if (!serial || allSerialNumbers.has(serial)) return;
+  
+          const itemName = row['ITEM NAME'];
+          if (!itemName) return;
+  
+          const inspDate = row['INSPECTION DATE'];
+          const inspDueDate = row['INSPECTION DUE DATE'];
+          const tpDueDate = row['TP INSPECTION DUE DATE'];
+          
+          const dataToSave: Partial<InventoryItem> = {
+              name: itemName,
+              serialNumber: serial,
+              chestCrollNo: row['CHEST CROLL NO'] || '',
+              ariesId: row['ARIES ID'] || '',
+              status: row['STATUS'] || 'In Store',
+              projectId: projects.find(p => p.name === row['PROJECT'])?.id || projects.find(p => p.name === 'Store')?.id || '',
+              inspectionDate: inspDate && isValid(new Date(inspDate)) ? new Date(inspDate).toISOString() : '',
+              inspectionDueDate: inspDueDate && isValid(new Date(inspDueDate)) ? new Date(inspDueDate).toISOString() : '',
+              tpInspectionDueDate: tpDueDate && isValid(new Date(tpDueDate)) ? new Date(tpDueDate).toISOString() : '',
+              certificateUrl: row['TP Certificate Link'] || '',
+              inspectionCertificateUrl: row['Inspection Certificate Link'] || '',
+              lastUpdated: new Date().toISOString(),
+              isArchived: false,
+              category: 'General',
+          };
+  
+          const newRef = push(ref(rtdb, 'inventoryItems'));
+          updates[`/inventoryItems/${newRef.key}`] = dataToSave;
+          importedCount++;
+          allSerialNumbers.add(serial);
+      });
+  
+      if (Object.keys(updates).length > 0) {
+          update(ref(rtdb), updates);
+      }
+      return importedCount;
+  }, [inventoryItems, projects]);
 const batchAddInventoryItems = useCallback(() => {}, []);
 const batchCreateAndLogItems = useCallback(() => 0, []);
 const updateInventoryItem = useCallback(() => {}, []);
@@ -626,6 +625,15 @@ const updateDftMachine = useCallback(() => {}, []);
 const deleteDftMachine = useCallback(() => {}, []);
 const addMobileSim = useCallback(() => {}, []);
 const updateMobileSim = useCallback(() => {}, []);
+const deleteMobileSim = useCallback((itemId: string) => {
+    if (!user) return;
+    const itemToDelete = mobileSimsById[itemId];
+    if (itemToDelete) {
+        remove(ref(rtdb, `mobileSims/${itemId}`));
+        addActivityLog(user.id, 'Mobile/SIM Deleted', `Item: ${itemToDelete.make || itemToDelete.simProvider} ${itemToDelete.model || itemToDelete.simNumber}`);
+        toast({ title: 'Item Deleted', variant: 'destructive' });
+    }
+}, [user, mobileSimsById, addActivityLog, toast]);
 const addLaptopDesktop = useCallback(() => {}, []);
 const updateLaptopDesktop = useCallback(() => {}, []);
 const deleteLaptopDesktop = useCallback(() => {}, []);
@@ -702,6 +710,42 @@ const updateDamageReportStatus = useCallback(() => {}, []);
 const deleteDamageReport = useCallback(() => {}, []);
 const deleteAllDamageReportsAndFiles = useCallback(() => {}, []);
 
+    useEffect(() => {
+        const unsubscribers = [
+            createDataListener('inventoryItems', setInventoryItemsById),
+            createDataListener('utMachines', setUtMachinesById),
+            createDataListener('dftMachines', setDftMachinesById),
+            createDataListener('mobileSims', setMobileSimsById),
+            createDataListener('laptopsDesktops', setLaptopsDesktopsById),
+            createDataListener('digitalCameras', setDigitalCamerasById),
+            createDataListener('anemometers', setAnemometersById),
+            createDataListener('otherEquipments', setOtherEquipmentsById),
+            createDataListener('weldingMachines', setWeldingMachinesById),
+            createDataListener('walkieTalkies', setWalkieTalkiesById),
+            createDataListener('machineLogs', setMachineLogsById),
+            createDataListener('certificateRequests', setCertificateRequestsById),
+            createDataListener('internalRequests', setInternalRequestsById),
+            createDataListener('inventoryTransferRequests', setInventoryTransferRequestsById),
+            createDataListener('ppeRequests', setPpeRequestsById),
+            createDataListener('ppeStock', setPpeStockById),
+            createDataListener('ppeInwardHistory', setPpeInwardHistoryById),
+            createDataListener('tpCertLists', setTpCertListsById),
+            createDataListener('inspectionChecklists', setInspectionChecklistsById),
+            createDataListener('igpOgpRecords', setIgpOgpRecordsById),
+            createDataListener('deliveryNotes', setDeliveryNotesById),
+            createDataListener('damageReports', setDamageReportsById),
+            createDataListener('inwardOutwardRecords', setInwardOutwardRecordsById),
+            createDataListener('pneumaticDrillingMachines', setPneumaticDrillingMachinesById),
+            createDataListener('pneumaticAngleGrinders', setPneumaticAngleGrindersById),
+            createDataListener('wiredDrillingMachines', setWiredDrillingMachinesById),
+            createDataListener('cordlessDrillingMachines', setCordlessDrillingMachinesById),
+            createDataListener('wiredAngleGrinders', setWiredAngleGrindersById),
+            createDataListener('cordlessAngleGrinders', setCordlessAngleGrindersById),
+            createDataListener('cordlessReciprocatingSaws', setCordlessReciprocatingSawsById),
+        ];
+        return () => unsubscribers.forEach(unsubscribe => unsubscribe());
+    }, []);
+
     const contextValue: InventoryContextType = {
         inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, weldingMachines, walkieTalkies, machineLogs, certificateRequests, internalRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, consumableInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, deliveryNotes, directives: [], damageReports, inwardOutwardRecords,
         pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws,
@@ -741,6 +785,7 @@ const deleteAllDamageReportsAndFiles = useCallback(() => {}, []);
         deleteDamageReport,
         deleteAllDamageReportsAndFiles,
     };
+
     return <InventoryContext.Provider value={contextValue}>{children}</InventoryContext.Provider>;
 }
 
@@ -751,7 +796,3 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
-
-    
-
-    
