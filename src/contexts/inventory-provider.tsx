@@ -515,6 +515,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 lastUpdated: new Date().toISOString(),
                 isArchived: false,
                 category: 'General',
+                status: 'In Store',
+                projectId: projects.find(p => p.name === 'Store')?.id || '',
             };
             updates[`inventoryItems/${newRefKey}`] = newItem;
             return newRefKey;
@@ -525,7 +527,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         updates[`inwardOutwardRecords/${recordId}/quantity`] = newItemsData.length;
     
         update(ref(rtdb), updates);
-    }, [inwardOutwardRecords, user]);
+    }, [inwardOutwardRecords, user, projects]);
 
     const receiveQuoteItem = useCallback((quotationId: string, vendorId: string, itemId: string, quantity: number) => {
         if (!user) return;
@@ -829,6 +831,26 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
     }, [inventoryItems, toast]);
     
+    const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
+      if (!user) return;
+      const newRef = push(ref(rtdb, 'tpCertLists'));
+      set(newRef, {
+        ...listData,
+        creatorId: user.id,
+        createdAt: new Date().toISOString()
+      });
+    }, [user]);
+
+    const updateTpCertList = useCallback((listData: TpCertList) => {
+      if (!listData?.id) return;
+      const { id, ...data } = listData;
+      update(ref(rtdb, `tpCertLists/${id}`), data);
+    }, []);
+
+    const deleteTpCertList = useCallback((listId: string) => {
+      remove(ref(rtdb, `tpCertLists/${listId}`));
+    }, []);
+
     const approveInventoryTransferRequest = useCallback(() => {}, []);
     const rejectInventoryTransferRequest = useCallback(() => {}, []);
     const disputeInventoryTransfer = useCallback(() => {}, []);
@@ -842,9 +864,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const addCertificateRequestComment = useCallback(() => {}, []);
     const markFulfilledRequestsAsViewed = useCallback(() => {}, []);
     const acknowledgeFulfilledRequest = useCallback(() => {}, []);
-    const addTpCertList = useCallback(() => {}, []);
-    const updateTpCertList = useCallback(() => {}, []);
-    const deleteTpCertList = useCallback(() => {}, []);
     const addInspectionChecklist = useCallback(() => {}, []);
     const updateInspectionChecklist = useCallback(() => {}, []);
     const deleteInspectionChecklist = useCallback(() => {}, []);
@@ -1016,3 +1035,5 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
+
+    
