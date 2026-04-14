@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -20,13 +19,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Card, CardContent } from '@/components/ui/card';
 import { useAppContext } from '@/contexts/app-provider';
 import type { Timesheet, TimesheetStatus } from '@/lib/types';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { Eye, ArrowUpDown } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { ScrollArea } from '../ui/scroll-area';
-import ViewTimesheetDialog from './ViewTimesheetDialog';
+import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 
 const statusVariantMap: Record<
   TimesheetStatus,
@@ -164,33 +163,88 @@ export default function TimesheetTrackerTable({
   }
 
   return (
-    <ScrollArea className="h-[calc(100vh-28rem)]">
-        <Table className="text-sm">
+    <>
+      {/* Mobile View */}
+      <div className="md:hidden">
+        <ScrollArea className="h-[calc(100vh-32rem)]">
+          <div className="space-y-3 p-2">
+            {timesheets.map((ts) => {
+              const submitter = users.find((u) => u.id === ts.submitterId);
+              const project = projects.find((p) => p.id === ts.projectId);
+              return (
+                <Card key={ts.id} onClick={() => onViewTimesheet(ts)} className="cursor-pointer">
+                  <CardContent className="p-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-semibold">{project?.name} - {ts.plantUnit}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {format(parseISO(ts.startDate), 'dd/MM/yy')} - {format(parseISO(ts.endDate), 'dd/MM/yy')}
+                        </p>
+                      </div>
+                      <Badge variant={statusVariantMap[ts.status]}>{ts.status}</Badge>
+                    </div>
+                    <div className="flex justify-between items-center mt-2 text-xs">
+                      {submitter && (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Avatar className="h-5 w-5">
+                            <AvatarImage src={submitter.avatar} />
+                            <AvatarFallback>{submitter.name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <span>{submitter.name}</span>
+                        </div>
+                      )}
+                      <span className="font-semibold">Qty: {ts.numberOfTimesheets}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      </div>
+
+      {/* Desktop View */}
+      <div className="hidden md:block h-full">
+        <ScrollArea className="h-[calc(100vh-28rem)] whitespace-nowrap">
+          <Table className="text-sm">
             <TableHeader>
-                {table.getHeaderGroups().map(headerGroup => (
-                    <TableRow key={headerGroup.id}>
-                        {headerGroup.headers.map(header => (
-                            <TableHead key={header.id}>
-                                {header.isPlaceholder
-                                    ? null
-                                    : flexRender(header.column.columnDef.header, header.getContext())}
-                            </TableHead>
-                        ))}
-                    </TableRow>
-                ))}
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
             </TableHeader>
             <TableBody>
-                {table.getRowModel().rows.map(row => (
-                    <TableRow key={row.id}>
-                        {row.getVisibleCells().map(cell => (
-                            <TableCell key={cell.id}>
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </TableCell>
-                        ))}
-                    </TableRow>
-                ))}
+              {table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  className="cursor-pointer"
+                  onClick={() => onViewTimesheet(row.original)}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
             </TableBody>
-        </Table>
-      </ScrollArea>
+          </Table>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+      </div>
+    </>
   );
 }
