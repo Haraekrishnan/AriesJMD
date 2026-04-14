@@ -1,4 +1,3 @@
-
 'use client';
 import { useState } from 'react';
 import type { Quotation, QuotationStatus } from '@/lib/types';
@@ -35,8 +34,8 @@ const statusOptions: QuotationStatus[] = ['Pending', 'Approved', 'PO Sent', 'Par
 
 export default function QuotationList({ quotations, onEdit }: { quotations: Quotation[], onEdit: (q: Quotation) => void }) {
     const [viewingQuotation, setViewingQuotation] = useState<Quotation | null>(null);
-    const { users, can, updateQuotation, deleteQuotation } = usePurchase();
-    const { user } = useAppContext();
+    const { user, users, can } = useAppContext();
+    const { updateQuotation, deleteQuotation } = usePurchase();
     const { toast } = useToast();
 
     const handleExport = (quotation: Quotation) => {
