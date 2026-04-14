@@ -279,7 +279,7 @@ export default function JobProgressPage() {
           <h1 className="text-3xl font-bold tracking-tight">Trackers</h1>
           <p className="text-muted-foreground">Monitor the lifecycle of JMS, Timesheets, and other documents.</p>
         </div>
-        <div className="flex flex-wrap items-center justify-start sm:justify-end gap-2">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center justify-start sm:justify-end gap-2 w-full sm:w-auto">
             <OngoingJobsReport jobs={filteredJobs} />
             <Button variant="outline" onClick={() => setIsPendingDialogOpen(true)}>
               <Bell className="mr-2 h-4 w-4" />
@@ -327,26 +327,26 @@ export default function JobProgressPage() {
           <TabsTrigger value="documents">Document Tracker</TabsTrigger>
         </TabsList>
         <TabsContent value="jms" className="flex-1 overflow-hidden flex flex-col">
-           <div className="flex justify-between items-center pt-2 pb-4">
-              <div className="flex gap-2 items-center">
-                  <div className="relative w-full sm:w-auto max-w-sm">
+           <div className="flex flex-col sm:flex-row justify-between items-center pt-2 pb-4 gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 items-center w-full">
+                  <div className="relative w-full">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                          placeholder="Search Job Desc, JMS no, project, amount..."
-                          className="pl-9"
+                          placeholder="Search..."
+                          className="pl-9 w-full"
                           value={jmsSearchTerm}
                           onChange={e => setJmsSearchTerm(e.target.value)}
                       />
                   </div>
                   <Select value={jmsProjectFilter} onValueChange={setJmsProjectFilter}>
-                    <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by project..." /></SelectTrigger>
+                    <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filter by project..." /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Projects</SelectItem>
                         {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Select value={jmsAssigneeFilter} onValueChange={setJmsAssigneeFilter}>
-                      <SelectTrigger className="w-[200px]">
+                      <SelectTrigger className="w-full sm:w-[200px]">
                           <SelectValue placeholder="Filter by assignee..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -359,7 +359,7 @@ export default function JobProgressPage() {
                       </SelectContent>
                   </Select>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 self-end">
                 <Button variant={jmsView === 'board' ? 'secondary' : 'outline'} size="icon" onClick={() => setJmsView('board')}><LayoutGrid className="h-4 w-4" /></Button>
                 <Button variant={jmsView === 'list' ? 'secondary' : 'outline'} size="icon" onClick={() => setJmsView('list')}><List className="h-4 w-4" /></Button>
                 <TooltipProvider>
@@ -392,33 +392,33 @@ export default function JobProgressPage() {
           )}
         </TabsContent>
         <TabsContent value="timesheets" className="flex-1 overflow-hidden flex flex-col">
-          <div className="flex justify-between items-center pt-2 pb-4">
-              <div className="flex gap-2 items-center">
-                <div className="relative w-full sm:w-auto max-w-sm">
+          <div className="flex flex-col sm:flex-row justify-between items-center pt-2 pb-4 gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 items-center w-full">
+                <div className="relative w-full">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                       placeholder="Search by unit..."
-                      className="pl-9"
+                      className="pl-9 w-full"
                       value={timesheetSearchTerm}
                       onChange={e => setTimesheetSearchTerm(e.target.value)}
                   />
                 </div>
                  <Select value={timesheetProjectFilter} onValueChange={setTimesheetProjectFilter}>
-                    <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by project..." /></SelectTrigger>
+                    <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filter by project..." /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Projects</SelectItem>
                         {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                     </SelectContent>
                 </Select>
                  <Select value={timesheetSubmitterFilter} onValueChange={setTimesheetSubmitterFilter}>
-                    <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by submitter..." /></SelectTrigger>
+                    <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filter by submitter..." /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Submitters</SelectItem>
                         {allSubmitters.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                     </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 self-end">
                 <Button variant={timesheetView === 'board' ? 'secondary' : 'outline'} size="icon" onClick={() => setTimesheetView('board')}><LayoutGrid className="h-4 w-4" /></Button>
                 <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" onClick={() => setTimesheetView('list')}><List className="h-4 w-4" /></Button>
                 <TooltipProvider>
