@@ -1222,6 +1222,7 @@ export type Quotation = {
     vendors: QuotationVendorDetails[];
     finalizedVendorId?: string;
     poNumber?: string;
+    isLocked?: boolean;
 };
 
 export type RequestListItem = {

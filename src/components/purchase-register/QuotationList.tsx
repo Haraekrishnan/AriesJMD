@@ -3,7 +3,7 @@ import { useState } from 'react';
 import type { Quotation, QuotationStatus } from '@/lib/types';
 import { Button } from '../ui/button';
 import { format, parseISO } from 'date-fns';
-import { FileDown, Eye, Edit, Trash2 } from 'lucide-react';
+import { FileDown, Eye, Edit, Trash2, Unlock, Lock } from 'lucide-react';
 import ViewQuotationDialog from './ViewQuotationDialog';
 import { exportToExcel } from './exportQuotationToExcel';
 import {
@@ -20,6 +20,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { usePurchase } from '@/contexts/purchase-provider';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+
 
 const statusVariant: { [key in QuotationStatus]: 'default' | 'secondary' | 'destructive' | 'success' | 'warning' } = {
   Pending: 'secondary',
@@ -35,7 +37,7 @@ const statusOptions: QuotationStatus[] = ['Pending', 'Approved', 'PO Sent', 'Par
 export default function QuotationList({ quotations, onEdit }: { quotations: Quotation[], onEdit: (q: Quotation) => void }) {
     const [viewingQuotation, setViewingQuotation] = useState<Quotation | null>(null);
     const { user, users, can } = useAppContext();
-    const { updateQuotation, deleteQuotation } = usePurchase();
+    const { updateQuotation, deleteQuotation, setQuotationLock } = usePurchase();
     const { toast } = useToast();
 
     const handleExport = (quotation: Quotation) => {
@@ -64,10 +66,6 @@ export default function QuotationList({ quotations, onEdit }: { quotations: Quot
 
     const handleDelete = (quotationId: string) => {
         deleteQuotation(quotationId);
-        toast({
-            title: "Price Comparison Deleted",
-            variant: "destructive",
-        });
     };
 
     if (!quotations || quotations.length === 0) {
@@ -97,6 +95,8 @@ export default function QuotationList({ quotations, onEdit }: { quotations: Quot
                     <TableBody>
                         {quotations.map((q, index) => {
                             const creator = users.find(u => u.id === q.creatorId);
+                            const canEditThis = can.manage_purchase_register && (!q.isLocked || user?.role === 'Admin');
+
                             return (
                                 <TableRow key={q.id}>
                                     <TableCell>{index + 1}</TableCell>
@@ -105,7 +105,10 @@ export default function QuotationList({ quotations, onEdit }: { quotations: Quot
                                         {can.manage_purchase_register ? (
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Badge variant={statusVariant[q.status] || 'secondary'} className="cursor-pointer">{q.status}</Badge>
+                                                    <div className="flex items-center gap-1 cursor-pointer">
+                                                        {q.isLocked && <Lock className="h-3 w-3 text-muted-foreground" />}
+                                                        <Badge variant={statusVariant[q.status] || 'secondary'}>{q.status}</Badge>
+                                                    </div>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent>
                                                     {statusOptions.map(option => (
@@ -122,9 +125,9 @@ export default function QuotationList({ quotations, onEdit }: { quotations: Quot
                                     <TableCell>
                                         <div className="flex gap-1">
                                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewingQuotation(q)}><Eye className="h-4 w-4"/></Button>
-                                            {can.manage_purchase_register && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(q)}><Edit className="h-4 w-4"/></Button>}
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(q)} disabled={!canEditThis}><Edit className="h-4 w-4"/></Button>
                                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleExport(q)}><FileDown className="h-4 w-4"/></Button>
-                                             {user?.role === 'Admin' && (
+                                            {user?.role === 'Admin' && (
                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
                                                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"><Trash2 className="h-4 w-4" /></Button>
@@ -140,6 +143,18 @@ export default function QuotationList({ quotations, onEdit }: { quotations: Quot
                                                         </AlertDialogFooter>
                                                     </AlertDialogContent>
                                                 </AlertDialog>
+                                            )}
+                                             {user?.role === 'Admin' && q.isLocked && (
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setQuotationLock(q.id, false)}>
+                                                                <Unlock className="h-4 w-4 text-yellow-600" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent><p>Unlock for Editing</p></TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
                                             )}
                                         </div>
                                     </TableCell>

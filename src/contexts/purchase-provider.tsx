@@ -3,7 +3,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { Vendor, Payment, PaymentStatus, PurchaseRegister, Comment, Quotation, InwardOutwardRecord, Permission } from '@/lib/types';
+import { Vendor, Payment, PaymentStatus, PurchaseRegister, Comment, Quotation, InwardOutwardRecord, Permission, QuotationStatus } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -37,6 +37,7 @@ type PurchaseContextType = {
   addQuotation: (quotationData: Omit<Quotation, 'id' | 'creatorId' | 'createdAt' | 'status'>) => void;
   updateQuotation: (quotation: Quotation) => void;
   deleteQuotation: (quotationId: string) => void;
+  setQuotationLock: (quotationId: string, locked: boolean) => void;
   receiveQuoteItem: (quotationId: string, vendorId: string, itemId: string, quantity: number) => void;
 };
 
@@ -187,8 +188,19 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
 
     const updateQuotation = useCallback((quotation: Quotation) => {
         const { id, ...data } = quotation;
-        update(ref(rtdb, `quotations/${id}`), data);
-    }, []);
+        const oldQuotation = quotationsById[id];
+        
+        const updateData: Partial<Quotation> = { ...data };
+    
+        const lockingStatuses: QuotationStatus[] = ['Approved', 'PO Sent', 'Partially Received', 'Completed'];
+        if (lockingStatuses.includes(data.status) && oldQuotation?.status !== data.status) {
+            if (!oldQuotation?.isLocked) {
+                 updateData.isLocked = true;
+            }
+        }
+        
+        update(ref(rtdb, `quotations/${id}`), updateData);
+    }, [quotationsById]);
 
     const deleteQuotation = useCallback((quotationId: string) => {
         if (!user || user.role !== 'Admin') {
@@ -199,6 +211,15 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
         toast({ title: "Price Comparison Deleted", variant: "destructive" });
         if(user) addActivityLog(user.id, 'Price Comparison Deleted', `ID: ${quotationId}`);
     }, [user, toast, addActivityLog]);
+    
+    const setQuotationLock = useCallback((quotationId: string, locked: boolean) => {
+        if (user?.role !== 'Admin') {
+            toast({ title: "Permission Denied", description: "Only admins can lock or unlock price comparisons.", variant: "destructive" });
+            return;
+        }
+        update(ref(rtdb, `quotations/${quotationId}`), { isLocked: locked });
+        toast({ title: `Price Comparison ${locked ? 'Locked' : 'Unlocked'}` });
+    }, [user, toast]);
 
     const receiveQuoteItem = useCallback((quotationId: string, vendorId: string, itemId: string, quantity: number) => {
         if (!user) return;
@@ -270,6 +291,7 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
         addPayment, updatePayment, deletePayment,
         addPurchaseRegister, updatePurchaseRegister, deletePurchaseRegister, updatePurchaseRegisterPoNumber,
         addQuotation, updateQuotation, deleteQuotation,
+        setQuotationLock,
         receiveQuoteItem,
     };
 
