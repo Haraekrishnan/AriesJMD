@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -111,15 +112,17 @@ export default function TpCertificationPage() {
         const currentIndex = checklistItems.findIndex(item => item.key === itemKey);
         const currentMaxIndex = list.checklistMaxIndex ?? -1;
         
-        const canPerformAction = user.role === 'Admin' || checklistItems[currentIndex].permissions.includes(user.role);
+        const canPerformAction = user.role === 'Admin' || checklistItems[currentIndex].permissions.includes(user.role as Role);
         
         if (!canPerformAction) {
             toast({ title: "Permission Denied", description: "You cannot modify this step.", variant: 'destructive' });
             return;
         }
 
-        if (checked && currentIndex > currentMaxIndex + 1) {
-            toast({ title: "Action Denied", description: "Please complete the previous steps in order.", variant: 'destructive' });
+        const isPreviousStepComplete = currentIndex === 0 || !!list.checklist?.[checklistItems[currentIndex - 1].key];
+
+        if (checked && !isPreviousStepComplete && user.role !== 'Admin') {
+            toast({ title: "Action Denied", description: "Please complete the previous step first.", variant: 'destructive' });
             return;
         }
 
@@ -292,7 +295,7 @@ export default function TpCertificationPage() {
                                                 const checkData = checklist[key];
                                                 const isChecked = !!checkData;
                                                 const checkedByUser = isChecked ? users.find(u => u.id === checkData.userId) : null;
-                                                const canCheckPermission = user && (user.role === 'Admin' || permissions.includes(user.role));
+                                                const canCheckPermission = user && (user.role === 'Admin' || permissions.includes(user.role as Role));
                                                 
                                                 const isFinalized = !!checklist[checklistItems[checklistItems.length - 1].key];
                                                 const isLockedByProgress = isChecked && index < maxIndex;
