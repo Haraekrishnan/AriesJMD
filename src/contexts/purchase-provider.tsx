@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -8,12 +7,13 @@ import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update } from 'firebase/database';
 import { useAuth } from './auth-provider';
 import { useToast } from '@/hooks/use-toast';
+import { useConsumable } from './consumable-provider';
 
 // --- TYPE DEFINITIONS ---
 
 type PermissionsObject = Record<Permission, boolean>;
 
-type PurchaseContextType = {
+export type PurchaseContextType = {
   vendors: Vendor[];
   payments: Payment[];
   purchaseRegisters: PurchaseRegister[];
@@ -38,7 +38,6 @@ type PurchaseContextType = {
   updateQuotation: (quotation: Quotation) => void;
   deleteQuotation: (quotationId: string) => void;
   setQuotationLock: (quotationId: string, locked: boolean) => void;
-  receiveQuoteItem: (quotationId: string, vendorId: string, itemId: string, quantity: number) => void;
 };
 
 // --- HELPER FUNCTIONS ---
@@ -69,6 +68,7 @@ const PurchaseContext = createContext<PurchaseContextType | undefined>(undefined
 export function PurchaseProvider({ children }: { children: ReactNode }) {
     const { user, addActivityLog, can } = useAuth();
     const { toast } = useToast();
+    const { consumableItems, addConsumableInwardRecord } = useConsumable();
 
     const [vendorsById, setVendorsById] = useState<Record<string, Vendor>>({});
     const [paymentsById, setPaymentsById] = useState<Record<string, Payment>>({});
@@ -199,8 +199,36 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
             }
         }
         
+        if (data.finalizedVendorId && data.finalizedVendorId !== oldQuotation?.finalizedVendorId) {
+            const finalizedVendor = data.vendors.find(v => v.vendorId === data.finalizedVendorId);
+            if (finalizedVendor) {
+                const consumableItemIds = new Set(consumableItems.map(i => i.id));
+                const itemsToUpdate: {itemId: string, quantity: number, itemName: string}[] = [];
+                
+                data.items.forEach(item => {
+                    if (consumableItemIds.has(item.itemId)) {
+                        const quote = finalizedVendor.quotes.find(q => q.itemId === item.itemId);
+                        if (quote && quote.quantity > 0) {
+                            itemsToUpdate.push({ itemId: item.itemId, quantity: quote.quantity, itemName: item.description });
+                        }
+                    }
+                });
+                
+                if (itemsToUpdate.length > 0) {
+                    const inwardDate = new Date();
+                    itemsToUpdate.forEach(item => {
+                        addConsumableInwardRecord(item.itemId, item.quantity, inwardDate);
+                    });
+                    toast({
+                        title: 'Consumables Stock Updated',
+                        description: `${itemsToUpdate.length} consumable item(s) have been auto-added to the inward register.`
+                    });
+                }
+            }
+        }
+        
         update(ref(rtdb, `quotations/${id}`), updateData);
-    }, [quotationsById]);
+    }, [quotationsById, toast, consumableItems, addConsumableInwardRecord]);
 
     const deleteQuotation = useCallback((quotationId: string) => {
         if (!user || user.role !== 'Admin') {
@@ -221,60 +249,6 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
         toast({ title: `Price Comparison ${locked ? 'Locked' : 'Unlocked'}` });
     }, [user, toast]);
 
-    const receiveQuoteItem = useCallback((quotationId: string, vendorId: string, itemId: string, quantity: number) => {
-        if (!user) return;
-        const quotation = quotations.find(q => q.id === quotationId);
-        if (!quotation) return;
-
-        const vendor = quotation.vendors.find(v => v.vendorId === vendorId);
-        const item = quotation.items.find(i => i.itemId === itemId);
-        if (!vendor || !item) return;
-
-        const updates: { [key: string]: any } = {};
-        
-        // 1. Create Inward Record
-        const newInwardRef = push(ref(rtdb, 'inwardOutwardRecords'));
-        const inwardRecord: Omit<InwardOutwardRecord, 'id'> = {
-            itemId,
-            itemType: item.itemType,
-            itemName: item.description,
-            type: 'Inward',
-            quantity,
-            date: new Date().toISOString(),
-            source: `From Quotation - ${quotation.title}`,
-            userId: user.id,
-            status: 'Pending Details',
-            quotationId,
-            vendorId,
-        };
-        updates[`/inwardOutwardRecords/${newInwardRef.key}`] = inwardRecord;
-
-        // 2. Update Quotation received quantity
-        const vendorIndex = quotation.vendors.findIndex(v => v.id === vendor.id);
-        const quoteIndex = vendor.quotes.findIndex(q => q.itemId === itemId);
-        if(vendorIndex > -1 && quoteIndex > -1) {
-            const currentReceived = vendor.quotes[quoteIndex].receivedQuantity || 0;
-            const newReceived = currentReceived + quantity;
-            updates[`/quotations/${quotationId}/vendors/${vendorIndex}/quotes/${quoteIndex}/receivedQuantity`] = newReceived;
-
-            // 3. Update Quotation status
-            const allItemsReceived = quotation.vendors[vendorIndex].quotes.every(q => {
-                const received = q.itemId === itemId ? newReceived : (q.receivedQuantity || 0);
-                return received >= q.quantity;
-            });
-
-            if (allItemsReceived) {
-                updates[`/quotations/${quotationId}/status`] = 'Completed';
-            } else {
-                updates[`/quotations/${quotationId}/status`] = 'Partially Received';
-            }
-        }
-        
-        update(ref(rtdb), updates);
-
-    }, [user, quotations]);
-
-
     useEffect(() => {
         const unsubscribers = [
             createDataListener('vendors', setVendorsById),
@@ -292,8 +266,7 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
         addPurchaseRegister, updatePurchaseRegister, deletePurchaseRegister, updatePurchaseRegisterPoNumber,
         addQuotation, updateQuotation, deleteQuotation,
         setQuotationLock,
-        receiveQuoteItem,
-    };
+    } as PurchaseContextType;
 
     return <PurchaseContext.Provider value={contextValue}>{children}</PurchaseContext.Provider>;
 }

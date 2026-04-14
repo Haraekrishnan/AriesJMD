@@ -17,7 +17,6 @@ import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Badge } from '../ui/badge';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
-import { usePurchase } from '@/contexts/purchase-provider';
 
 interface ViewQuotationDialogProps {
   isOpen: boolean;
@@ -88,8 +87,7 @@ const ReceiveItemDialog = ({
 };
 
 export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: initialQuotation }: ViewQuotationDialogProps) {
-  const { users, can } = useAppContext();
-  const { updateQuotation, quotations, receiveQuoteItem } = usePurchase();
+  const { users, can, quotations, updateQuotation, receiveQuoteItem } = useAppContext();
   const { toast } = useToast();
   const [poNumber, setPoNumber] = useState(initialQuotation.poNumber || '');
   const [receivingInfo, setReceivingInfo] = useState<{ item: QuotationItem; vendor: QuotationVendorDetails; quote: QuotationQuote } | null>(null);
