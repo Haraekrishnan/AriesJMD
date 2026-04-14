@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -108,33 +107,7 @@ export default function TpCertificationPage() {
     
     const handleChecklistChange = (list: TpCertList, itemKey: keyof TpCertChecklist, checked: boolean) => {
       if (!user) return;
-  
-      const isAdmin = user.role === 'Admin';
-      const currentIndex = checklistItems.findIndex(item => item.key === itemKey);
-  
-      if (!isAdmin) {
-          const canUserPerformAction = checklistItems[currentIndex].permissions.includes(user.role as Role);
-          if (!canUserPerformAction) {
-              toast({ title: "Permission Denied", variant: 'destructive' });
-              return;
-          }
-  
-          const isPreviousStepComplete = currentIndex === 0 || !!list.checklist?.[checklistItems[currentIndex - 1].key];
-          if (checked && !isPreviousStepComplete) {
-              toast({ title: "Action Denied", description: "Please complete the previous step first.", variant: 'destructive' });
-              return;
-          }
-  
-          const nextStepIndex = currentIndex + 1;
-          if (!checked && nextStepIndex < checklistItems.length) {
-              const nextStep = checklistItems[nextStepIndex];
-              if (list.checklist?.[nextStep.key]) {
-                  toast({ title: "Action Denied", description: "Please uncheck subsequent steps first.", variant: 'destructive' });
-                  return;
-              }
-          }
-      }
-  
+      
       const updatedChecklist = {
           ...(list.checklist || {}),
           [itemKey]: checked ? { userId: user.id, date: new Date().toISOString() } : null
@@ -226,7 +199,6 @@ export default function TpCertificationPage() {
                                 const isLockedForEdit = list.isLocked;
                                 const canUserUnlock = user && (user.role === 'Admin' || user.role === 'Project Coordinator');
                                 
-                                const isAdmin = user?.role === 'Admin';
                                 const checklist = list.checklist || {};
                                 
                                 return (
@@ -280,21 +252,25 @@ export default function TpCertificationPage() {
                                         </div>
                                          <div className="p-4 pt-2 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 border-t">
                                             {checklistItems.map(({ key, label, permissions }, index) => {
-                                                const checkData = checklist[key];
+                                                const checkData = checklist[key as keyof typeof checklist];
                                                 const isChecked = !!checkData;
                                                 const checkedByUser = isChecked ? users.find(u => u.id === checkData.userId) : null;
                                                 
+                                                const isAdmin = user?.role?.toLowerCase().trim() === 'admin';
                                                 let isDisabled = false;
+
                                                 if (!isAdmin) {
                                                     const canUserPerformAction = user && permissions.includes(user.role as Role);
+                                                
                                                     if (!canUserPerformAction) {
                                                         isDisabled = true;
                                                     } else {
                                                         const isPreviousStepComplete = index === 0 || !!checklist[checklistItems[index - 1].key];
+                                                
                                                         if (!isChecked && !isPreviousStepComplete) {
                                                             isDisabled = true;
                                                         }
-                                                        
+                                                
                                                         const nextStepIndex = index + 1;
                                                         if (isChecked && nextStepIndex < checklistItems.length) {
                                                             const isNextStepComplete = !!checklist[checklistItems[nextStepIndex].key];
@@ -379,3 +355,4 @@ export default function TpCertificationPage() {
     );
 }
 
+    
