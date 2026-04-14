@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -116,7 +117,6 @@ type InventoryContextType = {
   ppeRequests: PpeRequest[];
   ppeStock: PpeStock[];
   ppeInwardHistory: PpeInwardRecord[];
-  consumableInwardHistory: ConsumableInwardRecord[];
   tpCertLists: TpCertList[];
   inspectionChecklists: InspectionChecklist[];
   igpOgpRecords: IgpOgpRecord[];
@@ -247,6 +247,9 @@ type InventoryContextType = {
   deletePpeAttachment: (requestId: string) => void;
   markPpeRequestAsViewed: (requestId: string) => void;
   updatePpeStock: (stockId: 'coveralls' | 'safetyShoes', data: { [key: string]: number } | number) => void;
+  addPpeInwardRecord: (data: Omit<PpeInwardRecord, 'id' | 'addedByUserId'>) => void;
+  updatePpeInwardRecord: (record: PpeInwardRecord) => void;
+  deletePpeInwardRecord: (record: PpeInwardRecord) => void;
   
   addTpCertList: (listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => void;
   updateTpCertList: (listData: TpCertList) => void;
@@ -567,11 +570,11 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
     }, [user, quotations, addInwardOutwardRecord, updateQuotation, consumableItemIds, addConsumableInwardRecord]);
     
-    // ...
-    // The rest of the inventory provider's functions
-    // ...
+    const addInventoryItem = useCallback((item: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
+        const newRef = push(ref(rtdb, 'inventoryItems'));
+        set(newRef, { ...item, lastUpdated: new Date().toISOString() });
+    }, []);
 
-    const addInventoryItem = useCallback(() => {}, []);
     const addMultipleInventoryItems = useCallback((itemsData: any[]): number => {
       let importedCount = 0;
       const allSerialNumbers = new Set(inventoryItems.map(i => i.serialNumber).filter(Boolean));
@@ -616,126 +619,316 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       }
       return importedCount;
   }, [inventoryItems, projects]);
-const batchAddInventoryItems = useCallback(() => {}, []);
-const batchCreateAndLogItems = useCallback(() => 0, []);
-const updateInventoryItem = useCallback(() => {}, []);
-const batchUpdateInventoryItems = useCallback(() => {}, []);
-const updateInventoryItemGroup = useCallback(() => {}, []);
-const updateInspectionItemGroup = useCallback(() => {}, []);
-const updateMultipleInventoryItems = useCallback(() => 0, []);
-const batchDeleteInventoryItems = useCallback(() => {}, []);
-const deleteInventoryItemGroup = useCallback(() => {}, []);
-const renameInventoryItemGroup = useCallback(() => {}, []);
-const revalidateExpiredItems = useCallback(() => {}, []);
-const addInventoryTransferRequest = useCallback(() => {}, []);
-const updateInventoryTransferRequest = useCallback(() => {}, []);
-const deleteInventoryTransferRequest = useCallback(() => {}, []);
-const approveInventoryTransferRequest = useCallback(() => {}, []);
-const rejectInventoryTransferRequest = useCallback(() => {}, []);
-const disputeInventoryTransfer = useCallback(() => {}, []);
-const acknowledgeTransfer = useCallback(() => {}, []);
-const clearInventoryTransferHistory = useCallback(() => {}, []);
-const resolveInternalRequestDispute = useCallback(() => {}, []);
-const updateInwardOutwardRecord = useCallback(() => {}, []);
-const deleteInwardOutwardRecord = useCallback(() => {}, []);
-const addCertificateRequest = useCallback(() => {}, []);
-const fulfillCertificateRequest = useCallback(() => {}, []);
-const addCertificateRequestComment = useCallback(() => {}, []);
-const markFulfilledRequestsAsViewed = useCallback(() => {}, []);
-const acknowledgeFulfilledRequest = useCallback(() => {}, []);
-const addUTMachine = useCallback(() => {}, []);
-const updateUTMachine = useCallback(() => {}, []);
-const deleteUTMachine = useCallback(() => {}, []);
-const addDftMachine = useCallback(() => {}, []);
-const updateDftMachine = useCallback(() => {}, []);
-const deleteDftMachine = useCallback(() => {}, []);
-const addMobileSim = useCallback(() => {}, []);
-const updateMobileSim = useCallback(() => {}, []);
-const deleteMobileSim = useCallback((itemId: string) => {
-    if (!user) return;
-    const itemToDelete = mobileSimsById[itemId];
-    if (itemToDelete) {
-        remove(ref(rtdb, `mobileSims/${itemId}`));
-        addActivityLog(user.id, 'Mobile/SIM Deleted', `Item: ${itemToDelete.make || itemToDelete.simProvider} ${itemToDelete.model || itemToDelete.simNumber}`);
-        toast({ title: 'Item Deleted', variant: 'destructive' });
-    }
-}, [user, mobileSimsById, addActivityLog, toast]);
-const addLaptopDesktop = useCallback(() => {}, []);
-const updateLaptopDesktop = useCallback(() => {}, []);
-const deleteLaptopDesktop = useCallback(() => {}, []);
-const addDigitalCamera = useCallback(() => {}, []);
-const updateDigitalCamera = useCallback(() => {}, []);
-const deleteDigitalCamera = useCallback(() => {}, []);
-const addAnemometer = useCallback(() => {}, []);
-const updateAnemometer = useCallback(() => {}, []);
-const deleteAnemometer = useCallback(() => {}, []);
-const addOtherEquipment = useCallback(() => {}, []);
-const updateOtherEquipment = useCallback(() => {}, []);
-const deleteOtherEquipment = useCallback(() => {}, []);
-const addWeldingMachine = useCallback(() => {}, []);
-const updateWeldingMachine = useCallback(() => {}, []);
-const deleteWeldingMachine = useCallback(() => {}, []);
-const addWalkieTalkie = useCallback(() => {}, []);
-const updateWalkieTalkie = useCallback(() => {}, []);
-const deleteWalkieTalkie = useCallback(() => {}, []);
-const addPneumaticDrillingMachine = useCallback(() => {}, []);
-const updatePneumaticDrillingMachine = useCallback(() => {}, []);
-const deletePneumaticDrillingMachine = useCallback(() => {}, []);
-const addPneumaticAngleGrinder = useCallback(() => {}, []);
-const updatePneumaticAngleGrinder = useCallback(() => {}, []);
-const deletePneumaticAngleGrinder = useCallback(() => {}, []);
-const addWiredDrillingMachine = useCallback(() => {}, []);
-const updateWiredDrillingMachine = useCallback(() => {}, []);
-const deleteWiredDrillingMachine = useCallback(() => {}, []);
-const addCordlessDrillingMachine = useCallback(() => {}, []);
-const updateCordlessDrillingMachine = useCallback(() => {}, []);
-const deleteCordlessDrillingMachine = useCallback(() => {}, []);
-const addWiredAngleGrinder = useCallback(() => {}, []);
-const updateWiredAngleGrinder = useCallback(() => {}, []);
-const deleteWiredAngleGrinder = useCallback(() => {}, []);
-const addCordlessAngleGrinder = useCallback(() => {}, []);
-const updateCordlessAngleGrinder = useCallback(() => {}, []);
-const deleteCordlessAngleGrinder = useCallback(() => {}, []);
-const addCordlessReciprocatingSaw = useCallback(() => {}, []);
-const updateCordlessReciprocatingSaw = useCallback(() => {}, []);
-const deleteCordlessReciprocatingSaw = useCallback(() => {}, []);
-const addMachineLog = useCallback(() => {}, []);
-const deleteMachineLog = useCallback(() => {}, []);
-const getMachineLogs = useCallback(() => [], []);
-const addInternalRequest = useCallback(() => {}, []);
-const deleteInternalRequest = useCallback(() => {}, []);
-const forceDeleteInternalRequest = useCallback(() => {}, []);
-const updateInternalRequestStatus = useCallback(() => {}, []);
-const updateInternalRequestItemStatus = useCallback(() => {}, []);
-const updateInternalRequestItem = useCallback(() => {}, []);
-const markInternalRequestAsViewed = useCallback(() => {}, []);
-const acknowledgeInternalRequest = useCallback(() => {}, []);
-const addPpeRequest = useCallback(() => {}, []);
-const updatePpeRequest = useCallback(() => {}, []);
-const updatePpeRequestStatus = useCallback(() => {}, []);
-const resolvePpeDispute = useCallback(() => {}, []);
-const deletePpeRequest = useCallback(() => {}, []);
-const deletePpeAttachment = useCallback(() => {}, []);
-const markPpeRequestAsViewed = useCallback(() => {}, []);
-const updatePpeStock = useCallback(() => {}, []);
-const addPpeInwardRecord = useCallback(() => {}, []);
-const updatePpeInwardRecord = useCallback(() => {}, []);
-const deletePpeInwardRecord = useCallback(() => {}, []);
-const addTpCertList = useCallback(() => {}, []);
-const updateTpCertList = useCallback(() => {}, []);
-const deleteTpCertList = useCallback(() => {}, []);
-const addInspectionChecklist = useCallback(() => {}, []);
-const updateInspectionChecklist = useCallback(() => {}, []);
-const deleteInspectionChecklist = useCallback(() => {}, []);
-const addIgpOgpRecord = useCallback(() => {}, []);
-const deleteIgpOgpRecord = useCallback(() => {}, []);
-const addDeliveryNote = useCallback(() => {}, []);
-const updateDeliveryNote = useCallback(() => {}, []);
-const deleteDeliveryNote = useCallback(() => {}, []);
-const addDamageReport = useCallback(async () => ({ success: false }), []);
-const updateDamageReportStatus = useCallback(() => {}, []);
-const deleteDamageReport = useCallback(() => {}, []);
-const deleteAllDamageReportsAndFiles = useCallback(() => {}, []);
+    
+    const batchAddInventoryItems = useCallback((items: Omit<InventoryItem, 'id' | 'lastUpdated'>[]) => {
+        if (!user) return;
+        const updates: { [key: string]: any } = {};
+        items.forEach(item => {
+            const newRef = push(ref(rtdb, 'inventoryItems'));
+            updates[`/inventoryItems/${newRef.key}`] = { ...item, lastUpdated: new Date().toISOString() };
+        });
+        update(ref(rtdb), updates);
+        addActivityLog(user.id, 'Batch Added Items', `Added ${items.length} items`);
+    }, [user, addActivityLog]);
+
+    const batchCreateAndLogItems = useCallback((itemsData: Partial<Omit<InventoryItem, 'id'>>[], source: string): number => {
+        if (!user) return 0;
+        const updates: { [key: string]: any } = {};
+        const now = new Date().toISOString();
+        const storeProjectId = projects.find(p => p.name === 'Store')?.id || '';
+    
+        itemsData.forEach(itemData => {
+            const newRef = push(ref(rtdb, 'inventoryItems'));
+            const newItemId = newRef.key!;
+            const newItem: Partial<InventoryItem> = {
+                ...itemData,
+                lastUpdated: now,
+                isArchived: false,
+                category: 'General',
+                status: 'In Store',
+                projectId: storeProjectId,
+            };
+            updates[`inventoryItems/${newItemId}`] = newItem;
+    
+            const newRecordRef = push(ref(rtdb, 'inwardOutwardRecords'));
+            updates[`inwardOutwardRecords/${newRecordRef.key}`] = {
+                itemId: newItemId,
+                itemType: 'Inventory',
+                itemName: itemData.name,
+                type: 'Inward',
+                quantity: 1,
+                date: now,
+                source: source,
+                userId: user.id,
+                status: 'Completed',
+            };
+        });
+    
+        update(ref(rtdb), updates);
+        return itemsData.length;
+    }, [user, projects]);
+    
+    const updateInventoryItem = useCallback((item: InventoryItem) => {
+        const { id, ...data } = item;
+        update(ref(rtdb, `inventoryItems/${id}`), { ...data, lastUpdated: new Date().toISOString() });
+    }, []);
+    
+    const batchUpdateInventoryItems = useCallback((updatesToApply: { id: string; data: Partial<InventoryItem> }[]) => {
+        const updates: { [key: string]: any } = {};
+        const now = new Date().toISOString();
+        updatesToApply.forEach(({ id, data }) => {
+            const path = `inventoryItems/${id}`;
+            Object.entries(data).forEach(([key, value]) => {
+                updates[`${path}/${key}`] = value;
+            });
+            updates[`${path}/lastUpdated`] = now;
+        });
+        update(ref(rtdb), updates);
+    }, []);
+
+    const updateInventoryItemGroup = useCallback((itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => {
+        const updatesToApply: { [key: string]: any } = {};
+        inventoryItems.forEach(item => {
+            if (item.name === itemName && item.tpInspectionDueDate === originalDueDate) {
+                if (updates.tpInspectionDueDate) {
+                    updatesToApply[`inventoryItems/${item.id}/tpInspectionDueDate`] = updates.tpInspectionDueDate;
+                }
+                if (updates.certificateUrl) {
+                    updatesToApply[`inventoryItems/${item.id}/certificateUrl`] = updates.certificateUrl;
+                }
+                updatesToApply[`inventoryItems/${item.id}/lastUpdated`] = new Date().toISOString();
+            }
+        });
+        update(ref(rtdb), updatesToApply);
+        toast({ title: 'Bulk Update Successful' });
+    }, [inventoryItems, toast]);
+    
+    const updateInspectionItemGroup = useCallback((itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'inspectionDate' | 'inspectionDueDate' | 'inspectionCertificateUrl'>>) => {
+        const updatesToApply: { [key: string]: any } = {};
+        inventoryItems.forEach(item => {
+            if (item.name === itemName && item.inspectionDueDate === originalDueDate) {
+                if (updates.inspectionDate) {
+                    updatesToApply[`inventoryItems/${item.id}/inspectionDate`] = updates.inspectionDate;
+                }
+                if (updates.inspectionDueDate) {
+                    updatesToApply[`inventoryItems/${item.id}/inspectionDueDate`] = updates.inspectionDueDate;
+                }
+                if (updates.inspectionCertificateUrl) {
+                    updatesToApply[`inventoryItems/${item.id}/inspectionCertificateUrl`] = updates.inspectionCertificateUrl;
+                }
+                updatesToApply[`inventoryItems/${item.id}/lastUpdated`] = new Date().toISOString();
+            }
+        });
+        update(ref(rtdb), updatesToApply);
+        toast({ title: 'Bulk Update Successful' });
+    }, [inventoryItems, toast]);
+
+    const updateMultipleInventoryItems = useCallback((itemsData: any[]): number => {
+      let updatedCount = 0;
+      const updates: { [key: string]: any } = {};
+  
+      itemsData.forEach(row => {
+          const serial = row['SERIAL NUMBER'];
+          if (!serial) return;
+  
+          const existingItem = inventoryItems.find(i => i.serialNumber === serial);
+          if (!existingItem) return;
+
+          const dataToUpdate: Partial<InventoryItem> = {};
+          
+          if (row['ITEM NAME']) dataToUpdate.name = row['ITEM NAME'];
+          if (row['CHEST CROLL NO']) dataToUpdate.chestCrollNo = row['CHEST CROLL NO'];
+          if (row['ARIES ID']) dataToUpdate.ariesId = row['ARIES ID'];
+          if (row['STATUS']) dataToUpdate.status = row['STATUS'];
+          
+          const newProjectId = projects.find(p => p.name === row['PROJECT'])?.id;
+          if (newProjectId) dataToUpdate.projectId = newProjectId;
+          
+          const inspDate = row['INSPECTION DATE'];
+          const inspDueDate = row['INSPECTION DUE DATE'];
+          const tpDueDate = row['TP INSPECTION DUE DATE'];
+          
+          if(inspDate && isValid(new Date(inspDate))) dataToUpdate.inspectionDate = new Date(inspDate).toISOString();
+          if(inspDueDate && isValid(new Date(inspDueDate))) dataToUpdate.inspectionDueDate = new Date(inspDueDate).toISOString();
+          if(tpDueDate && isValid(new Date(tpDueDate))) dataToUpdate.tpInspectionDueDate = new Date(tpDueDate).toISOString();
+
+          if(row['TP Certificate Link']) dataToUpdate.certificateUrl = row['TP Certificate Link'];
+          if(row['Inspection Certificate Link']) dataToUpdate.inspectionCertificateUrl = row['Inspection Certificate Link'];
+          
+          dataToUpdate.lastUpdated = new Date().toISOString();
+          
+          Object.assign(updates, { [`/inventoryItems/${existingItem.id}`]: { ...existingItem, ...dataToUpdate } });
+          updatedCount++;
+      });
+  
+      if (Object.keys(updates).length > 0) {
+          update(ref(rtdb), updates);
+      }
+      return updatedCount;
+    }, [inventoryItems, projects]);
+
+    const batchDeleteInventoryItems = useCallback((itemIds: string[]) => {
+        const updates: { [key: string]: null } = {};
+        itemIds.forEach(id => {
+            updates[`inventoryItems/${id}`] = null;
+        });
+        update(ref(rtdb), updates);
+        toast({ title: `${itemIds.length} item(s) deleted`, variant: 'destructive' });
+    }, [toast]);
+    
+    const deleteInventoryItemGroup = useCallback((itemName: string) => {
+        const updates: { [key: string]: null } = {};
+        inventoryItems.forEach(item => {
+            if (item.name === itemName) {
+                updates[`inventoryItems/${item.id}`] = null;
+            }
+        });
+        update(ref(rtdb), updates);
+        toast({ title: 'Item Group Deleted', variant: 'destructive' });
+    }, [inventoryItems, toast]);
+
+    const renameInventoryItemGroup = useCallback((oldName: string, newName: string) => {
+        const updates: { [key: string]: string } = {};
+        inventoryItems.forEach(item => {
+            if (item.name === oldName) {
+                updates[`inventoryItems/${item.id}/name`] = newName;
+            }
+        });
+        update(ref(rtdb), updates);
+        toast({ title: 'Item Group Renamed' });
+    }, [inventoryItems, toast]);
+    
+    const revalidateExpiredItems = useCallback(() => {
+        const updates: { [key: string]: any } = {};
+        const now = new Date();
+        let changedCount = 0;
+
+        inventoryItems.forEach(item => {
+            if (item.status === 'Expired') {
+                const isStillExpired = (item.inspectionDueDate && isAfter(now, parseISO(item.inspectionDueDate))) ||
+                                      (item.tpInspectionDueDate && isAfter(now, parseISO(item.tpInspectionDueDate)));
+                if (!isStillExpired) {
+                    updates[`inventoryItems/${item.id}/status`] = 'In Store'; 
+                    changedCount++;
+                }
+            } else if (item.status !== 'Damaged' && item.status !== 'Quarantine') {
+                const isExpired = (item.inspectionDueDate && isAfter(now, parseISO(item.inspectionDueDate))) ||
+                                  (item.tpInspectionDueDate && isAfter(now, parseISO(item.tpInspectionDueDate)));
+                if (isExpired) {
+                    updates[`inventoryItems/${item.id}/status`] = 'Expired';
+                    changedCount++;
+                }
+            }
+        });
+
+        if (changedCount > 0) {
+            update(ref(rtdb), updates);
+            toast({ title: 'Items Revalidated', description: `${changedCount} item statuses were updated based on their expiry dates.` });
+        } else {
+            toast({ title: 'No Changes', description: 'All item statuses are up-to-date.' });
+        }
+    }, [inventoryItems, toast]);
+    
+    const approveInventoryTransferRequest = useCallback(() => {}, []);
+    const rejectInventoryTransferRequest = useCallback(() => {}, []);
+    const disputeInventoryTransfer = useCallback(() => {}, []);
+    const acknowledgeTransfer = useCallback(() => {}, []);
+    const clearInventoryTransferHistory = useCallback(() => {}, []);
+    const resolveInternalRequestDispute = useCallback(() => {}, []);
+    const updateInwardOutwardRecord = useCallback(() => {}, []);
+    const deleteInwardOutwardRecord = useCallback(() => {}, []);
+    const addCertificateRequest = useCallback(() => {}, []);
+    const fulfillCertificateRequest = useCallback(() => {}, []);
+    const addCertificateRequestComment = useCallback(() => {}, []);
+    const markFulfilledRequestsAsViewed = useCallback(() => {}, []);
+    const acknowledgeFulfilledRequest = useCallback(() => {}, []);
+    const addTpCertList = useCallback(() => {}, []);
+    const updateTpCertList = useCallback(() => {}, []);
+    const deleteTpCertList = useCallback(() => {}, []);
+    const addInspectionChecklist = useCallback(() => {}, []);
+    const updateInspectionChecklist = useCallback(() => {}, []);
+    const deleteInspectionChecklist = useCallback(() => {}, []);
+    const addIgpOgpRecord = useCallback(() => {}, []);
+    const deleteIgpOgpRecord = useCallback(() => {}, []);
+    const addDeliveryNote = useCallback(() => {}, []);
+    const updateDeliveryNote = useCallback(() => {}, []);
+    const deleteDeliveryNote = useCallback(() => {}, []);
+    const addDamageReport = useCallback(async () => ({ success: false }), []);
+    const updateDamageReportStatus = useCallback(() => {}, []);
+    const deleteDamageReport = useCallback(() => {}, []);
+    const deleteAllDamageReportsAndFiles = useCallback(() => {}, []);
+    const addInternalRequest = useCallback(() => {}, []);
+    const deleteInternalRequest = useCallback(() => {}, []);
+    const forceDeleteInternalRequest = useCallback(() => {}, []);
+    const updateInternalRequestStatus = useCallback(() => {}, []);
+    const updateInternalRequestItemStatus = useCallback(() => {}, []);
+    const updateInternalRequestItem = useCallback(() => {}, []);
+    const markInternalRequestAsViewed = useCallback(() => {}, []);
+    const acknowledgeInternalRequest = useCallback(() => {}, []);
+    const addUTMachine = useCallback(() => {}, []);
+    const updateUTMachine = useCallback(() => {}, []);
+    const deleteUTMachine = useCallback(() => {}, []);
+    const addDftMachine = useCallback(() => {}, []);
+    const updateDftMachine = useCallback(() => {}, []);
+    const deleteDftMachine = useCallback(() => {}, []);
+    const addMobileSim = useCallback(() => {}, []);
+    const updateMobileSim = useCallback(() => {}, []);
+    const deleteMobileSim = useCallback(() => {}, []);
+    const addLaptopDesktop = useCallback(() => {}, []);
+    const updateLaptopDesktop = useCallback(() => {}, []);
+    const deleteLaptopDesktop = useCallback(() => {}, []);
+    const addDigitalCamera = useCallback(() => {}, []);
+    const updateDigitalCamera = useCallback(() => {}, []);
+    const deleteDigitalCamera = useCallback(() => {}, []);
+    const addAnemometer = useCallback(() => {}, []);
+    const updateAnemometer = useCallback(() => {}, []);
+    const deleteAnemometer = useCallback(() => {}, []);
+    const addOtherEquipment = useCallback(() => {}, []);
+    const updateOtherEquipment = useCallback(() => {}, []);
+    const deleteOtherEquipment = useCallback(() => {}, []);
+    const addWeldingMachine = useCallback(() => {}, []);
+    const updateWeldingMachine = useCallback(() => {}, []);
+    const deleteWeldingMachine = useCallback(() => {}, []);
+    const addWalkieTalkie = useCallback(() => {}, []);
+    const updateWalkieTalkie = useCallback(() => {}, []);
+    const deleteWalkieTalkie = useCallback(() => {}, []);
+    const addPneumaticDrillingMachine = useCallback(() => {}, []);
+    const updatePneumaticDrillingMachine = useCallback(() => {}, []);
+    const deletePneumaticDrillingMachine = useCallback(() => {}, []);
+    const addPneumaticAngleGrinder = useCallback(() => {}, []);
+    const updatePneumaticAngleGrinder = useCallback(() => {}, []);
+    const deletePneumaticAngleGrinder = useCallback(() => {}, []);
+    const addWiredDrillingMachine = useCallback(() => {}, []);
+    const updateWiredDrillingMachine = useCallback(() => {}, []);
+    const deleteWiredDrillingMachine = useCallback(() => {}, []);
+    const addCordlessDrillingMachine = useCallback(() => {}, []);
+    const updateCordlessDrillingMachine = useCallback(() => {}, []);
+    const deleteCordlessDrillingMachine = useCallback(() => {}, []);
+    const addWiredAngleGrinder = useCallback(() => {}, []);
+    const updateWiredAngleGrinder = useCallback(() => {}, []);
+    const deleteWiredAngleGrinder = useCallback(() => {}, []);
+    const addCordlessAngleGrinder = useCallback(() => {}, []);
+    const updateCordlessAngleGrinder = useCallback(() => {}, []);
+    const deleteCordlessAngleGrinder = useCallback(() => {}, []);
+    const addCordlessReciprocatingSaw = useCallback(() => {}, []);
+    const updateCordlessReciprocatingSaw = useCallback(() => {}, []);
+    const deleteCordlessReciprocatingSaw = useCallback(() => {}, []);
+    const addMachineLog = useCallback(() => {}, []);
+    const deleteMachineLog = useCallback(() => {}, []);
+    const getMachineLogs = useCallback(() => [], []);
+    const addInventoryTransferRequest = useCallback(() => {}, []);
+    const updateInventoryTransferRequest = useCallback(() => {}, []);
+    const deleteInventoryTransferRequest = useCallback(() => {}, []);
+    const addPpeRequest = useCallback(() => {}, []);
+    const updatePpeRequest = useCallback(() => {}, []);
+    const resolvePpeDispute = useCallback(() => {}, []);
+    const deletePpeRequest = useCallback(() => {}, []);
+    const deletePpeAttachment = useCallback(() => {}, []);
+    const markPpeRequestAsViewed = useCallback(() => {}, []);
+    const updatePpeStock = useCallback(() => {}, []);
+    const addPpeInwardRecord = useCallback(() => {}, []);
+    const updatePpeInwardRecord = useCallback(() => {}, []);
+    const deletePpeInwardRecord = useCallback(() => {}, []);
 
     useEffect(() => {
         const unsubscribers = [
@@ -774,7 +967,7 @@ const deleteAllDamageReportsAndFiles = useCallback(() => {}, []);
     }, []);
 
     const contextValue: InventoryContextType = {
-        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, weldingMachines, walkieTalkies, machineLogs, certificateRequests, internalRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, consumableInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, deliveryNotes, directives: [], damageReports, inwardOutwardRecords,
+        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, weldingMachines, walkieTalkies, machineLogs, certificateRequests, internalRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, deliveryNotes, directives: [], damageReports, inwardOutwardRecords,
         pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws,
         addInventoryItem, addMultipleInventoryItems, batchAddInventoryItems, batchCreateAndLogItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInspectionItemGroup, updateMultipleInventoryItems, batchDeleteInventoryItems, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
         addInventoryTransferRequest, updateInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
