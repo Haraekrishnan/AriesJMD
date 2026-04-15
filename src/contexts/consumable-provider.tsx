@@ -66,11 +66,14 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
     const initialLoadRef = ref(rtdb, 'inventoryItems');
     const initialLoadListener = onValue(initialLoadRef, () => {
         setLoadingConsumables(false);
-    });
+    }, { onlyOnce: true });
 
     return () => {
       unsubInventory();
       unsubHistory();
+      // Even with { onlyOnce: true }, it's safer to have a cleanup mechanism,
+      // though onValue with onlyOnce typically handles its own teardown.
+      // This call does no harm and ensures cleanup if behavior changes.
       initialLoadListener();
     };
   }, []);
@@ -227,11 +230,11 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
   const deleteConsumableInwardRecord = useCallback(async (record: ConsumableInwardRecord) => {
     if (!user) return;
     try {
+        await remove(ref(rtdb, `consumableInwardHistory/${record.id}`));
         const itemRef = ref(rtdb, `inventoryItems/${record.itemId}/quantity`);
         await runTransaction(itemRef, (currentQuantity) => {
             return Math.max(0, (Number(currentQuantity) || 0) - record.quantity);
         });
-        await remove(ref(rtdb, `consumableInwardHistory/${record.id}`));
         const itemName = inventoryItemsById[record.itemId]?.name || `Unknown Item (${record.itemId})`;
         addActivityLog(user.id, 'Deleted Inward Stock Record', `Removed a record of ${record.quantity} for ${itemName}`);
     } catch (error) {
