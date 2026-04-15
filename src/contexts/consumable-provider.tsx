@@ -1,5 +1,5 @@
 'use client';
-import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch } from 'react';
 import type { InventoryItem, ConsumableInwardRecord, InventoryCategory } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, update, push, set, remove, runTransaction } from 'firebase/database';
@@ -14,7 +14,7 @@ type ConsumableContextType = {
   addConsumableItem: (itemData: Omit<InventoryItem, 'id' | 'lastUpdated' | 'status' | 'projectId'>) => Promise<void>;
   updateConsumableItem: (item: InventoryItem) => Promise<void>;
   deleteConsumableItem: (itemId: string) => Promise<void>;
-  addMultipleConsumableItems: (itemsData: ImportRow[]) => number;
+  addMultipleConsumableItems: (itemsData: ImportRow[]) => Promise<number>;
   addConsumableInwardRecord: (itemId: string, quantity: number, date: Date) => Promise<void>;
   updateConsumableInwardRecord: (record: ConsumableInwardRecord) => Promise<void>;
   deleteConsumableInwardRecord: (record: ConsumableInwardRecord) => Promise<void>;
@@ -63,13 +63,18 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
     const unsubInventory = createDataListener('inventoryItems', setInventoryItemsById);
     const unsubHistory = createDataListener('consumableInwardHistory', setConsumableInwardHistoryById);
     
-    const initialLoadListener = onValue(ref(rtdb, 'inventoryItems'), () => {
+    // The initial load listener is only to set loading to false once.
+    const initialLoadRef = ref(rtdb, 'inventoryItems');
+    const initialLoadListener = onValue(initialLoadRef, () => {
         setLoadingConsumables(false);
     }, { onlyOnce: true });
 
     return () => {
       unsubInventory();
       unsubHistory();
+      // Even though it's `onlyOnce`, it's good practice to detach listeners if the component unmounts before it fires.
+      // Firebase's onValue returns a function to unsubscribe.
+      initialLoadListener();
     };
   }, []);
 
@@ -100,35 +105,47 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
   }, [user, addActivityLog, toast]);
 
   const updateConsumableItem = useCallback(async (item: InventoryItem) => {
+    if (!user) return;
     const { id, ...data } = item;
     const updates = { ...data, lastUpdated: new Date().toISOString() };
     try {
         await update(ref(rtdb, `inventoryItems/${id}`), updates);
+        addActivityLog(user.id, 'Consumable Item Updated', `Updated item: ${item.name}`);
     } catch (error) {
         console.error("Error updating consumable item:", error);
         toast({ title: 'Error', description: 'Could not update consumable item.', variant: 'destructive' });
     }
-  }, [toast]);
+  }, [user, addActivityLog, toast]);
   
   const deleteConsumableItem = useCallback(async (itemId: string) => {
+      if (!user) return;
+      const itemToDelete = inventoryItemsById[itemId];
+      if (!itemToDelete) return;
+
       try {
         await remove(ref(rtdb, `inventoryItems/${itemId}`));
+        addActivityLog(user.id, 'Consumable Item Deleted', `Deleted item: ${itemToDelete.name}`);
       } catch (error) {
         console.error("Error deleting consumable item:", error);
         toast({ title: 'Error', description: 'Could not delete consumable item.', variant: 'destructive' });
       }
-  }, [toast]);
+  }, [user, addActivityLog, toast, inventoryItemsById]);
   
-  const addMultipleConsumableItems = useCallback((itemsData: ImportRow[]): number => {
+  const addMultipleConsumableItems = useCallback(async (itemsData: ImportRow[]): Promise<number> => {
+    if (!user) return 0;
     let importedCount = 0;
     const updates: { [key: string]: any } = {};
+
+    const normalize = (str: string) => str.trim().toLowerCase().replace(/\s+/g, ' ');
+
+    const existingNormalizedNames = new Set(consumableItems.map(i => normalize(i.name)));
 
     itemsData.forEach(row => {
         const name = row.Name?.trim();
         if (!name) return;
-
-        const existingItem = consumableItems.find(i => i.name.toLowerCase() === name.toLowerCase());
-        if (existingItem) return;
+        
+        const normalizedName = normalize(name);
+        if (existingNormalizedNames.has(normalizedName)) return;
         
         const category = row.Category?.trim();
         if (category !== CATEGORY_DAILY && category !== CATEGORY_JOB) return;
@@ -147,16 +164,20 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
         const newRef = push(ref(rtdb, 'inventoryItems'));
         updates[`/inventoryItems/${newRef.key}`] = dataToSave;
         importedCount++;
+        existingNormalizedNames.add(normalizedName);
     });
 
     if(Object.keys(updates).length > 0) {
-        update(ref(rtdb), updates).catch(error => {
+        try {
+            await update(ref(rtdb), updates);
+            addActivityLog(user.id, 'Bulk Added Consumables', `Added ${importedCount} new items via Excel.`);
+        } catch (error) {
             console.error("Error batch adding consumables:", error);
             toast({ title: 'Error', description: 'Could not add multiple items.', variant: 'destructive' });
-        });
+        }
     }
     return importedCount;
-  }, [consumableItems, toast]);
+  }, [user, addActivityLog, consumableItems, toast]);
 
   const addConsumableInwardRecord = useCallback(async (itemId: string, quantity: number, date: Date) => {
     if (!user || quantity <= 0) return;
@@ -172,14 +193,22 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
         await set(newRef, record);
         const itemRef = ref(rtdb, `inventoryItems/${itemId}/quantity`);
         await runTransaction(itemRef, (currentQuantity) => (currentQuantity || 0) + quantity);
+        const itemName = inventoryItemsById[itemId]?.name || 'Unknown Item';
+        addActivityLog(user.id, 'Logged Inward Stock', `${quantity} units of ${itemName}`);
     } catch (error) {
         console.error("Error adding inward record:", error);
         toast({ title: 'Error', description: 'Could not log inward stock.', variant: 'destructive' });
     }
-  }, [user, toast]);
+  }, [user, toast, addActivityLog, inventoryItemsById]);
 
   const updateConsumableInwardRecord = useCallback(async (record: ConsumableInwardRecord) => {
+    if (!user) return;
     const { id, ...data } = record;
+    if (data.quantity < 0) {
+        toast({ title: 'Invalid Quantity', description: 'Quantity cannot be negative.', variant: 'destructive'});
+        return;
+    }
+
     const originalRecord = consumableInwardHistory.find(r => r.id === id);
     if (!originalRecord) return;
 
@@ -191,24 +220,29 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
         await runTransaction(itemRef, (currentQuantity) => {
             return Math.max(0, (currentQuantity || 0) + quantityDifference);
         });
+        const itemName = inventoryItemsById[record.itemId]?.name || 'Unknown Item';
+        addActivityLog(user.id, 'Updated Inward Stock', `Adjusted quantity for ${itemName}`);
     } catch (error) {
         console.error("Error updating inward record:", error);
         toast({ title: 'Error', description: 'Could not update inward record.', variant: 'destructive' });
     }
-  }, [consumableInwardHistory, toast]);
+  }, [user, consumableInwardHistory, toast, addActivityLog, inventoryItemsById]);
 
   const deleteConsumableInwardRecord = useCallback(async (record: ConsumableInwardRecord) => {
+    if (!user) return;
     try {
         await remove(ref(rtdb, `consumableInwardHistory/${record.id}`));
         const itemRef = ref(rtdb, `inventoryItems/${record.itemId}/quantity`);
         await runTransaction(itemRef, (currentQuantity) => {
             return Math.max(0, (currentQuantity || 0) - record.quantity);
         });
+        const itemName = inventoryItemsById[record.itemId]?.name || 'Unknown Item';
+        addActivityLog(user.id, 'Deleted Inward Stock Record', `Removed a record of ${record.quantity} for ${itemName}`);
     } catch (error) {
         console.error("Error deleting inward record:", error);
         toast({ title: 'Error', description: 'Could not delete inward record.', variant: 'destructive' });
     }
-  }, [toast]);
+  }, [user, toast, addActivityLog, inventoryItemsById]);
 
   const contextValue: ConsumableContextType = {
     consumableItems,
