@@ -26,8 +26,9 @@ export default function StatusPage() {
       return;
     }
 
-    // If the user is somehow not locked, send them to the dashboard.
-    if (user.status !== 'locked') {
+    // If the user's status is explicitly 'active', they should be on the dashboard.
+    // This prevents redirect loops if the status is temporarily undefined.
+    if (user.status === 'active') {
       router.replace('/dashboard');
     }
   }, [user, loading, router]);

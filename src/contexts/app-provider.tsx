@@ -1,5 +1,4 @@
 
-
 'use client';
 import { createContext, useContext, ReactNode } from 'react';
 import { AuthProvider, useAuth } from './auth-provider';
@@ -83,4 +82,3 @@ export const useAppContext = () => {
   return context as ReturnType<typeof useAuth> & ReturnType<typeof useGeneral> & ReturnType<typeof useInventory> & ReturnType<typeof useManpower> & ReturnType<typeof usePlanner> & ReturnType<typeof usePurchase> & ReturnType<typeof useTask> & ReturnType<typeof useConsumable> & ReturnType<typeof useAccommodation> & ReturnType<typeof useDecorations>;
 };
 
-    

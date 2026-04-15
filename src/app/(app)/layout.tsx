@@ -22,12 +22,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!user) {
       router.replace('/login');
       return;
-    } 
+    }
     
-    if (user.status === 'locked') {
-      if (pathname !== '/status') {
-          router.replace('/status');
-      }
+    // If the user is locked, redirect them to the status page.
+    // This applies to all pages under the (app) directory.
+    if (user.status === 'locked' && pathname !== '/status') {
+      router.replace('/status');
     }
   }, [user, loading, router, pathname]);
 
@@ -46,9 +46,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If user is locked, we show a blank screen while redirecting
-  // to avoid showing a flash of the app UI.
-  if (user.status === 'locked') {
+  // If the user is not 'active' (e.g., locked, or status is loading),
+  // show a blank screen to prevent a flash of the UI.
+  // The useEffect handles the redirection logic.
+  if (user.status !== 'active') {
     return null;
   }
 
