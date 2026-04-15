@@ -131,6 +131,10 @@
       ".read": true,
       ".write": true
     },
+    "inventoryTransferRequests": {
+        ".read": true,
+        ".write": true
+    },
     "managementRequests": {
       ".read": true,
       ".write": true
@@ -232,4 +236,5 @@
 
 
     
+
 
