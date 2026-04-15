@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -258,6 +259,23 @@ type InventoryContextType = {
   pendingPpeRequestCount: number;
   updatedPpeRequestCount: number;
 };
+
+const createDataListener = <T extends {}>(
+    path: string,
+    setData: React.Dispatch<React.SetStateAction<Record<string, T>>>,
+) => {
+    const dbRef = ref(rtdb, path);
+    const listener = onValue(dbRef, (snapshot) => {
+        const data = (snapshot.val() || {}) as Record<string, T>;
+        const processedData = Object.keys(data).reduce((acc, key) => {
+            acc[key] = { ...data[key], id: key };
+            return acc;
+        }, {} as Record<string, T>);
+        setData(processedData);
+    });
+    return () => listener();
+};
+
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
 
@@ -936,15 +954,24 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
-    const addInventoryTransferRequest = useCallback(async (request: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>): Promise<boolean> => {
+    const addInventoryTransferRequest = useCallback(async (requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>): Promise<boolean> => {
         if (!user) {
             toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
             return false;
         }
     
         const newRef = push(ref(rtdb, 'inventoryTransferRequests'));
-        const newRequest: Omit<InventoryTransferRequest, 'id'> = {
-            ...request,
+        
+        const dataToSave: Omit<InventoryTransferRequest, 'id'> = {
+            fromProjectId: requestData.fromProjectId,
+            toProjectId: requestData.toProjectId,
+            reason: requestData.reason,
+            requestedById: requestData.requestedById || null,
+            remarks: requestData.remarks || '',
+            items: requestData.items.map(item => ({
+              ...item,
+              ariesId: item.ariesId || null
+            })),
             requesterId: user.id,
             requestDate: new Date().toISOString(),
             status: 'Pending',
@@ -953,8 +980,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         };
     
         try {
-            await set(newRef, newRequest);
-            addActivityLog(user.id, 'Inventory Transfer Requested', `From ${projects.find(p => p.id === request.fromProjectId)?.name} to ${projects.find(p => p.id === request.toProjectId)?.name}`);
+            await set(newRef, dataToSave);
+            addActivityLog(user.id, 'Inventory Transfer Requested', `From ${projects.find(p => p.id === requestData.fromProjectId)?.name} to ${projects.find(p => p.id === requestData.toProjectId)?.name}`);
             return true;
         } catch (error) {
             console.error("Error creating transfer request:", error);
@@ -962,18 +989,27 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             return false;
         }
     }, [user, addActivityLog, projects, toast]);
-
+    
     const updateInventoryTransferRequest = useCallback(async (request: InventoryTransferRequest): Promise<boolean> => {
         if (!user) {
             toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
             return false;
         }
         const { id, ...data } = request;
+    
+        const dataToUpdate = {
+            ...data,
+            requestedById: data.requestedById || null,
+            remarks: data.remarks || '',
+            items: data.items.map(item => ({
+              ...item,
+              ariesId: item.ariesId || null
+            })),
+            lastUpdated: new Date().toISOString(),
+        };
+    
         try {
-            await update(ref(rtdb, `inventoryTransferRequests/${id}`), {
-                ...data,
-                lastUpdated: new Date().toISOString(),
-            });
+            await update(ref(rtdb, `inventoryTransferRequests/${id}`), dataToUpdate);
             addActivityLog(user.id, 'Inventory Transfer Updated', `Request ID: ...${id.slice(-6)}`);
             return true;
         } catch (error) {
@@ -1009,24 +1045,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     ];
     functionNames.forEach(name => { placeholderFunctions[name] = useCallback(async () => {}, []) });
 
-
     useEffect(() => {
-        const createDataListener = <T extends {}>(
-            path: string,
-            setData: React.Dispatch<React.SetStateAction<Record<string, T>>>,
-        ) => {
-            const dbRef = ref(rtdb, path);
-            const unsubscribe = onValue(dbRef, (snapshot) => {
-                const data = (snapshot.val() || {}) as Record<string, T>;
-                const processedData = Object.keys(data).reduce((acc, key) => {
-                    acc[key] = { ...data[key], id: key };
-                    return acc;
-                }, {} as Record<string, T>);
-                setData(processedData);
-            });
-            return unsubscribe;
-        };
-
         const unsubscribers = [
             createDataListener('inventoryItems', setInventoryItemsById),
             createDataListener('utMachines', setUtMachinesById),
@@ -1081,3 +1100,4 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
+
