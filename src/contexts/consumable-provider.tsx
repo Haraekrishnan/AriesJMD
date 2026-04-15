@@ -36,7 +36,7 @@ const STORE_PROJECT_ID = 'STORE';
 
 const ConsumableContext = createContext<ConsumableContextType | undefined>(undefined);
 
-export function ConsumableProvider({ children }: { ReactNode }) {
+export function ConsumableProvider({ children }: { children: ReactNode }) {
   const { user, addActivityLog } = useAuth();
   const { toast } = useToast();
   const [loadingConsumables, setLoadingConsumables] = useState(true);
@@ -50,7 +50,7 @@ export function ConsumableProvider({ children }: { ReactNode }) {
     ) => {
         const dbRef = ref(rtdb, path);
         const unsubscribe = onValue(dbRef, (snapshot) => {
-            const data = snapshot.val() || {};
+            const data = (snapshot.val() || {}) as Record<string, T>;
             const processedData = Object.keys(data).reduce((acc, key) => {
                 acc[key] = { ...data[key], id: key };
                 return acc;
@@ -66,15 +66,12 @@ export function ConsumableProvider({ children }: { ReactNode }) {
     const initialLoadRef = ref(rtdb, 'inventoryItems');
     const initialLoadListener = onValue(initialLoadRef, () => {
         setLoadingConsumables(false);
-    }, { onlyOnce: true });
+    });
 
     return () => {
       unsubInventory();
       unsubHistory();
-      // Ensure initialLoadListener is also unsubscribed properly
-      // onValue returns an unsubscribe function when used as an event listener
-      // but if {onlyOnce: true}, it automatically detaches.
-      // So, no explicit call to initialLoadListener() here needed for {onlyOnce: true}.
+      initialLoadListener();
     };
   }, []);
 
@@ -230,11 +227,11 @@ export function ConsumableProvider({ children }: { ReactNode }) {
   const deleteConsumableInwardRecord = useCallback(async (record: ConsumableInwardRecord) => {
     if (!user) return;
     try {
-        await remove(ref(rtdb, `consumableInwardHistory/${record.id}`));
         const itemRef = ref(rtdb, `inventoryItems/${record.itemId}/quantity`);
         await runTransaction(itemRef, (currentQuantity) => {
             return Math.max(0, (Number(currentQuantity) || 0) - record.quantity);
         });
+        await remove(ref(rtdb, `consumableInwardHistory/${record.id}`));
         const itemName = inventoryItemsById[record.itemId]?.name || `Unknown Item (${record.itemId})`;
         addActivityLog(user.id, 'Deleted Inward Stock Record', `Removed a record of ${record.quantity} for ${itemName}`);
     } catch (error) {
@@ -270,5 +267,3 @@ export const useConsumable = (): ConsumableContextType => {
   }
   return context;
 };
-
-    
