@@ -1,4 +1,3 @@
-
 'use client';
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
 import type { InventoryItem, ConsumableInwardRecord, InventoryCategory } from '@/lib/types';
@@ -71,9 +70,7 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
     return () => {
       unsubInventory();
       unsubHistory();
-      // Even with { onlyOnce: true }, it's safer to have a cleanup mechanism,
-      // though onValue with onlyOnce typically handles its own teardown.
-      // This call does no harm and ensures cleanup if behavior changes.
+      // Even with { onlyOnce: true }, it's safer to have a cleanup mechanism.
       initialLoadListener();
     };
   }, []);
@@ -98,6 +95,7 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
     try {
         await set(newRef, dataToSave);
         addActivityLog(user.id, 'Consumable Item Added', `${itemData.name}`);
+        toast({ title: 'Success', description: 'Consumable item added successfully.' });
     } catch (error) {
         console.error("Error adding consumable item:", error);
         toast({ title: 'Error', description: 'Could not add consumable item.', variant: 'destructive' });
@@ -107,10 +105,12 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
   const updateConsumableItem = useCallback(async (item: InventoryItem) => {
     if (!user) return;
     const { id, ...data } = item;
+    if(!id) return;
     const updates = { ...data, lastUpdated: new Date().toISOString() };
     try {
         await update(ref(rtdb, `inventoryItems/${id}`), updates);
         addActivityLog(user.id, 'Consumable Item Updated', `Updated item: ${item.name}`);
+        toast({ title: 'Success', description: 'Consumable item updated successfully.' });
     } catch (error) {
         console.error("Error updating consumable item:", error);
         toast({ title: 'Error', description: 'Could not update consumable item.', variant: 'destructive' });
@@ -119,12 +119,14 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
   
   const deleteConsumableItem = useCallback(async (itemId: string) => {
       if (!user) return;
+      if (!itemId) return;
       const itemToDelete = inventoryItemsById[itemId];
       if (!itemToDelete) return;
 
       try {
         await remove(ref(rtdb, `inventoryItems/${itemId}`));
         addActivityLog(user.id, 'Consumable Item Deleted', `Deleted item: ${itemToDelete.name}`);
+        toast({ title: 'Success', description: 'Consumable item deleted successfully.' });
       } catch (error) {
         console.error("Error deleting consumable item:", error);
         toast({ title: 'Error', description: 'Could not delete consumable item.', variant: 'destructive' });
@@ -179,7 +181,8 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
   }, [user, addActivityLog, consumableItems, toast]);
 
   const addConsumableInwardRecord = useCallback(async (itemId: string, quantity: number, date: Date) => {
-    if (!user || quantity <= 0) return;
+    if (!user || quantity <= 0 || !itemId) return;
+    
     const newRef = push(ref(rtdb, 'consumableInwardHistory'));
     const record: Omit<ConsumableInwardRecord, 'id'> = {
         itemId,
@@ -194,6 +197,7 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
         await runTransaction(itemRef, (currentQuantity) => (Number(currentQuantity) || 0) + quantity);
         const itemName = inventoryItemsById[itemId]?.name || `Unknown Item (${itemId})`;
         addActivityLog(user.id, 'Logged Inward Stock', `${quantity} units of ${itemName}`);
+        toast({ title: 'Stock Added', description: 'Inward stock has been added and stock levels updated.' });
     } catch (error) {
         console.error("Error adding inward record:", error);
         toast({ title: 'Error', description: 'Could not log inward stock.', variant: 'destructive' });
@@ -201,7 +205,8 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
   }, [user, toast, addActivityLog, inventoryItemsById]);
 
   const updateConsumableInwardRecord = useCallback(async (record: ConsumableInwardRecord) => {
-    if (!user) return;
+    if (!user || !record?.id) return;
+    
     const { id, ...data } = record;
     if (data.quantity < 0) {
         toast({ title: 'Invalid Quantity', description: 'Quantity cannot be negative.', variant: 'destructive'});
@@ -221,6 +226,7 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
         });
         const itemName = inventoryItemsById[record.itemId]?.name || `Unknown Item (${record.itemId})`;
         addActivityLog(user.id, 'Updated Inward Stock', `Adjusted quantity for ${itemName}`);
+        toast({ title: 'Record Updated', description: 'The inward stock record has been updated.' });
     } catch (error) {
         console.error("Error updating inward record:", error);
         toast({ title: 'Error', description: 'Could not update inward record.', variant: 'destructive' });
@@ -228,7 +234,7 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
   }, [user, consumableInwardHistory, toast, addActivityLog, inventoryItemsById]);
 
   const deleteConsumableInwardRecord = useCallback(async (record: ConsumableInwardRecord) => {
-    if (!user) return;
+    if (!user || !record?.id) return;
     try {
         await remove(ref(rtdb, `consumableInwardHistory/${record.id}`));
         const itemRef = ref(rtdb, `inventoryItems/${record.itemId}/quantity`);
@@ -237,6 +243,7 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
         });
         const itemName = inventoryItemsById[record.itemId]?.name || `Unknown Item (${record.itemId})`;
         addActivityLog(user.id, 'Deleted Inward Stock Record', `Removed a record of ${record.quantity} for ${itemName}`);
+        toast({ variant: 'destructive', title: 'Record Deleted', description: 'The inward stock record has been removed and stock levels have been adjusted.' });
     } catch (error) {
         console.error("Error deleting inward record:", error);
         toast({ title: 'Error', description: 'Could not delete inward record.', variant: 'destructive' });
