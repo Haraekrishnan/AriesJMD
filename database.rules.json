@@ -227,6 +227,14 @@
     "quotations": {
       ".read": "auth != null",
       ".write": "auth != null"
+    },
+    "ppeRequests": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "ppeStock": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     }
   }
 }
@@ -236,5 +244,6 @@
 
 
     
+
 
 
