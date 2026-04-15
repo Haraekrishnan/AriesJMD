@@ -946,13 +946,13 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const deleteTpCertList = useCallback((listId: string) => {
-        if (!listId) return;
+        if (!listId || !user || user.role !== 'Admin') return;
         try {
             remove(ref(rtdb, `tpCertLists/${listId}`));
         } catch (error) {
             console.error("Error deleting TP cert list:", error);
         }
-    }, []);
+    }, [user]);
 
     const addInventoryTransferRequest = useCallback(async (requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>): Promise<boolean> => {
         if (!user) {
@@ -1018,10 +1018,115 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             return false;
         }
     }, [user, addActivityLog, toast]);
+    
+    const approveInventoryTransferRequest = useCallback(async (request: InventoryTransferRequest, createTpList: boolean) => {
+        if (!user || !can.approve_store_requests) {
+          toast({ title: 'Permission Denied', variant: 'destructive' });
+          return;
+        }
+    
+        const updates: { [key: string]: any } = {};
+        const now = new Date().toISOString();
+        const requestPath = `inventoryTransferRequests/${request.id}`;
+    
+        updates[`${requestPath}/status`] = 'Approved';
+        updates[`${requestPath}/approverId`] = user.id;
+        updates[`${requestPath}/approvalDate`] = now;
+        updates[`${requestPath}/lastUpdated`] = now;
+    
+        request.items.forEach(item => {
+          let itemPath: string;
+          switch (item.itemType) {
+            case 'Inventory': itemPath = `inventoryItems/${item.itemId}/projectId`; break;
+            case 'UTMachine': itemPath = `utMachines/${item.itemId}/projectId`; break;
+            case 'DftMachine': itemPath = `dftMachines/${item.itemId}/projectId`; break;
+            case 'DigitalCamera': itemPath = `digitalCameras/${item.itemId}/projectId`; break;
+            case 'Anemometer': itemPath = `anemometers/${item.itemId}/projectId`; break;
+            case 'OtherEquipment': itemPath = `otherEquipments/${item.itemId}/projectId`; break;
+            case 'MobileSim': itemPath = `mobileSims/${item.itemId}/projectId`; break;
+            case 'WeldingMachine': itemPath = `weldingMachines/${item.itemId}/projectId`; break;
+            case 'WalkieTalkie': itemPath = `walkieTalkies/${item.itemId}/projectId`; break;
+            case 'PneumaticDrillingMachine': itemPath = `pneumaticDrillingMachines/${item.itemId}/projectId`; break;
+            case 'PneumaticAngleGrinder': itemPath = `pneumaticAngleGrinders/${item.itemId}/projectId`; break;
+            case 'WiredDrillingMachine': itemPath = `wiredDrillingMachines/${item.itemId}/projectId`; break;
+            case 'CordlessDrillingMachine': itemPath = `cordlessDrillingMachines/${item.itemId}/projectId`; break;
+            case 'WiredAngleGrinder': itemPath = `wiredAngleGrinders/${item.itemId}/projectId`; break;
+            case 'CordlessAngleGrinder': itemPath = `cordlessAngleGrinders/${item.itemId}/projectId`; break;
+            case 'CordlessReciprocatingSaw': itemPath = `cordlessReciprocatingSaws/${item.itemId}/projectId`; break;
+            case 'LaptopDesktop': itemPath = ''; break;
+            default: itemPath = '';
+          }
+          if (itemPath) {
+            updates[itemPath] = request.toProjectId;
+          }
+        });
+    
+        try {
+            await update(ref(rtdb), updates);
+            toast({ title: 'Transfer Approved', description: 'Items have been transferred.' });
+            addActivityLog(user.id, 'Inventory Transfer Approved', `Request ID: ...${request.id.slice(-6)}`);
+    
+            if(createTpList) {
+              const listData = {
+                  name: `From Transfer ${request.id.slice(-6)}`,
+                  date: new Date().toISOString().split('T')[0],
+                  items: request.items.map(item => ({
+                      materialName: item.name,
+                      manufacturerSrNo: item.serialNumber,
+                      itemId: item.itemId,
+                      itemType: item.itemType,
+                      ariesId: item.ariesId || null,
+                      chestCrollNo: (inventoryItems.find(i => i.id === item.itemId) as any)?.chestCrollNo || null,
+                  })),
+              };
+              addTpCertList(listData);
+              toast({ title: 'TP Certification List Created' });
+            }
+        } catch(err) {
+            console.error("Error approving transfer:", err);
+            toast({ title: 'Approval Failed', variant: 'destructive' });
+        }
+      }, [user, can.approve_store_requests, toast, addActivityLog, addTpCertList, inventoryItems]);
+    
+    
+      const rejectInventoryTransferRequest = useCallback(async (requestId: string, comment: string) => {
+        if (!user || !can.approve_store_requests) {
+            toast({ title: 'Permission Denied', variant: 'destructive' });
+            return;
+        }
+        const request = inventoryTransferRequests.find(r => r.id === requestId);
+        if (!request) return;
+    
+        const updates: { [key: string]: any } = {
+            [`inventoryTransferRequests/${requestId}/status`]: 'Rejected',
+            [`inventoryTransferRequests/${requestId}/approverId`]: user.id,
+            [`inventoryTransferRequests/${requestId}/approvalDate`]: new Date().toISOString(),
+            [`inventoryTransferRequests/${requestId}/lastUpdated`]: new Date().toISOString(),
+        };
+        
+        const newCommentRef = push(ref(rtdb, `inventoryTransferRequests/${requestId}/comments`));
+        updates[`inventoryTransferRequests/${requestId}/comments/${newCommentRef.key}`] = {
+            id: newCommentRef.key,
+            userId: user.id,
+            text: `Rejected. Reason: ${comment}`,
+            date: new Date().toISOString(),
+            eventId: requestId,
+        };
+    
+        try {
+          await update(ref(rtdb), updates);
+          addActivityLog(user.id, 'Inventory Transfer Rejected', `Request ID: ...${requestId.slice(-6)}`);
+        } catch (err) {
+          console.error("Error rejecting transfer:", err);
+          toast({ title: 'Rejection Failed', variant: 'destructive' });
+        }
+    
+      }, [user, can.approve_store_requests, addActivityLog, toast, inventoryTransferRequests]);
+
 
     const placeholderFunctions: any = {};
     const functionNames = [
-        'rejectInventoryTransferRequest', 'disputeInventoryTransfer', 'acknowledgeTransfer', 'clearInventoryTransferHistory',
+        'disputeInventoryTransfer', 'acknowledgeTransfer', 'clearInventoryTransferHistory',
         'resolveInternalRequestDispute', 'updateInwardOutwardRecord', 'deleteInwardOutwardRecord', 'addCertificateRequest',
         'fulfillCertificateRequest', 'addCertificateRequestComment', 'markFulfilledRequestsAsViewed', 'acknowledgeFulfilledRequest',
         'addInspectionChecklist', 'updateInspectionChecklist', 'deleteInspectionChecklist', 'addIgpOgpRecord',
@@ -1041,7 +1146,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         'deleteCordlessAngleGrinder', 'addCordlessReciprocatingSaw', 'updateCordlessReciprocatingSaw',
         'deleteCordlessReciprocatingSaw', 'addMachineLog', 'deleteMachineLog', 'getMachineLogs', 'deleteInventoryTransferRequest',
         'addPpeRequest', 'updatePpeRequest', 'resolvePpeDispute', 'deletePpeRequest', 'deletePpeAttachment', 'markPpeRequestAsViewed',
-        'updatePpeStock', 'addPpeInwardRecord', 'updatePpeInwardRecord', 'deletePpeInwardRecord', 'approveInventoryTransferRequest'
+        'updatePpeStock', 'addPpeInwardRecord', 'updatePpeInwardRecord', 'deletePpeInwardRecord'
     ];
     functionNames.forEach(name => { placeholderFunctions[name] = useCallback(async () => {}, []) });
 
@@ -1085,7 +1190,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, weldingMachines, walkieTalkies, machineLogs, certificateRequests, internalRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, deliveryNotes, directives: [], damageReports, inwardOutwardRecords,
         pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws,
         addInventoryItem, addMultipleInventoryItems, batchAddInventoryItems, batchCreateAndLogItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInspectionItemGroup, updateMultipleInventoryItems, batchDeleteInventoryItems, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
-        addInventoryTransferRequest, updateInventoryTransferRequest,
+        addInventoryTransferRequest, updateInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest,
         addTpCertList, updateTpCertList, deleteTpCertList,
         ...placeholderFunctions,
     };
