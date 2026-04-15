@@ -70,8 +70,8 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
     return () => {
       unsubInventory();
       unsubHistory();
-      // Even with { onlyOnce: true }, it's safer to have a cleanup mechanism.
-      initialLoadListener();
+      // No explicit call needed to unsubscribe from an onValue with { onlyOnce: true }
+      // as it automatically detaches after the first data retrieval.
     };
   }, []);
 
@@ -172,6 +172,7 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
         try {
             await update(ref(rtdb), updates);
             addActivityLog(user.id, 'Bulk Added Consumables', `Added ${importedCount} new items via Excel.`);
+            toast({ title: 'Import Complete', description: `${importedCount} new items were added.` });
         } catch (error) {
             console.error("Error batch adding consumables:", error);
             toast({ title: 'Error', description: 'Could not add multiple items.', variant: 'destructive' });
@@ -181,7 +182,7 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
   }, [user, addActivityLog, consumableItems, toast]);
 
   const addConsumableInwardRecord = useCallback(async (itemId: string, quantity: number, date: Date) => {
-    if (!user || quantity <= 0 || !itemId) return;
+    if (!user || !itemId || quantity <= 0) return;
     
     const newRef = push(ref(rtdb, 'consumableInwardHistory'));
     const record: Omit<ConsumableInwardRecord, 'id'> = {
