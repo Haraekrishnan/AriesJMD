@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
 import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, PpeRequestStatus, Role, ConsumableInwardRecord, Directive, DamageReport, User, NotificationSettings, DamageReportStatus, WeldingMachine, WalkieTalkie, PneumaticDrillingMachine, PneumaticAngleGrinder, WiredDrillingMachine, CordlessDrillingMachine, WiredAngleGrinder, CordlessAngleGrinder, CordlessReciprocatingSaw, DeliveryNote, InwardOutwardRecord, Quotation } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get, runTransaction } from 'firebase/database';
@@ -120,8 +120,8 @@ type InventoryContextType = {
   renameInventoryItemGroup: (oldName: string, newName: string) => Promise<void>;
   revalidateExpiredItems: () => Promise<void>;
   
-  addInventoryTransferRequest: (request: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => Promise<void>;
-  updateInventoryTransferRequest: (request: InventoryTransferRequest) => Promise<void>;
+  addInventoryTransferRequest: (request: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => Promise<boolean>;
+  updateInventoryTransferRequest: (request: InventoryTransferRequest) => Promise<boolean>;
   deleteInventoryTransferRequest: (requestId: string) => Promise<void>;
   approveInventoryTransferRequest: (request: InventoryTransferRequest, createTpList: boolean) => Promise<void>;
   rejectInventoryTransferRequest: (requestId: string, comment: string) => Promise<void>;
@@ -231,9 +231,9 @@ type InventoryContextType = {
   updatePpeInwardRecord: (record: PpeInwardRecord) => Promise<void>;
   deletePpeInwardRecord: (record: PpeInwardRecord) => Promise<void>;
   
-  addTpCertList: (listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => Promise<void>;
-  updateTpCertList: (listData: TpCertList) => Promise<void>;
-  deleteTpCertList: (listId: string) => Promise<void>;
+  addTpCertList: (listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => void;
+  updateTpCertList: (listData: TpCertList) => void;
+  deleteTpCertList: (listId: string) => void;
 
   addInspectionChecklist: (checklist: Omit<InspectionChecklist, 'id'>) => Promise<void>;
   updateInspectionChecklist: (checklist: InspectionChecklist) => Promise<void>;
@@ -903,11 +903,11 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
     }, [user, inventoryItems, toast]);
     
-    const addTpCertList = useCallback(async (listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
+    const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
         if (!user) return;
         const newRef = push(ref(rtdb, 'tpCertLists'));
         try {
-            await set(newRef, {
+            set(newRef, {
                 ...listData,
                 creatorId: user.id,
                 createdAt: new Date().toISOString()
@@ -917,32 +917,79 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
     }, [user]);
 
-    const updateTpCertList = useCallback(async (listData: TpCertList) => {
+    const updateTpCertList = useCallback((listData: TpCertList) => {
         if (!listData?.id) return;
         const { id, ...data } = listData;
         try {
-            await update(ref(rtdb, `tpCertLists/${id}`), data);
+            update(ref(rtdb, `tpCertLists/${id}`), data);
         } catch (error) {
             console.error("Error updating TP cert list:", error);
         }
     }, []);
 
-    const deleteTpCertList = useCallback(async (listId: string) => {
+    const deleteTpCertList = useCallback((listId: string) => {
         if (!listId) return;
         try {
-            await remove(ref(rtdb, `tpCertLists/${listId}`));
+            remove(ref(rtdb, `tpCertLists/${listId}`));
         } catch (error) {
             console.error("Error deleting TP cert list:", error);
         }
     }, []);
+
+    const addInventoryTransferRequest = useCallback(async (request: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>): Promise<boolean> => {
+        if (!user) {
+            toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
+            return false;
+        }
     
+        const newRef = push(ref(rtdb, 'inventoryTransferRequests'));
+        const newRequest: Omit<InventoryTransferRequest, 'id'> = {
+            ...request,
+            requesterId: user.id,
+            requestDate: new Date().toISOString(),
+            status: 'Pending',
+            comments: [],
+            acknowledgedByRequester: false,
+        };
+    
+        try {
+            await set(newRef, newRequest);
+            addActivityLog(user.id, 'Inventory Transfer Requested', `From ${projects.find(p => p.id === request.fromProjectId)?.name} to ${projects.find(p => p.id === request.toProjectId)?.name}`);
+            return true;
+        } catch (error) {
+            console.error("Error creating transfer request:", error);
+            toast({ title: 'Error', description: 'Could not create transfer request.', variant: 'destructive' });
+            return false;
+        }
+    }, [user, addActivityLog, projects, toast]);
+
+    const updateInventoryTransferRequest = useCallback(async (request: InventoryTransferRequest): Promise<boolean> => {
+        if (!user) {
+            toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
+            return false;
+        }
+        const { id, ...data } = request;
+        try {
+            await update(ref(rtdb, `inventoryTransferRequests/${id}`), {
+                ...data,
+                lastUpdated: new Date().toISOString(),
+            });
+            addActivityLog(user.id, 'Inventory Transfer Updated', `Request ID: ...${id.slice(-6)}`);
+            return true;
+        } catch (error) {
+            console.error("Error updating transfer request:", error);
+            toast({ title: 'Error', description: 'Could not update transfer request.', variant: 'destructive' });
+            return false;
+        }
+    }, [user, addActivityLog, toast]);
+
     const placeholderFunctions: any = {};
     const functionNames = [
-        'approveInventoryTransferRequest', 'rejectInventoryTransferRequest', 'disputeInventoryTransfer', 'acknowledgeTransfer',
-        'clearInventoryTransferHistory', 'resolveInternalRequestDispute', 'updateInwardOutwardRecord', 'deleteInwardOutwardRecord',
-        'addCertificateRequest', 'fulfillCertificateRequest', 'addCertificateRequestComment', 'markFulfilledRequestsAsViewed',
-        'acknowledgeFulfilledRequest', 'addInspectionChecklist', 'updateInspectionChecklist', 'deleteInspectionChecklist',
-        'addIgpOgpRecord', 'deleteIgpOgpRecord', 'addDeliveryNote', 'updateDeliveryNote', 'deleteDeliveryNote', 'addDamageReport',
+        'rejectInventoryTransferRequest', 'disputeInventoryTransfer', 'acknowledgeTransfer', 'clearInventoryTransferHistory',
+        'resolveInternalRequestDispute', 'updateInwardOutwardRecord', 'deleteInwardOutwardRecord', 'addCertificateRequest',
+        'fulfillCertificateRequest', 'addCertificateRequestComment', 'markFulfilledRequestsAsViewed', 'acknowledgeFulfilledRequest',
+        'addInspectionChecklist', 'updateInspectionChecklist', 'deleteInspectionChecklist', 'addIgpOgpRecord',
+        'deleteIgpOgpRecord', 'addDeliveryNote', 'updateDeliveryNote', 'deleteDeliveryNote', 'addDamageReport',
         'updateDamageReportStatus', 'deleteDamageReport', 'deleteAllDamageReportsAndFiles', 'addInternalRequest',
         'deleteInternalRequest', 'forceDeleteInternalRequest', 'updateInternalRequestStatus', 'updateInternalRequestItemStatus',
         'updateInternalRequestItem', 'markInternalRequestAsViewed', 'acknowledgeInternalRequest', 'addUTMachine', 'updateUTMachine',
@@ -956,10 +1003,9 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         'addCordlessDrillingMachine', 'updateCordlessDrillingMachine', 'deleteCordlessDrillingMachine', 'addWiredAngleGrinder',
         'updateWiredAngleGrinder', 'deleteWiredAngleGrinder', 'addCordlessAngleGrinder', 'updateCordlessAngleGrinder',
         'deleteCordlessAngleGrinder', 'addCordlessReciprocatingSaw', 'updateCordlessReciprocatingSaw',
-        'deleteCordlessReciprocatingSaw', 'addMachineLog', 'deleteMachineLog', 'getMachineLogs', 'addInventoryTransferRequest',
-        'updateInventoryTransferRequest', 'deleteInventoryTransferRequest', 'addPpeRequest', 'updatePpeRequest',
-        'resolvePpeDispute', 'deletePpeRequest', 'deletePpeAttachment', 'markPpeRequestAsViewed', 'updatePpeStock',
-        'addPpeInwardRecord', 'updatePpeInwardRecord', 'deletePpeInwardRecord'
+        'deleteCordlessReciprocatingSaw', 'addMachineLog', 'deleteMachineLog', 'getMachineLogs', 'deleteInventoryTransferRequest',
+        'addPpeRequest', 'updatePpeRequest', 'resolvePpeDispute', 'deletePpeRequest', 'deletePpeAttachment', 'markPpeRequestAsViewed',
+        'updatePpeStock', 'addPpeInwardRecord', 'updatePpeInwardRecord', 'deletePpeInwardRecord', 'approveInventoryTransferRequest'
     ];
     functionNames.forEach(name => { placeholderFunctions[name] = useCallback(async () => {}, []) });
 
@@ -1020,6 +1066,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, weldingMachines, walkieTalkies, machineLogs, certificateRequests, internalRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, deliveryNotes, directives: [], damageReports, inwardOutwardRecords,
         pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws,
         addInventoryItem, addMultipleInventoryItems, batchAddInventoryItems, batchCreateAndLogItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInspectionItemGroup, updateMultipleInventoryItems, batchDeleteInventoryItems, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
+        addInventoryTransferRequest, updateInventoryTransferRequest,
         addTpCertList, updateTpCertList, deleteTpCertList,
         ...placeholderFunctions,
     };
@@ -1034,5 +1081,3 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
-
-    

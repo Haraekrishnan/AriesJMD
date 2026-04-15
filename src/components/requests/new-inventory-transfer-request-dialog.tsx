@@ -283,15 +283,19 @@ export default function NewInventoryTransferRequestDialog({
     );
   };
 
-  const onSubmit = (data: FormValues) => {
+  const onSubmit = async (data: FormValues) => {
+    let success = false;
     if (existingRequest) {
-      updateInventoryTransferRequest({ ...existingRequest, ...data });
-      toast({ title: "Transfer Request Updated" });
+      success = await updateInventoryTransferRequest({ ...existingRequest, ...data });
+      if (success) toast({ title: "Transfer Request Updated" });
     } else {
-      addInventoryTransferRequest(data);
-      toast({ title: "Transfer Request Submitted" });
+      success = await addInventoryTransferRequest(data);
+      if (success) toast({ title: "Transfer Request Submitted" });
     }
-    setIsOpen(false);
+    
+    if (success) {
+      setIsOpen(false);
+    }
   };
 
   const resetForm = () => {
