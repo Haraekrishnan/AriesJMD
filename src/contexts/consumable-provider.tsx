@@ -1,5 +1,6 @@
+
 'use client';
-import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch } from 'react';
+import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
 import type { InventoryItem, ConsumableInwardRecord, InventoryCategory } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, update, push, set, remove, runTransaction } from 'firebase/database';
@@ -33,26 +34,9 @@ const CATEGORY_DAILY = 'Daily Consumable';
 const CATEGORY_JOB = 'Job Consumable';
 const STORE_PROJECT_ID = 'STORE';
 
-// --- HELPER FUNCTIONS ---
-const createDataListener = <T extends {}>(
-    path: string,
-    setData: React.Dispatch<React.SetStateAction<Record<string, T>>>,
-) => {
-    const dbRef = ref(rtdb, path);
-    const unsubscribe = onValue(dbRef, (snapshot) => {
-        const data = snapshot.val() || {};
-        const processedData = Object.keys(data).reduce((acc, key) => {
-            acc[key] = { ...data[key], id: key };
-            return acc;
-        }, {} as Record<string, T>);
-        setData(processedData);
-    });
-    return unsubscribe;
-};
-
 const ConsumableContext = createContext<ConsumableContextType | undefined>(undefined);
 
-export function ConsumableProvider({ children }: { children: ReactNode }) {
+export function ConsumableProvider({ children }: { ReactNode }) {
   const { user, addActivityLog } = useAuth();
   const { toast } = useToast();
   const [loadingConsumables, setLoadingConsumables] = useState(true);
@@ -60,10 +44,25 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
   const [consumableInwardHistoryById, setConsumableInwardHistoryById] = useState<Record<string, ConsumableInwardRecord>>({});
 
   useEffect(() => {
+    const createDataListener = <T extends {}>(
+        path: string,
+        setData: React.Dispatch<React.SetStateAction<Record<string, T>>>,
+    ) => {
+        const dbRef = ref(rtdb, path);
+        const unsubscribe = onValue(dbRef, (snapshot) => {
+            const data = snapshot.val() || {};
+            const processedData = Object.keys(data).reduce((acc, key) => {
+                acc[key] = { ...data[key], id: key };
+                return acc;
+            }, {} as Record<string, T>);
+            setData(processedData);
+        });
+        return unsubscribe;
+    };
+
     const unsubInventory = createDataListener('inventoryItems', setInventoryItemsById);
     const unsubHistory = createDataListener('consumableInwardHistory', setConsumableInwardHistoryById);
     
-    // The initial load listener is only to set loading to false once.
     const initialLoadRef = ref(rtdb, 'inventoryItems');
     const initialLoadListener = onValue(initialLoadRef, () => {
         setLoadingConsumables(false);
@@ -72,9 +71,10 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
     return () => {
       unsubInventory();
       unsubHistory();
-      // Even though it's `onlyOnce`, it's good practice to detach listeners if the component unmounts before it fires.
-      // Firebase's onValue returns a function to unsubscribe.
-      initialLoadListener();
+      // Ensure initialLoadListener is also unsubscribed properly
+      // onValue returns an unsubscribe function when used as an event listener
+      // but if {onlyOnce: true}, it automatically detaches.
+      // So, no explicit call to initialLoadListener() here needed for {onlyOnce: true}.
     };
   }, []);
 
@@ -137,7 +137,6 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
     const updates: { [key: string]: any } = {};
 
     const normalize = (str: string) => str.trim().toLowerCase().replace(/\s+/g, ' ');
-
     const existingNormalizedNames = new Set(consumableItems.map(i => normalize(i.name)));
 
     itemsData.forEach(row => {
@@ -192,8 +191,8 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
     try {
         await set(newRef, record);
         const itemRef = ref(rtdb, `inventoryItems/${itemId}/quantity`);
-        await runTransaction(itemRef, (currentQuantity) => (currentQuantity || 0) + quantity);
-        const itemName = inventoryItemsById[itemId]?.name || 'Unknown Item';
+        await runTransaction(itemRef, (currentQuantity) => (Number(currentQuantity) || 0) + quantity);
+        const itemName = inventoryItemsById[itemId]?.name || `Unknown Item (${itemId})`;
         addActivityLog(user.id, 'Logged Inward Stock', `${quantity} units of ${itemName}`);
     } catch (error) {
         console.error("Error adding inward record:", error);
@@ -218,9 +217,9 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
         await update(ref(rtdb, `consumableInwardHistory/${id}`), data);
         const itemRef = ref(rtdb, `inventoryItems/${record.itemId}/quantity`);
         await runTransaction(itemRef, (currentQuantity) => {
-            return Math.max(0, (currentQuantity || 0) + quantityDifference);
+            return Math.max(0, (Number(currentQuantity) || 0) + quantityDifference);
         });
-        const itemName = inventoryItemsById[record.itemId]?.name || 'Unknown Item';
+        const itemName = inventoryItemsById[record.itemId]?.name || `Unknown Item (${record.itemId})`;
         addActivityLog(user.id, 'Updated Inward Stock', `Adjusted quantity for ${itemName}`);
     } catch (error) {
         console.error("Error updating inward record:", error);
@@ -234,9 +233,9 @@ export function ConsumableProvider({ children }: { children: ReactNode }) {
         await remove(ref(rtdb, `consumableInwardHistory/${record.id}`));
         const itemRef = ref(rtdb, `inventoryItems/${record.itemId}/quantity`);
         await runTransaction(itemRef, (currentQuantity) => {
-            return Math.max(0, (currentQuantity || 0) - record.quantity);
+            return Math.max(0, (Number(currentQuantity) || 0) - record.quantity);
         });
-        const itemName = inventoryItemsById[record.itemId]?.name || 'Unknown Item';
+        const itemName = inventoryItemsById[record.itemId]?.name || `Unknown Item (${record.itemId})`;
         addActivityLog(user.id, 'Deleted Inward Stock Record', `Removed a record of ${record.quantity} for ${itemName}`);
     } catch (error) {
         console.error("Error deleting inward record:", error);
@@ -271,3 +270,5 @@ export const useConsumable = (): ConsumableContextType => {
   }
   return context;
 };
+
+    
