@@ -1,8 +1,7 @@
-
 'use client';
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { useAppContext } from '@/contexts/app-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -16,7 +15,7 @@ interface ImportItemsDialogProps {
 }
 
 export default function ImportItemsDialog({ isOpen, setIsOpen }: ImportItemsDialogProps) {
-    const { addMultipleInventoryItems } = useAppContext();
+    const { addMultipleInventoryItems } = useInventory();
     const { toast } = useToast();
     const [file, setFile] = useState<File | null>(null);
 
