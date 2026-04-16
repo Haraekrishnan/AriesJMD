@@ -71,8 +71,15 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
     itemsToCreate.forEach(itemData => {
       const newRef = push(ref(rtdb, 'inventoryItems'));
       const newId = newRef.key!;
+
+      const sanitizedItemData: { [key: string]: any } = {};
+      for (const key in itemData) {
+          const value = (itemData as any)[key];
+          sanitizedItemData[key] = value === undefined ? null : value;
+      }
+
       updates[`/inventoryItems/${newId}`] = {
-        ...itemData,
+        ...sanitizedItemData,
         isArchived: false,
         lastUpdated: now,
         status: 'In Store',
@@ -152,24 +159,29 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
     const finalizedItemIds: string[] = [];
 
     for (const itemUpdate of itemsData) {
-        if (itemUpdate.id && !itemUpdate.id.startsWith('new-')) {
-            // This is an existing item, prepare an update
-            const itemId = itemUpdate.id;
+        const { id, ...updatePayload } = itemUpdate;
+
+        // Sanitize payload before use
+        Object.keys(updatePayload).forEach(key => {
+            if ((updatePayload as any)[key] === undefined) {
+                (updatePayload as any)[key] = null;
+            }
+        });
+
+        if (id && !id.startsWith('new-')) {
+            const itemId = id;
             finalizedItemIds.push(itemId);
             const itemPath = `inventoryItems/${itemId}`;
             const existingItemData = inventoryItems.find(i => i.id === itemId) || {};
-            const { id, ...updatePayload } = itemUpdate;
             updates[itemPath] = {
                 ...existingItemData,
                 ...updatePayload,
                 lastUpdated: now,
             };
         } else {
-            // This is a new item, prepare a create
             const newRef = push(ref(rtdb, 'inventoryItems'));
             const newId = newRef.key!;
             finalizedItemIds.push(newId);
-            const { id, ...updatePayload } = itemUpdate; // remove temp id
             updates[`/inventoryItems/${newId}`] = {
                 ...updatePayload,
                 isArchived: false,
@@ -180,15 +192,14 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    // Update the inward record itself
     const updatedRecordData: Partial<InwardOutwardRecord> = {
-        ...record, // This contains any direct changes to the record like date/source
+        ...record,
         finalizedItemIds,
         quantity: finalizedItemIds.length,
         itemName: itemsData.map(i => i.name).filter(Boolean).join(', '),
-        status: 'Completed' // If we are editing, it's no longer 'Pending Details'
+        status: 'Completed'
     };
-    delete (updatedRecordData as any).id; // don't write id back into the object
+    delete (updatedRecordData as any).id;
 
     updates[`inwardOutwardRecords/${record.id}`] = updatedRecordData;
 

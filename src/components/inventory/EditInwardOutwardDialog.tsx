@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,6 +20,8 @@ import { useInventory } from '@/contexts/inventory-provider';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 
 const newItemSchema = z.object({
   id: z.string(), // This is the inventory item ID for existing, or a temp ID for new
@@ -117,7 +120,18 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
   });
 
   const onSubmit = (data: FormValues) => {
-    updateInwardOutwardRecord(record, data.items.map(item => ({...item, id: item.id.startsWith('new-') ? undefined : item.id} as any)));
+    const sanitizedItems = data.items.map(item => {
+        const { id, purchaseDate, inspectionDate, inspectionDueDate, tpInspectionDueDate, ...rest } = item;
+        return {
+            ...rest,
+            id: id.startsWith('new-') ? undefined : id,
+            purchaseDate: purchaseDate ? purchaseDate.toISOString() : null,
+            inspectionDate: inspectionDate ? inspectionDate.toISOString() : null,
+            inspectionDueDate: inspectionDueDate ? inspectionDueDate.toISOString() : null,
+            tpInspectionDueDate: tpInspectionDueDate ? tpInspectionDueDate.toISOString() : null,
+        };
+    });
+    updateInwardOutwardRecord(record, sanitizedItems as Partial<InventoryItem>[]);
     setIsOpen(false);
   };
   
