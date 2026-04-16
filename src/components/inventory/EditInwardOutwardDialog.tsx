@@ -9,16 +9,16 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import type { InwardOutwardRecord, InventoryItem } from '@/lib/types';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { parseISO, isValid } from 'date-fns';
 import { ScrollArea } from '../ui/scroll-area';
-import { PlusCircle, Trash2 } from 'lucide-react';
-import { ref, update } from 'firebase/database';
-import { rtdb } from '@/lib/rtdb';
-import { useInventory } from '@/contexts/inventory-provider';
+import { PlusCircle, Trash2, ChevronsUpDown, Check } from 'lucide-react';
 import { useInwardOutward } from '@/contexts/inward-outward-provider';
-
+import { useInventory } from '@/contexts/inventory-provider';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 
 const newItemSchema = z.object({
   id: z.string(), // This is the inventory item ID for existing, or a temp ID for new
@@ -52,10 +52,12 @@ interface EditInwardOutwardDialogProps {
   record: InwardOutwardRecord;
 }
 
+
 export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: EditInwardOutwardDialogProps) {
   const { updateInwardOutwardRecord } = useInwardOutward();
   const { inventoryItems } = useInventory();
   const { toast } = useToast();
+  const [popoverOpenState, setPopoverOpenState] = useState<Record<number, boolean>>({});
 
   const itemNames = useMemo(() => Array.from(new Set(inventoryItems.map(item => item.name))), [inventoryItems]);
 
@@ -125,6 +127,11 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
     }
     setIsOpen(open);
   };
+  
+  const handleItemSelect = (index: number, itemName: string) => {
+    form.setValue(`items.${index}.name`, itemName);
+    setPopoverOpenState(prev => ({...prev, [index]: false}));
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -155,9 +162,6 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
           <div className="flex-1 overflow-hidden flex flex-col mt-4">
             <ScrollArea className="flex-1 px-4 -mx-4">
               <div className="space-y-4">
-                <datalist id="item-names-list">
-                  {itemNames.map(n => <option key={n} value={n} />)}
-                </datalist>
                 {fields.map((field, index) => (
                   <div key={field.id} className="p-4 border rounded-md relative bg-muted/30">
                     <div className="flex justify-between items-center mb-2">
@@ -169,28 +173,62 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="space-y-2">
                             <Label>Item Name</Label>
-                            <Input {...form.register(`items.${index}.name`)} list="item-names-list" />
+                            <Controller
+                                name={`items.${index}.name`}
+                                control={form.control}
+                                render={({ field: controllerField }) => (
+                                    <Popover open={popoverOpenState[index]} onOpenChange={(open) => setPopoverOpenState(prev => ({ ...prev, [index]: open }))}>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="outline" className="w-full justify-start text-left font-normal">
+                                                <span className="truncate">{controllerField.value || "Select item..."}</span>
+                                                <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50"/>
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                            <Command>
+                                                <CommandInput placeholder="Search items..." />
+                                                <CommandList>
+                                                    <CommandEmpty>No item found.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {itemNames.map(name => (
+                                                            <CommandItem
+                                                                key={name}
+                                                                value={name}
+                                                                onSelect={() => handleItemSelect(index, name)}
+                                                            >
+                                                                <Check className={cn("mr-2 h-4 w-4", name === controllerField.value ? "opacity-100" : "opacity-0")} />
+                                                                {name}
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                )}
+                            />
+                            {form.formState.errors.items?.[index]?.name && <p className="text-xs text-destructive mt-1">{form.formState.errors.items[index]?.name?.message}</p>}
                         </div>
                         <div className="space-y-2">
                             <Label>Serial Number</Label>
-                            <Input {...form.register(`items.${index}.serialNumber`)} />
+                            <Input {...form.register(`items.${index}.serialNumber`)} placeholder="Serial Number" />
                              {form.formState.errors.items?.[index]?.serialNumber && <p className="text-xs text-destructive mt-1">{form.formState.errors.items[index]?.serialNumber?.message}</p>}
                         </div>
                         <div className="space-y-2">
                             <Label>Aries ID</Label>
-                            <Input {...form.register(`items.${index}.ariesId`)} />
+                            <Input {...form.register(`items.${index}.ariesId`)} placeholder="Aries ID" />
                         </div>
                         <div className="space-y-2">
                             <Label>Chest Croll No.</Label>
-                            <Input {...form.register(`items.${index}.chestCrollNo`)} />
+                            <Input {...form.register(`items.${index}.chestCrollNo`)} placeholder="For Harness only" />
                         </div>
                          <div className="space-y-2">
                             <Label>ERP ID</Label>
-                            <Input {...form.register(`items.${index}.erpId`)} />
+                            <Input {...form.register(`items.${index}.erpId`)} placeholder="ERP ID" />
                         </div>
                         <div className="space-y-2">
                             <Label>Certification</Label>
-                            <Input {...form.register(`items.${index}.certification`)} />
+                            <Input {...form.register(`items.${index}.certification`)} placeholder="Certification" />
                         </div>
                         <div className="space-y-2 md:col-span-2">
                             <Label>Purchase Date</Label>
@@ -210,15 +248,15 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
                         </div>
                          <div className="space-y-2 md:col-span-2">
                             <Label>TP Certificate URL</Label>
-                            <Input {...form.register(`items.${index}.certificateUrl`)} />
+                            <Input {...form.register(`items.${index}.certificateUrl`)} placeholder="https://..." />
                         </div>
                         <div className="space-y-2 md:col-span-2">
                             <Label>Inspection Certificate URL</Label>
-                            <Input {...form.register(`items.${index}.inspectionCertificateUrl`)} />
+                            <Input {...form.register(`items.${index}.inspectionCertificateUrl`)} placeholder="https://..." />
                         </div>
                         <div className="space-y-2 md:col-span-4">
                             <Label>Item Remarks</Label>
-                            <Input {...form.register(`items.${index}.remarks`)} />
+                            <Input {...form.register(`items.${index}.remarks`)} placeholder="Optional remarks" />
                         </div>
                     </div>
                   </div>
