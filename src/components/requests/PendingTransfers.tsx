@@ -1,11 +1,12 @@
+
 'use client';
 import { useMemo, useState, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import { ThumbsUp, ThumbsDown, SendToBack, CheckCircle, AlertTriangle, Trash2, FilePlus, UserCheck, FileDown, Edit, Search } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, SendToBack, CheckCircle, AlertTriangle, Trash2, FilePlus, UserCheck, FileDown, Edit, Search, MoreHorizontal } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
@@ -16,9 +17,11 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '..
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import GenerateTpCertDialog from '../inventory/GenerateTpCertDialog';
 import TransferReportDownloads from './TransferReportDownloads';
-import NewInventoryTransferRequestDialog from './new-inventory-transfer-request-dialog';
 import { Input } from '../ui/input';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 
 interface PendingTransfersProps {
   onEditRequest: (request: InventoryTransferRequest) => void;
@@ -35,8 +38,10 @@ const statusVariant: Record<InventoryTransferRequestStatus, 'default' | 'seconda
   'Partially Approved': 'default',
 };
 
-const RequestCard = ({ req, onEditRequest }: { req: InventoryTransferRequest; onEditRequest: (request: InventoryTransferRequest) => void; }) => {
-    const { user, users, projects, can, approveInventoryTransferRequest, rejectInventoryTransferRequest, deleteInventoryTransferRequest, addTpCertList, resolveInternalRequestDispute, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies } = useAppContext();
+const RequestCard = ({ req, onEditRequest, isCompletedSection = false }: { req: InventoryTransferRequest; onEditRequest: (request: InventoryTransferRequest) => void; isCompletedSection?: boolean; }) => {
+    const { user, users, can } = useAuth();
+    const { projects } = useGeneral();
+    const { approveInventoryTransferRequest, rejectInventoryTransferRequest, deleteInventoryTransferRequest, addTpCertList, resolveInternalRequestDispute, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies } = useInventory();
     const { toast } = useToast();
     const [rejectionRequestId, setRejectionRequestId] = useState<string | null>(null);
     const [comment, setComment] = useState('');
@@ -47,17 +52,28 @@ const RequestCard = ({ req, onEditRequest }: { req: InventoryTransferRequest; on
     const requestedBy = req.requestedById ? users.find(u => u.id === req.requestedById) : null;
     const showTpOption = req.reason === 'For TP certification' || req.reason === 'Expired materials';
     const approver = req.approverId ? users.find(u => u.id === req.approverId) : null;
+    const isRequester = req.requesterId === user?.id;
 
     const canEdit = useMemo(() => {
         if (!user) return false;
-        const canEditRoles: Role[] = ['Admin', 'Project Coordinator', 'Store in Charge', 'Assistant Store Incharge'];
-        return canEditRoles.includes(user.role);
-    }, [user]);
+        if (req.status !== 'Pending') return false;
+
+        const canEditRoles: Role[] = ['Admin', 'Project Coordinator'];
+        if (canEditRoles.includes(user.role)) return true;
+
+        return req.requesterId === user.id;
+    }, [user, req]);
+    
+    const canDeleteHistory = user?.role === 'Admin' && isCompletedSection;
 
     const canApprove = useMemo(() => {
         if (!user) return false;
         return can.approve_store_requests;
     }, [user, can.approve_store_requests]);
+
+    const handleDelete = () => {
+        deleteInventoryTransferRequest(req.id);
+    };
 
     const handleReject = () => {
         if (rejectionRequestId && comment) {
@@ -99,10 +115,50 @@ const RequestCard = ({ req, onEditRequest }: { req: InventoryTransferRequest; on
                 </AccordionTrigger>
                 <div className="flex items-center gap-2 pl-4">
                     <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
-                    {canEdit && req.status === 'Pending' && (
-                        <Button size="sm" variant="outline" onClick={() => onEditRequest(req)}>
-                            <Edit className="mr-2 h-4 w-4" /> Edit
-                        </Button>
+                    {(canEdit || (user?.role === 'Admin' && isCompletedSection)) && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4"/></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                {canEdit && <DropdownMenuItem onSelect={() => onEditRequest(req)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>}
+                                {user?.role === 'Admin' && !isCompletedSection && (
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                            </DropdownMenuItem>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader><AlertDialogTitle>Delete Transfer Request?</AlertDialogTitle><AlertDialogDescription>This action is permanent and cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={handleDelete}>Confirm Delete</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
+                    {canDeleteHistory && (
+                         <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                                    <Trash2 className="h-4 w-4"/>
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete from History?</AlertDialogTitle>
+                                    <AlertDialogDescription>This will permanently delete this request from history. This action cannot be undone.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDelete}>Confirm Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     )}
                     {canApprove && req.status === 'Pending' && (
                     <>
@@ -212,7 +268,8 @@ const RequestCard = ({ req, onEditRequest }: { req: InventoryTransferRequest; on
 };
 
 export default function PendingTransfers({ onEditRequest }: PendingTransfersProps) {
-  const { user, inventoryTransferRequests, projects, can, inventoryItems } = useAppContext();
+  const { user, can } = useAuth();
+  const { inventoryTransferRequests } = useInventory();
   const [editingTpList, setEditingTpList] = useState<Partial<TpCertList> | null>(null);
   const [historySearchTerm, setHistorySearchTerm] = useState('');
 
@@ -240,7 +297,7 @@ export default function PendingTransfers({ onEditRequest }: PendingTransfersProp
         if (!existing) myActiveRequests.push(req);
       }
 
-      const isCompletedOrRejected = req.status === 'Completed' || req.status === 'Rejected' || req.status === 'Disputed';
+      const isCompletedOrRejected = req.status === 'Completed' || req.status === 'Issued' || req.status === 'Rejected' || req.status === 'Disputed';
 
       if (isCompletedOrRejected) {
           if (isPrivileged || isRequester || (isMyProject && req.fromProjectId !== req.toProjectId)) {
@@ -257,8 +314,9 @@ export default function PendingTransfers({ onEditRequest }: PendingTransfersProp
         myActiveRequests: myActiveRequests.sort(sortFn),
         allCompletedRequests: completed.sort((a,b) => (b.approvalDate || b.requestDate).localeCompare(a.approvalDate || a.requestDate)),
     };
-  }, [inventoryTransferRequests, user, can.approve_store_requests, projects]);
-
+  }, [inventoryTransferRequests, user, can.approve_store_requests]);
+  
+  const { inventoryItems } = useInventory();
   const filteredCompletedRequests = useMemo(() => {
     if (!historySearchTerm) {
         return allCompletedRequests;
@@ -323,7 +381,7 @@ export default function PendingTransfers({ onEditRequest }: PendingTransfersProp
                     />
                 </div>
                 <Accordion type="multiple" className="w-full space-y-2">
-                    {filteredCompletedRequests.map(req => <RequestCard key={req.id} req={req} onEditRequest={onEditRequest} />)}
+                    {filteredCompletedRequests.map(req => <RequestCard key={req.id} req={req} onEditRequest={onEditRequest} isCompletedSection={true} />)}
                 </Accordion>
               </AccordionContent>
             </AccordionItem>
