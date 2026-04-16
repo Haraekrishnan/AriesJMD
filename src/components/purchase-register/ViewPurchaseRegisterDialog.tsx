@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -8,6 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import type { PurchaseRegister } from '@/lib/types';
 import { useAppContext } from '@/contexts/app-provider';
 import { format } from 'date-fns';
+import React from 'react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/card';
 
 interface ViewPurchaseRegisterDialogProps {
   isOpen: boolean;
@@ -19,6 +21,26 @@ export default function ViewPurchaseRegisterDialog({ isOpen, setIsOpen, purchase
   const { vendors } = useAppContext();
   
   const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
+
+  const groupedItems = useMemo(() => {
+    if (!purchaseRegister?.items) return [];
+    const map = new Map<string, { items: PurchaseRegister['items'], totalQuantity: number, totalAmount: number }>();
+    purchaseRegister.items.forEach(item => {
+        const key = item.name;
+        if (!map.has(key)) {
+            map.set(key, { items: [], totalQuantity: 0, totalAmount: 0 });
+        }
+        const group = map.get(key)!;
+        group.items.push(item);
+        group.totalQuantity += item.quantity;
+        group.totalAmount += (item.quantity * item.unitRate) * (1 + item.tax / 100);
+    });
+    return Array.from(map.values());
+  }, [purchaseRegister]);
+
+  const totalQuantity = useMemo(() => {
+    return purchaseRegister?.items.reduce((acc, item) => acc + item.quantity, 0) || 0;
+  }, [purchaseRegister?.items]);
 
   if (!purchaseRegister) return null;
   
@@ -33,33 +55,54 @@ export default function ViewPurchaseRegisterDialog({ isOpen, setIsOpen, purchase
             Showing items from Purchase Register #{purchaseRegister.id.slice(-6)} for {vendor?.name} on {format(new Date(purchaseRegister.date), 'dd MMM, yyyy')}.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4">
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Item Name</TableHead>
-                        <TableHead className="text-right">Quantity</TableHead>
-                        <TableHead className="text-right">Unit Rate</TableHead>
-                        <TableHead className="text-right">Tax %</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {purchaseRegister.items.map((item) => (
-                        <TableRow key={item.id}>
-                            <TableCell>{item.name}</TableCell>
-                            <TableCell className="text-right">{item.quantity}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.unitRate)}</TableCell>
-                            <TableCell className="text-right">{item.tax}%</TableCell>
-                            <TableCell className="text-right font-semibold">{formatCurrency((item.quantity * item.unitRate) * (1 + item.tax / 100))}</TableCell>
-                        </TableRow>
-                    ))}
-                     <TableRow className="font-bold bg-muted">
-                        <TableCell colSpan={4} className="text-right">Grand Total</TableCell>
-                        <TableCell className="text-right">{formatCurrency(purchaseRegister.grandTotal)}</TableCell>
-                    </TableRow>
-                </TableBody>
-            </Table>
+        <div className="py-4 space-y-2">
+            {groupedItems.map((group, index) => (
+                <Card key={index}>
+                    <CardHeader className="p-4 flex flex-row items-center justify-between">
+                        <div>
+                            <CardTitle className="text-lg">{group.items[0].name}</CardTitle>
+                            <CardDescription>Total Quantity: {group.totalQuantity} nos</CardDescription>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-lg font-bold">{formatCurrency(group.totalAmount)}</p>
+                            <p className="text-xs text-muted-foreground">Subtotal for this item</p>
+                        </div>
+                    </CardHeader>
+                    {group.items.length > 1 && (
+                        <Accordion type="single" collapsible>
+                            <AccordionItem value="item-1" className="border-t">
+                                <AccordionTrigger className="px-4 text-sm">Show individual entries</AccordionTrigger>
+                                <AccordionContent>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Quantity</TableHead>
+                                                <TableHead>Unit Rate</TableHead>
+                                                <TableHead>Tax %</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {group.items.map(item => (
+                                                <TableRow key={item.id}>
+                                                    <TableCell>{item.quantity}</TableCell>
+                                                    <TableCell>{formatCurrency(item.unitRate)}</TableCell>
+                                                    <TableCell>{item.tax}%</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </AccordionContent>
+                            </AccordionItem>
+                        </Accordion>
+                    )}
+                </Card>
+            ))}
+            <div className="flex justify-end pt-4">
+                <div className="w-full max-w-sm space-y-2 text-sm">
+                    <div className="flex justify-between"><span>Total Items Quantity:</span><span className="font-bold">{totalQuantity}</span></div>
+                    <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Grand Total:</span><span>{formatCurrency(purchaseRegister.grandTotal)}</span></div>
+                </div>
+            </div>
         </div>
         <DialogFooter>
           <Button onClick={() => setIsOpen(false)}>Close</Button>

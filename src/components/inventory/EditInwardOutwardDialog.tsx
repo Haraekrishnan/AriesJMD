@@ -1,4 +1,3 @@
-
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,11 +16,12 @@ import { ScrollArea } from '../ui/scroll-area';
 import { PlusCircle, Trash2, ChevronsUpDown, Check } from 'lucide-react';
 import { useInwardOutward } from '@/contexts/inward-outward-provider';
 import { useInventory } from '@/contexts/inventory-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth-provider';
-import { useGeneral } from '@/contexts/general-provider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const newItemSchema = z.object({
   id: z.string(), // This is the inventory item ID for existing, or a temp ID for new
@@ -43,6 +43,7 @@ const newItemSchema = z.object({
 const editSchema = z.object({
   date: z.date(),
   source: z.string().min(1),
+  projectId: z.string().min(1, "Project is required"),
   remarks: z.string().optional(),
   items: z.array(newItemSchema).min(1, "At least one item is required."),
 });
@@ -55,10 +56,10 @@ interface EditInwardOutwardDialogProps {
   record: InwardOutwardRecord;
 }
 
-
 export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: EditInwardOutwardDialogProps) {
   const { updateInwardOutwardRecord } = useInwardOutward();
   const { inventoryItems } = useInventory();
+  const { projects } = useGeneral();
   const { toast } = useToast();
   const [popoverOpenState, setPopoverOpenState] = useState<Record<number, boolean>>({});
 
@@ -78,9 +79,12 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
         const itemIds = record.finalizedItemIds || (record.itemId ? [record.itemId] : []);
         const existingItems = itemIds.map(id => inventoryItems.find(i => i.id === id)).filter(Boolean) as InventoryItem[];
         
+        const initialProjectId = existingItems.length > 0 ? existingItems[0].projectId : projects.find(p => p.name === 'Store')?.id || '';
+
         form.reset({
             date: parseISO(record.date),
             source: record.source,
+            projectId: initialProjectId,
             remarks: record.remarks,
             items: existingItems.map(item => ({
                 id: item.id,
@@ -100,7 +104,7 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
             }))
         });
     }
-  }, [record, isOpen, inventoryItems, form]);
+  }, [record, isOpen, inventoryItems, form, projects]);
 
   const generateNewItemFromRecord = (record: InwardOutwardRecord) => ({
       id: `new-${Date.now()}-${Math.random()}`,
@@ -121,17 +125,17 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
 
   const onSubmit = (data: FormValues) => {
     const sanitizedItems = data.items.map(item => {
-        const { id, purchaseDate, inspectionDate, inspectionDueDate, tpInspectionDueDate, ...rest } = item;
+        const { id, ...rest } = item;
         return {
             ...rest,
             id: id.startsWith('new-') ? undefined : id,
-            purchaseDate: purchaseDate ? purchaseDate.toISOString() : null,
-            inspectionDate: inspectionDate ? inspectionDate.toISOString() : null,
-            inspectionDueDate: inspectionDueDate ? inspectionDueDate.toISOString() : null,
-            tpInspectionDueDate: tpInspectionDueDate ? tpInspectionDueDate.toISOString() : null,
+            purchaseDate: item.purchaseDate ? item.purchaseDate.toISOString() : null,
+            inspectionDate: item.inspectionDate ? item.inspectionDate.toISOString() : null,
+            inspectionDueDate: item.inspectionDueDate ? item.inspectionDueDate.toISOString() : null,
+            tpInspectionDueDate: item.tpInspectionDueDate ? item.tpInspectionDueDate.toISOString() : null,
         };
     });
-    updateInwardOutwardRecord(record, sanitizedItems as Partial<InventoryItem>[]);
+    updateInwardOutwardRecord(record, sanitizedItems as Partial<InventoryItem>[], data.projectId);
     setIsOpen(false);
   };
   
@@ -158,7 +162,7 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
           <div className="px-1 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                     <Label>Transaction Date</Label>
                     <Controller name="date" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
@@ -167,7 +171,17 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
                     <Label htmlFor="source">Source / Reason</Label>
                     <Input id="source" {...form.register('source')} />
                 </div>
-                <div className="space-y-2 md:col-span-2">
+                <div className="space-y-2">
+                    <Label>Project</Label>
+                    <Controller control={form.control} name="projectId" render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger><SelectValue placeholder="Select project"/></SelectTrigger>
+                            <SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                    )}/>
+                    {form.formState.errors.projectId && <p className="text-xs text-destructive">{form.formState.errors.projectId.message}</p>}
+                </div>
+                 <div className="space-y-2 md:col-span-3">
                     <Label htmlFor="remarks">Remarks</Label>
                     <Textarea id="remarks" {...form.register('remarks')} />
                 </div>

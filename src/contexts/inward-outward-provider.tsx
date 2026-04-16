@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo } from 'react';
@@ -13,9 +12,9 @@ import { useInventory } from './inventory-provider';
 type InwardOutwardContextType = {
   inwardOutwardRecords: InwardOutwardRecord[];
   pendingFinalizationCount: number;
-  batchCreateAndLogItems: (items: Omit<InventoryItem, 'id' | 'lastUpdated'>[], source: string) => Promise<number>;
+  batchCreateAndLogItems: (items: Omit<InventoryItem, 'id' | 'lastUpdated'>[], source: string, projectId: string) => Promise<number>;
   finalizeInwardPurchase: (recordId: string, itemsData: Omit<InventoryItem, 'id' | 'lastUpdated' | 'status' | 'isArchived'>[]) => Promise<void>;
-  updateInwardOutwardRecord: (record: InwardOutwardRecord, itemsData: Partial<InventoryItem>[]) => Promise<void>;
+  updateInwardOutwardRecord: (record: InwardOutwardRecord, itemsData: Partial<InventoryItem>[], projectId: string) => Promise<void>;
   deleteInwardOutwardRecord: (recordId: string) => Promise<void>;
   lockInwardOutwardRecord: (recordId: string) => Promise<void>;
   unlockInwardOutwardRecord: (recordId: string) => Promise<void>;
@@ -59,12 +58,11 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
     return inwardOutwardRecords.filter(r => r.status === 'Pending Details').length;
   }, [inwardOutwardRecords, can.manage_inward_outward]);
 
-  const batchCreateAndLogItems = useCallback(async (itemsToCreate: Omit<InventoryItem, 'id' | 'lastUpdated'>[], source: string) => {
+  const batchCreateAndLogItems = useCallback(async (itemsToCreate: Omit<InventoryItem, 'id' | 'lastUpdated'>[], source: string, projectId: string) => {
     if (!user) return 0;
     
     const updates: { [key: string]: any } = {};
     const now = new Date().toISOString();
-    const storeProject = projects.find(p => p.name === 'Store');
     let totalQuantity = 0;
     const itemSummary: Record<string, number> = {};
 
@@ -83,7 +81,7 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
         isArchived: false,
         lastUpdated: now,
         status: 'In Store',
-        projectId: storeProject?.id || projects[0]?.id,
+        projectId: projectId,
       };
       totalQuantity += 1;
       itemSummary[itemData.name] = (itemSummary[itemData.name] || 0) + 1;
@@ -147,11 +145,10 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
     }
   }, [user, addActivityLog, projects, toast]);
   
-  const updateInwardOutwardRecord = useCallback(async (record: InwardOutwardRecord, itemsData: Partial<InventoryItem>[]) => {
+  const updateInwardOutwardRecord = useCallback(async (record: InwardOutwardRecord, itemsData: Partial<InventoryItem>[], projectId: string) => {
     if (!user) return;
     const updates: { [key: string]: any } = {};
     const now = new Date().toISOString();
-    const storeProject = projects.find(p => p.name === 'Store');
 
     const originalRecord = inwardOutwardRecordsById[record.id];
     if (!originalRecord) return;
@@ -161,12 +158,11 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
     for (const itemUpdate of itemsData) {
         const { id, ...updatePayload } = itemUpdate;
 
-        // Sanitize payload before use
-        Object.keys(updatePayload).forEach(key => {
-            if ((updatePayload as any)[key] === undefined) {
-                (updatePayload as any)[key] = null;
-            }
-        });
+        const sanitizedPayload: { [key: string]: any } = {};
+        for (const key in updatePayload) {
+            const value = (updatePayload as any)[key];
+            sanitizedPayload[key] = value === undefined ? null : value;
+        }
 
         if (id && !id.startsWith('new-')) {
             const itemId = id;
@@ -175,7 +171,8 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
             const existingItemData = inventoryItems.find(i => i.id === itemId) || {};
             updates[itemPath] = {
                 ...existingItemData,
-                ...updatePayload,
+                ...sanitizedPayload,
+                projectId: projectId,
                 lastUpdated: now,
             };
         } else {
@@ -183,11 +180,11 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
             const newId = newRef.key!;
             finalizedItemIds.push(newId);
             updates[`/inventoryItems/${newId}`] = {
-                ...updatePayload,
+                ...sanitizedPayload,
                 isArchived: false,
                 lastUpdated: now,
                 status: 'In Store',
-                projectId: storeProject?.id || projects[0]?.id,
+                projectId: projectId,
             };
         }
     }

@@ -9,11 +9,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, ChevronsUpDown, Check } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Separator } from '../ui/separator';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { useGeneral } from '@/contexts/general-provider';
+import { cn } from '@/lib/utils';
 
 const newItemSchema = z.object({
   id: z.string(),
@@ -34,6 +39,7 @@ const newItemSchema = z.object({
 
 const batchInwardSchema = z.object({
   source: z.string().min(1, 'A source or reason is required.'),
+  projectId: z.string().min(1, 'A project must be selected.'),
   items: z.array(newItemSchema).min(1, 'Add at least one item.'),
 });
 
@@ -64,6 +70,7 @@ const generateDefaultItem = () => ({
 export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRecordDialogProps) {
   const { batchCreateAndLogItems } = useInwardOutward();
   const { inventoryItems } = useInventory();
+  const { projects } = useGeneral();
   const { toast } = useToast();
 
   const itemNames = useMemo(() => Array.from(new Set(inventoryItems.map(item => item.name))), [inventoryItems]);
@@ -72,6 +79,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
     resolver: zodResolver(batchInwardSchema),
     defaultValues: {
       source: '',
+      projectId: projects.find(p => p.name === 'Store')?.id,
       items: [generateDefaultItem()],
     },
   });
@@ -97,7 +105,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
         certificateUrl: item.certificateUrl || null,
         inspectionCertificateUrl: item.inspectionCertificateUrl || null,
     }));
-    batchCreateAndLogItems(itemsToCreate, data.source);
+    batchCreateAndLogItems(itemsToCreate, data.source, data.projectId);
     toast({ title: 'Batch Inward Successful', description: `${itemsToCreate.length} new items were created and logged.` });
     setIsOpen(false);
   };
@@ -106,6 +114,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
     if (!open) {
       form.reset({
         source: '',
+        projectId: projects.find(p => p.name === 'Store')?.id,
         items: [generateDefaultItem()],
       });
     }
@@ -121,10 +130,22 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
           <div className="px-1 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="source">Source / Reason</Label>
-              <Input id="source" {...form.register('source')} placeholder="e.g., Purchase from Vendor XYZ, Initial Stock" />
-              {form.formState.errors.source && <p className="text-xs text-destructive">{form.formState.errors.source.message}</p>}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="source">Source / Reason</Label>
+                <Input id="source" {...form.register('source')} placeholder="e.g., Purchase from Vendor XYZ, Initial Stock" />
+                {form.formState.errors.source && <p className="text-xs text-destructive">{form.formState.errors.source.message}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label>Project</Label>
+                <Controller control={form.control} name="projectId" render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger><SelectValue placeholder="Select project"/></SelectTrigger>
+                        <SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                )}/>
+                {form.formState.errors.projectId && <p className="text-xs text-destructive">{form.formState.errors.projectId.message}</p>}
+              </div>
             </div>
           </div>
           <div className="flex-1 overflow-hidden flex flex-col mt-4">
