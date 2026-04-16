@@ -8,6 +8,7 @@ import { useAuth } from './auth-provider';
 import { useGeneral } from './general-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { InwardOutwardRecord, InventoryItem, User } from '@/lib/types';
+import { useInventory } from './inventory-provider';
 
 type InwardOutwardContextType = {
   inwardOutwardRecords: InwardOutwardRecord[];
@@ -43,6 +44,8 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
   const { projects } = useGeneral();
   const { toast } = useToast();
   const [inwardOutwardRecordsById, setInwardOutwardRecordsById] = useState<Record<string, InwardOutwardRecord>>({});
+  const { inventoryItems } = useInventory();
+
 
   useEffect(() => {
     const listener = createDataListener('inwardOutwardRecords', setInwardOutwardRecordsById);
@@ -141,25 +144,53 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const updates: { [key: string]: any } = {};
     const now = new Date().toISOString();
+    const storeProject = projects.find(p => p.name === 'Store');
 
     const originalRecord = inwardOutwardRecordsById[record.id];
     if (!originalRecord) return;
+    
+    const finalizedItemIds: string[] = [];
 
-    // Update inventory items
-    itemsData.forEach(itemUpdate => {
-        if (itemUpdate.id) {
-            const itemPath = `inventoryItems/${itemUpdate.id}`;
-            Object.entries(itemUpdate).forEach(([key, value]) => {
-                if (key !== 'id') {
-                    updates[`${itemPath}/${key}`] = value;
-                }
-            });
-            updates[`${itemPath}/lastUpdated`] = now;
+    for (const itemUpdate of itemsData) {
+        if (itemUpdate.id && !itemUpdate.id.startsWith('new-')) {
+            // This is an existing item, prepare an update
+            const itemId = itemUpdate.id;
+            finalizedItemIds.push(itemId);
+            const itemPath = `inventoryItems/${itemId}`;
+            const existingItemData = inventoryItems.find(i => i.id === itemId) || {};
+            const { id, ...updatePayload } = itemUpdate;
+            updates[itemPath] = {
+                ...existingItemData,
+                ...updatePayload,
+                lastUpdated: now,
+            };
+        } else {
+            // This is a new item, prepare a create
+            const newRef = push(ref(rtdb, 'inventoryItems'));
+            const newId = newRef.key!;
+            finalizedItemIds.push(newId);
+            const { id, ...updatePayload } = itemUpdate; // remove temp id
+            updates[`/inventoryItems/${newId}`] = {
+                ...updatePayload,
+                isArchived: false,
+                lastUpdated: now,
+                status: 'In Store',
+                projectId: storeProject?.id || projects[0]?.id,
+            };
         }
-    });
+    }
 
     // Update the inward record itself
-    updates[`inwardOutwardRecords/${record.id}`] = { ...originalRecord, ...record };
+    const updatedRecordData: Partial<InwardOutwardRecord> = {
+        ...record, // This contains any direct changes to the record like date/source
+        finalizedItemIds,
+        quantity: finalizedItemIds.length,
+        itemName: itemsData.map(i => i.name).filter(Boolean).join(', '),
+        status: 'Completed' // If we are editing, it's no longer 'Pending Details'
+    };
+    delete (updatedRecordData as any).id; // don't write id back into the object
+
+    updates[`inwardOutwardRecords/${record.id}`] = updatedRecordData;
 
     try {
         await update(ref(rtdb), updates);
@@ -169,7 +200,7 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
         console.error(error);
         toast({ title: 'Error', description: 'Failed to update record.', variant: 'destructive' });
     }
-  }, [user, addActivityLog, inwardOutwardRecordsById, toast]);
+  }, [user, addActivityLog, inwardOutwardRecordsById, projects, toast, inventoryItems]);
 
   const deleteInwardOutwardRecord = useCallback(async (recordId: string) => {
     if (!user || user.role !== 'Admin') return;

@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -7,10 +6,10 @@ import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/comp
 import { LogOut, ShieldAlert } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
 
 export default function StatusPage() {
-  const { user, loading, logout, requestUnlock } = useAppContext();
+  const { user, loading, logout, requestUnlock } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -40,7 +39,7 @@ export default function StatusPage() {
     }
   };
 
-  if (loading || !user || user.status !== 'locked') {
+  if (loading || !user || (user && user.status !== 'locked')) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="text-center space-y-2">

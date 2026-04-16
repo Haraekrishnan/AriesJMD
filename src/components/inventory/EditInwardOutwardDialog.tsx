@@ -3,7 +3,6 @@
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -14,11 +13,12 @@ import type { InwardOutwardRecord, InventoryItem } from '@/lib/types';
 import { useEffect, useMemo } from 'react';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { parseISO, isValid } from 'date-fns';
-import { useInventory } from '@/contexts/inventory-provider';
 import { ScrollArea } from '../ui/scroll-area';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { ref, update } from 'firebase/database';
 import { rtdb } from '@/lib/rtdb';
+import { useInventory } from '@/contexts/inventory-provider';
+import { useInwardOutward } from '@/contexts/inward-outward-provider';
 
 
 const newItemSchema = z.object({
@@ -54,7 +54,8 @@ interface EditInwardOutwardDialogProps {
 }
 
 export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: EditInwardOutwardDialogProps) {
-  const { updateInwardOutwardRecord, inventoryItems } = useAppContext();
+  const { updateInwardOutwardRecord } = useInwardOutward();
+  const { inventoryItems } = useInventory();
   const { toast } = useToast();
 
   const form = useForm<FormValues>({
