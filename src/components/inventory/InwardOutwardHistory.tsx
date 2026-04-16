@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -15,9 +14,12 @@ import FinalizeInwardDialog from './FinalizeInwardDialog';
 import { Input } from '../ui/input';
 import { cn } from '@/lib/utils';
 import { useInwardOutward } from '@/contexts/inward-outward-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 
 export default function InwardOutwardHistory({ records }: { records: InwardOutwardRecord[] }) {
-    const { user, users, can, inventoryItems } = useAppContext();
+    const { user, users, can } = useAuth();
+    const { inventoryItems } = useInventory();
     const { deleteInwardOutwardRecord, lockInwardOutwardRecord, unlockInwardOutwardRecord } = useInwardOutward();
     const [editingRecord, setEditingRecord] = useState<InwardOutwardRecord | null>(null);
     const [finalizingRecord, setFinalizingRecord] = useState<InwardOutwardRecord | null>(null);

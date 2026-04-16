@@ -3,7 +3,6 @@
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -16,6 +15,8 @@ import { DatePickerInput } from '../ui/date-picker-input';
 import { Separator } from '../ui/separator';
 import type { InwardOutwardRecord, InventoryItem } from '@/lib/types';
 import { useInventory } from '@/contexts/inventory-provider';
+import { useInwardOutward } from '@/contexts/inward-outward-provider';
+
 
 const newItemSchema = z.object({
   id: z.string(), // This is a temp ID
@@ -64,7 +65,7 @@ const generateNewItemFromRecord = (record: InwardOutwardRecord) => ({
 });
 
 export default function FinalizeInwardDialog({ isOpen, setIsOpen, record }: FinalizeInwardDialogProps) {
-  const { finalizeInwardPurchase } = useAppContext();
+  const { finalizeInwardPurchase } = useInwardOutward();
   const { inventoryItems } = useInventory();
   const { toast } = useToast();
 

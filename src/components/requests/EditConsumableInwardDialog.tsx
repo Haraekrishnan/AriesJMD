@@ -3,7 +3,6 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -15,6 +14,9 @@ import { ConsumableInwardRecord } from '@/lib/types';
 import { useEffect } from 'react';
 import { parseISO, isValid } from 'date-fns';
 import { useConsumable } from '@/contexts/consumable-provider';
+import { get, ref, set } from 'firebase/database';
+import { rtdb } from '@/lib/rtdb';
+
 
 const inwardSchema = z.object({
     date: z.date({ required_error: "Date is required" }),
@@ -30,7 +32,7 @@ interface EditConsumableInwardDialogProps {
 }
 
 export default function EditConsumableInwardDialog({ isOpen, setIsOpen, record }: EditConsumableInwardDialogProps) {
-    const { updateConsumableInwardRecord, consumableItems } = useConsumable();
+    const { updateConsumableInwardRecord, consumableItems, consumableInwardHistory } = useConsumable();
     const { toast } = useToast();
     
     const form = useForm<InwardFormValues>({
@@ -95,7 +97,3 @@ export default function EditConsumableInwardDialog({ isOpen, setIsOpen, record }
         </Dialog>
     );
 }
-
-// Dummy imports to satisfy compiler - will be removed after context refactor
-import { get, ref, set } from 'firebase/database';
-import { rtdb } from '@/lib/rtdb';

@@ -1,3 +1,4 @@
+
 'use client';
 import { createContext, useContext, ReactNode } from 'react';
 import { AuthProvider, useAuth } from './auth-provider';
@@ -18,10 +19,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       <GeneralProvider>
         <ManpowerProvider>
             <ConsumableProvider>
-                <InventoryProvider>
-                    <InwardOutwardProvider>
-                        <AccommodationProvider>
-                            <PurchaseProvider>
+                <PurchaseProvider>
+                    <InventoryProvider>
+                        <InwardOutwardProvider>
+                            <AccommodationProvider>
                                 <PlannerProvider>
                                     <TaskProvider>
                                         <DecorationContextProvider>
@@ -29,10 +30,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
                                         </DecorationContextProvider>
                                     </TaskProvider>
                                 </PlannerProvider>
-                            </PurchaseProvider>
-                        </AccommodationProvider>
-                    </InwardOutwardProvider>
-                </InventoryProvider>
+                            </AccommodationProvider>
+                        </InwardOutwardProvider>
+                    </InventoryProvider>
+                </PurchaseProvider>
             </ConsumableProvider>
         </ManpowerProvider>
       </GeneralProvider>
