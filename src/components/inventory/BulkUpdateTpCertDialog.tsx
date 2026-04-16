@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -33,7 +33,7 @@ interface BulkUpdateTpCertDialogProps {
 }
 
 export default function BulkUpdateTpCertDialog({ isOpen, setIsOpen }: BulkUpdateTpCertDialogProps) {
-  const { inventoryItems, updateInventoryItemGroup } = useAppContext();
+  const { inventoryItems, updateInventoryItemGroup } = useInventory();
   const { toast } = useToast();
   const [isItemPopoverOpen, setIsItemPopoverOpen] = useState(false);
   

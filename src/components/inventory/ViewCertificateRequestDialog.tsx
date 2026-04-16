@@ -1,7 +1,8 @@
 
 'use client';
 import { useState } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -20,7 +21,8 @@ interface ViewCertificateRequestDialogProps {
 }
 
 export default function ViewCertificateRequestDialog({ isOpen, setIsOpen, request }: ViewCertificateRequestDialogProps) {
-  const { user, users, inventoryItems, utMachines, fulfillCertificateRequest, addCertificateRequestComment } = useAppContext();
+  const { user, users } = useAuth();
+  const { inventoryItems, utMachines, fulfillCertificateRequest, addCertificateRequestComment } = useInventory();
   const { toast } = useToast();
   const [comment, setComment] = useState('');
 
