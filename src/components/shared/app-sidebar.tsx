@@ -39,7 +39,13 @@ import {
   Truck,
   Inbox,
 } from 'lucide-react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { useInventory } from '@/contexts/inventory-provider';
+import { usePlanner } from '@/contexts/planner-provider';
+import { usePurchase } from '@/contexts/purchase-provider';
+import { useTask } from '@/contexts/task-provider';
+import { useInwardOutward } from '@/contexts/inward-outward-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -51,17 +57,23 @@ import type { DailyPlannerComment, PlannerEvent, Comment, LogbookRequest } from 
 
 
 export function AppSidebar() {
-  const {
+  const { 
     user, logout, appName, appLogo, can,
-    tasks, certificateRequests, plannerEvents,
-    internalRequests, managementRequests, incidentReports,
-    ppeRequests, payments, feedback, unlockRequests,
-    inventoryTransferRequests, dailyPlannerComments,
-    pendingTaskApprovalCount, myNewTaskCount,
-    damageReports,
-    trackerNotificationCount,
-    inwardOutwardRecords
-  } = useAppContext();
+  } = useAuth();
+  const { 
+    tasks, pendingTaskApprovalCount, myNewTaskCount
+  } = useTask();
+  const { 
+    certificateRequests, internalRequests, ppeRequests, inventoryTransferRequests, damageReports 
+  } = useInventory();
+  const { 
+    managementRequests, incidentReports, feedback, unlockRequests
+  } = useGeneral();
+  const { 
+    plannerEvents, dailyPlannerComments, trackerNotificationCount
+  } = usePlanner();
+  const { payments } = usePurchase();
+  const { pendingFinalizationCount } = useInwardOutward();
   const pathname = usePathname();
 
   const notificationCounts = useMemo(() => {
@@ -151,10 +163,6 @@ const plannerNotificationCount =
     
     const pendingDamageReportCount = can.manage_inventory ? (damageReports || []).filter(r => r.status === 'Pending').length : 0;
 
-    const canManageInwardOutward = can.manage_inward_outward;
-    const pendingFinalizationCount = canManageInwardOutward ? (inwardOutwardRecords || []).filter(r => r.status === 'Pending Details').length : 0;
-
-
     return {
       myRequests: pendingInternalRequestCount + updatedInternalRequestCount + pendingPpeRequestCount + updatedPpeRequestCount,
       manageTasks: myNewTaskCount + pendingTaskApprovalCount,
@@ -176,7 +184,7 @@ const plannerNotificationCount =
     ppeRequests, payments, feedback, unlockRequests,
     inventoryTransferRequests, dailyPlannerComments,
     myNewTaskCount, pendingTaskApprovalCount,
-    trackerNotificationCount, inwardOutwardRecords
+    trackerNotificationCount, pendingFinalizationCount,
   ]);
   
   const navItems = useMemo(() => [

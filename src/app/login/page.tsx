@@ -3,14 +3,14 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Ship } from 'lucide-react';
 import { LoginForm } from '@/components/auth/login-form';
 
 export default function LoginPage() {
-  const { user, loading, appName, appLogo } = useAppContext();
+  const { user, loading, appName, appLogo } = useAuth();
   const router = useRouter();
 
   useEffect(() => {

@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AppSidebar } from '@/components/shared/app-sidebar';
 import Header from '@/components/shared/header';
@@ -10,11 +10,9 @@ import BroadcastFeed from '@/components/announcements/BroadcastFeed';
 import { DecorationProvider } from '@/components/decorations/DecorationProvider';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAppContext();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-
-  const effectiveStatus = user?.status || 'active';
 
   useEffect(() => {
     if (loading) {
@@ -27,10 +25,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     
     // If the user is locked, redirect them to the status page.
     // This applies to all pages under the (app) directory.
-    if (effectiveStatus === 'locked' && pathname !== '/status') {
+    if (user.status === 'locked' && pathname !== '/status') {
       router.replace('/status');
     }
-  }, [user, loading, router, pathname, effectiveStatus]);
+  }, [user, loading, router, pathname]);
 
   if (loading || !user) {
     return (
@@ -47,10 +45,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If the user is not 'active' (e.g., locked, or status is loading),
+  // If the user is not 'active' (e.g., locked),
   // show a blank screen to prevent a flash of the UI.
   // The useEffect handles the redirection logic.
-  if (effectiveStatus !== 'active') {
+  if (user.status !== 'active') {
     return null;
   }
 

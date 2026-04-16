@@ -5,7 +5,12 @@
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useTask } from '@/contexts/task-provider';
+import { useInventory } from '@/contexts/inventory-provider';
+import { usePurchase } from '@/contexts/purchase-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { usePlanner } from '@/contexts/planner-provider';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -29,14 +34,20 @@ import type { DailyPlannerComment, PlannerEvent, Comment, LogbookRequest } from 
 const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
     const { 
       user, logout, appName, appLogo, can,
-      tasks, certificateRequests, plannerEvents,
-      internalRequests, managementRequests, incidentReports,
-      ppeRequests, payments, feedback, unlockRequests,
-      inventoryTransferRequests, dailyPlannerComments,
-      pendingTaskApprovalCount, myNewTaskCount,
-      damageReports,
-      trackerNotificationCount
-    } = useAppContext();
+    } = useAuth();
+    const { 
+      tasks, pendingTaskApprovalCount, myNewTaskCount
+    } = useTask();
+    const {
+      certificateRequests, internalRequests, ppeRequests, inventoryTransferRequests, damageReports
+    } = useInventory();
+    const {
+      managementRequests, incidentReports, feedback, unlockRequests
+    } = useGeneral();
+    const {
+      plannerEvents, dailyPlannerComments, trackerNotificationCount,
+    } = usePlanner();
+    const { payments } = usePurchase();
     const pathname = usePathname();
 
     const notificationCounts = useMemo(() => {
@@ -141,14 +152,14 @@ const plannerNotificationCount =
       manpower: 0,
       purchases: 0, // Placeholder
     };
-  }, [
-    user, can, tasks, certificateRequests, plannerEvents,
-    internalRequests, managementRequests, incidentReports, damageReports,
-    ppeRequests, payments, feedback, unlockRequests,
-    inventoryTransferRequests, dailyPlannerComments,
-    myNewTaskCount, pendingTaskApprovalCount,
-    trackerNotificationCount,
-  ]);
+    }, [
+      user, can, tasks, certificateRequests, plannerEvents,
+      internalRequests, managementRequests, incidentReports, damageReports,
+      ppeRequests, payments, feedback, unlockRequests,
+      inventoryTransferRequests, dailyPlannerComments,
+      myNewTaskCount, pendingTaskApprovalCount,
+      trackerNotificationCount,
+    ]);
     
     const navItems = [
       { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', notificationCount: 0, show: true },
@@ -228,7 +239,8 @@ const plannerNotificationCount =
 
 
 export default function Header() {
-  const { user, appName, appLogo, can, damageReports } = useAppContext();
+  const { user, appName, appLogo, can } = useAuth();
+  const { damageReports } = useInventory();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isBroadcastOpen, setIsBroadcastOpen] = useState(false);
@@ -357,3 +369,4 @@ export default function Header() {
 
 
     
+
