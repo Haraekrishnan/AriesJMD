@@ -18,6 +18,7 @@ import GenerateTpCertDialog from '../inventory/GenerateTpCertDialog';
 import TransferReportDownloads from './TransferReportDownloads';
 import NewInventoryTransferRequestDialog from './new-inventory-transfer-request-dialog';
 import { Input } from '../ui/input';
+import { cn } from '@/lib/utils';
 
 interface PendingTransfersProps {
   onEditRequest: (request: InventoryTransferRequest) => void;
@@ -45,6 +46,7 @@ const RequestCard = ({ req, onEditRequest }: { req: InventoryTransferRequest; on
     const toProject = projects.find(p => p.id === req.toProjectId);
     const requestedBy = req.requestedById ? users.find(u => u.id === req.requestedById) : null;
     const showTpOption = req.reason === 'For TP certification' || req.reason === 'Expired materials';
+    const approver = req.approverId ? users.find(u => u.id === req.approverId) : null;
 
     const canEdit = useMemo(() => {
         if (!user) return false;
@@ -173,6 +175,17 @@ const RequestCard = ({ req, onEditRequest }: { req: InventoryTransferRequest; on
                         </div>
                     </div>
                     {req.remarks && <p><strong>Remarks:</strong> {req.remarks}</p>}
+                    
+                    {(req.status === 'Completed' || req.status === 'Issued' || req.status === 'Rejected' || req.status === 'Disputed') && approver && (
+                        <div className="text-xs mt-2 pt-2 text-muted-foreground">
+                            <p>
+                                <strong>{req.status} by:</strong> {approver.name}
+                                {req.approvalDate && ` on ${format(parseISO(req.approvalDate), 'dd MMM, yyyy p')}`}
+                            </p>
+                            {req.status === 'Rejected' && <p className="italic text-destructive mt-1">Note: Rejection comments are not displayed due to a known issue.</p>}
+                        </div>
+                    )}
+
                     <div className="pt-1">
                         <p className="font-semibold">Item Summary:</p>
                         <p className="text-muted-foreground">{Object.entries(itemSummary).map(([name, count]) => `${name} (${count})`).join(' · ')}</p>
