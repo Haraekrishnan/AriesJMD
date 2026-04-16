@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -457,10 +458,11 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
     // Functions
     const addInventoryItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
-        if(!user) return;
+        if (!user) return;
         const newRef = push(ref(rtdb, 'inventoryItems'));
-        const dataToSave = { 
-            ...itemData, 
+        const storeProject = projects.find(p => p.name === 'Store');
+        const dataToSave: Partial<InventoryItem> = {
+            ...itemData,
             isArchived: false,
             chestCrollNo: itemData.chestCrollNo || null,
             lastUpdated: new Date().toISOString(),
@@ -469,9 +471,16 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             certification: itemData.certification || null,
             purchaseDate: itemData.purchaseDate || null,
         };
+        
+        if (dataToSave.status === 'In Store') {
+            dataToSave.projectId = storeProject?.id || projects[0]?.id;
+        } else if (!dataToSave.projectId) {
+            dataToSave.projectId = storeProject?.id || projects[0]?.id;
+        }
+        
         set(newRef, dataToSave);
         addActivityLog(user.id, 'Inventory Item Added', `${itemData.name} (SN: ${itemData.serialNumber})`);
-    }, [user, addActivityLog]);
+    }, [user, addActivityLog, projects]);
 
     const batchAddInventoryItems = useCallback((items: Omit<InventoryItem, 'id' | 'lastUpdated'>[]) => {
         if (!user) return;
@@ -1678,4 +1687,5 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
+
 

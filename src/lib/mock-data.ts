@@ -130,6 +130,7 @@ export const PROJECTS: Project[] = [
     { id: 'proj-7', name: 'Head Office' },
     { id: 'proj-8', name: 'Pass Section' },
     { id: 'proj-9', name: 'Unassigned' },
+    { id: 'proj-store', name: 'Store' },
 ];
 
 export const JOB_RECORD_PLANTS: JobRecordPlant[] = [
@@ -341,7 +342,7 @@ export const MANAGEMENT_REQUESTS: ManagementRequest[] = [
 
 export const INVENTORY_ITEMS: InventoryItem[] = [
     { id: 'inv-1', name: 'Harness', serialNumber: 'HN-001', chestCrollNo: 'CCN-A1', ariesId: 'ARIES-001', status: 'In Use', inspectionDate: sub(new Date(), { months: 2 }).toISOString(), inspectionDueDate: add(new Date(), { months: 4 }).toISOString(), tpInspectionDueDate: add(new Date(), { months: 10 }).toISOString(), projectId: 'proj-1', lastUpdated: new Date().toISOString() },
-    { id: 'inv-2', name: 'Harness', serialNumber: 'HN-002', chestCrollNo: 'CCN-A2', ariesId: 'ARIES-002', status: 'In Store', inspectionDate: sub(new Date(), { months: 1 }).toISOString(), inspectionDueDate: add(new Date(), { months: 5 }).toISOString(), tpInspectionDueDate: add(new Date(), { months: 11 }).toISOString(), projectId: 'proj-6', lastUpdated: new Date().toISOString() },
+    { id: 'inv-2', name: 'Harness', serialNumber: 'HN-002', chestCrollNo: 'CCN-A2', ariesId: 'ARIES-002', status: 'In Store', inspectionDate: sub(new Date(), { months: 1 }).toISOString(), inspectionDueDate: add(new Date(), { months: 5 }).toISOString(), tpInspectionDueDate: add(new Date(), { months: 11 }).toISOString(), projectId: 'proj-store', lastUpdated: new Date().toISOString() },
     { id: 'inv-3', name: 'Foot Loop', serialNumber: 'FL-001', status: 'In Use', inspectionDate: sub(new Date(), { days: 10 }).toISOString(), inspectionDueDate: add(new Date(), { months: 5, days: 20 }).toISOString(), tpInspectionDueDate: add(new Date(), { months: 11, days: 20 }).toISOString(), projectId: 'proj-2', lastUpdated: new Date().toISOString() },
     { id: 'inv-4', name: 'Grinder', serialNumber: 'GR-001', status: 'Damaged', inspectionDate: sub(new Date(), { years: 1 }).toISOString(), inspectionDueDate: sub(new Date(), { months: 6 }).toISOString(), tpInspectionDueDate: sub(new Date(), { months: 1 }).toISOString(), projectId: 'proj-3', lastUpdated: new Date().toISOString() },
     { id: 'inv-5', name: 'Harness', serialNumber: 'HN-003', chestCrollNo: 'CCN-B1', ariesId: 'ARIES-003', status: 'In Use', inspectionDate: new Date().toISOString(), inspectionDueDate: add(new Date(), { days: 25 }).toISOString(), tpInspectionDueDate: add(new Date(), { months: 6, days: 25 }).toISOString(), projectId: 'proj-4', lastUpdated: new Date().toISOString() },
