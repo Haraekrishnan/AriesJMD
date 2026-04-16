@@ -1,9 +1,9 @@
-
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useInwardOutward } from '@/contexts/inward-outward-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -62,7 +62,8 @@ const generateDefaultItem = () => ({
 });
 
 export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRecordDialogProps) {
-  const { batchCreateAndLogItems, inventoryItems } = useAppContext();
+  const { batchCreateAndLogItems } = useInwardOutward();
+  const { inventoryItems } = useInventory();
   const { toast } = useToast();
 
   const itemNames = useMemo(() => Array.from(new Set(inventoryItems.map(item => item.name))), [inventoryItems]);
@@ -96,8 +97,8 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
         certificateUrl: item.certificateUrl || null,
         inspectionCertificateUrl: item.inspectionCertificateUrl || null,
     }));
-    const count = batchCreateAndLogItems(itemsToCreate, data.source);
-    toast({ title: 'Batch Inward Successful', description: `${count} new items were created and logged.` });
+    batchCreateAndLogItems(itemsToCreate, data.source);
+    toast({ title: 'Batch Inward Successful', description: `${itemsToCreate.length} new items were created and logged.` });
     setIsOpen(false);
   };
 
