@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,7 +5,9 @@ import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel, SelectSeparator } from '@/components/ui/select';
 import { X } from 'lucide-react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import type { InventoryItemStatus } from '@/lib/types';
 import { DateRangePicker } from '../ui/date-range-picker';
 import { Input } from '../ui/input';
@@ -27,7 +28,9 @@ interface InventoryFiltersProps {
 const detailedStatusOptions: InventoryItemStatus[] = ['In Use', 'In Store', 'Damaged', 'Expired', 'Moved to another project', 'Quarantine'];
 
 export default function InventoryFilters({ onApplyFilters, initialFilters }: InventoryFiltersProps) {
-    const { projects, inventoryItems, user } = useAppContext();
+    const { projects } = useGeneral();
+    const { inventoryItems } = useInventory();
+    const { user } = useAuth();
     const [filters, setFilters] = useState<InventoryFilterValues>(initialFilters);
 
     const itemNames = Array.from(new Set(inventoryItems.filter(item => item.category === 'General').map(item => item.name)));
