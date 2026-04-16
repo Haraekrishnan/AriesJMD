@@ -116,8 +116,8 @@ type InventoryContextType = {
   renameInventoryItemGroup: (oldName: string, newName: string) => void;
   revalidateExpiredItems: () => void;
   
-  addInventoryTransferRequest: (request: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => void;
-  updateInventoryTransferRequest: (request: InventoryTransferRequest) => void;
+  addInventoryTransferRequest: (request: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => Promise<boolean>;
+  updateInventoryTransferRequest: (request: InventoryTransferRequest) => Promise<boolean>;
   deleteInventoryTransferRequest: (requestId: string) => void;
   approveInventoryTransferRequest: (request: InventoryTransferRequest, createTpList: boolean) => void;
   rejectInventoryTransferRequest: (requestId: string, comment: string) => void;
@@ -253,17 +253,12 @@ const createDataListener = <T extends {}>(
 ) => {
     const dbRef = ref(rtdb, path);
     const unsubscribe = onValue(dbRef, (snapshot) => {
-        const data = snapshot.val() || {};
+        const data = (snapshot.val() || {}) as Record<string, T>;
         const processedData = Object.keys(data).reduce((acc, key) => {
             acc[key] = { ...data[key], id: key };
             return acc;
         }, {} as Record<string, T>);
-        setData(currentData => {
-            if (JSON.stringify(currentData) === JSON.stringify(processedData)) {
-                return currentData;
-            }
-            return processedData;
-        });
+        setData(processedData);
     });
     return unsubscribe;
 };
@@ -275,7 +270,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const { projects, notificationSettings, managementRequests } = useGeneral();
     const { manpowerProfiles } = useManpower();
     const { toast } = useToast();
-    const { consumableItems, consumableInwardHistory } = useConsumable();
+    const { consumableItems, consumableInwardHistory, addConsumableInwardRecord } = useConsumable();
 
     // State
     const [inventoryItemsById, setInventoryItemsById] = useState<Record<string, InventoryItem>>({});
@@ -765,68 +760,83 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         remove(ref(rtdb, `tpCertLists/${listId}`));
     }, []);
     
-    const addInventoryTransferRequest = useCallback((requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>) => {
-        if (!user) return;
-        const newRequestRef = push(ref(rtdb, 'inventoryTransferRequests'));
+    const addInventoryTransferRequest = useCallback(async (requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>): Promise<boolean> => {
+        if (!user) return false;
+        try {
+            const newRequestRef = push(ref(rtdb, 'inventoryTransferRequests'));
+            
+            const sanitizedItems = requestData.items.map(item => ({
+                ...item,
+                ariesId: item.ariesId || null,
+            }));
         
-        const sanitizedItems = requestData.items.map(item => ({
-            ...item,
-            ariesId: item.ariesId || null,
-        }));
+            const newRequest: Omit<InventoryTransferRequest, 'id'> = {
+                ...requestData,
+                items: sanitizedItems,
+                requesterId: user.id,
+                requestDate: new Date().toISOString(),
+                status: 'Pending',
+                requestedById: requestData.requestedById || null,
+            };
+            await set(newRequestRef, newRequest);
+            addActivityLog(user.id, 'Inventory Transfer Request Created');
     
-        const newRequest: Omit<InventoryTransferRequest, 'id'> = {
-            ...requestData,
-            items: sanitizedItems,
-            requesterId: user.id,
-            requestDate: new Date().toISOString(),
-            status: 'Pending',
-            requestedById: requestData.requestedById || null,
-        };
-        set(newRequestRef, newRequest);
-        addActivityLog(user.id, 'Inventory Transfer Request Created');
+            const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge', 'Admin'].includes(u.role));
+            const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
+            const toProjectName = projects.find(p => p.id === requestData.toProjectId)?.name;
+            const itemsHtml = requestData.items.map(item => `<li>${item.name} (SN: ${item.serialNumber})</li>`).join('');
+        
+            storePersonnel.forEach(storeUser => {
+                if (storeUser.email) {
+                    const htmlBody = `
+                        <p>A new inventory transfer has been requested by ${user.name}.</p>
+                        <h3>Details:</h3>
+                        <ul>
+                            <li><strong>From:</strong> ${fromProjectName || 'Unknown'}</li>
+                            <li><strong>To:</strong> ${toProjectName || 'Unknown'}</li>
+                            <li><strong>Reason:</strong> ${requestData.reason}</li>
+                        </ul>
+                        <h3>Items (${requestData.items.length}):</h3>
+                        <ul>
+                            ${itemsHtml}
+                        </ul>
+                        <p>Please review the request in the app.</p>
+                    `;
+                    sendNotificationEmail({
+                        to: [storeUser.email],
+                        subject: `Inventory Transfer Request from ${user.name}`,
+                        htmlBody,
+                        notificationSettings,
+                        event: 'onInternalRequest'
+                    });
+                }
+            });
+            toast({ title: "Transfer Request Submitted" });
+            return true;
+        } catch (error) {
+            console.error("Failed to add inventory transfer request:", error);
+            toast({ variant: 'destructive', title: 'Submission Failed', description: 'Could not save the request to the database.' });
+            return false;
+        }
+    }, [user, addActivityLog, users, projects, notificationSettings, toast]);
     
-        const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge', 'Admin'].includes(u.role));
-        const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
-        const toProjectName = projects.find(p => p.id === requestData.toProjectId)?.name;
-        const itemsHtml = requestData.items.map(item => `<li>${item.name} (SN: ${item.serialNumber})</li>`).join('');
+    const updateInventoryTransferRequest = useCallback(async (request: InventoryTransferRequest): Promise<boolean> => {
+        try {
+            const { id, ...data } = request;
+            const sanitizedItems = data.items.map(item => ({
+                ...item,
+                ariesId: item.ariesId || null,
+            }));
+            const finalData = { ...data, items: sanitizedItems };
+            await update(ref(rtdb, `inventoryTransferRequests/${id}`), finalData);
+            return true;
+        } catch (error) {
+            console.error("Failed to update inventory transfer request:", error);
+            toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not save changes to the request.' });
+            return false;
+        }
+    }, [toast]);
     
-        storePersonnel.forEach(storeUser => {
-            if (storeUser.email) {
-                const htmlBody = `
-                    <p>A new inventory transfer has been requested by ${user.name}.</p>
-                    <h3>Details:</h3>
-                    <ul>
-                        <li><strong>From:</strong> ${fromProjectName || 'Unknown'}</li>
-                        <li><strong>To:</strong> ${toProjectName || 'Unknown'}</li>
-                        <li><strong>Reason:</strong> ${requestData.reason}</li>
-                    </ul>
-                    <h3>Items (${requestData.items.length}):</h3>
-                    <ul>
-                        ${itemsHtml}
-                    </ul>
-                    <p>Please review the request in the app.</p>
-                `;
-                sendNotificationEmail({
-                    to: [storeUser.email],
-                    subject: `Inventory Transfer Request from ${user.name}`,
-                    htmlBody,
-                    notificationSettings,
-                    event: 'onInternalRequest'
-                });
-            }
-        });
-    }, [user, addActivityLog, users, projects, notificationSettings]);
-
-    const updateInventoryTransferRequest = useCallback((request: InventoryTransferRequest) => {
-        const { id, ...data } = request;
-        const sanitizedItems = data.items.map(item => ({
-            ...item,
-            ariesId: item.ariesId || null,
-        }));
-        const finalData = { ...data, items: sanitizedItems };
-        update(ref(rtdb, `inventoryTransferRequests/${id}`), finalData);
-    }, []);
-
     const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
         if (!user) return;
     
