@@ -1,7 +1,7 @@
-
 'use client';
 import { useMemo, useState } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -28,7 +28,8 @@ interface ViewDamageReportDialogProps {
 }
 
 export default function ViewDamageReportDialog({ isOpen, setIsOpen, report }: ViewDamageReportDialogProps) {
-  const { user, users, inventoryItems, utMachines, dftMachines, updateDamageReportStatus } = useAppContext();
+  const { user, users } = useAuth();
+  const { inventoryItems, utMachines, dftMachines, updateDamageReportStatus } = useInventory();
   const { toast } = useToast();
   const [comment, setComment] = useState('');
 

@@ -1,8 +1,8 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,8 @@ const statusVariant: { [key in DamageReportStatus]: 'secondary' | 'destructive' 
 };
 
 export default function DamageReportList() {
-  const { damageReports = [], inventoryItems, utMachines, dftMachines, users, user, deleteDamageReport } = useAppContext();
+  const { user, users } = useAuth();
+  const { damageReports = [], inventoryItems, utMachines, dftMachines, deleteDamageReport } = useInventory();
   const [viewingReport, setViewingReport] = useState<DamageReport | null>(null);
   const { toast } = useToast();
 

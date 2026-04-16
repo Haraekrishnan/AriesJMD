@@ -1,9 +1,8 @@
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
 import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -36,8 +35,8 @@ interface NewDamageReportDialogProps {
 }
 
 export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageReportDialogProps) {
-  const { user, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, damageReports } = useAppContext();
-  const { addDamageReport } = useInventory();
+  const { user } = useAuth();
+  const { addDamageReport, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, damageReports } = useInventory();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
