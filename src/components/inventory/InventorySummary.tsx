@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import type { InventoryItem } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { useAppContext } from '@/contexts/app-provider';
+import { useGeneral } from '@/contexts/general-provider';
 
 interface InventorySummaryProps {
     items: InventoryItem[];
@@ -17,7 +17,7 @@ interface SummaryData {
 }
 
 export default function InventorySummary({ items }: InventorySummaryProps) {
-    const { projects } = useAppContext();
+    const { projects } = useGeneral();
 
     const summaryData = useMemo(() => {
         const data: SummaryData = {};
@@ -63,5 +63,3 @@ export default function InventorySummary({ items }: InventorySummaryProps) {
         </div>
     );
 }
-
-    

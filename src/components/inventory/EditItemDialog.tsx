@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -70,7 +72,9 @@ const excludedLocations = ['Store', 'Office', 'Kitchen Duty'];
 
 
 export default function EditItemDialog({ isOpen, setIsOpen, item }: EditItemDialogProps) {
-  const { updateInventoryItem, projects, inventoryItems, user, can } = useAppContext();
+  const { user, can } = useAuth();
+  const { projects } = useGeneral();
+  const { updateInventoryItem, inventoryItems } = useInventory();
   const { toast } = useToast();
   
   const itemNames = useMemo(() => Array.from(new Set(inventoryItems.map(item => item.name))), [inventoryItems]);

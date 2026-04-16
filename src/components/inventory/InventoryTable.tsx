@@ -1,13 +1,15 @@
 
 'use client';
 import { useState, useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import type { InventoryItem } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, ShieldQuestion, Pencil, ArrowUpDown, CheckCircle, Link as LinkIcon, Download } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, ShieldQuestion, Pencil, ArrowUpDown, CheckCircle, Link as LinkIcon } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import EditItemDialog from './EditItemDialog';
@@ -28,7 +30,8 @@ interface InventoryTableProps {
 }
 
 const ItemCard = ({ item, onEdit, onRequest, onDelete, onVerify }: { item: InventoryItem; onEdit: () => void; onRequest: () => void; onDelete: () => void; onVerify: () => void; }) => {
-    const { can, user, projects } = useAppContext();
+    const { can, user } = useAuth();
+    const { projects } = useGeneral();
     
     const getProjectName = (item: InventoryItem) => {
         if (item.status === 'Moved to another project') {
@@ -161,7 +164,10 @@ const ItemCard = ({ item, onEdit, onRequest, onDelete, onVerify }: { item: Inven
 };
 
 export default function InventoryTable({ items, selectedItems, onSelectionChange }: InventoryTableProps) {
-    const { user, roles, batchDeleteInventoryItems, projects, updateInventoryItem, can, damageReports } = useAppContext();
+    const { user, can } = useAuth();
+    const { projects } = useGeneral();
+    const { batchDeleteInventoryItems, updateInventoryItem, damageReports } = useInventory();
+
     const { toast } = useToast();
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isCertRequestOpen, setIsCertRequestOpen] = useState(false);
@@ -173,9 +179,8 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
 
     const canManage = useMemo(() => {
         if (!user) return false;
-        const userRole = roles.find(r => r.name === user.role);
-        return userRole?.permissions.includes('manage_inventory') ?? false;
-    }, [user, roles]);
+        return can.manage_inventory;
+    }, [user, can]);
     
     const getProjectName = (item: InventoryItem) => {
         if (item.status === 'Moved to another project') {
@@ -410,7 +415,7 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
                                                         const isExpired = (item.inspectionDueDate && isPast(parseISO(item.inspectionDueDate))) || (item.tpInspectionDueDate && isPast(parseISO(item.tpInspectionDueDate)));
                                                         const displayStatus = isExpired ? 'Expired' : item.status;
                                                         const damageReport = damageReports.find(dr => dr.itemId === item.id);
-                                                        const attachmentUrl = damageReport?.attachmentDownloadUrl || damageReport?.attachmentOriginalUrl || damageReport?.attachmentUrl;
+                                                        const attachmentUrl = damageReport?.attachmentDownloadUrl || damageReport?.attachmentOriginalUrl || (damageReport as any)?.attachmentUrl;
                                                         
                                                         return (
                                                         <TableRow key={item.id}>

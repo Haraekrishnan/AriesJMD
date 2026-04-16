@@ -3,7 +3,7 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -13,7 +13,7 @@ import { Textarea } from '../ui/textarea';
 import type { InventoryItem, UTMachine, DftMachine } from '@/lib/types';
 
 const certRequestSchema = z.object({
-  requestType: z.enum(['Calibration Certificate', 'TP Inspection Certificate']),
+  requestType: z.enum(['Calibration Certificate', 'TP Certificate', 'Inspection Certificate']),
   remarks: z.string().optional(),
 });
 
@@ -28,7 +28,7 @@ interface RequestCertificateDialogProps {
 }
 
 export default function NewCertificateRequestDialog({ isOpen, setIsOpen, item, utMachine, dftMachine }: RequestCertificateDialogProps) {
-  const { addCertificateRequest } = useAppContext();
+  const { addCertificateRequest } = useInventory();
   const { toast } = useToast();
   
   const form = useForm<CertRequestFormValues>({
