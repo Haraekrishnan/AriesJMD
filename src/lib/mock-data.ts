@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import type { User, Task, PlannerEvent, Achievement, RoleDefinition, Project, TaskStatus, ActivityLog, DailyPlannerComment, InternalRequest, ManagementRequest, InventoryItem, CertificateRequest, ManpowerLog, UTMachine, Vehicle, ManpowerProfile, Trade, DftMachine, MobileSim, LaptopDesktop, Driver, Announcement, IncidentReport, Building, IgpOgpRecord, PpeInwardRecord, JobRecordPlant, JobCode, ObservationReport } from './types';
@@ -537,5 +535,3 @@ export const BUILDINGS: Building[] = [
 ];
 
 export const IGP_OGP_RECORDS: IgpOgpRecord[] = [];
-
-    

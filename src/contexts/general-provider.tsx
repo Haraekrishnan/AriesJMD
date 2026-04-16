@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -12,7 +10,7 @@ import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { uploadFile } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { Announcement, ActivityLog, IncidentReport, Comment, DownloadableDocument, Project, JobCode, Vehicle, Driver, NotificationSettings, Broadcast, ManagementRequest, ManagementRequestStatus, ObservationReport } from '@/lib/types';
-import { JOB_CODES as INITIAL_JOB_CODES } from '@/lib/mock-data';
+import { JOB_CODES as INITIAL_JOB_CODES, PROJECTS as INITIAL_PROJECTS } from '@/lib/mock-data';
 import { useAuth } from './auth-provider';
 
 
@@ -573,6 +571,16 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
       }),
     ];
 
+    onValue(ref(rtdb, 'projects'), (snapshot) => {
+        if (!snapshot.exists()) {
+            const updates: { [key: string]: any } = {};
+            INITIAL_PROJECTS.forEach(project => {
+                updates[`/projects/${project.id}`] = project;
+            });
+            update(ref(rtdb), updates);
+        }
+    }, { onlyOnce: true });
+
     onValue(ref(rtdb, 'jobCodes'), (snapshot) => {
         if (!snapshot.exists()) {
             const updates: { [key: string]: any } = {};
@@ -608,12 +616,3 @@ export const useGeneral = (): GeneralContextType => {
   }
   return context;
 };
-
-    
-
-
-
-    
-
-    
-
