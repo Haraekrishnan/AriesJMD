@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,7 +18,7 @@ import type { InwardOutwardRecord, InventoryItem } from '@/lib/types';
 import { useInventory } from '@/contexts/inventory-provider';
 
 const newItemSchema = z.object({
-  id: z.string(),
+  id: z.string(), // This is a temp ID
   name: z.string().min(1, 'Name is required'),
   serialNumber: z.string().min(1, 'Serial is required'),
   ariesId: z.string().optional(),
@@ -63,7 +64,8 @@ const generateNewItemFromRecord = (record: InwardOutwardRecord) => ({
 });
 
 export default function FinalizeInwardDialog({ isOpen, setIsOpen, record }: FinalizeInwardDialogProps) {
-  const { finalizeInwardPurchase, projects, inventoryItems } = useInventory();
+  const { finalizeInwardPurchase } = useAppContext();
+  const { inventoryItems } = useInventory();
   const { toast } = useToast();
 
   const itemNames = useMemo(() => Array.from(new Set(inventoryItems.map(item => item.name))), [inventoryItems]);
@@ -88,8 +90,6 @@ export default function FinalizeInwardDialog({ isOpen, setIsOpen, record }: Fina
   }, [record, isOpen, replace]);
 
   const onSubmit = (data: FormValues) => {
-    const storeProject = projects.find(p => p.name === 'Store');
-
     const itemsToCreate = data.items.map(item => ({
         name: item.name,
         serialNumber: item.serialNumber,
@@ -104,15 +104,11 @@ export default function FinalizeInwardDialog({ isOpen, setIsOpen, record }: Fina
         tpInspectionDueDate: item.tpInspectionDueDate ? item.tpInspectionDueDate.toISOString() : null,
         certificateUrl: item.certificateUrl || null,
         inspectionCertificateUrl: item.inspectionCertificateUrl || null,
-        status: 'In Store' as const,
-        projectId: storeProject?.id || '',
-        quantity: 1,
     }));
     finalizeInwardPurchase(record.id, itemsToCreate);
-    toast({ title: 'Inward Finalized', description: `${data.items.length} new items have been created.` });
     setIsOpen(false);
   };
-
+  
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       form.reset({ items: [] });

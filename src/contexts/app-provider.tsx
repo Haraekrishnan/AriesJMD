@@ -11,6 +11,7 @@ import { TaskProvider, useTask } from './task-provider';
 import { ConsumableProvider, useConsumable } from './consumable-provider';
 import { AccommodationProvider, useAccommodation } from './accommodation-provider';
 import { DecorationContextProvider, useDecorations } from './decoration-provider';
+import { InwardOutwardProvider, useInwardOutward } from './inward-outward-provider';
 
 const AppContext = createContext({} as any);
 
@@ -25,6 +26,7 @@ function CombinedProvider({ children }: { children: ReactNode }) {
   const consumable = useConsumable();
   const accommodation = useAccommodation();
   const decorations = useDecorations();
+  const inwardOutward = useInwardOutward();
   
   const combinedValue = {
     ...auth,
@@ -37,6 +39,7 @@ function CombinedProvider({ children }: { children: ReactNode }) {
     ...consumable,
     ...accommodation,
     ...decorations,
+    ...inwardOutward,
   };
 
   return (
@@ -58,9 +61,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     <InventoryProvider>
                       <AccommodationProvider>
                         <DecorationContextProvider>
-                          <CombinedProvider>
-                            {children}
-                          </CombinedProvider>
+                            <InwardOutwardProvider>
+                                <CombinedProvider>
+                                    {children}
+                                </CombinedProvider>
+                            </InwardOutwardProvider>
                         </DecorationContextProvider>
                       </AccommodationProvider>
                     </InventoryProvider>
@@ -79,6 +84,5 @@ export const useAppContext = () => {
   if (context === undefined) {
     throw new Error('useAppContext must be used within an AppProvider');
   }
-  return context as ReturnType<typeof useAuth> & ReturnType<typeof useGeneral> & ReturnType<typeof useInventory> & ReturnType<typeof useManpower> & ReturnType<typeof usePlanner> & ReturnType<typeof usePurchase> & ReturnType<typeof useTask> & ReturnType<typeof useConsumable> & ReturnType<typeof useAccommodation> & ReturnType<typeof useDecorations>;
+  return context as ReturnType<typeof useAuth> & ReturnType<typeof useGeneral> & ReturnType<typeof useInventory> & ReturnType<typeof useManpower> & ReturnType<typeof usePlanner> & ReturnType<typeof usePurchase> & ReturnType<typeof useTask> & ReturnType<typeof useConsumable> & ReturnType<typeof useAccommodation> & ReturnType<typeof useDecorations> & ReturnType<typeof useInwardOutward>;
 };
-

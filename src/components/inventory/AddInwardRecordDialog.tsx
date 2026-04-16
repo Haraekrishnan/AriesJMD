@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -181,11 +182,11 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
                         </div>
                          <div className="space-y-2 md:col-span-2">
                             <Label>TP Certificate URL</Label>
-                            <Input {...form.register(`items.${index}.certificateUrl`)} placeholder="https://" />
+                            <Input {...form.register(`items.${index}.certificateUrl`)} placeholder="https://..." />
                         </div>
                         <div className="space-y-2 md:col-span-2">
                             <Label>Inspection Certificate URL</Label>
-                            <Input {...form.register(`items.${index}.inspectionCertificateUrl`)} placeholder="https://" />
+                            <Input {...form.register(`items.${index}.inspectionCertificateUrl`)} placeholder="https://..." />
                         </div>
                         <div className="space-y-2 md:col-span-4">
                             <Label>Remarks</Label>

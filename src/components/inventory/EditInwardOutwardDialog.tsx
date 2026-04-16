@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -53,7 +54,7 @@ interface EditInwardOutwardDialogProps {
 }
 
 export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: EditInwardOutwardDialogProps) {
-  const { inventoryItems, projects } = useInventory();
+  const { updateInwardOutwardRecord, inventoryItems } = useAppContext();
   const { toast } = useToast();
 
   const form = useForm<FormValues>({
@@ -112,58 +113,7 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
   });
 
   const onSubmit = (data: FormValues) => {
-    const originalItemIds = new Set(record.finalizedItemIds || (record.itemId ? [record.itemId] : []));
-    const updates: { [key: string]: any } = {};
-    const now = new Date().toISOString();
-    
-    let newFinalizedItemIds: string[] = [];
-
-    data.items.forEach(item => {
-        const itemData = {
-            ...item,
-            purchaseDate: item.purchaseDate?.toISOString() ?? null,
-            inspectionDate: item.inspectionDate?.toISOString() ?? null,
-            inspectionDueDate: item.inspectionDueDate?.toISOString() ?? null,
-            tpInspectionDueDate: item.tpInspectionDueDate?.toISOString() ?? null,
-        };
-
-        if (originalItemIds.has(item.id)) { // This is an existing item to update
-            const { id, ...restOfData } = itemData;
-            const path = `inventoryItems/${id}`;
-            Object.entries(restOfData).forEach(([key, value]) => {
-                updates[`${path}/${key}`] = value;
-            });
-            updates[`${path}/lastUpdated`] = now;
-            newFinalizedItemIds.push(id);
-        } else { // This is a new item to add
-            const { id, ...restOfData } = itemData;
-            const newRef = push(ref(rtdb, 'inventoryItems'));
-            const newItemId = newRef.key!;
-            updates[`inventoryItems/${newItemId}`] = {
-                ...restOfData,
-                category: 'General',
-                status: 'In Store',
-                projectId: projects.find(p => p.name === 'Store')?.id || '',
-                isArchived: false,
-                lastUpdated: now,
-            };
-            newFinalizedItemIds.push(newItemId);
-        }
-    });
-
-    updates[`inwardOutwardRecords/${record.id}`] = {
-        ...record,
-        date: data.date.toISOString(),
-        source: data.source,
-        quantity: newFinalizedItemIds.length,
-        remarks: data.remarks,
-        finalizedItemIds: newFinalizedItemIds,
-        status: 'Completed',
-    };
-    
-    update(ref(rtdb), updates);
-
-    toast({ title: 'Record and Items Updated' });
+    updateInwardOutwardRecord(record, data.items.map(item => ({...item, id: item.id.startsWith('new-') ? undefined : item.id} as any)));
     setIsOpen(false);
   };
   
