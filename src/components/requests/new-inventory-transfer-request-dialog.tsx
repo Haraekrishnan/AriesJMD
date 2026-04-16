@@ -4,7 +4,8 @@
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useAppContext } from "@/contexts/app-provider";
+import { useAuth } from "@/contexts/auth-provider";
+import { useInventory } from "@/contexts/inventory-provider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -53,7 +54,6 @@ import type {
 
 import { TRANSFER_REASONS } from "@/lib/types";
 import { FormProvider } from "react-hook-form";
-import { useInventory } from "@/contexts/inventory-provider";
 
 type SearchableItem =
   | (InventoryItem & { itemType: "Inventory" })
@@ -296,7 +296,6 @@ export default function NewInventoryTransferRequestDialog({
         if (success) toast({ title: "Transfer Request Updated" });
       } else {
         success = await addInventoryTransferRequest(data);
-        if (success) toast({ title: "Transfer Request Submitted" });
       }
       if (success) {
         setIsOpen(false);
@@ -501,7 +500,7 @@ export default function NewInventoryTransferRequestDialog({
             {/* ------------------- Selected Items ------------------- */}
             <div>
               <Label>Items to Transfer ({selectedItems.length})</Label>
-              <ScrollArea className="h-48 border rounded-md p-2">
+              <ScrollArea className="h-40 border rounded-md p-2">
                 {selectedItems.length === 0 ? (
                   <p className="text-center text-sm text-muted-foreground pt-4">
                     No items added yet.
@@ -557,3 +556,5 @@ export default function NewInventoryTransferRequestDialog({
     </Dialog>
   );
 }
+
+    
