@@ -1,4 +1,3 @@
-
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -57,6 +56,8 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
   const { updateInwardOutwardRecord } = useInwardOutward();
   const { inventoryItems } = useInventory();
   const { toast } = useToast();
+
+  const itemNames = useMemo(() => Array.from(new Set(inventoryItems.map(item => item.name))), [inventoryItems]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(editSchema),
@@ -154,6 +155,9 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
           <div className="flex-1 overflow-hidden flex flex-col mt-4">
             <ScrollArea className="flex-1 px-4 -mx-4">
               <div className="space-y-4">
+                <datalist id="item-names-list">
+                  {itemNames.map(n => <option key={n} value={n} />)}
+                </datalist>
                 {fields.map((field, index) => (
                   <div key={field.id} className="p-4 border rounded-md relative bg-muted/30">
                     <div className="flex justify-between items-center mb-2">
@@ -165,7 +169,7 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="space-y-2">
                             <Label>Item Name</Label>
-                            <Input {...form.register(`items.${index}.name`)} />
+                            <Input {...form.register(`items.${index}.name`)} list="item-names-list" />
                         </div>
                         <div className="space-y-2">
                             <Label>Serial Number</Label>
