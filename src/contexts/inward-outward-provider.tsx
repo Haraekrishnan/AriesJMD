@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo } from 'react';
@@ -16,6 +17,8 @@ type InwardOutwardContextType = {
   finalizeInwardPurchase: (recordId: string, itemsData: Omit<InventoryItem, 'id' | 'lastUpdated' | 'status' | 'isArchived'>[]) => Promise<void>;
   updateInwardOutwardRecord: (record: InwardOutwardRecord, itemsData: Partial<InventoryItem>[]) => Promise<void>;
   deleteInwardOutwardRecord: (recordId: string) => Promise<void>;
+  lockInwardOutwardRecord: (recordId: string) => Promise<void>;
+  unlockInwardOutwardRecord: (recordId: string) => Promise<void>;
 };
 
 const InwardOutwardContext = createContext<InwardOutwardContextType | undefined>(undefined);
@@ -101,7 +104,7 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
     return totalQuantity;
   }, [user, addActivityLog, projects, toast]);
   
-  const finalizeInwardPurchase = useCallback(async (recordId: string, itemsData: Omit<InventoryItem, 'id' | 'lastUpdated'>[]) => {
+  const finalizeInwardPurchase = useCallback(async (recordId: string, itemsData: Omit<InventoryItem, 'id' | 'lastUpdated' | 'status' | 'isArchived'>[]) => {
     if (!user) return;
     const updates: { [key: string]: any } = {};
     const now = new Date().toISOString();
@@ -181,6 +184,34 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
     }
   }, [user, toast, addActivityLog]);
 
+  const lockInwardOutwardRecord = useCallback(async (recordId: string) => {
+    if (!user || !can.manage_inward_outward) {
+        toast({ title: 'Permission Denied', variant: 'destructive' });
+        return;
+    }
+    try {
+        await update(ref(rtdb, `inwardOutwardRecords/${recordId}`), { isLocked: true });
+        toast({ title: 'Record Locked' });
+    } catch (error) {
+        console.error(error);
+        toast({ title: 'Error', description: 'Failed to lock the record.', variant: 'destructive' });
+    }
+  }, [user, can.manage_inward_outward, toast]);
+
+  const unlockInwardOutwardRecord = useCallback(async (recordId: string) => {
+      if (!user || user.role !== 'Admin') {
+          toast({ title: 'Permission Denied', description: 'Only Admins can unlock records.', variant: 'destructive' });
+          return;
+      }
+      try {
+          await update(ref(rtdb, `inwardOutwardRecords/${recordId}`), { isLocked: false });
+          toast({ title: 'Record Unlocked' });
+      } catch (error) {
+          console.error(error);
+          toast({ title: 'Error', description: 'Failed to unlock the record.', variant: 'destructive' });
+      }
+  }, [user, toast]);
+
   const contextValue: InwardOutwardContextType = {
     inwardOutwardRecords,
     pendingFinalizationCount,
@@ -188,6 +219,8 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
     finalizeInwardPurchase,
     updateInwardOutwardRecord,
     deleteInwardOutwardRecord,
+    lockInwardOutwardRecord,
+    unlockInwardOutwardRecord,
   };
 
   return <InwardOutwardContext.Provider value={contextValue}>{children}</InwardOutwardContext.Provider>;

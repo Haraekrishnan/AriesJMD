@@ -1256,4 +1256,5 @@ export type InwardOutwardRecord = {
     quotationId?: string;
     vendorId?: string;
     finalizedItemIds?: string[];
+    isLocked?: boolean;
 };

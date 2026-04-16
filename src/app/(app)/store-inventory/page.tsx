@@ -33,10 +33,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import AddInwardRecordDialog from '@/components/inventory/AddInwardRecordDialog';
 import InwardOutwardHistory from '@/components/inventory/InwardOutwardHistory';
+import { useInwardOutward } from '@/contexts/inward-outward-provider';
 
 
 export default function StoreInventoryPage() {
-    const { user, users, roles, inventoryItems, projects, certificateRequests, acknowledgeFulfilledRequest, markFulfilledRequestsAsViewed, can, pendingInventoryTransferRequestCount, pendingDamageReportCount, revalidateExpiredItems, inwardOutwardRecords } = useAppContext();
+    const { user, users, roles, inventoryItems, projects, certificateRequests, acknowledgeFulfilledRequest, markFulfilledRequestsAsViewed, can, pendingInventoryTransferRequestCount, pendingDamageReportCount, revalidateExpiredItems } = useAppContext();
+    const { inwardOutwardRecords, pendingFinalizationCount } = useInwardOutward();
     const [isAddItemOpen, setIsAddItemOpen] = useState(false);
     const [isImportOpen, setIsImportOpen] = useState(false);
     const [isUpdateItemsOpen, setIsUpdateItemsOpen] = useState(false);
@@ -59,11 +61,6 @@ export default function StoreInventoryPage() {
     });
     
     const [selectedItemsForTransfer, setSelectedItemsForTransfer] = useState<InventoryItem[]>([]);
-
-    const pendingFinalizationCount = useMemo(() => {
-      if (!can.manage_inward_outward) return 0;
-      return (inwardOutwardRecords || []).filter(r => r.status === 'Pending Details').length;
-    }, [inwardOutwardRecords, can.manage_inward_outward]);
 
     if (!can.view_inventory && !can.manage_inventory) {
         return (
@@ -245,7 +242,7 @@ export default function StoreInventoryPage() {
                     )}
                     {canManageInventory && (
                         <>
-                            <Button onClick={() => setIsInwardOpen(true)} variant="outline"><Inbox className="mr-2 h-4 w-4"/>New Inward</Button>
+                            {can.manage_inward_outward && <Button onClick={() => setIsInwardOpen(true)} variant="outline"><Inbox className="mr-2 h-4 w-4"/>New Inward</Button>}
                             <Button onClick={revalidateExpiredItems} variant="outline"><CheckCircle className="mr-2 h-4 w-4" />Check Validity</Button>
                             <Button onClick={() => setIsBulkInspectionUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4"/>Bulk Update Insp. Cert</Button>
                             <Button onClick={() => setIsBulkUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4" /> Bulk Update TP Cert</Button>
@@ -270,19 +267,21 @@ export default function StoreInventoryPage() {
                         <PendingTransfers onEditRequest={openTransferRequestDialog} />
                     </AccordionContent>
                 </AccordionItem>
-
-                 <AccordionItem value="inward-outward-register">
-                     <AccordionTrigger className={cn("text-lg font-semibold border rounded-lg p-4", pendingFinalizationCount > 0 && "text-destructive border-destructive")}>
-                        <div className="flex items-center gap-2">
-                            <Inbox />
-                            Inward/Outward Register
-                            {pendingFinalizationCount > 0 && <Badge variant="destructive">{pendingFinalizationCount}</Badge>}
-                        </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="p-4 border border-t-0 rounded-b-lg">
-                        <InwardOutwardHistory records={inwardOutwardRecords} />
-                    </AccordionContent>
-                </AccordionItem>
+                
+                {can.manage_inward_outward && (
+                    <AccordionItem value="inward-outward-register">
+                        <AccordionTrigger className={cn("text-lg font-semibold border rounded-lg p-4", pendingFinalizationCount > 0 && "text-destructive border-destructive")}>
+                            <div className="flex items-center gap-2">
+                                <Inbox />
+                                Inward/Outward Register
+                                {pendingFinalizationCount > 0 && <Badge variant="destructive">{pendingFinalizationCount}</Badge>}
+                            </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="p-4 border border-t-0 rounded-b-lg">
+                            <InwardOutwardHistory records={inwardOutwardRecords} />
+                        </AccordionContent>
+                    </AccordionItem>
+                )}
                 
                  {actionRequiredNotifications.length > 0 && (
                 <AccordionItem value="action-required">
