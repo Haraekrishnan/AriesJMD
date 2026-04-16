@@ -1,7 +1,6 @@
-
 'use client';
 import type { InventoryItem } from '@/lib/types';
-import { useAppContext } from '@/contexts/app-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
 import ExcelJS from 'exceljs';
@@ -15,7 +14,7 @@ interface InventoryReportDownloadsProps {
 }
 
 export default function InventoryReportDownloads({ items, isSummary = false, summaryData = [] }: InventoryReportDownloadsProps) {
-  const { projects } = useAppContext();
+  const { projects } = useGeneral();
 
   const handleDownloadExcel = async () => {
     const workbook = new ExcelJS.Workbook();
