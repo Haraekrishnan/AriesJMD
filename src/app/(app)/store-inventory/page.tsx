@@ -1,10 +1,11 @@
-
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { useInventory } from '@/contexts/inventory-provider';
+import { useInwardOutward } from '@/contexts/inward-outward-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Upload, ChevronsUpDown, FilePen, FilePlus, FileText, ArrowRightLeft, Package, Hammer, CheckCircle, Database, AlertTriangle, Truck, Inbox } from 'lucide-react';
@@ -12,7 +13,7 @@ import InventoryTable from '@/components/inventory/InventoryTable';
 import AddItemDialog from '@/components/inventory/AddItemDialog';
 import ImportItemsDialog from '@/components/inventory/ImportItemsDialog';
 import InventoryFilters from '@/components/inventory/InventoryFilters';
-import type { InventoryItem, CertificateRequest, Role, InventoryTransferRequest, InventoryItemStatus } from '@/lib/types';
+import type { InventoryItem, CertificateRequest, Role, InventoryTransferRequest, InventoryItemStatus, UTMachine, DftMachine, DigitalCamera, Anemometer, OtherEquipment, LaptopDesktop, MobileSim, WeldingMachine, WalkieTalkie } from '@/lib/types';
 import { isAfter, isBefore, addDays, parseISO, isWithinInterval, subDays, format, isValid, isPast } from 'date-fns';
 import ViewCertificateRequestDialog from '@/components/inventory/ViewCertificateRequestDialog';
 import InventorySummary from '@/components/inventory/InventorySummary';
@@ -33,11 +34,29 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import AddInwardRecordDialog from '@/components/inventory/AddInwardRecordDialog';
 import InwardOutwardHistory from '@/components/inventory/InwardOutwardHistory';
-import { useInwardOutward } from '@/contexts/inward-outward-provider';
 
 
 export default function StoreInventoryPage() {
-    const { user, users, roles, inventoryItems, projects, certificateRequests, acknowledgeFulfilledRequest, markFulfilledRequestsAsViewed, can, pendingInventoryTransferRequestCount, pendingDamageReportCount, revalidateExpiredItems } = useAppContext();
+    const { user, can } = useAuth();
+    const { projects } = useGeneral();
+    const { 
+        inventoryItems, 
+        utMachines, 
+        dftMachines, 
+        digitalCameras, 
+        anemometers, 
+        otherEquipments,
+        laptopsDesktops,
+        mobileSims,
+        weldingMachines,
+        walkieTalkies,
+        certificateRequests, 
+        acknowledgeFulfilledRequest, 
+        markFulfilledRequestsAsViewed,
+        inventoryTransferRequests,
+        damageReports,
+        revalidateExpiredItems 
+    } = useInventory();
     const { inwardOutwardRecords, pendingFinalizationCount } = useInwardOutward();
     const [isAddItemOpen, setIsAddItemOpen] = useState(false);
     const [isImportOpen, setIsImportOpen] = useState(false);
@@ -61,6 +80,10 @@ export default function StoreInventoryPage() {
     });
     
     const [selectedItemsForTransfer, setSelectedItemsForTransfer] = useState<InventoryItem[]>([]);
+    
+    const canApproveTransfers = can.approve_store_requests;
+    const pendingInventoryTransferRequestCount = canApproveTransfers ? (inventoryTransferRequests || []).filter(r => r.status === 'Pending' || r.status === 'Disputed').length : 0;
+    const pendingDamageReportCount = can.manage_inventory ? (damageReports || []).filter(r => r.status === 'Pending').length : 0;
 
     if (!can.view_inventory && !can.manage_inventory) {
         return (
