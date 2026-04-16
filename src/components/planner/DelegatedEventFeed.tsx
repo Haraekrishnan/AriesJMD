@@ -1,13 +1,15 @@
 'use client';
 import { useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { usePlanner } from '@/contexts/planner-provider';
 import { Button } from '@/components/ui/button';
 import { CalendarCheck, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { parseISO } from 'date-fns';
 
 export default function DelegatedEventFeed() {
-  const { user, plannerEvents, users, markPlannerEventAsViewed } = useAppContext();
+  const { user, users } = useAuth();
+  const { plannerEvents, markPlannerEventAsViewed } = usePlanner();
 
   const newDelegatedEvents = useMemo(() => {
     if (!user) return [];

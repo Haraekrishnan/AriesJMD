@@ -1,8 +1,8 @@
 
 'use client';
 import { useMemo, useState, useEffect } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
-import CreateEventDialog from '@/components/schedule/create-event-dialog';
+import { useAuth } from '@/contexts/auth-provider';
+import CreateEventDialog from '@/components/planner/create-event-dialog';
 import PlannerCalendar from '@/components/planner/planner-calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,7 @@ import { startOfMonth, parseISO } from 'date-fns';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function PlannerPage() {
-    const { user, getVisibleUsers, can } = useAppContext();
+    const { user, getVisibleUsers, can } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
 

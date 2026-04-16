@@ -1,10 +1,10 @@
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { usePlanner } from '@/contexts/planner-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -36,7 +36,8 @@ interface CreateEventDialogProps {
 }
 
 export default function CreateEventDialog({ isDelegating = false, isPlanning = false }: CreateEventDialogProps) {
-  const { user, addPlannerEvent, getVisibleUsers } = useAppContext();
+  const { user, getVisibleUsers } = useAuth();
+  const { addPlannerEvent } = usePlanner();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);

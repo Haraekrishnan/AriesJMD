@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -18,10 +17,7 @@ import {
   Send,
   Trash2,
 } from 'lucide-react';
-
-import { useAppContext } from '@/contexts/app-provider';
 import type { Comment, PlannerEvent, User } from '@/lib/types';
-
 import {
   Card,
   CardHeader,

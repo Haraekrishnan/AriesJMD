@@ -1,7 +1,6 @@
 
 'use client';
 import { useState, useMemo, useEffect } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter
 } from '@/components/ui/card';
