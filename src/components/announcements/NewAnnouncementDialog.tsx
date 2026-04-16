@@ -1,9 +1,11 @@
 
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -25,7 +27,8 @@ const announcementSchema = z.object({
 type FormValues = z.infer<typeof announcementSchema>;
 
 export default function NewAnnouncementDialog() {
-  const { user, roles, addAnnouncement } = useAppContext();
+  const { user, roles } = useAuth();
+  const { addAnnouncement } = useGeneral();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
 

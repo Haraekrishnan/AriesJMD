@@ -1,10 +1,11 @@
 
+
 'use client';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -28,7 +29,7 @@ interface EditAnnouncementDialogProps {
 }
 
 export default function EditAnnouncementDialog({ isOpen, setIsOpen, announcement }: EditAnnouncementDialogProps) {
-  const { updateAnnouncement, approveAnnouncement } = useAppContext();
+  const { updateAnnouncement, approveAnnouncement } = useGeneral();
   const { toast } = useToast();
 
   const form = useForm<FormValues>({

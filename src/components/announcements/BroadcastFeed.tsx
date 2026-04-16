@@ -1,7 +1,8 @@
 
 'use client';
 import { useMemo, useEffect } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
 import { Radio, X, Trash2 } from 'lucide-react';
 import { parseISO, isAfter } from 'date-fns';
@@ -10,7 +11,8 @@ import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
 
 
 export default function BroadcastFeed() {
-    const { user, broadcasts, dismissBroadcast, deleteBroadcast } = useAppContext();
+    const { user } = useAuth();
+    const { broadcasts, dismissBroadcast, deleteBroadcast } = useGeneral();
 
     const handleDismiss = (id: string) => {
         dismissBroadcast(id);

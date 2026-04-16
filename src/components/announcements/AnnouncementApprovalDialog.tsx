@@ -1,7 +1,9 @@
 
+
 'use client';
 import { useState, useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -16,7 +18,8 @@ import EditAnnouncementDialog from './EditAnnouncementDialog';
 import { Textarea } from '../ui/textarea';
 
 export default function AnnouncementApprovalDialog() {
-  const { user, users, announcements, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement, can } = useAppContext();
+  const { user, users, can } = useAuth();
+  const { announcements, approveAnnouncement, rejectAnnouncement, deleteAnnouncement, returnAnnouncement } = useGeneral();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);

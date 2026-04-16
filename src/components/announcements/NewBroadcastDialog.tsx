@@ -1,10 +1,12 @@
 
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -41,7 +43,8 @@ interface NewBroadcastDialogProps {
 }
 
 export default function NewBroadcastDialog({ isOpen, setIsOpen }: NewBroadcastDialogProps) {
-  const { user, addBroadcast, roles, users } = useAppContext();
+  const { user, users, roles } = useAuth();
+  const { addBroadcast } = useGeneral();
   const { toast } = useToast();
 
   const form = useForm<BroadcastFormValues>({

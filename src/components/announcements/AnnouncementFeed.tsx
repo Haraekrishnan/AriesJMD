@@ -1,7 +1,8 @@
 
 'use client';
 import { useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Megaphone, X, Trash2 } from 'lucide-react';
@@ -9,7 +10,8 @@ import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../ui/alert-dialog';
 
 export default function AnnouncementFeed() {
-    const { user, announcements, dismissAnnouncement, deleteAnnouncement } = useAppContext();
+    const { user } = useAuth();
+    const { announcements, dismissAnnouncement, deleteAnnouncement } = useGeneral();
 
     const handleHide = (id: string) => {
         dismissAnnouncement(id);

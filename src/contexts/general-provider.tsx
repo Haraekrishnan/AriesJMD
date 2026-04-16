@@ -66,6 +66,18 @@ type GeneralContextType = {
   updateObservationReport: (reportId: string, updates: Partial<ObservationReport>) => void;
   addObservationComment: (reportId: string, text: string) => void;
   deleteObservationReport: (reportId: string) => void;
+
+  addAnnouncement: (data: { title: string, content: string, notifyAll?: boolean }) => void;
+  updateAnnouncement: (announcement: Announcement) => void;
+  approveAnnouncement: (announcementId: string) => void;
+  rejectAnnouncement: (announcementId: string) => void;
+  returnAnnouncement: (announcementId: string, comment: string) => void;
+  deleteAnnouncement: (announcementId: string) => void;
+  dismissAnnouncement: (announcementId: string) => void;
+
+  addBroadcast: (broadcastData: Omit<Broadcast, 'id' | 'creatorId' | 'createdAt'>) => void;
+  dismissBroadcast: (broadcastId: string) => void;
+  deleteBroadcast: (broadcastId: string) => void;
 };
 
 // --- HELPER FUNCTIONS ---
@@ -448,6 +460,93 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
     set(newCommentRef, newComment);
   }, [user]);
 
+  const addAnnouncement = useCallback((data: { title: string, content: string, notifyAll?: boolean }) => {
+    if (!user) return;
+    const supervisor = users.find(u => u.id === user.supervisorId);
+    if (!supervisor) {
+        toast({ title: "No Supervisor Found", description: "Your account is not assigned to a supervisor for approvals.", variant: "destructive" });
+        return;
+    }
+    const newRef = push(ref(rtdb, 'announcements'));
+    const newAnnouncement: Omit<Announcement, 'id'> = {
+        title: data.title,
+        content: data.content,
+        creatorId: user.id,
+        approverId: supervisor.id,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        dismissedBy: [],
+        notifyAll: data.notifyAll || false,
+    };
+    set(newRef, newAnnouncement);
+    addActivityLog(user.id, 'Announcement Submitted', `Title: ${data.title}`);
+  }, [user, users, addActivityLog, toast]);
+
+  const updateAnnouncement = useCallback((announcement: Announcement) => {
+    const { id, ...data } = announcement;
+    update(ref(rtdb, `announcements/${id}`), data);
+  }, []);
+
+  const approveAnnouncement = useCallback((announcementId: string) => {
+    update(ref(rtdb, `announcements/${announcementId}`), { status: 'approved' });
+  }, []);
+
+  const rejectAnnouncement = useCallback((announcementId: string) => {
+    update(ref(rtdb, `announcements/${announcementId}`), { status: 'rejected' });
+  }, []);
+
+  const returnAnnouncement = useCallback((announcementId: string, comment: string) => {
+    if (!user) return;
+    const updates: { [key: string]: any } = {};
+    updates[`announcements/${announcementId}/status`] = 'returned';
+    
+    const newCommentRef = push(ref(rtdb, `announcements/${announcementId}/comments`));
+    const newComment = {
+        id: newCommentRef.key!,
+        userId: user.id,
+        text: `Returned with comment: ${comment}`,
+        date: new Date().toISOString(),
+        eventId: announcementId
+    };
+    updates[`announcements/${announcementId}/comments/${newCommentRef.key}`] = newComment;
+
+    update(ref(rtdb), updates);
+  }, [user]);
+
+  const deleteAnnouncement = useCallback((announcementId: string) => {
+    remove(ref(rtdb, `announcements/${announcementId}`));
+  }, []);
+
+  const dismissAnnouncement = useCallback((announcementId: string) => {
+    if (!user) return;
+    const currentDismissed = announcementsById[announcementId]?.dismissedBy || [];
+    if (!currentDismissed.includes(user.id)) {
+        set(ref(rtdb, `announcements/${announcementId}/dismissedBy`), [...currentDismissed, user.id]);
+    }
+  }, [user, announcementsById]);
+
+  const addBroadcast = useCallback((broadcastData: Omit<Broadcast, 'id' | 'creatorId' | 'createdAt'>) => {
+      if (!user) return;
+      const newRef = push(ref(rtdb, 'broadcasts'));
+      set(newRef, {
+        ...broadcastData,
+        creatorId: user.id,
+        createdAt: new Date().toISOString()
+      });
+  }, [user]);
+
+  const dismissBroadcast = useCallback((broadcastId: string) => {
+    if (!user) return;
+    const currentDismissed = broadcastsById[broadcastId]?.dismissedBy || [];
+    if (!currentDismissed.includes(user.id)) {
+        set(ref(rtdb, `broadcasts/${broadcastId}/dismissedBy`), [...currentDismissed, user.id]);
+    }
+  }, [user, broadcastsById]);
+
+  const deleteBroadcast = useCallback((broadcastId: string) => {
+      remove(ref(rtdb, `broadcasts/${broadcastId}`));
+  }, []);
+
 
   useEffect(() => {
     const unsubscribers = [
@@ -495,6 +594,8 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
     addDocument, updateDocument, deleteDocument, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addUsersToIncidentReport,
     addManagementRequest, updateManagementRequest, forwardManagementRequest, deleteManagementRequest, addManagementRequestComment, markManagementRequestAsViewed,
     addObservationReport, updateObservationReport, deleteObservationReport, addObservationComment,
+    addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, returnAnnouncement, deleteAnnouncement, dismissAnnouncement,
+    addBroadcast, dismissBroadcast, deleteBroadcast,
   };
 
   return <GeneralContext.Provider value={contextValue}>{children}</GeneralContext.Provider>;
@@ -515,3 +616,4 @@ export const useGeneral = (): GeneralContextType => {
     
 
     
+
