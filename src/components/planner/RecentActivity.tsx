@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -46,6 +47,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth-provider';
+import { usePlanner } from '@/contexts/planner-provider';
 
 /* ------------------------------------------------------------------ */
 /* TYPES */
@@ -72,6 +75,8 @@ export default function RecentPlannerActivity() {
   const {
     user,
     users,
+  } = useAuth();
+  const {
     plannerEvents,
     dailyPlannerComments,
     getExpandedPlannerEvents,
@@ -79,7 +84,7 @@ export default function RecentPlannerActivity() {
     dismissPendingUpdate,
     addPlannerEventComment,
     deletePlannerEvent,
-  } = useAppContext();
+  } = usePlanner();
 
   const router = useRouter();
   const { toast } = useToast();
@@ -131,7 +136,7 @@ export default function RecentPlannerActivity() {
     const delegatedEvents = plannerEvents.filter(
       (e) =>
         e.creatorId !== e.userId &&
-        (e.creatorId === user.id || e.userId === user.id)
+        e.creatorId === user.id
     );
 
     delegatedEvents.forEach((event) => {
