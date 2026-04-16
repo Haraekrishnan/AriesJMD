@@ -53,6 +53,7 @@ import type {
 
 import { TRANSFER_REASONS } from "@/lib/types";
 import { FormProvider } from "react-hook-form";
+import { useInventory } from "@/contexts/inventory-provider";
 
 type SearchableItem =
   | (InventoryItem & { itemType: "Inventory" })
@@ -129,6 +130,9 @@ export default function NewInventoryTransferRequestDialog({
     user,
     users,
     projects,
+    can,
+  } = useAuth();
+  const {
     inventoryItems,
     utMachines,
     dftMachines,
@@ -141,9 +145,9 @@ export default function NewInventoryTransferRequestDialog({
     walkieTalkies,
     addInventoryTransferRequest,
     updateInventoryTransferRequest,
-  } = useAppContext();
+  } = useInventory();
   const { toast } = useToast();
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
   const form = useForm<FormValues>({
@@ -284,17 +288,24 @@ export default function NewInventoryTransferRequestDialog({
   };
 
   const onSubmit = async (data: FormValues) => {
+    setIsSubmitting(true);
     let success = false;
-    if (existingRequest) {
-      success = await updateInventoryTransferRequest({ ...existingRequest, ...data });
-      if (success) toast({ title: "Transfer Request Updated" });
-    } else {
-      success = await addInventoryTransferRequest(data);
-      if (success) toast({ title: "Transfer Request Submitted" });
-    }
-    
-    if (success) {
-      setIsOpen(false);
+    try {
+      if (existingRequest) {
+        success = await updateInventoryTransferRequest({ ...existingRequest, ...data });
+        if (success) toast({ title: "Transfer Request Updated" });
+      } else {
+        success = await addInventoryTransferRequest(data);
+        if (success) toast({ title: "Transfer Request Submitted" });
+      }
+      if (success) {
+        setIsOpen(false);
+      }
+    } catch (error) {
+        console.error("Submission handler error:", error);
+        toast({ title: "An unexpected error occurred.", variant: "destructive" });
+    } finally {
+        setIsSubmitting(false);
     }
   };
 
@@ -536,7 +547,9 @@ export default function NewInventoryTransferRequestDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit">{existingRequest ? 'Update Request' : 'Submit Request'}</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Submitting...' : (existingRequest ? 'Update Request' : 'Submit Request')}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
