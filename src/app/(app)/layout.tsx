@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect } from 'react';
@@ -15,6 +14,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  const effectiveStatus = user?.status || 'active';
+
   useEffect(() => {
     if (loading) {
       return;
@@ -26,10 +27,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     
     // If the user is locked, redirect them to the status page.
     // This applies to all pages under the (app) directory.
-    if (user.status === 'locked' && pathname !== '/status') {
+    if (effectiveStatus === 'locked' && pathname !== '/status') {
       router.replace('/status');
     }
-  }, [user, loading, router, pathname]);
+  }, [user, loading, router, pathname, effectiveStatus]);
 
   if (loading || !user) {
     return (
@@ -49,7 +50,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // If the user is not 'active' (e.g., locked, or status is loading),
   // show a blank screen to prevent a flash of the UI.
   // The useEffect handles the redirection logic.
-  if (user.status !== 'active') {
+  if (effectiveStatus !== 'active') {
     return null;
   }
 

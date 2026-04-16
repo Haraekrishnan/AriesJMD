@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -14,6 +13,8 @@ export default function StatusPage() {
   const { toast } = useToast();
   const router = useRouter();
 
+  const effectiveStatus = user?.status || 'active';
+
   useEffect(() => {
     // If the context is still loading, wait.
     if (loading) {
@@ -27,11 +28,10 @@ export default function StatusPage() {
     }
 
     // If the user's status is explicitly 'active', they should be on the dashboard.
-    // This prevents redirect loops if the status is temporarily undefined.
-    if (user.status === 'active') {
+    if (effectiveStatus === 'active') {
       router.replace('/dashboard');
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, effectiveStatus]);
 
 
   const handleUnlockRequest = () => {
@@ -44,7 +44,7 @@ export default function StatusPage() {
     }
   };
 
-  if (loading || !user || user.status !== 'locked') {
+  if (loading || !user || effectiveStatus !== 'locked') {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="text-center space-y-2">
