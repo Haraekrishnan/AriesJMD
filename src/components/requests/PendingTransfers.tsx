@@ -115,14 +115,14 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false }: { req: 
                 </AccordionTrigger>
                 <div className="flex items-center gap-2 pl-4">
                     <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
-                    {(canEdit || (user?.role === 'Admin' && isCompletedSection)) && (
+                    {canEdit && (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4"/></Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
-                                {canEdit && <DropdownMenuItem onSelect={() => onEditRequest(req)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>}
-                                {user?.role === 'Admin' && !isCompletedSection && (
+                                <DropdownMenuItem onSelect={() => onEditRequest(req)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                                {user?.role === 'Admin' && (
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
                                             <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
@@ -150,7 +150,7 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false }: { req: 
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                                 <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete from History?</AlertDialogTitle>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                     <AlertDialogDescription>This will permanently delete this request from history. This action cannot be undone.</AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
