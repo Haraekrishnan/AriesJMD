@@ -1,7 +1,7 @@
 
 'use client';
 import { useMemo, useState, useEffect } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -22,7 +22,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '../ui/scroll-area';
 import { Trash2 } from 'lucide-react';
-import { InventoryItem, UTMachine, DftMachine, TpCertList, TpCertListItem, DigitalCamera, Anemometer, OtherEquipment, LaptopDesktop, MobileSim } from '@/lib/types';
+import { InventoryItem, UTMachine, DftMachine, TpCertList, TpCertListItem, DigitalCamera, Anemometer, OtherEquipment, LaptopDesktop, MobileSim, WeldingMachine, WalkieTalkie } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Label } from '../ui/label';
@@ -37,13 +37,13 @@ interface GenerateTpCertDialogProps {
   listToCreate?: Partial<TpCertList> | null;
 }
 
-type SearchableItem = (InventoryItem | UTMachine | DftMachine | DigitalCamera | Anemometer | OtherEquipment | LaptopDesktop | MobileSim) & { itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim'; };
+type SearchableItem = (InventoryItem | UTMachine | DftMachine | DigitalCamera | Anemometer | OtherEquipment | LaptopDesktop | MobileSim | WeldingMachine | WalkieTalkie) & { itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim' | 'WeldingMachine' | 'WalkieTalkie'; };
 
 export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList = null, listToCreate = null }: GenerateTpCertDialogProps) {
   const { 
-      inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, 
+      inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies, 
       addTpCertList, updateTpCertList 
-  } = useAppContext();
+  } = useInventory();
       const { toast } = useToast();
       const [selectedItems, setSelectedItems] = useState<TpCertListItem[]>([]);
       const [selectedItemName, setSelectedItemName] = useState<string | null>(null);
@@ -61,8 +61,10 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
         otherEquipments?.forEach(item => items.push({ ...item, itemType: 'OtherEquipment' }));
         laptopsDesktops?.forEach(item => items.push({ ...item, itemType: 'LaptopDesktop' }));
         mobileSims?.forEach(item => items.push({ ...item, itemType: 'MobileSim' }));
+        weldingMachines?.forEach(item => items.push({ ...item, itemType: 'WeldingMachine' }));
+        walkieTalkies?.forEach(item => items.push({ ...item, itemType: 'WalkieTalkie' }));
         return items;
-      }, [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims]);
+      }, [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies]);
 
       useEffect(() => {
         if (existingList) {
@@ -309,3 +311,4 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
         </Dialog>
       );
 }
+
