@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -6,27 +7,24 @@ import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/comp
 import { LogOut, ShieldAlert } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAuth } from '@/contexts/auth-provider';
+import { useAppContext } from '@/contexts/app-provider';
 
 export default function StatusPage() {
-  const { user, loading, logout, requestUnlock } = useAuth();
+  const { user, loading, logout, requestUnlock } = useAppContext();
   const { toast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
-    // If the context is still loading, wait.
     if (loading) {
       return;
     }
-    
-    // If loading is done and there's no user, they should be at the login page.
+
     if (!user) {
       router.replace('/login');
       return;
     }
 
-    // If the user's status is explicitly 'active', they should be on the dashboard.
-    if (user.status === 'active') {
+    if (user.status !== 'locked') {
       router.replace('/dashboard');
     }
   }, [user, loading, router]);

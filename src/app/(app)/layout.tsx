@@ -1,8 +1,9 @@
+
 'use client';
 
 import React, { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/auth-provider';
+import { useAppContext } from '@/contexts/app-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AppSidebar } from '@/components/shared/app-sidebar';
 import Header from '@/components/shared/header';
@@ -10,7 +11,7 @@ import BroadcastFeed from '@/components/announcements/BroadcastFeed';
 import { DecorationProvider } from '@/components/decorations/DecorationProvider';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading } = useAppContext();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -21,16 +22,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!user) {
       router.replace('/login');
       return;
-    }
+    } 
     
-    // If the user is locked, redirect them to the status page.
-    // This applies to all pages under the (app) directory.
-    if (user.status === 'locked' && pathname !== '/status') {
-      router.replace('/status');
+    if (user.status === 'locked') {
+      if (pathname !== '/status') {
+          router.replace('/status');
+      }
     }
   }, [user, loading, router, pathname]);
 
-  if (loading || !user) {
+  if (loading || !user || user.status === 'locked') {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
@@ -43,13 +44,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     );
-  }
-
-  // If the user is not 'active' (e.g., locked),
-  // show a blank screen to prevent a flash of the UI.
-  // The useEffect handles the redirection logic.
-  if (user.status !== 'active') {
-    return null;
   }
 
   return (

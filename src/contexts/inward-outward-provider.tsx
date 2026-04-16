@@ -1,12 +1,11 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo } from 'react';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update } from 'firebase/database';
 import { useAuth } from './auth-provider';
-import { useInventory } from './inventory-provider';
+import { useGeneral } from './general-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { InwardOutwardRecord, InventoryItem, User } from '@/lib/types';
 
@@ -41,7 +40,7 @@ const createDataListener = (
 
 export function InwardOutwardProvider({ children }: { children: ReactNode }) {
   const { user, addActivityLog, can } = useAuth();
-  const { projects } = useInventory();
+  const { projects } = useGeneral();
   const { toast } = useToast();
   const [inwardOutwardRecordsById, setInwardOutwardRecordsById] = useState<Record<string, InwardOutwardRecord>>({});
 

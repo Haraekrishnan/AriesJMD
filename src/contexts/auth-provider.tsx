@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, Dispatch, SetStateAction, useMemo, useRef } from 'react';
@@ -16,7 +17,7 @@ import { isSameDay, parseISO } from 'date-fns';
 
 type PermissionsObject = Record<Permission, boolean>;
 
-export type AuthContextType = {
+type AuthContextType = {
   user: User | null;
   loading: boolean;
   users: User[];
@@ -27,6 +28,7 @@ export type AuthContextType = {
   appName: string;
   appLogo: string | null;
   activeTheme: 'none' | 'christmas' | 'diwali' | 'new-year';
+  plannerNotificationCount: number;
 
   login: (email: string, pass: string) => Promise<{ success: boolean; user?: User }>;
   logout: () => void;
@@ -48,8 +50,9 @@ export type AuthContextType = {
   addActivityLog: (userId: string, action: string, details?: string) => void;
   getVisibleUsers: () => User[];
   getAssignableUsers: () => User[];
+  clearInventoryTransferHistory: () => void;
+  markPlannerEventAsViewed: (eventId: string) => void;
   updateUserViewPreference: (key: 'jmsTracker' | 'timesheetTracker', value: 'board' | 'list') => void;
-  clearInventoryTransferHistory: () => void; // This seems out of place
 };
 
 // --- HELPER FUNCTIONS ---
@@ -65,7 +68,12 @@ const createDataListener = <T extends {}>(
             acc[key] = { ...data[key], id: key };
             return acc;
         }, {} as Record<string, T>);
-        setData(processedData);
+        setData(currentData => {
+            if (JSON.stringify(currentData) === JSON.stringify(processedData)) {
+                return currentData;
+            }
+            return processedData;
+        });
     });
     return () => listener();
 };
@@ -85,11 +93,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [appName, setAppName] = useState('Aries Marine');
   const [appLogo, setAppLogo] = useState<string | null>(null);
   const [activeTheme, setActiveTheme] = useState<'none' | 'christmas' | 'diwali' | 'new-year'>('none');
-  
+  const [plannerEventsById, setPlannerEventsById] = useState<Record<string, PlannerEvent>>({});
+  const [dailyPlannerCommentsById, setDailyPlannerCommentsById] = useState<Record<string, DailyPlannerComment>>({});
+
   const users = useMemo(() => Object.values(usersById), [usersById]);
   const roles = useMemo(() => Object.values(rolesById), [rolesById]);
   const passwordResetRequests = useMemo(() => Object.values(passwordResetRequestsById), [passwordResetRequestsById]);
   const unlockRequests = useMemo(() => Object.values(unlockRequestsById), [unlockRequestsById]);
+  const plannerEvents = useMemo(() => Object.values(plannerEventsById), [plannerEventsById]);
+  const dailyPlannerComments = useMemo(() => Object.values(dailyPlannerCommentsById), [dailyPlannerCommentsById]);
   
   const { toast } = useToast();
   const router = useRouter();
@@ -103,6 +115,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     return canObject;
   }, [user, roles]);
+
+  const plannerNotificationCount = useMemo(() => {
+    if (!user) return 0;
+
+    const newDelegatedEvents = plannerEvents.filter(e =>
+      e.userId === user.id &&
+      e.creatorId !== user.id &&
+      !e.viewedBy?.[user.id]
+    );
+
+    const unreadComments = dailyPlannerComments.filter(dayComment => {
+      if (!dayComment.day || !dayComment.comments) return false;
+      
+      const comments = Array.isArray(dayComment.comments)
+        ? dayComment.comments
+        : Object.values(dayComment.comments || {});
+      
+      return comments.some(c => {
+        if (!c) return false;
+        const event = plannerEvents.find(e => e.id === c.eventId);
+        if (!event) return false;
+        const isParticipant = event.userId === user.id || event.creatorId === user.id;
+        return isParticipant && c.userId !== user.id && !c.viewedBy?.[user.id];
+      });
+    });
+
+    return newDelegatedEvents.length + unreadComments.length;
+  }, [user, plannerEvents, dailyPlannerComments]);
 
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
     if (!userId) return;
@@ -121,29 +161,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (snapshot.exists()) {
       const usersData = snapshot.val();
       const userId = Object.keys(usersData)[0];
-      const foundUser: User = { id: userId, ...usersData[userId] };
+      const foundUser = { id: userId, ...usersData[userId] };
 
       if (foundUser.password === pass) {
-        // If status is missing, default to 'active'
-        const userStatus = foundUser.status || 'active';
-
-        if (userStatus === 'locked' || userStatus === 'deactivated') {
-            setUser({ ...foundUser, status: userStatus });
+        if (foundUser.status === 'locked' || foundUser.status === 'deactivated') {
+            setUser(foundUser);
             setStoredUserId(foundUser.id);
             setLoading(false);
-            return { success: true, user: { ...foundUser, status: userStatus } };
+            return { success: true, user: foundUser };
         } else {
             setStoredUserId(foundUser.id);
-            setUser({ ...foundUser, status: 'active' });
+            setUser(foundUser);
             addActivityLog(foundUser.id, 'User Logged In');
             setLoading(false);
-            return { success: true, user: { ...foundUser, status: 'active' } };
+            return { success: true, user: foundUser };
         }
       }
     }
     setLoading(false);
     return { success: false };
-}, [setStoredUserId, addActivityLog]);
+  }, [setStoredUserId, addActivityLog]);
 
   const logout = useCallback(() => {
     setStoredUserId(null);
@@ -167,6 +204,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       dataToSave.supervisorId = null;
     }
     
+    // Sanitize object to remove undefined values before sending to Firebase
     Object.keys(dataToSave).forEach(key => {
         if (dataToSave[key] === undefined) {
             dataToSave[key] = null;
@@ -344,10 +382,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, addActivityLog, toast]);
 
   const updateActiveTheme = useCallback((theme: 'none' | 'christmas' | 'diwali' | 'new-year') => {
-    if (user && (user.role === 'Admin' || user.role === 'Project Coordinator')) {
-        set(ref(rtdb, 'decorations/activeTheme'), theme);
-    }
-  }, [user]);
+    set(ref(rtdb, 'decorations/activeTheme'), theme);
+  }, []);
 
   const getSubordinateChain = useCallback((userId: string, allUsers: User[]): Set<string> => {
     const subordinates = new Set<string>();
@@ -372,37 +408,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const getVisibleUsers = useCallback(() => {
     if (!user) return [];
-
-    if (user.role === 'Admin' || user.role === 'Manager') {
-        return users;
-    }
-
-    const visibleUserIds = new Set<string>([user.id]);
     
-    // Add supervisor
-    if(user.supervisorId) {
-        visibleUserIds.add(user.supervisorId);
+    const highLevelRoles: RoleDefinition['name'][] = ['Admin', 'Manager', 'Project Coordinator', 'Document Controller', 'Store in Charge', 'Assistant Store Incharge'];
+    const supervisorRoles: RoleDefinition['name'][] = ['Supervisor', 'Junior Supervisor', 'Senior Safety Supervisor', 'Safety Supervisor'];
+  
+    if (highLevelRoles.includes(user.role)) {
+      if (user.role === 'Manager' || user.role === 'Admin') return users;
+      if (user.role === 'Project Coordinator') return users.filter(u => u.role !== 'Manager');
+      if (['Store in Charge', 'Document Controller', 'Assistant Store Incharge'].includes(user.role)) {
+        return users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator');
+      }
     }
-    
-    // Add all subordinates
-    const subordinates = getSubordinateChain(user.id, users);
-    subordinates.forEach(id => visibleUserIds.add(id));
+  
+    let visibleUserIds = new Set<string>([user.id]);
+    const myDirectReports = users.filter(u => u.supervisorId === user.id);
+    myDirectReports.forEach(u => visibleUserIds.add(u.id));
 
-    return users.filter(u => visibleUserIds.has(u.id));
-}, [user, users, getSubordinateChain]);
+    if (supervisorRoles.includes(user.role) && user.supervisorId) {
+      const directSupervisor = users.find(u => u.id === user.supervisorId);
+      if (directSupervisor && supervisorRoles.includes(directSupervisor.role)) {
+        getSubordinateChain(directSupervisor.id, users).forEach(id => visibleUserIds.add(id));
+      }
+    }
+  
+    return users.filter(u => visibleUserIds.has(u.id) && u.id !== user.supervisorId);
+  }, [user, users, getSubordinateChain]);
 
   const getAssignableUsers = useCallback(() => {
     if (!user) return [];
+    // Allow assigning to anyone except for Manager roles.
     return users.filter(u => u.role !== 'Manager');
   }, [user, users]);
   
+  const clearInventoryTransferHistory = useCallback(() => {
+    // This is a placeholder now. The real implementation is in useInventory.
+  }, []);
+  
+  const markPlannerEventAsViewed = useCallback((eventId: string) => {
+    if (!user) return;
+    update(ref(rtdb, `plannerEvents/${eventId}/viewedBy`), { [user.id]: true });
+  }, [user]);
+
   const updateUserViewPreference = useCallback((key: 'jmsTracker' | 'timesheetTracker', value: 'board' | 'list') => {
     if (!user) return;
     const path = `users/${user.id}/viewPreferences/${key}`;
     set(ref(rtdb, path), value);
   }, [user]);
-  
-  const clearInventoryTransferHistory = useCallback(() => {}, []); // Placeholder
 
   useEffect(() => {
     const unsubscribers = [
@@ -426,9 +477,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }),
       onValue(ref(rtdb, 'decorations/activeTheme'), (snapshot) => {
-        const theme = snapshot.val() || 'none';
-        setActiveTheme(theme);
+        const newTheme = snapshot.val() || 'none';
+        setActiveTheme(currentTheme => {
+            if (currentTheme === newTheme) {
+                return currentTheme;
+            }
+            return newTheme;
+        });
       }),
+      createDataListener('plannerEvents', setPlannerEventsById),
+      createDataListener('dailyPlannerComments', setDailyPlannerCommentsById),
     ];
 
     if (!storedUserId) {
@@ -456,12 +514,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [storedUserId, logout]);
 
   const contextValue: AuthContextType = {
-    user, loading, users, roles, passwordResetRequests, unlockRequests, can, appName, appLogo, activeTheme,
+    user, loading, users, roles, passwordResetRequests, unlockRequests, can, appName, appLogo, activeTheme, plannerNotificationCount,
     login, logout, updateProfile, requestPasswordReset,
-    resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, updateBranding, updateActiveTheme, addActivityLog, getVisibleUsers, getAssignableUsers,
-    updateUserViewPreference,
-    clearInventoryTransferHistory
-  } as AuthContextType;
+    resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, updateBranding, updateActiveTheme, addActivityLog, getVisibleUsers, getAssignableUsers, clearInventoryTransferHistory, markPlannerEventAsViewed,
+    updateUserViewPreference
+  };
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 }
@@ -473,3 +530,5 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
+    
