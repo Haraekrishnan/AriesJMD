@@ -10,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from '../ui/dropdown-menu';
-import type { InventoryItem, InventoryTransferRequest, TpCertList, UTMachine, Role } from '@/lib/types';
+import type { InventoryItem, InventoryTransferRequest, TpCertList, UTMachine, Role, InventoryTransferRequestStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -23,6 +23,16 @@ interface PendingTransfersProps {
   onEditRequest: (request: InventoryTransferRequest) => void;
 }
 
+const statusVariant: Record<InventoryTransferRequestStatus, 'default' | 'secondary' | 'destructive' | 'success' | 'warning'> = {
+  Pending: 'secondary',
+  Approved: 'default',
+  Issued: 'success',
+  Completed: 'success',
+  Disputed: 'warning',
+  Rejected: 'destructive',
+  'Partially Issued': 'default',
+  'Partially Approved': 'default',
+};
 
 const RequestCard = ({ req, onEditRequest }: { req: InventoryTransferRequest; onEditRequest: (request: InventoryTransferRequest) => void; }) => {
     const { user, users, projects, can, approveInventoryTransferRequest, rejectInventoryTransferRequest, deleteInventoryTransferRequest, addTpCertList, resolveInternalRequestDispute, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies } = useAppContext();
@@ -86,6 +96,7 @@ const RequestCard = ({ req, onEditRequest }: { req: InventoryTransferRequest; on
                     </div>
                 </AccordionTrigger>
                 <div className="flex items-center gap-2 pl-4">
+                    <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
                     {canEdit && req.status === 'Pending' && (
                         <Button size="sm" variant="outline" onClick={() => onEditRequest(req)}>
                             <Edit className="mr-2 h-4 w-4" /> Edit
