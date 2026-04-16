@@ -5,6 +5,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/contexts/auth-provider";
+import { useGeneral } from "@/contexts/general-provider";
 import { useInventory } from "@/contexts/inventory-provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,6 +55,9 @@ import type {
 
 import { TRANSFER_REASONS } from "@/lib/types";
 import { FormProvider } from "react-hook-form";
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { ChevronsUpDown, Check } from 'lucide-react';
+import { Badge } from '../ui/badge';
 
 type SearchableItem =
   | (InventoryItem & { itemType: "Inventory" })
@@ -126,12 +130,8 @@ export default function NewInventoryTransferRequestDialog({
   onClearSelection?: () => void;
   existingRequest?: InventoryTransferRequest | null;
 }) {
-  const {
-    user,
-    users,
-    projects,
-    can,
-  } = useAuth();
+  const { user, users, can } = useAuth();
+  const { projects } = useGeneral();
   const {
     inventoryItems,
     utMachines,
@@ -195,6 +195,7 @@ export default function NewInventoryTransferRequestDialog({
   }, [user]);
 
   const fromProjectOptions = useMemo(() => {
+    if (!projects) return [];
     if (canTransferFromAll) {
       return [{ id: 'all', name: 'All Projects' }, ...projects];
     }
@@ -556,5 +557,3 @@ export default function NewInventoryTransferRequestDialog({
     </Dialog>
   );
 }
-
-    
