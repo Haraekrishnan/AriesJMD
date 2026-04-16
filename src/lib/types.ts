@@ -166,7 +166,7 @@ export const ALL_PERMISSIONS = [
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
 
-export type Role = 'Admin' | 'Manager' | 'Project Coordinator' | 'Supervisor' | 'Senior Safety Supervisor' | 'Safety Supervisor' | 'Junior Supervisor' | 'Junior HSE' | 'Team Member' | 'Store in Charge' | 'Assistant Store Incharge' | 'Document Controller' | 'HSE' | 'PPE Inspector';
+export type Role = 'Admin' | 'Manager' | 'Project Coordinator' | 'Supervisor' | 'Senior Safety Supervisor' | 'Safety Supervisor' | 'Junior Supervisor' | 'Junior HSE' | 'Team Member' | 'Store in Charge' | 'Assistant Store Incharge' | 'Document Controller' | 'PPE Inspector';
 
 export type RoleDefinition = {
   id: string;

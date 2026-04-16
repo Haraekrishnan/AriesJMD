@@ -387,6 +387,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const getSubordinateChain = useCallback((userId: string, allUsers: User[]): Set<string> => {
     const subordinates = new Set<string>();
+    if (!userId) return subordinates;
     const queue = [userId];
     const visited = new Set<string>();
   
@@ -409,29 +410,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const getVisibleUsers = useCallback(() => {
     if (!user) return [];
     
-    const highLevelRoles: RoleDefinition['name'][] = ['Admin', 'Manager', 'Project Coordinator', 'Document Controller', 'Store in Charge', 'Assistant Store Incharge'];
-    const supervisorRoles: RoleDefinition['name'][] = ['Supervisor', 'Junior Supervisor', 'Senior Safety Supervisor', 'Safety Supervisor'];
-  
-    if (highLevelRoles.includes(user.role)) {
-      if (user.role === 'Manager' || user.role === 'Admin') return users;
-      if (user.role === 'Project Coordinator') return users.filter(u => u.role !== 'Manager');
-      if (['Store in Charge', 'Document Controller', 'Assistant Store Incharge'].includes(user.role)) {
-        return users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator');
-      }
+    // Admin and Manager see everyone.
+    if (user.role === 'Admin' || user.role === 'Manager') {
+      return users;
     }
-  
-    let visibleUserIds = new Set<string>([user.id]);
-    const myDirectReports = users.filter(u => u.supervisorId === user.id);
-    myDirectReports.forEach(u => visibleUserIds.add(u.id));
 
+    // Other high-level roles have specific exclusions
+    if (user.role === 'Project Coordinator') {
+        return users.filter(u => u.role !== 'Manager');
+    }
+    if (['Store in Charge', 'Document Controller', 'Assistant Store Incharge'].includes(user.role)) {
+        return users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator');
+    }
+
+    // Default visibility for other roles (Supervisors, Team Members, etc.)
+    let visibleUserIds = new Set<string>([user.id]);
+
+    // 1. Add own supervisor
+    if (user.supervisorId) {
+      visibleUserIds.add(user.supervisorId);
+    }
+    
+    // 2. Add all direct and indirect reports
+    const allSubordinates = getSubordinateChain(user.id, users);
+    allSubordinates.forEach(id => visibleUserIds.add(id));
+  
+    // 3. For supervisors, add peers under the same supervisor
+    const supervisorRoles: Role[] = ['Supervisor', 'Junior Supervisor', 'Senior Safety Supervisor', 'Safety Supervisor'];
     if (supervisorRoles.includes(user.role) && user.supervisorId) {
       const directSupervisor = users.find(u => u.id === user.supervisorId);
       if (directSupervisor && supervisorRoles.includes(directSupervisor.role)) {
-        getSubordinateChain(directSupervisor.id, users).forEach(id => visibleUserIds.add(id));
+        const peerSubordinates = getSubordinateChain(directSupervisor.id, users);
+        peerSubordinates.forEach(id => visibleUserIds.add(id));
       }
     }
   
-    return users.filter(u => visibleUserIds.has(u.id) && u.id !== user.supervisorId);
+    return users.filter(u => visibleUserIds.has(u.id));
   }, [user, users, getSubordinateChain]);
 
   const getAssignableUsers = useCallback(() => {
@@ -532,3 +546,4 @@ export const useAuth = (): AuthContextType => {
 };
 
     
+
