@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
@@ -11,7 +12,7 @@ interface ActivityLogTableProps {
 }
 
 export default function ActivityLogTable({ logs }: ActivityLogTableProps) {
-  const { users } = useAppContext();
+  const { users } = useAuth();
 
   if (logs.length === 0) {
     return <p className="text-muted-foreground text-center py-8">No activity logs to display.</p>;
