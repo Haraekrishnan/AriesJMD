@@ -1,8 +1,8 @@
 
 'use client';
 
-import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import React, { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
+import { usePlanner } from '@/contexts/planner-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '../ui/input';
@@ -16,7 +16,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { ScrollArea } from '../ui/scroll-area';
 import { Vehicle } from '@/lib/types';
 import { Save } from 'lucide-react';
-import { usePlanner } from '@/contexts/planner-provider';
 
 interface EditVehicleUsageDialogProps {
   isOpen: boolean;
