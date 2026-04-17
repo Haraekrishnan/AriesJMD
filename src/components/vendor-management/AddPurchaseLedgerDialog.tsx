@@ -1,9 +1,7 @@
-
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -19,8 +17,7 @@ import { Separator } from '../ui/separator';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import type { DateRange } from 'react-day-picker';
 import { DateRangePicker } from '../ui/date-range-picker';
-
-const SERVICE_TYPES = ['Vehicle Rent', 'Accommodation Cleaning', 'Office Cleaning', 'Drinking Water', 'Mess Related Purchase', 'Others'];
+import { usePurchase } from '@/contexts/purchase-provider';
 
 const itemSchema = z.object({
   id: z.string(),
@@ -83,7 +80,7 @@ interface AddPurchaseLedgerDialogProps {
 }
 
 export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurchaseLedgerDialogProps) {
-  const { addPurchaseRegister, vendors } = useAppContext();
+  const { addPurchaseRegister, vendors } = usePurchase();
   const { toast } = useToast();
 
   const form = useForm<PurchaseFormValues>({
@@ -266,13 +263,20 @@ export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurcha
                             <Controller control={form.control} name="serviceType" render={({ field }) => (
                                 <Select onValueChange={field.onChange} value={field.value}>
                                     <SelectTrigger><SelectValue placeholder="Select service type" /></SelectTrigger>
-                                    <SelectContent>{SERVICE_TYPES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                                    <SelectContent>
+                                        <SelectItem value="Vehicle Rent">Vehicle Rent</SelectItem>
+                                        <SelectItem value="Accommodation Cleaning">Accommodation Cleaning</SelectItem>
+                                        <SelectItem value="Office Cleaning">Office Cleaning</SelectItem>
+                                        <SelectItem value="Drinking Water">Drinking Water</SelectItem>
+                                        <SelectItem value="Mess Related Purchase">Mess Related Purchase</SelectItem>
+                                        <SelectItem value="Others">Others</SelectItem>
+                                    </SelectContent>
                                 </Select>
                             )}/>
                         </div>
-                        {watchedServiceType === 'Others' && (
+                        {form.watch('serviceType') === 'Others' && (
                             <div className="space-y-2">
-                                <Label>Specify Other Service</Label>
+                                <Label>Specify Service</Label>
                                 <Input {...form.register('otherServiceType')} />
                                 {form.formState.errors.otherServiceType && <p className="text-xs text-destructive">{form.formState.errors.otherServiceType.message}</p>}
                             </div>
@@ -284,7 +288,7 @@ export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurcha
                     </div>
                     <div className="space-y-2">
                         <Label>Total Amount</Label>
-                        <Input type="number" {...form.register('totalAmount')} step="0.01" />
+                        <Input type="number" {...form.register('totalAmount')} step="0.01"/>
                         {form.formState.errors.totalAmount && <p className="text-xs text-destructive">{form.formState.errors.totalAmount.message}</p>}
                     </div>
                     <div className="space-y-2">
@@ -317,3 +321,5 @@ export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurcha
     </Dialog>
   );
 }
+
+    
