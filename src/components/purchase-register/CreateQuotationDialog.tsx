@@ -3,7 +3,6 @@
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -13,13 +12,16 @@ import { PlusCircle, Trash2, Users2, X, ChevronsUpDown, Check, AlertCircle } fro
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { usePurchase } from '@/contexts/purchase-provider';
 import { Card, CardHeader, CardContent } from '../ui/card';
 import { useEffect, useMemo, useState } from 'react';
 import type { Quotation, QuotationItem, QuotationQuote, QuotationVendorDetails } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { cn } from '@/lib/utils';
+import { usePurchase } from '@/contexts/purchase-provider';
+import { useInventory } from '@/contexts/inventory-provider';
+import { useConsumable } from '@/contexts/consumable-provider';
+
 
 const quotationItemSchema = z.object({
     id: z.string(),
@@ -106,8 +108,9 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
   const { 
     inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, 
     weldingMachines, walkieTalkies, pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, 
-    cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws, consumableItems
-  } = useAppContext();
+    cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws
+  } = useInventory();
+  const { consumableItems } = useConsumable();
   const { toast } = useToast();
   const isEditMode = !!existingQuotation;
 
@@ -380,7 +383,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                     <Label className="text-sm truncate pt-2">{form.watch(`items.${itemIndex}.description`) || `Item ${itemIndex + 1}`}</Label>
                                     <div>
                                         <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.quantity`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Qty"/>
-                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.quantity && <p className="text-xs text-destructive mt-1">Qty &gt; 0</p>}
+                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.quantity && <p className="text-xs text-destructive mt-1">Qty > 0</p>}
                                     </div>
                                     <div>
                                         <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.rate`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Rate"/>
