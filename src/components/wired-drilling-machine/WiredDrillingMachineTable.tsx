@@ -1,6 +1,8 @@
 
 'use client';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Edit, Trash2 } from 'lucide-react';
@@ -26,7 +28,9 @@ const getStatusVariant = (status: string): "default" | "secondary" | "destructiv
 }
 
 export default function WiredDrillingMachineTable({ items, onEdit }: WiredDrillingMachineTableProps) {
-  const { can, projects, deleteWiredDrillingMachine } = useAppContext();
+  const { can } = useAuth();
+  const { projects } = useGeneral();
+  const { deleteWiredDrillingMachine } = useInventory();
   const { toast } = useToast();
 
   const handleDelete = (itemId: string) => {
