@@ -1,5 +1,4 @@
 
-
 'use client';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
@@ -8,14 +7,14 @@ import { saveAs } from 'file-saver';
 import { format, parseISO } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { useAppContext } from '@/contexts/app-provider';
+import { useGeneral } from '@/contexts/general-provider';
 
 interface ExpiringCalibrationsReportProps {
   expiringMachines: any[];
 }
 
 export default function ExpiringCalibrationsReport({ expiringMachines }: ExpiringCalibrationsReportProps) {
-  const { projects } = useAppContext();
+  const { projects } = useGeneral();
 
   const handleExportExcel = async () => {
     const workbook = new ExcelJS.Workbook();
@@ -79,4 +78,3 @@ export default function ExpiringCalibrationsReport({ expiringMachines }: Expirin
     </div>
   );
 }
-
