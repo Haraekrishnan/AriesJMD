@@ -1,12 +1,11 @@
 
-
 'use client';
 import { useMemo } from 'react';
 import { DocumentMovement, DocumentMovementStatus } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Clock, Check, Undo2 } from 'lucide-react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { Badge } from '../ui/badge';
@@ -20,7 +19,7 @@ const statusVariant: { [key in DocumentMovementStatus]: "default" | "secondary" 
 };
 
 const DocumentMovementList = ({ documents, onViewDocument }: { documents: DocumentMovement[], onViewDocument: (doc: DocumentMovement) => void }) => {
-    const { users } = useAppContext();
+    const { users } = useAuth();
 
     if (documents.length === 0) {
         return (

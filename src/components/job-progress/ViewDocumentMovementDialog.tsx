@@ -1,8 +1,8 @@
 
-
 'use client';
 import { useMemo, useState, useEffect } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { usePlanner } from '@/contexts/planner-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +31,8 @@ interface ViewDocumentMovementDialogProps {
 }
 
 export default function ViewDocumentMovementDialog({ isOpen, setIsOpen, movement: initialMovement }: ViewDocumentMovementDialogProps) {
-  const { user, users, documentMovements, acknowledgeDocumentMovement, completeDocumentMovement, addDocumentMovementComment, forwardDocumentMovement, returnDocumentMovement, deleteDocumentMovement } = useAppContext();
+  const { user, users } = useAuth();
+  const { documentMovements, acknowledgeDocumentMovement, completeDocumentMovement, addDocumentMovementComment, forwardDocumentMovement, returnDocumentMovement, deleteDocumentMovement } = usePlanner();
   const { toast } = useToast();
   const [comment, setComment] = useState('');
   const [isForwarding, setIsForwarding] = useState(false);
