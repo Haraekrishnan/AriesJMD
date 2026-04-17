@@ -9,7 +9,8 @@ import { TaskStatus, User } from '@/lib/types';
 import { DateRangePicker } from '../ui/date-range-picker';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useTask } from '@/contexts/task-provider';
 import { getMonth, format, getYear } from 'date-fns';
 
 export interface TaskFilters {
@@ -33,7 +34,8 @@ const months = Array.from({ length: 12 }, (_, i) => ({
 }));
 
 export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFiltersProps) {
-  const { user, getVisibleUsers, tasks } = useAppContext();
+  const { user, getVisibleUsers } = useAuth();
+  const { tasks } = useTask();
   const [filters, setFilters] = useState<TaskFilters>(initialFilters);
 
   const users = useMemo(() => {
