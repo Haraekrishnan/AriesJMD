@@ -1,8 +1,8 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileDown, Trash2, FileSpreadsheet, Edit, BookOpen, Search, Unlock, Lock, AlertTriangle } from 'lucide-react';
@@ -30,11 +30,12 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function TpCertificationPage() {
+    const { user, users, can } = useAuth();
     const { 
-        user, users, tpCertLists, deleteTpCertList,
-        inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, can,
+        tpCertLists, deleteTpCertList,
+        inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims,
         updateTpCertList
-     } = useAppContext();
+     } = useInventory();
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
     const [editingList, setEditingList] = useState<TpCertList | null>(null);
