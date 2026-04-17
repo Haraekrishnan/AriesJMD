@@ -1,3 +1,4 @@
+
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
@@ -10,6 +11,10 @@ const nextConfig: NextConfig = {
   webpack: (config) => {
     config.resolve.alias.canvas = false;
     return config;
+  },
+
+  serverActions: {
+    bodySizeLimit: '4mb',
   },
 
   images: {
