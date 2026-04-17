@@ -1,6 +1,8 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { usePlanner } from '@/contexts/planner-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -19,7 +21,9 @@ interface PendingActionsDialogProps {
 }
 
 export default function PendingActionsDialog({ isOpen, setIsOpen, onViewJob, onViewTimesheet, onViewDocument }: PendingActionsDialogProps) {
-  const { user, jobProgress, timesheets, users, projects, documentMovements } = useAppContext();
+  const { user, users } = useAuth();
+  const { jobProgress, timesheets, documentMovements } = usePlanner();
+  const { projects } = useGeneral();
   
   const canAcknowledgeOffice = useMemo(() => {
     if (!user) return false;

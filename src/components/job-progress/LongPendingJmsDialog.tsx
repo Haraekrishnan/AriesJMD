@@ -1,10 +1,10 @@
-
 'use client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { JobProgress } from '@/lib/types';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { Badge } from '../ui/badge';
 
@@ -17,7 +17,8 @@ interface LongPendingJmsDialogProps {
 }
 
 export default function LongPendingJmsDialog({ isOpen, setIsOpen, longPendingJobs, onViewJob }: LongPendingJmsDialogProps) {
-  const { projects, users } = useAppContext();
+  const { projects } = useGeneral();
+  const { users } = useAuth();
 
   const handleViewAndClose = (job: JobProgress) => {
     onViewJob(job);

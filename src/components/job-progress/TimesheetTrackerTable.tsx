@@ -20,7 +20,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import type { Timesheet, TimesheetStatus } from '@/lib/types';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { Eye, ArrowUpDown } from 'lucide-react';
@@ -47,7 +48,8 @@ export default function TimesheetTrackerTable({
   timesheets,
   onViewTimesheet,
 }: TimesheetTrackerTableProps) {
-  const { users, projects } = useAppContext();
+  const { users } = useAuth();
+  const { projects } = useGeneral();
   const [sorting, setSorting] = useState<SortingState>([]);
   
   const columns: ColumnDef<Timesheet>[] = useMemo(

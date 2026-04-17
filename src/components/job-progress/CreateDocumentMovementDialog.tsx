@@ -1,11 +1,11 @@
-
 'use client';
 
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { usePlanner } from '@/contexts/planner-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -28,7 +28,8 @@ interface Props {
 }
 
 export default function CreateDocumentMovementDialog({ isOpen, setIsOpen }: Props) {
-  const { users, addDocumentMovement } = useAppContext();
+  const { users } = useAuth();
+  const { addDocumentMovement } = usePlanner();
   const { toast } = useToast();
 
   const form = useForm<FormValues>({

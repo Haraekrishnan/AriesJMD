@@ -11,7 +11,8 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import type { JobProgress, JobProgressStatus } from '@/lib/types';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -41,7 +42,8 @@ const statusVariantMap: { [key in JobProgressStatus]: 'default' | 'secondary' | 
 };
 
 export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
-  const { users, projects } = useAppContext();
+  const { users } = useAuth();
+  const { projects } = useGeneral();
   const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: false }]);
   
   const columns: ColumnDef<JobProgress>[] = useMemo(
@@ -307,5 +309,3 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
       </ScrollArea>
   );
 }
-
-    

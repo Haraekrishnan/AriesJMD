@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import {
@@ -33,7 +32,9 @@ import {
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { usePlanner } from '@/contexts/planner-provider';
 import { useToast } from '@/hooks/use-toast';
 import type { Comment, Timesheet, TimesheetStatus } from '@/lib/types';
 import { format, formatDistanceToNow, parseISO, isAfter } from 'date-fns';
@@ -108,8 +109,9 @@ export default function ViewTimesheetDialog({
   setIsOpen: (open: boolean) => void;
   timesheet: Timesheet;
 }) {
-  const { user, users, projects, updateTimesheetStatus, deleteTimesheet, addTimesheetComment } =
-    useAppContext();
+  const { user, users } = useAuth();
+  const { projects } = useGeneral();
+  const { updateTimesheetStatus, deleteTimesheet, addTimesheetComment } = usePlanner();
   const { toast } = useToast();
   const [rejectionInfo, setRejectionInfo] = useState<{
     action: 'Reject' | 'Reopen';

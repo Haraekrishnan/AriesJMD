@@ -1,17 +1,18 @@
-
 'use client';
 import { useMemo } from 'react';
 import { Timesheet, TimesheetStatus } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Clock, UserCheck, Send, Building, XCircle } from 'lucide-react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { format, parseISO } from 'date-fns';
 import { Badge } from '../ui/badge';
 
 const TimesheetCard = ({ timesheet, onViewTimesheet }: { timesheet: Timesheet, onViewTimesheet: (ts: Timesheet) => void }) => {
-    const { users, projects } = useAppContext();
+    const { users } = useAuth();
+    const { projects } = useGeneral();
     const submitter = users.find(u => u.id === timesheet.submitterId);
     const recipient = users.find(u => u.id === timesheet.submittedToId);
     const project = projects.find(p => p.id === timesheet.projectId);

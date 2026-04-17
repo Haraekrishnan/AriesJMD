@@ -4,7 +4,8 @@ import { JobProgress } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Clock, Loader, Undo2, CheckCircle, AlertTriangle } from 'lucide-react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { format, isSameMonth, parseISO, differenceInDays } from 'date-fns';
 import { Badge } from '../ui/badge';
@@ -12,7 +13,8 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
 const JobCard = ({ job, onViewJob }: { job: JobProgress; onViewJob: (job: JobProgress) => void }) => {
-    const { users, projects } = useAppContext();
+    const { users } = useAuth();
+    const { projects } = useGeneral();
     
     const returnedStep = job.steps.find(s => s.isReturned);
     const pendingStep = job.steps.find(s => s.status === 'Pending');
