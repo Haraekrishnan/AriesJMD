@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import type { Quotation, QuotationStatus } from '@/lib/types';
@@ -15,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -36,7 +37,7 @@ const statusOptions: QuotationStatus[] = ['Pending', 'Approved', 'PO Sent', 'Par
 
 export default function QuotationList({ quotations, onEdit }: { quotations: Quotation[], onEdit: (q: Quotation) => void }) {
     const [viewingQuotation, setViewingQuotation] = useState<Quotation | null>(null);
-    const { user, users, can } = useAppContext();
+    const { user, users, can } = useAuth();
     const { updateQuotation, deleteQuotation, setQuotationLock } = usePurchase();
     const { toast } = useToast();
 
