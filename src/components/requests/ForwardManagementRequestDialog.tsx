@@ -4,7 +4,8 @@ import { useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -34,10 +35,11 @@ interface ForwardManagementRequestDialogProps {
   originalRequest: ManagementRequest;
 }
 
-const SUPERVISORY_ROLES: Role[] = ['Admin', 'Project Coordinator', 'Supervisor', 'Senior Safety Supervisor', 'HSE', 'Store in Charge'];
+const SUPERVISORY_ROLES: Role[] = ['Admin', 'Project Coordinator', 'Supervisor', 'Senior Safety Supervisor', 'HSE', 'Store in Charge', 'Document Controller'];
 
 export default function ForwardManagementRequestDialog({ isOpen, setIsOpen, originalRequest }: ForwardManagementRequestDialogProps) {
-  const { user, users, forwardManagementRequest } = useAppContext();
+  const { user, users } = useAuth();
+  const { forwardManagementRequest } = useGeneral();
   const { toast } = useToast();
   const [isCcPopoverOpen, setIsCcPopoverOpen] = useState(false);
 

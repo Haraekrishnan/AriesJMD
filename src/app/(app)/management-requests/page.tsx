@@ -1,7 +1,9 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, AlertTriangle } from 'lucide-react';
@@ -10,7 +12,8 @@ import ManagementRequestList from '@/components/requests/ManagementRequestList';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function ManagementRequestsPage() {
-    const { user, can, managementRequests = [] } = useAppContext();
+    const { user, can } = useAuth();
+    const { managementRequests = [] } = useGeneral();
     const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
 
     const { activeRequests, archivedRequests } = useMemo(() => {

@@ -1,7 +1,8 @@
 
 'use client';
-import { useState, useMemo, useEffect } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useState, useMemo } from 'react';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -29,7 +30,7 @@ const statusVariant: { [key in ManagementRequestStatus]: 'default' | 'secondary'
   'Closed': 'secondary',
 };
 
-const SUPERVISORY_ROLES: Role[] = ['Admin', 'Project Coordinator', 'Supervisor', 'Senior Safety Supervisor', 'HSE', 'Store in Charge'];
+const SUPERVISORY_ROLES: Role[] = ['Admin', 'Project Coordinator', 'Supervisor', 'Senior Safety Supervisor', 'HSE', 'Store in Charge', 'Document Controller'];
 
 interface ViewManagementRequestDialogProps {
   isOpen: boolean;
@@ -38,7 +39,8 @@ interface ViewManagementRequestDialogProps {
 }
 
 export default function ViewManagementRequestDialog({ isOpen, setIsOpen, request: initialRequest }: ViewManagementRequestDialogProps) {
-  const { user, users, managementRequests, updateManagementRequest, deleteManagementRequest, addManagementRequestComment } = useAppContext();
+  const { user, users } = useAuth();
+  const { managementRequests, updateManagementRequest, deleteManagementRequest, addManagementRequestComment } = useGeneral();
   const { toast } = useToast();
   
   const [newComment, setNewComment] = useState('');

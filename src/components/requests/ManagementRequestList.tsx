@@ -2,7 +2,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import type { ManagementRequest } from '@/lib/types';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -25,7 +26,8 @@ const statusVariantMap: { [key in ManagementRequest['status']]: 'default' | 'sec
 };
 
 export default function ManagementRequestList({ requests }: ManagementRequestListProps) {
-  const { user, users, markManagementRequestAsViewed } = useAppContext();
+  const { user, users } = useAuth();
+  const { markManagementRequestAsViewed } = useGeneral();
   const [viewingRequest, setViewingRequest] = useState<ManagementRequest | null>(null);
 
   const handleView = (request: ManagementRequest) => {

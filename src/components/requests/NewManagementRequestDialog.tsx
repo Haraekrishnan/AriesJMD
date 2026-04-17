@@ -4,7 +4,8 @@ import { useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -17,7 +18,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
-import { type Role } from '@/lib/types';
+import type { Role } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 const requestSchema = z.object({
@@ -37,7 +38,8 @@ interface NewManagementRequestDialogProps {
 const SUPERVISORY_ROLES: Role[] = ['Admin', 'Project Coordinator', 'Supervisor', 'Senior Safety Supervisor', 'HSE', 'Store in Charge', 'Document Controller'];
 
 export default function NewManagementRequestDialog({ isOpen, setIsOpen }: NewManagementRequestDialogProps) {
-  const { user, users, addManagementRequest } = useAppContext();
+  const { user, users } = useAuth();
+  const { addManagementRequest } = useGeneral();
   const { toast } = useToast();
   const [isCcPopoverOpen, setIsCcPopoverOpen] = useState(false);
 
