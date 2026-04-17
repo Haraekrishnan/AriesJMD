@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { useConsumable } from '@/contexts/consumable-provider';
@@ -8,7 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import StatCard from '@/components/dashboard/stat-card';
 import { Package, PackageCheck, PackageX, PlusCircle, Edit, Trash2, TrendingDown, ShoppingCart, AlertTriangle, Inbox, Search, FileDown, Upload } from 'lucide-react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
 import AddConsumableDialog from '@/components/requests/AddConsumableDialog';
 import EditConsumableDialog from '@/components/requests/EditConsumableDialog';
@@ -42,7 +42,8 @@ type InwardFormValues = z.infer<typeof inwardSchema>;
 
 export default function ConsumablesPage() {
   const { consumableItems, deleteConsumableItem, consumableInwardHistory, addConsumableInwardRecord, deleteConsumableInwardRecord } = useConsumable();
-  const { can, user, internalRequests, users } = useAppContext();
+  const { can, user, users } = useAuth();
+  const { internalRequests } = useInventory();
   const { toast } = useToast();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
