@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle, Save, MessagesSquare, ShieldX, Send, Undo2, MessageSquare } from 'lucide-react';
+import { MoreHorizontal, CheckCircle, XCircle, Truck, Edit, Check, Trash2, Settings, AlertTriangle, Save, MessagesSquare, ShieldX, Send, Undo2, MessageSquare, CheckCheck } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO, isAfter, addYears } from 'date-fns';
 import type { PpeRequest, PpeRequestStatus, ManpowerProfile, Comment, InternalRequestItemStatus, Role } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -21,6 +20,11 @@ import { Paperclip, Upload, ZoomIn, ZoomOut, Download } from 'lucide-react';
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { useInventory } from '@/contexts/inventory-provider';
+import { useManpower } from '@/contexts/manpower-provider';
+import { usePurchase } from '@/contexts/purchase-provider';
 
 interface PpeRequestTableProps {
   requests: PpeRequest[];
@@ -41,8 +45,11 @@ const itemStatusVariant: Record<InternalRequestItemStatus, 'default' | 'secondar
     Rejected: 'destructive',
 };
 
-const RequestCard = ({ req }: { req: PpeRequest; }) => {
-    const { user, users, manpowerProfiles, projects, updatePpeRequestStatus, addPpeRequestComment, markPpeRequestAsViewed, deletePpeRequest, deletePpeAttachment, ppeStock, resolvePpeDispute } = useAppContext();
+const RequestCard = ({ req, onEditRequest }: { req: PpeRequest; onEditRequest: (request: PpeRequest) => void; }) => {
+    const { user, users, can, roles } = useAuth();
+    const { projects } = useGeneral();
+    const { manpowerProfiles } = useManpower();
+    const { updatePpeRequestStatus, addPpeRequestComment, deletePpeRequest, deletePpeAttachment, ppeStock, resolvePpeDispute } = useInventory();
     const [selectedRequest, setSelectedRequest] = useState<PpeRequest | null>(null);
     const [editingRequest, setEditingRequest] = useState<PpeRequest | null>(null);
     const [action, setAction] = useState<'Approved' | 'Rejected' | 'Issued' | 'Disputed' | 'Query' | null>(null);
@@ -99,10 +106,6 @@ const RequestCard = ({ req }: { req: PpeRequest; }) => {
         setComment('');
     }
     
-    const handleEditClick = (req: PpeRequest) => {
-        setEditingRequest(req);
-    };
-
     const handleDeleteRequest = (reqId: string) => {
         deletePpeRequest(reqId);
         toast({ variant: 'destructive', title: 'Request Deleted' });
@@ -129,12 +132,6 @@ const RequestCard = ({ req }: { req: PpeRequest; }) => {
     }, [manpower, req.ppeType]);
 
     const commentsArray = Array.isArray(req.comments) ? req.comments : (req.comments ? Object.values(req.comments) : []);
-    
-    const handleAccordionToggle = (openValue: string) => {
-        if (openValue === req.id && user?.id === req.requesterId && !req.viewedByRequester) {
-            markPpeRequestAsViewed(req.id);
-        }
-    };
     
     const stockInfo = useMemo(() => {
         if (!selectedRequest) return 'N/A';
@@ -210,7 +207,7 @@ const RequestCard = ({ req }: { req: PpeRequest; }) => {
                     </div>
                 )}
 
-                <Accordion type="single" collapsible className="w-full mt-2" onValueChange={() => handleAccordionToggle(req.id)}>
+                <Accordion type="single" collapsible className="w-full mt-2">
                     <AccordionItem value={req.id} className="border-none">
                         <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">View Comment History</AccordionTrigger>
                         <AccordionContent className="pt-2 text-muted-foreground">
@@ -248,7 +245,7 @@ const RequestCard = ({ req }: { req: PpeRequest; }) => {
                         <Button size="sm" onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
                     </>
                  )}
-                 {canMarkAsIssued && req.status === 'Approved' && (
+                 {canIssue && req.status === 'Approved' && (
                     <Button size="sm" onClick={() => handleActionClick(req, 'Issued')}><Check className="mr-2 h-4 w-4" /> Issue</Button>
                  )}
                  {canDispute && (
@@ -261,12 +258,12 @@ const RequestCard = ({ req }: { req: PpeRequest; }) => {
                     </div>
                  )}
                  {(user?.role === 'Admin' || (isRequester && req.status === 'Pending')) && (
-                    <DropdownMenu>
+                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8"><Settings className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                            <DropdownMenuItem onSelect={() => handleEditClick(req)} disabled={!canEditRequest}>
+                            <DropdownMenuItem onSelect={() => onEditRequest(req)} disabled={!canEditRequest}>
                                 <Edit className="mr-2 h-4 w-4" /> Edit Request
                             </DropdownMenuItem>
                              <AlertDialog>
@@ -326,24 +323,22 @@ const RequestCard = ({ req }: { req: PpeRequest; }) => {
                       onMouseUp={handleMouseUpOrLeave}
                       onMouseLeave={handleMouseUpOrLeave}
                     >
-                        {viewingAttachmentUrl && (
-                             isPdf ? (
-                                <object data={viewingAttachmentUrl} type="application/pdf" width="100%" height="100%">
-                                    <p>It appears you don't have a PDF plugin for this browser. You can <a href={viewingAttachmentUrl} className="text-blue-600 hover:underline">click here to download the PDF file.</a></p>
-                                </object>
-                            ) : (
-                                <img 
-                                    src={viewingAttachmentUrl} 
-                                    alt="Attachment" 
-                                    className={cn("transition-transform duration-200", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
-                                    style={{
-                                        transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`,
-                                        maxWidth: zoom > 1 ? 'none' : '100%',
-                                        maxHeight: zoom > 1 ? 'none' : '100%',
-                                        objectFit: 'contain'
-                                    }}
-                                />
-                            )
+                        {isPdf ? (
+                            <object data={viewingAttachmentUrl} type="application/pdf" width="100%" height="100%">
+                                <p>It appears you don't have a PDF plugin for this browser. You can <a href={viewingAttachmentUrl || ''} className="text-blue-600 hover:underline">click here to download the PDF file.</a></p>
+                            </object>
+                        ) : (
+                            <img 
+                                src={viewingAttachmentUrl || ''} 
+                                alt="Attachment" 
+                                className={cn("transition-transform duration-200", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
+                                style={{
+                                    transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`,
+                                    maxWidth: zoom > 1 ? 'none' : '100%',
+                                    maxHeight: zoom > 1 ? 'none' : '100%',
+                                    objectFit: 'contain'
+                                }}
+                            />
                         )}
                     </div>
                 </DialogContent>
@@ -416,7 +411,7 @@ const RequestCard = ({ req }: { req: PpeRequest; }) => {
             )}
             
             {editingRequest && (
-                <EditPpeRequestDialog 
+                <EditPpeRequestDialog
                     isOpen={!!editingRequest}
                     setIsOpen={() => setEditingRequest(null)}
                     request={editingRequest}
@@ -427,8 +422,10 @@ const RequestCard = ({ req }: { req: PpeRequest; }) => {
 }
 
 export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
-  const { user, markPpeRequestAsViewed } = useAppContext();
+  const { user } = useAuth();
+  const { markPpeRequestAsViewed } = useInventory();
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
+  const [editingRequest, setEditingRequest] = useState<PpeRequest | null>(null);
 
   const { activeRequests, completedRequests } = useMemo(() => {
     const active: PpeRequest[] = [];
@@ -467,7 +464,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
         <h3 className="font-semibold text-lg">Active Requests ({activeRequests.length})</h3>
         {activeRequests.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {activeRequests.map((req, index) => <RequestCard key={req.id || index} req={req} />)}
+            {activeRequests.map((req, index) => <RequestCard key={req.id || index} req={req} onEditRequest={setEditingRequest} />)}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">No active requests.</p>
@@ -481,12 +478,21 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
             </AccordionTrigger>
             <AccordionContent className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {completedRequests.map((req, index) => <RequestCard key={req.id || index} req={req} isCompletedSection={true} />)}
+                {completedRequests.map((req, index) => <RequestCard key={req.id || index} req={req} onEditRequest={setEditingRequest}/>)}
               </div>
             </AccordionContent>
           </AccordionItem>
         </Accordion>
        )}
+       {editingRequest && (
+        <EditPpeRequestDialog
+            isOpen={!!editingRequest}
+            setIsOpen={() => setEditingRequest(null)}
+            request={editingRequest}
+        />
+       )}
     </div>
   );
 }
+
+    
