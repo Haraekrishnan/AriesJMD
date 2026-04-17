@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo, useState, useCallback } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -53,6 +54,13 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false }: { req: 
     const showTpOption = req.reason === 'For TP certification' || req.reason === 'Expired materials';
     const approver = req.approverId ? users.find(u => u.id === req.approverId) : null;
     const isRequester = req.requesterId === user?.id;
+
+    const rejectionComment = useMemo(() => {
+        if (req.status !== 'Rejected' || !req.comments) return null;
+        const commentsArray = Array.isArray(req.comments) ? req.comments : Object.values(req.comments);
+        const rejection = commentsArray.find(c => c.text.startsWith('Request Rejected. Reason:'));
+        return rejection ? rejection.text.replace('Request Rejected. Reason:', '').trim() : null;
+    }, [req.status, req.comments]);
 
     const canEdit = useMemo(() => {
         if (!user) return false;
@@ -238,7 +246,9 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false }: { req: 
                                 <strong>{req.status} by:</strong> {approver.name}
                                 {req.approvalDate && ` on ${format(parseISO(req.approvalDate), 'dd MMM, yyyy p')}`}
                             </p>
-                            {req.status === 'Rejected' && <p className="italic text-destructive mt-1">Note: Rejection comments are not displayed due to a known issue.</p>}
+                            {req.status === 'Rejected' && rejectionComment && (
+                                <p className="italic text-destructive mt-1">Reason: {rejectionComment}</p>
+                            )}
                         </div>
                     )}
 
@@ -398,3 +408,5 @@ export default function PendingTransfers({ onEditRequest }: PendingTransfersProp
     </>
   );
 }
+
+    

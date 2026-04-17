@@ -921,15 +921,48 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
     const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
         if (!user || !can.approve_store_requests) return;
+        const request = inventoryTransferRequestsById[requestId];
+        if (!request) return;
 
         const updates: { [key: string]: any } = {};
         updates[`inventoryTransferRequests/${requestId}/status`] = 'Rejected';
         updates[`inventoryTransferRequests/${requestId}/approverId`] = user.id;
+        updates[`inventoryTransferRequests/${requestId}/approvalDate`] = new Date().toISOString();
         updates[`inventoryTransferRequests/${requestId}/acknowledgedByRequester`] = false;
+
+        if (comment) {
+            const newCommentRef = push(ref(rtdb, `inventoryTransferRequests/${requestId}/comments`));
+            const newComment: Omit<Comment, 'id'> = {
+                id: newCommentRef.key!,
+                userId: user.id,
+                text: `Request Rejected. Reason: ${comment}`,
+                date: new Date().toISOString(),
+                eventId: requestId,
+            };
+            updates[`inventoryTransferRequests/${requestId}/comments/${newCommentRef.key}`] = newComment;
+        }
 
         update(ref(rtdb), updates);
         addActivityLog(user.id, 'Inventory Transfer Rejected', `Request ID: ${requestId}`);
-    }, [user, can.approve_store_requests, addActivityLog]);
+
+        const requester = users.find(u => u.id === request.requesterId);
+        if (requester?.email) {
+            const htmlBody = `
+                <p>Your inventory transfer request (ID: #${requestId.slice(-6)}) has been rejected by ${user.name}.</p>
+                ${comment ? `<p><strong>Reason:</strong> ${comment}</p>` : ''}
+                <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/my-requests">View Request</a></p>
+            `;
+            sendNotificationEmail({
+                to: [requester.email],
+                subject: `Inventory Transfer Rejected: #${requestId.slice(-6)}`,
+                htmlBody,
+                notificationSettings,
+                event: 'onInternalRequestUpdate',
+                involvedUser: requester,
+                creatorUser: user,
+            });
+        }
+    }, [user, can.approve_store_requests, addActivityLog, inventoryTransferRequestsById, users, notificationSettings]);
     
     const disputeInventoryTransfer = useCallback((requestId: string, comment: string) => {
         if (!user) return;
@@ -1530,9 +1563,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const report = damageReportsById[reportId];
         if (!report) return;
 
-        const updates: { [key: string]: any } = {
-            [`damageReports/${reportId}/status`]: status
-        };
+        const updates: { [key: string]: any } = {};
+        updates[`damageReports/${reportId}/status`] = status;
 
         if (status === 'Approved' && report.itemId) {
             const item = inventoryItems.find(i => i.id === report.itemId);
@@ -1689,3 +1721,6 @@ export const useInventory = (): InventoryContextType => {
 };
 
 
+
+
+    
