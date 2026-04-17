@@ -1,5 +1,3 @@
-
-
 'use client';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
@@ -8,7 +6,7 @@ import { saveAs } from 'file-saver';
 import { format, parseISO } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { useAppContext } from '@/contexts/app-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import type { InventoryItem } from '@/lib/types';
 
 interface ActionRequiredReportProps {
@@ -16,7 +14,7 @@ interface ActionRequiredReportProps {
 }
 
 export default function ActionRequiredReport({ notifications }: ActionRequiredReportProps) {
-  const { projects } = useAppContext();
+  const { projects } = useGeneral();
 
   const handleExportExcel = async () => {
     const workbook = new ExcelJS.Workbook();
