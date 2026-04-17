@@ -3,7 +3,8 @@
 import { useMemo, useState } from 'react';
 import type { Task } from '@/lib/types';
 import type { DateRange } from 'react-day-picker';
-import { useAppContext } from '@/contexts/app-provider';
+import { useTask } from '@/contexts/task-provider';
+import { useAuth } from '@/contexts/auth-provider';
 import ReportFilters from '@/components/reports/report-filters';
 import ReportResultsTable from '@/components/reports/report-results-table';
 import ReportDownloads from '@/components/reports/report-downloads';
@@ -18,7 +19,8 @@ export interface Filters {
 }
 
 export default function ReportsPage() {
-  const { tasks, getVisibleUsers } = useAppContext();
+  const { tasks } = useTask();
+  const { getVisibleUsers } = useAuth();
   const [filters, setFilters] = useState<Filters>({
     assigneeId: 'all',
     status: 'all',

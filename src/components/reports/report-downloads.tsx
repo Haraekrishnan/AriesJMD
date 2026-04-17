@@ -1,7 +1,6 @@
-
 'use client';
 import type { Task } from '@/lib/types';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -12,7 +11,7 @@ interface ReportDownloadsProps {
 }
 
 export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
-  const { users } = useAppContext();
+  const { users } = useAuth();
 
   const handleDownloadExcel = () => {
     const dataToExport = tasks.map(task => ({

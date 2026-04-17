@@ -8,7 +8,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Calendar as CalendarIcon, FilterX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
 import type { Filters } from '@/app/(app)/reports/page';
 import type { DateRange } from 'react-day-picker';
 import { Label } from '../ui/label';
@@ -19,7 +19,7 @@ interface ReportFiltersProps {
 }
 
 export default function ReportFilters({ onApplyFilters, initialFilters }: ReportFiltersProps) {
-  const { getVisibleUsers } = useAppContext();
+  const { getVisibleUsers } = useAuth();
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const visibleUsers = getVisibleUsers();
 
