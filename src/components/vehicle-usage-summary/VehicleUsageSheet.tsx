@@ -1,29 +1,34 @@
 
 'use client';
 
-import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import React, { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { usePlanner } from '@/contexts/planner-provider';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, Download, Save, Lock, Unlock, Edit } from 'lucide-react';
-import { format, startOfMonth, addMonths, subMonths, isSameMonth, isAfter, isBefore, startOfToday, parseISO } from 'date-fns';
-import { saveAs } from "file-saver";
-import { Accordion } from '@/components/ui/accordion';
+import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import { ScrollArea } from '../ui/scroll-area';
+import { DatePickerInput } from '../ui/date-picker-input';
+import { Checkbox } from '../ui/checkbox';
+import { format, getDay, getDaysInMonth, parseISO, isSameMonth, isAfter, isBefore, startOfToday, startOfMonth, addMonths, subMonths } from 'date-fns';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../ui/dialog';
+import { ScrollArea, ScrollBar } from '../ui/scroll-area';
+import { Vehicle, User } from '@/lib/types';
+import { Save, Lock, Unlock, Edit, Download, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import EditVehicleUsageDialog from '../vehicle/EditVehicleUsageDialog';
 import { exportToExcel, exportToPdf } from './generateUsageSummary';
-import EditVehicleUsageDialog from './EditVehicleUsageDialog';
-import type { Vehicle, User } from '@/lib/types';
 import { Badge } from '../ui/badge';
-
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../ui/alert-dialog';
 
 const implementationStartDate = new Date(2026, 0, 1); // January 2026 (Month is 0-indexed)
 
 const VehicleDataRow = ({ vehicle, currentMonth, slNo }: { vehicle: any, currentMonth: Date, slNo: number }) => {
-    const { user, can, lockVehicleUsageSheet, unlockVehicleUsageSheet, drivers, vehicleUsageRecords, users } = useAppContext();
+    const { user, can } = useAuth();
+    const { users } = useAuth();
+    const { drivers, lockVehicleUsageSheet, unlockVehicleUsageSheet, vehicleUsageRecords } = usePlanner();
     const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
 
     const monthKey = format(currentMonth, 'yyyy-MM');
@@ -132,7 +137,8 @@ const VehicleDataRow = ({ vehicle, currentMonth, slNo }: { vehicle: any, current
 
 
 export default function VehicleUsageSheet() {
-    const { vehicles, vehicleUsageRecords, can } = useAppContext();
+    const { can } = useAuth();
+    const { vehicles, vehicleUsageRecords } = usePlanner();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     
     const getVehicleStatus = (vehicleId: string) => {

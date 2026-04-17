@@ -3,7 +3,7 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -51,7 +51,7 @@ const DatePickerController = ({ name, control }: { name: keyof DriverFormValues,
 );
 
 export default function AddDriverDialog({ isOpen, setIsOpen, driver }: AddDriverDialogProps) {
-  const { addDriver, updateDriver } = useAppContext();
+  const { addDriver, updateDriver } = useGeneral();
   const { toast } = useToast();
 
   const form = useForm<DriverFormValues>({

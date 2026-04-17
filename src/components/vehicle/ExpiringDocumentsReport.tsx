@@ -7,7 +7,7 @@ import { saveAs } from 'file-saver';
 import { format, parseISO } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { useAppContext } from '@/contexts/app-provider';
+import { useGeneral } from '@/contexts/general-provider';
 
 interface ExpiringDocumentsReportProps {
   expiringVehicles: any[];
@@ -15,9 +15,9 @@ interface ExpiringDocumentsReportProps {
 }
 
 export default function ExpiringDocumentsReport({ expiringVehicles, expiringDrivers }: ExpiringDocumentsReportProps) {
-    const { drivers } = useAppContext();
-  
-    const handleExportExcel = async () => {
+  const { projects, drivers } = useGeneral();
+
+  const handleExportExcel = async () => {
     const workbook = new ExcelJS.Workbook();
     
     // Vehicles Sheet

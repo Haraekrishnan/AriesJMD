@@ -1,9 +1,9 @@
 
-
 'use client';
 
 import React, { useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Edit, Trash2, FileText } from 'lucide-react';
@@ -27,7 +27,8 @@ const statusVariant: Record<VehicleStatus, 'success' | 'warning' | 'destructive'
 }
 
 export default function VehicleTable({ onEdit, onLogManager }: VehicleTableProps) {
-  const { vehicles, drivers, can, deleteVehicle } = useAppContext();
+  const { can } = useAuth();
+  const { vehicles, drivers, deleteVehicle } = useGeneral();
   const { toast } = useToast();
 
   const handleDelete = (vehicleId: string) => {

@@ -1,14 +1,13 @@
 
-
 'use client';
 import { useState } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Notebook, AlertTriangle } from 'lucide-react';
 import VehicleUsageSheet from '@/components/vehicle-usage-summary/VehicleUsageSheet';
+import { AlertTriangle, Notebook } from 'lucide-react';
 
 export default function VehicleUsageSummaryPage() {
-    const { can } = useAppContext();
+    const { can } = useAuth();
 
     if (!can.manage_vehicle_usage && !can.view_all) {
         return (

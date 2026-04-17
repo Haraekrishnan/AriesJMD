@@ -1,9 +1,9 @@
 
-
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, AlertTriangle, Users, Car, Wrench, Notebook } from 'lucide-react';
@@ -22,7 +22,8 @@ import ExpiringDocumentsReport from '@/components/vehicle/ExpiringDocumentsRepor
 import Link from 'next/link';
 
 export default function VehicleStatusPage() {
-    const { can, vehicles, drivers } = useAppContext();
+    const { can } = useAuth();
+    const { vehicles, drivers } = useGeneral();
     const searchParams = useSearchParams();
     const tab = searchParams.get('tab');
     

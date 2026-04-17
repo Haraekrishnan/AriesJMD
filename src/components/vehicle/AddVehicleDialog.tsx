@@ -3,7 +3,7 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -43,7 +43,7 @@ interface AddVehicleDialogProps {
 }
 
 export default function AddVehicleDialog({ isOpen, setIsOpen }: AddVehicleDialogProps) {
-  const { addVehicle, drivers } = useAppContext();
+  const { addVehicle, drivers } = useGeneral();
   const { toast } = useToast();
   
   const form = useForm<VehicleFormValues>({

@@ -4,7 +4,8 @@ import { useState, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -58,7 +59,8 @@ interface VehicleLogManagerDialogProps {
 }
 
 export default function VehicleLogManagerDialog({ isOpen, setIsOpen, vehicle }: VehicleLogManagerDialogProps) {
-  const { user, users, addMachineLog, getMachineLogs, deleteMachineLog } = useAppContext();
+  const { user, users } = useAuth();
+  const { addMachineLog, getMachineLogs, deleteMachineLog } = useInventory();
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [viewingAttachmentUrl, setViewingAttachmentUrl] = useState<string | null>(null);
@@ -326,7 +328,7 @@ export default function VehicleLogManagerDialog({ isOpen, setIsOpen, vehicle }: 
       </DialogContent>
     </Dialog>
     <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); setNumPages(null); setPageNumber(1); }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
             <DialogHeader>
                 <DialogTitle>Attachment Viewer</DialogTitle>
                 <div className="flex items-center gap-2">
