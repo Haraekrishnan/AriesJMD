@@ -383,7 +383,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                     <Label className="text-sm truncate pt-2">{form.watch(`items.${itemIndex}.description`) || `Item ${itemIndex + 1}`}</Label>
                                     <div>
                                         <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.quantity`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Qty"/>
-                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.quantity && <p className="text-xs text-destructive mt-1">Qty > 0</p>}
+                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.quantity && <p className="text-xs text-destructive mt-1">Qty &gt; 0</p>}
                                     </div>
                                     <div>
                                         <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.rate`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Rate"/>
