@@ -1,9 +1,7 @@
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -19,6 +17,8 @@ import type { PpeRequest } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { isAfter, addYears, format, parseISO, isToday, isFuture } from 'date-fns';
+import { useInventory } from '@/contexts/inventory-provider';
+import { useManpower } from '@/contexts/manpower-provider';
 
 
 const coverallSizeOptions = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
@@ -47,7 +47,8 @@ interface EditPpeRequestDialogProps {
 }
 
 export default function EditPpeRequestDialog({ isOpen, setIsOpen, request }: EditPpeRequestDialogProps) {
-  const { updatePpeRequest, manpowerProfiles } = useAppContext();
+  const { updatePpeRequest } = useInventory();
+  const { manpowerProfiles } = useManpower();
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [isManpowerPopoverOpen, setIsManpowerPopoverOpen] = useState(false);
