@@ -1,10 +1,9 @@
-
 'use client';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -27,7 +26,7 @@ interface EditJobCodeDialogProps {
 }
 
 export default function EditJobCodeDialog({ isOpen, setIsOpen, jobCode }: EditJobCodeDialogProps) {
-  const { updateJobCode } = useAppContext();
+  const { updateJobCode } = useGeneral();
   const { toast } = useToast();
 
   const form = useForm<JobCodeFormValues>({

@@ -1,9 +1,8 @@
-
 'use client';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { usePlanner } from '@/contexts/planner-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -22,7 +21,7 @@ interface AddJobRecordPlantDialogProps {
 }
 
 export default function AddJobRecordPlantDialog({ isOpen, setIsOpen }: AddJobRecordPlantDialogProps) {
-  const { addJobRecordPlant } = useAppContext();
+  const { addJobRecordPlant } = usePlanner();
   const { toast } = useToast();
 
   const form = useForm<PlantFormValues>({

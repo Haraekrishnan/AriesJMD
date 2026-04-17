@@ -1,9 +1,10 @@
-
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useManpower } from '@/contexts/manpower-provider';
+import { usePlanner } from '@/contexts/planner-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -39,7 +40,10 @@ async function fetchImageAsArrayBuffer(url: string) {
 }
 
 export default function JobRecordSheet() {
-    const { user, manpowerProfiles, jobRecords, saveJobRecord, savePlantOrder, jobRecordPlants, projects, jobCodes, deleteJobCode, can, lockJobRecordSheet, unlockJobRecordSheet, deleteJobRecordPlant, carryForwardPlantAssignments } = useAppContext();
+    const { user, can } = useAuth();
+    const { manpowerProfiles } = useManpower();
+    const { jobRecords, saveJobRecord, savePlantOrder, jobRecordPlants, lockJobRecordSheet, unlockJobRecordSheet, deleteJobRecordPlant, carryForwardPlantAssignments } = usePlanner();
+    const { projects, jobCodes, deleteJobCode } = useGeneral();
     const [currentMonth, setCurrentMonth] = useState(startOfToday());
     const [isAddPlantOpen, setIsAddPlantOpen] = useState(false);
     const [isAddJobCodeOpen, setIsAddJobCodeOpen] = useState(false);

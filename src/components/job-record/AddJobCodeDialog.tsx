@@ -1,9 +1,8 @@
-
 'use client';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -24,7 +23,7 @@ interface AddJobCodeDialogProps {
 }
 
 export default function AddJobCodeDialog({ isOpen, setIsOpen }: AddJobCodeDialogProps) {
-  const { addJobCode } = useAppContext();
+  const { addJobCode } = useGeneral();
   const { toast } = useToast();
 
   const form = useForm<JobCodeFormValues>({
