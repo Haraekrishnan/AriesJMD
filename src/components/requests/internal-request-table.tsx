@@ -20,6 +20,9 @@ import EditInternalRequestItemDialog from './EditInternalRequestItemDialog';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
 import { ScrollArea } from '../ui/scroll-area';
 import { useConsumable } from '@/contexts/consumable-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { useManpower } from '@/contexts/manpower-provider';
+import { usePurchase } from '@/contexts/purchase-provider';
 
 interface InternalRequestTableProps {
   requests: InternalRequest[];
@@ -44,12 +47,11 @@ const itemStatusVariant: Record<InternalRequestItemStatus, 'default' | 'secondar
     Rejected: 'destructive',
 };
 
-const RequestCard = ({ req, isCompletedSection = false, showAcknowledge = true, isConsumable = false }: { req: InternalRequest; isCompletedSection?: boolean; showAcknowledge?: boolean; isConsumable?: boolean; }) => {
+const RequestCard = ({ req, onEditRequest, isCompletedSection = false, showAcknowledge = true, isConsumable = false }: { req: InternalRequest; onEditRequest: (request: InternalRequest, item: InternalRequestItem) => void; isCompletedSection?: boolean; showAcknowledge?: boolean; isConsumable?: boolean; }) => {
     const { user, users, can, roles } = useAuth();
     const {
         updateInternalRequestStatus, 
         updateInternalRequestItemStatus, 
-        markInternalRequestAsViewed, 
         deleteInternalRequest, 
         forceDeleteInternalRequest, 
         acknowledgeInternalRequest, 
@@ -57,7 +59,6 @@ const RequestCard = ({ req, isCompletedSection = false, showAcknowledge = true, 
         inventoryItems, 
         resolveInternalRequestDispute,
     } = useInventory();
-    const { consumableItems } = useConsumable();
     const [selectedRequest, setSelectedRequest] = useState<InternalRequest | null>(null);
     const [editingItem, setEditingItem] = useState<InternalRequestItem | null>(null);
     const [action, setAction] = useState<'Approved' | 'Rejected' | 'Issued' | 'Disputed' | 'Query' | null>(null);
@@ -101,19 +102,6 @@ const RequestCard = ({ req, isCompletedSection = false, showAcknowledge = true, 
     
     const handleItemActionClick = (item: InternalRequestItem, status: InternalRequestItemStatus) => {
         const needsComment = status === 'Rejected';
-
-        if (status === 'Issued') {
-            const itemsToCheck = isConsumable ? consumableItems : inventoryItems;
-            const stockItem = itemsToCheck.find(i => i.id === item.inventoryItemId);
-            if (stockItem && stockItem.quantity !== undefined && stockItem.quantity < item.quantity) {
-                toast({
-                    variant: 'destructive',
-                    title: 'Insufficient Stock',
-                    description: `Cannot issue ${item.quantity} of ${item.description}. Only ${stockItem.quantity} available.`,
-                });
-                return;
-            }
-        }
     
         if (needsComment) {
             setItemAction({ item, status });
@@ -155,12 +143,6 @@ const RequestCard = ({ req, isCompletedSection = false, showAcknowledge = true, 
         forceDeleteInternalRequest(requestId);
     };
 
-    const handleAccordionToggle = (openValue: string) => {
-        if (openValue === req.id) {
-            markInternalRequestAsViewed(req.id);
-        }
-    };
-    
     const requester = users.find(u => u.id === req.requesterId);
     const isRejectedButActive = req.status === 'Rejected' && !req.acknowledgedByRequester;
     const needsAcknowledgement = user?.id === req.requesterId && (req.status === 'Issued' || req.status === 'Partially Issued' || isRejectedButActive) && !req.acknowledgedByRequester;
@@ -200,7 +182,7 @@ const RequestCard = ({ req, isCompletedSection = false, showAcknowledge = true, 
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6"><MoreHorizontal className="h-4 w-4"/></Button></DropdownMenuTrigger>
                                                 <DropdownMenuContent>
-                                                    <DropdownMenuItem onSelect={() => setEditingItem(item)}><Edit className="mr-2 h-4 w-4" />Edit Item</DropdownMenuItem>
+                                                    <DropdownMenuItem onSelect={() => onEditRequest(req, item)}><Edit className="mr-2 h-4 w-4" />Edit Item</DropdownMenuItem>
                                                     <DropdownMenuItem onSelect={() => handleItemActionClick(item, 'Approved')} disabled={item.status === 'Approved'}><CheckCircle className="mr-2 h-4 w-4 text-green-600"/>Approve</DropdownMenuItem>
                                                     <DropdownMenuItem onSelect={() => handleItemActionClick(item, 'Issued')} disabled={item.status !== 'Approved'}><Truck className="mr-2 h-4 w-4 text-blue-600"/>Issue</DropdownMenuItem>
                                                     <DropdownMenuItem onSelect={() => handleItemActionClick(item, 'Rejected')} disabled={item.status === 'Rejected'} className="text-destructive focus:text-destructive"><XCircle className="mr-2 h-4 w-4"/>Reject</DropdownMenuItem>
@@ -212,7 +194,7 @@ const RequestCard = ({ req, isCompletedSection = false, showAcknowledge = true, 
                                 </div>
                             ))}
                         </div>
-                        <Accordion type="single" collapsible className="w-full mt-2" onValueChange={() => handleAccordionToggle(req.id)}>
+                        <Accordion type="single" collapsible className="w-full mt-2">
                             <AccordionItem value={req.id} className="border-none">
                                 <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">
                                     <div className="flex items-center gap-1">
@@ -330,16 +312,6 @@ const RequestCard = ({ req, isCompletedSection = false, showAcknowledge = true, 
                     </AlertDialogContent>
                 </AlertDialog>
             </Card>
-
-            {editingItem && (
-                <EditInternalRequestItemDialog
-                    isOpen={!!editingItem}
-                    setIsOpen={() => setEditingItem(null)}
-                    request={req}
-                    item={editingItem}
-                    isConsumable={isConsumable}
-                />
-            )}
         </>
     )
 }
@@ -347,12 +319,13 @@ const RequestCard = ({ req, isCompletedSection = false, showAcknowledge = true, 
 export default function InternalRequestTable({ requests, showAcknowledge = true, isConsumable = false }: InternalRequestTableProps) {
   const { user, markInternalRequestAsViewed } = useInventory();
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
+  const [editingRequestItem, setEditingRequestItem] = useState<{ request: InternalRequest, item: InternalRequestItem } | null>(null);
 
   const { activeRequests, completedRequests } = useMemo(() => {
     const active: InternalRequest[] = [];
     const completed: InternalRequest[] = [];
     requests.forEach(req => {
-      const completedStatuses: InternalRequestStatus[] = ['Issued', 'Partially Issued', 'Rejected'];
+      const completedStatuses: InternalRequestStatus[] = ['Issued', 'Rejected'];
       if (completedStatuses.includes(req.status)) {
         completed.push(req);
       } else {
@@ -379,13 +352,17 @@ export default function InternalRequestTable({ requests, showAcknowledge = true,
     return <p className="text-center py-10 text-muted-foreground">No requests found.</p>;
   }
 
+  const handleEditItem = (request: InternalRequest, item: InternalRequestItem) => {
+    setEditingRequestItem({ request, item });
+  }
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <h3 className="font-semibold text-lg">Active Requests ({activeRequests.length})</h3>
         {activeRequests.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {activeRequests.map((req, index) => <RequestCard key={req.id || index} req={req} showAcknowledge={showAcknowledge} isConsumable={isConsumable} />)}
+            {activeRequests.map((req, index) => <RequestCard key={req.id || index} req={req} onEditRequest={handleEditItem} showAcknowledge={showAcknowledge} isConsumable={isConsumable} />)}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">No active requests.</p>
@@ -399,11 +376,20 @@ export default function InternalRequestTable({ requests, showAcknowledge = true,
             </AccordionTrigger>
             <AccordionContent className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {completedRequests.map((req, index) => <RequestCard key={req.id || index} req={req} isCompletedSection={true} showAcknowledge={showAcknowledge} isConsumable={isConsumable}/>)}
+                {completedRequests.map((req, index) => <RequestCard key={req.id || index} req={req} onEditRequest={handleEditItem} isCompletedSection={true} showAcknowledge={showAcknowledge} isConsumable={isConsumable}/>)}
               </div>
             </AccordionContent>
           </AccordionItem>
         </Accordion>
+       )}
+       {editingRequestItem && (
+          <EditInternalRequestItemDialog 
+            isOpen={!!editingRequestItem}
+            setIsOpen={() => setEditingRequestItem(null)}
+            request={editingRequestItem.request}
+            item={editingRequestItem.item}
+            isConsumable={isConsumable}
+          />
        )}
     </div>
   );
