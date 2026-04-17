@@ -1,8 +1,7 @@
-
 'use client';
 import { useState, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import ManpowerSummaryTable from '@/components/manpower/ManpowerSummaryTable';
 import { Button } from '@/components/ui/button';
@@ -20,7 +19,7 @@ import ManpowerSummary from '@/components/manpower/ManpowerSummary';
 import { Role } from '@/lib/types';
 
 export default function ManpowerPage() {
-    const { user, can } = useAppContext();
+    const { user, can } = useAuth();
     const [isLogbookRegisterOpen, setIsLogbookRegisterOpen] = useState(false);
     const [isLogbookHistoryOpen, setIsLogbookHistoryOpen] = useState(false);
     const [reportDateRange, setReportDateRange] = useState<DateRange | undefined>();

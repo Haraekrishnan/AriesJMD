@@ -1,7 +1,7 @@
-
 'use client';
 import { useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useManpower } from '@/contexts/manpower-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import type { ManpowerLog } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
@@ -14,7 +14,8 @@ interface ManpowerSummaryReportDownloadsProps {
 }
 
 export default function ManpowerSummaryReportDownloads({ dateRange }: ManpowerSummaryReportDownloadsProps) {
-  const { manpowerLogs, projects } = useAppContext();
+  const { manpowerLogs } = useManpower();
+  const { projects } = useGeneral();
 
   const summaryData = useMemo(() => {
     if (!dateRange || !dateRange.from) {

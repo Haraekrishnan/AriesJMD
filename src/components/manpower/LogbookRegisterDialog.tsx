@@ -1,7 +1,8 @@
-
 'use client';
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useManpower } from '@/contexts/manpower-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '../ui/label';
@@ -31,7 +32,7 @@ interface LogbookRegisterDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
-const statusOptions: LogbookStatus[] = ['Pending', 'Received', 'Sent back as requested', 'Not Received'];
+const statusOptions: LogbookStatus[] = ['Pending', 'Received', 'Not Received', 'Sent back as requested'];
 
 const getStatusVariant = (status?: LogbookStatus) => {
     switch (status) {
@@ -45,7 +46,9 @@ const getStatusVariant = (status?: LogbookStatus) => {
 };
 
 export default function LogbookRegisterDialog({ isOpen, setIsOpen }: LogbookRegisterDialogProps) {
-  const { user, manpowerProfiles, users, addLogbookHistoryRecord } = useAppContext();
+  const { user, users } = useAuth();
+  const { manpowerProfiles, addLogbookHistoryRecord } = useManpower();
+  const { projects } = useGeneral();
   const { toast } = useToast();
   const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
   const [status, setStatus] = useState<LogbookStatus | ''>('');

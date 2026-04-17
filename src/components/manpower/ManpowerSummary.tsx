@@ -1,7 +1,7 @@
-
 'use client';
 import { useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useManpower } from '@/contexts/manpower-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Users, UserCheck, UserX, AlertCircle } from 'lucide-react';
 import StatCard from '../dashboard/stat-card';
 import { format, isBefore, parseISO, startOfDay, formatDistanceToNow } from 'date-fns';
@@ -10,10 +10,10 @@ import { cn } from '@/lib/utils';
 export default function ManpowerSummary() {
   const { 
     manpowerLogs, 
-    projects, 
     isManpowerUpdatedToday, 
     lastManpowerUpdate 
-  } = useAppContext();
+  } = useManpower();
+  const { projects } = useGeneral();
 
   const { totalWorking, totalOnLeave, totalActive } = useMemo(() => {
     const today = new Date();

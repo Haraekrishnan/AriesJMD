@@ -1,7 +1,7 @@
-
 'use client';
 import { useMemo, useState } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useManpower } from '@/contexts/manpower-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '../ui/label';
@@ -52,7 +52,8 @@ const HistoryEntry = ({ label, value, isDateTime = false, isDate = false }: { la
 };
 
 export default function LogbookHistoryDialog({ isOpen, setIsOpen }: LogbookHistoryDialogProps) {
-  const { user, manpowerProfiles, users, deleteLogbookHistoryRecord, logbookRequests } = useAppContext();
+  const { user, users } = useAuth();
+  const { manpowerProfiles, deleteLogbookHistoryRecord, logbookRequests } = useManpower();
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const { toast } = useToast();

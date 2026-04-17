@@ -1,7 +1,8 @@
-
 'use client';
 import { useMemo, useState, useEffect } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { useManpower } from '@/contexts/manpower-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format, isBefore, parseISO, startOfDay, subDays } from 'date-fns';
 import { Input } from '../ui/input';
@@ -19,7 +20,9 @@ interface EditableCell {
 }
 
 export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTableProps) {
-  const { projects, manpowerLogs, addManpowerLog, updateManpowerLog, can } = useAppContext();
+  const { projects } = useGeneral();
+  const { manpowerLogs, addManpowerLog, updateManpowerLog } = useManpower();
+  const { can } = useAuth();
   const { toast } = useToast();
   const [editableData, setEditableData] = useState<Record<string, Partial<any>>>({});
 

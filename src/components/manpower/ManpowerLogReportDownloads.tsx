@@ -1,5 +1,7 @@
 'use client';
-import { useAppContext } from '@/contexts/app-provider';
+import { useManpower } from '@/contexts/manpower-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { useAuth } from '@/contexts/auth-provider';
 import type { ManpowerLog } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
@@ -12,7 +14,9 @@ interface ManpowerLogReportDownloadsProps {
 }
 
 export default function ManpowerLogReportDownloads({ dateRange }: ManpowerLogReportDownloadsProps) {
-  const { manpowerLogs, projects, users } = useAppContext();
+  const { manpowerLogs } = useManpower();
+  const { projects } = useGeneral();
+  const { users } = useAuth();
 
   const handleDownloadExcel = () => {
     if (!dateRange || !dateRange.from) {
