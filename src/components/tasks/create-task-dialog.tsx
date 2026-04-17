@@ -4,7 +4,8 @@ import { useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useTask } from '@/contexts/task-provider';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -39,7 +40,8 @@ const taskSchema = z.object({
 type TaskFormValues = z.infer<typeof taskSchema>;
 
 export default function CreateTaskDialog() {
-  const { user, createTask, getVisibleUsers, users } = useAppContext();
+  const { user, getVisibleUsers, users } = useAuth();
+  const { createTask } = useTask();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
 
