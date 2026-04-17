@@ -1,9 +1,10 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { usePlanner } from '@/contexts/planner-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Bell, Clock, Folder, List, LayoutGrid, Settings, X, Info, Search, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
@@ -25,7 +26,7 @@ import CreateDocumentMovementDialog from '@/components/job-progress/CreateDocume
 import DocumentMovementList from '@/components/job-progress/DocumentMovementList';
 import ViewDocumentMovementDialog from '@/components/job-progress/ViewDocumentMovementDialog';
 import TimesheetTrackerTable from '@/components/job-progress/TimesheetTrackerTable';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -35,7 +36,10 @@ import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/ca
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
 
 export default function JobProgressPage() {
-  const { can, jobProgress, timesheets, user, projects, users, trackerNotificationCount, documentMovements, updateUserViewPreference, getVisibleUsers } = useAppContext();
+  const { can, user, users, updateUserViewPreference, getVisibleUsers } = useAuth();
+  const { projects } = useGeneral();
+  const { jobProgress, timesheets, trackerNotificationCount, documentMovements } = usePlanner();
+
   const [isCreateJobOpen, setIsCreateJobOpen] = useState(false);
   const [isCreateTimesheetOpen, setIsCreateTimesheetOpen] = useState(false);
   const [isCreateDocumentOpen, setIsCreateDocumentOpen] = useState(false);
@@ -507,3 +511,5 @@ export default function JobProgressPage() {
     </div>
   );
 }
+
+    

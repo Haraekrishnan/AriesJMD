@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -6,14 +7,16 @@ import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { format, parseISO } from 'date-fns';
 import type { JobProgress, JobStep } from '@/lib/types';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 
 interface OngoingJobsReportProps {
   jobs: JobProgress[];
 }
 
 export default function OngoingJobsReport({ jobs }: OngoingJobsReportProps) {
-  const { users, projects } = useAppContext();
+  const { users } = useAuth();
+  const { projects } = useGeneral();
 
   const handleExportExcel = async () => {
     if (jobs.length === 0) {
@@ -78,3 +81,5 @@ export default function OngoingJobsReport({ jobs }: OngoingJobsReportProps) {
     </Button>
   );
 }
+
+    

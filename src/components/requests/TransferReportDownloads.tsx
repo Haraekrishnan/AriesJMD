@@ -1,11 +1,12 @@
+
 'use client';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { format, parseISO } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { format, parseISO } from 'date-fns';
 import type { InventoryTransferRequest } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-provider';
@@ -62,6 +63,9 @@ export default function TransferReportDownloads({ request }: TransferReportDownl
   };
 
   const handleExportPdf = async () => {
+    const jsPDF = (await import('jspdf')).default;
+    await import('jspdf-autotable');
+
     const doc = new jsPDF({ orientation: 'landscape' });
     doc.text(`Inventory Transfer Report (ID: ...${request.id.slice(-6)})`, 14, 15);
     
@@ -96,3 +100,5 @@ export default function TransferReportDownloads({ request }: TransferReportDownl
     </div>
   );
 }
+
+    
