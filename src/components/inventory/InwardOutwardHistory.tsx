@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -16,6 +15,22 @@ import { cn } from '@/lib/utils';
 import { useInwardOutward } from '@/contexts/inward-outward-provider';
 import { useAuth } from '@/contexts/auth-provider';
 import { useInventory } from '@/contexts/inventory-provider';
+
+const formatItemNames = (itemNameString?: string): string => {
+    if (!itemNameString) return 'N/A';
+    const items = itemNameString.split(',').map(name => name.trim()).filter(name => name);
+    if (items.length === 0) return 'N/A';
+
+    const counts = items.reduce((acc, name) => {
+        const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+        acc[capitalizedName] = (acc[capitalizedName] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(counts)
+        .map(([name, count]) => `${name} - ${count} nos`)
+        .join(', ');
+};
 
 export default function InwardOutwardHistory({ records }: { records: InwardOutwardRecord[] }) {
     const { user, users, can } = useAuth();
@@ -91,7 +106,7 @@ export default function InwardOutwardHistory({ records }: { records: InwardOutwa
                             <TableCell>
                                 <Badge variant={record.type === 'Inward' ? 'success' : 'destructive'}>{record.type}</Badge>
                             </TableCell>
-                            <TableCell>{record.itemName}</TableCell>
+                            <TableCell>{formatItemNames(record.itemName)}</TableCell>
                             <TableCell className="text-center">{record.quantity}</TableCell>
                             <TableCell>
                                 <p>{record.source}</p>
