@@ -1,4 +1,3 @@
-
 'use client';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
@@ -7,16 +6,18 @@ import { saveAs } from 'file-saver';
 import { format, parseISO } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { useAppContext } from '@/contexts/app-provider';
 import type { InventoryTransferRequest } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 
 interface TransferReportDownloadsProps {
   request: InventoryTransferRequest;
 }
 
 export default function TransferReportDownloads({ request }: TransferReportDownloadsProps) {
-  const { projects, users } = useAppContext();
+  const { projects } = useGeneral();
+  const { users } = useAuth();
   const { toast } = useToast();
 
   const handleExportExcel = async () => {
