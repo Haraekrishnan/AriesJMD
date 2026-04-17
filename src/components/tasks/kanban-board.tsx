@@ -1,9 +1,9 @@
-
 'use client';
 
 import React, { useState } from 'react';
 import type { Task, TaskStatus } from '@/lib/types';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useTask } from '@/contexts/task-provider';
 import TaskCard from './task-card';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
@@ -30,7 +30,8 @@ const columnColors: Record<BoardColumn, string> = {
 }
 
 export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTasks: Task[] }) {
-  const { user, requestTaskStatusChange } = useAppContext();
+  const { user } = useAuth();
+  const { requestTaskStatusChange } = useTask();
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
