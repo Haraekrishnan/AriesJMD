@@ -1,15 +1,14 @@
 
-
 'use client';
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, Hammer } from 'lucide-react';
 import DamageReportList from '@/components/damage-reports/DamageReportList';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
 import { Button } from '@/components/ui/button';
 
 export default function DamageReportsPage() {
-    const { can } = useAppContext();
+    const { can } = useAuth();
 
     if (!can.manage_inventory && !can.view_all) {
          return (
