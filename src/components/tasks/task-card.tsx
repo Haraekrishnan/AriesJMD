@@ -1,7 +1,6 @@
-
 'use client';
 import { useState } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
 import type { Task } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -19,9 +18,9 @@ interface TaskCardProps {
 }
 
 export default function TaskCard({ task, onClick }: TaskCardProps) {
-  const { user, users } = useAppContext();
+  const { user, users } = useAuth();
   
-  const assignee = users.find(u => u.id === task.assigneeId);
+  const assignees = users.filter(u => task.assigneeIds.includes(u.id));
   const creator = users.find(u => u.id === task.creatorId);
 
   const getPriorityVariant = (priority: string) => {
@@ -49,9 +48,15 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
 
         <div className="flex justify-between items-center text-sm">
             <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">Assignee:</span>
-                {assignee && <Avatar className="h-6 w-6"><AvatarImage src={assignee.avatar} /><AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback></Avatar>}
-                <span>{assignee?.name}</span>
+                <span className="text-muted-foreground">Assignees:</span>
+                <div className="flex -space-x-2">
+                    {assignees.map(assignee => (
+                        <Avatar key={assignee.id} className="h-6 w-6 border-2 border-card">
+                            <AvatarImage src={assignee.avatar} />
+                            <AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                    ))}
+                </div>
             </div>
              <div className="flex items-center gap-2">
                 <span className="text-muted-foreground">Creator:</span>
