@@ -3,7 +3,7 @@
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { useConsumable } from '@/contexts/consumable-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -42,7 +42,7 @@ interface NewConsumableRequestDialogProps {
 const generateNewItemId = () => `item-${Date.now()}-${Math.random()}`;
 
 export default function NewConsumableRequestDialog({ isOpen, setIsOpen }: NewConsumableRequestDialogProps) {
-  const { addInternalRequest } = useAppContext();
+  const { addInternalRequest } = useInventory();
   const { consumableItems } = useConsumable();
   const { toast } = useToast();
   const [popoverOpenState, setPopoverOpenState] = useState<Record<number, boolean>>({});
