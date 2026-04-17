@@ -2,7 +2,6 @@
 'use client';
 import { useState, useMemo } from 'react';
 import type { IncidentReport, IncidentStatus } from '@/lib/types';
-import { useAppContext } from '@/contexts/app-provider';
 import { format } from 'date-fns';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +10,8 @@ import { Button } from '../ui/button';
 import { Eye } from 'lucide-react';
 import EditIncidentReportDialog from './EditIncidentReportDialog';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 
 interface IncidentListTableProps {
   incidents: IncidentReport[];
@@ -25,7 +26,8 @@ const statusVariant: { [key in IncidentStatus]: "default" | "secondary" | "destr
 }
 
 export default function IncidentListTable({ incidents }: IncidentListTableProps) {
-    const { user, users, projects, markIncidentAsViewed } = useAppContext();
+    const { user, users } = useAuth();
+    const { projects, markIncidentAsViewed } = useGeneral();
     const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
     
     const handleViewClick = (incident: IncidentReport) => {
@@ -59,7 +61,7 @@ export default function IncidentListTable({ incidents }: IncidentListTableProps)
                 <TableBody>
                 {incidents.map(incident => {
                     const reporter = users.find(u => u.id === incident.reporterId);
-                    const hasUnreadUpdate = user && !incident.viewedBy[user.id];
+                    const hasUnreadUpdate = user && !incident.viewedBy?.[user.id];
                     
                     return (
                         <TableRow key={incident.id} className={cn(incident.status === 'New' && 'font-bold bg-destructive/5', hasUnreadUpdate && "font-bold bg-blue-50 dark:bg-blue-900/20")}>
@@ -93,3 +95,5 @@ export default function IncidentListTable({ incidents }: IncidentListTableProps)
         </>
     );
 }
+
+    

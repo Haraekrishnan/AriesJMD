@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -51,7 +52,9 @@ type GeneralContextType = {
   addDriver: (driverData: Omit<Driver, 'id'>) => void;
   updateDriver: (driver: Driver) => void;
   deleteDriver: (driverId: string) => void;
+  
   addUsersToIncidentReport: (incidentId: string, userIds: string[], comment: string) => void;
+  markIncidentAsViewed: (incidentId: string) => void;
   
   addManagementRequest: (requestData: Omit<ManagementRequest, 'id'|'creatorId'|'lastUpdated'|'status'|'comments'|'readBy'>) => void;
   updateManagementRequest: (request: ManagementRequest, comment: string) => void;
@@ -185,13 +188,14 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   const addFeedbackComment = useCallback((feedbackId: string, text: string) => {
     if (!user) return;
     const newCommentRef = push(ref(rtdb, `feedback/${feedbackId}/comments`));
-    set(newCommentRef, {
-      id: newCommentRef.key,
+    const newComment: Omit<Comment, 'id'> = {
+      id: newCommentRef.key!,
       userId: user.id,
       text,
       date: new Date().toISOString(),
       eventId: feedbackId,
-    });
+    };
+    set(newCommentRef, newComment);
     // Mark as unread for the original user if someone else comments
     const feedbackItem = feedbackById[feedbackId];
     if (feedbackItem && feedbackItem.userId !== user.id) {
@@ -291,6 +295,23 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
     };
     set(newCommentRef, newComment);
   }, [incidentReportsById, user, users]);
+
+    const markIncidentAsViewed = useCallback((incidentId: string) => {
+    if (!user) return;
+    const updates: { [key: string]: any } = {};
+    updates[`incidentReports/${incidentId}/viewedBy/${user.id}`] = true;
+
+    const incident = incidentReportsById[incidentId];
+    if (incident?.comments) {
+        const comments = Array.isArray(incident.comments) ? incident.comments : Object.values(incident.comments);
+        comments.forEach(c => {
+            if (c && c.userId !== user.id) {
+                 updates[`incidentReports/${incidentId}/comments/${c.id}/viewedBy/${user.id}`] = true;
+            }
+        });
+    }
+    update(ref(rtdb), updates);
+  }, [user, incidentReportsById]);
 
   const addManagementRequestComment = useCallback((requestId: string, commentText: string, ccUserIds: string[] = []) => {
     if (!user) return;
@@ -599,7 +620,8 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
     projects, jobCodes, activityLogs, announcements, broadcasts, incidentReports, observationReports, downloadableDocuments, vehicles, drivers, notificationSettings, feedback, managementRequests,
     addProject, updateProject, deleteProject, addJobCode, updateJobCode, deleteJobCode,
     addFeedback, updateFeedbackStatus, deleteFeedback, addFeedbackComment, markFeedbackAsViewed,
-    addDocument, updateDocument, deleteDocument, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, addUsersToIncidentReport,
+    addDocument, updateDocument, deleteDocument, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, 
+    addUsersToIncidentReport, markIncidentAsViewed,
     addManagementRequest, updateManagementRequest, forwardManagementRequest, deleteManagementRequest, addManagementRequestComment, markManagementRequestAsViewed,
     addObservationReport, updateObservationReport, deleteObservationReport, addObservationComment,
     addAnnouncement, updateAnnouncement, approveAnnouncement, rejectAnnouncement, returnAnnouncement, deleteAnnouncement, dismissAnnouncement,
@@ -616,3 +638,5 @@ export const useGeneral = (): GeneralContextType => {
   }
   return context;
 };
+
+    
