@@ -1,9 +1,8 @@
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { useConsumable } from '@/contexts/consumable-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -38,7 +37,7 @@ interface EditInternalRequestItemDialogProps {
 }
 
 export default function EditInternalRequestItemDialog({ isOpen, setIsOpen, request, item, isConsumable }: EditInternalRequestItemDialogProps) {
-  const { updateInternalRequestItem } = useAppContext();
+  const { updateInternalRequestItem } = useInventory();
   const { consumableItems } = useConsumable();
   const { toast } = useToast();
   const [popoverOpen, setPopoverOpen] = useState(false);
