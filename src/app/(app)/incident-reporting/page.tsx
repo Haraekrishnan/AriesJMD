@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
@@ -9,7 +10,8 @@ import NewIncidentReportDialog from '@/components/incident-reporting/NewIncident
 import IncidentListTable from '@/components/incident-reporting/IncidentListTable';
 
 export default function IncidentReportingPage() {
-    const { user, incidentReports } = useAppContext();
+    const { user } = useAuth();
+    const { incidentReports } = useGeneral();
     const [isNewReportOpen, setIsNewReportOpen] = useState(false);
     
     const visibleIncidents = useMemo(() => {
