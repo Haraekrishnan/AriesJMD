@@ -1,7 +1,9 @@
 
 'use client';
 import { useState, useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format, isPast, parseISO, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -33,7 +35,9 @@ const getStatusVariant = (status: string): "default" | "secondary" | "destructiv
 }
 
 export default function UTMachineTable({ items, onEdit, onLogManager }: UTMachineTableProps) {
-    const { can, projects, deleteUTMachine } = useAppContext();
+    const { can } = useAuth();
+    const { projects } = useGeneral();
+    const { deleteUTMachine } = useInventory();
     const { toast } = useToast();
     const [isCertRequestOpen, setIsCertRequestOpen] = useState(false);
     const [selectedMachineForCert, setSelectedMachineForCert] = useState<UTMachine | null>(null);
