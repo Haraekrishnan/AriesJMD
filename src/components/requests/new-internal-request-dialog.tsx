@@ -2,7 +2,7 @@
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -35,7 +35,7 @@ interface NewInternalRequestDialogProps {
 const generateNewItemId = () => `item-${Date.now()}-${Math.random()}`;
 
 export default function NewInternalRequestDialog({ isOpen, setIsOpen }: NewInternalRequestDialogProps) {
-  const { addInternalRequest, inventoryItems } = useAppContext();
+  const { addInternalRequest, inventoryItems } = useInventory();
   const { toast } = useToast();
 
   const form = useForm<InternalRequestFormValues>({
