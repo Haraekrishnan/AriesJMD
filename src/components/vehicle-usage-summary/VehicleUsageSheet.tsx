@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
@@ -28,7 +27,8 @@ const implementationStartDate = new Date(2026, 0, 1); // January 2026 (Month is 
 const VehicleDataRow = ({ vehicle, currentMonth, slNo }: { vehicle: any, currentMonth: Date, slNo: number }) => {
     const { user, can } = useAuth();
     const { users } = useAuth();
-    const { drivers, lockVehicleUsageSheet, unlockVehicleUsageSheet, vehicleUsageRecords } = usePlanner();
+    const { drivers } = useGeneral();
+    const { lockVehicleUsageSheet, unlockVehicleUsageSheet, vehicleUsageRecords } = usePlanner();
     const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
 
     const monthKey = format(currentMonth, 'yyyy-MM');
@@ -138,7 +138,8 @@ const VehicleDataRow = ({ vehicle, currentMonth, slNo }: { vehicle: any, current
 
 export default function VehicleUsageSheet() {
     const { can } = useAuth();
-    const { vehicles, vehicleUsageRecords } = usePlanner();
+    const { vehicles } = useGeneral();
+    const { vehicleUsageRecords } = usePlanner();
     const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
     
     const getVehicleStatus = (vehicleId: string) => {
@@ -160,6 +161,7 @@ export default function VehicleUsageSheet() {
     
 
     const sortedVehicles = useMemo(() => {
+        if (!vehicles || !Array.isArray(vehicles)) return [];
         return [...vehicles]
             .filter(v => v.status === 'Active' || v.status === 'In Maintenance')
             .map(v => ({ ...v, status: getVehicleStatus(v.id) }))
