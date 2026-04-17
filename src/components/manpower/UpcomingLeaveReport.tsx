@@ -7,7 +7,7 @@ import { saveAs } from 'file-saver';
 import { format, parseISO } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { useAppContext } from '@/contexts/app-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { useState, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
@@ -19,7 +19,7 @@ interface UpcomingLeaveReportProps {
 }
 
 export default function UpcomingLeaveReport({ leaves, title, reportType }: UpcomingLeaveReportProps) {
-  const { projects } = useAppContext();
+  const { projects } = useGeneral();
 
   const handleExportExcel = async () => {
     const workbook = new ExcelJS.Workbook();
@@ -76,3 +76,5 @@ export default function UpcomingLeaveReport({ leaves, title, reportType }: Upcom
     </div>
   );
 }
+
+    

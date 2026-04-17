@@ -2,7 +2,8 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useManpower } from '@/contexts/manpower-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -22,7 +23,8 @@ interface RejoinDialogProps {
 }
 
 export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
-  const { manpowerProfiles, rejoinFromLeave, projects } = useAppContext();
+  const { manpowerProfiles, rejoinFromLeave } = useManpower();
+  const { projects } = useGeneral();
   const { toast } = useToast();
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [rejoinDate, setRejoinDate] = useState<Date | undefined>(new Date());
@@ -154,3 +156,5 @@ export default function RejoinDialog({ isOpen, setIsOpen }: RejoinDialogProps) {
     </Dialog>
   );
 }
+
+    

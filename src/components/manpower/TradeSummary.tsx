@@ -1,14 +1,13 @@
 
-
 'use client';
 import { useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useManpower } from '@/contexts/manpower-provider';
 import { HardHat, Users } from 'lucide-react';
 import StatCard from '../dashboard/stat-card';
 import { TRADES } from '@/lib/mock-data';
 
 export default function TradeSummary() {
-  const { manpowerProfiles } = useAppContext();
+  const { manpowerProfiles } = useManpower();
 
   const tradeCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -48,3 +47,5 @@ export default function TradeSummary() {
     </div>
   );
 }
+
+    

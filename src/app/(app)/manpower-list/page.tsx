@@ -1,9 +1,10 @@
 
-
 'use client';
 import { useState, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useManpower } from '@/contexts/manpower-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCog, Shirt, FileWarning, Clock, GanttChartSquare, Book, History } from 'lucide-react';
@@ -30,7 +31,9 @@ import UpcomingLeaveReport from '@/components/manpower/UpcomingLeaveReport';
 
 
 export default function ManpowerListPage() {
-    const { user, roles, manpowerProfiles, projects, confirmManpowerLeave, cancelManpowerLeave, can, updateManpowerProfile } = useAppContext();
+    const { user, can } = useAuth();
+    const { manpowerProfiles, confirmManpowerLeave, cancelManpowerLeave, updateManpowerProfile } = useManpower();
+    const { projects } = useGeneral();
     const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
     const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
     const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -456,3 +459,5 @@ export default function ManpowerListPage() {
         </div>
     );
 }
+
+    

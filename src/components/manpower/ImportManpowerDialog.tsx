@@ -2,7 +2,7 @@
 'use client';
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { useAppContext } from '@/contexts/app-provider';
+import { useManpower } from '@/contexts/manpower-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,7 @@ interface ImportManpowerDialogProps {
 }
 
 export default function ImportManpowerDialog({ isOpen, setIsOpen }: ImportManpowerDialogProps) {
-    const { addMultipleManpowerProfiles } = useAppContext();
+    const { addMultipleManpowerProfiles } = useManpower();
     const { toast } = useToast();
     const [file, setFile] = useState<File | null>(null);
 
@@ -33,7 +33,7 @@ export default function ImportManpowerDialog({ isOpen, setIsOpen }: ImportManpow
         }
 
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
                 const data = new Uint8Array(e.target?.result as ArrayBuffer);
                 const workbook = XLSX.read(data, { type: 'array', cellDates: true });
@@ -102,3 +102,5 @@ export default function ImportManpowerDialog({ isOpen, setIsOpen }: ImportManpow
         </Dialog>
     );
 }
+
+    

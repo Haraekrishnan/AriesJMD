@@ -1,7 +1,7 @@
 
 'use client';
 import { useMemo, useState } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useManpower } from '@/contexts/manpower-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -24,7 +24,7 @@ interface MemoReportItem extends MemoRecord {
 }
 
 export default function MemoReportDialog({ isOpen, setIsOpen }: MemoReportDialogProps) {
-  const { manpowerProfiles } = useAppContext();
+  const { manpowerProfiles } = useManpower();
   const [searchTerm, setSearchTerm] = useState('');
 
   const allMemos = useMemo(() => {
@@ -128,3 +128,5 @@ export default function MemoReportDialog({ isOpen, setIsOpen }: MemoReportDialog
     </Dialog>
   );
 }
+
+    

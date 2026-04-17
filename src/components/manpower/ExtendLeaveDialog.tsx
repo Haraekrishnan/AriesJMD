@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useManpower } from '@/contexts/manpower-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -22,7 +22,7 @@ interface ExtendLeaveDialogProps {
 }
 
 export default function ExtendLeaveDialog({ isOpen, setIsOpen, profile, leave }: ExtendLeaveDialogProps) {
-  const { extendLeave } = useAppContext();
+  const { extendLeave } = useManpower();
   const { toast } = useToast();
   const [newEndDate, setNewEndDate] = useState<Date | undefined>(
     leave.plannedEndDate ? new Date(leave.plannedEndDate) : new Date()
@@ -71,3 +71,5 @@ export default function ExtendLeaveDialog({ isOpen, setIsOpen, profile, leave }:
     </Dialog>
   );
 }
+
+    

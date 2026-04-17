@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -214,3 +215,5 @@ export default function LogbookHistoryDialog({ isOpen, setIsOpen }: LogbookHisto
     </Dialog>
   );
 }
+
+    

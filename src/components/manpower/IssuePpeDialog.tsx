@@ -1,7 +1,7 @@
 
 'use client';
 import { useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useManpower } from '@/contexts/manpower-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '../ui/label';
@@ -15,7 +15,7 @@ interface IssuePpeDialogProps {
 }
 
 export default function IssuePpeDialog({ isOpen, setIsOpen }: IssuePpeDialogProps) {
-  const { manpowerProfiles } = useAppContext();
+  const { manpowerProfiles } = useManpower();
 
   const { missingCoverall, missingShoes } = useMemo(() => {
     const missingCoverall: ManpowerProfile[] = [];
@@ -79,3 +79,5 @@ export default function IssuePpeDialog({ isOpen, setIsOpen }: IssuePpeDialogProp
     </Dialog>
   );
 }
+
+    

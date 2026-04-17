@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useMemo, useState } from 'react';
 import type { ManpowerProfile, EpNumberRecord } from '@/lib/types';
@@ -8,7 +7,8 @@ import { Progress } from '@/components/ui/progress';
 import { Edit, MoreHorizontal, Trash2, Link as LinkIcon, ChevronDown, ChevronRight, AlertCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Badge } from '../ui/badge';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useManpower } from '@/contexts/manpower-provider';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { format, isValid, parseISO, differenceInDays, isPast as isDateInPast } from 'date-fns';
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { useGeneral } from '@/contexts/general-provider';
 
 
 interface ManpowerListTableProps {
@@ -89,7 +90,9 @@ const getNextExpiry = (profile: ManpowerProfile) => {
 };
 
 export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTableProps) {
-    const { user, can, deleteManpowerProfile } = useAppContext();
+    const { user, can } = useAuth();
+    const { deleteManpowerProfile } = useManpower();
+    const { projects } = useGeneral();
     const { toast } = useToast();
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     
@@ -316,3 +319,5 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
         </div>
     );
 }
+
+    

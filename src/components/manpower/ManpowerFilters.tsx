@@ -8,7 +8,8 @@ import { X } from 'lucide-react';
 import type { ManpowerProfile, Trade } from '@/lib/types';
 import { DateRangePicker } from '../ui/date-range-picker';
 import { TRADES } from '@/lib/mock-data';
-import { useAppContext } from '@/contexts/app-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { useAuth } from '@/contexts/auth-provider';
 
 export interface ManpowerFilterValues {
   status: 'all' | ManpowerProfile['status'];
@@ -25,7 +26,8 @@ interface ManpowerFiltersProps {
 const statusOptions: ManpowerProfile['status'][] = ['Working', 'On Leave', 'Resigned', 'Terminated', 'Left the Project'];
 
 export default function ManpowerFilters({ onFiltersChange }: ManpowerFiltersProps) {
-    const { projects } = useAppContext();
+    const { projects } = useGeneral();
+    const { can, user } = useAuth();
     const [filters, setFilters] = useState<ManpowerFilterValues>({
         status: 'all',
         trade: 'all',
@@ -51,6 +53,8 @@ export default function ManpowerFilters({ onFiltersChange }: ManpowerFiltersProp
             expiryDateRange: undefined,
         });
     };
+
+    const canViewAllProjects = can.manage_equipment_status || user?.role === 'Admin' || user?.role === 'NDT Supervisor';
 
     return (
         <div className="flex flex-wrap gap-2 items-center">
@@ -87,3 +91,5 @@ export default function ManpowerFilters({ onFiltersChange }: ManpowerFiltersProp
         </div>
     );
 }
+
+    

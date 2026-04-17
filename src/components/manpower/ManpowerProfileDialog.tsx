@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState, useRef, MouseEvent } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useManpower } from '@/contexts/manpower-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -165,7 +167,9 @@ const getInitialDocs = (profileData?: ManpowerProfile) => {
 };
 
 export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: ManpowerProfileDialogProps) {
-  const { user, users, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles, deleteMemoRecord, updateMemoRecord, deletePpeHistoryRecord, deleteLogbookRecord, projects } = useAppContext();
+  const { user, users } = useAuth();
+  const { addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles, deleteMemoRecord, updateMemoRecord, deletePpeHistoryRecord, deleteLogbookRecord } = useManpower();
+  const { projects } = useGeneral();
   const { toast } = useToast();
   const [editingMemo, setEditingMemo] = useState<MemoRecord | null>(null);
   const [editingPpeRecord, setEditingPpeRecord] = useState<PpeHistoryRecord | null>(null);
@@ -905,7 +909,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                 >
                     {isPdf ? (
                         <object data={viewingAttachmentUrl} type="application/pdf" width="100%" height="100%">
-                            <p>It appears you don't have a PDF plugin for this browser. You can <a href={viewingAttachmentUrl} className="text-blue-600 hover:underline">click here to download the PDF file.</a></p>
+                            <p>It appears you don't have a PDF plugin for this browser. You can <a href={viewingAttachmentUrl || ''} className="text-blue-600 hover:underline">click here to download the PDF file.</a></p>
                         </object>
                     ) : (
                         <img 

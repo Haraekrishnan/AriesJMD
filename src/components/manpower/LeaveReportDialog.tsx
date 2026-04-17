@@ -5,7 +5,8 @@ import { useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useManpower } from '@/contexts/manpower-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -36,7 +37,8 @@ interface LeaveReportDialogProps {
 }
 
 export default function LeaveReportDialog({ isOpen, setIsOpen }: LeaveReportDialogProps) {
-  const { manpowerProfiles, addLeaveForManpower, projects } = useAppContext();
+  const { manpowerProfiles, addLeaveForManpower } = useManpower();
+  const { projects } = useGeneral();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -158,3 +160,5 @@ export default function LeaveReportDialog({ isOpen, setIsOpen }: LeaveReportDial
     </Dialog>
   );
 }
+
+    
