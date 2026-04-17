@@ -1,10 +1,9 @@
-
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -35,7 +34,8 @@ interface AddAnemometerDialogProps {
 const statusOptions = ["In Service", "Idle", "Damaged", "Out of Service"];
 
 export default function AddAnemometerDialog({ isOpen, setIsOpen }: AddAnemometerDialogProps) {
-  const { projects, addAnemometer } = useAppContext();
+  const { projects } = useGeneral();
+  const { addAnemometer } = useInventory();
   const { toast } = useToast();
   
   const form = useForm<FormValues>({

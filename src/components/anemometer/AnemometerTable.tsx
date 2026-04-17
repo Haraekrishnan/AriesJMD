@@ -1,6 +1,7 @@
-
 'use client';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
@@ -29,7 +30,9 @@ const getStatusVariant = (status: string): "default" | "secondary" | "destructiv
 }
 
 export default function AnemometerTable({ items, onEdit }: AnemometerTableProps) {
-  const { can, projects, deleteAnemometer } = useAppContext();
+  const { can } = useAuth();
+  const { projects } = useGeneral();
+  const { deleteAnemometer } = useInventory();
   const { toast } = useToast();
 
   const handleDelete = (itemId: string) => {
