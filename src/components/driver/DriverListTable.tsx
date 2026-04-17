@@ -1,21 +1,3 @@
-
-'use client';
-import { useState, useMemo } from 'react';
-import { useAuth } from '@/contexts/auth-provider';
-import { useGeneral } from '@/contexts/general-provider';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { format, isPast, parseISO, differenceInDays } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { Button } from '../ui/button';
-import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import type { Driver } from '@/lib/types';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { useToast } from '@/hooks/use-toast';
-import AddDriverDialog from './AddDriverDialog';
-
-interface DriverListTableProps {
-  onEdit![CDATA[
 'use client';
 import { useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
