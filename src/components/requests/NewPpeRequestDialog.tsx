@@ -3,7 +3,6 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -20,6 +19,10 @@ import { isAfter, addYears, format, parseISO, isToday, isFuture } from 'date-fns
 import { PpeHistoryRecord } from '@/lib/types';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { ScrollArea } from '../ui/scroll-area';
+import { useInventory } from '@/contexts/inventory-provider';
+import { useManpower } from '@/contexts/manpower-provider';
+import { useGeneral } from '@/contexts/general-provider';
+
 
 const coverallSizeOptions = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
 const shoeSizeOptions = Array.from({ length: 8 }, (_, i) => (i + 6).toString());
@@ -46,7 +49,9 @@ interface NewPpeRequestDialogProps {
 }
 
 export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequestDialogProps) {
-  const { addPpeRequest, manpowerProfiles, projects } = useAppContext();
+  const { addPpeRequest } = useInventory();
+  const { manpowerProfiles } = useManpower();
+  const { projects } = useGeneral();
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [isManpowerPopoverOpen, setIsManpowerPopoverOpen] = useState(false);
@@ -296,7 +301,7 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
               <div className="space-y-2">
                 <Label>Quantity</Label>
                 <Input type="number" {...form.register('quantity')} />
-                {form.formState.errors.quantity && <p className="text-xs text-destructive">{form.formState.errors.quantity.message}</p>}
+                 {form.formState.errors.quantity && <p className="text-xs text-destructive">{form.formState.errors.quantity.message}</p>}
               </div>
 
                <div className="space-y-2">
@@ -380,3 +385,5 @@ export default function NewPpeRequestDialog({ isOpen, setIsOpen }: NewPpeRequest
     </>
   );
 }
+
+    
