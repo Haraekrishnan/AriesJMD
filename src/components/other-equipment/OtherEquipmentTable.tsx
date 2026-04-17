@@ -1,6 +1,7 @@
-
 'use client';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Edit, Trash2, Link as LinkIcon } from 'lucide-react';
@@ -19,7 +20,9 @@ interface OtherEquipmentTableProps {
 }
 
 export default function OtherEquipmentTable({ items, onEdit }: OtherEquipmentTableProps) {
-  const { can, projects, deleteOtherEquipment } = useAppContext();
+  const { can } = useAuth();
+  const { projects } = useGeneral();
+  const { deleteOtherEquipment } = useInventory();
   const { toast } = useToast();
 
   const handleDelete = (itemId: string) => {
