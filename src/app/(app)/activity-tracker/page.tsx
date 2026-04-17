@@ -1,13 +1,14 @@
-
 'use client';
 import { useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import ActivityLogTable from '@/components/activity-tracker/activity-log-table';
 import { AlertTriangle } from 'lucide-react';
 
 export default function ActivityTrackerPage() {
-    const { user, users, activityLogs, can } = useAppContext();
+    const { user, users, can } = useAuth();
+    const { activityLogs } = useGeneral();
 
     const visibleLogs = useMemo(() => {
         const sortedLogs = [...activityLogs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
