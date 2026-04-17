@@ -1,9 +1,7 @@
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -11,6 +9,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { DatePickerInput } from '../ui/date-picker-input';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { usePlanner } from '@/contexts/planner-provider';
 
 const timesheetSchema = z.object({
     submittedToId: z.string().min(1, 'Please select a recipient'),
@@ -32,7 +33,9 @@ interface CreateTimesheetDialogProps {
 }
 
 export default function CreateTimesheetDialog({ isOpen, setIsOpen }: CreateTimesheetDialogProps) {
-  const { user, users, projects, addTimesheet } = useAppContext();
+  const { user, users } = useAuth();
+  const { projects } = useGeneral();
+  const { addTimesheet } = usePlanner();
   const { toast } = useToast();
 
   const form = useForm<TimesheetFormValues>({
