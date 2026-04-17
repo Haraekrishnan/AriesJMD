@@ -5,7 +5,9 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMemo, useState, useEffect } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { usePlanner } from '@/contexts/planner-provider';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -70,7 +72,9 @@ interface Props {
 }
 
 export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
-  const { user, users, projects, createJobProgress, jobProgress } = useAppContext();
+  const { user, users } = useAuth();
+  const { projects } = useGeneral();
+  const { createJobProgress, jobProgress } = usePlanner();
   const { toast } = useToast();
   const [isConfirming, setIsConfirming] = useState(false);
   const [duplicateJobs, setDuplicateJobs] = useState<string[]>([]);
