@@ -5,7 +5,8 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { X } from 'lucide-react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export interface EquipmentFilterValues {
@@ -20,7 +21,8 @@ interface EquipmentFiltersProps {
 const statusOptions = ["In Service", "Idle", "Damaged", "Out of Service", "Moved to another project", "Active", "Inactive", "Returned"];
 
 export default function EquipmentFilters({ onFiltersChange }: EquipmentFiltersProps) {
-    const { projects, user, can } = useAppContext();
+    const { projects } = useGeneral();
+    const { user, can } = useAuth();
     const [filters, setFilters] = useState<EquipmentFilterValues>({
         status: 'all',
         projectId: 'all',
