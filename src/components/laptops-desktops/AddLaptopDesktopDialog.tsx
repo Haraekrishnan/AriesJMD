@@ -1,9 +1,7 @@
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -11,6 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 import { Textarea } from '../ui/textarea';
+import { useAuth } from '@/contexts/auth-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 
 const itemSchema = z.object({
   allottedTo: z.string().min(1, 'Please select a user'),
@@ -30,7 +30,8 @@ interface AddLaptopDesktopDialogProps {
 }
 
 export default function AddLaptopDesktopDialog({ isOpen, setIsOpen }: AddLaptopDesktopDialogProps) {
-  const { users, addLaptopDesktop } = useAppContext();
+  const { users } = useAuth();
+  const { addLaptopDesktop } = useInventory();
   const { toast } = useToast();
   
   const form = useForm<FormValues>({
