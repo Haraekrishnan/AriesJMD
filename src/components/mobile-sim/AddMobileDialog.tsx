@@ -3,7 +3,6 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -18,6 +17,10 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { MobileSimStatus } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { useInventory } from '@/contexts/inventory-provider';
+import { useManpower } from '@/contexts/manpower-provider';
 
 
 const itemSchema = z.object({
@@ -42,7 +45,10 @@ interface AddMobileDialogProps {
 const statusOptions: MobileSimStatus[] = ['Active', 'Inactive', 'Returned', 'Standby'];
 
 export default function AddMobileDialog({ isOpen, setIsOpen }: AddMobileDialogProps) {
-  const { users, projects, addMobileSim, manpowerProfiles } = useAppContext();
+  const { users } = useAuth();
+  const { projects } = useGeneral();
+  const { addMobileSim } = useInventory();
+  const { manpowerProfiles } = useManpower();
   const { toast } = useToast();
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [allotmentType, setAllotmentType] = useState<'user' | 'manpower'>('user');
