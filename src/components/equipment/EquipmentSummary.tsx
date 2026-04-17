@@ -1,7 +1,7 @@
 
 'use client';
 import { useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { HardHat, Scan, Layers, Camera, Wind, Smartphone, Laptop, Sparkles, Radio, CreditCard } from 'lucide-react';
 import StatCard from '../dashboard/stat-card';
 
@@ -16,7 +16,7 @@ export default function EquipmentSummary() {
     otherEquipments,
     weldingMachines,
     walkieTalkies,
-  } = useAppContext();
+  } = useInventory();
 
   const equipmentCounts = useMemo(() => {
     const calculateStatus = (items: { status: string }[]) => {
