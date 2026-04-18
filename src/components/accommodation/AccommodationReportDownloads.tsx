@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useAppContext } from '@/contexts/app-provider';
+import { useAccommodation } from '@/contexts/accommodation-provider';
+import { useManpower } from '@/contexts/manpower-provider';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -9,7 +10,8 @@ import type { Building, ManpowerProfile, Room } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 
 export default function AccommodationReportDownloads() {
-    const { buildings, manpowerProfiles } = useAppContext();
+    const { buildings } = useAccommodation();
+    const { manpowerProfiles } = useManpower();
 
     const handleDownloadExcel = () => {
         if (!buildings) return;

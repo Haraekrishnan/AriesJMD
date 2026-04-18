@@ -1,7 +1,9 @@
 'use client'
 
 import { useMemo, useState } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAccommodation } from '@/contexts/accommodation-provider';
+import { useManpower } from '@/contexts/manpower-provider';
+import { useAuth } from '@/contexts/auth-provider';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { BedSingle, PlusCircle, User, UserX, Edit, Trash2 } from 'lucide-react';
@@ -20,7 +22,9 @@ interface AccommodationDetailsProps {
 }
 
 export default function AccommodationDetails({ onAddRoom, onEditBuilding, onEditRoom }: AccommodationDetailsProps) {
-    const { buildings, manpowerProfiles, can, unassignOccupant, deleteBuilding, deleteRoom, addBed, deleteBed } = useAppContext();
+    const { buildings, unassignOccupant, deleteBuilding, deleteRoom, addBed, deleteBed } = useAccommodation();
+    const { manpowerProfiles } = useManpower();
+    const { can } = useAuth();
     const { toast } = useToast();
     const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
     const [editingBed, setEditingBed] = useState<{buildingId: string, roomId: string, bed: Bed} | null>(null);

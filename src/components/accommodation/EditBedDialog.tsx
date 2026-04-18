@@ -3,7 +3,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAccommodation } from '@/contexts/accommodation-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -27,7 +27,7 @@ interface EditBedDialogProps {
 }
 
 export default function EditBedDialog({ isOpen, setIsOpen, buildingId, roomId, bed }: EditBedDialogProps) {
-  const { updateBed } = useAppContext();
+  const { updateBed } = useAccommodation();
   const { toast } = useToast();
 
   const form = useForm<BedFormValues>({

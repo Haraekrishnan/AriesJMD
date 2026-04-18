@@ -1,7 +1,9 @@
 
 'use client';
 import { useMemo, useState } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useAccommodation } from '@/contexts/accommodation-provider';
+import { useManpower } from '@/contexts/manpower-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, PlusCircle, Search, UserCog, Check, ChevronsUpDown, BedDouble, BedSingle, Building, Users } from 'lucide-react';
@@ -21,7 +23,9 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 
 export default function AccommodationPage() {
-    const { can, user, buildings, manpowerProfiles, forceUnassign } = useAppContext();
+    const { can, user } = useAuth();
+    const { buildings, forceUnassign } = useAccommodation();
+    const { manpowerProfiles } = useManpower();
     const { toast } = useToast();
     const [isAddBuildingOpen, setIsAddBuildingOpen] = useState(false);
     const [isEditBuildingOpen, setIsEditBuildingOpen] = useState(false);

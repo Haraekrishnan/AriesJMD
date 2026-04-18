@@ -4,7 +4,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAccommodation } from '@/contexts/accommodation-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -23,7 +23,7 @@ interface AddBuildingDialogProps {
 }
 
 export default function AddBuildingDialog({ isOpen, setIsOpen }: AddBuildingDialogProps) {
-  const { addBuilding } = useAppContext();
+  const { addBuilding } = useAccommodation();
   const { toast } = useToast();
 
   const form = useForm<BuildingFormValues>({

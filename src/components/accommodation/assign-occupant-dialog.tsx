@@ -4,7 +4,9 @@ import { useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAccommodation } from '@/contexts/accommodation-provider';
+import { useManpower } from '@/contexts/manpower-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -26,7 +28,9 @@ interface AssignOccupantDialogProps {
 }
 
 export default function AssignOccupantDialog({ isOpen, setIsOpen, bedInfo }: AssignOccupantDialogProps) {
-  const { assignOccupant, manpowerProfiles, buildings, projects } = useAppContext();
+  const { assignOccupant, buildings } = useAccommodation();
+  const { manpowerProfiles } = useManpower();
+  const { projects } = useGeneral();
   const { toast } = useToast();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
