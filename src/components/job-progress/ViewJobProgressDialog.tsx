@@ -4,7 +4,9 @@ import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'r
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { usePlanner } from '@/contexts/planner-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import type { JobProgress, JobStep, JobStepStatus, Task, User, Role, Comment, ApprovalState, Subtask } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
@@ -73,7 +75,7 @@ const reopenSchema = z.object({
 type ReopenFormValues = z.infer<typeof reopenSchema>;
     
 const ReopenJobDialog = ({ isOpen, setIsOpen, job, reopenJob }: { isOpen: boolean; setIsOpen: (open: boolean) => void; job: JobProgress; reopenJob: (jobId: string, reason: string, newStepName: string, newStepAssigneeId: string) => void; }) => {
-      const { users } = useAppContext();
+      const { users } = useAuth();
       const [popoverOpen, setPopoverOpen] = useState(false);
     
       const assignableUsers = useMemo(() => {
@@ -212,7 +214,8 @@ const nextStepSchema = z.object({
   type NextStepFormValues = z.infer<typeof nextStepSchema>;
     
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
-    const { user, addAndCompleteStep, getAssignableUsers, finalizeJob } = useAppContext();
+    const { user, getAssignableUsers } = useAuth();
+    const { addAndCompleteStep, finalizeJob } = usePlanner();
     const [completionComment, setCompletionComment] = useState('');
    
     const assignableUsersForNextStep = useMemo(() => {
@@ -337,7 +340,22 @@ interface ViewJobProgressDialogProps {
 }
 
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
-    const { user, users, projects, jobProgress, updateJobProgress, updateJobStep, updateJobStepStatus, addJobStepComment, reopenJob, assignJobStep, can, markJobStepAsFinal, finalizeJob, reassignJobStep, returnJobStep, deleteJobProgress, addAndCompleteStep } = useAppContext();
+    const { user, users, can } = useAuth();
+    const { projects } = useGeneral();
+    const {
+        jobProgress,
+        updateJobProgress,
+        updateJobStep,
+        updateJobStepStatus,
+        addJobStepComment,
+        reopenJob,
+        assignJobStep,
+        finalizeJob,
+        reassignJobStep,
+        returnJobStep,
+        deleteJobProgress,
+        addAndCompleteStep,
+    } = usePlanner();
     const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
     const [returningStep, setReturningStep] = useState<JobStep | null>(null);
     const [isReopenDialogOpen, setIsReopenDialogOpen] = useState(false);

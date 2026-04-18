@@ -3,7 +3,8 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { usePlanner } from '@/contexts/planner-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -32,7 +33,8 @@ interface ReassignStepDialogProps {
 }
 
 export default function ReassignStepDialog({ isOpen, setIsOpen, job, step }: ReassignStepDialogProps) {
-    const { getAssignableUsers, reassignJobStep, user } = useAppContext();
+    const { user, getAssignableUsers } = useAuth();
+    const { reassignJobStep } = usePlanner();
     const { toast } = useToast();
     const [popoverOpen, setPopoverOpen] = useState(false);
 
