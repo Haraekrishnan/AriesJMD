@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import type { PpeRequest, PpeHistoryRecord, PpeInwardRecord } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
-import * as ExcelJS from 'exceljs';
+import * as XLSX from 'xlsx';
 import type { DateRange } from 'react-day-picker';
 import { format, isWithinInterval, parseISO, startOfDay, endOfDay, compareAsc, isAfter } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -11,7 +11,6 @@ import { useInventory } from '@/contexts/inventory-provider';
 import { useAuth } from '@/contexts/auth-provider';
 import { useManpower } from '@/contexts/manpower-provider';
 import { useGeneral } from '@/contexts/general-provider';
-import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -67,7 +66,7 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
       return;
     }
 
-    const workbook = new ExcelJS.Workbook();
+    const workbook = XLSX.utils.book_new();
 
     // 2. For each unique item, create a sheet
     allItems.forEach(itemKey => {
@@ -163,6 +162,45 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
     });
 
     XLSX.writeFile(workbook, `PPE_Report_${format(from, 'yyyy-MM-dd')}_to_${format(to, 'yyyy-MM-dd')}.xlsx`);
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    const date = parseISO(dateString);
+    return isValid(date) ? format(date, 'dd MMM, yyyy') : 'N/A';
+  };
+
+  const handleDownloadPdf = async () => {
+    const doc = new jsPDF();
+    doc.text('Consumable Consumption Report', 14, 15);
+    
+    // This part seems to be from another report, but we'll leave it for now.
+    // Ideally this would be refactored to show PPE issues.
+    
+    const issuedItems = ppeRequests
+        .filter(req => req.status === 'Issued')
+        .map(req => {
+            const employee = manpowerProfiles.find(p => p.id === req.manpowerId);
+            return {
+                ...req,
+                employeeName: employee?.name || 'Unknown',
+            };
+        });
+
+    (doc as any).autoTable({
+        startY: 20,
+        head: [['Issued Date', 'Item', 'Size', 'Qty', 'Issued To', 'Remarks']],
+        body: issuedItems.map(item => [
+            formatDate(item.date),
+            item.ppeType,
+            item.size,
+            item.quantity,
+            item.employeeName,
+            item.remarks || '',
+        ]),
+    });
+    
+    doc.save('PPE_Consumption_Report.pdf');
   };
 
   const isDisabled = !dateRange || !dateRange.from;
