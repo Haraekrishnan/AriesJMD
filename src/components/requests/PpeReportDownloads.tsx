@@ -1,20 +1,30 @@
 'use client';
 import { useMemo } from 'react';
 import type { PpeRequest, PpeHistoryRecord, PpeInwardRecord } from '@/lib/types';
-import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import * as ExcelJS from 'exceljs';
 import type { DateRange } from 'react-day-picker';
 import { format, isWithinInterval, parseISO, startOfDay, endOfDay, compareAsc, isAfter } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { useInventory } from '@/contexts/inventory-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useManpower } from '@/contexts/manpower-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { saveAs } from 'file-saver';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
 
 interface PpeReportDownloadsProps {
   dateRange: DateRange | undefined;
 }
 
 export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProps) {
-  const { ppeRequests, users, manpowerProfiles, projects, ppeInwardHistory, ppeStock } = useAppContext();
+  const { ppeRequests, ppeInwardHistory, ppeStock } = useInventory();
+  const { users } = useAuth();
+  const { manpowerProfiles } = useManpower();
+  const { projects } = useGeneral();
   const { toast } = useToast();
   
   const handleDownloadExcel = () => {
@@ -57,7 +67,7 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
       return;
     }
 
-    const workbook = XLSX.utils.book_new();
+    const workbook = new ExcelJS.Workbook();
 
     // 2. For each unique item, create a sheet
     allItems.forEach(itemKey => {
@@ -155,11 +165,11 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
     XLSX.writeFile(workbook, `PPE_Report_${format(from, 'yyyy-MM-dd')}_to_${format(to, 'yyyy-MM-dd')}.xlsx`);
   };
 
+  const isDisabled = !dateRange || !dateRange.from;
+
   return (
     <div className="flex gap-2">
-      <Button variant="outline" onClick={handleDownloadExcel} disabled={!dateRange || !dateRange.from}>
-        <FileDown className="mr-2 h-4 w-4" /> Export Report
-      </Button>
+      <Button variant="outline" onClick={handleDownloadExcel} disabled={isDisabled}><FileDown className="mr-2 h-4 w-4"/> Export Report</Button>
     </div>
   );
 }
