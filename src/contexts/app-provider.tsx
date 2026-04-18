@@ -19,8 +19,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       <GeneralProvider>
         <ManpowerProvider>
             <ConsumableProvider>
-                <PurchaseProvider>
-                    <InventoryProvider>
+                <InventoryProvider>
+                    <PurchaseProvider>
                         <InwardOutwardProvider>
                             <AccommodationProvider>
                                 <PlannerProvider>
@@ -32,11 +32,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
                                 </PlannerProvider>
                             </AccommodationProvider>
                         </InwardOutwardProvider>
-                    </InventoryProvider>
-                </PurchaseProvider>
+                    </PurchaseProvider>
+                </InventoryProvider>
             </ConsumableProvider>
         </ManpowerProvider>
       </GeneralProvider>
     </AuthProvider>
   );
 }
+
+export const useAppContext = () => {
+    const auth = useAuth();
+    const general = useGeneral();
+    const inventory = useInventory();
+    const manpower = useManpower();
+    const planner = usePlanner();
+    const purchase = usePurchase();
+    const task = useTask();
+    const consumable = useConsumable();
+    const accommodation = useAccommodation();
+    const decorations = useDecorations();
+    const inwardOutward = useInwardOutward();
+
+    return {
+        ...auth,
+        ...general,
+        ...inventory,
+        ...manpower,
+        ...planner,
+        ...purchase,
+        ...task,
+        ...consumable,
+        ...accommodation,
+        ...decorations,
+        ...inwardOutward,
+    };
+};

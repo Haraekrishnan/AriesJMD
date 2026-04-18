@@ -8,7 +8,6 @@ import type { Quotation, QuotationItem, QuotationQuote, QuotationVendorDetails, 
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Crown, AlertCircle, ShoppingCart, FilePlus, ThumbsUp } from 'lucide-react';
-import { useAppContext } from '@/contexts/app-provider';
 import * as React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Input } from '../ui/input';
@@ -17,6 +16,8 @@ import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Badge } from '../ui/badge';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { useAuth } from '@/contexts/auth-provider';
+import { usePurchase } from '@/contexts/purchase-provider';
 
 interface ViewQuotationDialogProps {
   isOpen: boolean;
@@ -87,7 +88,8 @@ const ReceiveItemDialog = ({
 };
 
 export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: initialQuotation }: ViewQuotationDialogProps) {
-  const { users, can, quotations, updateQuotation, receiveQuoteItem } = useAppContext();
+  const { users, can } = useAuth();
+  const { quotations, updateQuotation, receiveQuoteItem } = usePurchase();
   const { toast } = useToast();
   const [poNumber, setPoNumber] = useState(initialQuotation.poNumber || '');
   const [receivingInfo, setReceivingInfo] = useState<{ item: QuotationItem; vendor: QuotationVendorDetails; quote: QuotationQuote } | null>(null);
@@ -118,7 +120,7 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
                 totalTax += amount * ((quote.taxPercent || 0) / 100);
             }
         });
-      const additionalCostsArray = Array.isArray(vendor.additionalCosts) ? Object.values(vendor.additionalCosts || {}) : Object.values(vendor.additionalCosts || {});
+      const additionalCostsArray = Array.isArray(vendor.additionalCosts) ? Object.values(vendor.additionalCosts || {}) : Object.values(vendor.additionalCosts || []);
       const additionalCostsTotal = additionalCostsArray.reduce((acc, cost) => acc + (cost.value || 0), 0);
       const grandTotal = subTotal + totalTax + additionalCostsTotal;
       return { vendorId: vendor.vendorId, subTotal, totalTax, additionalCosts: additionalCostsArray, grandTotal };

@@ -8,6 +8,8 @@ import { ref, onValue, set, push, remove, update } from 'firebase/database';
 import { useAuth } from './auth-provider';
 import { useToast } from '@/hooks/use-toast';
 import { useConsumable } from './consumable-provider';
+import { useInventory } from './inventory-provider';
+
 
 // --- TYPE DEFINITIONS ---
 
@@ -38,6 +40,7 @@ export type PurchaseContextType = {
   updateQuotation: (quotation: Quotation) => void;
   deleteQuotation: (quotationId: string) => void;
   setQuotationLock: (quotationId: string, locked: boolean) => void;
+  receiveQuoteItem: (quotationId: string, vendorId: string, itemId: string, quantity: number) => void;
 };
 
 // --- HELPER FUNCTIONS ---
@@ -68,7 +71,8 @@ const PurchaseContext = createContext<PurchaseContextType | undefined>(undefined
 export function PurchaseProvider({ children }: { children: ReactNode }) {
     const { user, addActivityLog, can } = useAuth();
     const { toast } = useToast();
-    const { addConsumableItem } = useConsumable();
+    const { addConsumableItem, consumableItems } = useConsumable();
+    const { inventoryItems } = useInventory();
 
     const [vendorsById, setVendorsById] = useState<Record<string, Vendor>>({});
     const [paymentsById, setPaymentsById] = useState<Record<string, Payment>>({});
@@ -279,6 +283,59 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb, `quotations/${quotationId}`), { isLocked: locked });
         toast({ title: `Price Comparison ${locked ? 'Locked' : 'Unlocked'}` });
     }, [user, toast]);
+    
+    const receiveQuoteItem = useCallback(
+    (quotationId: string, vendorId: string, itemId: string, quantity: number) => {
+      const quotation = quotations.find((q) => q.id === quotationId);
+      if (!quotation) return;
+  
+      const vendorIndex = quotation.vendors.findIndex((v) => v.vendorId === vendorId);
+      if (vendorIndex === -1) return;
+  
+      const quoteIndex = quotation.vendors[vendorIndex].quotes.findIndex((q) => q.itemId === itemId);
+      if (quoteIndex === -1) return;
+  
+      const updates: { [key: string]: any } = {};
+      const currentReceived = quotation.vendors[vendorIndex].quotes[quoteIndex].receivedQuantity || 0;
+      updates[`quotations/${quotationId}/vendors/${vendorIndex}/quotes/${quoteIndex}/receivedQuantity`] = currentReceived + quantity;
+  
+      // Check if all items are fully received to update main status
+      const allItems = quotation.items;
+      let allReceived = true;
+      for (const item of allItems) {
+          const vendorQuote = quotation.vendors[vendorIndex].quotes.find(q => q.itemId === item.itemId);
+          if(!vendorQuote) {
+              allReceived = false;
+              break;
+          }
+          const effectiveReceived = (item.itemId === itemId) ? currentReceived + quantity : vendorQuote.receivedQuantity || 0;
+  
+          if (effectiveReceived < vendorQuote.quantity) {
+              allReceived = false;
+              break;
+          }
+      }
+  
+      if (allReceived) {
+          updates[`quotations/${quotationId}/status`] = 'Completed';
+      } else {
+          updates[`quotations/${quotationId}/status`] = 'Partially Received';
+      }
+  
+      // Now, update inventory stock
+      const itemInfo = quotation.items.find(i => i.itemId === itemId);
+      if (itemInfo) {
+        const allInventory = [...inventoryItems, ...consumableItems];
+        const stockItem = allInventory.find(i => i.id === itemId);
+        if (stockItem && stockItem.quantity !== undefined) {
+          updates[`inventoryItems/${itemId}/quantity`] = (stockItem.quantity || 0) + quantity;
+        }
+      }
+  
+      update(ref(rtdb), updates);
+    },
+    [quotations, inventoryItems, consumableItems]
+  );
 
     useEffect(() => {
         const unsubscribers = [
@@ -297,7 +354,8 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
         addPurchaseRegister, updatePurchaseRegister, deletePurchaseRegister, updatePurchaseRegisterPoNumber,
         addQuotation, updateQuotation, deleteQuotation,
         setQuotationLock,
-    } as PurchaseContextType;
+        receiveQuoteItem,
+    };
 
     return <PurchaseContext.Provider value={contextValue}>{children}</PurchaseContext.Provider>;
 }
