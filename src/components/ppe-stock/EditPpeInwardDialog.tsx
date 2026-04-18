@@ -3,17 +3,18 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { PpeInwardRecord } from '@/lib/types';
 import { useEffect } from 'react';
 import { parseISO, isValid } from 'date-fns';
+import { update, ref } from 'firebase/database';
+import { rtdb } from '@/lib/rtdb';
 
 const coverallSizeOptions = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
 
@@ -35,7 +36,7 @@ interface EditPpeInwardDialogProps {
 }
 
 export default function EditPpeInwardDialog({ isOpen, setIsOpen, record }: EditPpeInwardDialogProps) {
-    const { updatePpeInwardRecord } = useAppContext();
+    const { updatePpeInwardRecord, ppeInwardHistory, ppeStock } = useInventory();
     const { toast } = useToast();
     
     const form = useForm<InwardFormValues>({
@@ -54,13 +55,13 @@ export default function EditPpeInwardDialog({ isOpen, setIsOpen, record }: EditP
     }, [record, isOpen, form]);
 
     const onSubmit = (data: InwardFormValues) => {
-        const updatedRecord: PpeInwardRecord = {
+        const updatedRecordData: PpeInwardRecord = {
             ...record,
             date: data.date.toISOString(),
-            sizes: record.ppeType === 'Coverall' ? data.sizes : null,
-            quantity: record.ppeType === 'Safety Shoes' ? data.quantity : null,
+            sizes: record.ppeType === 'Coverall' ? data.sizes : undefined,
+            quantity: record.ppeType === 'Safety Shoes' ? data.quantity : undefined,
         };
-        updatePpeInwardRecord(updatedRecord);
+        updatePpeInwardRecord(updatedRecordData);
         toast({ title: 'Record Updated', description: 'The inward stock record has been updated.' });
         setIsOpen(false);
     };
@@ -69,8 +70,7 @@ export default function EditPpeInwardDialog({ isOpen, setIsOpen, record }: EditP
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
-                    <DialogTitle>Edit Inward Record</DialogTitle>
-                    <DialogDescription>Update the details for this inward stock entry.</DialogDescription>
+                    <DialogTitle>Edit Inward Record for {record.ppeType}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
                     <div className="space-y-2">

@@ -1,8 +1,8 @@
 
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,7 +47,8 @@ type InwardFormValues = z.infer<typeof inwardSchema>;
 
 
 export default function PpeStockPage() {
-    const { user, can, ppeStock, updatePpeStock, addPpeInwardRecord, ppeInwardHistory, deletePpeInwardRecord, loading } = useAppContext();
+    const { user, can, loading } = useAuth();
+    const { ppeStock, updatePpeStock, addPpeInwardRecord, ppeInwardHistory, deletePpeInwardRecord } = useInventory();
     const { toast } = useToast();
     const [reportDateRange, setReportDateRange] = useState<DateRange | undefined>();
     const [isImportOpen, setIsImportOpen] = useState(false);
