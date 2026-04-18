@@ -1,7 +1,8 @@
-
 'use client';
 import React, { useEffect, useMemo, useState, useCallback, useRef, MouseEvent } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import {
   useReactTable,
   getCoreRowModel,
@@ -56,7 +57,7 @@ const statusColorMap: Record<string, string> = {
 const EditableCell = React.memo(({ getValue, row, column, table }: any) => {
     const initialValue = getValue() ?? '';
     const [value, setValue] = useState(initialValue);
-    const { can } = useAppContext();
+    const { can } = useAuth();
     const isEditable = can.manage_inventory_database;
     const { updateData, setActiveCell } = table.options.meta;
   
@@ -92,7 +93,7 @@ EditableCell.displayName = 'EditableCell';
 
 const SelectCell = React.memo(({ getValue, row, column, table, options, placeholder }: any) => {
     const initialValue = getValue();
-    const { can } = useAppContext();
+    const { can } = useAuth();
     const isEditable = can.manage_inventory_database;
     const { setActiveCell, updateData } = table.options.meta;
     const status = column.id === 'status' ? getValue() as InventoryItemStatus : null;
@@ -127,7 +128,7 @@ SelectCell.displayName = 'SelectCell';
 
 const DateCell = React.memo(({ getValue, row, column, table }: any) => {
     const initialValue = getValue();
-    const { can } = useAppContext();
+    const { can } = useAuth();
     const isEditable = can.manage_inventory_database;
     const dateValue = initialValue ? parseISO(initialValue) : undefined;
     const { setActiveCell, updateData } = table.options.meta;
@@ -182,14 +183,15 @@ const DebouncedInput = ({
 }
 
 const InventorySheet = ({ category }: { category: string }) => {
+  const { can } = useAuth();
+  const { projects } = useGeneral();
   const { 
     inventoryItems: dataFromContext, 
-    projects, 
-    can, 
     batchAddInventoryItems,
     batchUpdateInventoryItems,
-    batchDeleteInventoryItems
-  } = useAppContext();
+    batchDeleteInventoryItems,
+    updateInventoryItem
+  } = useInventory();
 
   const [localData, setLocalData] = useState<InventoryItem[]>([]);
 
@@ -209,8 +211,6 @@ const InventorySheet = ({ category }: { category: string }) => {
   const [isSelecting, setIsSelecting] = useState(false);
   const [isAddRowsDialogOpen, setIsAddRowsDialogOpen] = useState(false);
   const [numRowsToAdd, setNumRowsToAdd] = useState(1);
-  
-  const { updateInventoryItem } = useAppContext();
   
   const debouncedUpdate = useRef(
       debounce((item: InventoryItem) => {
@@ -697,5 +697,3 @@ const InventorySheet = ({ category }: { category: string }) => {
 };
 
 export default InventorySheet;
-
-    

@@ -1,8 +1,8 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import InventorySheet from '@/components/inventory/InventorySheet';
 import { AlertTriangle } from 'lucide-react';
@@ -10,7 +10,8 @@ import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/ca
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 export default function InventoryDatabasePage() {
-    const { can, inventoryItems } = useAppContext();
+    const { can } = useAuth();
+    const { inventoryItems } = useInventory();
 
     const inventoryCategories = useMemo(() => {
         if (!inventoryItems) return [];
