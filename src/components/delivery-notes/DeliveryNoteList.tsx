@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import type { DeliveryNote } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { Button } from '../ui/button';
@@ -17,7 +18,8 @@ interface DeliveryNoteListProps {
 }
 
 export default function DeliveryNoteList({ type }: DeliveryNoteListProps) {
-  const { deliveryNotes, user, deleteDeliveryNote } = useAppContext();
+  const { user } = useAuth();
+  const { deliveryNotes, deleteDeliveryNote } = useInventory();
   const [searchTerm, setSearchTerm] = useState('');
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [viewingNote, setViewingNote] = useState<DeliveryNote | null>(null);

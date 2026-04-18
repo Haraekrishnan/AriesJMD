@@ -1,6 +1,7 @@
 'use client';
 
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import type { DeliveryNote } from '@/lib/types';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -19,7 +20,8 @@ interface ViewDeliveryNoteDialogProps {
 }
 
 export default function ViewDeliveryNoteDialog({ isOpen, setIsOpen, note: initialNote }: ViewDeliveryNoteDialogProps) {
-  const { user, deliveryNotes, updateDeliveryNote } = useAppContext();
+  const { user } = useAuth();
+  const { deliveryNotes, updateDeliveryNote } = useInventory();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const { toast } = useToast();
   

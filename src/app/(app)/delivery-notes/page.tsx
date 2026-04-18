@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, AlertTriangle } from 'lucide-react';
@@ -10,7 +10,7 @@ import DeliveryNoteList from '@/components/delivery-notes/DeliveryNoteList';
 import CreateDeliveryNoteDialog from '@/components/delivery-notes/CreateDeliveryNoteDialog';
 
 export default function DeliveryNotesPage() {
-  const { can, user } = useAppContext();
+  const { can, user } = useAuth();
   const [isCreateOutwardOpen, setIsCreateOutwardOpen] = useState(false);
   const [isCreateInwardOpen, setIsCreateInwardOpen] = useState(false);
 

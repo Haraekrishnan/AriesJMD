@@ -4,7 +4,7 @@ import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useAppContext } from '@/contexts/app-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import type { DeliveryNote } from '@/lib/types';
 
 interface UploadSignedCopyDialogProps {
@@ -14,7 +14,7 @@ interface UploadSignedCopyDialogProps {
 }
 
 export default function UploadSignedCopyDialog({ isOpen, setIsOpen, note }: UploadSignedCopyDialogProps) {
-  const { updateDeliveryNote } = useAppContext();
+  const { updateDeliveryNote } = useInventory();
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
