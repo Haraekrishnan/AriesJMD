@@ -1,4 +1,3 @@
-
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,21 +13,25 @@ import { Separator } from '../ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Card, CardHeader, CardContent } from '../ui/card';
 import { useEffect, useMemo, useState } from 'react';
-import type { Quotation, QuotationItem, QuotationQuote, QuotationVendorDetails } from '@/lib/types';
+import type { Quotation, QuotationItem, QuotationQuote, QuotationVendorDetails, QuotationStatus } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { cn } from '@/lib/utils';
 import { usePurchase } from '@/contexts/purchase-provider';
 import { useInventory } from '@/contexts/inventory-provider';
 import { useConsumable } from '@/contexts/consumable-provider';
+import AddNewItemForQuoteDialog from './AddNewItemForQuoteDialog';
+import type { NewItemForQuoteValues } from './AddNewItemForQuoteDialog';
 
 
 const quotationItemSchema = z.object({
     id: z.string(),
-    itemId: z.string().min(1, 'Item must be selected'),
+    itemId: z.string(),
     description: z.string().min(1, "Description is required"),
     uom: z.string().min(1, "UOM is required"),
     itemType: z.string().min(1, 'Item Type is required'),
+    isNew: z.boolean().optional(),
+    newItemCategory: z.enum(['Store Inventory', 'Equipment', 'Daily Consumable', 'Job Consumable']).optional(),
 });
 
 const quotationVendorSchema = z.object({
@@ -75,15 +78,15 @@ const VendorQuoteSection = ({ vendorIndex, control, formState }: { vendorIndex: 
                 <div key={field.id} className="flex gap-2 items-start">
                     <div className="flex-1">
                       <Input {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.name`)} placeholder="Cost Name (e.g. Cess)" />
-                       {formState.errors.vendors?.[vendorIndex]?.additionalCosts?.[index]?.name && (
+                       {formState.errors.vendors?.[vendorIndex]?.additionalCosts?.[index]?.name && 
                         <p className="text-xs text-destructive mt-1">{formState.errors.vendors[vendorIndex].additionalCosts[index].name.message}</p>
-                      )}
+                      }
                     </div>
                     <div className="flex-1">
                       <Input type="number" {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.value`, { valueAsNumber: true, setValueAs: v => v === "" ? 0 : Number(v) })} placeholder="Value"/>
-                      {formState.errors.vendors?.[vendorIndex]?.additionalCosts?.[index]?.value && (
+                      {formState.errors.vendors?.[vendorIndex]?.additionalCosts?.[index]?.value && 
                         <p className="text-xs text-destructive mt-1">{formState.errors.vendors[vendorIndex].additionalCosts[index].value.message}</p>
-                      )}
+                      }
                     </div>
                     <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
                 </div>
@@ -115,6 +118,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
   const isEditMode = !!existingQuotation;
 
   const [popoverOpenState, setPopoverOpenState] = useState<Record<number, boolean>>({});
+  const [isNewItemDialogOpen, setIsNewItemDialogOpen] = useState(false);
 
   const allItemsForQuote = useMemo(() => {
     const all = [
@@ -176,8 +180,6 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     control: form.control,
     name: "vendors"
   });
-
-  const watchItems = form.watch("items");
 
   useEffect(() => {
     if (isOpen) {
@@ -285,6 +287,21 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     setPopoverOpenState(prev => ({...prev, [index]: false}));
   };
 
+  const handleNewItemCreate = (data: NewItemForQuoteValues) => {
+    const tempId = `new-${Date.now()}`;
+    appendItem({
+        id: tempId,
+        itemId: tempId,
+        description: data.name,
+        uom: data.uom,
+        itemType: data.category,
+        isNew: true,
+        newItemCategory: data.category,
+    });
+    setIsNewItemDialogOpen(false);
+  };
+
+
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
@@ -322,6 +339,13 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                                 <CommandInput placeholder="Search all items..." />
                                                 <CommandList>
                                                     <CommandEmpty>No items found.</CommandEmpty>
+                                                    <CommandItem key="add-new-item" onSelect={() => {
+                                                        setIsNewItemDialogOpen(true);
+                                                        setPopoverOpenState(prev => { const s = {...prev}; s[index] = false; return s; });
+                                                    }}>
+                                                        <PlusCircle className="mr-2 h-4 w-4" />
+                                                        <span>Add New Item...</span>
+                                                    </CommandItem>
                                                     {Object.entries(groupedItems).map(([category, items]) => (
                                                         <CommandGroup key={category} heading={category}>
                                                             {items.map(item => (
@@ -365,9 +389,9 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                     <SelectTrigger className="w-64"><SelectValue placeholder="Select Vendor"/></SelectTrigger>
                                     <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
                                 </Select>
-                                {form.formState.errors.vendors?.[vendorIndex]?.vendorId && (
+                                {form.formState.errors.vendors?.[vendorIndex]?.vendorId && 
                                   <p className="text-xs text-destructive">Select vendor</p>
-                                )}
+                                }
                             </div>
                             <Button type="button" variant="ghost" size="icon" onClick={() => removeVendor(vendorIndex)}><X className="h-4 w-4"/></Button>
                         </CardHeader>
@@ -387,11 +411,11 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                     </div>
                                     <div>
                                         <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.rate`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Rate"/>
-                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.rate && ( <p className="text-xs text-destructive mt-1">Invalid Rate</p> )}
+                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.rate && <p className="text-xs text-destructive mt-1">Invalid Rate</p>}
                                     </div>
                                     <div>
                                         <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.taxPercent`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Tax %" />
-                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.taxPercent && ( <p className="text-xs text-destructive mt-1">Invalid Tax</p> )}
+                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.taxPercent && <p className="text-xs text-destructive mt-1">Invalid Tax</p>}
                                     </div>
                                 </div>
                             ))}
@@ -412,6 +436,11 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
             <Button type="submit">{isEditMode ? 'Save Changes' : 'Create Comparison'}</Button>
           </DialogFooter>
         </form>
+         <AddNewItemForQuoteDialog
+            isOpen={isNewItemDialogOpen}
+            setIsOpen={setIsNewItemDialogOpen}
+            onItemCreate={handleNewItemCreate}
+        />
       </DialogContent>
     </Dialog>
   );

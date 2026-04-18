@@ -1181,11 +1181,13 @@ export type DeliveryNote = {
 };
 
 export type QuotationItem = {
-    id: string;
-    itemId: string;
-    description: string;
-    uom: string;
-    itemType: string;
+  id: string;
+  itemId: string;
+  description: string;
+  uom: string;
+  itemType: string;
+  isNew?: boolean;
+  newItemCategory?: 'Store Inventory' | 'Equipment' | 'Daily Consumable' | 'Job Consumable';
 };
   
 export type QuotationQuote = {

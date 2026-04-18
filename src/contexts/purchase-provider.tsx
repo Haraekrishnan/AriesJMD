@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { Vendor, Payment, PaymentStatus, PurchaseRegister, Comment, Quotation, InwardOutwardRecord, Permission, QuotationStatus } from '@/lib/types';
+import { Vendor, Payment, PaymentStatus, PurchaseRegister, Comment, Quotation, InwardOutwardRecord, Permission, QuotationStatus, InventoryItem, OtherEquipment } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -68,7 +68,7 @@ const PurchaseContext = createContext<PurchaseContextType | undefined>(undefined
 export function PurchaseProvider({ children }: { children: ReactNode }) {
     const { user, addActivityLog, can } = useAuth();
     const { toast } = useToast();
-    const { consumableItems, addConsumableInwardRecord } = useConsumable();
+    const { addConsumableItem } = useConsumable();
 
     const [vendorsById, setVendorsById] = useState<Record<string, Vendor>>({});
     const [paymentsById, setPaymentsById] = useState<Record<string, Payment>>({});
@@ -199,36 +199,67 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
             }
         }
         
-        if (data.finalizedVendorId && data.finalizedVendorId !== oldQuotation?.finalizedVendorId) {
+        if (user && data.finalizedVendorId && data.finalizedVendorId !== oldQuotation?.finalizedVendorId) {
             const finalizedVendor = data.vendors.find(v => v.vendorId === data.finalizedVendorId);
             if (finalizedVendor) {
-                const consumableItemIds = new Set(consumableItems.map(i => i.id));
-                const itemsToUpdate: {itemId: string, quantity: number, itemName: string}[] = [];
                 
-                data.items.forEach(item => {
-                    if (consumableItemIds.has(item.itemId)) {
-                        const quote = finalizedVendor.quotes.find(q => q.itemId === item.itemId);
-                        if (quote && quote.quantity > 0) {
-                            itemsToUpdate.push({ itemId: item.itemId, quantity: quote.quantity, itemName: item.description });
-                        }
+                const newItemsToCreate = data.items.filter(item => item.isNew);
+                let itemsCreatedCount = 0;
+    
+                newItemsToCreate.forEach(newItem => {
+                    const quote = finalizedVendor.quotes.find(q => q.itemId === newItem.itemId);
+                    if (!quote) return;
+    
+                    const quantity = quote.quantity;
+                    const category = newItem.newItemCategory!;
+    
+                    const itemBase = {
+                        name: newItem.description,
+                        quantity: quantity,
+                        unit: newItem.uom,
+                        status: 'In Store' as const,
+                        projectId: 'STORE',
+                        lastUpdated: new Date().toISOString(),
+                        remarks: `Added from quotation: ${quotation.title} (${quotation.id.slice(-6)})`,
+                        isArchived: false,
+                    };
+                    
+                    if (category === 'Daily Consumable' || category === 'Job Consumable') {
+                        addConsumableItem({...itemBase, category});
+                        itemsCreatedCount++;
+                    } else if (category === 'Store Inventory') {
+                        const newRef = push(ref(rtdb, 'inventoryItems'));
+                        const itemToAdd: Partial<InventoryItem> = {
+                        ...itemBase,
+                        category: 'General',
+                        serialNumber: `new-item-${newRef.key}` // Placeholder serial
+                    };
+                    set(newRef, itemToAdd);
+                    itemsCreatedCount++;
+                } else if (category === 'Equipment') {
+                        const newRef = push(ref(rtdb, 'otherEquipments'));
+                        const itemToAdd: Partial<OtherEquipment> = {
+                        equipmentName: newItem.description,
+                        serialNumber: `new-equip-${newRef.key}`, // Placeholder serial
+                        projectId: 'STORE',
+                        remarks: itemBase.remarks
+                    };
+                    set(newRef, itemToAdd);
+                    itemsCreatedCount++;
                     }
                 });
-                
-                if (itemsToUpdate.length > 0) {
-                    const inwardDate = new Date();
-                    itemsToUpdate.forEach(item => {
-                        addConsumableInwardRecord(item.itemId, item.quantity, inwardDate);
-                    });
-                    toast({
-                        title: 'Consumables Stock Updated',
-                        description: `${itemsToUpdate.length} consumable item(s) have been auto-added to the inward register.`
+    
+                if (itemsCreatedCount > 0) {
+                     toast({
+                        title: 'New Items Created',
+                        description: `${itemsCreatedCount} new item(s) have been added. You may need to edit them to add correct serial numbers.`,
                     });
                 }
             }
         }
         
         update(ref(rtdb, `quotations/${id}`), updateData);
-    }, [quotationsById, toast, consumableItems, addConsumableInwardRecord]);
+    }, [quotationsById, toast, user, addConsumableItem]);
 
     const deleteQuotation = useCallback((quotationId: string) => {
         if (!user || user.role !== 'Admin') {
