@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -33,7 +34,7 @@ export default function TpCertificationPage() {
     const { user, users, can } = useAuth();
     const { 
         tpCertLists, deleteTpCertList,
-        inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims,
+        inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies,
         updateTpCertList
      } = useInventory();
     const [searchTerm, setSearchTerm] = useState('');
@@ -44,8 +45,9 @@ export default function TpCertificationPage() {
     
     const allItems = useMemo(() => [
       ...inventoryItems, ...utMachines, ...dftMachines, ...digitalCameras, 
-      ...anemometers, ...otherEquipments, ...laptopsDesktops, ...mobileSims
-    ], [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims]);
+      ...anemometers, ...otherEquipments, ...laptopsDesktops, ...mobileSims,
+      ...weldingMachines, ...walkieTalkies,
+    ], [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies]);
 
     const filteredLists = useMemo(() => {
         const allLists = (tpCertLists || [])
@@ -370,3 +372,5 @@ export default function TpCertificationPage() {
         </>
     );
 }
+
+    

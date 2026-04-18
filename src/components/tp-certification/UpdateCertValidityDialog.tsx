@@ -1,7 +1,6 @@
 
 'use client';
 import { useState, useEffect, useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -9,16 +8,17 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { TpCertList, InventoryItem, UTMachine, DftMachine, Anemometer, DigitalCamera, OtherEquipment, LaptopDesktop, MobileSim } from '@/lib/types';
+import type { TpCertList, InventoryItem, UTMachine, DftMachine, Anemometer, DigitalCamera, OtherEquipment, LaptopDesktop, MobileSim, WeldingMachine, WalkieTalkie } from '@/lib/types';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { parseISO, isValid, isAfter } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
+import { useInventory } from '@/contexts/inventory-provider';
 
 interface EditableItem {
   itemId: string;
-  itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'Anemometer' | 'DigitalCamera' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim';
+  itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'Anemometer' | 'DigitalCamera' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim' | 'WeldingMachine' | 'WalkieTalkie';
   materialName: string;
   manufacturerSrNo: string;
   tpInspectionDueDate: Date | null;
@@ -34,9 +34,10 @@ interface UpdateCertValidityDialogProps {
 
 export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }: UpdateCertValidityDialogProps) {
   const { 
-      inventoryItems, utMachines, dftMachines, anemometers, digitalCameras, otherEquipments, laptopsDesktops, mobileSims, 
-      updateInventoryItem, updateUTMachine, updateDftMachine, updateAnemometer, updateDigitalCamera, updateOtherEquipment, updateLaptopDesktop, updateMobileSim
-  } = useAppContext();
+      inventoryItems, utMachines, dftMachines, anemometers, digitalCameras, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies,
+      updateInventoryItem, updateUTMachine, updateDftMachine, updateAnemometer, updateDigitalCamera, updateOtherEquipment, updateLaptopDesktop, updateMobileSim,
+      updateWeldingMachine, updateWalkieTalkie
+  } = useInventory();
   const { toast } = useToast();
 
   const [items, setItems] = useState<EditableItem[]>([]);
@@ -46,8 +47,8 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
 
   useEffect(() => {
     if (certList && isOpen) {
-      const allItems: (InventoryItem | UTMachine | DftMachine | Anemometer | DigitalCamera | OtherEquipment | LaptopDesktop | MobileSim)[] = [
-        ...inventoryItems, ...utMachines, ...dftMachines, ...anemometers, ...digitalCameras, ...otherEquipments, ...laptopsDesktops, ...mobileSims
+      const allItems: (InventoryItem | UTMachine | DftMachine | Anemometer | DigitalCamera | OtherEquipment | LaptopDesktop | MobileSim | WeldingMachine | WalkieTalkie)[] = [
+        ...inventoryItems, ...utMachines, ...dftMachines, ...anemometers, ...digitalCameras, ...otherEquipments, ...laptopsDesktops, ...mobileSims, ...weldingMachines, ...walkieTalkies
       ];
 
       const itemsWithData: EditableItem[] = certList.items.map((listItem, index) => {
@@ -71,7 +72,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
       setBulkDate(undefined);
       setBulkLink('');
     }
-  }, [certList, isOpen, inventoryItems, utMachines, dftMachines, anemometers, digitalCameras, otherEquipments, laptopsDesktops, mobileSims]);
+  }, [certList, isOpen, inventoryItems, utMachines, dftMachines, anemometers, digitalCameras, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies]);
   
   const groupedItems = useMemo(() => {
     return items.reduce((acc, item) => {
@@ -119,8 +120,8 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
     }
 
     let updatedCount = 0;
-    const allItemsFromContext: (InventoryItem | UTMachine | DftMachine | Anemometer | DigitalCamera | OtherEquipment | LaptopDesktop | MobileSim)[] = [
-      ...inventoryItems, ...utMachines, ...dftMachines, ...anemometers, ...digitalCameras, ...otherEquipments, ...laptopsDesktops, ...mobileSims
+    const allItemsFromContext: (InventoryItem | UTMachine | DftMachine | Anemometer | DigitalCamera | OtherEquipment | LaptopDesktop | MobileSim | WeldingMachine | WalkieTalkie)[] = [
+      ...inventoryItems, ...utMachines, ...dftMachines, ...anemometers, ...digitalCameras, ...otherEquipments, ...laptopsDesktops, ...mobileSims, ...weldingMachines, ...walkieTalkies
     ];
 
     selectedIndices.forEach(index => {
@@ -150,6 +151,8 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
             case 'OtherEquipment': updateOtherEquipment(updateData as OtherEquipment); break;
             case 'LaptopDesktop': updateLaptopDesktop(updateData as LaptopDesktop); break;
             case 'MobileSim': updateMobileSim(updateData as MobileSim); break;
+            case 'WeldingMachine': updateWeldingMachine(updateData as WeldingMachine); break;
+            case 'WalkieTalkie': updateWalkieTalkie(updateData as WalkieTalkie); break;
         }
         updatedCount++;
       } catch (error) {
@@ -286,3 +289,5 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
     </Dialog>
   );
 }
+
+    
