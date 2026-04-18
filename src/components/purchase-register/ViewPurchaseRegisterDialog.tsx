@@ -5,8 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { PurchaseRegister } from '@/lib/types';
-import { useAppContext } from '@/contexts/app-provider';
-import { format } from 'date-fns';
+import { usePurchase } from '@/contexts/purchase-provider';
+import { format, parseISO } from 'date-fns';
 import React from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/card';
@@ -18,7 +18,7 @@ interface ViewPurchaseRegisterDialogProps {
 }
 
 export default function ViewPurchaseRegisterDialog({ isOpen, setIsOpen, purchaseRegister }: ViewPurchaseRegisterDialogProps) {
-  const { vendors } = useAppContext();
+  const { vendors } = usePurchase();
   
   const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
 
@@ -52,7 +52,7 @@ export default function ViewPurchaseRegisterDialog({ isOpen, setIsOpen, purchase
         <DialogHeader>
           <DialogTitle>Purchase Details</DialogTitle>
           <DialogDescription>
-            Showing items from Purchase Register #{purchaseRegister.id.slice(-6)} for {vendor?.name} on {format(new Date(purchaseRegister.date), 'dd MMM, yyyy')}.
+            Showing items from Purchase Register #{purchaseRegister.id.slice(-6)} for {vendor?.name} on {purchaseRegister.date ? format(parseISO(purchaseRegister.date), 'dd MMM, yyyy') : ''}.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-2">
@@ -82,8 +82,8 @@ export default function ViewPurchaseRegisterDialog({ isOpen, setIsOpen, purchase
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {group.items.map(item => (
-                                                <TableRow key={item.id}>
+                                            {group.items.map((item, i) => (
+                                                <TableRow key={`${item.id}-${i}`}>
                                                     <TableCell>{item.quantity}</TableCell>
                                                     <TableCell>{formatCurrency(item.unitRate)}</TableCell>
                                                     <TableCell>{item.tax}%</TableCell>

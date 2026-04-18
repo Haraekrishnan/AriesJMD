@@ -1,9 +1,8 @@
-
 'use client';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { usePurchase } from '@/contexts/purchase-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -47,7 +46,7 @@ interface EditPurchaseLedgerDialogProps {
 }
 
 export default function EditPurchaseLedgerDialog({ isOpen, setIsOpen, purchaseRegister }: EditPurchaseLedgerDialogProps) {
-  const { updatePurchaseRegister, vendors } = useAppContext();
+  const { updatePurchaseRegister, vendors } = usePurchase();
   const { toast } = useToast();
 
   const form = useForm<PurchaseFormValues>({

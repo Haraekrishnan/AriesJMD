@@ -1,9 +1,8 @@
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { usePurchase } from '@/contexts/purchase-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -34,7 +33,7 @@ interface AddPaymentDialogProps {
 }
 
 export default function AddPaymentDialog({ isOpen, setIsOpen }: AddPaymentDialogProps) {
-  const { addPayment, vendors } = useAppContext();
+  const { addPayment, vendors } = usePurchase();
   const { toast } = useToast();
 
   const form = useForm<PaymentFormValues>({

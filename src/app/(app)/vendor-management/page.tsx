@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { usePurchase } from '@/contexts/purchase-provider';
 import { Button } from '@/components/ui/button';
 import { Search, PlusCircle, Briefcase, FileDown, IndianRupee, Handshake } from 'lucide-react';
 import VendorListTable from '@/components/vendor-management/VendorListTable';
@@ -20,12 +19,14 @@ import { format, isWithinInterval, parseISO, getYear, getMonth, startOfYear, end
 import PaymentReportDownloads from '@/components/payments/PaymentReportDownloads';
 import { Badge } from '@/components/ui/badge';
 import StatCard from '@/components/dashboard/stat-card';
+import AddPurchaseLedgerDialog from '@/components/vendor-management/AddPurchaseLedgerDialog';
 
 
 export default function VendorManagementPage() {
-    const { user, vendors, payments, can, pendingPaymentApprovalCount } = useAppContext();
+    const { vendors, payments, can, pendingPaymentApprovalCount } = usePurchase();
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
+    const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
     const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
 
     // Filters
@@ -96,9 +97,9 @@ export default function VendorManagementPage() {
     };
     
     const canAddPayment = useMemo(() => {
-        if (!user) return false;
-        return user.role === 'Admin' || user.role === 'Project Coordinator';
-    }, [user]);
+        if (!can?.manage_payments) return false;
+        return ['Admin', 'Project Coordinator'].includes(can.manage_payments as any);
+    }, [can]);
 
     const ledgerTitle = useMemo(() => {
         if (selectedVendorId !== 'all') {
@@ -212,6 +213,7 @@ export default function VendorManagementPage() {
             </Tabs>
 
             <AddVendorDialog isOpen={isAddVendorOpen} setIsOpen={setIsAddVendorOpen} />
+            <AddPurchaseLedgerDialog isOpen={isAddPaymentOpen} setIsOpen={setIsAddPaymentOpen} />
             {editingVendor && (
                 <EditVendorDialog
                     isOpen={!!editingVendor}

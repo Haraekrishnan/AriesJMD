@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { usePurchase } from '@/contexts/purchase-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format, parseISO } from 'date-fns';
 import { Button } from '../ui/button';
@@ -19,9 +20,10 @@ interface PurchaseRegisterListProps {
 }
 
 export default function PurchaseRegisterList({ registers }: PurchaseRegisterListProps) {
-    const { user, vendors, updatePurchaseRegisterPoNumber, deletePurchaseRegister } = useAppContext();
+    const { user } = useAuth();
+    const { vendors, updatePurchaseRegisterPoNumber, deletePurchaseRegister, purchaseRegisters } = usePurchase();
     const [poNumbers, setPoNumbers] = useState<Record<string, string>>({});
-    const [viewingPurchase, setViewingPurchase] = useState<PurchaseRegister | null>(null);
+    const [viewingPurchase, setViewingPurchase] = useState<string | null>(null);
     const [editingPurchase, setEditingPurchase] = useState<PurchaseRegister | null>(null);
     const { toast } = useToast();
 
@@ -53,6 +55,10 @@ export default function PurchaseRegisterList({ registers }: PurchaseRegisterList
         return <p className="text-center text-muted-foreground py-8">No purchase history found for the selected filters.</p>;
     }
 
+    const purchaseRegisterMap = useMemo(() => {
+        return new Map(purchaseRegisters.map(pr => [pr.id, pr]));
+    }, [purchaseRegisters]);
+    
     return (
         <>
             <Table>
@@ -93,7 +99,7 @@ export default function PurchaseRegisterList({ registers }: PurchaseRegisterList
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <Button variant="link" onClick={() => setViewingPurchase(pr)}>View Items</Button>
+                                    <Button variant="link" onClick={() => setViewingPurchase(pr.id!)}>View Items</Button>
                                 </TableCell>
                                 {canEditRegister && (
                                   <TableCell className="text-right">
@@ -124,14 +130,15 @@ export default function PurchaseRegisterList({ registers }: PurchaseRegisterList
                     })}
                 </TableBody>
             </Table>
-            {viewingPurchase && (
+            
+             {viewingPurchase && (
                 <ViewPurchaseRegisterDialog
                     isOpen={!!viewingPurchase}
                     setIsOpen={() => setViewingPurchase(null)}
-                    purchaseRegister={viewingPurchase}
+                    purchaseRegister={purchaseRegisterMap.get(viewingPurchase)}
                 />
             )}
-             {editingPurchase && (
+            {editingPurchase && (
                 <EditPurchaseLedgerDialog
                     isOpen={!!editingPurchase}
                     setIsOpen={() => setEditingPurchase(null)}
