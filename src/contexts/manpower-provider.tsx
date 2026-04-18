@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -20,6 +19,7 @@ type ManpowerContextType = {
   addManpowerProfile: (profile: Omit<ManpowerProfile, 'id'>) => void;
   updateManpowerProfile: (profile: ManpowerProfile) => void;
   addMultipleManpowerProfiles: (profilesData: any[]) => number;
+  addPpeHistoryFromExcel: (data: any[]) => Promise<{ importedCount: number; notFoundCount: number; }>;
   deleteManpowerProfile: (profileId: string) => void;
   addLeaveForManpower: (manpowerIds: string[], leaveType: 'Annual' | 'Emergency', startDate: Date, endDate: Date, remarks?: string) => void;
   deleteLeaveRecord: (profileId: string, leaveId: string) => void;
@@ -282,6 +282,46 @@ export function ManpowerProvider({ children }: { children: ReactNode }) {
         const newRef = push(ref(rtdb, `manpowerProfiles/${manpowerId}/ppeHistory`));
         set(newRef, { ...record, id: newRef.key });
     };
+
+    const addPpeHistoryFromExcel = useCallback(async (data: any[]): Promise<{ importedCount: number, notFoundCount: number }> => {
+        if (!user) return { importedCount: 0, notFoundCount: 0 };
+        let importedCount = 0;
+        let notFoundCount = 0;
+        const updates: { [key: string]: any } = {};
+    
+        for (const row of data) {
+          const employeeName = row['Employee Name']?.trim();
+          const size = String(row['Size'] || '').trim();
+          const date = row['Date'];
+    
+          if (!employeeName || !size || !date) continue;
+    
+          const profile = manpowerProfiles.find(p => p.name.trim().toLowerCase() === employeeName.toLowerCase());
+          
+          if (profile) {
+            const newRecord: Omit<PpeHistoryRecord, 'id'> = {
+              ppeType: 'Coverall',
+              size: size,
+              quantity: 1,
+              issueDate: date instanceof Date ? date.toISOString() : new Date(date).toISOString(),
+              requestType: 'New',
+              issuedById: user.id,
+            };
+            
+            const newRef = push(ref(rtdb, `manpowerProfiles/${profile.id}/ppeHistory`));
+            updates[`manpowerProfiles/${profile.id}/ppeHistory/${newRef.key}`] = { ...newRecord, id: newRef.key };
+            importedCount++;
+          } else {
+            notFoundCount++;
+          }
+        }
+        
+        if (Object.keys(updates).length > 0) {
+          await update(ref(rtdb), updates);
+        }
+        
+        return { importedCount, notFoundCount };
+      }, [user, manpowerProfiles]);
     
     const updatePpeHistoryRecord = (manpowerId: string, record: PpeHistoryRecord) => {
         const { id, ...data } = record;
@@ -456,7 +496,8 @@ export function ManpowerProvider({ children }: { children: ReactNode }) {
         addMemoOrWarning, updateMemoRecord, deleteMemoRecord,
         addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord,
         deleteLogbookRecord, addLogbookHistoryRecord, deleteLogbookHistoryRecord,
-        addLogbookRequest, updateLogbookRequestStatus, addLogbookRequestComment, markLogbookRequestAsViewed, deleteLogbookRequest, myLogbookRequestUpdates
+        addLogbookRequest, updateLogbookRequestStatus, addLogbookRequestComment, markLogbookRequestAsViewed, deleteLogbookRequest, myLogbookRequestUpdates,
+        addPpeHistoryFromExcel
     };
 
     return <ManpowerContext.Provider value={contextValue}>{children}</ManpowerContext.Provider>;

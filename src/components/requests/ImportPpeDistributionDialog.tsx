@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { useAppContext } from '@/contexts/app-provider';
+import { useManpower } from '@/contexts/manpower-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,7 @@ interface ImportPpeDistributionDialogProps {
 }
 
 export default function ImportPpeDistributionDialog({ isOpen, setIsOpen }: ImportPpeDistributionDialogProps) {
-    const { addPpeHistoryFromExcel } = useAppContext();
+    const { addPpeHistoryFromExcel } = useManpower();
     const { toast } = useToast();
     const [file, setFile] = useState<File | null>(null);
 
@@ -59,7 +59,7 @@ export default function ImportPpeDistributionDialog({ isOpen, setIsOpen }: Impor
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
+        <DialogContent onInteractOutside={(e) => e.preventDefault()}>
             <DialogHeader>
                 <DialogTitle>Import PPE Distribution</DialogTitle>
                 <DialogDescription>
