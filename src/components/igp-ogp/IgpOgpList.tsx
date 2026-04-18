@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -10,15 +9,17 @@ import type { IgpOgpRecord } from '@/lib/types';
 import { Button } from '../ui/button';
 import { Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import { useAppContext } from '@/contexts/app-provider';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 
 interface IgpOgpListProps {
     records: IgpOgpRecord[];
 }
 
 export default function IgpOgpList({ records = [] }: IgpOgpListProps) {
-    const { user, deleteIgpOgpRecord } = useAppContext();
+    const { user } = useAuth();
+    const { deleteIgpOgpRecord } = useInventory();
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
 

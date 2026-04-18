@@ -1,15 +1,14 @@
-
-
 'use client';
-import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAppContext } from '@/contexts/app-provider';
 import AddIgpOgpForm from '@/components/igp-ogp/AddIgpOgpForm';
 import IgpOgpList from '@/components/igp-ogp/IgpOgpList';
 import { AlertTriangle } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 
 export default function IgpOgpPage() {
-    const { can, igpOgpRecords } = useAppContext();
+    const { can } = useAuth();
+    const { igpOgpRecords } = useInventory();
 
     if (!can.manage_igp_ogp && !can.view_all) {
         return (
@@ -32,15 +31,17 @@ export default function IgpOgpPage() {
                 <p className="text-muted-foreground">Log and track all inward and outward goods passes.</p>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>New Entry</CardTitle>
-                    <CardDescription>Create a new Inward Goods Pass (IGP) or Outward Goods Pass (OGP) record.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <AddIgpOgpForm />
-                </CardContent>
-            </Card>
+            {can.manage_igp_ogp && (
+              <Card>
+                  <CardHeader>
+                      <CardTitle>New Entry</CardTitle>
+                      <CardDescription>Create a new Inward Goods Pass (IGP) or Outward Goods Pass (OGP) record.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                      <AddIgpOgpForm />
+                  </CardContent>
+              </Card>
+            )}
             
             <Card>
                 <CardHeader>

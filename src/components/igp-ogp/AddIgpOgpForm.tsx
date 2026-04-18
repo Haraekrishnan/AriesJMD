@@ -2,7 +2,6 @@
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +9,7 @@ import { PlusCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useInventory } from '@/contexts/inventory-provider';
 
 const itemSchema = z.object({
   id: z.string(),
@@ -37,7 +37,7 @@ const igpOgpSchema = z.object({
 type FormValues = z.infer<typeof igpOgpSchema>;
 
 export default function AddIgpOgpForm() {
-  const { addIgpOgpRecord } = useAppContext();
+  const { addIgpOgpRecord } = useInventory();
   const { toast } = useToast();
   
   const form = useForm<FormValues>({
