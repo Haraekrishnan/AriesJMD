@@ -1,4 +1,3 @@
-
 'use client';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -263,9 +262,19 @@ export async function generateTpCertExcel(
   const workbook = existingWorkbook || new ExcelJS.Workbook();
   
   // Sanitize sheet name
-  const sanitizedSheetName = (sheetName || "TP Certification List")
+  let sanitizedSheetName = (sheetName || "TP Certification List")
     .replace(/[\\/*?:[\]]/g, "") // Remove invalid characters
     .substring(0, 31); // Enforce 31-character limit
+
+  // Ensure sheet name is unique
+  let sheetExists = workbook.getWorksheet(sanitizedSheetName);
+  let counter = 1;
+  while (sheetExists) {
+    const newName = `${sanitizedSheetName.substring(0, 28)} (${counter})`;
+    sanitizedSheetName = newName;
+    sheetExists = workbook.getWorksheet(sanitizedSheetName);
+    counter++;
+  }
 
   const worksheet = workbook.addWorksheet(sanitizedSheetName, {
     pageSetup: { paperSize: 9, orientation: "portrait" },
@@ -434,15 +443,8 @@ export async function generateChecklistPdf(
       ['Preliminary Observation', checklist.findings?.preliminaryObservation || 'N/A'],
       ['Condition of the straps', checklist.findings?.straps || 'N/A'],
       ['Condition of Core', checklist.findings?.conditionCore || 'N/A'],
-      ['Checking the attachment points', checklist.findings?.attachmentPoints || 'N/A'],
-      ['Checking the condition of the adjustment buckles', checklist.findings?.adjustmentBuckles || 'N/A'],
-      ['Checking the condition of the comfort parts', checklist.findings?.comfortParts || 'N/A'],
-      ['Checking the condition of the chest/seat harness connector (if any)', checklist.findings?.harnessConnector || 'N/A'],
-      ['Checking the condition of the CROLL rope clamp (if any)', checklist.findings?.crollClamp || 'N/A'],
-      ['Checking the condition of the frame', checklist.findings?.frame || 'N/A'],
-      ['Checking the cam', checklist.findings?.cam || 'N/A'],
-      ['Checking the safety catch', checklist.findings?.safetyCatch || 'N/A'],
-      ['Function check', checklist.findings?.functionCheck || 'N/A'],
+      ['Sheaths & Terminations', checklist.findings?.sheathsAndTerminations || 'N/A'],
+      ['Other Components', checklist.findings?.otherComponents || 'N/A'],
   ];
 
   doc.autoTable({
