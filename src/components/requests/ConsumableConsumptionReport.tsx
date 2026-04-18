@@ -1,5 +1,3 @@
-
-
 'use client';
 import type { InternalRequest, User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -9,14 +7,16 @@ import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useMemo } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useInventory } from '@/contexts/inventory-provider';
+import { useAuth } from '@/contexts/auth-provider';
 import { useConsumable } from '@/contexts/consumable-provider';
 import { format, parseISO, isValid } from 'date-fns';
 
 interface ConsumableConsumptionReportProps {}
 
 export default function ConsumableConsumptionReport({}: ConsumableConsumptionReportProps) {
-  const { internalRequests, users } = useAppContext();
+  const { internalRequests } = useInventory();
+  const { users } = useAuth();
   const { consumableItems } = useConsumable();
   
   const consumableItemIds = useMemo(() => new Set(consumableItems.map(item => item.id)), [consumableItems]);
