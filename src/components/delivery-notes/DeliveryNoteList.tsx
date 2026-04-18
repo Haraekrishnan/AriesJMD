@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -26,7 +27,7 @@ export default function DeliveryNoteList({ type }: DeliveryNoteListProps) {
   const { toast } = useToast();
 
   const filteredNotes = useMemo(() => {
-    return deliveryNotes.filter(note => {
+    return (deliveryNotes || []).filter(note => {
       const typeMatch = note.type === type;
       const dateMatch = format(parseISO(note.deliveryDate), 'yyyy-MM') === month;
       const searchMatch = searchTerm === '' || 
@@ -119,3 +120,5 @@ export default function DeliveryNoteList({ type }: DeliveryNoteListProps) {
     </>
   );
 }
+
+    

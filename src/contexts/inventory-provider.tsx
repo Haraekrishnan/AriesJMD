@@ -1,9 +1,8 @@
 
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, PpeRequestStatus, Role, ConsumableInwardRecord, Directive, DirectiveStatus, DamageReport, User, NotificationSettings, DamageReportStatus, WeldingMachine, WalkieTalkie, PneumaticDrillingMachine, PneumaticAngleGrinder, WiredDrillingMachine, CordlessDrillingMachine, WiredAngleGrinder, CordlessAngleGrinder, CordlessReciprocatingSaw } from '@/lib/types';
+import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, PpeRequestStatus, Role, ConsumableInwardRecord, Directive, DirectiveStatus, DamageReport, User, NotificationSettings, DamageReportStatus, WeldingMachine, WalkieTalkie, PneumaticDrillingMachine, PneumaticAngleGrinder, WiredDrillingMachine, CordlessDrillingMachine, WiredAngleGrinder, CordlessAngleGrinder, CordlessReciprocatingSaw, DeliveryNote } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -103,6 +102,7 @@ type InventoryContextType = {
   igpOgpRecords: IgpOgpRecord[];
   directives: Directive[];
   damageReports: DamageReport[];
+  deliveryNotes: DeliveryNote[];
 
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'lastUpdated'>) => void;
   addMultipleInventoryItems: (items: any[]) => number;
@@ -239,6 +239,10 @@ type InventoryContextType = {
   updateDamageReportStatus: (reportId: string, status: DamageReportStatus, comment?: string) => void;
   deleteDamageReport: (reportId: string) => void;
   deleteAllDamageReportsAndFiles: () => void;
+  
+  addDeliveryNote: (noteData: Omit<DeliveryNote, 'id' | 'creatorId' | 'createdAt'>) => void;
+  updateDeliveryNote: (noteId: string, updates: Partial<DeliveryNote>) => void;
+  deleteDeliveryNote: (noteId: string) => void;
 
   pendingConsumableRequestCount: number;
   updatedConsumableRequestCount: number;
@@ -295,6 +299,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const [inspectionChecklistsById, setInspectionChecklistsById] = useState<Record<string, InspectionChecklist>>({});
     const [igpOgpRecordsById, setIgpOgpRecordsById] = useState<Record<string, IgpOgpRecord>>({});
     const [damageReportsById, setDamageReportsById] = useState<Record<string, DamageReport>>({});
+    const [deliveryNotesById, setDeliveryNotesById] = useState<Record<string, DeliveryNote>>({});
     const [directives, setDirectives] = useState<Directive[]>([]);
     
     const [pneumaticDrillingMachinesById, setPneumaticDrillingMachinesById] = useState<Record<string, PneumaticDrillingMachine>>({});
@@ -327,6 +332,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const inspectionChecklists = useMemo(() => Object.values(inspectionChecklistsById), [inspectionChecklistsById]);
     const igpOgpRecords = useMemo(() => Object.values(igpOgpRecordsById), [igpOgpRecordsById]);
     const damageReports = useMemo(() => Object.values(damageReportsById), [damageReportsById]);
+    const deliveryNotes = useMemo(() => Object.values(deliveryNotesById), [deliveryNotesById]);
 
     const pneumaticDrillingMachines = useMemo(() => Object.values(pneumaticDrillingMachinesById), [pneumaticDrillingMachinesById]);
     const pneumaticAngleGrinders = useMemo(() => Object.values(pneumaticAngleGrindersById), [pneumaticAngleGrindersById]);
@@ -1638,6 +1644,29 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
     }, [user, damageReportsById, toast]);
     
+    const addDeliveryNote = useCallback((noteData: Omit<DeliveryNote, 'id' | 'creatorId' | 'createdAt'>) => {
+        if (!user) return;
+        const newRef = push(ref(rtdb, 'deliveryNotes'));
+        const newNote = {
+            ...noteData,
+            creatorId: user.id,
+            createdAt: new Date().toISOString(),
+        };
+        set(newRef, newNote);
+    }, [user]);
+
+    const updateDeliveryNote = useCallback((noteId: string, updates: Partial<DeliveryNote>) => {
+        update(ref(rtdb, `deliveryNotes/${noteId}`), updates);
+    }, []);
+
+    const deleteDeliveryNote = useCallback((noteId: string) => {
+        if (user?.role !== 'Admin') {
+            toast({ title: "Permission Denied", variant: "destructive" });
+            return;
+        }
+        remove(ref(rtdb, `deliveryNotes/${noteId}`));
+    }, [user, toast]);
+
     useEffect(() => {
         const unsubscribers = [
             createDataListener('inventoryItems', setInventoryItemsById),
@@ -1661,6 +1690,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             createDataListener('inspectionChecklists', setInspectionChecklistsById),
             createDataListener('igpOgpRecords', setIgpOgpRecordsById),
             createDataListener('damageReports', setDamageReportsById),
+            createDataListener('deliveryNotes', setDeliveryNotesById),
             createDataListener('pneumaticDrillingMachines', setPneumaticDrillingMachinesById),
             createDataListener('pneumaticAngleGrinders', setPneumaticAngleGrindersById),
             createDataListener('wiredDrillingMachines', setWiredDrillingMachinesById),
@@ -1673,7 +1703,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, []);
     
     const contextValue: InventoryContextType = {
-        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, weldingMachines, walkieTalkies, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory, directives: [], damageReports,
+        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, weldingMachines, walkieTalkies, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory, directives: [], damageReports, deliveryNotes,
         pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws,
         addInventoryItem, addMultipleInventoryItems, batchAddInventoryItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInspectionItemGroup, updateMultipleInventoryItems, batchDeleteInventoryItems, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
         addInventoryTransferRequest, updateInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
@@ -1707,6 +1737,9 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         resolveInternalRequestDispute,
         deleteDamageReport,
         deleteAllDamageReportsAndFiles,
+        addDeliveryNote,
+        updateDeliveryNote,
+        deleteDeliveryNote,
     };
 
     return <InventoryContext.Provider value={contextValue}>{children}</InventoryContext.Provider>;
@@ -1719,8 +1752,5 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
-
-
-
 
     
