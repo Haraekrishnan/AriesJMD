@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo } from 'react';
@@ -18,6 +19,7 @@ type InwardOutwardContextType = {
   deleteInwardOutwardRecord: (recordId: string) => Promise<void>;
   lockInwardOutwardRecord: (recordId: string) => Promise<void>;
   unlockInwardOutwardRecord: (recordId: string) => Promise<void>;
+  createOutwardRecord: (items: { itemId: string; itemType: string; name: string, serialNumber: string }[], destination: string, reason: string) => Promise<void>;
 };
 
 const InwardOutwardContext = createContext<InwardOutwardContextType | undefined>(undefined);
@@ -250,6 +252,69 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
       }
   }, [user, toast]);
 
+  const createOutwardRecord = useCallback(async (items: { itemId: string; itemType: string; name: string, serialNumber: string }[], destination: string, reason: string) => {
+    if (!user) return;
+
+    const updates: { [key: string]: any } = {};
+    const now = new Date().toISOString();
+
+    // 1. Create the outward record
+    const newRecordRef = push(ref(rtdb, 'inwardOutwardRecords'));
+    const record: Omit<InwardOutwardRecord, 'id'> = {
+        type: 'Outward',
+        quantity: items.length,
+        date: now,
+        source: `Moved to ${destination}`, // Using source to store destination
+        remarks: reason,
+        userId: user.id,
+        status: 'Completed',
+        itemName: items.map(i => i.name).join(', '),
+        finalizedItemIds: items.map(i => i.itemId),
+    };
+    updates[`/inwardOutwardRecords/${newRecordRef.key}`] = record;
+
+    // 2. Update each inventory item
+    items.forEach(item => {
+        let itemPathPrefix: string | null = null;
+        switch (item.itemType) {
+            case 'Inventory': itemPathPrefix = 'inventoryItems'; break;
+            case 'UTMachine': itemPathPrefix = 'utMachines'; break;
+            case 'DftMachine': itemPathPrefix = 'dftMachines'; break;
+            case 'DigitalCamera': itemPathPrefix = 'digitalCameras'; break;
+            case 'Anemometer': itemPathPrefix = 'anemometers'; break;
+            case 'OtherEquipment': itemPathPrefix = 'otherEquipments'; break;
+            case 'LaptopDesktop': itemPathPrefix = 'laptopsDesktops'; break;
+            case 'MobileSim': itemPathPrefix = 'mobileSims'; break;
+            case 'WeldingMachine': itemPathPrefix = 'weldingMachines'; break;
+            case 'WalkieTalkie': itemPathPrefix = 'walkieTalkies'; break;
+            case 'PneumaticDrillingMachine': itemPathPrefix = 'pneumaticDrillingMachines'; break;
+            case 'PneumaticAngleGrinder': itemPathPrefix = 'pneumaticAngleGrinders'; break;
+            case 'WiredDrillingMachine': itemPathPrefix = 'wiredDrillingMachines'; break;
+            case 'CordlessDrillingMachine': itemPathPrefix = 'cordlessDrillingMachines'; break;
+            case 'WiredAngleGrinder': itemPathPrefix = 'wiredAngleGrinders'; break;
+            case 'CordlessAngleGrinder': itemPathPrefix = 'cordlessAngleGrinders'; break;
+            case 'CordlessReciprocatingSaw': itemPathPrefix = 'cordlessReciprocatingSaws'; break;
+        }
+        
+        if (itemPathPrefix) {
+            const itemPath = `/${itemPathPrefix}/${item.itemId}`;
+            updates[`${itemPath}/status`] = 'Moved to another project';
+            updates[`${itemPath}/projectId`] = null; // As requested "location blank"
+            updates[`${itemPath}/remarks`] = `Moved to ${destination}. Reason: ${reason}`;
+            updates[`${itemPath}/lastUpdated`] = now;
+        }
+    });
+
+    try {
+        await update(ref(rtdb), updates);
+        addActivityLog(user.id, 'Created Outward Record', `Moved ${items.length} items to ${destination}`);
+        toast({ title: 'Outward Record Created', description: `${items.length} items have been moved.` });
+    } catch (error) {
+        console.error("Error creating outward record:", error);
+        toast({ title: 'Error', description: 'Failed to create outward record.', variant: 'destructive' });
+    }
+  }, [user, addActivityLog, toast]);
+
   const contextValue: InwardOutwardContextType = {
     inwardOutwardRecords,
     pendingFinalizationCount,
@@ -259,6 +324,7 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
     deleteInwardOutwardRecord,
     lockInwardOutwardRecord,
     unlockInwardOutwardRecord,
+    createOutwardRecord,
   };
 
   return <InwardOutwardContext.Provider value={contextValue}>{children}</InwardOutwardContext.Provider>;

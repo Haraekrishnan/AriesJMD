@@ -34,6 +34,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import AddInwardRecordDialog from '@/components/inventory/AddInwardRecordDialog';
 import InwardOutwardHistory from '@/components/inventory/InwardOutwardHistory';
+import NewOutwardDialog from '@/components/inventory/NewOutwardDialog';
 
 
 export default function StoreInventoryPage() {
@@ -70,6 +71,7 @@ export default function StoreInventoryPage() {
     const [viewingCertRequest, setViewingCertRequest] = useState<CertificateRequest | null>(null);
     const [view, setView] = useState<'list' | 'summary'>('list');
     const [isInwardOpen, setIsInwardOpen] = useState(false);
+    const [isOutwardOpen, setIsOutwardOpen] = useState(false);
 
     const [filters, setFilters] = useState({
         name: 'all',
@@ -265,7 +267,12 @@ export default function StoreInventoryPage() {
                     )}
                     {canManageInventory && (
                         <>
-                            {can.manage_inward_outward && <Button onClick={() => setIsInwardOpen(true)} variant="outline"><Inbox className="mr-2 h-4 w-4"/>New Inward</Button>}
+                            {can.manage_inward_outward && (
+                                <>
+                                <Button onClick={() => setIsInwardOpen(true)} variant="outline"><Inbox className="mr-2 h-4 w-4"/>New Inward</Button>
+                                <Button onClick={() => setIsOutwardOpen(true)} variant="outline"><ArrowRightLeft className="mr-2 h-4 w-4"/>New Outward</Button>
+                                </>
+                            )}
                             <Button onClick={revalidateExpiredItems} variant="outline"><CheckCircle className="mr-2 h-4 w-4" />Check Validity</Button>
                             <Button onClick={() => setIsBulkInspectionUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4"/>Bulk Update Insp. Cert</Button>
                             <Button onClick={() => setIsBulkUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4" /> Bulk Update TP Cert</Button>
@@ -368,6 +375,7 @@ export default function StoreInventoryPage() {
 
             <AddItemDialog isOpen={isAddItemOpen} setIsOpen={setIsAddItemOpen} />
             <AddInwardRecordDialog isOpen={isInwardOpen} setIsOpen={setIsInwardOpen} />
+            <NewOutwardDialog isOpen={isOutwardOpen} setIsOpen={setIsOutwardOpen} />
             <ImportItemsDialog isOpen={isImportOpen} setIsOpen={setIsImportOpen} />
             <UpdateItemsDialog isOpen={isUpdateItemsOpen} setIsOpen={setIsUpdateItemsOpen} />
             <BulkUpdateTpCertDialog isOpen={isBulkUpdateOpen} setIsOpen={setIsBulkUpdateOpen} />
