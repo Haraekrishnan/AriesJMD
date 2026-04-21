@@ -173,7 +173,7 @@ export default function StoreInventoryPage() {
                 }
             }
 
-            const { name, status, search, updatedDateRange } = filters;
+            const { name, status: filterStatus, search, updatedDateRange } = filters;
             
             // Name filter
             if (name !== 'all' && item.name !== name) return false;
@@ -184,13 +184,20 @@ export default function StoreInventoryPage() {
             }
             
             // Status filter
-            const inactiveStatuses: InventoryItemStatus[] = ['Damaged', 'Quarantine', 'Moved to another project'];
-            if (status === 'Active') {
-                if (inactiveStatuses.includes(item.status)) return false;
-            } else if (status === 'Inactive') {
-                if (!inactiveStatuses.includes(item.status)) return false;
-            } else if (status !== 'all') {
-                if (item.status !== status) return false;
+            const now = new Date();
+            const inspectionDue = item.inspectionDueDate ? parseISO(item.inspectionDueDate) : null;
+            const tpInspectionDue = item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : null;
+
+            const isItemExpired = (inspectionDue && isPast(inspectionDue)) || (tpInspectionDue && isPast(tpInspectionDue));
+            const effectiveStatus: InventoryItemStatus = isItemExpired ? 'Expired' : item.status;
+            
+            const inactiveStatuses: InventoryItemStatus[] = ['Damaged', 'Quarantine', 'Moved to another project', 'Expired'];
+            if (filterStatus === 'Active') {
+                if (inactiveStatuses.includes(effectiveStatus)) return false;
+            } else if (filterStatus === 'Inactive') {
+                if (!inactiveStatuses.includes(effectiveStatus)) return false;
+            } else if (filterStatus !== 'all') {
+                if (effectiveStatus !== filterStatus) return false;
             }
             
             // Date range filter
