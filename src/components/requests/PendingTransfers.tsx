@@ -1,8 +1,9 @@
 
-
 'use client';
 import { useMemo, useState, useCallback } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,9 +21,7 @@ import GenerateTpCertDialog from '../inventory/GenerateTpCertDialog';
 import TransferReportDownloads from './TransferReportDownloads';
 import { Input } from '../ui/input';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/auth-provider';
-import { useGeneral } from '@/contexts/general-provider';
-import { useInventory } from '@/contexts/inventory-provider';
+
 
 interface PendingTransfersProps {
   onEditRequest: (request: InventoryTransferRequest) => void;
@@ -66,7 +65,7 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false }: { req: 
         if (!user) return false;
         if (req.status !== 'Pending') return false;
 
-        const canEditRoles: Role[] = ['Admin', 'Project Coordinator'];
+        const canEditRoles: Role[] = ['Admin', 'Project Coordinator', 'Assistant Store Incharge'];
         if (canEditRoles.includes(user.role)) return true;
 
         return req.requesterId === user.id;
