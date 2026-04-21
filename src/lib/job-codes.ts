@@ -11,7 +11,7 @@ export const JOB_CODE_COLORS: { [key: string]: { bg: string, text?: string, exce
     'KD':  { bg: 'bg-job-code-light-pink', text: 'text-black', excelFill: { fgColor: { argb: 'FFFFB6C1' } } },
     'TR':  { bg: 'bg-job-code-pink', text: 'text-black', excelFill: { fgColor: { argb: 'FFDB7093' } } },
     'EP':  { bg: 'bg-job-code-light-blue', text: 'text-black', excelFill: { fgColor: { argb: 'FFB0C4DE' } } },
-    'PH':  { bg: 'bg-job-code-green', text: 'text-black', excelFill: { fgColor: { argb: 'FF22C55E' } } },
+    'PH':  { bg: 'bg-job-code-green', text: 'text-white', excelFill: { fgColor: { argb: 'FF22C55E' }, font: { color: { argb: 'FFFFFFFF' } } } },
     'OFF': { bg: 'bg-job-code-dark-gray', text: 'text-black', excelFill: { fgColor: { argb: 'FFA9A9A9' } } },
     'L':   { bg: 'bg-job-code-red-light', text: 'text-white', excelFill: { fgColor: { argb: 'FFFF0000' }, font: { color: { argb: 'FFFFFFFF' } } } },
     'PD':  { bg: 'bg-job-code-fluorescent-green', text: 'text-black', excelFill: { fgColor: { argb: 'FF00FF00' } } },
