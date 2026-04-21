@@ -32,6 +32,16 @@ export async function generateJobWiseExcel(
 
     const uniqueJobNosWithData: { [jobNo: string]: { code: string; details: string; profileIds: Set<string>; } } = {};
     const nonWorkCodes = ["X", "Q", "ST", "NWS", "R", "OS", "ML", "L", "TR", "PD", "EP", "OFF", "PH", "S", "CQ", "RST"];
+    const allJobCodesForJobNo: { [jobNo: string]: string[] } = {};
+
+    jobCodes.forEach(jc => {
+      if (jc.jobNo) {
+        if (!allJobCodesForJobNo[jc.jobNo]) {
+          allJobCodesForJobNo[jc.jobNo] = [];
+        }
+        allJobCodesForJobNo[jc.jobNo].push(jc.code);
+      }
+    });
 
     for (const profileId in monthRecord.records) {
         const employeeDays = monthRecord.records[profileId].days;
@@ -68,9 +78,9 @@ export async function generateJobWiseExcel(
         if (workbook.getWorksheet(sheetName)) continue;
         
         const worksheet = workbook.addWorksheet(sheetName);
-        const plantName = "MTF"; // This appears to be static in the example
+        const plantName = "MTF"; 
         const totalDays = getDaysInMonth(currentMonth);
-        const totalCols = 3 + totalDays + 3; // Sl, Emp, Name + Days + OT, Salary, Add. Sunday
+        const totalCols = 3 + totalDays + 3;
         
         // Add Logo
         if (logoBuffer) {
@@ -78,7 +88,6 @@ export async function generateJobWiseExcel(
             worksheet.addImage(logoId, { tl: { col: 0, row: 0 }, ext: { width: 100, height: 40 } });
         }
 
-        // Add Headers
         worksheet.mergeCells(1, 1, 1, totalCols);
         worksheet.getCell('A1').value = "RIL JMD PROJECT";
         worksheet.getCell('A1').font = { bold: true, size: 16, name: 'Calibri' };
@@ -92,16 +101,16 @@ export async function generateJobWiseExcel(
         worksheet.getRow(1).height = 30;
         worksheet.getRow(2).height = 20;
 
-        worksheet.mergeCells('B4:C4');
-        worksheet.getCell('B4').value = 'Job Number';
-        worksheet.getCell('B4').font = { bold: true, name: 'Calibri', size: 11 };
-        worksheet.getCell('B4').border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        worksheet.mergeCells('A4:B4');
+        worksheet.getCell('A4').value = 'Job Number';
+        worksheet.getCell('A4').font = { bold: true, name: 'Calibri', size: 11 };
+        worksheet.getCell('A4').border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
 
-        worksheet.mergeCells('D4:E4');
-        worksheet.getCell('D4').value = sheetJobNo;
-        worksheet.getCell('D4').font = { bold: true, name: 'Calibri', size: 11, color: { argb: 'FF0000' } };
-        worksheet.getCell('D4').alignment = { horizontal: 'center' };
-        worksheet.getCell('D4').border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        worksheet.mergeCells('C4:D4');
+        worksheet.getCell('C4').value = sheetJobNo;
+        worksheet.getCell('C4').font = { bold: true, name: 'Calibri', size: 11, color: { argb: 'FF0000' } };
+        worksheet.getCell('C4').alignment = { horizontal: 'center' };
+        worksheet.getCell('C4').border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
 
         worksheet.addRow([]);
         worksheet.addRow([]);
@@ -139,13 +148,13 @@ export async function generateJobWiseExcel(
                 const cellJobCodeInfo = jobCodes.find(jc => jc.code === cellCode);
                 const cellJobNo = cellJobCodeInfo?.jobNo || cellJobCodeInfo?.code;
 
-                if (cellJobNo === sheetJobNo) {
+                if (cellJobNo === sheetJobNo || (allJobCodesForJobNo[sheetJobNo] && allJobCodesForJobNo[sheetJobNo].includes(cellCode))) {
                     rowData.push('P');
                     workDaysForThisJob++;
                 } else if (nonWorkCodes.includes(cellCode)) {
                     rowData.push(cellCode);
                 } else {
-                    rowData.push(''); // Leave blank if it's another job
+                    rowData.push('');
                 }
             });
 
@@ -173,6 +182,8 @@ export async function generateJobWiseExcel(
                     }
                 }
             });
+             dataRow.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' };
+             dataRow.getCell(3).alignment = { horizontal: 'left', vertical: 'middle' };
         });
 
         worksheet.getColumn('A').width = 5;
