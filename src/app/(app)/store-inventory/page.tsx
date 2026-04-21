@@ -83,7 +83,7 @@ export default function StoreInventoryPage() {
     
     const [selectedItemsForTransfer, setSelectedItemsForTransfer] = useState<InventoryItem[]>([]);
     
-    const canApproveTransfers = can.approve_store_requests;
+    const canApproveTransfers = can.approve_store_requests || user?.role === 'Assistant Store Incharge';
     const pendingInventoryTransferRequestCount = canApproveTransfers ? (inventoryTransferRequests || []).filter(r => r.status === 'Pending' || r.status === 'Disputed').length : 0;
     const pendingDamageReportCount = can.manage_inventory ? (damageReports || []).filter(r => r.status === 'Pending').length : 0;
 
