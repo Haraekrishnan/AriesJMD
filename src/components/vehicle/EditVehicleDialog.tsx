@@ -1,222 +1,262 @@
 
 'use client';
-import { useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useGeneral } from '@/contexts/general-provider';
+
+import React, { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
+import { useAppContext } from '@/contexts/app-provider';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Label } from '@/components/ui/label';
-import type { Vehicle, VehicleStatus } from '@/lib/types';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Badge } from '../ui/badge';
-import { Check } from 'lucide-react';
+import { Label } from '../ui/label';
+import { cn } from '@/lib/utils';
 import { DatePickerInput } from '../ui/date-picker-input';
-import { parseISO } from 'date-fns';
+import { Checkbox } from '../ui/checkbox';
+import { format, getDay, getDaysInMonth, parseISO } from 'date-fns';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../ui/dialog';
+import { ScrollArea } from '../ui/scroll-area';
+import { Vehicle } from '@/lib/types';
+import { Save } from 'lucide-react';
 
-const VAP_ACCESS_OPTIONS = ["DTA ISBL", "SEZ ISBL", "MTF ISBL", "OTHERS"];
-const statusOptions: VehicleStatus[] = ['Active', 'In Maintenance', 'Left the Project'];
-
-const vehicleSchema = z.object({
-  vehicleNumber: z.string().min(1, 'Vehicle number is required'),
-  driverId: z.string().min(1, 'Please select a driver'),
-  vendorName: z.string().optional(),
-  vapNumber: z.string().optional(),
-  seatingCapacity: z.coerce.number().min(1, 'Seating capacity is required'),
-  vapAccess: z.array(z.string()).optional(),
-  status: z.enum(['Active', 'In Maintenance', 'Left the Project']).default('Active'),
-  vapValidity: z.date().optional(),
-  insuranceValidity: z.date().optional(),
-  fitnessValidity: z.date().optional(),
-  taxValidity: z.date().optional(),
-  puccValidity: z.date().optional(),
-});
-
-type VehicleFormValues = z.infer<typeof vehicleSchema>;
-
-interface EditVehicleDialogProps {
+interface EditVehicleUsageDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   vehicle: Vehicle;
+  currentMonth: Date;
 }
 
-export default function EditVehicleDialog({ isOpen, setIsOpen, vehicle }: EditVehicleDialogProps) {
-  const { updateVehicle, drivers } = useGeneral();
-  const { toast } = useToast();
-  
-  const form = useForm<VehicleFormValues>({
-    resolver: zodResolver(vehicleSchema),
-  });
-
-  useEffect(() => {
-    if (vehicle && isOpen) {
-        form.reset({
-            vehicleNumber: vehicle.vehicleNumber,
-            driverId: vehicle.driverId,
-            vendorName: vehicle.vendorName,
-            vapNumber: vehicle.vapNumber,
-            seatingCapacity: vehicle.seatingCapacity,
-            vapAccess: vehicle.vapAccess || [],
-            status: vehicle.status || 'Active',
-            vapValidity: vehicle.vapValidity ? parseISO(vehicle.vapValidity) : undefined,
-            insuranceValidity: vehicle.insuranceValidity ? parseISO(vehicle.insuranceValidity) : undefined,
-            fitnessValidity: vehicle.fitnessValidity ? parseISO(vehicle.fitnessValidity) : undefined,
-            taxValidity: vehicle.taxValidity ? parseISO(vehicle.taxValidity) : undefined,
-            puccValidity: vehicle.puccValidity ? parseISO(vehicle.puccValidity) : undefined,
-        });
-    }
-  }, [vehicle, isOpen, form]);
-
-  const onSubmit = (data: VehicleFormValues) => {
-    updateVehicle({ 
-        ...vehicle, 
-        ...data,
-        vapValidity: data.vapValidity?.toISOString(),
-        insuranceValidity: data.insuranceValidity?.toISOString(),
-        fitnessValidity: data.fitnessValidity?.toISOString(),
-        taxValidity: data.taxValidity?.toISOString(),
-        puccValidity: data.puccValidity?.toISOString(),
+export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, currentMonth }: EditVehicleUsageDialogProps) {
+    const { saveVehicleUsageRecord, vehicleUsageRecords } = useAppContext();
+    const { toast } = useToast();
+    
+    const [cellStates, setCellStates] = useState<Record<string, any>>({});
+    const [headerStates, setHeaderStates] = useState({
+      jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0,
+      verifiedByName: '', verifiedByDate: undefined as Date | undefined,
     });
-    toast({
-      title: 'Vehicle Updated',
-      description: `Vehicle ${data.vehicleNumber} has been updated.`,
-    });
-    setIsOpen(false);
-  };
-  
-  const handleOpenChange = (open: boolean) => {
-      if (!open) {
-          form.reset();
+    const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const monthKey = useMemo(() => format(currentMonth, 'yyyy-MM'), [currentMonth]);
+    
+    const dayHeaders = useMemo(() => Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1), [currentMonth]);
+
+    useEffect(() => {
+      if (isOpen) {
+        const record = vehicleUsageRecords?.[monthKey];
+        const vehicleRecord = record?.records?.[vehicle.id];
+
+        if (vehicleRecord) {
+            const newStates: Record<string, any> = {};
+            if (vehicleRecord.days) {
+              for (const day in vehicleRecord.days) {
+                  newStates[`${day}-startKm`] = vehicleRecord.days[day].startKm || '';
+                  newStates[`${day}-endKm`] = vehicleRecord.days[day].endKm || '';
+                  newStates[`${day}-overtime`] = vehicleRecord.days[day].overtime || '';
+                  newStates[`${day}-remarks`] = vehicleRecord.days[day].remarks || '';
+                  newStates[`${day}-isHoliday`] = vehicleRecord.days[day].isHoliday || false;
+              }
+            }
+            setCellStates(newStates);
+            setHeaderStates({
+                jobNo: vehicleRecord.jobNo || '',
+                vehicleType: vehicleRecord.vehicleType || '',
+                extraKm: vehicleRecord.extraKm || 0,
+                headerOvertime: vehicleRecord.headerOvertime || '',
+                extraNight: vehicleRecord.extraNight || 0,
+                extraDays: vehicleRecord.extraDays || 0,
+                verifiedByName: vehicleRecord.verifiedBy?.name || '',
+                verifiedByDate: vehicleRecord.verifiedBy?.date ? parseISO(vehicleRecord.verifiedBy.date) : undefined,
+            });
+        } else {
+            setCellStates({});
+            setHeaderStates({ jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0, verifiedByName: '', verifiedByDate: undefined });
+        }
       }
-      setIsOpen(open);
-  }
+    }, [isOpen, vehicle, currentMonth, vehicleUsageRecords, monthKey]);
 
-  return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Edit Vehicle</DialogTitle>
-          <DialogDescription>Update the details for vehicle {vehicle.vehicleNumber}.</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="vehicleNumber">Vehicle Number</Label>
-              <Input id="vehicleNumber" {...form.register('vehicleNumber')} />
-              {form.formState.errors.vehicleNumber && <p className="text-xs text-destructive">{form.formState.errors.vehicleNumber.message}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="seatingCapacity">Seating Capacity</Label>
-              <Input id="seatingCapacity" type="number" {...form.register('seatingCapacity')} />
-              {form.formState.errors.seatingCapacity && <p className="text-xs text-destructive">{form.formState.errors.seatingCapacity.message}</p>}
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-                <Label htmlFor="vendorName">Vendor Name</Label>
-                <Input id="vendorName" {...form.register('vendorName')} />
-            </div>
-             <div className="space-y-2">
-              <Label htmlFor="vapNumber">VAP Number</Label>
-              <Input id="vapNumber" {...form.register('vapNumber')} />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Driver</Label>
-            <Controller
-              control={form.control}
-              name="driverId"
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <SelectTrigger><SelectValue placeholder="Select a driver" /></SelectTrigger>
-                  <SelectContent>
-                    {drivers.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {form.formState.errors.driverId && <p className="text-xs text-destructive">{form.formState.errors.driverId.message}</p>}
-          </div>
+    const monthlyTotalKm = useMemo(() => {
+        let total = 0;
+        for (const day of dayHeaders) {
+            const startKm = Number(cellStates[`${day}-startKm`] || 0);
+            const endKm = Number(cellStates[`${day}-endKm`] || 0);
+            if (endKm > startKm) total += endKm - startKm;
+        }
+        return total;
+    }, [cellStates, dayHeaders]);
 
-          <div className="space-y-2">
-            <Label>Status</Label>
-            <Controller
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </div>
+     const monthlyTotalOvertime = useMemo(() => {
+        let totalMinutes = 0;
+        for (const day of dayHeaders) {
+            const overtimeValue = cellStates[`${day}-overtime`] || '';
+            if (typeof overtimeValue === 'string' && overtimeValue.includes(':')) {
+                const [hours, minutes] = overtimeValue.split(':').map(Number);
+                totalMinutes += (hours * 60) + (minutes || 0);
+            } else if (overtimeValue) {
+                totalMinutes += Number(overtimeValue) * 60;
+            }
+        }
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        return `${hours}:${minutes.toString().padStart(2, '0')}`;
+    }, [cellStates, dayHeaders]);
 
-          <div className="space-y-2">
-            <Label>VAP Access</Label>
-            <Controller
-              control={form.control}
-              name="vapAccess"
-              render={({ field }) => (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start h-auto">
-                        <div className="flex flex-wrap gap-1">
-                          {field.value?.length > 0
-                            ? field.value.map(val => <Badge key={val} variant="secondary">{val}</Badge>)
-                            : <span className="text-muted-foreground">Select access...</span>
-                          }
-                        </div>
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                     <Command>
-                       <CommandList>
-                         <CommandEmpty>No results found.</CommandEmpty>
-                         <CommandGroup>
-                           {VAP_ACCESS_OPTIONS.map(option => {
-                            const isSelected = field.value?.includes(option);
-                            return (
-                               <CommandItem key={option} onSelect={() => {
-                                 if (isSelected) {
-                                   field.onChange(field.value?.filter(v => v !== option));
-                                 } else {
-                                   field.onChange([...(field.value || []), option]);
-                                 }
-                               }}>
-                                 <Check className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100" : "opacity-0"}`} />
-                                 {option}
-                               </CommandItem>
-                            )
-                           })}
-                         </CommandGroup>
-                       </CommandList>
-                     </Command>
-                  </PopoverContent>
-                </Popover>
-              )}
-            />
-          </div>
+    const saveData = useCallback(() => {
+      if (!vehicle.id) return;
+      const dataToSave: Partial<any> = {
+          days: dayHeaders.reduce((acc, day) => {
+              acc[day] = {
+                  startKm: Number(cellStates[`${day}-startKm`] || 0),
+                  endKm: Number(cellStates[`${day}-endKm`] || 0),
+                  overtime: cellStates[`${day}-overtime`] || '',
+                  remarks: cellStates[`${day}-remarks`] || '',
+                  isHoliday: cellStates[`${day}-isHoliday`] || false,
+              };
+              return acc;
+          }, {} as any),
+          jobNo: headerStates.jobNo,
+          vehicleType: headerStates.vehicleType,
+          extraKm: monthlyTotalKm > 3000 ? monthlyTotalKm - 3000 : 0,
+          headerOvertime: monthlyTotalOvertime,
+          extraNight: Number(headerStates.extraNight || 0),
+          extraDays: Number(headerStates.extraDays || 0),
+          verifiedBy: {
+              name: headerStates.verifiedByName || null,
+              date: headerStates.verifiedByDate ? headerStates.verifiedByDate.toISOString() : null
+          }
+      };
 
-          <div className="space-y-2"><Label>VAP Validity</Label><Controller name="vapValidity" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} /></div>
-          <div className="space-y-2"><Label>Insurance Validity</Label><Controller name="insuranceValidity" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} /></div>
-          <div className="space-y-2"><Label>Fitness Validity</Label><Controller name="fitnessValidity" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} /></div>
-          <div className="space-y-2"><Label>Tax Validity</Label><Controller name="taxValidity" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} /></div>
-          <div className="space-y-2"><Label>PUCC Validity</Label><Controller name="puccValidity" control={form.control} render={({field}) => <DatePickerInput value={field.value} onChange={field.onChange} />} /></div>
+      saveVehicleUsageRecord(monthKey, vehicle.id, dataToSave)
+          .then(() => {
+              setSaveState('saved');
+              setTimeout(() => setSaveState('idle'), 2000);
+          })
+          .catch((error) => {
+              setSaveState('idle');
+              toast({ title: "Auto-save Failed", description: error.message, variant: 'destructive' });
+          });
+    }, [cellStates, headerStates, vehicle.id, monthKey, dayHeaders, monthlyTotalKm, monthlyTotalOvertime, saveVehicleUsageRecord, toast]);
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit">Save Changes</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
+    const debouncedSave = useCallback(() => {
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        setSaveState('saving');
+        saveTimeoutRef.current = setTimeout(saveData, 1500);
+    }, [saveData]);
+    
+    const handleInputChange = (day: number, field: string, value: string | number | boolean) => {
+        const dayKey = `${day}-${field}`;
+        const nextDayKey = `${day + 1}-startKm`;
+    
+        if ((field === 'startKm' || field === 'endKm') && Number(value) < 0) {
+            return;
+        }
+
+        const newCellStates = { ...cellStates, [dayKey]: value };
+        if (field === 'endKm' && day < getDaysInMonth(currentMonth)) {
+            newCellStates[nextDayKey] = value;
+        }
+        setCellStates(newCellStates);
+        debouncedSave();
+    };
+    
+    const handleKmBlur = (day: number, field: 'startKm' | 'endKm', value: string) => {
+        const currentValue = Number(value || 0);
+
+        if (field === 'startKm' && day > 1) {
+            const prevEndKm = Number(cellStates[`${day - 1}-endKm`] || 0);
+            if (currentValue !== prevEndKm) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Invalid Start KM',
+                    description: `Start KM for day ${day} must match End KM of day ${day - 1}. Resetting value.`,
+                });
+                handleInputChange(day, 'startKm', prevEndKm);
+            }
+        }
+    
+        if (field === 'endKm') {
+            const startKmValue = Number(cellStates[`${day}-startKm`] || 0);
+            if (currentValue > 0 && !startKmValue) {
+                toast({ variant: 'destructive', title: 'Invalid Entry', description: 'Please enter Start KM before entering End KM.' });
+                handleInputChange(day, 'endKm', '');
+            } else if (currentValue > 0 && currentValue < startKmValue) {
+                toast({ variant: 'destructive', title: 'Invalid Kilometers', description: 'End KM cannot be less than Start KM. The value has been cleared.' });
+                handleInputChange(day, 'endKm', '');
+            }
+        }
+    };
+    
+    const handleHeaderChange = (field: keyof typeof headerStates, value: string | number | Date | undefined) => {
+        setHeaderStates(prev => ({ ...prev, [field]: value }));
+        debouncedSave();
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogContent className="max-w-7xl h-[95vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
+                <DialogHeader>
+                    <DialogTitle>Edit Vehicle Usage: {vehicle.vehicleNumber}</DialogTitle>
+                    <DialogDescription>
+                        Log daily usage for {format(currentMonth, 'MMMM yyyy')}. All changes are saved automatically.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="flex-1 overflow-hidden flex flex-col">
+                    <div className="p-4 border rounded-md mb-4 bg-background grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div className="space-y-2"><Label>Job No.</Label><Input value={headerStates.jobNo} onChange={e => handleHeaderChange('jobNo', e.target.value)} onBlur={debouncedSave} /></div>
+                        <div className="space-y-2"><Label>Vehicle Type</Label><Input value={headerStates.vehicleType} onChange={e => handleHeaderChange('vehicleType', e.target.value)} onBlur={debouncedSave} /></div>
+                        <div className="space-y-2"><Label>Over Time (Header)</Label><Input value={monthlyTotalOvertime} readOnly className="font-bold" /></div>
+                        <div className="space-y-2"><Label>Extra Night</Label><Input type="number" value={headerStates.extraNight} onChange={e => handleHeaderChange('extraNight', e.target.value)} onBlur={debouncedSave} /></div>
+                        <div className="space-y-2"><Label>Extra Days</Label><Input type="number" value={headerStates.extraDays} onChange={e => handleHeaderChange('extraDays', e.target.value)} onBlur={debouncedSave} /></div>
+                        <div className="space-y-2"><Label>Total KM</Label><Input value={monthlyTotalKm} readOnly className="font-bold" /></div>
+                        <div className="space-y-2"><Label>Extra KM</Label><Input type="number" value={monthlyTotalKm > 3000 ? monthlyTotalKm - 3000 : 0} readOnly className="font-bold" /></div>
+                        <div className="space-y-2"><Label>Verified By</Label><Input value={headerStates.verifiedByName} onChange={e => handleHeaderChange('verifiedByName', e.target.value)} onBlur={debouncedSave} /></div>
+                        <div className="space-y-2"><Label>Verified Date</Label><DatePickerInput value={headerStates.verifiedByDate} onChange={date => handleHeaderChange('verifiedByDate', date)} /></div>
+                    </div>
+                     <ScrollArea className="flex-1">
+                        <Table className="min-w-full border-separate border-spacing-0">
+                            <thead className="sticky top-0 z-30 bg-card">
+                                <TableRow>
+                                    <TableHead className="sticky top-0 z-30 bg-card shadow-sm border-r">Day</TableHead>
+                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Start KM</TableHead>
+                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">End KM</TableHead>
+                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Total KM</TableHead>
+                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Overtime (Hrs)</TableHead>
+                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm">Remarks</TableHead>
+                                    <TableHead className="sticky top-0 z-20 bg-card shadow-sm w-[50px]">Holiday</TableHead>
+                                </TableRow>
+                            </thead>
+                            <TableBody>
+                                {dayHeaders.map(day => {
+                                    const dateForDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                                    const isSunday = getDay(dateForDay) === 0;
+                                    const startKm = Number(cellStates[`${day}-startKm`] || 0);
+                                    const endKm = Number(cellStates[`${day}-endKm`] || 0);
+                                    const totalKm = endKm > startKm ? endKm - startKm : 0;
+                                    const isHoliday = cellStates[`${day}-isHoliday`];
+                                    return (
+                                        <TableRow key={day} className={cn((isHoliday || isSunday) && 'bg-yellow-100 dark:bg-yellow-900/30')}>
+                                            <TableCell className={cn("sticky left-0 font-medium z-10 border-r", (isHoliday || isSunday) ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-card')}>{format(dateForDay, 'dd-MM-yyyy')}</TableCell>
+                                            <TableCell><Input type="number" min="0" className="h-8 text-center" value={cellStates[`${day}-startKm`] || ''} onChange={(e) => handleInputChange(day, 'startKm', e.target.value)} onBlur={(e) => handleKmBlur(day, 'startKm', e.target.value)} /></TableCell>
+                                            <TableCell><Input type="number" min="0" className="h-8 text-center" value={cellStates[`${day}-endKm`] || ''} onChange={(e) => handleInputChange(day, 'endKm', e.target.value)} onBlur={(e) => handleKmBlur(day, 'endKm', e.target.value)} /></TableCell>
+                                            <TableCell className="font-medium text-center">{totalKm}</TableCell>
+                                            <TableCell><Input className="h-8" value={cellStates[`${day}-overtime`] || ''} onChange={(e) => handleInputChange(day, 'overtime', e.target.value)} onBlur={debouncedSave} /></TableCell>
+                                            <TableCell><Input className="h-8" value={cellStates[`${day}-remarks`] || ''} onChange={(e) => handleInputChange(day, 'remarks', e.target.value)} onBlur={debouncedSave} /></TableCell>
+                                            <TableCell className="text-center"><Checkbox checked={isHoliday} onCheckedChange={(checked) => handleInputChange(day, 'isHoliday', !!checked)} /></TableCell>
+                                        </TableRow>
+                                    )
+                                })}
+                            </TableBody>
+                        </Table>
+                     </ScrollArea>
+                </div>
+                <DialogFooter>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        {saveState === 'saving' && <><Save className="h-4 w-4 animate-spin" /> Saving...</>}
+                        {saveState === 'saved' && <>Changes saved.</>}
+                    </div>
+                    <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
 }
