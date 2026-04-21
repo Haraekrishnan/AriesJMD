@@ -1,8 +1,5 @@
-
 'use client';
 
-import { useAppContext } from '@/contexts/app-provider';
-import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import JobRecordSheet from '@/components/job-record/JobRecordSheet';
 import { AlertTriangle } from 'lucide-react';
 
