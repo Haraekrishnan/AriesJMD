@@ -1,11 +1,10 @@
-
 'use client';
 
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { format, getDaysInMonth } from 'date-fns';
 import type { JobCode, JobRecord, ManpowerProfile } from '@/lib/types';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 
 export async function generateJobWiseExcel(
     currentMonth: Date,
@@ -13,7 +12,6 @@ export async function generateJobWiseExcel(
     manpowerProfiles: ManpowerProfile[],
     jobCodes: JobCode[]
 ) {
-    const { toast } = useToast();
     const monthKey = format(currentMonth, 'yyyy-MM');
     const monthRecord = jobRecords[monthKey];
 
