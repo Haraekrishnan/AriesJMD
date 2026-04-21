@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
@@ -10,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Settings, Search, MessageSquare, ArrowRightLeft } from 'lucide-react';
-import { format, getDaysInMonth, startOfMonth, addMonths, subMonths, isAfter, isBefore, startOfToday, parseISO, isSameMonth, isValid, parse, getDay } from 'date-fns';
+import { format, getDay, getDaysInMonth, parseISO, isSameMonth, isAfter, isBefore, startOfToday, startOfMonth, addMonths, subMonths } from 'date-fns';
 import { saveAs } from "file-saver";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -186,6 +187,32 @@ export default function JobRecordSheet() {
             saveJobRecord(monthKey, update.profileId, update.day, update.code, 'status');
         });
     }, [monthKey, saveJobRecord]);
+    
+    const handleStatusChange = useCallback((employeeId: string, day: number, value: string) => {
+        const code = (value || '').toUpperCase() ?? '';
+        const cellId = `${employeeId}-${day}`;
+
+        setCellStates(prev => ({...prev, [cellId]: code }));
+
+        const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
+
+        if (!isValidCode && code !== '') {
+            toast({
+                title: "Invalid Job Code",
+                description: `The code "${code}" is not a valid job code.`,
+                variant: "destructive"
+            });
+            const previousCode = jobRecords[monthKey]?.records?.[employeeId]?.days?.[day] || '';
+            setCellStates(prev => ({...prev, [cellId]: previousCode}));
+            return;
+        }
+        
+        saveJobRecord(monthKey, employeeId, day, code, 'status');
+    
+        if (code === '') {
+            saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
+        }
+    }, [monthKey, saveJobRecord, jobCodes, toast, jobRecords]);
 
     const handleMouseDown = useCallback((profileId: string, day: number) => {
         const value = cellStates[`${profileId}-${day}`] || '';
@@ -340,32 +367,6 @@ export default function JobRecordSheet() {
     }, [jobRecords, monthKey]);
     
 
-    const handleStatusChange = useCallback((employeeId: string, day: number, value: string) => {
-        const code = (value || '').toUpperCase() ?? '';
-        const cellId = `${employeeId}-${day}`;
-
-        setCellStates(prev => ({...prev, [cellId]: code }));
-
-        const isValidCode = jobCodes.some(jc => jc.code === code) || code === '';
-
-        if (!isValidCode && code !== '') {
-            toast({
-                title: "Invalid Job Code",
-                description: `The code "${code}" is not a valid job code.`,
-                variant: "destructive"
-            });
-            const previousCode = jobRecords[monthKey]?.records?.[employeeId]?.days?.[day] || '';
-            setCellStates(prev => ({...prev, [cellId]: previousCode}));
-            return;
-        }
-        
-        saveJobRecord(monthKey, employeeId, day, code, 'status');
-    
-        if (code === '') {
-            saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
-        }
-    }, [monthKey, saveJobRecord, jobCodes, toast, jobRecords]);
-    
     const handleOvertimeBlur = (employeeId: string, day: number, value: string) => {
         const record = jobRecords[monthKey]?.records?.[employeeId] || {};
         const jobCodeForDay = record.days?.[day]?.toUpperCase();
@@ -640,8 +641,111 @@ export default function JobRecordSheet() {
                     </ScrollArea>
                 </div>
                 
-                <div className="overflow-auto flex-1 relative">
-                  <p>table</p>
+                <div className="overflow-auto flex-1 relative" onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+                    <Table className="min-w-full border-separate border-spacing-0">
+                        <TableHeader className="sticky top-0 z-10 bg-card">
+                            <TableRow>
+                                <TableHead className="sticky left-0 z-20 bg-card w-12">#</TableHead>
+                                <TableHead className="sticky left-12 z-20 bg-card min-w-[200px]">Name</TableHead>
+                                <TableHead className="min-w-[100px]">Trade</TableHead>
+                                {dayHeaders.map(day => (
+                                    <TableHead key={day} className="text-center min-w-[60px]">
+                                        <div>{day}</div>
+                                        <div className="text-xs font-normal text-muted-foreground">{format(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day), 'E')}</div>
+                                    </TableHead>
+                                ))}
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {(searchTerm ? searchResults : filteredAndGroupedProfiles[activeTab || ''] || []).map((profile, index) => {
+                                const isExpanded = expandedRows.has(profile.id);
+                                return (
+                                    <React.Fragment key={profile.id}>
+                                        <TableRow>
+                                            <TableCell className="sticky left-0 z-10 bg-card">
+                                                <div className="flex items-center gap-1">
+                                                    <span className="w-6 text-center">{index + 1}</span>
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleRow(profile.id)}>
+                                                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="sticky left-12 z-10 bg-card font-medium">
+                                                <div className="flex items-center gap-2">
+                                                    {isReorderMode && (
+                                                        <div className="flex flex-col">
+                                                            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleMoveRow(profile.id, 'up')}><ArrowUp className="h-3 w-3"/></Button>
+                                                            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleMoveRow(profile.id, 'down')}><ArrowDown className="h-3 w-3"/></Button>
+                                                        </div>
+                                                    )}
+                                                    {profile.name}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>{profile.trade}</TableCell>
+                                            {dayHeaders.map(day => {
+                                                const cellId = `${profile.id}-${day}`;
+                                                const code = cellStates[cellId] || '';
+                                                const colorClass = JOB_CODE_COLORS[code as keyof typeof JOB_CODE_COLORS] || { bg: 'bg-transparent', text: 'text-inherit' };
+
+                                                return (
+                                                    <TableCell key={day} className={cn("p-1", isCellInSelection(profile.id, day) && "bg-blue-200 dark:bg-blue-800/50")}>
+                                                        <Input
+                                                            id={`${cellId}-status`}
+                                                            list="jobcodes-datalist"
+                                                            value={code}
+                                                            onChange={(e) => handleStatusChange(profile.id, day, e.target.value)}
+                                                            className={cn("w-14 h-8 text-center uppercase font-bold", colorClass.bg, colorClass.text)}
+                                                            onMouseDown={() => handleMouseDown(profile.id, day)}
+                                                            onMouseEnter={() => handleMouseEnter(profile.id, day)}
+                                                            onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, 'status')}
+                                                            disabled={!canEditSheet}
+                                                        />
+                                                    </TableCell>
+                                                );
+                                            })}
+                                        </TableRow>
+                                        {isExpanded && (
+                                            <>
+                                            <TableRow>
+                                                <TableCell colSpan={3} className="text-right font-semibold text-xs pr-4">Overtime (Hrs)</TableCell>
+                                                {dayHeaders.map(day => (
+                                                    <TableCell key={`${day}-ot`} className="p-1">
+                                                        <Input
+                                                            id={`${profile.id}-${day}-overtime`}
+                                                            type="text"
+                                                            value={overtimeStates[`${profile.id}-${day}`] || ''}
+                                                            onChange={(e) => setOvertimeStates(prev => ({...prev, [`${profile.id}-${day}`]: e.target.value}))}
+                                                            onBlur={(e) => handleOvertimeBlur(profile.id, day, e.target.value)}
+                                                            className="w-14 h-8 text-center"
+                                                            onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, 'overtime')}
+                                                            disabled={!canEditSheet}
+                                                        />
+                                                    </TableCell>
+                                                ))}
+                                            </TableRow>
+                                            <TableRow>
+                                                <TableCell colSpan={3} className="text-right font-semibold text-xs pr-4">Comments</TableCell>
+                                                {dayHeaders.map(day => (
+                                                    <TableCell key={`${day}-comment`} className="p-1">
+                                                        <Input
+                                                            id={`${profile.id}-${day}-comment`}
+                                                            value={commentStates[`${profile.id}-${day}`] || ''}
+                                                            onChange={(e) => setCommentStates(prev => ({...prev, [`${profile.id}-${day}`]: e.target.value}))}
+                                                            onBlur={(e) => handleCommentBlur(profile.id, day, e.target.value)}
+                                                            className="w-14 h-8"
+                                                            onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, 'comment')}
+                                                            disabled={!canEditSheet}
+                                                        />
+                                                    </TableCell>
+                                                ))}
+                                            </TableRow>
+                                            </>
+                                        )}
+                                    </React.Fragment>
+                                )
+                            })}
+                        </TableBody>
+                    </Table>
                 </div>
                 {/* --- FOOTER --- */}
                 <div className="shrink-0 z-20 border-t bg-card">
@@ -701,3 +805,4 @@ export default function JobRecordSheet() {
         </TooltipProvider>
     );
 }
+
