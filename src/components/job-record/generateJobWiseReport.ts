@@ -3,7 +3,7 @@
 
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { format, getDaysInMonth } from 'date-fns';
+import { format, getDaysInMonth, parseISO } from 'date-fns';
 import type { JobCode, JobRecord, ManpowerProfile } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
 import { JOB_CODE_COLORS } from '@/lib/job-codes';
@@ -52,7 +52,15 @@ export async function generateJobWiseExcel(
         }
     }
 
-    const jobCodesWithData = jobCodes.filter(jc => jobCodeToEmployeeDays[jc.jobNo || jc.code]);
+    const uniqueJobNos = new Set<string>();
+    const jobCodesWithData = jobCodes.filter(jc => {
+        const key = jc.jobNo || jc.code;
+        if (jobCodeToEmployeeDays[key] && !uniqueJobNos.has(key)) {
+            uniqueJobNos.add(key);
+            return true;
+        }
+        return false;
+    });
 
     if (jobCodesWithData.length === 0) {
         toast({ title: "No job data found", description: "No employees have been assigned to any jobs this month." });
@@ -63,14 +71,14 @@ export async function generateJobWiseExcel(
     const logoBuffer = await fetchImageAsArrayBuffer('/images/Aries_logo.png');
     
     for (const jobCode of jobCodesWithData) {
-        const sheetName = (jobCode.jobNo || jobCode.code).replace(/[\\/*?:[\]]/g, '_').substring(0, 31);
+        const sheetJobNo = jobCode.jobNo || jobCode.code;
+        const sheetName = sheetJobNo.replace(/[\\/*?:[\]]/g, '_').substring(0, 31);
         if (workbook.getWorksheet(sheetName)) continue;
         
         const worksheet = workbook.addWorksheet(sheetName);
-        const plantName = "MTF"; // This seems static from the image
+        const plantName = "MTF";
         const totalDays = getDaysInMonth(currentMonth);
         
-        // --- Headers ---
         worksheet.mergeCells('A1:AJ1');
         const titleCell = worksheet.getCell('A1');
         titleCell.value = "RIL JMD PROJECT";
@@ -108,7 +116,6 @@ export async function generateJobWiseExcel(
         worksheet.addRow([]);
         worksheet.addRow([]);
         
-        // --- Table Headers ---
         const dayHeaders = Array.from({ length: totalDays }, (_, i) => i + 1);
         const header = ['S.No', 'Emp Code', 'Name', ...dayHeaders, 'Over Time', 'Salary Days', 'Additional Sunday'];
         const headerRow = worksheet.addRow(header);
@@ -124,8 +131,7 @@ export async function generateJobWiseExcel(
             }
         });
 
-        // --- Table Body ---
-        const employeeDataForJob = jobCodeToEmployeeDays[jobCode.jobNo || jobCode.code];
+        const employeeDataForJob = jobCodeToEmployeeDays[sheetJobNo];
         let slNo = 1;
         for (const profileId in employeeDataForJob) {
             const profile = manpowerProfiles.find(p => p.id === profileId);
@@ -142,19 +148,23 @@ export async function generateJobWiseExcel(
                 const rowData = [slNo++, profile.epNumber || '', profile.name];
 
                 dayHeaders.forEach(day => {
-                    const code = dayData[day] as string;
-                    if(code === jobCode.code) {
+                    const cellCode = dayData[day] as string;
+                    const cellJobCodeInfo = jobCodes.find(jc => jc.code === cellCode);
+                    const cellJobNo = cellJobCodeInfo?.jobNo || cellJobCodeInfo?.code;
+
+                    if (cellJobNo && cellJobNo === sheetJobNo) {
                         rowData.push('P');
-                        workDays++;
                     } else {
-                        rowData.push(code || '');
+                        rowData.push(cellCode || '');
                     }
-                    if(['OFF','PH','OS'].includes(code)) offDays++;
-                    if(['L','X','NWS'].includes(code)) leaveDays++;
-                    if(code === 'ML') mlDays++;
-                    if(['ST','TR','EP','PD','Q'].includes(code)) standbyDays++;
-                    if(code === 'R') reptOfficeDays++;
-                    if(code && !['X', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(code)) workDays++;
+
+                    const code = dayData[day];
+                    if (['OFF', 'PH', 'OS'].includes(code)) offDays++;
+                    else if (['L', 'X', 'NWS'].includes(code)) leaveDays++;
+                    else if (code === 'ML') mlDays++;
+                    else if (['ST', 'TR', 'EP', 'PD', 'Q'].includes(code)) standbyDays++;
+                    else if (code === 'R') reptOfficeDays++;
+                    else if (code && !['X', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(code)) workDays++;
 
                     totalOvertime += Number(otData[day] || 0);
                 });
@@ -178,7 +188,6 @@ export async function generateJobWiseExcel(
             }
         }
 
-        // --- Column Widths ---
         worksheet.getColumn('A').width = 5;
         worksheet.getColumn('B').width = 15;
         worksheet.getColumn('C').width = 30;
