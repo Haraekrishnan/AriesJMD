@@ -79,13 +79,29 @@ export async function generateJobWiseExcel(
         if (workbook.getWorksheet(sheetName)) continue;
         
         const worksheet = workbook.addWorksheet(sheetName);
-        const plantName = "MTF"; 
+
+// ✅ FIRST declare
+const profileIdsForThisJob = Array.from(uniqueJobNosWithData[sheetJobNo].profileIds);
+
+// ✅ THEN use
+const plantSet = new Set<string>();
+
+profileIdsForThisJob.forEach(id => {
+    const plant = monthRecord.records?.[id]?.plant;
+    if (plant) plantSet.add(plant);
+});
+
+const plantName = Array.from(plantSet).join(", ");
         const totalDays = getDaysInMonth(currentMonth);
         const totalCols = 3 + totalDays + 3;
         
         if (logoBuffer) {
             const logoId = workbook.addImage({ buffer: logoBuffer, extension: 'png' });
-            worksheet.addImage(logoId, { tl: { col: 0, row: 0 }, ext: { width: 100, height: 40 } });
+            worksheet.addImage(logoId, {
+              tl: { col: 0.2, row: 0.3 },
+              ext: { width: 160, height: 40 },
+              editAs: "absolute",
+          });
         }
 
         worksheet.mergeCells(1, 1, 1, totalCols);
@@ -116,8 +132,8 @@ export async function generateJobWiseExcel(
         worksheet.getCell('C4').alignment = { horizontal: 'center' };
         worksheet.getCell('C4').border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
 
-        worksheet.addRow([]);
-        worksheet.addRow([]);
+        worksheet.getRow(3).height = 10; // spacing row
+worksheet.getRow(4).height = 20;
         
         const dayHeaders = Array.from({ length: totalDays }, (_, i) => i + 1);
         const header = ['S.No', 'Emp Code', 'Name', ...dayHeaders, 'Over Time', 'Salary Days', 'Additional Sunday'];
@@ -134,8 +150,7 @@ export async function generateJobWiseExcel(
             };
         });
 
-        const profileIdsForThisJob = Array.from(uniqueJobNosWithData[sheetJobNo].profileIds);
-        
+               
         const profilesOnThisJob = manpowerProfiles
           .filter(p => profileIdsForThisJob.includes(p.id))
           .sort((a,b) => (a.epNumber || '').localeCompare(b.epNumber || ''));
