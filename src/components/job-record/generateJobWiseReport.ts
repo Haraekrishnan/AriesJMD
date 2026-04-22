@@ -50,6 +50,7 @@ export async function generateJobWiseExcel(
                 const code = (employeeDays as any)[day];
                 if (code && !nonWorkCodes.includes(code)) {
                     const jobCodeInfo = jobCodes.find(jc => jc.code === code);
+                    
                     const jobKey = jobCodeInfo?.jobNo || jobCodeInfo?.code || code;
                     
                     if (!uniqueJobNosWithData[jobKey]) {
@@ -64,7 +65,7 @@ export async function generateJobWiseExcel(
             }
         }
     }
-
+    
     if (Object.keys(uniqueJobNosWithData).length === 0) {
         toast({ title: "No job data found", description: "No employees have been assigned to any jobs this month." });
         return;
@@ -82,24 +83,27 @@ export async function generateJobWiseExcel(
         const totalDays = getDaysInMonth(currentMonth);
         const totalCols = 3 + totalDays + 3;
         
-        // Add Logo
         if (logoBuffer) {
             const logoId = workbook.addImage({ buffer: logoBuffer, extension: 'png' });
             worksheet.addImage(logoId, { tl: { col: 0, row: 0 }, ext: { width: 100, height: 40 } });
         }
 
         worksheet.mergeCells(1, 1, 1, totalCols);
-        worksheet.getCell('A1').value = "RIL JMD PROJECT";
-        worksheet.getCell('A1').font = { bold: true, size: 16, name: 'Calibri' };
-        worksheet.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
+        const cell1 = worksheet.getCell('A1');
+        cell1.value = "RIL JMD PROJECT";
+        cell1.font = { bold: true, size: 16, name: 'Calibri' };
+        cell1.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell1.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D9D9D9" } };
 
         worksheet.mergeCells(2, 1, 2, totalCols);
-        worksheet.getCell('A2').value = `Job Record for ${format(currentMonth, "MMMM yyyy")} - Plant: ${plantName}`;
-        worksheet.getCell('A2').font = { name: 'Calibri', size: 11 };
-        worksheet.getCell('A2').alignment = { horizontal: 'center', vertical: 'middle' };
+        const cell2 = worksheet.getCell('A2');
+        cell2.value = `Job Record for ${format(currentMonth, "MMMM yyyy")} - Plant: ${plantName}`;
+        cell2.font = { name: 'Calibri', size: 11 };
+        cell2.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell2.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D9D9D9" } };
         
-        worksheet.getRow(1).height = 30;
-        worksheet.getRow(2).height = 20;
+        worksheet.getRow(1).height = 35;
+        worksheet.getRow(2).height = 25;
 
         worksheet.mergeCells('A4:B4');
         worksheet.getCell('A4').value = 'Job Number';
@@ -120,10 +124,14 @@ export async function generateJobWiseExcel(
         const headerRow = worksheet.addRow(header);
 
         headerRow.eachCell((cell, colNumber) => {
-            cell.font = { bold: true, name: 'Calibri', size: 11, color: {argb: 'FFFFFFFF'} };
+            cell.font = { bold: true, size: 11 };
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
             cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF02B396' } };
+            cell.fill = {
+                type: "pattern",
+                pattern: "solid",
+                fgColor: { argb: "FFDDEBF7" }
+            };
         });
 
         const profileIdsForThisJob = Array.from(uniqueJobNosWithData[sheetJobNo].profileIds);
@@ -170,27 +178,62 @@ export async function generateJobWiseExcel(
             rowData.push(totalOvertime > 0 ? `${totalOvertime} Hours OT` : '', salaryDays, additionalSundays || '');
             const dataRow = worksheet.addRow(rowData);
 
-            dataRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            dataRow.eachCell({ includeEmpty: true }, (cell) => {
                 cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-                if (colNumber > 3 && colNumber <= 3 + totalDays) {
-                    const cellCode = String(cell.value);
-                    const colorInfo = JOB_CODE_COLORS[cellCode as keyof typeof JOB_CODE_COLORS];
-                    if (colorInfo?.excelFill) {
-                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: colorInfo.excelFill.fgColor };
-                        if (colorInfo.excelFill.font) cell.font = { ...cell.font, color: colorInfo.excelFill.font.color };
-                    }
-                }
             });
-             dataRow.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' };
-             dataRow.getCell(3).alignment = { horizontal: 'left', vertical: 'middle' };
+
+            dataRow.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' };
+            dataRow.getCell(3).alignment = { horizontal: 'left', vertical: 'middle' };
+        });
+        
+        worksheet.eachRow({ includeEmpty: true }, row => {
+            row.eachCell({ includeEmpty: true }, cell => {
+              if (!cell.alignment) {
+                cell.alignment = {
+                  vertical: "middle",
+                  horizontal: "center",
+                  wrapText: true
+                };
+              }
+            });
         });
 
-        worksheet.getColumn('A').width = 5;
-        worksheet.getColumn('B').width = 15;
-        worksheet.getColumn('C').width = 30;
-        for (let i = 4; i <= 3 + totalDays; i++) worksheet.getColumn(i).width = 4;
-        for (let i = 4 + totalDays; i <= header.length; i++) worksheet.getColumn(i).width = 15;
+        worksheet.eachRow((row) => {
+            row.eachCell((cell) => {
+              if (typeof cell.value === "string") {
+                const val = cell.value.trim().toUpperCase();
+                const jobColor = JOB_CODE_COLORS[val as keyof typeof JOB_CODE_COLORS];
+          
+                if (jobColor?.excelFill) {
+                  if (jobColor.excelFill.fgColor) {
+                    cell.fill = {
+                      type: "pattern",
+                      pattern: "solid",
+                      fgColor: { argb: jobColor.excelFill.fgColor.argb }
+                    };
+                  }
+          
+                  if (jobColor.excelFill.font?.color?.argb) {
+                    cell.font = {
+                      bold: true,
+                      color: { argb: jobColor.excelFill.font.color.argb }
+                    };
+                  }
+                }
+              }
+            });
+        });
+
+        worksheet.getColumn(2).width = 20;
+        worksheet.getColumn(3).width = 32;
+
+        for (let i = 4; i <= 3 + totalDays; i++) {
+          worksheet.getColumn(i).width = 7;
+        }
+
+        for (let i = 4 + totalDays; i <= header.length; i++) {
+          worksheet.getColumn(i).width = 15;
+        }
     }
 
     const buffer = await workbook.xlsx.writeBuffer();
