@@ -162,7 +162,7 @@ worksheet.getRow(4).height = 20;
             const dayData = fullRecord?.days || {};
             const otData = fullRecord?.dailyOvertime || {};
             
-            const rowData: (string|number)[] = [slNo++, profile.epNumber || '', profile.name];
+            const rowData: (string|number)[] = [slNo++, '', profile.name];
             
             let workDaysForThisJob = 0;
 
