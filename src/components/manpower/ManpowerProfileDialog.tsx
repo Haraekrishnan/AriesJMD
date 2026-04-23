@@ -1,12 +1,9 @@
-
 'use client';
 import { useEffect, useMemo, useState, useRef, MouseEvent } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAuth } from '@/contexts/auth-provider';
-import { useManpower } from '@/contexts/manpower-provider';
-import { useGeneral } from '@/contexts/general-provider';
+import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -168,8 +165,7 @@ const getInitialDocs = (profileData?: ManpowerProfile) => {
 };
 
 export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: ManpowerProfileDialogProps) {
-  const { user, users } = useAuth();
-  const { addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles, deleteMemoRecord, updateMemoRecord, deletePpeHistoryRecord, deleteLogbookRecord } = useManpower();
+  const { user, users, projects, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles, deleteMemoRecord, addPpeHistoryRecord, deletePpeHistoryRecord, deleteLogbookRecord, can } = useAppContext();
   const { toast } = useToast();
   const [editingMemo, setEditingMemo] = useState<MemoRecord | null>(null);
   const [editingPpeRecord, setEditingPpeRecord] = useState<PpeHistoryRecord | null>(null);
@@ -652,10 +648,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                         </AlertDialogTrigger>
                                         <AlertDialogContent>
                                             <AlertDialogHeader><AlertDialogTitle>Clear Logbook Record?</AlertDialogTitle><AlertDialogDescription>This will permanently clear the current logbook status, out date, and remarks for this employee. Are you sure?</AlertDialogDescription></AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleDeleteLogbook(profile.id)}>Clear Record</AlertDialogAction>
-                                            </AlertDialogFooter>
+                                            <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteLogbook(profile.id)}>Clear Record</AlertDialogAction></AlertDialogFooter>
                                         </AlertDialogContent>
                                     </AlertDialog>
                                 )}
@@ -914,7 +907,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                         </object>
                     ) : (
                         <img 
-                            src={viewingAttachmentUrl} 
+                            src={viewingAttachmentUrl || ''} 
                             alt="Attachment" 
                             className={cn("transition-transform duration-200", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
                             style={{ 
@@ -931,4 +924,3 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     </>
   );
 }
-
