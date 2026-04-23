@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -191,7 +192,7 @@ export default function StoreInventoryPage() {
             const isItemExpired = (inspectionDue && isPast(inspectionDue)) || (tpInspectionDue && isPast(tpInspectionDue));
             const effectiveStatus: InventoryItemStatus = isItemExpired ? 'Expired' : item.status;
             
-            const inactiveStatuses: InventoryItemStatus[] = ['Damaged', 'Quarantine', 'Moved to another project', 'Expired'];
+            const inactiveStatuses: InventoryItemStatus[] = ['Damaged', 'Quarantine', 'Moved to another project'];
             if (filterStatus === 'Active') {
                 if (inactiveStatuses.includes(effectiveStatus)) return false;
             } else if (filterStatus === 'Inactive') {
