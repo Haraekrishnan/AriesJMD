@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useEffect, useMemo, useState, useRef, MouseEvent } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -421,7 +422,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     const epNumberTimeline = useMemo(() => {
         if (!liveProfile) return [];
 
-        const history: EpNumberRecord[] = liveProfile.epNumberHistory ? (Array.isArray(liveProfile.epNumberHistory) ? liveProfile.epNumberHistory : Object.values(liveProfile.epNumberHistory)) : [];
+        const history: EpNumberRecord[] = liveProfile.epNumberHistory ? (Array.isArray(liveProfile.epNumberHistory) ? [...liveProfile.epNumberHistory] : Object.values(liveProfile.epNumberHistory)) : [];
         const sortedHistory = [...history].sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
 
         const timeline: { epNumber: string, since: string, till: string | null }[] = [];
@@ -931,4 +932,3 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   );
 }
 
-    

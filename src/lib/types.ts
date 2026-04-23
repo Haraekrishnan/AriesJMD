@@ -1260,3 +1260,4 @@ export type InwardOutwardRecord = {
     finalizedItemIds?: string[];
     isLocked?: boolean;
 };
+

@@ -167,19 +167,76 @@ worksheet.getRow(4).height = 20;
             let workDaysForThisJob = 0;
 
             dayHeaders.forEach(day => {
-                const cellCode = (dayData[day] as string) || '';
-                const cellJobCodeInfo = jobCodes.find(jc => jc.code === cellCode);
-                const cellJobNo = cellJobCodeInfo?.jobNo || cellJobCodeInfo?.code;
 
-                if (cellJobNo === sheetJobNo || (allJobCodesForJobNo[sheetJobNo] && allJobCodesForJobNo[sheetJobNo].includes(cellCode))) {
-                    rowData.push('P');
-                    workDaysForThisJob++;
-                } else if (nonWorkCodes.includes(cellCode)) {
-                    rowData.push(cellCode);
-                } else {
-                    rowData.push('');
-                }
-            });
+    const cellCode = (dayData[day] as string) || '';
+    const cellJobCodeInfo = jobCodes.find(jc => jc.code === cellCode);
+    const cellJobNo = cellJobCodeInfo?.jobNo || cellJobCodeInfo?.code;
+
+    let value = ''; // ✅ default ensures alignment
+
+    // ✅ CASE 1: Working in this job
+    if (
+        cellJobNo === sheetJobNo ||
+        (allJobCodesForJobNo[sheetJobNo] &&
+         allJobCodesForJobNo[sheetJobNo].includes(cellCode))
+    ) {
+        value = 'P';
+        workDaysForThisJob++;
+    }
+
+    // ✅ CASE 2: Leave (controlled logic)
+    // ✅ CASE 2A: Leave (L)
+else if (cellCode === 'L') {
+
+  let previousJobNo = null;
+
+  for (let d = day - 1; d >= 1; d--) {
+      const prevCode = dayData[d];
+
+      if (prevCode && !nonWorkCodes.includes(prevCode)) {
+          const prevJobInfo = jobCodes.find(jc => jc.code === prevCode);
+          previousJobNo = prevJobInfo?.jobNo || prevJobInfo?.code;
+          break;
+      }
+  }
+
+  if (previousJobNo === sheetJobNo) {
+      value = 'L';
+  } else {
+      value = '';
+  }
+}
+
+// ✅ CASE 2B: Public Holiday (PH)
+else if (cellCode === 'PH') {
+
+  let previousJobNo = null;
+
+  for (let d = day - 1; d >= 1; d--) {
+      const prevCode = dayData[d];
+
+      if (prevCode && !nonWorkCodes.includes(prevCode)) {
+          const prevJobInfo = jobCodes.find(jc => jc.code === prevCode);
+          previousJobNo = prevJobInfo?.jobNo || prevJobInfo?.code;
+          break;
+      }
+  }
+
+  if (previousJobNo === sheetJobNo) {
+      value = 'PH'; // ✅ explicitly PH
+  } else {
+      value = '';
+  }
+}
+
+    // ✅ CASE 3: Other codes (OFF, PH, etc.)
+    else if (nonWorkCodes.includes(cellCode)) {
+        value = cellCode;
+    }
+
+    // ✅ ALWAYS PUSH ONCE
+    rowData.push(value);
+});
 
             const offDays = Object.values(dayData).filter(c => ["OFF", "PH", "OS"].includes(c)).length;
             const mlDays = Object.values(dayData).filter(c => c === "ML").length;
