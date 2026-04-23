@@ -183,8 +183,26 @@ export async function generateJobWiseExcel(
                 if (cellJobNo === sheetJobNo || (allJobCodesForJobNo[sheetJobNo] && allJobCodesForJobNo[sheetJobNo].includes(cellCode))) {
                     value = 'P';
                     workDaysForThisJob++;
-                } else if (nonWorkCodes.includes(cellCode)) {
-                    value = cellCode;
+                } // ✅ CASE 2: Controlled non-working codes (single sheet only)
+                else if (['L', 'PH', 'OFF'].includes(cellCode)) {
+                
+                    let previousJobNo = null;
+                
+                    for (let d = day - 1; d >= 1; d--) {
+                        const prevCode = dayData[d];
+                
+                        if (prevCode && !nonWorkCodes.includes(prevCode)) {
+                            const prevJobInfo = jobCodes.find(jc => jc.code === prevCode);
+                            previousJobNo = prevJobInfo?.jobNo || prevJobInfo?.code;
+                            break;
+                        }
+                    }
+                
+                    if (previousJobNo === sheetJobNo) {
+                        value = cellCode; // ✅ keeps OFF / PH / L as is
+                    } else {
+                        value = '';
+                    }
                 }
             
                 rowData.push(value);
