@@ -35,11 +35,12 @@ export async function generateJobWiseExcel(
     const allJobCodesForJobNo: { [jobNo: string]: string[] } = {};
 
     jobCodes.forEach(jc => {
-      if (jc.jobNo) {
-        if (!allJobCodesForJobNo[jc.jobNo]) {
-          allJobCodesForJobNo[jc.jobNo] = [];
+      const jobKey = jc.jobNo || jc.code;
+      if (jobKey) {
+        if (!allJobCodesForJobNo[jobKey]) {
+            allJobCodesForJobNo[jobKey] = [];
         }
-        allJobCodesForJobNo[jc.jobNo].push(jc.code);
+        allJobCodesForJobNo[jobKey].push(jc.code);
       }
     });
 
@@ -50,7 +51,6 @@ export async function generateJobWiseExcel(
                 const code = (employeeDays as any)[day];
                 if (code && !nonWorkCodes.includes(code)) {
                     const jobCodeInfo = jobCodes.find(jc => jc.code === code);
-                    
                     const jobKey = jobCodeInfo?.jobNo || jobCodeInfo?.code || code;
                     
                     if (!uniqueJobNosWithData[jobKey]) {
@@ -80,20 +80,17 @@ export async function generateJobWiseExcel(
         
         const worksheet = workbook.addWorksheet(sheetName);
 
-// ✅ FIRST declare
-const profileIdsForThisJob = Array.from(uniqueJobNosWithData[sheetJobNo].profileIds);
+        const profileIdsForThisJob = Array.from(uniqueJobNosWithData[sheetJobNo].profileIds);
 
-// ✅ THEN use
-const plantSet = new Set<string>();
+        const plantSet = new Set<string>();
+        profileIdsForThisJob.forEach(id => {
+            const plant = monthRecord.records?.[id]?.plant;
+            if (plant) plantSet.add(plant);
+        });
+        const plantName = Array.from(plantSet).join(", ");
 
-profileIdsForThisJob.forEach(id => {
-    const plant = monthRecord.records?.[id]?.plant;
-    if (plant) plantSet.add(plant);
-});
-
-const plantName = Array.from(plantSet).join(", ");
         const totalDays = getDaysInMonth(currentMonth);
-        const totalCols = 3 + totalDays + 3;
+        const totalCols = 3 + totalDays + 8;
         
         if (logoBuffer) {
             const logoId = workbook.addImage({ buffer: logoBuffer, extension: 'png' });
@@ -110,6 +107,7 @@ const plantName = Array.from(plantSet).join(", ");
         cell1.font = { bold: true, size: 16, name: 'Calibri' };
         cell1.alignment = { horizontal: 'center', vertical: 'middle' };
         cell1.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D9D9D9" } };
+        worksheet.getRow(1).height = 35;
 
         worksheet.mergeCells(2, 1, 2, totalCols);
         const cell2 = worksheet.getCell('A2');
@@ -117,10 +115,10 @@ const plantName = Array.from(plantSet).join(", ");
         cell2.font = { name: 'Calibri', size: 11 };
         cell2.alignment = { horizontal: 'center', vertical: 'middle' };
         cell2.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D9D9D9" } };
-        
-        worksheet.getRow(1).height = 35;
         worksheet.getRow(2).height = 25;
 
+        worksheet.getRow(3).height = 10;
+        
         worksheet.mergeCells('A4:B4');
         worksheet.getCell('A4').value = 'Job Number';
         worksheet.getCell('A4').font = { bold: true, name: 'Calibri', size: 11 };
@@ -131,26 +129,34 @@ const plantName = Array.from(plantSet).join(", ");
         worksheet.getCell('C4').font = { bold: true, name: 'Calibri', size: 11, color: { argb: 'FF0000' } };
         worksheet.getCell('C4').alignment = { horizontal: 'center' };
         worksheet.getCell('C4').border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-
-        worksheet.getRow(3).height = 10; // spacing row
-worksheet.getRow(4).height = 20;
         
-        const dayHeaders = Array.from({ length: totalDays }, (_, i) => i + 1);
-        const header = ['S.No', 'Emp Code', 'Name', ...dayHeaders, 'Over Time', 'Salary Days', 'Additional Sunday'];
-        const headerRow = worksheet.addRow(header);
+        worksheet.getRow(4).height = 20;
 
+        const dayHeadersExcel = Array.from({ length: totalDays }, (_, i) => i + 1);
+        const header = [
+            "S.No",
+            "Emp Code",
+            "Name",
+            ...dayHeadersExcel.map(String),
+            "Total OFF",
+            "Total Leave",
+            "Total ML",
+            "Over Time",
+            "Total Standby/Training",
+            "Total Working Days",
+            "Total Rept/Office",
+            "Salary Days",
+            "Additional Sunday Duty",
+        ];
+    
+        const headerRow = worksheet.addRow(header);
         headerRow.eachCell((cell, colNumber) => {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDDEBF7" } };
             cell.font = { bold: true, size: 11 };
-            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
             cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-            cell.fill = {
-                type: "pattern",
-                pattern: "solid",
-                fgColor: { argb: "FFDDEBF7" }
-            };
         });
 
-               
         const profilesOnThisJob = manpowerProfiles
           .filter(p => profileIdsForThisJob.includes(p.id))
           .sort((a,b) => (a.epNumber || '').localeCompare(b.epNumber || ''));
@@ -162,98 +168,70 @@ worksheet.getRow(4).height = 20;
             const dayData = fullRecord?.days || {};
             const otData = fullRecord?.dailyOvertime || {};
             
-            const rowData: (string|number)[] = [slNo++, '', profile.name];
+            const rowData: (string|number)[] = [slNo++, profile.employeeCode || '', profile.name];
             
             let workDaysForThisJob = 0;
 
             dayHeaders.forEach(day => {
+                const cellCode = (dayData[day] as string) || '';
+                const cellJobCodeInfo = jobCodes.find(jc => jc.code === cellCode);
+                const cellJobNo = cellJobCodeInfo?.jobNo || cellJobCodeInfo?.code;
 
-    const cellCode = (dayData[day] as string) || '';
-    const cellJobCodeInfo = jobCodes.find(jc => jc.code === cellCode);
-    const cellJobNo = cellJobCodeInfo?.jobNo || cellJobCodeInfo?.code;
+                let value = ''; 
+            
+                if (cellJobNo === sheetJobNo || (allJobCodesForJobNo[sheetJobNo] && allJobCodesForJobNo[sheetJobNo].includes(cellCode))) {
+                    value = 'P';
+                    workDaysForThisJob++;
+                } else if (cellCode === 'L') {
+                    let previousJobNo = null;
+                    for (let d = day - 1; d >= 1; d--) {
+                        const prevCode = dayData[d];
+                        if (prevCode && !nonWorkCodes.includes(prevCode)) {
+                            const prevJobInfo = jobCodes.find(jc => jc.code === prevCode);
+                            previousJobNo = prevJobInfo?.jobNo || prevJobInfo?.code;
+                            break;
+                        }
+                    }
+                    if (previousJobNo === sheetJobNo) {
+                        value = 'L';
+                    }
+                } else if (cellCode === 'PH') {
+                    let previousJobNo = null;
+                    for (let d = day - 1; d >= 1; d--) {
+                        const prevCode = dayData[d];
+                        if (prevCode && !nonWorkCodes.includes(prevCode)) {
+                            const prevJobInfo = jobCodes.find(jc => jc.code === prevCode);
+                            previousJobNo = prevJobInfo?.jobNo || prevJobInfo?.code;
+                            break;
+                        }
+                    }
+                    if (previousJobNo === sheetJobNo) {
+                        value = 'PH';
+                    }
+                } else if (nonWorkCodes.includes(cellCode)) {
+                    value = cellCode;
+                }
+            
+                rowData.push(value);
+            });
 
-    let value = ''; // ✅ default ensures alignment
-
-    // ✅ CASE 1: Working in this job
-    if (
-        cellJobNo === sheetJobNo ||
-        (allJobCodesForJobNo[sheetJobNo] &&
-         allJobCodesForJobNo[sheetJobNo].includes(cellCode))
-    ) {
-        value = 'P';
-        workDaysForThisJob++;
-    }
-
-    // ✅ CASE 2: Leave (controlled logic)
-    // ✅ CASE 2A: Leave (L)
-else if (cellCode === 'L') {
-
-  let previousJobNo = null;
-
-  for (let d = day - 1; d >= 1; d--) {
-      const prevCode = dayData[d];
-
-      if (prevCode && !nonWorkCodes.includes(prevCode)) {
-          const prevJobInfo = jobCodes.find(jc => jc.code === prevCode);
-          previousJobNo = prevJobInfo?.jobNo || prevJobInfo?.code;
-          break;
-      }
-  }
-
-  if (previousJobNo === sheetJobNo) {
-      value = 'L';
-  } else {
-      value = '';
-  }
-}
-
-// ✅ CASE 2B: Public Holiday (PH)
-else if (cellCode === 'PH') {
-
-  let previousJobNo = null;
-
-  for (let d = day - 1; d >= 1; d--) {
-      const prevCode = dayData[d];
-
-      if (prevCode && !nonWorkCodes.includes(prevCode)) {
-          const prevJobInfo = jobCodes.find(jc => jc.code === prevCode);
-          previousJobNo = prevJobInfo?.jobNo || prevJobInfo?.code;
-          break;
-      }
-  }
-
-  if (previousJobNo === sheetJobNo) {
-      value = 'PH'; // ✅ explicitly PH
-  } else {
-      value = '';
-  }
-}
-
-    // ✅ CASE 3: Other codes (OFF, PH, etc.)
-    else if (nonWorkCodes.includes(cellCode)) {
-        value = cellCode;
-    }
-
-    // ✅ ALWAYS PUSH ONCE
-    rowData.push(value);
-});
-
-            const offDays = Object.values(dayData).filter(c => ["OFF", "PH", "OS"].includes(c)).length;
+            const offDays = Object.values(dayData).filter(c => ["OFF", "PH", "OS"].includes(c as string)).length;
+            const leaveDays = Object.values(dayData).filter(c => ["L", "X", "NWS"].includes(c as string)).length;
             const mlDays = Object.values(dayData).filter(c => c === "ML").length;
-            const standbyDays = Object.values(dayData).filter(c => ["ST", "TR", "EP", "PD", "Q"].includes(c)).length;
+            const standbyDays = Object.values(dayData).filter(c => ["ST", "TR", "EP", "PD", "Q"].includes(c as string)).length;
             const reptOfficeDays = Object.values(dayData).filter(c => c === "R").length;
 
             const totalOvertime = Object.values(otData).reduce((sum, h) => sum + (h || 0), 0);
             const additionalSundays = fullRecord?.additionalSundayDuty || 0;
             const salaryDays = additionalSundays + offDays + mlDays + standbyDays + reptOfficeDays + workDaysForThisJob;
             
-            rowData.push(totalOvertime > 0 ? `${totalOvertime} Hours OT` : '', salaryDays, additionalSundays || '');
+            rowData.push(summary.offDays, summary.leaveDays, summary.medicalLeave, totalOvertime > 0 ? `${totalOvertime} Hours OT` : '', summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays || '');
+            
             const dataRow = worksheet.addRow(rowData);
 
             dataRow.eachCell({ includeEmpty: true }, (cell) => {
                 cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
             });
-
             dataRow.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' };
             dataRow.getCell(3).alignment = { horizontal: 'left', vertical: 'middle' };
         });
