@@ -167,47 +167,22 @@ export async function generateJobWiseExcel(
             const fullRecord = monthRecord.records?.[profile.id];
             const dayData = fullRecord?.days || {};
             const otData = fullRecord?.dailyOvertime || {};
+            const dailyComments = fullRecord?.dailyComments || {};
             
             const rowData: (string|number)[] = [slNo++, profile.employeeCode || '', profile.name];
             
             let workDaysForThisJob = 0;
 
-            dayHeaders.forEach(day => {
+            dayHeadersExcel.forEach(day => {
                 const cellCode = (dayData[day] as string) || '';
                 const cellJobCodeInfo = jobCodes.find(jc => jc.code === cellCode);
                 const cellJobNo = cellJobCodeInfo?.jobNo || cellJobCodeInfo?.code;
-
+            
                 let value = ''; 
             
                 if (cellJobNo === sheetJobNo || (allJobCodesForJobNo[sheetJobNo] && allJobCodesForJobNo[sheetJobNo].includes(cellCode))) {
                     value = 'P';
                     workDaysForThisJob++;
-                } else if (cellCode === 'L') {
-                    let previousJobNo = null;
-                    for (let d = day - 1; d >= 1; d--) {
-                        const prevCode = dayData[d];
-                        if (prevCode && !nonWorkCodes.includes(prevCode)) {
-                            const prevJobInfo = jobCodes.find(jc => jc.code === prevCode);
-                            previousJobNo = prevJobInfo?.jobNo || prevJobInfo?.code;
-                            break;
-                        }
-                    }
-                    if (previousJobNo === sheetJobNo) {
-                        value = 'L';
-                    }
-                } else if (cellCode === 'PH') {
-                    let previousJobNo = null;
-                    for (let d = day - 1; d >= 1; d--) {
-                        const prevCode = dayData[d];
-                        if (prevCode && !nonWorkCodes.includes(prevCode)) {
-                            const prevJobInfo = jobCodes.find(jc => jc.code === prevCode);
-                            previousJobNo = prevJobInfo?.jobNo || prevJobInfo?.code;
-                            break;
-                        }
-                    }
-                    if (previousJobNo === sheetJobNo) {
-                        value = 'PH';
-                    }
                 } else if (nonWorkCodes.includes(cellCode)) {
                     value = cellCode;
                 }
@@ -215,17 +190,26 @@ export async function generateJobWiseExcel(
                 rowData.push(value);
             });
 
-            const offDays = Object.values(dayData).filter(c => ["OFF", "PH", "OS"].includes(c as string)).length;
-            const leaveDays = Object.values(dayData).filter(c => ["L", "X", "NWS"].includes(c as string)).length;
-            const mlDays = Object.values(dayData).filter(c => c === "ML").length;
-            const standbyDays = Object.values(dayData).filter(c => ["ST", "TR", "EP", "PD", "Q"].includes(c as string)).length;
-            const reptOfficeDays = Object.values(dayData).filter(c => c === "R").length;
+            const summary = dayHeadersExcel.reduce(
+                (acc, day) => {
+                    const code = (dayData as any)[day];
+                    if (nonWorkCodes.includes(code)) {
+                        if (["OFF", "PH", "OS"].includes(code)) acc.offDays++;
+                        else if (["L", "X", "NWS"].includes(code)) acc.leaveDays++;
+                        else if (code === "ML") acc.medicalLeave++;
+                        else if (["ST", "TR", "EP", "PD", "Q"].includes(code)) acc.standbyTraining++;
+                        else if (code === "R") acc.reptOffice++;
+                    }
+                    return acc;
+                },
+                { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0 }
+            );
 
             const totalOvertime = Object.values(otData).reduce((sum, h) => sum + (h || 0), 0);
             const additionalSundays = fullRecord?.additionalSundayDuty || 0;
-            const salaryDays = additionalSundays + offDays + mlDays + standbyDays + reptOfficeDays + workDaysForThisJob;
+            const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + workDaysForThisJob;
             
-            rowData.push(summary.offDays, summary.leaveDays, summary.medicalLeave, totalOvertime > 0 ? `${totalOvertime} Hours OT` : '', summary.standbyTraining, summary.workDays, summary.reptOffice, salaryDays, additionalSundays || '');
+            rowData.push(summary.offDays, summary.leaveDays, summary.medicalLeave, totalOvertime > 0 ? `${totalOvertime} Hours OT` : '', summary.standbyTraining, workDaysForThisJob, summary.reptOffice, salaryDays, additionalSundays || '');
             
             const dataRow = worksheet.addRow(rowData);
 
@@ -290,3 +274,4 @@ export async function generateJobWiseExcel(
     saveAs(new Blob([buffer]), `JobWise_Attendance_${monthKey}.xlsx`);
     toast({ title: "Job-wise report generated." });
 }
+
