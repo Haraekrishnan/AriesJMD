@@ -278,6 +278,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                                 <div className="space-y-4">
                                                     <h4 className="font-semibold text-sm">Personal & Work Details</h4>
                                                     <DetailItem label="Hard Copy File No." value={profile.hardCopyFileNo} />
+                                                    <DetailItem label="Employee Code" value={profile.employeeCode} />
                                                     <DetailItem label="Mobile" value={profile.mobileNumber} />
                                                     <DetailItem label="Gender" value={profile.gender} />
                                                     <DetailItem label="Date of Birth" value={formatDate(profile.dob)} />
@@ -320,4 +321,3 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
     );
 }
 
-    

@@ -339,6 +339,7 @@ export type LogbookRecord = {
 export type ManpowerProfile = {
   id: string;
   name: string;
+  employeeCode?: string;
   trade: Trade;
   status: 'Working' | 'On Leave' | 'Resigned' | 'Terminated' | 'Left the Project';
   photo?: string;
@@ -1260,4 +1261,5 @@ export type InwardOutwardRecord = {
     finalizedItemIds?: string[];
     isLocked?: boolean;
 };
+
 

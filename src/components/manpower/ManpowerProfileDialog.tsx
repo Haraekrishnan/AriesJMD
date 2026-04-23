@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useEffect, useMemo, useState, useRef, MouseEvent } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
@@ -9,7 +8,7 @@ import { useAuth } from '@/contexts/auth-provider';
 import { useManpower } from '@/contexts/manpower-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
@@ -39,6 +38,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 const profileSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   hardCopyFileNo: z.string().optional(),
+  employeeCode: z.string().optional(),
   documentFolderUrl: z.string().url().optional().or(z.literal('')),
   trade: z.string().min(1, 'Trade is required'),
   otherTrade: z.string().optional(),
@@ -170,7 +170,6 @@ const getInitialDocs = (profileData?: ManpowerProfile) => {
 export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: ManpowerProfileDialogProps) {
   const { user, users } = useAuth();
   const { addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles, deleteMemoRecord, updateMemoRecord, deletePpeHistoryRecord, deleteLogbookRecord } = useManpower();
-  const { projects } = useGeneral();
   const { toast } = useToast();
   const [editingMemo, setEditingMemo] = useState<MemoRecord | null>(null);
   const [editingPpeRecord, setEditingPpeRecord] = useState<PpeHistoryRecord | null>(null);
@@ -422,7 +421,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     const epNumberTimeline = useMemo(() => {
         if (!liveProfile) return [];
 
-        const history: EpNumberRecord[] = liveProfile.epNumberHistory ? (Array.isArray(liveProfile.epNumberHistory) ? [...liveProfile.epNumberHistory] : Object.values(liveProfile.epNumberHistory)) : [];
+        const history: EpNumberRecord[] = liveProfile.epNumberHistory ? (Array.isArray(liveProfile.epNumberHistory) ? liveProfile.epNumberHistory : Object.values(liveProfile.epNumberHistory)) : [];
         const sortedHistory = [...history].sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
 
         const timeline: { epNumber: string, since: string, till: string | null }[] = [];
@@ -494,6 +493,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                           </Alert>
                       )}
                       <div><Label>Hard Copy File No.</Label><Input {...form.register('hardCopyFileNo')} />{form.formState.errors.hardCopyFileNo && <p className="text-xs text-destructive">{form.formState.errors.hardCopyFileNo.message}</p>}</div>
+                      <div><Label>Employee Code</Label><Input {...form.register('employeeCode')} />{form.formState.errors.employeeCode && <p className="text-xs text-destructive">{form.formState.errors.employeeCode.message}</p>}</div>
                       <div>
                           <Label>Trade</Label>
                           <Controller control={form.control} name="trade" render={({field}) => (
@@ -888,7 +888,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Attachment Viewer</DialogTitle>
-                    <div className="flex items-center gap-2">
+                     <div className="flex items-center gap-2">
                         {!isPdf && (
                             <>
                                 <Button variant="outline" size="icon" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4" /></Button>
