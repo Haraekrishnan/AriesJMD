@@ -174,6 +174,8 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                         <TableHead className="w-[50px]"></TableHead>
                         <TableHead className="w-[50px]">DB No.</TableHead>
                         <TableHead>Name</TableHead>
+                        <TableHead>Employee Code</TableHead>
+                        <TableHead>EP Number</TableHead>
                         <TableHead>Trade</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Doc. Progress</TableHead>
@@ -201,6 +203,8 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                     </TableCell>
                                     <TableCell>{profile.dbIndex}</TableCell>
                                     <TableCell className="font-medium">{profile.name}</TableCell>
+                                    <TableCell>{profile.employeeCode || 'N/A'}</TableCell>
+                                    <TableCell>{profile.epNumber || 'N/A'}</TableCell>
                                     <TableCell>{profile.trade}</TableCell>
                                     <TableCell><Badge variant={statusVariant[profile.status]}>{profile.status}</Badge></TableCell>
                                     <TableCell>
@@ -273,7 +277,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                 </TableRow>
                                 {isExpanded && (
                                     <TableRow>
-                                        <TableCell colSpan={can.manage_manpower_list ? 9 : 8} className="p-0">
+                                        <TableCell colSpan={can.manage_manpower_list ? 11 : 10} className="p-0">
                                             <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-6 bg-muted/50">
                                                 <div className="space-y-4">
                                                     <h4 className="font-semibold text-sm">Personal & Work Details</h4>
@@ -320,4 +324,3 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
         </div>
     );
 }
-
