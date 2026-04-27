@@ -61,7 +61,7 @@ interface JmsBuilderDialogProps {
 
 export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderDialogProps) {
   const { user, users, getVisibleUsers } = useAuth();
-  const { projects } = useGeneral();
+  const { projects, workOrders } = useGeneral();
   const { createJobProgress, updateJobProgress } = usePlanner();
   const { toast } = useToast();
   const isEditMode = !!job;
@@ -169,11 +169,32 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
             </div>
             <div><Label>Plant/Unit</Label><Input {...form.register('plantUnit')} /></div>
             <div><Label>JMS No.</Label><Input {...form.register('jmsNo')} /></div>
-            <div><Label>WO No.</Label><Input {...form.register('workOrderNo')} /></div>
+            <div>
+              <Label>WO / ARC No.</Label>
+              <Controller
+                control={form.control}
+                name="workOrderNo"
+                render={({ field }) => (
+                  <Select
+                    value={field.value || ''}
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      form.setValue('arcOtcWoNo', value);
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                    <SelectContent>
+                      {workOrders.map((wo) => (
+                        <SelectItem key={wo.id} value={wo.number}>{wo.number}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
             <div><Label>FO No.</Label><Input {...form.register('foNo')} /></div>
             <div><Label>Value</Label><Input type="number" {...form.register('amount')} /></div>
             <div><Label>Plant Reg No.</Label><Input {...form.register('plantRegNo')} /></div>
-            <div><Label>ARC/OTC W.O.No.</Label><Input {...form.register('arcOtcWoNo')} /></div>
              <div><Label>Start Date</Label><Controller name="dateFrom" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} /></div>
              <div><Label>End Date</Label><Controller name="dateTo" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} /></div>
               {!isEditMode && (
@@ -248,5 +269,3 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
     </Dialog>
   );
 }
-
-    

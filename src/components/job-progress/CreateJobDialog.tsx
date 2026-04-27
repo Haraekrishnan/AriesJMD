@@ -73,7 +73,7 @@ interface Props {
 
 export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
   const { user, users } = useAuth();
-  const { projects } = useGeneral();
+  const { projects, workOrders } = useGeneral();
   const { createJobProgress, jobProgress } = usePlanner();
   const { toast } = useToast();
   const [isConfirming, setIsConfirming] = useState(false);
@@ -241,8 +241,8 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
           <ScrollArea className="flex-1 pr-6 -mr-6">
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1 md:col-span-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1 md:col-span-2">
                     <Label htmlFor="title" className="font-semibold">Job Description</Label>
                     <Input id="title" {...form.register('title')} />
                     {form.formState.errors.title && <p className="text-xs text-destructive mt-1">{form.formState.errors.title.message}</p>}
@@ -289,9 +289,24 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
                       render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />}
                     />
                 </div>
-                <div className="space-y-1">
+                 <div className="space-y-1">
                     <Label>Work Order No.</Label>
-                    <Input {...form.register('workOrderNo')} />
+                     <Controller
+                        control={form.control}
+                        name="workOrderNo"
+                        render={({ field }) => (
+                            <Select value={field.value} onValueChange={field.onChange}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select WO..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {workOrders.map((wo) => (
+                                        <SelectItem key={wo.id} value={wo.number}>{wo.number}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
+                    />
                 </div>
                  <div className="space-y-1">
                     <Label>F.O No.</Label>
