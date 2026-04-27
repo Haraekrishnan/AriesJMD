@@ -1073,6 +1073,16 @@ export type JobStep = {
     } | null;
 };
 
+export type SorItem = {
+    id: string;
+    ariesJobId: string;
+    rilApprovedQuantity: number;
+    itemCode: string;
+    scopeDescription: string;
+    uom: string;
+    unitRate: number;
+};
+
 export type JobProgress = {
     id: string;
     title: string;
@@ -1089,6 +1099,10 @@ export type JobProgress = {
     amount?: number;
     dateFrom?: string | null;
     dateTo?: string | null;
+    // New JMS Builder fields
+    plantRegNo?: string;
+    arcOtcWoNo?: string;
+    sorItems?: SorItem[];
 };
 
 export type TimesheetStatus = 'Pending' | 'Acknowledged' | 'Sent To Office' | 'Office Acknowledged' | 'Rejected';
@@ -1261,5 +1275,6 @@ export type InwardOutwardRecord = {
     finalizedItemIds?: string[];
     isLocked?: boolean;
 };
+
 
 

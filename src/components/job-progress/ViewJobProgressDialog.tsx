@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -13,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { format, formatDistanceToNow, parseISO, isValid } from 'date-fns';
-import { CheckCircle, Clock, Circle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X, MessageSquare, Trash2, ArrowRight, ArrowUp, ArrowDown, XCircle, AlertTriangle } from 'lucide-react';
+import { CheckCircle, Clock, Circle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X, MessageSquare, Trash2, ArrowRight, ArrowUp, ArrowDown, XCircle, AlertTriangle, FolderKanban } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
@@ -31,6 +32,7 @@ import { JOB_PROGRESS_STEPS, REOPEN_JOB_STEPS } from '@/lib/types';
 import ReturnStepDialog from './ReturnStepDialog';
 import ReassignStepDialog from './ReassignStepDialog';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import JmsBuilderDialog from './JmsBuilderDialog';
 
 
 const statusConfig: { [key in JobStepStatus]: { icon?: React.ElementType, color: string, label: string } } = {
@@ -363,6 +365,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
     const [editingStepName, setEditingStepName] = useState('');
     const [isEditingHeader, setIsEditingHeader] = useState(false);
     const [newComment, setNewComment] = useState('');
+    const [isJmsBuilderOpen, setIsJmsBuilderOpen] = useState(false);
     const { toast } = useToast();
 
     const job = useMemo(() => {
@@ -665,7 +668,14 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                             <Button variant="outline" onClick={() => setIsReopenDialogOpen(true)}><Undo2 className="mr-2 h-4 w-4"/>Reopen Job</Button>
                         )}
                     </div>
-                    <Button variant="secondary" onClick={() => setIsOpen(false)}>Close</Button>
+                    <div className="flex items-center gap-2">
+                        {canEditJob && (
+                          <Button onClick={() => setIsJmsBuilderOpen(true)}>
+                            <FolderKanban className="mr-2 h-4 w-4" /> JMS Builder
+                          </Button>
+                        )}
+                        <Button variant="secondary" onClick={() => setIsOpen(false)}>Close</Button>
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -691,6 +701,13 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                 setIsOpen={setIsReopenDialogOpen}
                 job={job}
                 reopenJob={reopenJob}
+            />
+        )}
+        {isJmsBuilderOpen && (
+            <JmsBuilderDialog
+                isOpen={isJmsBuilderOpen}
+                setIsOpen={setIsJmsBuilderOpen}
+                job={job}
             />
         )}
         </>
