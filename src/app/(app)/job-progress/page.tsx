@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/auth-provider';
 import { usePlanner } from '@/contexts/planner-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Bell, Clock, Folder, List, LayoutGrid, Settings, X, Info, Search, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import { PlusCircle, Bell, Clock, Folder, List, LayoutGrid, Settings, X, Info, Search, ChevronLeft, ChevronRight, AlertTriangle, FolderKanban } from 'lucide-react';
 import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress, Timesheet, Role, DocumentMovement } from '@/lib/types';
@@ -30,6 +30,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadio
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import JmsBuilderDialog from '@/components/job-progress/JmsBuilderDialog';
 
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
@@ -61,6 +62,9 @@ export default function JobProgressPage() {
   const [jmsView, setJmsView] = useState<'board' | 'list'>(user?.viewPreferences?.jmsTracker || 'list');
   const [timesheetView, setTimesheetView] = useState<'board' | 'list'>(user?.viewPreferences?.timesheetTracker || 'list');
   const [activeTab, setActiveTab] = useState('jms');
+
+  const [isJmsBuilderOpen, setIsJmsBuilderOpen] = useState(false);
+  const [buildingJob, setBuildingJob] = useState<JobProgress | null>(null);
 
   const assignableUsers = useMemo(() => {
     return getVisibleUsers().filter(u => u.role !== 'Manager');
@@ -236,6 +240,11 @@ export default function JobProgressPage() {
     }
     setViewingJob(job);
   };
+
+  const handleBuildJob = (job: JobProgress) => {
+    setBuildingJob(job);
+    setIsJmsBuilderOpen(true);
+  };
   
   const handleViewTimesheet = (timesheet: Timesheet) => {
     if (timesheetSearchTerm) {
@@ -389,9 +398,9 @@ export default function JobProgressPage() {
               </div>
           </div>
           {jmsView === 'board' ? (
-            <JobProgressBoard jobs={filteredJobs} onViewJob={handleViewJob} />
+            <JobProgressBoard jobs={filteredJobs} onViewJob={handleViewJob} onBuildJob={handleBuildJob} />
           ) : (
-            <JobProgressTable jobs={filteredJobs} onViewJob={handleViewJob} />
+            <JobProgressTable jobs={filteredJobs} onViewJob={handleViewJob} onBuildJob={handleBuildJob} />
           )}
         </TabsContent>
         <TabsContent value="timesheets" className="flex-1 overflow-hidden flex flex-col">
@@ -492,6 +501,13 @@ export default function JobProgressPage() {
             isOpen={!!viewingDocument}
             setIsOpen={() => setViewingDocument(null)}
             movement={viewingDocument}
+        />
+      )}
+      {buildingJob && (
+        <JmsBuilderDialog 
+            isOpen={isJmsBuilderOpen} 
+            setIsOpen={setIsJmsBuilderOpen} 
+            job={buildingJob} 
         />
       )}
       <PendingActionsDialog 

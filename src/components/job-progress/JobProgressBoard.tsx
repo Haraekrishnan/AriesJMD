@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { JobProgress } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Clock, Loader, Undo2, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Clock, Loader, Undo2, CheckCircle, AlertTriangle, FolderKanban } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -11,8 +11,9 @@ import { format, isSameMonth, parseISO, differenceInDays } from 'date-fns';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { Button } from '../ui/button';
 
-const JobCard = ({ job, onViewJob }: { job: JobProgress; onViewJob: (job: JobProgress) => void }) => {
+const JobCard = ({ job, onViewJob, onBuildJob }: { job: JobProgress; onViewJob: (job: JobProgress) => void; onBuildJob: (job: JobProgress) => void; }) => {
     const { users } = useAuth();
     const { projects } = useGeneral();
     
@@ -45,8 +46,8 @@ const JobCard = ({ job, onViewJob }: { job: JobProgress; onViewJob: (job: JobPro
     const isLongPending = daysSinceUpdate > 3 && (pendingStep || acknowledgedStep);
 
     return (
-        <Card onClick={() => onViewJob(job)} className={cn("cursor-pointer hover:shadow-md", isLongPending && "border-amber-500")}>
-            <CardContent className="p-3 space-y-2">
+        <Card className={cn("flex flex-col hover:shadow-md", isLongPending && "border-amber-500")}>
+            <CardContent className="p-3 space-y-2 cursor-pointer flex-1" onClick={() => onViewJob(job)}>
                 <div className="flex justify-between items-start">
                     <div className="space-y-1 pr-2">
                         <p className="font-bold text-base leading-tight">{job.title}</p>
@@ -85,11 +86,16 @@ const JobCard = ({ job, onViewJob }: { job: JobProgress; onViewJob: (job: JobPro
                     )}
                 </div>
             </CardContent>
+            <CardFooter className="p-2 border-t mt-auto">
+                <Button variant="ghost" size="sm" className="w-full justify-center text-xs" onClick={(e) => { e.stopPropagation(); onBuildJob(job); }}>
+                    <FolderKanban className="mr-2 h-4 w-4"/> Build Sheet
+                </Button>
+            </CardFooter>
         </Card>
     )
 }
 
-const BoardColumn = ({ title, icon: Icon, jobs, onViewJob }: { title: string; icon: React.ElementType; jobs: JobProgress[]; onViewJob: (job: JobProgress) => void; }) => {
+const BoardColumn = ({ title, icon: Icon, jobs, onViewJob, onBuildJob }: { title: string; icon: React.ElementType; jobs: JobProgress[]; onViewJob: (job: JobProgress) => void; onBuildJob: (job: JobProgress) => void; }) => {
     return (
         <div className="flex flex-col bg-muted/50 rounded-lg">
             <h3 className="p-4 font-semibold flex items-center gap-2 text-base border-b">
@@ -101,7 +107,7 @@ const BoardColumn = ({ title, icon: Icon, jobs, onViewJob }: { title: string; ic
                 <div className="p-4 space-y-4">
                     {jobs.length > 0 ? (
                         jobs.map(job => (
-                            <JobCard key={job.id} job={job} onViewJob={onViewJob} />
+                            <JobCard key={job.id} job={job} onViewJob={onViewJob} onBuildJob={onBuildJob} />
                         ))
                     ) : (
                         <div className="text-center text-sm text-muted-foreground pt-10">
@@ -115,7 +121,7 @@ const BoardColumn = ({ title, icon: Icon, jobs, onViewJob }: { title: string; ic
 }
 
 
-export default function JobProgressBoard({ jobs, onViewJob }: { jobs: JobProgress[]; onViewJob: (job: JobProgress) => void }) {
+export default function JobProgressBoard({ jobs, onViewJob, onBuildJob }: { jobs: JobProgress[]; onViewJob: (job: JobProgress) => void; onBuildJob: (job: JobProgress) => void; }) {
   
   const { pending, acknowledged, returned, completed } = useMemo(() => {
     const pending: JobProgress[] = [];
@@ -152,12 +158,25 @@ export default function JobProgressBoard({ jobs, onViewJob }: { jobs: JobProgres
 
   }, [jobs]);
 
+  const columns = [
+    { title: 'Pending Acknowledgment', icon: Clock, jobs: pending },
+    { title: 'In Progress', icon: Loader, jobs: acknowledged },
+    { title: 'Returned', icon: Undo2, jobs: returned },
+    { title: 'Completed', icon: CheckCircle, jobs: completed },
+  ];
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 h-full">
-        <BoardColumn title="Pending Acknowledgment" icon={Clock} jobs={pending} onViewJob={onViewJob} />
-        <BoardColumn title="In Progress" icon={Loader} jobs={acknowledged} onViewJob={onViewJob} />
-        <BoardColumn title="Returned" icon={Undo2} jobs={returned} onViewJob={onViewJob} />
-        <BoardColumn title="Completed" icon={CheckCircle} jobs={completed} onViewJob={onViewJob} />
+       {columns.map(({ title, icon, jobs }) => (
+         <BoardColumn
+            key={title}
+            title={title}
+            icon={icon}
+            jobs={jobs}
+            onViewJob={onViewJob}
+            onBuildJob={onBuildJob}
+         />
+       ))}
     </div>
   );
 }

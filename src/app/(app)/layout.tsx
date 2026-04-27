@@ -30,23 +30,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading, router, pathname]);
 
-  if (loading || !user) {
+  if (loading || !user || user.status === 'locked') {
+    // If locked, we show a loading/redirecting state until the useEffect kicks in.
+    // This prevents a flash of the main layout for a locked user.
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
           <Skeleton className="h-12 w-12 rounded-full" />
           <div className="space-y-2">
-            <p className="text-muted-foreground">Redirecting...</p>
+            <p className="text-muted-foreground">Verifying session...</p>
             <Skeleton className="h-4 w-[250px]" />
             <Skeleton className="h-4 w-[200px]" />
           </div>
         </div>
       </div>
     );
-  }
-  
-  if (user.status === 'locked') {
-      return null; // Don't render the main layout if locked, the redirect will handle it.
   }
 
   return (

@@ -23,6 +23,7 @@ export default function StatusPage() {
       return;
     }
 
+    // If the user is on this page but is NOT locked, send them away.
     if (user.status !== 'locked') {
       router.replace('/dashboard');
     }
@@ -38,8 +39,9 @@ export default function StatusPage() {
       });
     }
   };
-
-  if (loading || !user || (user && user.status !== 'locked')) {
+  
+  // Render loading state until the checks in useEffect are complete
+  if (loading || !user || user.status !== 'locked') {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="text-center space-y-2">
@@ -56,6 +58,7 @@ export default function StatusPage() {
     );
   }
 
+  // Only render the locked page content if we are sure the user is locked
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-full max-w-md text-center">

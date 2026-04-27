@@ -16,7 +16,7 @@ import { useGeneral } from '@/contexts/general-provider';
 import type { JobProgress, JobProgressStatus } from '@/lib/types';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Undo2, ArrowUpDown, User, Eye } from 'lucide-react';
+import { Undo2, ArrowUpDown, User, Eye, FolderKanban } from 'lucide-react';
 import {
     ColumnDef,
     flexRender,
@@ -32,6 +32,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 interface JobProgressTableProps {
   jobs: JobProgress[];
   onViewJob: (job: JobProgress) => void;
+  onBuildJob: (job: JobProgress) => void;
 }
 
 const statusVariantMap: { [key in JobProgressStatus]: 'default' | 'secondary' | 'destructive' | 'success' } = {
@@ -41,7 +42,7 @@ const statusVariantMap: { [key in JobProgressStatus]: 'default' | 'secondary' | 
   'Completed': 'success',
 };
 
-export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
+export function JobProgressTable({ jobs, onViewJob, onBuildJob }: JobProgressTableProps) {
   const { users } = useAuth();
   const { projects } = useGeneral();
   const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: false }]);
@@ -254,10 +255,15 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
       },
       {
         id: 'actions',
-        cell: ({ row }) => <div className="text-right"><Button variant="outline" size="sm" onClick={() => onViewJob(row.original)}><Eye className="mr-2 h-4 w-4" /> View</Button></div>
+        cell: ({ row }) => (
+            <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onBuildJob(row.original) }}><FolderKanban className="mr-2 h-4 w-4"/> Build</Button>
+                <Button variant="outline" size="sm" onClick={() => onViewJob(row.original)}><Eye className="mr-2 h-4 w-4" /> View</Button>
+            </div>
+        )
       }
     ],
-    [projects, users, onViewJob]
+    [projects, users, onViewJob, onBuildJob]
   );
   
   const table = useReactTable({

@@ -1,5 +1,3 @@
-
-
 'use client';
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -32,8 +30,6 @@ import { JOB_PROGRESS_STEPS, REOPEN_JOB_STEPS } from '@/lib/types';
 import ReturnStepDialog from './ReturnStepDialog';
 import ReassignStepDialog from './ReassignStepDialog';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import JmsBuilderDialog from './JmsBuilderDialog';
-
 
 const statusConfig: { [key in JobStepStatus]: { icon?: React.ElementType, color: string, label: string } } = {
   'Not Started': { icon: Circle, color: 'text-gray-400', label: 'Not Started' },
@@ -365,7 +361,6 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
     const [editingStepName, setEditingStepName] = useState('');
     const [isEditingHeader, setIsEditingHeader] = useState(false);
     const [newComment, setNewComment] = useState('');
-    const [isJmsBuilderOpen, setIsJmsBuilderOpen] = useState(false);
     const { toast } = useToast();
 
     const job = useMemo(() => {
@@ -669,11 +664,6 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                         )}
                     </div>
                     <div className="flex items-center gap-2">
-                        {canEditJob && (
-                          <Button onClick={() => setIsJmsBuilderOpen(true)}>
-                            <FolderKanban className="mr-2 h-4 w-4" /> JMS Builder
-                          </Button>
-                        )}
                         <Button variant="secondary" onClick={() => setIsOpen(false)}>Close</Button>
                     </div>
                 </DialogFooter>
@@ -701,13 +691,6 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                 setIsOpen={setIsReopenDialogOpen}
                 job={job}
                 reopenJob={reopenJob}
-            />
-        )}
-        {isJmsBuilderOpen && (
-            <JmsBuilderDialog
-                isOpen={isJmsBuilderOpen}
-                setIsOpen={setIsJmsBuilderOpen}
-                job={job}
             />
         )}
         </>
