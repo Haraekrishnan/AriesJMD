@@ -1,6 +1,6 @@
 'use client';
 import { useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useGeneral } from '@/contexts/general-provider';
@@ -9,12 +9,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { WorkOrder } from '@/lib/types';
+import { PlusCircle, Trash2 } from 'lucide-react';
+import { ScrollArea } from '../ui/scroll-area';
+
+const foNumberSchema = z.object({
+  value: z.string().min(1, 'FO number cannot be empty'),
+});
 
 const workOrderSchema = z.object({
-  number: z.string().min(1, 'Work order number is required'),
-  type: z.enum(['WO', 'ARC/OTC'], { required_error: 'Type is required' }),
+  number: z.string().min(1, 'ARC number is required'),
+  foNumbers: z.array(foNumberSchema).optional(),
 });
 
 type FormValues = z.infer<typeof workOrderSchema>;
@@ -33,14 +38,26 @@ export default function EditWorkOrderDialog({ isOpen, setIsOpen, workOrder }: Ed
     resolver: zodResolver(workOrderSchema),
   });
 
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "foNumbers",
+  });
+
   useEffect(() => {
     if (workOrder && isOpen) {
-      form.reset(workOrder);
+      form.reset({
+        number: workOrder.number,
+        foNumbers: workOrder.foNumbers?.map(fo => ({ value: fo })) || []
+      });
     }
   }, [workOrder, isOpen, form]);
 
   const onSubmit = (data: FormValues) => {
-    updateWorkOrder({ ...workOrder, ...data });
+    updateWorkOrder({ 
+        ...workOrder, 
+        number: data.number,
+        foNumbers: data.foNumbers?.map(fo => fo.value)
+    });
     toast({ title: 'Work Order Updated' });
     setIsOpen(false);
   };
@@ -56,30 +73,30 @@ export default function EditWorkOrderDialog({ isOpen, setIsOpen, workOrder }: Ed
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Edit Work Order Number</DialogTitle>
+          <DialogTitle>Edit ARC Number</DialogTitle>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="number">Work Order Number</Label>
+            <Label htmlFor="number">ARC Number</Label>
             <Input id="number" {...form.register('number')} />
             {form.formState.errors.number && <p className="text-xs text-destructive">{form.formState.errors.number.message}</p>}
           </div>
+
           <div className="space-y-2">
-            <Label>Type</Label>
-            <Controller
-              name="type"
-              control={form.control}
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="WO">WO Number</SelectItem>
-                    <SelectItem value="ARC/OTC">ARC/OTC WO Number</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            />
+            <Label>Associated FO Numbers</Label>
+             <ScrollArea className="h-40 rounded-md border p-2">
+                <div className="space-y-2">
+                    {fields.map((field, index) => (
+                    <div key={field.id} className="flex items-center gap-2">
+                        <Input {...form.register(`foNumbers.${index}.value`)} placeholder={`FO Number #${index + 1}`} />
+                        <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4"/></Button>
+                    </div>
+                    ))}
+                </div>
+            </ScrollArea>
+            <Button type="button" variant="outline" size="sm" onClick={() => append({ value: '' })}><PlusCircle className="mr-2 h-4 w-4"/> Add FO Number</Button>
           </div>
+          
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit">Save Changes</Button>

@@ -217,8 +217,8 @@ export type NotificationSettings = {
 
 export type WorkOrder = {
   id: string;
-  number: string;
-  type: 'WO' | 'ARC/OTC';
+  number: string; // This will be the ARC number
+  foNumbers?: string[];
 };
 
 export type VehicleStatus = 'Active' | 'In Maintenance' | 'Left the Project';
@@ -1280,7 +1280,3 @@ export type InwardOutwardRecord = {
     finalizedItemIds?: string[];
     isLocked?: boolean;
 };
-
-
-
-
