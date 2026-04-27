@@ -10,6 +10,7 @@ import { format, parseISO } from 'date-fns';
 interface AbstractSheetData {
   plantRegNo?: string;
   arcOtcWoNo?: string;
+  ariesJobId?: string;
   sorItems: SorItem[];
 }
 
@@ -30,13 +31,14 @@ export async function generateAbstractSheetExcel(job: JobProgress, data: Abstrac
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Abstract Sheet');
     
-    // Header section logic here (merging cells, adding titles, images)
-    
-    // ...
+    worksheet.addRow([`Aries Job#: ${data.ariesJobId || 'N/A'}`]);
+    worksheet.mergeCells('A1:F1');
+    worksheet.getCell('A1').font = { bold: true };
+    worksheet.addRow([]);
+
 
     // For now, a simple structure
     worksheet.columns = [
-        { header: 'Aries Job#', key: 'ariesJobId', width: 15 },
         { header: 'RIL Approved Quantity', key: 'rilApprovedQuantity', width: 15 },
         { header: 'Item Code', key: 'itemCode', width: 15 },
         { header: 'Scope Description', key: 'scopeDescription', width: 50 },
@@ -60,14 +62,11 @@ export async function generateAbstractSheetExcel(job: JobProgress, data: Abstrac
 export async function generateAbstractSheetPdf(job: JobProgress, data: AbstractSheetData) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
   
-  // Header and styling logic here
-  
-  // ...
+  doc.text(`Aries Job #: ${data.ariesJobId || 'N/A'}`, 14, 15);
   
   (doc as any).autoTable({
-    head: [['Aries Job#', 'Qty', 'Item Code', 'Scope Description', 'UOM', 'Unit Rate', 'Total Amount']],
+    head: [['Qty', 'Item Code', 'Scope Description', 'UOM', 'Unit Rate', 'Total Amount']],
     body: data.sorItems.map(item => [
-      item.ariesJobId,
       item.rilApprovedQuantity,
       item.itemCode,
       item.scopeDescription,
@@ -75,6 +74,7 @@ export async function generateAbstractSheetPdf(job: JobProgress, data: AbstractS
       formatCurrency(item.unitRate),
       formatCurrency(item.rilApprovedQuantity * item.unitRate)
     ]),
+    startY: 25,
   });
   
   doc.save(`Abstract_Sheet_${job.jmsNo || job.id.slice(-6)}.pdf`);

@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,7 +25,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 const sorItemSchema = z.object({
   id: z.string(),
-  ariesJobId: z.string().min(1, "Aries Job# is required"),
   rilApprovedQuantity: z.coerce.number().min(0, "Quantity must be non-negative"),
   itemCode: z.string().min(1, "Item Code is required"),
   scopeDescription: z.string().min(1, "Scope Description is required"),
@@ -48,6 +48,7 @@ const builderSchema = z.object({
   // Builder Details
   plantRegNo: z.string().optional(),
   arcOtcWoNo: z.string().optional(),
+  ariesJobId: z.string().optional(),
   sorItems: z.array(sorItemSchema).optional(),
 });
 
@@ -98,13 +99,14 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
                 assigneeId: job.steps[0]?.assigneeId || '',
                 plantRegNo: job.plantRegNo || '',
                 arcOtcWoNo: job.arcOtcWoNo || '',
+                ariesJobId: job.ariesJobId || '',
                 sorItems: job.sorItems || [],
             });
         } else {
             form.reset({
                 title: '', projectId: '', plantUnit: '', workOrderNo: '',
                 foNo: '', jmsNo: '', amount: undefined, dateFrom: null, dateTo: null,
-                assigneeId: '', plantRegNo: '', arcOtcWoNo: '', sorItems: [],
+                assigneeId: '', plantRegNo: '', arcOtcWoNo: '', ariesJobId: '', sorItems: [],
             });
         }
     }
@@ -169,6 +171,7 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
             </div>
             <div><Label>Plant/Unit</Label><Input {...form.register('plantUnit')} /></div>
             <div><Label>JMS No.</Label><Input {...form.register('jmsNo')} /></div>
+            <div><Label>Aries Job#</Label><Input {...form.register('ariesJobId')} /></div>
             <div>
               <Label>WO / ARC No.</Label>
               <Controller
@@ -215,10 +218,9 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
               <Table>
                 <TableHeader className="sticky top-0 bg-muted z-10">
                   <TableRow>
-                    <TableHead className="w-1/12">Aries Job#</TableHead>
                     <TableHead className="w-1/12">Qty</TableHead>
                     <TableHead className="w-1/12">Item Code</TableHead>
-                    <TableHead className="w-4/12">Scope Description</TableHead>
+                    <TableHead className="w-5/12">Scope Description</TableHead>
                     <TableHead className="w-1/12">UOM</TableHead>
                     <TableHead className="w-1/12">Unit Rate</TableHead>
                     <TableHead className="w-1/12">Total</TableHead>
@@ -232,7 +234,6 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
                     const total = quantity * rate;
                     return (
                         <TableRow key={field.id}>
-                            <TableCell><Input {...form.register(`sorItems.${index}.ariesJobId`)} /></TableCell>
                             <TableCell><Input type="number" {...form.register(`sorItems.${index}.rilApprovedQuantity`)} /></TableCell>
                             <TableCell><Input {...form.register(`sorItems.${index}.itemCode`)} /></TableCell>
                             <TableCell><Textarea {...form.register(`sorItems.${index}.scopeDescription`)} rows={2} /></TableCell>
@@ -250,7 +251,7 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
             <div className="flex justify-end p-2 font-bold text-lg">
                 Grand Total: {watchedItems.reduce((acc, item) => acc + (item.rilApprovedQuantity * item.unitRate), 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `sor-${Date.now()}`, ariesJobId: '', rilApprovedQuantity: 1, itemCode: '', scopeDescription: '', uom: 'MDY', unitRate: 0 })}>
+            <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `sor-${Date.now()}`, rilApprovedQuantity: 1, itemCode: '', scopeDescription: '', uom: 'MDY', unitRate: 0 })}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Item
             </Button>
           

@@ -217,8 +217,12 @@ export type NotificationSettings = {
 
 export type WorkOrder = {
   id: string;
-  number: string; // This will be the ARC number
-  foNumbers?: string[];
+  number: string;
+  details?: string;
+  foNumbers?: {
+    value: string;
+    details?: string;
+  }[];
 };
 
 export type VehicleStatus = 'Active' | 'In Maintenance' | 'Left the Project';
@@ -1080,7 +1084,6 @@ export type JobStep = {
 
 export type SorItem = {
     id: string;
-    ariesJobId: string;
     rilApprovedQuantity: number;
     itemCode: string;
     scopeDescription: string;
@@ -1107,6 +1110,7 @@ export type JobProgress = {
     // New JMS Builder fields
     plantRegNo?: string;
     arcOtcWoNo?: string;
+    ariesJobId?: string;
     sorItems?: SorItem[];
 };
 

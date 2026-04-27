@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -588,6 +589,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         foNo: data.foNo,
         jmsNo: data.jmsNo,
         amount: data.amount,
+        ariesJobId: data.ariesJobId,
         dateFrom: data.dateFrom ? data.dateFrom.toISOString() : null,
         dateTo: data.dateTo ? data.dateTo.toISOString() : null,
         plantRegNo: data.plantRegNo || null,
