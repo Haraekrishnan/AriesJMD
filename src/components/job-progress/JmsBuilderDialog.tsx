@@ -20,6 +20,7 @@ import { useGeneral } from '@/contexts/general-provider';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const sorItemSchema = z.object({
   id: z.string(),
@@ -247,3 +248,5 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
     </Dialog>
   );
 }
+
+    
