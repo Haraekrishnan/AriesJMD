@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -40,7 +38,7 @@ type GeneralContextType = {
   addJobCode: (jobCode: Omit<JobCode, 'id'>) => void;
   updateJobCode: (jobCode: JobCode) => void;
   deleteJobCode: (jobCodeId: string) => void;
-  addWorkOrder: (data: { number: string; foNumbers?: string[] }) => void;
+  addWorkOrder: (data: { number: string; details?: string; foNumbers?: { value: string; details?: string }[] }) => void;
   updateWorkOrder: (workOrder: WorkOrder) => void;
   deleteWorkOrder: (workOrderId: string) => void;
   addFeedback: (subject: string, message: string) => void;
@@ -176,15 +174,19 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
       remove(ref(rtdb, `jobCodes/${jobCodeId}`));
   }, []);
 
-  const addWorkOrder = useCallback((data: { number: string; foNumbers?: string[] }) => {
+  const addWorkOrder = useCallback((data: { number: string; details?: string; foNumbers?: { value: string; details?: string }[] }) => {
     const newRef = push(ref(rtdb, 'workOrders'));
-    const foNumbersArray = data.foNumbers?.filter(fo => fo.trim() !== '') || [];
-    set(newRef, { number: data.number, foNumbers: foNumbersArray });
+    const foNumbersArray = data.foNumbers?.filter(fo => fo.value.trim() !== '') || [];
+    set(newRef, {
+      number: data.number,
+      details: data.details || null,
+      foNumbers: foNumbersArray
+    });
   }, []);
 
   const updateWorkOrder = useCallback((workOrder: WorkOrder) => {
     const { id, ...data } = workOrder;
-    const foNumbersArray = data.foNumbers?.filter(fo => fo.trim() !== '') || [];
+    const foNumbersArray = data.foNumbers?.filter(fo => fo.value.trim() !== '') || [];
     update(ref(rtdb, `workOrders/${id}`), { ...data, foNumbers: foNumbersArray });
   }, []);
 

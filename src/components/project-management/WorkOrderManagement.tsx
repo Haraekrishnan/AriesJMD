@@ -65,18 +65,24 @@ function WorkOrderTable({ orders, onEdit, onDelete }: { orders: WorkOrder[], onE
             <TableBody>
                 {orders.map(order => (
                     <TableRow key={order.id}>
-                        <TableCell className="font-medium">{order.number}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
+                        <TableCell className="font-medium align-top">
+                            <p>{order.number}</p>
+                            {order.details && <p className="text-xs text-muted-foreground max-w-xs whitespace-pre-wrap">{order.details}</p>}
+                        </TableCell>
+                        <TableCell className="align-top">
+                          <div className="flex flex-col gap-2">
                             {order.foNumbers?.map((fo, index) => (
-                              <Badge key={index} variant="secondary">{fo}</Badge>
+                              <div key={index}>
+                                <Badge variant="secondary" className="text-sm">{fo.value}</Badge>
+                                {fo.details && <p className="text-xs text-muted-foreground ml-1 mt-1 max-w-xs whitespace-pre-wrap">{fo.details}</p>}
+                              </div>
                             ))}
                             {(!order.foNumbers || order.foNumbers.length === 0) && (
                               <span className="text-xs text-muted-foreground">None</span>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right align-top">
                              <div className="flex justify-end gap-2">
                                 <Button variant="ghost" size="icon" onClick={() => onEdit(order)}>
                                     <Edit className="h-4 w-4"/>

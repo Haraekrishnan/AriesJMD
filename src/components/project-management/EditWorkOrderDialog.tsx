@@ -12,13 +12,16 @@ import { Label } from '@/components/ui/label';
 import { WorkOrder } from '@/lib/types';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
+import { Textarea } from '../ui/textarea';
 
 const foNumberSchema = z.object({
   value: z.string().min(1, 'FO number cannot be empty'),
+  details: z.string().optional(),
 });
 
 const workOrderSchema = z.object({
   number: z.string().min(1, 'ARC number is required'),
+  details: z.string().optional(),
   foNumbers: z.array(foNumberSchema).optional(),
 });
 
@@ -47,7 +50,10 @@ export default function EditWorkOrderDialog({ isOpen, setIsOpen, workOrder }: Ed
     if (workOrder && isOpen) {
       form.reset({
         number: workOrder.number,
-        foNumbers: workOrder.foNumbers?.map(fo => ({ value: fo })) || []
+        details: workOrder.details,
+        foNumbers: workOrder.foNumbers?.map(fo => 
+            typeof fo === 'string' ? { value: fo, details: '' } : { value: fo.value, details: fo.details || '' }
+        ) || []
       });
     }
   }, [workOrder, isOpen, form]);
@@ -56,7 +62,8 @@ export default function EditWorkOrderDialog({ isOpen, setIsOpen, workOrder }: Ed
     updateWorkOrder({ 
         ...workOrder, 
         number: data.number,
-        foNumbers: data.foNumbers?.map(fo => fo.value)
+        details: data.details,
+        foNumbers: data.foNumbers
     });
     toast({ title: 'Work Order Updated' });
     setIsOpen(false);
@@ -81,20 +88,27 @@ export default function EditWorkOrderDialog({ isOpen, setIsOpen, workOrder }: Ed
             <Input id="number" {...form.register('number')} />
             {form.formState.errors.number && <p className="text-xs text-destructive">{form.formState.errors.number.message}</p>}
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="details">ARC Details (Optional)</Label>
+            <Textarea id="details" {...form.register('details')} rows={2}/>
+          </div>
 
           <div className="space-y-2">
             <Label>Associated FO Numbers</Label>
              <ScrollArea className="h-40 rounded-md border p-2">
                 <div className="space-y-2">
                     {fields.map((field, index) => (
-                    <div key={field.id} className="flex items-center gap-2">
-                        <Input {...form.register(`foNumbers.${index}.value`)} placeholder={`FO Number #${index + 1}`} />
+                    <div key={field.id} className="flex items-start gap-2">
+                        <div className="flex-1 space-y-2">
+                            <Input {...form.register(`foNumbers.${index}.value`)} placeholder={`FO Number #${index + 1}`} />
+                            <Textarea {...form.register(`foNumbers.${index}.details`)} placeholder="FO Details (Optional)" rows={1} className="text-xs" />
+                        </div>
                         <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4"/></Button>
                     </div>
                     ))}
                 </div>
             </ScrollArea>
-            <Button type="button" variant="outline" size="sm" onClick={() => append({ value: '' })}><PlusCircle className="mr-2 h-4 w-4"/> Add FO Number</Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => append({ value: '', details: '' })}><PlusCircle className="mr-2 h-4 w-4"/> Add FO Number</Button>
           </div>
           
           <DialogFooter>
