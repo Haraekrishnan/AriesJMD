@@ -6,7 +6,6 @@ import { usePlanner } from '@/contexts/planner-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Bell, Clock, Folder, List, LayoutGrid, Settings, X, Info, Search, ChevronLeft, ChevronRight, AlertTriangle, FolderKanban } from 'lucide-react';
-import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress, Timesheet, Role, DocumentMovement } from '@/lib/types';
 import { format, startOfMonth, addMonths, subMonths, isSameMonth, parseISO, isBefore, isAfter, startOfToday, differenceInDays, endOfMonth, isValid } from 'date-fns';
@@ -40,7 +39,7 @@ export default function JobProgressPage() {
   const { projects } = useGeneral();
   const { jobProgress, timesheets, trackerNotificationCount, documentMovements } = usePlanner();
 
-  const [isCreateJobOpen, setIsCreateJobOpen] = useState(false);
+  const [isJmsBuilderOpen, setIsJmsBuilderOpen] = useState(false);
   const [isCreateTimesheetOpen, setIsCreateTimesheetOpen] = useState(false);
   const [isCreateDocumentOpen, setIsCreateDocumentOpen] = useState(false);
   const [viewingJob, setViewingJob] = useState<JobProgress | null>(null);
@@ -62,9 +61,6 @@ export default function JobProgressPage() {
   const [jmsView, setJmsView] = useState<'board' | 'list'>(user?.viewPreferences?.jmsTracker || 'list');
   const [timesheetView, setTimesheetView] = useState<'board' | 'list'>(user?.viewPreferences?.timesheetTracker || 'list');
   const [activeTab, setActiveTab] = useState('jms');
-
-  const [isJmsBuilderOpen, setIsJmsBuilderOpen] = useState(false);
-  const [buildingJob, setBuildingJob] = useState<JobProgress | null>(null);
 
   const assignableUsers = useMemo(() => {
     return getVisibleUsers().filter(u => u.role !== 'Manager');
@@ -240,11 +236,6 @@ export default function JobProgressPage() {
     }
     setViewingJob(job);
   };
-
-  const handleBuildJob = (job: JobProgress) => {
-    setBuildingJob(job);
-    setIsJmsBuilderOpen(true);
-  };
   
   const handleViewTimesheet = (timesheet: Timesheet) => {
     if (timesheetSearchTerm) {
@@ -319,8 +310,8 @@ export default function JobProgressPage() {
                 <Button variant="outline" size="icon" onClick={() => changeMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
             </div>
             {canCreateJms && (
-              <Button onClick={() => setIsCreateJobOpen(true)}>
-                  <PlusCircle className="mr-2 h-4 w-4" /> Create New JMS
+              <Button onClick={() => setIsJmsBuilderOpen(true)}>
+                  <FolderKanban className="mr-2 h-4 w-4" /> JMS Builder
               </Button>
             )}
              <Button onClick={() => setIsCreateTimesheetOpen(true)}>
@@ -398,9 +389,9 @@ export default function JobProgressPage() {
               </div>
           </div>
           {jmsView === 'board' ? (
-            <JobProgressBoard jobs={filteredJobs} onViewJob={handleViewJob} onBuildJob={handleBuildJob} />
+            <JobProgressBoard jobs={filteredJobs} onViewJob={handleViewJob} />
           ) : (
-            <JobProgressTable jobs={filteredJobs} onViewJob={handleViewJob} onBuildJob={handleBuildJob} />
+            <JobProgressTable jobs={filteredJobs} onViewJob={handleViewJob} />
           )}
         </TabsContent>
         <TabsContent value="timesheets" className="flex-1 overflow-hidden flex flex-col">
@@ -479,7 +470,7 @@ export default function JobProgressPage() {
       </Tabs>
 
 
-      <CreateJobDialog isOpen={isCreateJobOpen} setIsOpen={setIsCreateJobOpen} />
+      <JmsBuilderDialog isOpen={isJmsBuilderOpen} setIsOpen={setIsJmsBuilderOpen} />
       <CreateTimesheetDialog isOpen={isCreateTimesheetOpen} setIsOpen={setIsCreateTimesheetOpen} />
       <CreateDocumentMovementDialog isOpen={isCreateDocumentOpen} setIsOpen={setIsCreateDocumentOpen} />
       {viewingJob && (
@@ -501,13 +492,6 @@ export default function JobProgressPage() {
             isOpen={!!viewingDocument}
             setIsOpen={() => setViewingDocument(null)}
             movement={viewingDocument}
-        />
-      )}
-      {buildingJob && (
-        <JmsBuilderDialog 
-            isOpen={isJmsBuilderOpen} 
-            setIsOpen={setIsJmsBuilderOpen} 
-            job={buildingJob} 
         />
       )}
       <PendingActionsDialog 

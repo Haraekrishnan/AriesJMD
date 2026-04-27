@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { Button } from '../ui/button';
 
-const JobCard = ({ job, onViewJob, onBuildJob }: { job: JobProgress; onViewJob: (job: JobProgress) => void; onBuildJob: (job: JobProgress) => void; }) => {
+const JobCard = ({ job, onViewJob }: { job: JobProgress; onViewJob: (job: JobProgress) => void; }) => {
     const { users } = useAuth();
     const { projects } = useGeneral();
     
@@ -86,16 +86,11 @@ const JobCard = ({ job, onViewJob, onBuildJob }: { job: JobProgress; onViewJob: 
                     )}
                 </div>
             </CardContent>
-            <CardFooter className="p-2 border-t mt-auto">
-                <Button variant="ghost" size="sm" className="w-full justify-center text-xs" onClick={(e) => { e.stopPropagation(); onBuildJob(job); }}>
-                    <FolderKanban className="mr-2 h-4 w-4"/> Build Sheet
-                </Button>
-            </CardFooter>
         </Card>
     )
 }
 
-const BoardColumn = ({ title, icon: Icon, jobs, onViewJob, onBuildJob }: { title: string; icon: React.ElementType; jobs: JobProgress[]; onViewJob: (job: JobProgress) => void; onBuildJob: (job: JobProgress) => void; }) => {
+const BoardColumn = ({ title, icon: Icon, jobs, onViewJob }: { title: string; icon: React.ElementType; jobs: JobProgress[]; onViewJob: (job: JobProgress) => void; }) => {
     return (
         <div className="flex flex-col bg-muted/50 rounded-lg">
             <h3 className="p-4 font-semibold flex items-center gap-2 text-base border-b">
@@ -107,7 +102,7 @@ const BoardColumn = ({ title, icon: Icon, jobs, onViewJob, onBuildJob }: { title
                 <div className="p-4 space-y-4">
                     {jobs.length > 0 ? (
                         jobs.map(job => (
-                            <JobCard key={job.id} job={job} onViewJob={onViewJob} onBuildJob={onBuildJob} />
+                            <JobCard key={job.id} job={job} onViewJob={onViewJob} />
                         ))
                     ) : (
                         <div className="text-center text-sm text-muted-foreground pt-10">
@@ -121,7 +116,7 @@ const BoardColumn = ({ title, icon: Icon, jobs, onViewJob, onBuildJob }: { title
 }
 
 
-export default function JobProgressBoard({ jobs, onViewJob, onBuildJob }: { jobs: JobProgress[]; onViewJob: (job: JobProgress) => void; onBuildJob: (job: JobProgress) => void; }) {
+export default function JobProgressBoard({ jobs, onViewJob }: { jobs: JobProgress[]; onViewJob: (job: JobProgress) => void; }) {
   
   const { pending, acknowledged, returned, completed } = useMemo(() => {
     const pending: JobProgress[] = [];
@@ -174,7 +169,6 @@ export default function JobProgressBoard({ jobs, onViewJob, onBuildJob }: { jobs
             icon={icon}
             jobs={jobs}
             onViewJob={onViewJob}
-            onBuildJob={onBuildJob}
          />
        ))}
     </div>

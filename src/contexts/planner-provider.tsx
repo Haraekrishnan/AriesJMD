@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -42,7 +41,7 @@ type PlannerContextType = {
   saveVehicleUsageRecord: (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => Promise<void>;
   lockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
   unlockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
-  createJobProgress: (data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[]; projectId?: string; plantUnit?: string; workOrderNo?: string; foNo?: string; jmsNo?: string; amount?: number; dateFrom?: string | null; dateTo?: string | null; }) => void;
+  createJobProgress: (data: any) => void;
   updateJobProgress: (jobId: string, data: Partial<Omit<JobProgress, 'id' | 'steps' | 'creatorId' | 'createdAt'>>) => void;
   deleteJobProgress: (jobId: string) => void;
   updateJobStep: (jobId: string, stepId: string, newStepData: Partial<JobStep>) => void;
@@ -561,45 +560,42 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         remove(ref(rtdb, `timesheets/${timesheetId}`));
     }, []);
 
-    const createJobProgress = useCallback((data: { title: string; steps: Omit<JobStep, 'id' | 'status'>[]; projectId?: string; plantUnit?: string; workOrderNo?: string; foNo?: string; jmsNo?: string; amount?: number; dateFrom?: string | null; dateTo?: string | null; }) => {
-        if (!user) return;
-        const newRef = push(ref(rtdb, 'jobProgress'));
-        const now = new Date().toISOString();
-        
-        const isFirstStepSelfAssigned = data.steps.length > 0 && data.steps[0].assigneeId === user.id;
-
-        const initialSteps: JobStep[] = (data.steps || []).map((step, index) => {
-            const isFirstStep = index === 0;
-            const isSelfAssigned = isFirstStep && !!(step.assigneeId && user && step.assigneeId === user.id);
-    
-            return {
-                ...step,
-                id: `step-${index}`,
-                status: isSelfAssigned ? 'Acknowledged' : (isFirstStep ? 'Pending' : 'Not Started'),
-                assigneeId: step.assigneeId || null,
-                dueDate: step.dueDate || null,
-                acknowledgedAt: isSelfAssigned ? now : null,
-            };
-        });
-    
-        const newJob: Omit<JobProgress, 'id'> = {
-          title: data.title,
-          creatorId: user.id,
-          createdAt: now,
-          lastUpdated: now,
-          status: isFirstStepSelfAssigned ? 'In Progress' : 'Not Started',
-          steps: initialSteps,
-          projectId: data.projectId,
-          plantUnit: data.plantUnit,
-          workOrderNo: data.workOrderNo,
-          foNo: data.foNo,
-          jmsNo: data.jmsNo,
-          amount: data.amount,
-          dateFrom: data.dateFrom,
-          dateTo: data.dateTo,
-        };
-    
-        set(newRef, newJob);
+    const createJobProgress = useCallback((data: any) => {
+      if (!user) return;
+      const newRef = push(ref(rtdb, 'jobProgress'));
+      const now = new Date().toISOString();
+      
+      const isSelfAssigned = data.assigneeId === user.id;
+  
+      const initialStep: JobStep = {
+          id: 'step-0',
+          name: 'JMS created',
+          assigneeId: data.assigneeId || null,
+          status: isSelfAssigned ? 'Acknowledged' : 'Pending',
+          acknowledgedAt: isSelfAssigned ? now : null,
+      };
+  
+      const newJob: Omit<JobProgress, 'id'> = {
+        title: data.title,
+        creatorId: user.id,
+        createdAt: now,
+        lastUpdated: now,
+        status: isSelfAssigned ? 'In Progress' : 'Not Started',
+        steps: [initialStep],
+        projectId: data.projectId,
+        plantUnit: data.plantUnit,
+        workOrderNo: data.workOrderNo,
+        foNo: data.foNo,
+        jmsNo: data.jmsNo,
+        amount: data.amount,
+        dateFrom: data.dateFrom ? data.dateFrom.toISOString() : null,
+        dateTo: data.dateTo ? data.dateTo.toISOString() : null,
+        plantRegNo: data.plantRegNo || null,
+        arcOtcWoNo: data.arcOtcWoNo || null,
+        sorItems: data.sorItems || [],
+      };
+  
+      set(newRef, newJob);
     }, [user]);
 
     const updateJobProgress = useCallback((jobId: string, data: Partial<Omit<JobProgress, 'id' | 'steps' | 'creatorId' | 'createdAt'>>) => {

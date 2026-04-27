@@ -1,4 +1,3 @@
-
 'use client';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,11 +10,16 @@ import { Label } from '@/components/ui/label';
 import { PlusCircle, Trash2, Download } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
-import { useEffect, useMemo } from 'react';
-import { JobProgress, SorItem } from '@/lib/types';
+import { useEffect, useMemo, useState } from 'react';
+import { JobProgress, SorItem, JOB_PROGRESS_STEPS } from '@/lib/types';
 import { usePlanner } from '@/contexts/planner-provider';
 import { format, parseISO } from 'date-fns';
 import { generateAbstractSheetExcel, generateAbstractSheetPdf } from './generateAbstractSheet';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { DatePickerInput } from '../ui/date-picker-input';
+import { Textarea } from '../ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const sorItemSchema = z.object({
   id: z.string(),
@@ -28,9 +32,22 @@ const sorItemSchema = z.object({
 });
 
 const builderSchema = z.object({
+  // Job Details
+  title: z.string().min(3, 'Job description is required'),
+  projectId: z.string().min(1, 'Project is required'),
+  plantUnit: z.string().optional(),
+  workOrderNo: z.string().optional(),
+  foNo: z.string().optional(),
+  jmsNo: z.string().optional(),
+  amount: z.coerce.number().optional(),
+  dateFrom: z.date().optional().nullable(),
+  dateTo: z.date().optional().nullable(),
+  // Initial Step
+  assigneeId: z.string().min(1, 'Initial assignee is required'),
+  // Builder Details
   plantRegNo: z.string().optional(),
   arcOtcWoNo: z.string().optional(),
-  sorItems: z.array(sorItemSchema),
+  sorItems: z.array(sorItemSchema).optional(),
 });
 
 type BuilderFormValues = z.infer<typeof builderSchema>;
@@ -38,12 +55,19 @@ type BuilderFormValues = z.infer<typeof builderSchema>;
 interface JmsBuilderDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  job: JobProgress;
+  job?: JobProgress | null;
 }
 
 export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderDialogProps) {
-  const { updateJobProgress } = usePlanner();
+  const { user, users, getVisibleUsers } = useAuth();
+  const { projects } = useGeneral();
+  const { createJobProgress, updateJobProgress } = usePlanner();
   const { toast } = useToast();
+  const isEditMode = !!job;
+
+  const assignableUsers = useMemo(() => {
+    return getVisibleUsers().filter(u => u.role !== 'Manager');
+  }, [getVisibleUsers]);
 
   const form = useForm<BuilderFormValues>({
     resolver: zodResolver(builderSchema),
@@ -58,26 +82,59 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
   const watchedItems = form.watch('sorItems');
 
   useEffect(() => {
-    if (job) {
-      form.reset({
-        plantRegNo: job.plantRegNo || '',
-        arcOtcWoNo: job.arcOtcWoNo || '',
-        sorItems: job.sorItems || [],
-      });
+    if (isOpen) {
+        if (job) {
+            form.reset({
+                title: job.title,
+                projectId: job.projectId,
+                plantUnit: job.plantUnit || '',
+                workOrderNo: job.workOrderNo || '',
+                foNo: job.foNo || '',
+                jmsNo: job.jmsNo || '',
+                amount: job.amount || undefined,
+                dateFrom: job.dateFrom ? parseISO(job.dateFrom) : null,
+                dateTo: job.dateTo ? parseISO(job.dateTo) : null,
+                assigneeId: job.steps[0]?.assigneeId || '',
+                plantRegNo: job.plantRegNo || '',
+                arcOtcWoNo: job.arcOtcWoNo || '',
+                sorItems: job.sorItems || [],
+            });
+        } else {
+            form.reset({
+                title: '', projectId: '', plantUnit: '', workOrderNo: '',
+                foNo: '', jmsNo: '', amount: undefined, dateFrom: null, dateTo: null,
+                assigneeId: '', plantRegNo: '', arcOtcWoNo: '', sorItems: [],
+            });
+        }
     }
-  }, [job, form]);
+  }, [job, isOpen, form]);
 
   const onSubmit = (data: BuilderFormValues) => {
-    updateJobProgress(job.id, {
-      plantRegNo: data.plantRegNo,
-      arcOtcWoNo: data.arcOtcWoNo,
-      sorItems: data.sorItems,
-    });
-    toast({ title: "JMS Data Saved", description: "The SOR items and details have been updated." });
+    if (isEditMode && job) {
+        updateJobProgress(job.id, {
+            ...data,
+            sorItems: data.sorItems || [],
+        });
+        toast({ title: "JMS Data Updated", description: "The SOR items and details have been updated." });
+    } else {
+         createJobProgress({
+            ...data,
+            steps: [{
+                name: 'JMS created',
+                assigneeId: data.assigneeId,
+                description: 'Initial step from builder'
+            }],
+        });
+        toast({ title: "JMS Created", description: "The new JMS has been added to the tracker." });
+    }
     setIsOpen(false);
   };
   
   const handleDownload = (format: 'excel' | 'pdf') => {
+    if (!job) {
+        toast({ title: "Cannot Download", description: "Please save the JMS before downloading.", variant: 'destructive'});
+        return;
+    }
     if (format === 'excel') {
         generateAbstractSheetExcel(job, form.getValues());
     } else {
@@ -89,15 +146,46 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-7xl h-[95vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>JMS Abstract Sheet Builder</DialogTitle>
-          <DialogDescription>Manage the scope of work items for "{job.title}".</DialogDescription>
+          <DialogTitle>JMS Builder</DialogTitle>
+          <DialogDescription>
+            {isEditMode ? `Editing JMS: "${job.title}"` : "Create a new JMS with its abstract sheet details."}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-            <div><Label>Plant/Unit</Label><Input value={job.plantUnit || ''} readOnly /></div>
-            <div><Label>Duration</Label><Input value={job.dateFrom ? format(parseISO(job.dateFrom), 'dd MMM yyyy') : 'N/A'} readOnly /></div>
+            {/* Job Details Fields */}
+            <div className="md:col-span-2"><Label>Job Description</Label><Input {...form.register('title')} /></div>
+            <div><Label>Project</Label>
+              <Controller
+                control={form.control} name="projectId"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger><SelectValue placeholder="Select project..." /></SelectTrigger>
+                    <SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+            <div><Label>Plant/Unit</Label><Input {...form.register('plantUnit')} /></div>
+            <div><Label>JMS No.</Label><Input {...form.register('jmsNo')} /></div>
+            <div><Label>WO No.</Label><Input {...form.register('workOrderNo')} /></div>
+            <div><Label>FO No.</Label><Input {...form.register('foNo')} /></div>
+            <div><Label>Value</Label><Input type="number" {...form.register('amount')} /></div>
             <div><Label>Plant Reg No.</Label><Input {...form.register('plantRegNo')} /></div>
             <div><Label>ARC/OTC W.O.No.</Label><Input {...form.register('arcOtcWoNo')} /></div>
+             <div><Label>Start Date</Label><Controller name="dateFrom" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} /></div>
+             <div><Label>End Date</Label><Controller name="dateTo" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} /></div>
+              {!isEditMode && (
+                <div><Label>Initial Assignee</Label>
+                    <Controller control={form.control} name="assigneeId" render={({ field }) => (
+                         <Select value={field.value} onValueChange={field.onChange}>
+                             <SelectTrigger><SelectValue placeholder="Select assignee..." /></SelectTrigger>
+                             <SelectContent>{assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
+                         </Select>
+                    )} />
+                    {form.formState.errors.assigneeId && <p className="text-destructive text-xs mt-1">{form.formState.errors.assigneeId.message}</p>}
+                </div>
+            )}
           </div>
 
           <div className="flex-1 border rounded-lg overflow-hidden">
@@ -146,12 +234,12 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
           
           <DialogFooter className="pt-4 mt-auto border-t justify-between">
              <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={() => handleDownload('excel')}><Download className="mr-2 h-4 w-4" /> Abstract Excel</Button>
-                <Button type="button" variant="outline" onClick={() => handleDownload('pdf')}><Download className="mr-2 h-4 w-4" /> Abstract PDF</Button>
+                <Button type="button" variant="outline" onClick={() => handleDownload('excel')} disabled={!isEditMode}><Download className="mr-2 h-4 w-4" /> Abstract Excel</Button>
+                <Button type="button" variant="outline" onClick={() => handleDownload('pdf')} disabled={!isEditMode}><Download className="mr-2 h-4 w-4" /> Abstract PDF</Button>
              </div>
              <div className="flex gap-2">
                 <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
-                <Button type="submit">Save</Button>
+                <Button type="submit">{isEditMode ? 'Save Changes' : 'Create JMS'}</Button>
              </div>
           </DialogFooter>
         </form>
