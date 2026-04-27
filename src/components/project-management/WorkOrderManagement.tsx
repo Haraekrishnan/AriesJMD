@@ -4,7 +4,6 @@ import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import type { WorkOrder } from '@/lib/types';
 import AddWorkOrderDialog from './AddWorkOrderDialog';
@@ -17,14 +16,14 @@ export default function WorkOrderManagement() {
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [editingWorkOrder, setEditingWorkOrder] = useState<WorkOrder | null>(null);
 
-    const { woNumbers, arcOtcNumbers } = useMemo(() => {
-        const wo: WorkOrder[] = [];
-        const arc: WorkOrder[] = [];
-        (workOrders || []).forEach(w => {
-            if (w.type === 'WO') wo.push(w);
-            else arc.push(w);
+    const sortedWorkOrders = useMemo(() => {
+        if (!workOrders) return [];
+        // Sort by type then by number
+        return [...workOrders].sort((a, b) => {
+            if (a.type < b.type) return -1;
+            if (a.type > b.type) return 1;
+            return a.number.localeCompare(b.number);
         });
-        return { woNumbers: wo, arcOtcNumbers: arc };
     }, [workOrders]);
 
     const handleDelete = (id: string, number: string) => {
@@ -39,26 +38,11 @@ export default function WorkOrderManagement() {
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Work Order No.
                 </Button>
             </div>
-            <Tabs defaultValue="wo">
-                <TabsList>
-                    <TabsTrigger value="wo">WO Numbers</TabsTrigger>
-                    <TabsTrigger value="arc-otc">ARC/OTC WO Numbers</TabsTrigger>
-                </TabsList>
-                <TabsContent value="wo" className="mt-4">
-                    <WorkOrderTable 
-                        orders={woNumbers} 
-                        onEdit={setEditingWorkOrder}
-                        onDelete={handleDelete}
-                    />
-                </TabsContent>
-                <TabsContent value="arc-otc" className="mt-4">
-                     <WorkOrderTable 
-                        orders={arcOtcNumbers} 
-                        onEdit={setEditingWorkOrder}
-                        onDelete={handleDelete}
-                    />
-                </TabsContent>
-            </Tabs>
+            <WorkOrderTable 
+                orders={sortedWorkOrders} 
+                onEdit={setEditingWorkOrder}
+                onDelete={handleDelete}
+            />
             <AddWorkOrderDialog isOpen={isAddOpen} setIsOpen={setIsAddOpen} />
             {editingWorkOrder && (
                 <EditWorkOrderDialog 
@@ -78,6 +62,7 @@ function WorkOrderTable({ orders, onEdit, onDelete }: { orders: WorkOrder[], onE
             <TableHeader>
                 <TableRow>
                     <TableHead>Number</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
             </TableHeader>
@@ -85,6 +70,7 @@ function WorkOrderTable({ orders, onEdit, onDelete }: { orders: WorkOrder[], onE
                 {orders.map(order => (
                     <TableRow key={order.id}>
                         <TableCell className="font-medium">{order.number}</TableCell>
+                        <TableCell>{order.type}</TableCell>
                         <TableCell className="text-right">
                              <div className="flex justify-end gap-2">
                                 <Button variant="ghost" size="icon" onClick={() => onEdit(order)}>
@@ -111,7 +97,7 @@ function WorkOrderTable({ orders, onEdit, onDelete }: { orders: WorkOrder[], onE
                 ))}
                 {orders.length === 0 && (
                     <TableRow>
-                        <TableCell colSpan={2} className="text-center h-24">No work order numbers found.</TableCell>
+                        <TableCell colSpan={3} className="text-center h-24">No work order numbers found.</TableCell>
                     </TableRow>
                 )}
             </TableBody>
