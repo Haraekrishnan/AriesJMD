@@ -215,6 +215,11 @@ export type NotificationSettings = {
   };
 };
 
+export type WorkOrder = {
+  id: string;
+  number: string;
+  type: 'WO' | 'ARC/OTC';
+};
 
 export type VehicleStatus = 'Active' | 'In Maintenance' | 'Left the Project';
 export type Vehicle = {
@@ -1275,6 +1280,7 @@ export type InwardOutwardRecord = {
     finalizedItemIds?: string[];
     isLocked?: boolean;
 };
+
 
 
 
