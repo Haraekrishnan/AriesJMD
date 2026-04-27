@@ -30,6 +30,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import JmsBuilderDialog from '@/components/job-progress/JmsBuilderDialog';
+import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
@@ -39,6 +40,7 @@ export default function JobProgressPage() {
   const { projects } = useGeneral();
   const { jobProgress, timesheets, trackerNotificationCount, documentMovements } = usePlanner();
 
+  const [isCreateJobDialogOpen, setCreateJobDialogOpen] = useState(false);
   const [isJmsBuilderOpen, setIsJmsBuilderOpen] = useState(false);
   const [isCreateTimesheetOpen, setIsCreateTimesheetOpen] = useState(false);
   const [isCreateDocumentOpen, setIsCreateDocumentOpen] = useState(false);
@@ -310,6 +312,11 @@ export default function JobProgressPage() {
                 <Button variant="outline" size="icon" onClick={() => changeMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
             </div>
             {canCreateJms && (
+              <Button onClick={() => setCreateJobDialogOpen(true)}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Create New JMS
+              </Button>
+            )}
+            {canCreateJms && (
               <Button onClick={() => setIsJmsBuilderOpen(true)}>
                   <FolderKanban className="mr-2 h-4 w-4" /> JMS Builder
               </Button>
@@ -469,7 +476,7 @@ export default function JobProgressPage() {
         </TabsContent>
       </Tabs>
 
-
+      <CreateJobDialog isOpen={isCreateJobDialogOpen} setIsOpen={setCreateJobDialogOpen} />
       <JmsBuilderDialog isOpen={isJmsBuilderOpen} setIsOpen={setIsJmsBuilderOpen} />
       <CreateTimesheetDialog isOpen={isCreateTimesheetOpen} setIsOpen={setIsCreateTimesheetOpen} />
       <CreateDocumentMovementDialog isOpen={isCreateDocumentOpen} setIsOpen={setIsCreateDocumentOpen} />
