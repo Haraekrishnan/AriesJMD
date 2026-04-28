@@ -4,7 +4,7 @@ import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import type { JobProgress, SorItem } from '@/lib/types';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 
 interface AbstractSheetData {
   plantRegNo?: string;
@@ -25,6 +25,18 @@ async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
       return null;
     }
 }
+
+const formatDateValue = (dateValue: string | Date | null | undefined): string => {
+    if (!dateValue) return '';
+    if (dateValue instanceof Date) {
+        return isValid(dateValue) ? format(dateValue, 'dd-MM-yyyy') : '';
+    }
+    if (typeof dateValue === 'string') {
+        const parsed = parseISO(dateValue);
+        return isValid(parsed) ? format(parsed, 'dd-MM-yyyy') : '';
+    }
+    return '';
+};
 
 export async function generateAbstractSheetExcel(job: JobProgress, data: AbstractSheetData) {
     const workbook = new ExcelJS.Workbook();
@@ -57,7 +69,7 @@ export async function generateAbstractSheetExcel(job: JobProgress, data: Abstrac
             srNo: index + 1,
             ...item,
             rate: item.rate,
-            dateWorkCompleted: item.dateWorkCompleted ? format(parseISO(item.dateWorkCompleted as any), 'dd-MM-yyyy') : '',
+            dateWorkCompleted: formatDateValue(item.dateWorkCompleted),
         });
     });
 
@@ -76,14 +88,14 @@ export async function generateAbstractSheetPdf(job: JobProgress, data: AbstractS
     body: (data.sorItems || []).map((item, index) => [
       index + 1,
       item.serviceCode,
-      item.serviceDescription,
+      item.scopeDescription,
       item.uom,
       item.qtyPlanned || 0,
       item.qtyExecuted || 0,
       item.eicApprovedQty || 0,
       item.workPermitNo || '',
       item.pmWorkOrderNo || '',
-      item.dateWorkCompleted ? format(parseISO(item.dateWorkCompleted as any), 'dd-MM-yyyy') : '',
+      formatDateValue(item.dateWorkCompleted),
       item.provision || '',
       item.remarks || '',
     ]),
