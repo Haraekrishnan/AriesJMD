@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -9,7 +10,7 @@ import useLocalStorage from '@/hooks/use-local-storage';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { uploadFile } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
-import { Announcement, ActivityLog, IncidentReport, Comment, DownloadableDocument, Project, JobCode, Vehicle, Driver, NotificationSettings, Broadcast, ManagementRequest, ManagementRequestStatus, ObservationReport, WorkOrder } from '@/lib/types';
+import { Announcement, ActivityLog, IncidentReport, Comment, DownloadableDocument, Project, JobCode, ServiceCode, Vehicle, Driver, NotificationSettings, Broadcast, ManagementRequest, ManagementRequestStatus, ObservationReport, WorkOrder } from '@/lib/types';
 import { JOB_CODES as INITIAL_JOB_CODES, PROJECTS as INITIAL_PROJECTS } from '@/lib/mock-data';
 import { useAuth } from './auth-provider';
 
@@ -19,6 +20,7 @@ import { useAuth } from './auth-provider';
 type GeneralContextType = {
   projects: Project[];
   jobCodes: JobCode[];
+  serviceCodes: ServiceCode[];
   workOrders: WorkOrder[];
   activityLogs: ActivityLog[];
   announcements: Announcement[];
@@ -38,6 +40,9 @@ type GeneralContextType = {
   addJobCode: (jobCode: Omit<JobCode, 'id'>) => void;
   updateJobCode: (jobCode: JobCode) => void;
   deleteJobCode: (jobCodeId: string) => void;
+  addServiceCode: (serviceCode: Omit<ServiceCode, 'id'>) => void;
+  updateServiceCode: (serviceCode: ServiceCode) => void;
+  deleteServiceCode: (serviceCodeId: string) => void;
   addWorkOrder: (data: { number: string; details?: string; foNumbers?: { value: string; details?: string }[] }) => void;
   updateWorkOrder: (workOrder: WorkOrder) => void;
   deleteWorkOrder: (workOrderId: string) => void;
@@ -117,6 +122,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
 
   const [projectsById, setProjectsById] = useState<Record<string, Project>>({});
   const [jobCodesById, setJobCodesById] = useState<Record<string, JobCode>>({});
+  const [serviceCodesById, setServiceCodesById] = useState<Record<string, ServiceCode>>({});
   const [workOrdersById, setWorkOrdersById] = useState<Record<string, WorkOrder>>({});
   const [activityLogsById, setActivityLogsById] = useState<Record<string, ActivityLog>>({});
   const [announcementsById, setAnnouncementsById] = useState<Record<string, Announcement>>({});
@@ -132,6 +138,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
 
   const projects = useMemo(() => Object.values(projectsById), [projectsById]);
   const jobCodes = useMemo(() => Object.values(jobCodesById), [jobCodesById]);
+  const serviceCodes = useMemo(() => Object.values(serviceCodesById), [serviceCodesById]);
   const workOrders = useMemo(() => Object.values(workOrdersById), [workOrdersById]);
   const activityLogs = useMemo(() => Object.values(activityLogsById), [activityLogsById]);
   const announcements = useMemo(() => Object.values(announcementsById), [announcementsById]);
@@ -174,6 +181,20 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
       remove(ref(rtdb, `jobCodes/${jobCodeId}`));
   }, []);
 
+  const addServiceCode = useCallback((serviceCode: Omit<ServiceCode, 'id'>) => {
+    const newRef = push(ref(rtdb, 'serviceCodes'));
+    set(newRef, { ...serviceCode });
+  }, []);
+
+  const updateServiceCode = useCallback((serviceCode: ServiceCode) => {
+    const { id, ...data } = serviceCode;
+    update(ref(rtdb, `serviceCodes/${id}`), data);
+  }, []);
+
+  const deleteServiceCode = useCallback((serviceCodeId: string) => {
+    remove(ref(rtdb, `serviceCodes/${serviceCodeId}`));
+  }, []);
+  
   const addWorkOrder = useCallback((data: { number: string; details?: string; foNumbers?: { value: string; details?: string }[] }) => {
     const newRef = push(ref(rtdb, 'workOrders'));
     const foNumbersArray = data.foNumbers?.filter(fo => fo.value.trim() !== '') || [];
@@ -596,6 +617,7 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
     const unsubscribers = [
       createDataListener('projects', setProjectsById),
       createDataListener('jobCodes', setJobCodesById),
+      createDataListener('serviceCodes', setServiceCodesById),
       createDataListener('workOrders', setWorkOrdersById),
       createDataListener('activityLogs', setActivityLogsById),
       createDataListener('announcements', setAnnouncementsById),
@@ -643,8 +665,8 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const contextValue: GeneralContextType = {
-    projects, jobCodes, workOrders, activityLogs, announcements, broadcasts, incidentReports, observationReports, downloadableDocuments, vehicles, drivers, notificationSettings, feedback, managementRequests,
-    addProject, updateProject, deleteProject, addJobCode, updateJobCode, deleteJobCode, addWorkOrder, updateWorkOrder, deleteWorkOrder,
+    projects, jobCodes, serviceCodes, workOrders, activityLogs, announcements, broadcasts, incidentReports, observationReports, downloadableDocuments, vehicles, drivers, notificationSettings, feedback, managementRequests,
+    addProject, updateProject, deleteProject, addJobCode, updateJobCode, deleteJobCode, addServiceCode, updateServiceCode, deleteServiceCode, addWorkOrder, updateWorkOrder, deleteWorkOrder,
     addFeedback, updateFeedbackStatus, deleteFeedback, addFeedbackComment, markFeedbackAsViewed,
     addDocument, updateDocument, deleteDocument, addVehicle, updateVehicle, deleteVehicle, addDriver, updateDriver, deleteDriver, 
     addUsersToIncidentReport, markIncidentAsViewed,
@@ -666,3 +688,4 @@ export const useGeneral = (): GeneralContextType => {
 };
 
     
+

@@ -14,7 +14,7 @@ interface ServiceCodeListProps {
 }
 
 export default function ServiceCodeList({ onEdit }: ServiceCodeListProps) {
-    const { jobCodes: serviceCodes, deleteJobCode: deleteServiceCode } = useGeneral();
+    const { serviceCodes, deleteServiceCode } = useGeneral();
     const { toast } = useToast();
 
     const handleDelete = (id: string, code: string) => {

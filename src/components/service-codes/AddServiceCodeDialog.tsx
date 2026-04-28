@@ -25,7 +25,7 @@ interface AddServiceCodeDialogProps {
 }
 
 export default function AddServiceCodeDialog({ isOpen, setIsOpen }: AddServiceCodeDialogProps) {
-  const { addJobCode: addServiceCode } = useGeneral();
+  const { addServiceCode } = useGeneral();
   const { toast } = useToast();
 
   const form = useForm<ServiceCodeFormValues>({

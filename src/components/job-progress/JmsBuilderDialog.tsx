@@ -58,7 +58,6 @@ const builderSchema = z.object({
   assigneeId: z.string().optional(),
   // Builder Details
   plantRegNo: z.string().optional(),
-  arcOtcWoNo: z.string().optional(),
   ariesJobId: z.string().optional(),
   sorItems: z.array(sorItemSchema).optional(),
 });
@@ -90,7 +89,7 @@ const generateDefaultSorItem = (): SorItem => ({
 
 export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderDialogProps) {
   const { user, users, getVisibleUsers } = useAuth();
-  const { projects, workOrders, jobCodes: serviceCodes } = useGeneral();
+  const { projects, workOrders, serviceCodes } = useGeneral();
   const { createJobProgress, updateJobProgress } = usePlanner();
   const { toast } = useToast();
   const isEditMode = !!job;
@@ -119,7 +118,7 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
                 title: job.title,
                 projectId: job.projectId,
                 plantUnit: job.plantUnit || '',
-                workOrderNo: job.workOrderNo || '',
+                workOrderNo: job.workOrderNo || job.arcOtcWoNo || '',
                 foNo: job.foNo || '',
                 jmsNo: job.jmsNo || '',
                 amount: job.amount || undefined,
@@ -127,7 +126,6 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
                 dateTo: job.dateTo ? parseISO(job.dateTo) : null,
                 assigneeId: job.steps[0]?.assigneeId || '',
                 plantRegNo: job.plantRegNo || '',
-                arcOtcWoNo: job.arcOtcWoNo || '',
                 ariesJobId: job.ariesJobId || '',
                 sorItems: job.sorItems?.map(item => ({
                   ...item,
@@ -138,7 +136,7 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
             form.reset({
                 title: '', projectId: '', plantUnit: '', workOrderNo: '',
                 foNo: '', jmsNo: '', amount: undefined, dateFrom: null, dateTo: null,
-                assigneeId: '', plantRegNo: '', arcOtcWoNo: '', ariesJobId: '', sorItems: [],
+                assigneeId: '', plantRegNo: '', ariesJobId: '', sorItems: [],
             });
         }
     }
@@ -226,13 +224,7 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
                 control={form.control}
                 name="workOrderNo"
                 render={({ field }) => (
-                  <Select
-                    value={field.value || ''}
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                      form.setValue('arcOtcWoNo', value);
-                    }}
-                  >
+                  <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
                     <SelectContent>
                       {workOrders.map((wo) => (
@@ -299,7 +291,7 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
                                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                             <Command><CommandInput placeholder="Search codes..."/><CommandList><CommandEmpty>No codes found.</CommandEmpty>
                                                 <CommandGroup>
-                                                    {(serviceCodes || []).map(sc => (
+                                                    {serviceCodes.map(sc => (
                                                         <CommandItem key={sc.id} value={sc.code} onSelect={() => handleServiceCodeSelect(index, sc)}>
                                                             <Check className={cn("mr-2 h-4 w-4", sc.code === controllerField.value ? "opacity-100" : "opacity-0")} />
                                                             {sc.code}

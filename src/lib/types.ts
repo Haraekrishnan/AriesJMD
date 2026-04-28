@@ -220,10 +220,7 @@ export type WorkOrder = {
   id: string;
   number: string;
   details?: string;
-  foNumbers?: {
-    value: string;
-    details?: string;
-  }[];
+  foNumbers?: { value: string; details?: string }[];
 };
 
 export type VehicleStatus = 'Active' | 'In Maintenance' | 'Left the Project';
@@ -994,6 +991,14 @@ export type JobCode = {
   jobNo?: string;
 };
 
+export type ServiceCode = {
+  id: string;
+  code: string;
+  description: string;
+  uom: string;
+  rate: number;
+};
+
 export type VehicleUsageRecord = {
   [month: string]: { // yyyy-MM
     records: {
@@ -1086,7 +1091,7 @@ export type JobStep = {
 export type SorItem = {
   id: string;
   serviceCode: string;
-  serviceDescription: string;
+  scopeDescription: string;
   uom: string;
   rate: number;
   qtyPlanned?: number;
@@ -1295,10 +1300,3 @@ export type InwardOutwardRecord = {
     isLocked?: boolean;
 };
 
-export type ServiceCode = {
-    id: string;
-    code: string;
-    description: string;
-    uom: string;
-    rate: number;
-};
