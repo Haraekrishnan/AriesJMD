@@ -42,6 +42,7 @@ export default function JobProgressPage() {
 
   const [isCreateJobDialogOpen, setCreateJobDialogOpen] = useState(false);
   const [isJmsBuilderOpen, setIsJmsBuilderOpen] = useState(false);
+  const [jobForBuilder, setJobForBuilder] = useState<JobProgress | null>(null);
   const [isCreateTimesheetOpen, setIsCreateTimesheetOpen] = useState(false);
   const [isCreateDocumentOpen, setIsCreateDocumentOpen] = useState(false);
   const [viewingJob, setViewingJob] = useState<JobProgress | null>(null);
@@ -76,6 +77,17 @@ export default function JobProgressPage() {
         setTimesheetView(user.viewPreferences.timesheetTracker);
     }
   }, [user?.viewPreferences]);
+  
+  const handleOpenBuilderForNew = () => {
+    setJobForBuilder(null);
+    setIsJmsBuilderOpen(true);
+  };
+  
+  const handleOpenBuilderForEdit = (job: JobProgress) => {
+    setViewingJob(null);
+    setJobForBuilder(job);
+    setIsJmsBuilderOpen(true);
+  };
 
   const handleJmsDefaultViewChange = (value: string) => {
     updateUserViewPreference('jmsTracker', value as 'board' | 'list');
@@ -317,7 +329,7 @@ export default function JobProgressPage() {
               </Button>
             )}
             {canCreateJms && (
-              <Button onClick={() => setIsJmsBuilderOpen(true)}>
+              <Button onClick={handleOpenBuilderForNew}>
                   <FolderKanban className="mr-2 h-4 w-4" /> JMS Builder
               </Button>
             )}
@@ -477,7 +489,11 @@ export default function JobProgressPage() {
       </Tabs>
 
       <CreateJobDialog isOpen={isCreateJobDialogOpen} setIsOpen={setCreateJobDialogOpen} />
-      <JmsBuilderDialog isOpen={isJmsBuilderOpen} setIsOpen={setIsJmsBuilderOpen} />
+      <JmsBuilderDialog 
+        isOpen={isJmsBuilderOpen} 
+        setIsOpen={setIsJmsBuilderOpen} 
+        job={jobForBuilder}
+      />
       <CreateTimesheetDialog isOpen={isCreateTimesheetOpen} setIsOpen={setIsCreateTimesheetOpen} />
       <CreateDocumentMovementDialog isOpen={isCreateDocumentOpen} setIsOpen={setIsCreateDocumentOpen} />
       {viewingJob && (
@@ -485,6 +501,7 @@ export default function JobProgressPage() {
             isOpen={!!viewingJob} 
             setIsOpen={() => setViewingJob(null)} 
             job={viewingJob} 
+            onOpenBuilder={handleOpenBuilderForEdit}
         />
       )}
        {viewingTimesheet && (

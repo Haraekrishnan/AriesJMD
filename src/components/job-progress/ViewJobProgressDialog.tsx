@@ -337,11 +337,11 @@ interface ViewJobProgressDialogProps {
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
     job: JobProgress;
+    onOpenBuilder: (job: JobProgress) => void;
 }
 
-export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
+export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob, onOpenBuilder }: ViewJobProgressDialogProps) {
     const { user, users, can } = useAuth();
-    const { projects, workOrders } = useGeneral();
     const {
         jobProgress,
         updateJobProgress,
@@ -356,6 +356,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         deleteJobProgress,
         addAndCompleteStep,
     } = usePlanner();
+    const { projects, workOrders } = useGeneral();
     const [reassigningStep, setReassigningStep] = useState<JobStep | null>(null);
     const [returningStep, setReturningStep] = useState<JobStep | null>(null);
     const [isReopenDialogOpen, setIsReopenDialogOpen] = useState(false);
@@ -363,7 +364,6 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
     const [editingStepName, setEditingStepName] = useState('');
     const [isEditingHeader, setIsEditingHeader] = useState(false);
     const [newComment, setNewComment] = useState('');
-    const [isBuilderOpen, setIsBuilderOpen] = useState(false);
     const { toast } = useToast();
 
     const job = useMemo(() => {
@@ -672,19 +672,12 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                         )}
                     </div>
                     <div className="flex items-center gap-2">
-                         <Button variant="secondary" onClick={() => { setIsOpen(false); setIsBuilderOpen(true); }}><FolderKanban className="mr-2 h-4 w-4"/> Open Builder</Button>
+                         <Button variant="secondary" onClick={() => onOpenBuilder(job)}><FolderKanban className="mr-2 h-4 w-4"/> Open Builder</Button>
                         <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
                     </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-        {isBuilderOpen && (
-            <JmsBuilderDialog 
-                isOpen={isBuilderOpen}
-                setIsOpen={setIsBuilderOpen}
-                job={job}
-            />
-        )}
         {reassigningStep && (
             <ReassignStepDialog
                 isOpen={!!reassigningStep}
