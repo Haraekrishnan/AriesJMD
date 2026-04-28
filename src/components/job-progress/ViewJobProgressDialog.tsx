@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { format, formatDistanceToNow, parseISO, isValid } from 'date-fns';
-import { CheckCircle, Clock, Circle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X, MessageSquare, Trash2, ArrowRight, ArrowUp, ArrowDown, XCircle, AlertTriangle, FolderKanban } from 'lucide-react';
+import { CheckCircle, Clock, Circle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X, MessageSquare, Trash2, ArrowRight, ArrowUp, ArrowDown, XCircle, AlertTriangle, FolderKanban, Download } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
@@ -30,6 +30,9 @@ import { JOB_PROGRESS_STEPS, REOPEN_JOB_STEPS } from '@/lib/types';
 import ReturnStepDialog from './ReturnStepDialog';
 import ReassignStepDialog from './ReassignStepDialog';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import JmsBuilderDialog from './JmsBuilderDialog';
+import { generateAbstractSheetExcel, generateAbstractSheetPdf } from './generateAbstractSheet';
+
 
 const statusConfig: { [key in JobStepStatus]: { icon?: React.ElementType, color: string, label: string } } = {
   'Not Started': { icon: Circle, color: 'text-gray-400', label: 'Not Started' },
@@ -361,6 +364,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
     const [editingStepName, setEditingStepName] = useState('');
     const [isEditingHeader, setIsEditingHeader] = useState(false);
     const [newComment, setNewComment] = useState('');
+    const [isBuilderOpen, setIsBuilderOpen] = useState(false);
     const { toast } = useToast();
 
     const job = useMemo(() => {
@@ -437,6 +441,19 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         }
         setEditingStepId(null);
         setEditingStepName('');
+    };
+
+    const handleDownload = (format: 'excel' | 'pdf') => {
+        const dataForReport = {
+            plantRegNo: job.plantRegNo,
+            ariesJobId: job.ariesJobId,
+            sorItems: job.sorItems || [],
+        };
+        if (format === 'excel') {
+            generateAbstractSheetExcel(job, dataForReport);
+        } else {
+            generateAbstractSheetPdf(job, dataForReport);
+        }
     };
     
     return (
@@ -608,6 +625,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                                             </div>
                                                                         )
                                                                     })}
+                                                                    {commentsArray.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">No comments for this event.</p>}
                                                                 </div>
                                                             </AccordionContent>
                                                         </AccordionItem>
@@ -662,13 +680,23 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                         {canReopenJob && (
                             <Button variant="outline" onClick={() => setIsReopenDialogOpen(true)}><Undo2 className="mr-2 h-4 w-4"/>Reopen Job</Button>
                         )}
+                        <Button variant="outline" onClick={() => handleDownload('excel')}><Download className="mr-2 h-4 w-4" /> Abstract Excel</Button>
+                        <Button variant="outline" onClick={() => handleDownload('pdf')}><Download className="mr-2 h-4 w-4" /> Abstract PDF</Button>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button variant="secondary" onClick={() => setIsOpen(false)}>Close</Button>
+                         <Button variant="secondary" onClick={() => { setIsOpen(false); setIsBuilderOpen(true); }}><FolderKanban className="mr-2 h-4 w-4"/> Open Builder</Button>
+                        <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
                     </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+        {isBuilderOpen && (
+            <JmsBuilderDialog 
+                isOpen={isBuilderOpen}
+                setIsOpen={setIsBuilderOpen}
+                job={job}
+            />
+        )}
         {reassigningStep && (
             <ReassignStepDialog
                 isOpen={!!reassigningStep}
