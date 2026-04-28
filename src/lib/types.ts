@@ -1094,10 +1094,12 @@ export type SorItem = {
   eicApprovedQty?: number;
   workPermitNo?: string;
   pmWorkOrderNo?: string;
-  dateWorkCompleted?: string | null; // ISO string
+  dateWorkCompleted?: string | null;
   provision?: string;
   remarks?: string;
 };
+
+
 
 export type JobProgress = {
     id: string;

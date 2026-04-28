@@ -1,4 +1,3 @@
-
 'use client';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,11 +7,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Trash2, Download } from 'lucide-react';
+import { PlusCircle, Trash2, Download, ChevronsUpDown, Check } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { useEffect, useMemo, useState } from 'react';
-import { JobProgress, SorItem, JOB_PROGRESS_STEPS } from '@/lib/types';
+import { JobProgress, SorItem, JOB_PROGRESS_STEPS, ServiceCode } from '@/lib/types';
 import { usePlanner } from '@/contexts/planner-provider';
 import { format, parseISO } from 'date-fns';
 import { generateAbstractSheetExcel, generateAbstractSheetPdf } from './generateAbstractSheet';
@@ -22,15 +21,26 @@ import { DatePickerInput } from '../ui/date-picker-input';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { cn } from '@/lib/utils';
 
 const sorItemSchema = z.object({
   id: z.string(),
-  rilApprovedQuantity: z.coerce.number().min(0, "Quantity must be non-negative"),
-  itemCode: z.string().min(1, "Item Code is required"),
+  serviceCode: z.string().min(1, "Service Code is required"),
   scopeDescription: z.string().min(1, "Scope Description is required"),
   uom: z.string().min(1, "UOM is required"),
-  unitRate: z.coerce.number().min(0, "Unit Rate must be non-negative"),
+  rate: z.coerce.number().min(0, "Rate must be non-negative"),
+  qtyPlanned: z.coerce.number().optional().default(0),
+  qtyExecuted: z.coerce.number().optional().default(0),
+  eicApprovedQty: z.coerce.number().optional().default(0),
+  workPermitNo: z.string().optional(),
+  pmWorkOrderNo: z.string().optional(),
+  dateWorkCompleted: z.date().optional().nullable(),
+  provision: z.string().optional(),
+  remarks: z.string().optional(),
 });
+
 
 const builderSchema = z.object({
   // Job Details
@@ -44,7 +54,7 @@ const builderSchema = z.object({
   dateFrom: z.date().optional().nullable(),
   dateTo: z.date().optional().nullable(),
   // Initial Step
-  assigneeId: z.string().min(1, 'Initial assignee is required'),
+  assigneeId: z.string().optional(),
   // Builder Details
   plantRegNo: z.string().optional(),
   arcOtcWoNo: z.string().optional(),
@@ -60,12 +70,30 @@ interface JmsBuilderDialogProps {
   job?: JobProgress | null;
 }
 
+const generateDefaultSorItem = (): SorItem => ({
+  id: `sor-${Date.now()}`,
+  serviceCode: '',
+  scopeDescription: '',
+  uom: '',
+  rate: 0,
+  qtyPlanned: 0,
+  qtyExecuted: 0,
+  eicApprovedQty: 0,
+  workPermitNo: '',
+  pmWorkOrderNo: '',
+  dateWorkCompleted: null,
+  provision: '',
+  remarks: '',
+});
+
+
 export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderDialogProps) {
   const { user, users, getVisibleUsers } = useAuth();
-  const { projects, workOrders } = useGeneral();
+  const { projects, workOrders, serviceCodes } = useGeneral();
   const { createJobProgress, updateJobProgress } = usePlanner();
   const { toast } = useToast();
   const isEditMode = !!job;
+  const [popoverOpenState, setPopoverOpenState] = useState<Record<number, boolean>>({});
 
   const assignableUsers = useMemo(() => {
     return getVisibleUsers().filter(u => u.role !== 'Manager');
@@ -100,7 +128,10 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
                 plantRegNo: job.plantRegNo || '',
                 arcOtcWoNo: job.arcOtcWoNo || '',
                 ariesJobId: job.ariesJobId || '',
-                sorItems: job.sorItems || [],
+                sorItems: job.sorItems?.map(item => ({
+                  ...item,
+                  dateWorkCompleted: item.dateWorkCompleted ? parseISO(item.dateWorkCompleted) : null,
+                })) || [],
             });
         } else {
             form.reset({
@@ -116,7 +147,7 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
     if (isEditMode && job) {
         updateJobProgress(job.id, {
             ...data,
-            sorItems: data.sorItems || [],
+            sorItems: data.sorItems?.map(item => ({ ...item, dateWorkCompleted: item.dateWorkCompleted?.toISOString() || null })),
         });
         toast({ title: "JMS Data Updated", description: "The SOR items and details have been updated." });
     } else {
@@ -127,6 +158,7 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
                 assigneeId: data.assigneeId,
                 description: 'Initial step from builder'
             }],
+            sorItems: data.sorItems?.map(item => ({ ...item, dateWorkCompleted: item.dateWorkCompleted?.toISOString() || null })),
         });
         toast({ title: "JMS Created", description: "The new JMS has been added to the tracker." });
     }
@@ -143,6 +175,14 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
     } else {
         generateAbstractSheetPdf(job, form.getValues());
     }
+  };
+  
+  const handleServiceCodeSelect = (index: number, sc: ServiceCode) => {
+    form.setValue(`sorItems.${index}.serviceCode`, sc.code);
+    form.setValue(`sorItems.${index}.scopeDescription`, sc.description);
+    form.setValue(`sorItems.${index}.uom`, sc.uom);
+    form.setValue(`sorItems.${index}.rate`, sc.rate);
+    setPopoverOpenState(prev => ({...prev, [index]: false}));
   };
 
   return (
@@ -218,28 +258,67 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
               <Table>
                 <TableHeader className="sticky top-0 bg-muted z-10">
                   <TableRow>
-                    <TableHead className="w-1/12">Qty</TableHead>
-                    <TableHead className="w-1/12">Item Code</TableHead>
-                    <TableHead className="w-5/12">Scope Description</TableHead>
-                    <TableHead className="w-1/12">UOM</TableHead>
-                    <TableHead className="w-1/12">Unit Rate</TableHead>
-                    <TableHead className="w-1/12">Total</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
+                    <TableHead className="w-12">Sr.</TableHead>
+                    <TableHead className="min-w-[150px]">Service Code</TableHead>
+                    <TableHead className="min-w-[250px]">Service Description</TableHead>
+                    <TableHead>UOM</TableHead>
+                    <TableHead>Rate</TableHead>
+                    <TableHead>Qty Planned</TableHead>
+                    <TableHead>Qty Executed</TableHead>
+                    <TableHead>EIC Appr. Qty</TableHead>
+                    <TableHead>Work Permit No</TableHead>
+                    <TableHead>PM WO No</TableHead>
+                    <TableHead>Date Completed</TableHead>
+                    <TableHead>Provision</TableHead>
+                    <TableHead>Remarks</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {fields.map((field, index) => {
-                    const quantity = watchedItems[index]?.rilApprovedQuantity || 0;
-                    const rate = watchedItems[index]?.unitRate || 0;
+                    const quantity = watchedItems[index]?.eicApprovedQty || watchedItems[index]?.qtyExecuted || 0;
+                    const rate = watchedItems[index]?.rate || 0;
                     const total = quantity * rate;
                     return (
                         <TableRow key={field.id}>
-                            <TableCell><Input type="number" {...form.register(`sorItems.${index}.rilApprovedQuantity`)} /></TableCell>
-                            <TableCell><Input {...form.register(`sorItems.${index}.itemCode`)} /></TableCell>
-                            <TableCell><Textarea {...form.register(`sorItems.${index}.scopeDescription`)} rows={2} /></TableCell>
-                            <TableCell><Input {...form.register(`sorItems.${index}.uom`)} /></TableCell>
-                            <TableCell><Input type="number" step="0.01" {...form.register(`sorItems.${index}.unitRate`)} /></TableCell>
-                            <TableCell className="font-semibold text-right">{total.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</TableCell>
+                            <TableCell className="font-semibold text-center">{index + 1}</TableCell>
+                            <TableCell>
+                                <Controller name={`sorItems.${index}.serviceCode`} control={form.control} render={({ field: controllerField }) => (
+                                    <Popover open={popoverOpenState[index]} onOpenChange={(open) => setPopoverOpenState(prev => ({...prev, [index]: open}))}>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="outline" className="w-full justify-start text-left font-normal h-8 text-xs">
+                                                <span className="truncate">{controllerField.value || "Select..."}</span>
+                                                <ChevronsUpDown className="ml-auto h-3 w-3"/>
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                            <Command><CommandInput placeholder="Search codes..."/><CommandList><CommandEmpty>No codes found.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {serviceCodes.map(sc => (
+                                                        <CommandItem key={sc.id} value={sc.code} onSelect={() => handleServiceCodeSelect(index, sc)}>
+                                                            <Check className={cn("mr-2 h-4 w-4", sc.code === controllerField.value ? "opacity-100" : "opacity-0")} />
+                                                            {sc.code}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList></Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                )}/>
+                            </TableCell>
+                            <TableCell><Input {...form.register(`sorItems.${index}.scopeDescription`)} readOnly className="h-8 text-xs"/></TableCell>
+                            <TableCell><Input {...form.register(`sorItems.${index}.uom`)} readOnly className="h-8 text-xs"/></TableCell>
+                            <TableCell><Input type="number" {...form.register(`sorItems.${index}.rate`)} step="0.01" readOnly className="h-8 text-xs"/></TableCell>
+                            <TableCell><Input type="number" {...form.register(`sorItems.${index}.qtyPlanned`)} className="h-8 text-xs"/></TableCell>
+                            <TableCell><Input type="number" {...form.register(`sorItems.${index}.qtyExecuted`)} className="h-8 text-xs"/></TableCell>
+                            <TableCell><Input type="number" {...form.register(`sorItems.${index}.eicApprovedQty`)} className="h-8 text-xs"/></TableCell>
+                            <TableCell><Input {...form.register(`sorItems.${index}.workPermitNo`)} className="h-8 text-xs"/></TableCell>
+                            <TableCell><Input {...form.register(`sorItems.${index}.pmWorkOrderNo`)} className="h-8 text-xs"/></TableCell>
+                            <TableCell><Controller name={`sorItems.${index}.dateWorkCompleted`} control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} /></TableCell>
+                            <TableCell><Input {...form.register(`sorItems.${index}.provision`)} className="h-8 text-xs"/></TableCell>
+                            <TableCell><Input {...form.register(`sorItems.${index}.remarks`)} className="h-8 text-xs"/></TableCell>
+                            <TableCell className="font-semibold text-right text-xs">{total.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</TableCell>
                             <TableCell><Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button></TableCell>
                         </TableRow>
                     )
@@ -248,12 +327,14 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
               </Table>
             </ScrollArea>
           </div>
-            <div className="flex justify-end p-2 font-bold text-lg">
-                Grand Total: {watchedItems.reduce((acc, item) => acc + (item.rilApprovedQuantity * item.unitRate), 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+            <div className="flex justify-between items-center p-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => append(generateDefaultSorItem())}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Item
+                </Button>
+                <div className="font-bold text-lg">
+                    Grand Total: {watchedItems.reduce((acc, item) => acc + ((item.eicApprovedQty || item.qtyExecuted || 0) * (item.rate || 0)), 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                </div>
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `sor-${Date.now()}`, rilApprovedQuantity: 1, itemCode: '', scopeDescription: '', uom: 'MDY', unitRate: 0 })}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Item
-            </Button>
           
           <DialogFooter className="pt-4 mt-auto border-t justify-between">
              <div className="flex gap-2">
