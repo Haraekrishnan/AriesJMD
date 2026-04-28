@@ -16,6 +16,8 @@ import { JobProgress, SorItem, JOB_PROGRESS_STEPS, ServiceCode } from '@/lib/typ
 import { usePlanner } from '@/contexts/planner-provider';
 import { format, parseISO } from 'date-fns';
 import { generateAbstractSheetExcel, generateAbstractSheetPdf } from './generateAbstractSheet';
+import { generateJmsSheetExcel, generateJmsSheetPdf } from './generateJmsSheet';
+import { generateIncentiveSummaryExcel, generateIncentiveSummaryPdf } from './generateIncentiveSummary';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { DatePickerInput } from '../ui/date-picker-input';
@@ -165,15 +167,25 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
     setIsOpen(false);
   };
   
-  const handleDownload = (format: 'excel' | 'pdf') => {
-    if (!job) {
-        toast({ title: "Cannot Download", description: "Please save the JMS before downloading.", variant: 'destructive'});
-        return;
+  const handleDownload = (format: 'abstract-excel' | 'abstract-pdf' | 'jms-excel' | 'jms-pdf' | 'incentive-excel' | 'incentive-pdf') => {
+    if (!isEditMode) {
+      toast({ title: "Cannot Download", description: "Please save the JMS before downloading reports.", variant: 'destructive'});
+      return;
     }
-    if (format === 'excel') {
+    if (!job) return;
+
+    if (format === 'abstract-excel') {
         generateAbstractSheetExcel(job, form.getValues());
-    } else {
+    } else if (format === 'abstract-pdf') {
         generateAbstractSheetPdf(job, form.getValues());
+    } else if (format === 'jms-excel') {
+        generateJmsSheetExcel();
+    } else if (format === 'jms-pdf') {
+        generateJmsSheetPdf();
+    } else if (format === 'incentive-excel') {
+        generateIncentiveSummaryExcel();
+    } else if (format === 'incentive-pdf') {
+        generateIncentiveSummaryPdf();
     }
   };
   
@@ -194,7 +206,7 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
                 <div>
                     <DialogTitle>JMS Builder</DialogTitle>
                     <DialogDescription>
-                        {isEditMode ? `Editing JMS: "${job.title}"` : "Create a new JMS with its abstract sheet details."}
+                        {isEditMode ? `Editing JMS: "${job?.title}"` : "Create a new JMS with its abstract sheet details."}
                     </DialogDescription>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
@@ -346,9 +358,13 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
             </div>
           
           <DialogFooter className="pt-4 mt-auto border-t justify-between">
-             <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={() => handleDownload('excel')}><Download className="mr-2 h-4 w-4" /> Abstract Excel</Button>
-                <Button type="button" variant="outline" onClick={() => handleDownload('pdf')}><Download className="mr-2 h-4 w-4" /> Abstract PDF</Button>
+             <div className="flex gap-2 flex-wrap">
+                <Button type="button" variant="outline" size="sm" onClick={() => handleDownload('abstract-excel')}><Download className="mr-2 h-4 w-4" /> Abstract Excel</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => handleDownload('abstract-pdf')}><Download className="mr-2 h-4 w-4" /> Abstract PDF</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => handleDownload('jms-excel')}><Download className="mr-2 h-4 w-4" /> JMS Excel</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => handleDownload('jms-pdf')}><Download className="mr-2 h-4 w-4" /> JMS PDF</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => handleDownload('incentive-excel')}><Download className="mr-2 h-4 w-4" /> Incentive Excel</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => handleDownload('incentive-pdf')}><Download className="mr-2 h-4 w-4" /> Incentive PDF</Button>
              </div>
              <div className="flex gap-2">
                 <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
@@ -362,3 +378,5 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
 }
 
   
+
+    
