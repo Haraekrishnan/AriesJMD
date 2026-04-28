@@ -25,6 +25,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { cn } from '@/lib/utils';
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../ui/alert-dialog';
 
 const sorItemSchema = z.object({
   id: z.string(),
@@ -118,7 +119,7 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
                 title: job.title,
                 projectId: job.projectId,
                 plantUnit: job.plantUnit || '',
-                workOrderNo: job.workOrderNo || job.arcOtcWoNo || '',
+                workOrderNo: job.workOrderNo || '',
                 foNo: job.foNo || '',
                 jmsNo: job.jmsNo || '',
                 amount: job.amount || undefined,
@@ -268,7 +269,7 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
                     <TableHead>Qty Executed</TableHead>
                     <TableHead>EIC Appr. Qty</TableHead>
                     <TableHead>Work Permit No</TableHead>
-                    <TableHead>PM WO No</TableHead>
+                    <TableHead>PM Work Order No</TableHead>
                     <TableHead>Date Completed</TableHead>
                     <TableHead>Provision</TableHead>
                     <TableHead>Remarks</TableHead>
@@ -292,7 +293,7 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
                                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                             <Command><CommandInput placeholder="Search codes..."/><CommandList><CommandEmpty>No codes found.</CommandEmpty>
                                                 <CommandGroup>
-                                                    {serviceCodes.map(sc => (
+                                                    {(serviceCodes || []).map(sc => (
                                                         <CommandItem key={sc.id} value={sc.code} onSelect={() => handleServiceCodeSelect(index, sc)}>
                                                             <Check className={cn("mr-2 h-4 w-4", sc.code === controllerField.value ? "opacity-100" : "opacity-0")} />
                                                             {sc.code}
@@ -307,7 +308,19 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
                             <TableCell><Input {...form.register(`sorItems.${index}.scopeDescription`)} readOnly className="h-8 text-xs"/></TableCell>
                             <TableCell><Input {...form.register(`sorItems.${index}.uom`)} readOnly className="h-8 text-xs"/></TableCell>
                             <TableCell><Input type="number" {...form.register(`sorItems.${index}.rate`)} step="0.01" readOnly className="h-8 text-xs"/></TableCell>
-                            <TableCell><Input type="number" {...form.register(`sorItems.${index}.qtyPlanned`)} className="h-8 text-xs"/></TableCell>
+                            <TableCell>
+                                <Input
+                                    type="number"
+                                    {...form.register(`sorItems.${index}.qtyPlanned`)}
+                                    className="h-8 text-xs"
+                                    onChange={(e) => {
+                                        const value = e.target.value === '' ? 0 : Number(e.target.value);
+                                        form.setValue(`sorItems.${index}.qtyPlanned`, value);
+                                        form.setValue(`sorItems.${index}.qtyExecuted`, value);
+                                        form.setValue(`sorItems.${index}.eicApprovedQty`, value);
+                                    }}
+                                />
+                            </TableCell>
                             <TableCell><Input type="number" {...form.register(`sorItems.${index}.qtyExecuted`)} className="h-8 text-xs"/></TableCell>
                             <TableCell><Input type="number" {...form.register(`sorItems.${index}.eicApprovedQty`)} className="h-8 text-xs"/></TableCell>
                             <TableCell><Input {...form.register(`sorItems.${index}.workPermitNo`)} className="h-8 text-xs"/></TableCell>
