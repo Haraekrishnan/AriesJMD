@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Trash2, Download, ChevronsUpDown, Check } from 'lucide-react';
+import { PlusCircle, Trash2, Download, ChevronsUpDown, Check, Minus } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { useEffect, useMemo, useState } from 'react';
@@ -73,7 +73,7 @@ interface JmsBuilderDialogProps {
 const generateDefaultSorItem = (): SorItem => ({
   id: `sor-${Date.now()}`,
   serviceCode: '',
-  scopeDescription: '',
+  serviceDescription: '',
   uom: '',
   rate: 0,
   qtyPlanned: 0,
@@ -187,12 +187,19 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-7xl h-[95vh] flex flex-col">
+      <DialogContent className="w-screen h-screen max-w-none rounded-none border-0 flex flex-col">
         <DialogHeader>
-          <DialogTitle>JMS Builder</DialogTitle>
-          <DialogDescription>
-            {isEditMode ? `Editing JMS: "${job.title}"` : "Create a new JMS with its abstract sheet details."}
-          </DialogDescription>
+            <div className="flex justify-between items-center">
+                <div>
+                    <DialogTitle>JMS Builder</DialogTitle>
+                    <DialogDescription>
+                        {isEditMode ? `Editing JMS: "${job.title}"` : "Create a new JMS with its abstract sheet details."}
+                    </DialogDescription>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
+                    <Minus className="h-4 w-4" />
+                </Button>
+            </div>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
