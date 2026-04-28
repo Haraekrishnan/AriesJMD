@@ -278,15 +278,11 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
                     <TableHead>Date Completed</TableHead>
                     <TableHead>Provision</TableHead>
                     <TableHead>Remarks</TableHead>
-                    <TableHead>Total</TableHead>
                     <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {fields.map((field, index) => {
-                    const quantity = watchedItems[index]?.eicApprovedQty || watchedItems[index]?.qtyExecuted || 0;
-                    const rate = watchedItems[index]?.rate || 0;
-                    const total = quantity * rate;
                     return (
                         <TableRow key={field.id}>
                             <TableCell className="font-semibold text-center">{index + 1}</TableCell>
@@ -325,7 +321,6 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
                             <TableCell><Controller name={`sorItems.${index}.dateWorkCompleted`} control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} /></TableCell>
                             <TableCell><Input {...form.register(`sorItems.${index}.provision`)} className="h-8 text-xs"/></TableCell>
                             <TableCell><Input {...form.register(`sorItems.${index}.remarks`)} className="h-8 text-xs"/></TableCell>
-                            <TableCell className="font-semibold text-right text-xs">{total.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</TableCell>
                             <TableCell><Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button></TableCell>
                         </TableRow>
                     )

@@ -31,7 +31,7 @@ export async function generateAbstractSheetExcel(job: JobProgress, data: Abstrac
     const worksheet = workbook.addWorksheet('Abstract Sheet');
     
     worksheet.addRow([`Aries Job#: ${data.ariesJobId || 'N/A'}`]);
-    worksheet.mergeCells('A1:M1');
+    worksheet.mergeCells('A1:L1');
     worksheet.getCell('A1').font = { bold: true };
     worksheet.addRow([]);
 
@@ -41,6 +41,7 @@ export async function generateAbstractSheetExcel(job: JobProgress, data: Abstrac
         { header: 'Service Code', key: 'serviceCode', width: 15 },
         { header: 'Service Description', key: 'serviceDescription', width: 50 },
         { header: 'UOM', key: 'uom', width: 10 },
+        { header: 'Rate', key: 'rate', width: 15 },
         { header: 'Qty Planned', key: 'qtyPlanned', width: 15 },
         { header: 'Qty Executed', key: 'qtyExecuted', width: 15 },
         { header: 'EIC Approved Qty', key: 'eicApprovedQty', width: 18 },
@@ -49,8 +50,6 @@ export async function generateAbstractSheetExcel(job: JobProgress, data: Abstrac
         { header: 'Date Work Completed', key: 'dateWorkCompleted', width: 20 },
         { header: 'Provision', key: 'provision', width: 20 },
         { header: 'Remarks', key: 'remarks', width: 30 },
-        { header: 'Rate', key: 'rate', width: 15 },
-        { header: 'Total Amount', key: 'total', width: 20 },
     ];
     
     (data.sorItems || []).forEach((item, index) => {
@@ -58,7 +57,6 @@ export async function generateAbstractSheetExcel(job: JobProgress, data: Abstrac
             srNo: index + 1,
             ...item,
             rate: item.rate,
-            total: (item.eicApprovedQty || item.qtyExecuted || 0) * (item.rate || 0),
             dateWorkCompleted: item.dateWorkCompleted ? format(parseISO(item.dateWorkCompleted as any), 'dd-MM-yyyy') : '',
         });
     });
