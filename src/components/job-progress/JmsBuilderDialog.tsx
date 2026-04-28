@@ -219,8 +219,7 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
             </div>
             <div><Label>Plant/Unit</Label><Input {...form.register('plantUnit')} /></div>
             <div><Label>JMS No.</Label><Input {...form.register('jmsNo')} /></div>
-            <div><Label>Aries Job#</Label><Input {...form.register('ariesJobId')} /></div>
-            <div>
+            <div className="md:col-span-2">
               <Label>WO / ARC No.</Label>
               <Controller
                 control={form.control}
@@ -240,6 +239,7 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
             <div><Label>FO No.</Label><Input {...form.register('foNo')} /></div>
             <div><Label>Value</Label><Input type="number" {...form.register('amount')} /></div>
             <div><Label>Plant Reg No.</Label><Input {...form.register('plantRegNo')} /></div>
+            <div className="md:col-span-2"><Label>Aries Job#</Label><Input {...form.register('ariesJobId')} /></div>
              <div><Label>Start Date</Label><Controller name="dateFrom" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} /></div>
              <div><Label>End Date</Label><Controller name="dateTo" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} /></div>
               {!isEditMode && (
@@ -347,8 +347,8 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
           
           <DialogFooter className="pt-4 mt-auto border-t justify-between">
              <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={() => handleDownload('excel')} disabled={!isEditMode}><Download className="mr-2 h-4 w-4" /> Abstract Excel</Button>
-                <Button type="button" variant="outline" onClick={() => handleDownload('pdf')} disabled={!isEditMode}><Download className="mr-2 h-4 w-4" /> Abstract PDF</Button>
+                <Button type="button" variant="outline" onClick={() => handleDownload('excel')}><Download className="mr-2 h-4 w-4" /> Abstract Excel</Button>
+                <Button type="button" variant="outline" onClick={() => handleDownload('pdf')}><Download className="mr-2 h-4 w-4" /> Abstract PDF</Button>
              </div>
              <div className="flex gap-2">
                 <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
@@ -360,3 +360,5 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
     </Dialog>
   );
 }
+
+  
