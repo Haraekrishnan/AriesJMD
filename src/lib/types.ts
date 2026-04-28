@@ -997,6 +997,7 @@ export type ServiceCode = {
   description: string;
   uom: string;
   rate: number;
+  provision?: string;
 };
 
 export type VehicleUsageRecord = {
@@ -1299,4 +1300,3 @@ export type InwardOutwardRecord = {
     finalizedItemIds?: string[];
     isLocked?: boolean;
 };
-

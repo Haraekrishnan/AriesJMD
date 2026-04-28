@@ -181,6 +181,7 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
     form.setValue(`sorItems.${index}.scopeDescription`, sc.description);
     form.setValue(`sorItems.${index}.uom`, sc.uom);
     form.setValue(`sorItems.${index}.rate`, sc.rate);
+    form.setValue(`sorItems.${index}.provision`, sc.provision || '');
     setPopoverOpenState(prev => ({...prev, [index]: false}));
   };
 
@@ -312,7 +313,7 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
                             <TableCell><Input {...form.register(`sorItems.${index}.workPermitNo`)} className="h-8 text-xs"/></TableCell>
                             <TableCell><Input {...form.register(`sorItems.${index}.pmWorkOrderNo`)} className="h-8 text-xs"/></TableCell>
                             <TableCell><Controller name={`sorItems.${index}.dateWorkCompleted`} control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} /></TableCell>
-                            <TableCell><Input {...form.register(`sorItems.${index}.provision`)} className="h-8 text-xs"/></TableCell>
+                            <TableCell><Input {...form.register(`sorItems.${index}.provision`)} readOnly className="h-8 text-xs"/></TableCell>
                             <TableCell><Input {...form.register(`sorItems.${index}.remarks`)} className="h-8 text-xs"/></TableCell>
                             <TableCell><Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button></TableCell>
                         </TableRow>

@@ -38,6 +38,7 @@ export default function ServiceCodeList({ onEdit }: ServiceCodeListProps) {
                         <TableHead>Code</TableHead>
                         <TableHead>Description</TableHead>
                         <TableHead>UOM</TableHead>
+                        <TableHead>Provision</TableHead>
                         <TableHead className="text-right">Rate</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -48,6 +49,7 @@ export default function ServiceCodeList({ onEdit }: ServiceCodeListProps) {
                             <TableCell className="font-semibold">{code.code}</TableCell>
                             <TableCell>{code.description}</TableCell>
                             <TableCell>{code.uom}</TableCell>
+                            <TableCell>{code.provision || 'N/A'}</TableCell>
                             <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(code.rate)}</TableCell>
                             <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">

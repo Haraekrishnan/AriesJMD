@@ -17,6 +17,7 @@ const serviceCodeSchema = z.object({
   description: z.string().min(1, 'Description is required'),
   uom: z.string().min(1, 'UOM is required'),
   rate: z.coerce.number().min(0, 'Rate must be non-negative'),
+  provision: z.string().optional(),
 });
 
 type ServiceCodeFormValues = z.infer<typeof serviceCodeSchema>;
@@ -75,6 +76,10 @@ export default function EditServiceCodeDialog({ isOpen, setIsOpen, serviceCode }
               <Input id="rate" type="number" step="0.01" {...form.register('rate')} />
               {form.formState.errors.rate && <p className="text-xs text-destructive">{form.formState.errors.rate.message}</p>}
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="provision">Provision (Optional)</Label>
+            <Input id="provision" {...form.register('provision')} />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
