@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -73,7 +74,7 @@ interface JmsBuilderDialogProps {
 const generateDefaultSorItem = (): SorItem => ({
   id: `sor-${Date.now()}`,
   serviceCode: '',
-  serviceDescription: '',
+  scopeDescription: '',
   uom: '',
   rate: 0,
   qtyPlanned: 0,
@@ -89,7 +90,7 @@ const generateDefaultSorItem = (): SorItem => ({
 
 export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderDialogProps) {
   const { user, users, getVisibleUsers } = useAuth();
-  const { projects, workOrders, serviceCodes } = useGeneral();
+  const { projects, workOrders, jobCodes: serviceCodes } = useGeneral();
   const { createJobProgress, updateJobProgress } = usePlanner();
   const { toast } = useToast();
   const isEditMode = !!job;
@@ -298,7 +299,7 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
                                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                             <Command><CommandInput placeholder="Search codes..."/><CommandList><CommandEmpty>No codes found.</CommandEmpty>
                                                 <CommandGroup>
-                                                    {serviceCodes.map(sc => (
+                                                    {(serviceCodes || []).map(sc => (
                                                         <CommandItem key={sc.id} value={sc.code} onSelect={() => handleServiceCodeSelect(index, sc)}>
                                                             <Check className={cn("mr-2 h-4 w-4", sc.code === controllerField.value ? "opacity-100" : "opacity-0")} />
                                                             {sc.code}
