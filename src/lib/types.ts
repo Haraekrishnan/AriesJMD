@@ -162,6 +162,7 @@ export const ALL_PERMISSIONS = [
   'manage_safety_observations',
   'manage_delivery_notes',
   'manage_inward_outward',
+  'manage_service_codes',
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -1083,12 +1084,19 @@ export type JobStep = {
 };
 
 export type SorItem = {
-    id: string;
-    rilApprovedQuantity: number;
-    itemCode: string;
-    scopeDescription: string;
-    uom: string;
-    unitRate: number;
+  id: string;
+  serviceCode: string;
+  serviceDescription: string;
+  uom: string;
+  rate: number;
+  qtyPlanned?: number;
+  qtyExecuted?: number;
+  eicApprovedQty?: number;
+  workPermitNo?: string;
+  pmWorkOrderNo?: string;
+  dateWorkCompleted?: string | null; // ISO string
+  provision?: string;
+  remarks?: string;
 };
 
 export type JobProgress = {
@@ -1283,4 +1291,12 @@ export type InwardOutwardRecord = {
     vendorId?: string;
     finalizedItemIds?: string[];
     isLocked?: boolean;
+};
+
+export type ServiceCode = {
+    id: string;
+    code: string;
+    description: string;
+    uom: string;
+    rate: number;
 };

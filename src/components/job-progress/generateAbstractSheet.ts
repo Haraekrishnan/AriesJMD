@@ -32,25 +32,33 @@ export async function generateAbstractSheetExcel(job: JobProgress, data: Abstrac
     const worksheet = workbook.addWorksheet('Abstract Sheet');
     
     worksheet.addRow([`Aries Job#: ${data.ariesJobId || 'N/A'}`]);
-    worksheet.mergeCells('A1:F1');
+    worksheet.mergeCells('A1:G1');
     worksheet.getCell('A1').font = { bold: true };
     worksheet.addRow([]);
 
 
     // For now, a simple structure
     worksheet.columns = [
-        { header: 'RIL Approved Quantity', key: 'rilApprovedQuantity', width: 15 },
-        { header: 'Item Code', key: 'itemCode', width: 15 },
-        { header: 'Scope Description', key: 'scopeDescription', width: 50 },
+        { header: 'Qty Planned', key: 'qtyPlanned', width: 15 },
+        { header: 'Qty Executed', key: 'qtyExecuted', width: 15 },
+        { header: 'EIC Approved Qty', key: 'eicApprovedQty', width: 18 },
+        { header: 'Service Code', key: 'serviceCode', width: 15 },
+        { header: 'Service Description', key: 'serviceDescription', width: 50 },
         { header: 'UOM', key: 'uom', width: 10 },
-        { header: 'Unit Rate', key: 'unitRate', width: 15 },
+        { header: 'Rate', key: 'rate', width: 15 },
         { header: 'Total Amount', key: 'total', width: 15 },
+        { header: 'Work Permit No', key: 'workPermitNo', width: 20 },
+        { header: 'PM Work Order No', key: 'pmWorkOrderNo', width: 20 },
+        { header: 'Date Work Completed', key: 'dateWorkCompleted', width: 20 },
+        { header: 'Provision', key: 'provision', width: 20 },
+        { header: 'Remarks', key: 'remarks', width: 30 },
     ];
     
     data.sorItems.forEach(item => {
         worksheet.addRow({
             ...item,
-            total: item.rilApprovedQuantity * item.unitRate
+            total: (item.qtyExecuted || 0) * (item.rate || 0),
+            dateWorkCompleted: item.dateWorkCompleted ? format(parseISO(item.dateWorkCompleted), 'dd-MM-yyyy') : '',
         });
     });
 
@@ -65,14 +73,15 @@ export async function generateAbstractSheetPdf(job: JobProgress, data: AbstractS
   doc.text(`Aries Job #: ${data.ariesJobId || 'N/A'}`, 14, 15);
   
   (doc as any).autoTable({
-    head: [['Qty', 'Item Code', 'Scope Description', 'UOM', 'Unit Rate', 'Total Amount']],
+    head: [['Code', 'Description', 'UOM', 'Rate', 'Planned Qty', 'Executed Qty', 'Total']],
     body: data.sorItems.map(item => [
-      item.rilApprovedQuantity,
-      item.itemCode,
-      item.scopeDescription,
+      item.serviceCode,
+      item.serviceDescription,
       item.uom,
-      formatCurrency(item.unitRate),
-      formatCurrency(item.rilApprovedQuantity * item.unitRate)
+      formatCurrency(item.rate),
+      item.qtyPlanned || 0,
+      item.qtyExecuted || 0,
+      formatCurrency((item.qtyExecuted || 0) * (item.rate || 0))
     ]),
     startY: 25,
   });
