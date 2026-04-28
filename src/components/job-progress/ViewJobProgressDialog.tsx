@@ -11,8 +11,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { format, formatDistanceToNow, parseISO, isValid } from 'date-fns';
-import { CheckCircle, Clock, Circle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X, MessageSquare, Trash2, ArrowRight, ArrowUp, ArrowDown, XCircle, AlertTriangle, FolderKanban, Download } from 'lucide-react';
+import { format, formatDistanceToNow, parseISO, isValid, isAfter, isBefore, startOfDay, subMonths, isSameMonth } from 'date-fns';
+import { CheckCircle, Clock, Circle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X, MessageSquare, Trash2, ArrowRight, ArrowUp, ArrowDown, XCircle, AlertTriangle, FolderKanban } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
@@ -31,7 +31,6 @@ import ReturnStepDialog from './ReturnStepDialog';
 import ReassignStepDialog from './ReassignStepDialog';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import JmsBuilderDialog from './JmsBuilderDialog';
-import { generateAbstractSheetExcel, generateAbstractSheetPdf } from './generateAbstractSheet';
 
 
 const statusConfig: { [key in JobStepStatus]: { icon?: React.ElementType, color: string, label: string } } = {
@@ -342,7 +341,7 @@ interface ViewJobProgressDialogProps {
 
 export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
     const { user, users, can } = useAuth();
-    const { projects } = useGeneral();
+    const { projects, workOrders } = useGeneral();
     const {
         jobProgress,
         updateJobProgress,
@@ -424,7 +423,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         const canReopenRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
         return (canReopenRoles.includes(user.role) || user.id === job.creatorId) && job.status === 'Completed';
     }, [user, job]);
-
+    
     const handleEditStepClick = (step: JobStep) => {
         setEditingStepId(step.id);
         setEditingStepName(step.name);
@@ -443,18 +442,9 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
         setEditingStepName('');
     };
 
-    const handleDownload = (format: 'excel' | 'pdf') => {
-        const dataForReport = {
-            plantRegNo: job.plantRegNo,
-            ariesJobId: job.ariesJobId,
-            sorItems: job.sorItems || [],
-        };
-        if (format === 'excel') {
-            generateAbstractSheetExcel(job, dataForReport);
-        } else {
-            generateAbstractSheetPdf(job, dataForReport);
-        }
-    };
+    const commentsArray = Array.isArray(job.comments) 
+      ? job.comments 
+      : Object.values(job.comments || {});
     
     return (
         <>
@@ -487,7 +477,7 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                 <>
                                     <div className="space-y-1"><Label>Project</Label><Controller name="projectId" control={form.control} render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>)}/></div>
                                     <div className="space-y-1"><Label>Plant/Unit</Label><Input {...form.register('plantUnit')} /></div>
-                                    <div className="space-y-1"><Label>WO No</Label><Input {...form.register('workOrderNo')} /></div>
+                                    <div className="space-y-1"><Label>WO / ARC No.</Label><Controller control={form.control} name="workOrderNo" render={({ field }) => (<Select value={field.value} onValueChange={field.onChange}><SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger><SelectContent>{workOrders.map((wo) => (<SelectItem key={wo.id} value={wo.number}>{wo.number}</SelectItem>))}</SelectContent></Select>)}/></div>
                                     <div className="space-y-1"><Label>FO No</Label><Input {...form.register('foNo')} /></div>
                                     <div className="space-y-1"><Label>JMS No</Label><Input {...form.register('jmsNo')} /></div>
                                     <div className="space-y-1"><Label>Value</Label><Input type="number" step="0.01" {...form.register('amount')} /></div>
@@ -680,8 +670,6 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                         {canReopenJob && (
                             <Button variant="outline" onClick={() => setIsReopenDialogOpen(true)}><Undo2 className="mr-2 h-4 w-4"/>Reopen Job</Button>
                         )}
-                        <Button variant="outline" onClick={() => handleDownload('excel')}><Download className="mr-2 h-4 w-4" /> Abstract Excel</Button>
-                        <Button variant="outline" onClick={() => handleDownload('pdf')}><Download className="mr-2 h-4 w-4" /> Abstract PDF</Button>
                     </div>
                     <div className="flex items-center gap-2">
                          <Button variant="secondary" onClick={() => { setIsOpen(false); setIsBuilderOpen(true); }}><FolderKanban className="mr-2 h-4 w-4"/> Open Builder</Button>
