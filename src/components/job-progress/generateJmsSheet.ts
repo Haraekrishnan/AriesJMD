@@ -8,14 +8,14 @@ import type { JobProgress, SorItem } from '@/lib/types';
 import { format, parseISO, isValid } from 'date-fns';
 
 async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) return null;
-      return await response.arrayBuffer();
-    } catch (error) {
-      console.error('Error fetching image for Excel:', error);
-      return null;
-    }
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    return await response.arrayBuffer();
+  } catch (error) {
+    console.error('Error fetching image for Excel:', error);
+    return null;
+  }
 }
 
 async function fetchImageAsBase64(imgPath: string): Promise<string> {
@@ -45,9 +45,7 @@ const groupItemsForJms = (items: SorItem[]) => {
     items.forEach(item => {
       let dateKey = 'Unscheduled';
       if (item.dateWorkCompleted) {
-          const date = typeof item.dateWorkCompleted === 'string' 
-              ? parseISO(item.dateWorkCompleted) 
-              : item.dateWorkCompleted;
+          const date = item.dateWorkCompleted instanceof Date ? item.dateWorkCompleted : parseISO(item.dateWorkCompleted as string);
           if (isValid(date)) {
               dateKey = format(date as Date, 'dd-MM-yyyy');
           }
@@ -171,8 +169,9 @@ export async function generateJmsSheetExcel(job: JobProgress, data: { sorItems?:
     const footerHeader = worksheet.getRow(currentRow);
     footerHeader.getCell(1).value = 'Cont. Supervisor Name & Sign:';
     footerHeader.getCell(1).font = boldFont;
+    footerHeader.getCell(1).border = thinBorder;
     worksheet.mergeCells(currentRow, 2, currentRow, 4);
-    worksheet.getCell(2).border = thinBorder;
+    footerHeader.getCell(2).border = thinBorder; // This applies to the merged cell
     
     currentRow += 2;
     const perfHeader = worksheet.getRow(currentRow);
@@ -195,16 +194,22 @@ export async function generateJmsSheetExcel(job: JobProgress, data: { sorItems?:
         row.getCell(1).value = item;
         worksheet.mergeCells(currentRow, 8, currentRow, 9);
         row.getCell(8).value = 'Satisfactory';
-        row.getCell(8).border = thinBorder;
         worksheet.mergeCells(currentRow, 10, currentRow, 11);
         row.getCell(10).value = 'Not Satisfactory';
-        row.getCell(10).border = thinBorder;
+        
+        for (let i = 1; i <= 11; i++) {
+            const cell = row.getCell(i);
+            cell.border = thinBorder;
+            if (i === 1) cell.alignment = leftAlign;
+            if (i === 8 || i === 10) cell.alignment = centerAlign;
+        }
     });
 
     currentRow += 2;
     const eicSignRow = worksheet.getRow(currentRow);
     eicSignRow.getCell(1).value = 'RIL EIC Name, Sign & Date';
     eicSignRow.getCell(1).font = boldFont;
+    eicSignRow.getCell(1).border = thinBorder;
     worksheet.mergeCells(currentRow, 2, currentRow, 4);
     eicSignRow.getCell(2).border = thinBorder;
     
