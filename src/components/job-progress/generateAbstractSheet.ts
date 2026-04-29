@@ -70,31 +70,15 @@ export async function generateAbstractSheetExcel(job: JobProgress, data: Abstrac
     const thinBorder = { top: { style: 'thin' as const }, left: { style: 'thin' as const }, bottom: { style: 'thin' as const }, right: { style: 'thin' as const } };
 
     // --- Logo and Header ---
-    const logoBuffer = await fetchImageAsBuffer('/images/Aries_logo.png');
-    if (logoBuffer) {
-        const logoId = workbook.addImage({ buffer: logoBuffer, extension: 'png' });
-        worksheet.addImage(logoId, {
-            tl: { col: 0.1, row: 0.2 },
-            ext: { width: 180, height: 45 }
+    const headerBuffer = await fetchImageAsBuffer('/images/aries-header.png');
+    if (headerBuffer) {
+        const headerId = workbook.addImage({ buffer: headerBuffer, extension: 'png' });
+        worksheet.mergeCells('A1:I4');
+        worksheet.addImage(headerId, {
+            tl: { col: 0, row: 0 },
+            br: { col: 9, row: 4 }
         });
     }
-
-    const headerLines = [
-        "CIN No: U74140KL2013PTC034674",
-        "BCG Tower, Opp. CSEZ, Seaport Airport Road, Kakkanad, Cochin - 682037",
-        "Ph: +91 484 4081555 Fax: +91 484 4055561",
-        "Email: ariesindia@ariesmar.com Web: www.ariesmar.com"
-    ];
-
-    let currentHeaderRow = 1;
-    headerLines.forEach(line => {
-      worksheet.mergeCells(currentHeaderRow, 5, currentHeaderRow, 9);
-      const cell = worksheet.getCell(currentHeaderRow, 5);
-      cell.value = line;
-      cell.font = { size: 8 };
-      cell.alignment = rightAlign;
-      currentHeaderRow++;
-    });
 
     // --- Title ---
     let currentRow = 6;
@@ -112,7 +96,7 @@ export async function generateAbstractSheetExcel(job: JobProgress, data: Abstrac
     const duration = job.dateFrom ? formatDateValue(job.dateFrom) : '';
     const infoData = [
         ['Plant/Unit', job.plantUnit || '', 'Date', format(new Date(), 'dd.MM.yyyy')],
-        ['Plant Reg No.', job.plantRegNo || '', 'ARC/ OTC W.O.No.', job.workOrderNo || ''],
+        ['Plant Reg No.', data.plantRegNo || '', 'ARC/ OTC W.O.No.', job.workOrderNo || ''],
         ['Duration of the job', duration, 'JMS#', job.jmsNo || ''],
         ['SOR Type', job.title || '']
     ];
@@ -166,11 +150,11 @@ export async function generateAbstractSheetExcel(job: JobProgress, data: Abstrac
 
         const itemRow = worksheet.getRow(currentRow);
         itemRow.values = [
-            job.ariesJobId || '', '',
+            data.ariesJobId || '', '',
             item.serviceCode,
             item.scopeDescription, '',
             item.uom,
-            item.rate,
+            item.rate, '',
             totalAmount
         ];
         worksheet.mergeCells(currentRow, 1, currentRow, 2);
@@ -234,35 +218,27 @@ export async function generateAbstractSheetPdf(job: JobProgress, data: AbstractS
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 30;
+    const contentWidth = pageWidth - margin * 2;
 
-    // --- Logo and Header ---
-    const headerImagePath = '/images/Aries_logo.png';
+    // --- Header ---
+    const headerImagePath = '/images/aries-header.png';
     const imgDataUrl = await fetchImageAsBase64(headerImagePath);
     if (imgDataUrl) {
-      doc.addImage(imgDataUrl, 'PNG', margin, 20, 180, 45);
+      doc.addImage(imgDataUrl, 'PNG', margin, 20, contentWidth, 70);
     }
-  
-    const headerLines = [
-      "CIN No: U74140KL2013PTC034674",
-      "BCG Tower, Opp. CSEZ, Seaport Airport Road, Kakkanad, Cochin - 682037",
-      "Ph: +91 484 4081555 Fax: +91 484 4055561",
-      "Email: ariesindia@ariesmar.com Web: www.ariesmar.com"
-    ];
-    doc.setFontSize(8);
-    doc.text(headerLines, pageWidth - margin, 30, { align: 'right' });
 
     // --- Title ---
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.setFillColor(217, 217, 217);
-    doc.rect(margin, 70, pageWidth - (margin * 2), 25, 'F');
-    doc.text('ABSTRACT SHEET', pageWidth / 2, 85, { align: 'center' });
+    doc.rect(margin, 100, contentWidth, 25, 'F');
+    doc.text('ABSTRACT SHEET', pageWidth / 2, 115, { align: 'center' });
 
     // --- Info Blocks ---
     const duration = job.dateFrom ? formatDateValue(job.dateFrom) : '';
     const leftInfo = [
         { title: 'Plant/Unit', value: job.plantUnit || '' },
-        { title: 'Plant Reg No.', value: job.plantRegNo || '' },
+        { title: 'Plant Reg No.', value: data.plantRegNo || '' },
         { title: 'Duration of the job', value: duration },
         { title: 'SOR Type', value: job.title || '' }
     ];
@@ -273,7 +249,7 @@ export async function generateAbstractSheetPdf(job: JobProgress, data: AbstractS
     ];
 
     (doc as any).autoTable({
-        startY: 100,
+        startY: 130,
         body: [
             [{
                 content: {
@@ -306,7 +282,7 @@ export async function generateAbstractSheetPdf(job: JobProgress, data: AbstractS
     (doc as any).autoTable({
         head: [['Aries Job#', 'RIL Approved\nQuantity', 'Item Code', 'Scope Description', 'UOM', 'Unit Rate', 'Total Amount']],
         body: (data.sorItems || []).map(item => [
-            job.ariesJobId || '',
+            data.ariesJobId || '',
             item.eicApprovedQty || 0,
             item.serviceCode,
             item.scopeDescription,
