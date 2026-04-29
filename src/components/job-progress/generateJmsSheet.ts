@@ -10,7 +10,10 @@ import { format, parseISO, isValid } from 'date-fns';
 async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
   try {
     const response = await fetch(url);
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.error(`Failed to fetch image buffer: ${response.statusText} from ${url}`);
+      return null;
+    }
     return await response.arrayBuffer();
   } catch (error) {
     console.error('Error fetching image for Excel:', error);
@@ -18,24 +21,23 @@ async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
   }
 }
 
-async function fetchImageAsBase64(imgPath: string): Promise<string> {
-    const url = imgPath;
+async function fetchImageAsBase64(url: string): Promise<string> {
     try {
-        const response = await fetch(url);
-        if (!response.ok) {
-             console.error(`Failed to fetch image: ${response.status} ${response.statusText} from ${url}`);
-             return '';
-        }
-        const blob = await response.blob();
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
-    } catch (error) {
-        console.error('Error fetching image for PDF:', error);
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.error(`Failed to fetch image: ${response.status} ${response.statusText} from ${url}`);
         return '';
+      }
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error('Error fetching image for PDF:', error);
+      return '';
     }
 }
 
@@ -47,7 +49,7 @@ const groupItemsForJms = (items: SorItem[]) => {
       if (item.dateWorkCompleted) {
           const date = item.dateWorkCompleted instanceof Date ? item.dateWorkCompleted : parseISO(item.dateWorkCompleted as string);
           if (isValid(date)) {
-              dateKey = format(date as Date, 'dd-MM-yyyy');
+              dateKey = format(date, 'dd-MM-yyyy');
           }
       }
       
@@ -185,10 +187,9 @@ export async function generateJmsSheetExcel(job: JobProgress, data: { sorItems?:
     const footerImageBuffer = await fetchImageAsBuffer('/images/footer.png');
     if (footerImageBuffer) {
         const footerImageId = workbook.addImage({ buffer: footerImageBuffer, extension: 'png' });
-        worksheet.mergeCells(footerRowIndex, 1, footerRowIndex + 5, 12);
         worksheet.addImage(footerImageId, {
             tl: { col: 0, row: footerRowIndex - 1 },
-            br: { col: 12, row: footerRowIndex + 5 }
+            br: { col: 12, row: footerRowIndex + 5.5 }
         });
     }
 
@@ -290,7 +291,7 @@ export async function generateJmsSheetPdf(job: JobProgress, data: { sorItems?: S
             rowData.push(item.provision || '');
             rowData.push(item.remarks || '');
             
-            body.push(rowData);
+            body.push(rowData.filter(cell => cell !== ''));
         });
         srNo++;
     });

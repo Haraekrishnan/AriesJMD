@@ -38,7 +38,10 @@ const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { styl
 async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
     try {
       const response = await fetch(url);
-      if (!response.ok) return null;
+      if (!response.ok) {
+        console.error(`Failed to fetch image buffer: ${response.statusText} from ${url}`);
+        return null;
+      }
       return await response.arrayBuffer();
     } catch (error) {
       console.error('Error fetching image for Excel:', error);
@@ -46,24 +49,23 @@ async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
     }
 }
 
-async function fetchImageAsBase64(imgPath: string): Promise<string> {
-    const url = imgPath;
+async function fetchImageAsBase64(url: string): Promise<string> {
     try {
-        const response = await fetch(url);
-        if (!response.ok) {
-             console.error(`Failed to fetch image: ${response.status} ${response.statusText} from ${url}`);
-             return '';
-        }
-        const blob = await response.blob();
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
-    } catch (error) {
-        console.error('Error fetching image for PDF:', error);
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.error(`Failed to fetch image: ${response.status} ${response.statusText} from ${url}`);
         return '';
+      }
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error('Error fetching image for PDF:', error);
+      return '';
     }
 }
 
@@ -237,121 +239,122 @@ export async function generateAbstractSheetExcel(job: JobProgress, data: Abstrac
 }
 
 export async function generateAbstractSheetPdf(job: JobProgress, data: AbstractSheetData) {
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 30;
-    const contentWidth = pageWidth - margin * 2;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 30;
+  const contentWidth = pageWidth - margin * 2;
 
-    // --- Header ---
-    const headerImagePath = '/images/aries-header.png';
-    const imgDataUrl = await fetchImageAsBase64(headerImagePath);
-    if (imgDataUrl) {
-      doc.addImage(imgDataUrl, 'PNG', margin, 20, contentWidth, 70);
-    }
+  // --- Header ---
+  const headerImagePath = '/images/aries-header.png';
+  const imgDataUrl = await fetchImageAsBase64(headerImagePath);
+  if (imgDataUrl) {
+    doc.addImage(imgDataUrl, 'PNG', margin, 20, contentWidth, 70);
+  }
 
-    // --- Title ---
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.setFillColor(217, 217, 217);
-    doc.rect(margin, 100, contentWidth, 25, 'F');
-    doc.text('ABSTRACT SHEET', pageWidth / 2, 115, { align: 'center' });
+  // --- Title ---
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.setFillColor(217, 217, 217);
+  doc.rect(margin, 100, contentWidth, 25, 'F');
+  doc.text('ABSTRACT SHEET', pageWidth / 2, 115, { align: 'center' });
 
-    // --- Info Blocks ---
-    const duration = job.dateFrom ? formatDateValue(job.dateFrom) : '';
-    const leftInfo = [
-        { title: 'Plant/Unit', value: job.plantUnit || '' },
-        { title: 'Plant Reg No.', value: data.plantRegNo || '' },
-        { title: 'Duration of the job', value: duration },
-        { title: 'SOR Type', value: job.title || '' }
-    ];
-    const rightInfo = [
-        { title: 'Date', value: format(new Date(), 'dd.MM.yyyy') },
-        { title: 'ARC/ OTC W.O.No.', value: job.workOrderNo || '' },
-        { title: 'JMS#', value: job.jmsNo || '' }
-    ];
+  // --- Info Blocks ---
+  const duration = job.dateFrom ? formatDateValue(job.dateFrom) : '';
+  const leftInfo = [
+      { title: 'Plant/Unit', value: job.plantUnit || '' },
+      { title: 'Plant Reg No.', value: data.plantRegNo || '' },
+      { title: 'Duration of the job', value: duration },
+      { title: 'SOR Type', value: job.title || '' }
+  ];
+  const rightInfo = [
+      { title: 'Date', value: format(new Date(), 'dd.MM.yyyy') },
+      { title: 'ARC/ OTC W.O.No.', value: job.workOrderNo || '' },
+      { title: 'JMS#', value: job.jmsNo || '' }
+  ];
 
-    (doc as any).autoTable({
-        startY: 130,
-        body: [
-            [{
-                content: {
-                    body: leftInfo.map(i => [i.title, i.value]),
-                    styles: { cellPadding: 2, fontSize: 9 },
-                    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 100 }, 1: { cellWidth: 200 } }
-                },
-                styles: { cellWidth: 300 }
-            },
-            {
-                content: {
-                    body: rightInfo.map(i => [i.title, i.value]),
-                    styles: { cellPadding: 2, fontSize: 9 },
-                    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 100 }, 1: { cellWidth: 150 } }
-                },
-                styles: { cellWidth: 250 }
-            }]
-        ],
-        theme: 'plain',
-        didDrawCell: (data: any) => {
-          if (data.cell.section === 'body' && data.table.body.length) {
-              data.cell.styles.lineWidth = 0.5;
-              data.cell.styles.lineColor = [0,0,0];
-          }
+  (doc as any).autoTable({
+      startY: 130,
+      body: [
+          [{
+              content: {
+                  body: leftInfo.map(i => [i.title, i.value]),
+                  styles: { cellPadding: 2, fontSize: 9 },
+                  columnStyles: { 0: { fontStyle: 'bold', cellWidth: 100 }, 1: { cellWidth: 200 } }
+              },
+              styles: { cellWidth: 300 }
+          },
+          {
+              content: {
+                  body: rightInfo.map(i => [i.title, i.value]),
+                  styles: { cellPadding: 2, fontSize: 9 },
+                  columnStyles: { 0: { fontStyle: 'bold', cellWidth: 100 }, 1: { cellWidth: 150 } }
+              },
+              styles: { cellWidth: 250 }
+          }]
+      ],
+      theme: 'plain',
+      styles: { cellPadding: 2, lineWidth: 0.5, lineColor: [100,100,100] },
+      didDrawCell: (data: any) => {
+        if (data.cell.section === 'body' && data.table.body.length) {
+            data.cell.styles.lineWidth = 0.5;
+            data.cell.styles.lineColor = [0,0,0];
         }
-    });
+      }
+  });
 
-    // --- Main Table ---
-    const groupedItems = groupSorItems(data.sorItems || []);
-    let grandTotal = 0;
-    groupedItems.forEach(item => {
-        const totalAmount = (item.eicApprovedQty || 0) * (item.rate || 0);
-        grandTotal += totalAmount;
-    });
+  // --- Main Table ---
+  const groupedItems = groupSorItems(data.sorItems || []);
+  let grandTotal = 0;
+  groupedItems.forEach(item => {
+      const totalAmount = (item.eicApprovedQty || 0) * (item.rate || 0);
+      grandTotal += totalAmount;
+  });
 
-    (doc as any).autoTable({
-        head: [['Aries Job#', 'RIL Approved\nQuantity', 'Item Code', 'Scope Description', 'UOM', 'Unit Rate', 'Total Amount']],
-    
-        body: groupedItems.map(item => [
-            data.ariesJobId || '',
-            item.eicApprovedQty || 0,
-            item.serviceCode,
-            item.scopeDescription,
-            item.uom,
-            { content: formatCurrency(item.rate || 0), styles: { halign: 'right' } },
-            { content: formatCurrency((item.eicApprovedQty || 0) * (item.rate || 0)), styles: { halign: 'right' } }
-        ]),
-    
-        foot: [
-            [
-                { content: 'Grand Total', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
-                { content: formatCurrency(grandTotal), styles: { halign: 'right', fontStyle: 'bold' } }
-            ]
-        ],
-    
-        startY: (doc as any).lastAutoTable.finalY + 5,
-        theme: 'grid',
-        styles: { fontSize: 8, cellPadding: 3, valign: 'middle' },
-    
-        headStyles: { fontStyle: 'bold', fillColor: [217, 217, 217], textColor: 0, halign: 'center' },
-        footStyles: { fontStyle: 'bold', fillColor: [217, 217, 217], textColor: 0 },
-    
-        columnStyles: {
-            0: { cellWidth: 70 },
-            1: { cellWidth: 70, halign: 'center' },
-            2: { cellWidth: 70 },
-            3: { cellWidth: 'auto' },
-            4: { cellWidth: 40, halign: 'center' },
-            5: { cellWidth: 70, halign: 'right' },
-            6: { cellWidth: 70, halign: 'right' },
-        }
-    });
+  (doc as any).autoTable({
+      head: [['Aries Job#', 'RIL Approved\nQuantity', 'Item Code', 'Scope Description', 'UOM', 'Unit Rate', 'Total Amount']],
+  
+      body: groupedItems.map(item => [
+          data.ariesJobId || '',
+          item.eicApprovedQty || 0,
+          item.serviceCode,
+          item.scopeDescription,
+          item.uom,
+          { content: formatCurrency(item.rate || 0), styles: { halign: 'right' } },
+          { content: formatCurrency((item.eicApprovedQty || 0) * (item.rate || 0)), styles: { halign: 'right' } }
+      ]),
+  
+      foot: [
+          [
+              { content: 'Grand Total', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
+              { content: formatCurrency(grandTotal), styles: { halign: 'right', fontStyle: 'bold' } }
+          ]
+      ],
+  
+      startY: (doc as any).lastAutoTable.finalY + 5,
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 3, valign: 'middle' },
+  
+      headStyles: { fontStyle: 'bold', fillColor: [217, 217, 217], textColor: 0, halign: 'center' },
+      footStyles: { fontStyle: 'bold', fillColor: [217, 217, 217], textColor: 0 },
+  
+      columnStyles: {
+          0: { cellWidth: 70 },
+          1: { cellWidth: 70, halign: 'center' },
+          2: { cellWidth: 70 },
+          3: { cellWidth: 'auto' },
+          4: { cellWidth: 40, halign: 'center' },
+          5: { cellWidth: 70, halign: 'right' },
+          6: { cellWidth: 70, halign: 'right' },
+      }
+  });
 
-    // --- Signature Footer ---
-    (doc as any).autoTable({
-        startY: (doc as any).lastAutoTable.finalY + 20,
-        body: [['Aries Rep. Sign/Stamp', 'RIL EIC / HOD. Sign/Stamp']],
-        theme: 'grid',
-        styles: { fontSize: 10, fontStyle: 'bold', cellPadding: 25, valign: 'bottom' }
-    });
+  // --- Signature Footer ---
+  (doc as any).autoTable({
+      startY: (doc as any).lastAutoTable.finalY + 20,
+      body: [['Aries Rep. Sign/Stamp', 'RIL EIC / HOD. Sign/Stamp']],
+      theme: 'grid',
+      styles: { fontSize: 10, fontStyle: 'bold', cellPadding: 25, valign: 'bottom' }
+  });
 
-    doc.save(`Abstract_Sheet_${job.jmsNo || job.id.slice(-6)}.pdf`);
+  doc.save(`Abstract_Sheet_${job.jmsNo || job.id.slice(-6)}.pdf`);
 }
