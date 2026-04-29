@@ -1,4 +1,3 @@
-
 'use client';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -168,20 +167,18 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
   };
   
   const handleDownload = (format: 'abstract-excel' | 'abstract-pdf' | 'jms-excel' | 'jms-pdf' | 'incentive-excel' | 'incentive-pdf') => {
-    if (!isEditMode) {
-      toast({ title: "Cannot Download", description: "Please save the JMS before downloading reports.", variant: 'destructive'});
-      return;
-    }
-    if (!job) return;
+    const currentJobData = isEditMode ? job! : form.getValues();
+    const currentFormData = form.getValues();
+
 
     if (format === 'abstract-excel') {
-        generateAbstractSheetExcel(job, form.getValues());
+        generateAbstractSheetExcel(currentJobData as JobProgress, currentFormData);
     } else if (format === 'abstract-pdf') {
-        generateAbstractSheetPdf(job, form.getValues());
+        generateAbstractSheetPdf(currentJobData as JobProgress, currentFormData);
     } else if (format === 'jms-excel') {
-        generateJmsSheetExcel();
+        generateJmsSheetExcel(currentJobData as JobProgress, currentFormData);
     } else if (format === 'jms-pdf') {
-        generateJmsSheetPdf();
+        generateJmsSheetPdf(currentJobData as JobProgress, currentFormData);
     } else if (format === 'incentive-excel') {
         generateIncentiveSummaryExcel();
     } else if (format === 'incentive-pdf') {
@@ -378,5 +375,3 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
 }
 
   
-
-    
