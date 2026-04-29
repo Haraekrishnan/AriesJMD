@@ -1,3 +1,4 @@
+
 'use client';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -5,6 +6,25 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import type { JobProgress, SorItem } from '@/lib/types';
 import { format, parseISO, isValid } from 'date-fns';
+
+// ✅ ADD IT HERE (GLOBAL FUNCTION)
+function groupSorItems(items: SorItem[]) {
+    const grouped: Record<string, SorItem> = {};
+
+    items.forEach(item => {
+        const key = `${item.serviceCode}_${item.rate}_${item.scopeDescription}`;
+
+        if (!grouped[key]) {
+            grouped[key] = { ...item };
+        } else {
+            grouped[key].eicApprovedQty =
+                (grouped[key].eicApprovedQty || 0) +
+                (item.eicApprovedQty || 0);
+        }
+    });
+
+    return Object.values(grouped);
+}
 
 interface AbstractSheetData {
   plantRegNo?: string;
@@ -144,7 +164,9 @@ export async function generateAbstractSheetExcel(job: JobProgress, data: Abstrac
 
     // --- Table Body ---
     let grandTotal = 0;
-    (data.sorItems || []).forEach(item => {
+    const groupedItems = groupSorItems(data.sorItems || []);
+
+    groupedItems.forEach(item => {
         const totalAmount = (item.eicApprovedQty || 0) * (item.rate || 0);
         grandTotal += totalAmount;
 
@@ -278,10 +300,17 @@ export async function generateAbstractSheetPdf(job: JobProgress, data: AbstractS
     });
 
     // --- Main Table ---
-    const grandTotal = (data.sorItems || []).reduce((acc, item) => acc + (item.eicApprovedQty || 0) * (item.rate || 0), 0);
+    const groupedItems = groupSorItems(data.sorItems || []);
+    let grandTotal = 0;
+    groupedItems.forEach(item => {
+        const totalAmount = (item.eicApprovedQty || 0) * (item.rate || 0);
+        grandTotal += totalAmount;
+    });
+
     (doc as any).autoTable({
         head: [['Aries Job#', 'RIL Approved\nQuantity', 'Item Code', 'Scope Description', 'UOM', 'Unit Rate', 'Total Amount']],
-        body: (data.sorItems || []).map(item => [
+    
+        body: groupedItems.map(item => [
             data.ariesJobId || '',
             item.eicApprovedQty || 0,
             item.serviceCode,
@@ -290,14 +319,22 @@ export async function generateAbstractSheetPdf(job: JobProgress, data: AbstractS
             { content: formatCurrency(item.rate || 0), styles: { halign: 'right' } },
             { content: formatCurrency((item.eicApprovedQty || 0) * (item.rate || 0)), styles: { halign: 'right' } }
         ]),
+    
         foot: [
-            [{ content: 'Grand Total', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } }, { content: formatCurrency(grandTotal), styles: { halign: 'right', fontStyle: 'bold' } }]
+            [
+                { content: 'Grand Total', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
+                { content: formatCurrency(grandTotal), styles: { halign: 'right', fontStyle: 'bold' } }
+            ]
         ],
+    
         startY: (doc as any).lastAutoTable.finalY + 5,
         theme: 'grid',
         styles: { fontSize: 8, cellPadding: 3, valign: 'middle' },
+    
         headStyles: { fontStyle: 'bold', fillColor: [217, 217, 217], textColor: 0, halign: 'center' },
         footStyles: { fontStyle: 'bold', fillColor: [217, 217, 217], textColor: 0 },
+    
+        // ✅ MOVE THIS INSIDE (VERY IMPORTANT)
         columnStyles: {
             0: { cellWidth: 70 },
             1: { cellWidth: 70, halign: 'center' },
