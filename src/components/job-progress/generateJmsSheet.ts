@@ -1,3 +1,4 @@
+
 'use client';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -42,7 +43,16 @@ const groupItemsForJms = (items: SorItem[]) => {
     const groupedByDate = new Map<string, SorItem[]>();
   
     items.forEach(item => {
-      const dateKey = item.dateWorkCompleted ? format(parseISO(item.dateWorkCompleted as string), 'dd-MM-yyyy') : 'Unscheduled';
+      let dateKey = 'Unscheduled';
+      if (item.dateWorkCompleted) {
+          const date = typeof item.dateWorkCompleted === 'string' 
+              ? parseISO(item.dateWorkCompleted) 
+              : item.dateWorkCompleted;
+          if (isValid(date)) {
+              dateKey = format(date as Date, 'dd-MM-yyyy');
+          }
+      }
+      
       if (!groupedByDate.has(dateKey)) {
         groupedByDate.set(dateKey, []);
       }
@@ -136,7 +146,7 @@ export async function generateJmsSheetExcel(job: JobProgress, data: { sorItems?:
                 item.eicApprovedQty,
                 item.workPermitNo,
                 item.pmWorkOrderNo,
-                item.dateWorkCompleted ? format(parseISO(item.dateWorkCompleted as string), 'dd-MM-yyyy') : '',
+                item.dateWorkCompleted ? format(item.dateWorkCompleted as Date, 'dd-MM-yyyy') : '',
                 item.provision,
                 item.remarks
             ];
@@ -153,7 +163,7 @@ export async function generateJmsSheetExcel(job: JobProgress, data: { sorItems?:
         }
         worksheet.getCell(groupStartRow, 8).value = group[0].workPermitNo || '';
         worksheet.getCell(groupStartRow, 9).value = group[0].pmWorkOrderNo || '';
-        worksheet.getCell(groupStartRow, 10).value = group[0].dateWorkCompleted ? format(parseISO(group[0].dateWorkCompleted as string), 'dd-MM-yyyy') : '';
+        worksheet.getCell(groupStartRow, 10).value = group[0].dateWorkCompleted ? format(group[0].dateWorkCompleted as Date, 'dd-MM-yyyy') : '';
     });
     
     // --- Footer ---
@@ -270,11 +280,11 @@ export async function generateJmsSheetPdf(job: JobProgress, data: { sorItems?: S
             if (index === 0) {
                 rowData.push({ content: item.workPermitNo || '', rowSpan: group.length });
                 rowData.push({ content: item.pmWorkOrderNo || '', rowSpan: group.length });
-                rowData.push({ content: item.dateWorkCompleted ? format(parseISO(item.dateWorkCompleted as string), 'dd-MM-yyyy') : '', rowSpan: group.length });
+                rowData.push({ content: item.dateWorkCompleted ? format(item.dateWorkCompleted as Date, 'dd-MM-yyyy') : '', rowSpan: group.length });
             }
             rowData.push(item.provision || '');
             rowData.push(item.remarks || '');
-            body.push(rowData);
+            body.push(rowData.filter(cell => cell !== ''));
         });
         srNo++;
     }
@@ -285,7 +295,7 @@ export async function generateJmsSheetPdf(job: JobProgress, data: { sorItems?: S
         startY: infoStartY + 60,
         theme: 'grid',
         styles: { fontSize: 7, cellPadding: 2, halign: 'center', valign: 'middle' },
-        headStyles: { fillColor: [217, 226, 243] },
+        headStyles: { fontStyle: 'bold', fillColor: [217, 226, 243] },
         columnStyles: { 2: { halign: 'left' } }
     });
 
