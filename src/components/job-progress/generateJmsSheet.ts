@@ -51,10 +51,14 @@ const groupItemsForJms = (items: SorItem[]) => {
           }
       }
       
-      if (!groupedByDate.has(dateKey)) {
-        groupedByDate.set(dateKey, []);
+      const workPermitKey = item.workPermitNo || 'N/A';
+      const pmWorkOrderKey = item.pmWorkOrderNo || 'N/A';
+      const combinedKey = `${dateKey}|${workPermitKey}|${pmWorkOrderKey}`;
+
+      if (!groupedByDate.has(combinedKey)) {
+        groupedByDate.set(combinedKey, []);
       }
-      groupedByDate.get(dateKey)!.push(item);
+      groupedByDate.get(combinedKey)!.push(item);
     });
   
     return Array.from(groupedByDate.values());
@@ -72,7 +76,7 @@ export async function generateJmsSheetExcel(job: JobProgress, data: { sorItems?:
     // --- Styles ---
     const thinBorder = { top: { style: 'thin' as const }, left: { style: 'thin' as const }, bottom: { style: 'thin' as const }, right: { style: 'thin' as const } };
     const centerAlign = { vertical: 'middle' as const, horizontal: 'center' as const, wrapText: true };
-    const leftAlign = { vertical: 'middle' as const, horizontal: 'left' as const, wrapText: true };
+    const leftAlign = { vertical: 'middle' as const, horizontal: 'left' as const, wrapText: true, indent: 1 };
     const boldFont = { bold: true, name: 'Calibri', size: 10 };
 
     // --- Header ---
@@ -135,7 +139,7 @@ export async function generateJmsSheetExcel(job: JobProgress, data: { sorItems?:
         group.forEach(item => {
             const row = worksheet.getRow(currentRow);
             row.values = [
-                srNo++,
+                srNo,
                 item.serviceCode,
                 item.scopeDescription,
                 item.uom,
@@ -151,6 +155,7 @@ export async function generateJmsSheetExcel(job: JobProgress, data: { sorItems?:
             row.eachCell(c => { c.border = thinBorder; c.alignment = centerAlign; });
             row.getCell(3).alignment = leftAlign;
             currentRow++;
+            srNo++;
         });
 
         const groupSize = group.length;
@@ -166,12 +171,13 @@ export async function generateJmsSheetExcel(job: JobProgress, data: { sorItems?:
     
     // --- Footer ---
     currentRow += 2;
-    const footerHeader = worksheet.getRow(currentRow);
-    footerHeader.getCell(1).value = 'Cont. Supervisor Name & Sign:';
-    footerHeader.getCell(1).font = boldFont;
-    footerHeader.getCell(1).border = thinBorder;
-    worksheet.mergeCells(currentRow, 2, currentRow, 4);
-    footerHeader.getCell(2).border = thinBorder; // This applies to the merged cell
+    const supervisorRow = worksheet.getRow(currentRow);
+    worksheet.mergeCells(`A${currentRow}:C${currentRow}`);
+    supervisorRow.getCell('A').value = 'Cont. Supervisor Name & Sign:';
+    supervisorRow.getCell('A').font = boldFont;
+    supervisorRow.getCell('A').alignment = { vertical: 'middle', horizontal: 'left' };
+    worksheet.mergeCells(`D${currentRow}:G${currentRow}`);
+    worksheet.getCell(`D${currentRow}`).border = thinBorder;
     
     currentRow += 2;
     const perfHeader = worksheet.getRow(currentRow);
@@ -190,28 +196,35 @@ export async function generateJmsSheetExcel(job: JobProgress, data: { sorItems?:
     perfItems.forEach((item) => {
         currentRow++;
         const row = worksheet.getRow(currentRow);
-        worksheet.mergeCells(currentRow, 1, currentRow, 7);
+        worksheet.mergeCells(currentRow, 1, currentRow, 6);
         row.getCell(1).value = item;
-        worksheet.mergeCells(currentRow, 8, currentRow, 9);
-        row.getCell(8).value = 'Satisfactory';
-        worksheet.mergeCells(currentRow, 10, currentRow, 11);
-        row.getCell(10).value = 'Not Satisfactory';
-        
-        for (let i = 1; i <= 11; i++) {
-            const cell = row.getCell(i);
-            cell.border = thinBorder;
-            if (i === 1) cell.alignment = leftAlign;
-            if (i === 8 || i === 10) cell.alignment = centerAlign;
-        }
+        row.getCell(1).alignment = { ...leftAlign, vertical: 'middle' };
+        row.getCell(1).border = { left: {style: 'thin'}, right: {style: 'thin'} };
+
+
+        row.getCell(7).value = 'Satisfactory';
+        row.getCell(7).alignment = { horizontal: 'right', vertical: 'middle' };
+        row.getCell(7).border = { left: {style: 'thin'} };
+
+        row.getCell(8).border = thinBorder; // Box for tick
+
+        worksheet.mergeCells(currentRow, 9, currentRow, 10);
+        row.getCell(9).value = 'Not Satisfactory';
+        row.getCell(9).alignment = { horizontal: 'right', vertical: 'middle' };
+        row.getCell(9).border = { left: {style: 'thin'} };
+
+        row.getCell(11).border = thinBorder; // Box for tick
     });
 
     currentRow += 2;
     const eicSignRow = worksheet.getRow(currentRow);
+    worksheet.mergeCells(currentRow, 1, currentRow, 3);
     eicSignRow.getCell(1).value = 'RIL EIC Name, Sign & Date';
     eicSignRow.getCell(1).font = boldFont;
-    eicSignRow.getCell(1).border = thinBorder;
-    worksheet.mergeCells(currentRow, 2, currentRow, 4);
-    eicSignRow.getCell(2).border = thinBorder;
+    eicSignRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'left' };
+
+    worksheet.mergeCells(`D${currentRow}:G${currentRow}`);
+    worksheet.getCell(`D${currentRow}`).border = thinBorder;
     
     // --- Column Widths ---
     worksheet.columns = [
@@ -226,7 +239,62 @@ export async function generateJmsSheetExcel(job: JobProgress, data: { sorItems?:
 export async function generateJmsSheetPdf(job: JobProgress, data: { sorItems?: SorItem[] }) {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 20;
+
+    const addPageFooter = (data: any) => {
+        let finalY = pageHeight - 140; // Start position for footer
+
+        // Cont. Supervisor Name & Sign
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Cont. Supervisor Name & Sign:', margin, finalY);
+        doc.rect(margin + 150, finalY - 8, 250, 15);
+        finalY += 20;
+
+        doc.text('JOB EXECUTION PERFORMANCE RECORD (EIC to kindly tick on relevant box):', margin, finalY);
+        finalY += 15;
+
+        const perfItems = [
+          '1. The safety awareness and demonstrated by the persons deployed by the contractor',
+          '2. The jobs performed by the above contractor as detailed above is',
+          '3. The training/skill levis of the persons deployed by the contractor for the above jobs',
+          '4. The time taken by the contractor for the above jobs',
+          '5. The tools/tackles provided & used by the persons deployed by the contractor'
+        ];
+
+        (doc as any).autoTable({
+            startY: finalY,
+            body: perfItems.map(item => [item, 'Satisfactory', '', 'Not Satisfactory', '']),
+            theme: 'grid',
+            styles: { fontSize: 8, cellPadding: 2, valign: 'middle' },
+            columnStyles: {
+              0: { cellWidth: 420 },
+              1: { cellWidth: 70 },
+              2: { cellWidth: 20 },
+              3: { cellWidth: 80 },
+              4: { cellWidth: 20 },
+            },
+            didParseCell: (hookData: any) => {
+                if (hookData.section === 'body') {
+                    hookData.cell.styles.fontStyle = 'normal';
+                }
+                if (hookData.section === 'body' && (hookData.column.index === 2 || hookData.column.index === 4)) {
+                    hookData.cell.text = [''];
+                }
+            }
+        });
+        
+        finalY = (doc as any).lastAutoTable.finalY + 10;
+        doc.setFont('helvetica', 'bold');
+        doc.text('RIL EIC Name, Sign & Date', margin, finalY);
+        doc.rect(margin + 150, finalY - 8, 250, 15);
+
+        // Page number
+        const pageCount = doc.internal.getNumberOfPages();
+        doc.setFontSize(8);
+        doc.text(`Page ${data.pageNumber} of ${pageCount}`, pageWidth - margin, pageHeight - 15, { align: 'right' });
+    };
 
     // --- Header ---
     doc.setFontSize(14);
@@ -268,12 +336,11 @@ export async function generateJmsSheetPdf(job: JobProgress, data: { sorItems?: S
     let srNo = 1;
     const groupedItems = groupItemsForJms(data.sorItems || []);
     
-    for (const group of groupedItems) {
+    groupedItems.forEach(group => {
+        const groupSize = group.length;
         group.forEach((item, index) => {
-            const rowData: (string | { content: string | number, rowSpan: number } )[] = [];
-            if (index === 0) {
-                rowData.push({ content: srNo, rowSpan: group.length });
-            }
+            const rowData: any[] = [];
+            if(index === 0) rowData.push({ content: srNo, rowSpan: groupSize });
             rowData.push(
                 item.serviceCode,
                 item.scopeDescription,
@@ -283,60 +350,32 @@ export async function generateJmsSheetPdf(job: JobProgress, data: { sorItems?: S
                 String(item.eicApprovedQty || 0)
             );
             if (index === 0) {
-                rowData.push({ content: item.workPermitNo || '', rowSpan: group.length });
-                rowData.push({ content: item.pmWorkOrderNo || '', rowSpan: group.length });
-                rowData.push({ content: item.dateWorkCompleted ? format(item.dateWorkCompleted as Date, 'dd-MM-yyyy') : '', rowSpan: group.length });
+                rowData.push({ content: item.workPermitNo || '', rowSpan: groupSize });
+                rowData.push({ content: item.pmWorkOrderNo || '', rowSpan: groupSize });
+                rowData.push({ content: item.dateWorkCompleted ? format(item.dateWorkCompleted as Date, 'dd-MM-yyyy') : '', rowSpan: groupSize });
             }
             rowData.push(item.provision || '');
             rowData.push(item.remarks || '');
-            body.push(rowData.filter(cell => cell !== ''));
+            body.push(rowData);
         });
         srNo++;
-    }
+    });
 
-    doc.autoTable({
+    (doc as any).autoTable({
         head: head,
         body: body,
         startY: infoStartY + 60,
         theme: 'grid',
         styles: { fontSize: 7, cellPadding: 2, halign: 'center', valign: 'middle' },
         headStyles: { fontStyle: 'bold', fillColor: [217, 226, 243] },
-        columnStyles: { 2: { halign: 'left' } }
+        columnStyles: { 
+          2: { halign: 'left', cellWidth: 150 },
+          10: { cellWidth: 70 },
+          11: { cellWidth: 70 },
+        },
+        didDrawPage: addPageFooter
     });
-
-    // --- Footer ---
-    let finalY = (doc as any).lastAutoTable.finalY + 20;
-
-    doc.setFontSize(9);
-    doc.text('Cont. Supervisor Name & Sign:', margin, finalY);
-    doc.rect(margin + 150, finalY - 8, 200, 15);
-
-    finalY += 30;
-    doc.setFont('helvetica', 'bold');
-    doc.text('JOB EXECUTION PERFORMANCE RECORD (EIC to kindly tick on relevant box):', margin, finalY);
-
-    const perfItems = [
-        '1. The safety awareness and demonstrated by the persons deployed by the contractor',
-        '2. The jobs performed by the above contractor as detailed above is',
-        '3. The training/skill levis of the persons deployed by the contractor for the above jobs',
-        '4. The time taken by the contractor for the above jobs',
-        '5. The tools/tackles provided & used by the persons deployed by the contractor'
-    ];
-
-    perfItems.forEach((item, index) => {
-        finalY += 20;
-        doc.setFont('helvetica', 'normal');
-        doc.text(item, margin, finalY);
-        doc.rect(margin + 450, finalY - 8, 100, 15);
-        doc.text('Satisfactory', margin + 455, finalY - 1);
-        doc.rect(margin + 560, finalY - 8, 100, 15);
-        doc.text('Not Satisfactory', margin + 565, finalY - 1);
-    });
-
-    finalY += 30;
-    doc.setFont('helvetica', 'bold');
-    doc.text('RIL EIC Name, Sign & Date', margin, finalY);
-    doc.rect(margin + 150, finalY - 8, 200, 15);
 
     doc.save(`JMS_${job.jmsNo || job.id.slice(-6)}.pdf`);
 }
+
