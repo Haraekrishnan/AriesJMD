@@ -19,11 +19,11 @@ async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
 }
 
 async function fetchImageAsBase64(imgPath: string): Promise<string> {
-    const url = imgPath.startsWith('/') ? `${window.location.origin}${imgPath}` : imgPath;
+    const url = imgPath;
     try {
         const response = await fetch(url);
         if (!response.ok) {
-             console.error(`Failed to fetch image: ${response.statusText} from ${url}`);
+             console.error(`Failed to fetch image: ${response.status} ${response.statusText} from ${url}`);
              return '';
         }
         const blob = await response.blob();
@@ -141,6 +141,9 @@ export async function generateJmsSheetExcel(job: JobProgress, data: { sorItems?:
     groupedItems.forEach(group => {
         const groupStartRow = currentRow;
         group.forEach(item => {
+            const dateWorkCompleted = item.dateWorkCompleted
+            ? (item.dateWorkCompleted instanceof Date ? item.dateWorkCompleted : parseISO(item.dateWorkCompleted as string))
+            : null;
             const row = worksheet.getRow(currentRow);
             row.values = [
                 srNo,
@@ -152,7 +155,7 @@ export async function generateJmsSheetExcel(job: JobProgress, data: { sorItems?:
                 item.eicApprovedQty,
                 item.workPermitNo,
                 item.pmWorkOrderNo,
-                item.dateWorkCompleted ? format(item.dateWorkCompleted as Date, 'dd-MM-yyyy') : '',
+                dateWorkCompleted && isValid(dateWorkCompleted) ? format(dateWorkCompleted, 'dd-MM-yyyy') : '',
                 item.provision,
                 item.remarks
             ];
@@ -171,7 +174,8 @@ export async function generateJmsSheetExcel(job: JobProgress, data: { sorItems?:
         worksheet.getCell(groupStartRow, 1).value = srNo;
         worksheet.getCell(groupStartRow, 8).value = group[0].workPermitNo || '';
         worksheet.getCell(groupStartRow, 9).value = group[0].pmWorkOrderNo || '';
-        worksheet.getCell(groupStartRow, 10).value = group[0].dateWorkCompleted ? format(group[0].dateWorkCompleted as Date, 'dd-MM-yyyy') : '';
+        const groupDate = group[0].dateWorkCompleted ? (group[0].dateWorkCompleted instanceof Date ? group[0].dateWorkCompleted : parseISO(group[0].dateWorkCompleted as string)) : null;
+        worksheet.getCell(groupStartRow, 10).value = groupDate && isValid(groupDate) ? format(groupDate, 'dd-MM-yyyy') : '';
         srNo++;
     });
     
@@ -181,7 +185,7 @@ export async function generateJmsSheetExcel(job: JobProgress, data: { sorItems?:
     const footerImageBuffer = await fetchImageAsBuffer('/images/footer.png');
     if (footerImageBuffer) {
         const footerImageId = workbook.addImage({ buffer: footerImageBuffer, extension: 'png' });
-        worksheet.mergeCells(footerRowIndex, 1, footerRowIndex + 5, 12); // Assuming footer image spans this area
+        worksheet.mergeCells(footerRowIndex, 1, footerRowIndex + 5, 12);
         worksheet.addImage(footerImageId, {
             tl: { col: 0, row: footerRowIndex - 1 },
             br: { col: 12, row: footerRowIndex + 5 }
@@ -223,11 +227,17 @@ export async function generateJmsSheetPdf(job: JobProgress, data: { sorItems?: S
         // FOOTER
         if (footerImgDataUrl) {
             const footerHeight = 110; 
-            doc.addImage(footerImgDataUrl, 'PNG', margin, pageHeight - margin - footerHeight, pageWidth - (margin*2), footerHeight);
+            const footerY = pageHeight - margin - footerHeight;
+             if (data.pageNumber > 1 && data.cursor.y > footerY) {
+                // If content overflows, footer might be drawn on top.
+                // This is a basic check.
+            } else {
+                doc.addImage(footerImgDataUrl, 'PNG', margin, footerY, pageWidth - (margin * 2), footerHeight);
+            }
         }
 
         // Page number
-        const pageCount = doc.internal.getNumberOfPages();
+        const pageCount = (doc as any).internal.getNumberOfPages();
         doc.setFontSize(8);
         doc.text(`Page ${data.pageNumber} of ${pageCount}`, pageWidth - margin, pageHeight - 15, { align: 'right' });
     };
@@ -246,7 +256,7 @@ export async function generateJmsSheetPdf(job: JobProgress, data: { sorItems?: S
         ],
         theme: 'plain',
         styles: { fontSize: 8.5, cellPadding: 2, lineWidth: 0.5, lineColor: [100,100,100] },
-        didDrawCell: data => doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height)
+        didDrawCell: (data: any) => doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height)
     });
 
     const jobDetailsY = (doc as any).lastAutoTable.finalY + 5;
@@ -255,7 +265,9 @@ export async function generateJmsSheetPdf(job: JobProgress, data: { sorItems?: S
     doc.text('DETAILS OF JOBS PERFORMED:', margin, jobDetailsY);
     
     // --- Table ---
-    const head = [['Sr. No.', 'Service Code', 'Service Description', 'UOM', 'Qty Planned', 'Qty Executed', 'EIC Approved Qty', 'Work Permit No', 'PM Work Order No', 'Date Work Completed', 'Provision', 'Remarks']];
+    const head = [
+      ["SR. No.", "Service Code", "Service Description", "UOM", "Qty Planned", "Qty Executed", "EIC Approved Qty", "Work Permit No", "PM Work Order No", "Date Work Completed", "Provision", "Remarks (if any)"]
+    ];
     
     const body: any[] = [];
     let srNo = 1;
@@ -264,25 +276,20 @@ export async function generateJmsSheetPdf(job: JobProgress, data: { sorItems?: S
     groupedItems.forEach(group => {
         const groupSize = group.length;
         group.forEach((item, index) => {
-            const isHarness = item.materialName.toLowerCase().includes('harness');
-            const rowData: any[] = [];
+            const dateWorkCompleted = item.dateWorkCompleted ? (item.dateWorkCompleted instanceof Date ? item.dateWorkCompleted : parseISO(item.dateWorkCompleted as string)) : null;
 
+            const rowData: any[] = [];
+            
             if (index === 0) rowData.push({ content: srNo, rowSpan: groupSize });
-            rowData.push(
-                item.serviceCode,
-                item.scopeDescription,
-                item.uom,
-                String(item.qtyPlanned || 0),
-                String(item.qtyExecuted || 0),
-                String(item.eicApprovedQty || 0)
-            );
+            rowData.push(item.serviceCode, item.scopeDescription, item.uom, item.qtyPlanned, item.qtyExecuted, item.eicApprovedQty);
             if (index === 0) {
                 rowData.push({ content: item.workPermitNo || '', rowSpan: groupSize });
                 rowData.push({ content: item.pmWorkOrderNo || '', rowSpan: groupSize });
-                rowData.push({ content: item.dateWorkCompleted ? format(item.dateWorkCompleted as Date, 'dd-MM-yyyy') : '', rowSpan: groupSize });
+                rowData.push({ content: dateWorkCompleted && isValid(dateWorkCompleted) ? format(dateWorkCompleted, 'dd-MM-yyyy') : '', rowSpan: groupSize });
             }
             rowData.push(item.provision || '');
             rowData.push(item.remarks || '');
+            
             body.push(rowData);
         });
         srNo++;
@@ -294,7 +301,8 @@ export async function generateJmsSheetPdf(job: JobProgress, data: { sorItems?: S
         startY: jobDetailsY + 10,
         theme: 'grid',
         styles: { fontSize: 7, cellPadding: 2, halign: 'center', valign: 'middle', overflow: 'linebreak' },
-        headStyles: { fontStyle: 'bold', fillColor: [217, 226, 243], textColor: 0 },
+        headStyles: { fontStyle: 'bold', fillColor: [217, 226, 243], textColor: 0, lineWidth: 0.5, lineColor: [0,0,0] },
+        bodyStyles: { lineWidth: 0.5, lineColor: [0,0,0] },
         columnStyles: { 
           2: { halign: 'left', cellWidth: 'auto' },
         },

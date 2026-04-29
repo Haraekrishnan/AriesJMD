@@ -47,11 +47,11 @@ async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
 }
 
 async function fetchImageAsBase64(imgPath: string): Promise<string> {
-    const url = imgPath.startsWith('/') ? `${window.location.origin}${imgPath}` : imgPath;
+    const url = imgPath;
     try {
         const response = await fetch(url);
         if (!response.ok) {
-             console.error(`Failed to fetch image: ${response.statusText} from ${url}`);
+             console.error(`Failed to fetch image: ${response.status} ${response.statusText} from ${url}`);
              return '';
         }
         const blob = await response.blob();
@@ -334,7 +334,6 @@ export async function generateAbstractSheetPdf(job: JobProgress, data: AbstractS
         headStyles: { fontStyle: 'bold', fillColor: [217, 217, 217], textColor: 0, halign: 'center' },
         footStyles: { fontStyle: 'bold', fillColor: [217, 217, 217], textColor: 0 },
     
-        // ✅ MOVE THIS INSIDE (VERY IMPORTANT)
         columnStyles: {
             0: { cellWidth: 70 },
             1: { cellWidth: 70, halign: 'center' },
