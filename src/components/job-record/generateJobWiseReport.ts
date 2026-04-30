@@ -16,24 +16,6 @@ async function fetchImageAsArrayBuffer(url: string) {
     return response.arrayBuffer();
 }
 
-function groupSorItems(items: any[]) {
-    const grouped: Record<string, any> = {};
-
-    items.forEach(item => {
-        const key = `${item.serviceCode}_${item.rate}_${item.scopeDescription}`;
-
-        if (!grouped[key]) {
-            grouped[key] = { ...item };
-        } else {
-            grouped[key].eicApprovedQty =
-                (grouped[key].eicApprovedQty || 0) +
-                (item.eicApprovedQty || 0);
-        }
-    });
-
-    return Object.values(grouped);
-}
-
 export async function generateJobWiseExcel(
     currentMonth: Date,
     jobRecords: { [key: string]: JobRecord },
@@ -105,55 +87,25 @@ export async function generateJobWiseExcel(
 
         const totalDays = getDaysInMonth(currentMonth);
         const dayHeadersExcel = Array.from({ length: totalDays }, (_, i) => i + 1);
-        const totalCols = 2 + totalDays + 11;
+        const totalCols = 2 + totalDays + 10;
 
-        // Row 1 – Title
+        // HEADER
         worksheet.mergeCells(1, 1, 1, totalCols);
-        const cell1 = worksheet.getCell(1, 1);
-        cell1.value = "RIL JMD PROJECT";
-        cell1.font = { bold: true, size: 16 };
-        cell1.alignment = { horizontal: "center", vertical: "middle" };
-        cell1.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D9D9D9" } };
-        worksheet.getRow(1).height = 35;
+        const titleRow = worksheet.getCell('A1');
+        titleRow.value = "Project : JMD";
+        titleRow.font = { bold: true, size: 14 };
+        titleRow.alignment = { horizontal: 'center', vertical: 'middle' };
 
-        // Row 2 – Month / Plant
         worksheet.mergeCells(2, 1, 2, totalCols);
-        const cell2 = worksheet.getCell(2, 1);
-        cell2.value = `Job Record for ${format(currentMonth, "MMMM yyyy")} - Plant: ${plantName}`;
-        cell2.font = { bold: true, size: 13 };
-        cell2.alignment = { horizontal: "center", vertical: "middle" };
-        cell2.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D9D9D9" } };
-        worksheet.getRow(2).height = 25;
+        const subTitleRow = worksheet.getCell('A2');
+        subTitleRow.value = `Job Record for ${format(currentMonth, "MMMM yyyy")} - Plant: ${plantName}`;
+        subTitleRow.font = { size: 11 };
+        subTitleRow.alignment = { horizontal: 'center', vertical: 'middle' };
 
-        if (logoBuffer) {
-            const logoId = workbook.addImage({
-                buffer: logoBuffer,
-                extension: "png",
-            });
-            worksheet.addImage(logoId, {
-                tl: { col: 0.2, row: 0.3 },
-                ext: { width: 160, height: 40 },
-                editAs: "absolute",
-            });
-        }
-
-        worksheet.addRow([]); // Row 3 empty spacer
-
-        // Job Number Header
-        worksheet.mergeCells('A4:B4');
-        const labelCell = worksheet.getCell('A4');
-        labelCell.value = 'Job Number';
-        labelCell.font = { bold: true };
-        labelCell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-
-        worksheet.mergeCells('C4:D4');
-        const valueCell = worksheet.getCell('C4');
-        valueCell.value = sheetJobNo;
-        valueCell.font = { bold: true, color: { argb: 'FFFF0000' } };
-        valueCell.alignment = { horizontal: 'center' };
-        valueCell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-        
-        worksheet.getRow(4).height = 20;
+        worksheet.getCell('A3').value = "Job No";
+        worksheet.getCell('A3').font = { bold: true };
+        worksheet.getCell('B3').value = sheetJobNo;
+        worksheet.getCell('B3').font = { bold: true };
 
         const header = [
           "Name",
@@ -264,17 +216,30 @@ export async function generateJobWiseExcel(
             );
             
             const dataRow = worksheet.addRow(rowData);
+
             dataRow.eachCell({ includeEmpty: true }, (cell) => {
-                cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-                cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+              cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+              cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
             });
+
             dataRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
             dataRow.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' };
+
+            const summaryStart = 3 + totalDays;
+
+            // Colors
+            for (let i = summaryStart; i <= summaryStart + 4; i++) {
+              dataRow.getCell(i).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2EFDA" } };
+            }
+            dataRow.getCell(summaryStart + 6).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2EFDA" } };
+            dataRow.getCell(summaryStart + 7).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFCE4D6" } };
+            dataRow.getCell(summaryStart + 9).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } };
         });
         
         worksheet.eachRow((row, rowNumber) => {
-            if (rowNumber > 5) {
+            if (rowNumber >= 4) {
                 row.eachCell((cell) => {
+                    cell.font = { name: 'Arial', size: 10 };
                     if (typeof cell.value === "string") {
                         const val = cell.value.trim().toUpperCase();
                         if (val === 'S') return;
@@ -284,7 +249,7 @@ export async function generateJobWiseExcel(
                                 cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: jobColor.excelFill.fgColor.argb } };
                             }
                             if (jobColor.excelFill.font?.color?.argb) {
-                                cell.font = { bold: true, color: { argb: jobColor.excelFill.font.color.argb } };
+                                cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: jobColor.excelFill.font.color.argb } };
                             }
                         }
                     }
@@ -294,14 +259,8 @@ export async function generateJobWiseExcel(
 
         worksheet.getColumn(1).width = 30;
         worksheet.getColumn(2).width = 20;
-
-        for (let i = 3; i <= 2 + totalDays; i++) {
-          worksheet.getColumn(i).width = 7;
-        }
-
-        for (let i = 3 + totalDays; i <= header.length; i++) {
-          worksheet.getColumn(i).width = 15;
-        }
+        for (let i = 3; i <= 2 + totalDays; i++) worksheet.getColumn(i).width = 4.5;
+        for (let i = 3 + totalDays; i <= header.length; i++) worksheet.getColumn(i).width = 7.8;
     }
 
     const buffer = await workbook.xlsx.writeBuffer();
