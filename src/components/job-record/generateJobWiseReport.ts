@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as ExcelJS from 'exceljs';
@@ -91,21 +90,19 @@ export async function generateJobWiseExcel(
 
         // HEADER
         worksheet.mergeCells(1, 1, 1, totalCols);
-        const titleRow = worksheet.getCell('A1');
-        titleRow.value = "Project : JMD";
-        titleRow.font = { bold: true, size: 14 };
-        titleRow.alignment = { horizontal: 'center', vertical: 'middle' };
+        const titleCell = worksheet.getCell('A1');
+        titleCell.value = "Project : JMD";
+        titleCell.font = { bold: true, size: 14 };
 
         worksheet.mergeCells(2, 1, 2, totalCols);
-        const subTitleRow = worksheet.getCell('A2');
-        subTitleRow.value = `Job Record for ${format(currentMonth, "MMMM yyyy")} - Plant: ${plantName}`;
-        subTitleRow.font = { size: 11 };
-        subTitleRow.alignment = { horizontal: 'center', vertical: 'middle' };
+        const subtitleCell = worksheet.getCell('A2');
+        subtitleCell.value = `Job Record for ${format(currentMonth, "MMMM yyyy")} - Plant: ${plantName}`;
+        subtitleCell.font = { size: 11 };
 
-        worksheet.getCell('A3').value = "Job No";
-        worksheet.getCell('A3').font = { bold: true };
-        worksheet.getCell('B3').value = sheetJobNo;
-        worksheet.getCell('B3').font = { bold: true };
+        worksheet.mergeCells(3, 1, 3, totalCols);
+        const jobNoCell = worksheet.getCell('A3');
+        jobNoCell.value = `Job No: ${sheetJobNo}`;
+        jobNoCell.font = { bold: true };
 
         const header = [
           "Name",
@@ -146,6 +143,12 @@ export async function generateJobWiseExcel(
             ];
             
             let workDaysForThisJob = 0;
+            let offDays = 0;
+            let leaveDays = 0;
+            let medicalLeave = 0;
+            let standbyDays = 0;
+            let reportingDays = 0;
+            let phfhDays = 0;
 
             dayHeadersExcel.forEach(day => {
                 const cellCode = (dayData[day] as string) || '';
@@ -162,7 +165,7 @@ export async function generateJobWiseExcel(
                   value = 'S';
                   workDaysForThisJob++;
                 } 
-                else if (['L', 'PH', 'OFF'].includes(cellCode)) {
+                else if (['L', 'PH', 'OFF', 'ML', 'ST', 'R'].includes(cellCode)) {
                     let previousJobNo = null;
                     for (let d = day - 1; d >= 1; d--) {
                         const prevCode = dayData[d];
@@ -175,41 +178,29 @@ export async function generateJobWiseExcel(
                 
                     if (previousJobNo === sheetJobNo) {
                         value = cellCode;
-                    } else {
-                        value = '';
+                        if (value === 'OFF') offDays++;
+                        else if (value === 'L') leaveDays++;
+                        else if (value === 'ML') medicalLeave++;
+                        else if (value === 'ST') standbyDays++;
+                        else if (value === 'R') reportingDays++;
+                        else if (value === 'PH') phfhDays++;
                     }
                 }
-            
                 rowData.push(value);
             });
 
-            const summary = dayHeadersExcel.reduce(
-                (acc, day) => {
-                    const code = (dayData as any)[day];
-                    if (nonWorkCodes.includes(code)) {
-                        if (["OFF", "PH", "OS"].includes(code)) acc.offDays++;
-                        else if (["L", "X", "NWS"].includes(code)) acc.leaveDays++;
-                        else if (code === "ML") acc.medicalLeave++;
-                        else if (["ST", "TR", "EP", "PD", "Q"].includes(code)) acc.standbyTraining++;
-                        else if (code === "R") acc.reptOffice++;
-                    }
-                    return acc;
-                },
-                { offDays: 0, leaveDays: 0, medicalLeave: 0, standbyTraining: 0, reptOffice: 0 }
-            );
-
-            const totalOvertime = Object.values(otData).reduce((sum, h) => sum + (h || 0), 0);
+            const totalOvertime = Object.values(otData).reduce((sum: number, h: any) => sum + (Number(h) || 0), 0);
             const additionalSundays = fullRecord?.additionalSundayDuty || 0;
-            const salaryDays = additionalSundays + summary.offDays + summary.medicalLeave + summary.standbyTraining + summary.reptOffice + workDaysForThisJob;
+            const salaryDays = additionalSundays + offDays + medicalLeave + standbyDays + reportingDays + workDaysForThisJob;
             
             rowData.push(
-              summary.offDays,
-              summary.leaveDays,
-              summary.medicalLeave,
-              summary.standbyTraining,
-              summary.reptOffice,
+              offDays,
+              leaveDays,
+              medicalLeave,
+              standbyDays,
+              reportingDays,
               workDaysForThisJob,
-              summary.offDays, 
+              phfhDays, 
               salaryDays,
               totalOvertime,
               "" // Remarks
@@ -224,39 +215,8 @@ export async function generateJobWiseExcel(
 
             dataRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
             dataRow.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' };
-
-            const summaryStart = 3 + totalDays;
-
-            // Colors
-            for (let i = summaryStart; i <= summaryStart + 4; i++) {
-              dataRow.getCell(i).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2EFDA" } };
-            }
-            dataRow.getCell(summaryStart + 6).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2EFDA" } };
-            dataRow.getCell(summaryStart + 7).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFCE4D6" } };
-            dataRow.getCell(summaryStart + 9).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } };
         });
         
-        worksheet.eachRow((row, rowNumber) => {
-            if (rowNumber >= 4) {
-                row.eachCell((cell) => {
-                    cell.font = { name: 'Arial', size: 10 };
-                    if (typeof cell.value === "string") {
-                        const val = cell.value.trim().toUpperCase();
-                        if (val === 'S') return;
-                        const jobColor = JOB_CODE_COLORS[val as keyof typeof JOB_CODE_COLORS];
-                        if (jobColor?.excelFill) {
-                            if (jobColor.excelFill.fgColor) {
-                                cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: jobColor.excelFill.fgColor.argb } };
-                            }
-                            if (jobColor.excelFill.font?.color?.argb) {
-                                cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: jobColor.excelFill.font.color.argb } };
-                            }
-                        }
-                    }
-                });
-            }
-        });
-
         worksheet.getColumn(1).width = 30;
         worksheet.getColumn(2).width = 20;
         for (let i = 3; i <= 2 + totalDays; i++) worksheet.getColumn(i).width = 4.5;
