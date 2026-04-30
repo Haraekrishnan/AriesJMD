@@ -97,12 +97,6 @@ export default function JobProgressPage() {
     updateUserViewPreference('timesheetTracker', value as 'board' | 'list');
   };
 
-  const canCreateJms = useMemo(() => {
-    if (!user) return false;
-    const allowedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
-    return allowedRoles.includes(user.role);
-  }, [user]);
-
   const longPendingJobs = useMemo(() => {
     if (!user) return [];
     const allowedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
@@ -319,19 +313,19 @@ export default function JobProgressPage() {
                 </Button>
             )}
             <div className="flex items-center gap-1">
-                <Button variant="outline" size="icon" onClick={() => changeMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth}><ChevronLeft className="h-4 w-4" /></Button>
                 <Button variant="outline" className="w-32" onClick={handleTodayClick}>{format(currentMonth, 'MMMM yyyy')}</Button>
-                <Button variant="outline" size="icon" onClick={() => changeMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" onClick={() => changeMonth(1)} disabled={!canGoToNextMonth}><ChevronRight className="h-4 w-4" /></Button>
             </div>
-            {canCreateJms && (
-              <Button onClick={() => setCreateJobDialogOpen(true)}>
-                  <PlusCircle className="mr-2 h-4 w-4" /> Create New JMS
-              </Button>
-            )}
-            {canCreateJms && (
-              <Button onClick={handleOpenBuilderForNew}>
-                  <FolderKanban className="mr-2 h-4 w-4" /> JMS Builder
-              </Button>
+            {can.manage_jms_builder && (
+              <>
+                <Button onClick={() => setCreateJobDialogOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Create New JMS
+                </Button>
+                <Button onClick={handleOpenBuilderForNew}>
+                    <FolderKanban className="mr-2 h-4 w-4" /> JMS Builder
+                </Button>
+              </>
             )}
              <Button onClick={() => setIsCreateTimesheetOpen(true)}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Submit Timesheet

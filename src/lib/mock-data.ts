@@ -39,7 +39,7 @@ export const ROLES: RoleDefinition[] = [
       'log_manpower', 'manage_job_schedule', 'prepare_master_schedule', 'manage_igp_ogp',
       'manage_ppe_request', 'view_internal_store_request', 'manage_store_requests',
       'manage_job_record', 'manage_tp_certification', 'manage_delivery_notes',
-      'manage_inward_outward'
+      'manage_inward_outward', 'manage_jms_builder'
     ],
     isEditable: false,
   },
@@ -112,7 +112,7 @@ export const ROLES: RoleDefinition[] = [
     permissions: [
         'manage_manpower_list', 'manage_tasks', 'log_manpower',
         'manage_ppe_request', 'view_internal_store_request', 'manage_store_requests',
-        'manage_job_record', 'view_inventory'
+        'manage_job_record', 'view_inventory', 'manage_jms_builder'
     ],
     isEditable: true,
   }

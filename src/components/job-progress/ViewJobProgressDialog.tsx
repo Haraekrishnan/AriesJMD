@@ -188,32 +188,7 @@ const ReopenJobDialog = ({ isOpen, setIsOpen, job, reopenJob }: { isOpen: boolea
       );
   };
     
-const nextStepSchema = z.object({
-    name: z.string().min(1, 'Step name is required'),
-    assigneeId: z.string().optional(),
-    description: z.string().optional(),
-    dueDate: z.date().optional().nullable(),
-    jmsNo: z.string().optional(),
-  }).refine(data => {
-      if (unassignedSteps.includes(data.name)) {
-          return true;
-      }
-      return !!data.assigneeId;
-  }, {
-      message: 'Assignee is required for this step.',
-      path: ['assigneeId'],
-  }).refine(data => {
-      if (data.name === 'JMS no created') {
-          return !!data.jmsNo && data.jmsNo.length > 0;
-      }
-      return true;
-  }, {
-      message: 'JMS No. is required for this step.',
-      path: ['jmsNo'],
-  });
-  type NextStepFormValues = z.infer<typeof nextStepSchema>;
-    
-const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
+const NextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
     const { user, getAssignableUsers } = useAuth();
     const { addAndCompleteStep, finalizeJob } = usePlanner();
     const [completionComment, setCompletionComment] = useState('');
@@ -672,7 +647,9 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                         )}
                     </div>
                     <div className="flex items-center gap-2">
-                         <Button variant="secondary" onClick={() => onOpenBuilder(job)}><FolderKanban className="mr-2 h-4 w-4"/> Open Builder</Button>
+                         {can.manage_jms_builder && (
+                            <Button variant="secondary" onClick={() => onOpenBuilder(job)}><FolderKanban className="mr-2 h-4 w-4"/> Open Builder</Button>
+                         )}
                         <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
                     </div>
                 </DialogFooter>

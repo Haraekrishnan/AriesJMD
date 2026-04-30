@@ -1,5 +1,3 @@
-
-
 import type { User as FirebaseUser } from 'firebase/auth';
 
 // User & Auth
@@ -158,6 +156,7 @@ export const ALL_PERMISSIONS = [
   'manage_vehicle_usage',
   'manage_job_progress',
   'view_job_progress',
+  'manage_jms_builder',
   'view_all',
   'manage_safety_observations',
   'manage_delivery_notes',
