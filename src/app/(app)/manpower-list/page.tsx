@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -7,7 +6,7 @@ import { useManpower } from '@/contexts/manpower-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCog, Shirt, FileWarning, Clock, GanttChartSquare, Book, History } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Search, Plane, FileDown, CheckCircle, Pencil, XCircle, Upload, UserCog, Shirt, FileWarning, Clock, GanttChartSquare, Book, History, Hash } from 'lucide-react';
 import ManpowerListTable from '@/components/manpower/ManpowerListTable';
 import ManpowerProfileDialog from '@/components/manpower/ManpowerProfileDialog';
 import type { ManpowerProfile, LeaveRecord } from '@/lib/types';
@@ -28,6 +27,7 @@ import MemoReportDialog from '@/components/manpower/MemoReportDialog';
 import LogbookRegisterDialog from '@/components/manpower/LogbookRegisterDialog';
 import LogbookHistoryDialog from '@/components/manpower/LogbookHistoryDialog';
 import UpcomingLeaveReport from '@/components/manpower/UpcomingLeaveReport';
+import EmployeeCodeRegisterDialog from '@/components/manpower/EmployeeCodeRegisterDialog';
 
 
 export default function ManpowerListPage() {
@@ -44,6 +44,7 @@ export default function ManpowerListPage() {
     const [isMemoReportOpen, setIsMemoReportOpen] = useState(false);
     const [isLogbookRegisterOpen, setIsLogbookRegisterOpen] = useState(false);
     const [isLogbookHistoryOpen, setIsLogbookHistoryOpen] = useState(false);
+    const [isCodeRegisterOpen, setIsCodeRegisterOpen] = useState(false);
     const [selectedProfile, setSelectedProfile] = useState<ManpowerProfile | null>(null);
     const [selectedLeave, setSelectedLeave] = useState<LeaveRecord | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -248,6 +249,7 @@ export default function ManpowerListPage() {
                         <>
                          <Button variant="outline" onClick={() => setIsLogbookHistoryOpen(true)}><History className="mr-2 h-4 w-4" /> Logbook History</Button>
                          <Button variant="outline" onClick={() => setIsLogbookRegisterOpen(true)}><Book className="mr-2 h-4 w-4" /> Logbook Register</Button>
+                         <Button variant="outline" onClick={() => setIsCodeRegisterOpen(true)}><Hash className="mr-2 h-4 w-4" /> Code Register</Button>
                          <Button variant="outline" onClick={() => setIsMemoReportOpen(true)}><GanttChartSquare className="mr-2 h-4 w-4" /> Memo Report</Button>
                          <Button variant="outline" onClick={handleDownloadLeaveReport}><FileDown className="mr-2 h-4 w-4" /> Leave Report</Button>
                          <Button onClick={() => setIsLeaveDialogOpen(true)}><Plane className="mr-2 h-4 w-4" /> Plan Leave</Button>
@@ -446,6 +448,10 @@ export default function ManpowerListPage() {
                         isOpen={isLogbookHistoryOpen}
                         setIsOpen={setIsLogbookHistoryOpen}
                     />
+                    <EmployeeCodeRegisterDialog
+                        isOpen={isCodeRegisterOpen}
+                        setIsOpen={setIsCodeRegisterOpen}
+                    />
                      {selectedProfile && selectedLeave && (
                         <ExtendLeaveDialog
                             isOpen={isExtendLeaveOpen}
@@ -460,4 +466,3 @@ export default function ManpowerListPage() {
     );
 }
 
-    
