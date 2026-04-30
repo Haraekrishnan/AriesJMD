@@ -97,6 +97,16 @@ export default function JobProgressPage() {
     updateUserViewPreference('timesheetTracker', value as 'board' | 'list');
   };
 
+  const canGoToPreviousMonth = useMemo(() => {
+    const firstDayOfCurrentMonth = startOfMonth(currentMonth);
+    return isAfter(firstDayOfCurrentMonth, implementationStartDate);
+  }, [currentMonth]);
+
+  const canGoToNextMonth = useMemo(() => {
+    const firstDayOfCurrentMonth = startOfMonth(currentMonth);
+    return isBefore(firstDayOfCurrentMonth, startOfToday());
+  }, [currentMonth]);
+
   const longPendingJobs = useMemo(() => {
     if (!user) return [];
     const allowedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
