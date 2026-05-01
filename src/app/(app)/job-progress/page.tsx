@@ -69,6 +69,16 @@ export default function JobProgressPage() {
     return getVisibleUsers().filter(u => u.role !== 'Manager');
   }, [getVisibleUsers]);
 
+  const canGoToPreviousMonth = useMemo(() => {
+    const firstDayOfCurrentMonth = startOfMonth(currentMonth);
+    return isAfter(firstDayOfCurrentMonth, implementationStartDate);
+  }, [currentMonth]);
+
+  const canGoToNextMonth = useMemo(() => {
+    const firstDayOfCurrentMonth = startOfMonth(currentMonth);
+    return isBefore(firstDayOfCurrentMonth, startOfToday());
+  }, [currentMonth]);
+
   useEffect(() => {
     if (user?.viewPreferences?.jmsTracker) {
         setJmsView(user.viewPreferences.jmsTracker);
@@ -96,16 +106,6 @@ export default function JobProgressPage() {
   const handleTimesheetDefaultViewChange = (value: string) => {
     updateUserViewPreference('timesheetTracker', value as 'board' | 'list');
   };
-
-  const canGoToPreviousMonth = useMemo(() => {
-    const firstDayOfCurrentMonth = startOfMonth(currentMonth);
-    return isAfter(firstDayOfCurrentMonth, implementationStartDate);
-  }, [currentMonth]);
-
-  const canGoToNextMonth = useMemo(() => {
-    const firstDayOfCurrentMonth = startOfMonth(currentMonth);
-    return isBefore(firstDayOfCurrentMonth, startOfToday());
-  }, [currentMonth]);
 
   const longPendingJobs = useMemo(() => {
     if (!user) return [];
@@ -327,16 +327,18 @@ export default function JobProgressPage() {
                 <Button variant="outline" className="w-32" onClick={handleTodayClick}>{format(currentMonth, 'MMMM yyyy')}</Button>
                 <Button variant="outline" size="icon" onClick={() => changeMonth(1)} disabled={!canGoToNextMonth}><ChevronRight className="h-4 w-4" /></Button>
             </div>
-            {can.manage_jms_builder && (
-              <>
-                <Button onClick={() => setCreateJobDialogOpen(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Create New JMS
-                </Button>
-                <Button onClick={handleOpenBuilderForNew}>
-                    <FolderKanban className="mr-2 h-4 w-4" /> JMS Builder
-                </Button>
-              </>
-            )}
+            <div className="flex gap-2">
+                {can.create_jms && (
+                    <Button onClick={() => setCreateJobDialogOpen(true)}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Create New JMS
+                    </Button>
+                )}
+                {can.manage_jms_builder && (
+                    <Button onClick={handleOpenBuilderForNew}>
+                        <FolderKanban className="mr-2 h-4 w-4" /> JMS Builder
+                    </Button>
+                )}
+            </div>
              <Button onClick={() => setIsCreateTimesheetOpen(true)}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Submit Timesheet
             </Button>

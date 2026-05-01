@@ -156,6 +156,7 @@ export const ALL_PERMISSIONS = [
   'manage_vehicle_usage',
   'manage_job_progress',
   'view_job_progress',
+  'create_jms',
   'manage_jms_builder',
   'view_all',
   'manage_safety_observations',

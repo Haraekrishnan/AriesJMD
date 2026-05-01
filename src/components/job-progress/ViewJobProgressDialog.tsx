@@ -20,7 +20,7 @@ import { Checkbox } from '../ui/checkbox';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '../ui/scroll-area';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -188,7 +188,26 @@ const ReopenJobDialog = ({ isOpen, setIsOpen, job, reopenJob }: { isOpen: boolea
       );
   };
     
-const NextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
+const nextStepSchema = z.object({
+  name: z.enum(JOB_PROGRESS_STEPS, { required_error: 'Step name is required' }),
+  assigneeId: z.string().optional(),
+  description: z.string().optional(),
+  dueDate: z.date().optional().nullable(),
+  jmsNo: z.string().optional(),
+}).refine(data => {
+    if (data.name === 'JMS Hard copy submitted') {
+        return true;
+    }
+    return !!data.assigneeId;
+}, {
+    message: 'Assignee is required for this step.',
+    path: ['assigneeId'],
+});
+
+type NextStepFormValues = z.infer<typeof nextStepSchema>;
+
+
+const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
     const { user, getAssignableUsers } = useAuth();
     const { addAndCompleteStep, finalizeJob } = usePlanner();
     const [completionComment, setCompletionComment] = useState('');
