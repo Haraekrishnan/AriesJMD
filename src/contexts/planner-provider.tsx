@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -566,14 +565,18 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       const newRef = push(ref(rtdb, 'jobProgress'));
       const now = new Date().toISOString();
       
-      const isSelfAssigned = data.assigneeId === user.id;
+      const firstStepData = data.steps?.[0] || {};
+      const assigneeId = firstStepData.assigneeId || data.assigneeId || null;
+      const isSelfAssigned = assigneeId === user.id;
   
       const initialStep: JobStep = {
           id: 'step-0',
-          name: 'JMS created',
-          assigneeId: data.assigneeId || null,
+          name: firstStepData.name || 'JMS created',
+          assigneeId: assigneeId,
           status: isSelfAssigned ? 'Acknowledged' : 'Pending',
           acknowledgedAt: isSelfAssigned ? now : null,
+          description: firstStepData.description || null,
+          dueDate: firstStepData.dueDate ? (firstStepData.dueDate instanceof Date ? firstStepData.dueDate.toISOString() : firstStepData.dueDate) : null,
       };
   
       const newJob: Omit<JobProgress, 'id'> = {
@@ -584,14 +587,14 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         status: isSelfAssigned ? 'In Progress' : 'Not Started',
         steps: [initialStep],
         projectId: data.projectId,
-        plantUnit: data.plantUnit,
-        workOrderNo: data.workOrderNo,
-        foNo: data.foNo,
-        jmsNo: data.jmsNo,
-        amount: data.amount,
-        ariesJobId: data.ariesJobId,
-        dateFrom: data.dateFrom ? data.dateFrom.toISOString() : null,
-        dateTo: data.dateTo ? data.dateTo.toISOString() : null,
+        plantUnit: data.plantUnit || null,
+        workOrderNo: data.workOrderNo || null,
+        foNo: data.foNo || null,
+        jmsNo: data.jmsNo || null,
+        amount: data.amount || null,
+        ariesJobId: data.ariesJobId || null,
+        dateFrom: data.dateFrom ? (data.dateFrom instanceof Date ? data.dateFrom.toISOString() : data.dateFrom) : null,
+        dateTo: data.dateTo ? (data.dateTo instanceof Date ? data.dateTo.toISOString() : data.dateTo) : null,
         plantRegNo: data.plantRegNo || null,
         arcOtcWoNo: data.arcOtcWoNo || null,
         sorItems: data.sorItems || [],
@@ -955,7 +958,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             sendNotificationEmail({
                 to: [assignee.email],
                 subject: `Step Returned for Job: ${job.title}`,
-                htmlBody: htmlBody,
+                htmlBody,
                 notificationSettings,
                 event: 'onTaskReturned', 
                 involvedUser: assignee,
