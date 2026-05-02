@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -156,7 +155,8 @@ export default function PpeStockPage() {
                                         <div className="space-y-2">
                                             <Label>Transaction Type</Label>
                                             <Controller name="type" control={form.control} render={({ field }) => (
-                                                <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                    <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
                                                     <SelectContent>
                                                         <SelectItem value="Inward">Inward (Add to Stock)</SelectItem>
                                                         <SelectItem value="Outward">Outward (Subtract from Stock)</SelectItem>
@@ -167,7 +167,8 @@ export default function PpeStockPage() {
                                         <div className="space-y-2">
                                             <Label>PPE Item</Label>
                                             <Controller name="ppeType" control={form.control} render={({ field }) => (
-                                                <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                    <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
                                                     <SelectContent><SelectItem value="Coverall">Coverall</SelectItem><SelectItem value="Safety Shoes">Safety Shoes</SelectItem></SelectContent>
                                                 </Select>
                                             )} />
@@ -256,13 +257,15 @@ export default function PpeStockPage() {
                             <Button onClick={handleShoeSave}>Save Shoe Stock</Button>
                         </CardFooter>
                     )}
-                </div>
+                </Card>
             </div>
             
              <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="history" className="border rounded-lg overflow-hidden">
                     <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline hover:bg-muted/80 transition-colors">
-                        <CardTitle className="flex items-center gap-2"><ArrowUpDown className="h-5 w-5"/> Transaction History</CardTitle>
+                        <div className="flex items-center gap-2 text-lg font-semibold">
+                            <ArrowUpDown className="h-5 w-5"/> Transaction History
+                        </div>
                     </AccordionTrigger>
                     <AccordionContent className="p-0">
                         <Card className="border-0 shadow-none rounded-none">
