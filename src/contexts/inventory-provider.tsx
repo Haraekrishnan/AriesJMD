@@ -1468,14 +1468,16 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const stockRef = ref(rtdb, stockPath);
         get(stockRef).then(snapshot => {
             const currentStock = snapshot.val() || {};
+            const multiplier = record.type === 'Inward' ? 1 : -1;
+
             if (record.ppeType === 'Coverall' && record.sizes) {
                 const newSizes = { ...currentStock };
                 Object.entries(record.sizes).forEach(([size, qty]) => {
-                    newSizes[size] = (newSizes[size] || 0) + (qty || 0);
+                    newSizes[size] = (newSizes[size] || 0) + (multiplier * (qty || 0));
                 });
                 set(stockRef, newSizes);
             } else if (record.ppeType === 'Safety Shoes' && record.quantity) {
-                set(ref(rtdb, `${stockPath}/quantity`), (currentStock.quantity || 0) + record.quantity);
+                set(ref(rtdb, `${stockPath}/quantity`), (currentStock.quantity || 0) + (multiplier * record.quantity));
             }
         });
     }, [user]);
@@ -1487,6 +1489,22 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     const deletePpeInwardRecord = useCallback((record: PpeInwardRecord) => {
         remove(ref(rtdb, `ppeInwardHistory/${record.id}`));
+        const stockPath = record.ppeType === 'Coverall' ? 'ppeStock/coveralls/sizes' : 'ppeStock/safetyShoes';
+        const stockRef = ref(rtdb, stockPath);
+        get(stockRef).then(snapshot => {
+            const currentStock = snapshot.val() || {};
+            const multiplier = record.type === 'Inward' ? -1 : 1;
+
+            if (record.ppeType === 'Coverall' && record.sizes) {
+                const newSizes = { ...currentStock };
+                Object.entries(record.sizes).forEach(([size, qty]) => {
+                    newSizes[size] = (newSizes[size] || 0) + (multiplier * (qty || 0));
+                });
+                set(stockRef, newSizes);
+            } else if (record.ppeType === 'Safety Shoes' && record.quantity) {
+                set(ref(rtdb, `${stockPath}/quantity`), (currentStock.quantity || 0) + (multiplier * record.quantity));
+            }
+        });
     }, []);
 
     const addIgpOgpRecord = useCallback((record: Omit<IgpOgpRecord, 'id' | 'creatorId'>) => {
@@ -1752,5 +1770,3 @@ export const useInventory = (): InventoryContextType => {
   }
   return context;
 };
-
-    

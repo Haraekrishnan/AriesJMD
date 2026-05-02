@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { AlertTriangle, HardHat, Shirt, Upload, Inbox, Edit, Trash2 } from 'lucide-react';
+import { AlertTriangle, HardHat, Shirt, Upload, Inbox, Edit, Trash2, ArrowUpDown } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import PpeReportDownloads from '@/components/requests/PpeReportDownloads';
 import type { DateRange } from 'react-day-picker';
@@ -25,14 +25,17 @@ import { format, isValid, parseISO } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import EditPpeInwardDialog from '@/components/ppe-stock/EditPpeInwardDialog';
 import type { PpeInwardRecord } from '@/lib/types';
+import { Textarea } from '@/components/ui/textarea';
 
 const coverallSizeOptions = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
 
 const inwardSchema = z.object({
+    type: z.enum(['Inward', 'Outward']),
     ppeType: z.enum(['Coverall', 'Safety Shoes']),
     date: z.date({ required_error: "Date is required" }),
     sizes: z.record(z.string(), z.coerce.number().min(0).optional()).optional(),
     quantity: z.coerce.number().min(0).optional(),
+    remarks: z.string().optional(),
 }).refine(data => {
     if (data.ppeType === 'Coverall') {
         return data.sizes && Object.values(data.sizes).some(q => q && q > 0);
@@ -60,7 +63,7 @@ export default function PpeStockPage() {
     
     const form = useForm<InwardFormValues>({
         resolver: zodResolver(inwardSchema),
-        defaultValues: { ppeType: 'Coverall', date: new Date(), sizes: {}, quantity: 0 }
+        defaultValues: { type: 'Inward', ppeType: 'Coverall', date: new Date(), sizes: {}, quantity: 0, remarks: '' }
     });
     
     const [coverallSizes, setCoverallSizes] = useState<{[key: string]: number}>(coverallStock?.sizes || {});
@@ -77,14 +80,14 @@ export default function PpeStockPage() {
 
     const handleInwardSubmit = (data: InwardFormValues) => {
         addPpeInwardRecord(data);
-        toast({ title: 'Stock Added', description: 'Inward stock has been added to the history and stock levels updated.' });
-        form.reset({ ppeType: 'Coverall', date: new Date(), sizes: {}, quantity: 0 });
+        toast({ title: 'Record Added', description: `${data.type} stock has been logged and stock levels updated.` });
+        form.reset({ type: 'Inward', ppeType: 'Coverall', date: new Date(), sizes: {}, quantity: 0, remarks: '' });
         setFormKey(Date.now()); // Force re-render of the form
     };
 
     const handleDeleteRecord = (record: PpeInwardRecord) => {
         deletePpeInwardRecord(record);
-        toast({ variant: 'destructive', title: 'Record Deleted', description: 'The inward stock record has been removed and stock levels have been adjusted.' });
+        toast({ variant: 'destructive', title: 'Record Deleted', description: 'The record has been removed and stock levels adjusted.' });
     };
 
     const handleCoverallChange = (size: string, value: string) => {
@@ -132,61 +135,74 @@ export default function PpeStockPage() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                   <h1 className="text-3xl font-bold tracking-tight">PPE Stock Management</h1>
-                  <p className="text-muted-foreground">View current stock levels and manage inventory.</p>
+                  <p className="text-muted-foreground">View current stock levels and manage inventory transactions.</p>
               </div>
               <Button onClick={() => setIsImportOpen(true)}><Upload className="mr-2 h-4 w-4"/> Import Distribution</Button>
             </div>
 
              {can.manage_ppe_stock && (
                 <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="inward-register">
-                        <Card className="border-0">
-                             <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline rounded-t-lg text-lg font-semibold">
-                                <div className="flex items-center gap-2">
-                                    <Inbox/> Inward Register
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="p-4 rounded-b-lg border border-t-0">
-                                <p className="text-sm text-muted-foreground mb-4">Add newly purchased stock to the inventory.</p>
-                                <form key={formKey} onSubmit={form.handleSubmit(handleInwardSubmit)}>
-                                    <div className="space-y-4">
-                                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                            <div className="space-y-2">
-                                                <Label>PPE Type</Label>
-                                                <Controller name="ppeType" control={form.control} render={({ field }) => (
-                                                    <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
-                                                        <SelectContent><SelectItem value="Coverall">Coverall</SelectItem><SelectItem value="Safety Shoes">Safety Shoes</SelectItem></SelectContent>
-                                                    </Select>
-                                                )} />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Date of Inward/Purchase</Label>
-                                                <Controller name="date" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
-                                            </div>
+                    <AccordionItem value="inward-register" className="border rounded-lg overflow-hidden">
+                        <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline hover:bg-muted/80 transition-colors">
+                            <div className="flex items-center gap-2 text-lg font-semibold">
+                                <Inbox className="h-5 w-5"/> PPE Transaction Register
+                            </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="p-4 bg-card">
+                            <p className="text-sm text-muted-foreground mb-6">Log inward stock from purchases or outward stock issued to projects.</p>
+                            <form key={formKey} onSubmit={form.handleSubmit(handleInwardSubmit)}>
+                                <div className="space-y-6">
+                                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Transaction Type</Label>
+                                            <Controller name="type" control={form.control} render={({ field }) => (
+                                                <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="Inward">Inward (Add to Stock)</SelectItem>
+                                                        <SelectItem value="Outward">Outward (Subtract from Stock)</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            )} />
                                         </div>
-                                        {watchPpeType === 'Coverall' ? (
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                {coverallSizeOptions.map(size => (
-                                                    <div key={size} className="space-y-2">
-                                                        <Label htmlFor={`inward-coverall-${size}`}>{size}</Label>
-                                                        <Input id={`inward-coverall-${size}`} type="number" {...form.register(`sizes.${size}`)} placeholder="0"/>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-2 max-w-xs">
-                                                <Label htmlFor="inward-shoe-quantity">Quantity</Label>
-                                                <Input id="inward-shoe-quantity" type="number" {...form.register('quantity')} placeholder="0"/>
-                                            </div>
-                                        )}
-                                        {form.formState.errors.sizes && <p className="text-xs text-destructive">{form.formState.errors.sizes.message}</p>}
+                                        <div className="space-y-2">
+                                            <Label>PPE Item</Label>
+                                            <Controller name="ppeType" control={form.control} render={({ field }) => (
+                                                <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                                                    <SelectContent><SelectItem value="Coverall">Coverall</SelectItem><SelectItem value="Safety Shoes">Safety Shoes</SelectItem></SelectContent>
+                                                </Select>
+                                            )} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Date of Transaction</Label>
+                                            <Controller name="date" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Remarks (Optional)</Label>
+                                            <Input {...form.register('remarks')} placeholder="e.g., PO #123, Site X" />
+                                        </div>
                                     </div>
-                                    <CardFooter className="p-0 pt-4">
-                                        <Button type="submit">Add to Stock</Button>
-                                    </CardFooter>
-                                </form>
-                            </AccordionContent>
-                        </Card>
+                                    {watchPpeType === 'Coverall' ? (
+                                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                                            {coverallSizeOptions.map(size => (
+                                                <div key={size} className="space-y-2">
+                                                    <Label htmlFor={`inward-coverall-${size}`} className="text-xs">{size}</Label>
+                                                    <Input id={`inward-coverall-${size}`} type="number" {...form.register(`sizes.${size}`)} placeholder="0" className="h-8"/>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2 max-w-xs">
+                                            <Label htmlFor="inward-shoe-quantity">Quantity</Label>
+                                            <Input id="inward-shoe-quantity" type="number" {...form.register('quantity')} placeholder="0"/>
+                                        </div>
+                                    )}
+                                    {form.formState.errors.sizes && <p className="text-xs text-destructive">{form.formState.errors.sizes.message}</p>}
+                                </div>
+                                <div className="pt-6 flex justify-end">
+                                    <Button type="submit" className="w-full sm:w-auto">Record Transaction</Button>
+                                </div>
+                            </form>
+                        </AccordionContent>
                     </AccordionItem>
                 </Accordion>
             )}
@@ -240,62 +256,79 @@ export default function PpeStockPage() {
                             <Button onClick={handleShoeSave}>Save Shoe Stock</Button>
                         </CardFooter>
                     )}
-                </Card>
+                </div>
             </div>
             
-             <Card>
-                <CardHeader>
-                    <CardTitle>Inward Stock History</CardTitle>
-                    <CardDescription>A log of all received PPE stock.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Details</TableHead>
-                                {user?.role === 'Admin' && <TableHead className="text-right">Actions</TableHead>}
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {(ppeInwardHistory || []).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(record => (
-                                <TableRow key={record.id}>
-                                    <TableCell>{format(new Date(record.date), 'dd MMM, yyyy')}</TableCell>
-                                    <TableCell>{record.ppeType}</TableCell>
-                                    <TableCell>
-                                        {record.ppeType === 'Coverall' 
-                                            ? Object.entries(record.sizes || {}).map(([size, qty]) => `${size}: ${qty}`).join(', ')
-                                            : `Qty: ${record.quantity}`
-                                        }
-                                    </TableCell>
-                                    {user?.role === 'Admin' && (
-                                        <TableCell className="text-right">
-                                            <Button variant="ghost" size="icon" onClick={() => setEditingRecord(record)}><Edit className="h-4 w-4"/></Button>
-                                            <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4"/></Button>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle>Delete Record?</AlertDialogTitle>
-                                                        <AlertDialogDescription>This will permanently delete this inward record and update the stock levels. This action cannot be undone.</AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDeleteRecord(record)}>Delete</AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
-                                        </TableCell>
-                                    )}
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                    {(ppeInwardHistory || []).length === 0 && <p className="text-center text-muted-foreground py-4">No inward history found.</p>}
-                </CardContent>
-            </Card>
+             <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="history" className="border rounded-lg overflow-hidden">
+                    <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline hover:bg-muted/80 transition-colors">
+                        <CardTitle className="flex items-center gap-2"><ArrowUpDown className="h-5 w-5"/> Transaction History</CardTitle>
+                    </AccordionTrigger>
+                    <AccordionContent className="p-0">
+                        <Card className="border-0 shadow-none rounded-none">
+                            <CardContent className="p-0">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="bg-muted/30">
+                                            <TableHead>Date</TableHead>
+                                            <TableHead>Type</TableHead>
+                                            <TableHead>Item</TableHead>
+                                            <TableHead>Details</TableHead>
+                                            <TableHead>Remarks</TableHead>
+                                            {user?.role === 'Admin' && <TableHead className="text-right">Actions</TableHead>}
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {(ppeInwardHistory || []).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(record => (
+                                            <TableRow key={record.id}>
+                                                <TableCell className="whitespace-nowrap">{format(new Date(record.date), 'dd MMM, yyyy')}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant={record.type === 'Inward' ? 'success' : 'destructive'}>
+                                                        {record.type}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="font-medium">{record.ppeType}</TableCell>
+                                                <TableCell>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {record.ppeType === 'Coverall' 
+                                                            ? Object.entries(record.sizes || {}).filter(([_, q]) => q && q > 0).map(([size, qty]) => `${size}: ${qty}`).join(', ')
+                                                            : `Qty: ${record.quantity}`
+                                                        }
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="max-w-[200px] truncate" title={record.remarks}>{record.remarks || 'N/A'}</TableCell>
+                                                {user?.role === 'Admin' && (
+                                                    <TableCell className="text-right">
+                                                        <div className="flex justify-end gap-1">
+                                                            <Button variant="ghost" size="icon" onClick={() => setEditingRecord(record)}><Edit className="h-4 w-4"/></Button>
+                                                            <AlertDialog>
+                                                                <AlertDialogTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4"/></Button>
+                                                                </AlertDialogTrigger>
+                                                                <AlertDialogContent>
+                                                                    <AlertDialogHeader>
+                                                                        <AlertDialogTitle>Delete Record?</AlertDialogTitle>
+                                                                        <AlertDialogDescription>This will permanently delete this {record.type.toLowerCase()} record and update the stock levels. This action cannot be undone.</AlertDialogDescription>
+                                                                    </AlertDialogHeader>
+                                                                    <AlertDialogFooter>
+                                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                        <AlertDialogAction onClick={() => handleDeleteRecord(record)}>Delete</AlertDialogAction>
+                                                                    </AlertDialogFooter>
+                                                                </AlertDialogContent>
+                                                            </AlertDialog>
+                                                        </div>
+                                                    </TableCell>
+                                                )}
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                                {(ppeInwardHistory || []).length === 0 && <p className="text-center text-muted-foreground py-8">No transaction history found.</p>}
+                            </CardContent>
+                        </Card>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
             
              <Card>
                 <CardHeader>

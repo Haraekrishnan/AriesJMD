@@ -824,11 +824,13 @@ export type ConsumableInwardRecord = {
 
 export type PpeInwardRecord = {
     id: string;
+    type: 'Inward' | 'Outward';
     ppeType: 'Coverall' | 'Safety Shoes';
     date: string; // ISO String
     addedByUserId: string;
     sizes?: { [size: string]: number };
     quantity?: number;
+    remarks?: string;
 };
 
 export type TpCertListItem = {
@@ -1121,6 +1123,7 @@ export type JobProgress = {
     foNo?: string;
     jmsNo?: string;
     amount?: number;
+    ariesJobId?: string;
     dateFrom?: string | null;
     dateTo?: string | null;
     // New JMS Builder fields
