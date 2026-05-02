@@ -65,7 +65,7 @@ export default function EditPpeInwardDialog({ isOpen, setIsOpen, record }: EditP
             quantity: record.ppeType === 'Safety Shoes' ? data.quantity : undefined,
         };
         updatePpeInwardRecord(updatedRecordData);
-        toast({ title: 'Record Updated', description: 'The transaction record has been updated. Note: Manual stock adjustments may be required if quantities were changed.' });
+        toast({ title: 'Record Updated', description: `The ${(record.type || 'transaction').toLowerCase()} record has been updated. Note: Manual stock adjustments may be required if quantities were changed.` });
         setIsOpen(false);
     };
 
@@ -74,7 +74,7 @@ export default function EditPpeInwardDialog({ isOpen, setIsOpen, record }: EditP
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>Edit Transaction Record: {record.ppeType}</DialogTitle>
-                    <DialogDescription>Update the details for this {record.type.toLowerCase()} record.</DialogDescription>
+                    <DialogDescription>Update the details for this {(record.type || 'transaction').toLowerCase()} record.</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
                     <div className="grid grid-cols-2 gap-4">

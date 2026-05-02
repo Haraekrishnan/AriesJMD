@@ -1,8 +1,9 @@
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
 import { useInventory } from '@/contexts/inventory-provider';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -287,8 +288,8 @@ export default function PpeStockPage() {
                                             <TableRow key={record.id}>
                                                 <TableCell className="whitespace-nowrap">{format(new Date(record.date), 'dd MMM, yyyy')}</TableCell>
                                                 <TableCell>
-                                                    <Badge variant={record.type === 'Inward' ? 'success' : 'destructive'}>
-                                                        {record.type}
+                                                    <Badge variant={(record.type || 'Inward') === 'Inward' ? 'success' : 'destructive'}>
+                                                        {record.type || 'Inward'}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="font-medium">{record.ppeType}</TableCell>
@@ -312,7 +313,7 @@ export default function PpeStockPage() {
                                                                 <AlertDialogContent>
                                                                     <AlertDialogHeader>
                                                                         <AlertDialogTitle>Delete Record?</AlertDialogTitle>
-                                                                        <AlertDialogDescription>This will permanently delete this {record.type.toLowerCase()} record and update the stock levels. This action cannot be undone.</AlertDialogDescription>
+                                                                        <AlertDialogDescription>This will permanently delete this {(record.type || 'Inward').toLowerCase()} record and update the stock levels. This action cannot be undone.</AlertDialogDescription>
                                                                     </AlertDialogHeader>
                                                                     <AlertDialogFooter>
                                                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
