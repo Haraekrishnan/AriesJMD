@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import type { DateRange } from 'react-day-picker';
-import { format, isWithinInterval, parseISO, startOfDay, endOfDay, compareAsc, isAfter } from 'date-fns';
+import { format, isWithinInterval, parseISO, startOfDay, endOfDay, compareAsc, isAfter, isValid } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useInventory } from '@/contexts/inventory-provider';
 import { useAuth } from '@/contexts/auth-provider';
@@ -87,15 +87,23 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
           .filter(t => t && t.ppeType === ppeType && (!size || t.size === size) && isAfter(parseISO(t.issueDate), startOfDay(from)))
           .reduce((sum, t) => sum + (t.quantity || 1), 0);
 
-      const inwardSinceFrom = ppeInwardHistory
-          .filter(t => t.ppeType === ppeType && isAfter(parseISO(t.date), startOfDay(from)))
+      const manualInwardSinceFrom = ppeInwardHistory
+          .filter(t => t.ppeType === ppeType && (t.type === 'Inward' || !t.type) && isAfter(parseISO(t.date), startOfDay(from)))
+          .reduce((sum, t) => {
+            if (ppeType === 'Coverall' && t.sizes && size) return sum + (t.sizes[size] || 0);
+            if (ppeType === 'Safety Shoes') return sum + (t.quantity || 0);
+            return sum;
+          }, 0);
+
+      const manualOutwardSinceFrom = ppeInwardHistory
+          .filter(t => t.ppeType === ppeType && t.type === 'Outward' && isAfter(parseISO(t.date), startOfDay(from)))
           .reduce((sum, t) => {
             if (ppeType === 'Coverall' && t.sizes && size) return sum + (t.sizes[size] || 0);
             if (ppeType === 'Safety Shoes') return sum + (t.quantity || 0);
             return sum;
           }, 0);
           
-      const openingStock = currentStock + issuedSinceFrom - inwardSinceFrom;
+      const openingStock = currentStock + (issuedSinceFrom + manualOutwardSinceFrom) - manualInwardSinceFrom;
 
       // 4. Gather all transactions for the item within the date range
       const issuedItemsInRange = manpowerProfiles.flatMap(profile => 
@@ -109,11 +117,15 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
         .map(item => ({ ...item, employee: profile, transactionType: 'issue' as const, transactionDate: item.issueDate }))
       );
 
-      const inwardItemsInRange = ppeInwardHistory
+      const manualTransactionsInRange = ppeInwardHistory
         .filter(item => item.ppeType === ppeType && isWithinInterval(parseISO(item.date), { start: startOfDay(from), end: endOfDay(to) }))
-        .map(item => ({ ...item, transactionType: 'inward' as const, transactionDate: item.date }));
+        .map(item => ({ 
+            ...item, 
+            transactionType: (item.type === 'Outward' ? 'outward-manual' : 'inward') as 'inward' | 'outward-manual', 
+            transactionDate: item.date 
+        }));
 
-      const allTransactions = [...issuedItemsInRange, ...inwardItemsInRange].sort((a,b) => 
+      const allTransactions = [...issuedItemsInRange, ...manualTransactionsInRange].sort((a,b) => 
         compareAsc(parseISO(a.transactionDate), parseISO(b.transactionDate))
       );
 
@@ -134,17 +146,22 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
         
         if (t.transactionType === 'issue') {
             const request = ppeRequests.find(r => r.id === t.requestId);
-            qtyOut = t.quantity || 1;
-            row['Transaction Type'] = `Issued (${t.requestType})`;
-            row['Employee Name'] = t.employee.name;
-            row['Trade'] = t.employee.trade;
-            row['Project'] = t.employee.eic ? projects.find(p => p.id === t.employee.eic)?.name : 'N/A';
+            qtyOut = (t as any).quantity || 1;
+            row['Transaction Type'] = `Issued (${(t as any).requestType})`;
+            row['Employee Name'] = (t as any).employee.name;
+            row['Trade'] = (t as any).employee.trade;
+            row['Project'] = (t as any).employee.eic ? projects.find(p => p.id === (t as any).employee.eic)?.name : 'N/A';
             row['Justification'] = request?.newRequestJustification || 'N/A';
-            row['Remarks'] = t.remarks || request?.remarks || '';
+            row['Remarks'] = (t as any).remarks || request?.remarks || '';
+        } else if (t.transactionType === 'outward-manual') {
+            qtyOut = (ppeType === 'Coverall' && (t as any).sizes && size) ? ((t as any).sizes[size] || 0) : ((t as any).quantity || 0);
+            row['Transaction Type'] = 'Outward Stock (Manual)';
+            row['Remarks'] = (t as any).remarks || '';
         } else { // Inward
-            qtyIn = (ppeType === 'Coverall' && t.sizes && size) ? (t.sizes[size] || 0) : (t.quantity || 0);
+            qtyIn = (ppeType === 'Coverall' && (t as any).sizes && size) ? ((t as any).sizes[size] || 0) : ((t as any).quantity || 0);
             row['Transaction Type'] = 'Inward Stock';
-            row['Employee Name'] = `Added by ${users.find(u => u.id === t.addedByUserId)?.name || 'Unknown'}`;
+            row['Employee Name'] = `Added by ${users.find(u => u.id === (t as any).addedByUserId)?.name || 'Unknown'}`;
+            row['Remarks'] = (t as any).remarks || '';
         }
         
         runningStock = runningStock + qtyIn - qtyOut;
@@ -168,39 +185,6 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
     if (!dateString) return 'N/A';
     const date = parseISO(dateString);
     return isValid(date) ? format(date, 'dd MMM, yyyy') : 'N/A';
-  };
-
-  const handleDownloadPdf = async () => {
-    const doc = new jsPDF();
-    doc.text('Consumable Consumption Report', 14, 15);
-    
-    // This part seems to be from another report, but we'll leave it for now.
-    // Ideally this would be refactored to show PPE issues.
-    
-    const issuedItems = ppeRequests
-        .filter(req => req.status === 'Issued')
-        .map(req => {
-            const employee = manpowerProfiles.find(p => p.id === req.manpowerId);
-            return {
-                ...req,
-                employeeName: employee?.name || 'Unknown',
-            };
-        });
-
-    (doc as any).autoTable({
-        startY: 20,
-        head: [['Issued Date', 'Item', 'Size', 'Qty', 'Issued To', 'Remarks']],
-        body: issuedItems.map(item => [
-            formatDate(item.date),
-            item.ppeType,
-            item.size,
-            item.quantity,
-            item.employeeName,
-            item.remarks || '',
-        ]),
-    });
-    
-    doc.save('PPE_Consumption_Report.pdf');
   };
 
   const isDisabled = !dateRange || !dateRange.from;

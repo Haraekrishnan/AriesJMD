@@ -200,7 +200,7 @@ export async function generateJmsSheetExcel(job: JobProgress, data: { sorItems?:
     // --- Footer ---
     let footerRowIndex = currentRow + 2;
     try {
-      const footerImageBuffer = await fetchImageAsBuffer('/images/footer.png');
+      const footerImageBuffer = await fetchImageAsBuffer('/images/fOOTER.png');
       if (footerImageBuffer) {
           const footerImageId = workbook.addImage({ buffer: footerImageBuffer, extension: 'png' });
           worksheet.addImage(footerImageId, {
