@@ -1,6 +1,6 @@
 'use client';
 import { useMemo } from 'react';
-import type { PpeRequest, PpeHistoryRecord, PpeInwardRecord } from '@/lib/types';
+import type { PpeHistoryRecord } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -11,8 +11,6 @@ import { useInventory } from '@/contexts/inventory-provider';
 import { useAuth } from '@/contexts/auth-provider';
 import { useManpower } from '@/contexts/manpower-provider';
 import { useGeneral } from '@/contexts/general-provider';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 
 
 interface PpeReportDownloadsProps {
@@ -20,7 +18,7 @@ interface PpeReportDownloadsProps {
 }
 
 export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProps) {
-  const { ppeRequests, ppeInwardHistory, ppeStock } = useInventory();
+  const { ppeInwardHistory, ppeStock } = useInventory();
   const { users } = useAuth();
   const { manpowerProfiles } = useManpower();
   const { projects } = useGeneral();
@@ -129,62 +127,117 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
         compareAsc(parseISO(a.transactionDate), parseISO(b.transactionDate))
       );
 
-      // 5. Build sheet data with running balance
+      // 5. Build sheet data in inventory register format
       let runningStock = openingStock;
-      const sheetData: any[] = [];
-      sheetData.push({ 'Date': format(from, 'dd-MM-yyyy'), 'Transaction Type': 'Opening Stock', 'Stock After Transaction': openingStock });
+      let slNo = 1;
 
-      allTransactions.forEach(t => {
+      const sheetData: any[] = [];
+
+      allTransactions.forEach((t) => {
         let qtyIn = 0;
         let qtyOut = 0;
-        
+
         const row: any = {
-          'Date': format(parseISO(t.transactionDate), 'dd-MM-yyyy'),
-          'Employee Name': 'N/A', 'Trade': 'N/A', 'Project': 'N/A',
-          'Justification': 'N/A', 'Remarks': 'N/A',
+          'Sl no': slNo++,
+          'Incoming date': 'NILL',
+          'Name of employee': 'NILL',
+          'Project': 'NILL',
+          'Size': size || ppeType,
+          'Outgoing date': 'NILL',
+          'Initial Qty': runningStock,
+          'Incoming Qty': 0,
+          'Outgoing Qty': 0,
+          'Inventory Qty': runningStock,
         };
-        
+
+        // ISSUE / OUTGOING
         if (t.transactionType === 'issue') {
-            const request = ppeRequests.find(r => r.id === t.requestId);
-            qtyOut = (t as any).quantity || 1;
-            row['Transaction Type'] = `Issued (${(t as any).requestType})`;
-            row['Employee Name'] = (t as any).employee.name;
-            row['Trade'] = (t as any).employee.trade;
-            row['Project'] = (t as any).employee.eic ? projects.find(p => p.id === (t as any).employee.eic)?.name : 'N/A';
-            row['Justification'] = request?.newRequestJustification || 'N/A';
-            row['Remarks'] = (t as any).remarks || request?.remarks || '';
-        } else if (t.transactionType === 'outward-manual') {
-            qtyOut = (ppeType === 'Coverall' && (t as any).sizes && size) ? ((t as any).sizes[size] || 0) : ((t as any).quantity || 0);
-            row['Transaction Type'] = 'Outward Stock (Manual)';
-            row['Remarks'] = (t as any).remarks || '';
-        } else { // Inward
-            qtyIn = (ppeType === 'Coverall' && (t as any).sizes && size) ? ((t as any).sizes[size] || 0) : ((t as any).quantity || 0);
-            row['Transaction Type'] = 'Inward Stock';
-            row['Employee Name'] = `Added by ${users.find(u => u.id === (t as any).addedByUserId)?.name || 'Unknown'}`;
-            row['Remarks'] = (t as any).remarks || '';
+          qtyOut = (t as any).quantity || 1;
+
+          row['Name of employee'] = (t as any).employee.name || 'NILL';
+
+          row['Project'] =
+            (t as any).employee.eic
+              ? projects.find((p) => p.id === (t as any).employee.eic)?.name || 'NILL'
+              : 'NILL';
+
+          row['Outgoing date'] = format(
+            parseISO(t.transactionDate),
+            'dd-MMM-yyyy'
+          );
+
+          row['Outgoing Qty'] = qtyOut;
         }
-        
+
+        // MANUAL OUTWARD
+        else if (t.transactionType === 'outward-manual') {
+          qtyOut =
+            ppeType === 'Coverall' && (t as any).sizes && size
+              ? (t as any).sizes[size] || 0
+              : (t as any).quantity || 0;
+
+          row['Name of employee'] = 'MANUAL OUTWARD';
+
+          row['Outgoing date'] = format(
+            parseISO(t.transactionDate),
+            'dd-MMM-yyyy'
+          );
+
+          row['Outgoing Qty'] = qtyOut;
+        }
+
+        // INWARD
+        else {
+          qtyIn =
+            ppeType === 'Coverall' && (t as any).sizes && size
+              ? (t as any).sizes[size] || 0
+              : (t as any).quantity || 0;
+
+          row['Incoming date'] = format(
+            parseISO(t.transactionDate),
+            'dd-MMM-yyyy'
+          );
+
+          row['Incoming Qty'] = qtyIn;
+        }
+
+        // RUNNING BALANCE
         runningStock = runningStock + qtyIn - qtyOut;
-        row['Quantity In'] = qtyIn || '';
-        row['Quantity Out'] = qtyOut || '';
-        row['Stock After Transaction'] = runningStock;
+
+        row['Inventory Qty'] = runningStock;
 
         sheetData.push(row);
       });
       
       const worksheet = XLSX.utils.json_to_sheet(sheetData);
+
+      // Column widths
+      worksheet['!cols'] = [
+        { wch: 8 },
+        { wch: 18 },
+        { wch: 30 },
+        { wch: 18 },
+        { wch: 12 },
+        { wch: 18 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 14 },
+      ];
+
+      // Add Sheet Title Like Image
+      XLSX.utils.sheet_add_aoa(
+        worksheet,
+        [[size || ppeType]],
+        { origin: 'E1' }
+      );
+
       // Clean up sheet name for Excel
       const sheetName = itemKey.replace(/[^a-zA-Z0-9]/g, '-').substring(0, 31);
       XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
     });
 
     XLSX.writeFile(workbook, `PPE_Report_${format(from, 'yyyy-MM-dd')}_to_${format(to, 'yyyy-MM-dd')}.xlsx`);
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'N/A';
-    const date = parseISO(dateString);
-    return isValid(date) ? format(date, 'dd MMM, yyyy') : 'N/A';
   };
 
   const isDisabled = !dateRange || !dateRange.from;
