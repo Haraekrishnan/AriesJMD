@@ -57,8 +57,8 @@ export default function JobRecordSheet() {
     const { toast } = useToast();
 
     // Override State
-    const [tempUnlockedRows, setTempUnlockedRows] = useState<Set<string>>(new Set());
-    const [overrideRequest, setOverrideRequest] = useState<{ profileId: string; step: 1 | 2 } | null>(null);
+    const [tempUnlockedCells, setTempUnlockedCells] = useState<Set<string>>(new Set());
+    const [overrideRequest, setOverrideRequest] = useState<{ profileId: string; day: number | 'sunday'; } | null>(null);
 
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
@@ -226,18 +226,20 @@ export default function JobRecordSheet() {
                 const profile = profiles[i];
                 const isAway = !!profile.reportedOnLeave;
                 
-                if (isAway && !tempUnlockedRows.has(profileId)) continue;
-
                 for (let j = minCol; j <= maxCol; j++) {
+                    const cellKey = `${profileId}-${j}`;
+                    // Only apply if not away OR if specifically overridden for that cell
+                    if (isAway && !tempUnlockedCells.has(cellKey)) continue;
+
                     updates.push({ profileId, day: j, code: dragState.fillValue });
-                    newCellStates[`${profileId}-${j}`] = dragState.fillValue;
+                    newCellStates[cellKey] = dragState.fillValue;
                 }
             }
             batchUpdateJobRecords(updates);
             setCellStates(newCellStates);
         }
         setDragState({ isDragging: false, startCell: null, endCell: null, fillValue: '' });
-    }, [dragState, batchUpdateJobRecords, cellStates, filteredAndGroupedProfiles, activeTab, tempUnlockedRows]);
+    }, [dragState, batchUpdateJobRecords, cellStates, filteredAndGroupedProfiles, activeTab, tempUnlockedCells]);
 
     useEffect(() => {
         window.addEventListener('mouseup', handleMouseUp);
@@ -484,19 +486,16 @@ export default function JobRecordSheet() {
         return hasPermission && !isCurrentSheetLocked && isEditableMonth;
     }, [user, isCurrentSheetLocked, currentMonth]);
 
-    const handleRequestOverride = (profileId: string) => {
-        setOverrideRequest({ profileId, step: 1 });
+    const handleRequestOverride = (profileId: string, day: number | 'sunday') => {
+        setOverrideRequest({ profileId, day });
     };
 
     const handleConfirmOverride = () => {
         if (!overrideRequest) return;
-        if (overrideRequest.step === 1) {
-            setOverrideRequest({ profileId: overrideRequest.profileId, step: 2 });
-        } else {
-            setTempUnlockedRows(prev => new Set(prev).add(overrideRequest.profileId));
-            setOverrideRequest(null);
-            toast({ title: "Override Activated", description: "Row temporarily unlocked for this session." });
-        }
+        const cellKey = `${overrideRequest.profileId}-${overrideRequest.day}`;
+        setTempUnlockedCells(prev => new Set(prev).add(cellKey));
+        setOverrideRequest(null);
+        toast({ title: "Override Activated", description: "Cell temporarily unlocked for this session." });
     };
 
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
@@ -1011,11 +1010,7 @@ export default function JobRecordSheet() {
                                 const dailyOvertime = record.dailyOvertime || {};
                                 const dailyComments = record.dailyComments || {};
 
-                                const isAway = !!profile.reportedOnLeave;
-                                const isOverridden = tempUnlockedRows.has(profile.id);
-                                
-                                // Disable inputs ONLY if they are away AND NOT overridden
-                                const isInputDisabled = isAway && !isOverridden;
+                                const isRowAway = !!profile.reportedOnLeave;
                                 
                                 const workCodes = jobCodes ? jobCodes.filter(jc => !['X', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code) : [];
                                 const offCodes = ['OFF', 'PH', 'OS'];
@@ -1040,8 +1035,8 @@ export default function JobRecordSheet() {
 
                                 return (
                                     <React.Fragment key={profile.id}>
-                                    <TableRow className={cn(isAway && !isOverridden && "bg-muted/80", isAway && isOverridden && "bg-muted/40")}>
-                                        <TableCell className={cn("sticky left-0 z-20 flex items-center border-r", isAway ? "bg-muted/80" : "bg-card")} style={{width: '120px'}}>
+                                    <TableRow className={cn(isRowAway && "bg-muted/80")}>
+                                        <TableCell className={cn("sticky left-0 z-20 flex items-center border-r", isRowAway ? "bg-muted/80" : "bg-card")} style={{width: '120px'}}>
                                             <div className="flex items-center">
                                                 <span className="w-6 text-center">{index + 1}</span>
                                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleRow(profile.id)}>
@@ -1055,26 +1050,26 @@ export default function JobRecordSheet() {
                                                 )}
                                             </div>
                                         </TableCell>
-                                        <TableCell className={cn("sticky z-20 font-medium whitespace-nowrap border-r", isAway ? "bg-muted/80" : "bg-card")} style={{ left: '120px', width: '200px' }}>
+                                        <TableCell className={cn("sticky z-20 font-medium whitespace-nowrap border-r", isRowAway ? "bg-muted/80" : "bg-card")} style={{ left: '120px', width: '200px' }}>
                                             <div className="flex items-center gap-2">
-                                              <div className={cn(isAway && !isOverridden && "opacity-60")}>
+                                              <div className={cn(isRowAway && "opacity-60")}>
                                                 <p>{profile.name}</p>
                                                 <p className="text-xs text-muted-foreground">{profile.employeeCode || profile.epNumber || 'No Code'}</p>
                                               </div>
-                                              {isAway && (
+                                              {isRowAway && (
                                                 <Tooltip>
                                                   <TooltipTrigger asChild>
-                                                    <UserMinus className={cn("h-4 w-4", isOverridden ? "text-blue-500" : "text-destructive")} />
+                                                    <UserMinus className="h-4 w-4 text-destructive" />
                                                   </TooltipTrigger>
                                                   <TooltipContent>
-                                                    <p>{isOverridden ? "Reported Away (Manual Override Active)" : "Reported Away from Accommodation"}</p>
+                                                    <p>Reported Away from Accommodation</p>
                                                   </TooltipContent>
                                                 </Tooltip>
                                               )}
                                             </div>
                                         </TableCell>
-                                        <TableCell className={cn("sticky z-20 font-medium whitespace-nowrap border-r", isAway ? "bg-muted/80" : "bg-card")} style={{ left: '320px', width: '150px' }}>
-                                        <Select value={plant} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet || isInputDisabled}>
+                                        <TableCell className={cn("sticky z-20 font-medium whitespace-nowrap border-r", isRowAway ? "bg-muted/80" : "bg-card")} style={{ left: '320px', width: '150px' }}>
+                                        <Select value={plant} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet || isRowAway}>
                                                 <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="Unassigned">Unassigned</SelectItem>
@@ -1088,6 +1083,8 @@ export default function JobRecordSheet() {
                                             const commentForDay = dailyComments[day] || '';
                                             const colorInfo = JOB_CODE_COLORS[code as keyof typeof JOB_CODE_COLORS] || {};
                                             const isInSelection = isCellInSelection(profile.id, day);
+                                            const isCellOverridden = tempUnlockedCells.has(`${profile.id}-${day}`);
+                                            const isInputDisabled = isRowAway && !isCellOverridden;
 
                                             return (
                                                 <TableCell 
@@ -1095,7 +1092,7 @@ export default function JobRecordSheet() {
                                                     className={cn(
                                                         "p-0 text-center relative min-w-[100px] border-r group",
                                                         isInSelection && "bg-blue-100 dark:bg-blue-900/50",
-                                                        isAway && !isOverridden && "bg-muted/30"
+                                                        isInputDisabled && "bg-muted/30"
                                                     )}
                                                     onMouseEnter={() => handleMouseEnter(profile.id, day)}
                                                 >
@@ -1103,7 +1100,7 @@ export default function JobRecordSheet() {
                                                         {isInputDisabled && can.manage_job_record && (
                                                             <div 
                                                                 className="absolute inset-0 z-40 cursor-pointer" 
-                                                                onClick={() => handleRequestOverride(profile.id)}
+                                                                onClick={() => handleRequestOverride(profile.id, day)}
                                                             />
                                                         )}
                                                         <Input
@@ -1160,10 +1157,10 @@ export default function JobRecordSheet() {
                                         <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.reptOffice}</TableCell>
                                         <TableCell className="text-center font-bold border-r min-w-[150px]">{salaryDays}</TableCell>
                                         <TableCell className="text-center min-w-[150px] relative group">
-                                            {isInputDisabled && can.manage_job_record && (
+                                            {isRowAway && !tempUnlockedCells.has(`${profile.id}-sunday`) && can.manage_job_record && (
                                                 <div 
                                                     className="absolute inset-0 z-40 cursor-pointer" 
-                                                    onClick={() => handleRequestOverride(profile.id)}
+                                                    onClick={() => handleRequestOverride(profile.id, 'sunday')}
                                                 />
                                             )}
                                             <Input
@@ -1171,30 +1168,33 @@ export default function JobRecordSheet() {
                                                 value={sundayDutyStates[profile.id] ?? ''}
                                                 onChange={(e) => handleSundayDutyChange(profile.id, e.target.value)}
                                                 onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
-                                                className="w-16 h-8 text-center"
+                                                className={cn("w-16 h-8 text-center mx-auto", (isRowAway && !tempUnlockedCells.has(`${profile.id}-sunday`)) && "cursor-not-allowed opacity-50")}
                                                 placeholder="0"
-                                                disabled={!canEditSheet || isInputDisabled}
+                                                disabled={!canEditSheet || (isRowAway && !tempUnlockedCells.has(`${profile.id}-sunday`))}
                                             />
                                         </TableCell>
                                     </TableRow>
                                     {isExpanded && (
                                        <>
-                                            <TableRow className={cn("bg-muted/50 hover:bg-muted/50", isAway && !isOverridden && "opacity-60")}>
+                                            <TableRow className={cn("bg-muted/50 hover:bg-muted/50", isRowAway && "opacity-80")}>
                                                 <TableCell
                                                     colSpan={3}
-                                                    className={cn("sticky left-0 text-right font-semibold text-xs pr-4 z-20 border-r", isAway ? "bg-muted/80" : "bg-muted/50")}
+                                                    className={cn("sticky left-0 text-right font-semibold text-xs pr-4 z-20 border-r", isRowAway ? "bg-muted/80" : "bg-muted/50")}
                                                     style={{ left: 0, width: '470px' }}
                                                 >
                                                     Overtime Hours
                                                 </TableCell>
                                                 {dayHeaders.map(day => {
                                                     const overtimeValue = overtimeStates[`${profile.id}-${day}`] || '';
+                                                    const isCellOverridden = tempUnlockedCells.has(`${profile.id}-${day}`);
+                                                    const isInputDisabled = isRowAway && !isCellOverridden;
+
                                                     return (
-                                                        <TableCell key={`ot-${day}`} className={cn("p-0 border-r relative", isAway && !isOverridden && "bg-muted/30")}>
+                                                        <TableCell key={`ot-${day}`} className={cn("p-0 border-r relative", isInputDisabled && "bg-muted/30")}>
                                                             {isInputDisabled && can.manage_job_record && (
                                                                 <div 
                                                                     className="absolute inset-0 z-40 cursor-pointer" 
-                                                                    onClick={() => handleRequestOverride(profile.id)}
+                                                                    onClick={() => handleRequestOverride(profile.id, day)}
                                                                 />
                                                             )}
                                                             <Input
@@ -1216,22 +1216,25 @@ export default function JobRecordSheet() {
                                                 })}
                                                 <TableCell colSpan={9}></TableCell>
                                             </TableRow>
-                                             <TableRow className={cn("bg-muted/50 hover:bg-muted/50", isAway && !isOverridden && "opacity-60")}>
+                                             <TableRow className={cn("bg-muted/50 hover:bg-muted/50", isRowAway && "opacity-80")}>
                                                 <TableCell
                                                     colSpan={3}
-                                                    className={cn("sticky left-0 text-right font-semibold text-xs pr-4 z-20 border-r", isAway ? "bg-muted/80" : "bg-muted/50")}
+                                                    className={cn("sticky left-0 text-right font-semibold text-xs pr-4 z-20 border-r", isRowAway ? "bg-muted/80" : "bg-muted/50")}
                                                     style={{ left: 0, width: '470px' }}
                                                 >
                                                     Comments
                                                 </TableCell>
                                                 {dayHeaders.map(day => {
                                                     const commentValue = commentStates[`${profile.id}-${day}`] || '';
+                                                    const isCellOverridden = tempUnlockedCells.has(`${profile.id}-${day}`);
+                                                    const isInputDisabled = isRowAway && !isCellOverridden;
+
                                                     return (
-                                                        <TableCell key={`comment-${day}`} className={cn("p-0 border-r relative", isAway && !isOverridden && "bg-muted/30")}>
+                                                        <TableCell key={`comment-${day}`} className={cn("p-0 border-r relative", isInputDisabled && "bg-muted/30")}>
                                                             {isInputDisabled && can.manage_job_record && (
                                                                 <div 
                                                                     className="absolute inset-0 z-40 cursor-pointer" 
-                                                                    onClick={() => handleRequestOverride(profile.id)}
+                                                                    onClick={() => handleRequestOverride(profile.id, day)}
                                                                 />
                                                             )}
                                                             <Input
@@ -1317,20 +1320,16 @@ export default function JobRecordSheet() {
             <AlertDialog open={!!overrideRequest} onOpenChange={() => setOverrideRequest(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>
-                            {overrideRequest?.step === 1 ? "Manual Override Required" : "Final Confirmation"}
-                        </AlertDialogTitle>
+                        <AlertDialogTitle>Manual Override Required</AlertDialogTitle>
                         <AlertDialogDescription>
-                            {overrideRequest?.step === 1 
-                                ? "This employee is currently reported as 'Away' from accommodation. Do you want to manually override this lock to enter attendance?"
-                                : "Are you absolutely sure? This bypasses the safety check. All manual overrides are logged and audited."
-                            }
+                            This employee is currently reported as 'Away' from accommodation on this date. 
+                            Do you want to manually override this lock to enter data for this specific cell?
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => setOverrideRequest(null)}>Cancel</AlertDialogCancel>
                         <AlertDialogAction onClick={handleConfirmOverride}>
-                            {overrideRequest?.step === 1 ? "Yes, I need to override" : "Yes, I am certain"}
+                            Confirm Override
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
