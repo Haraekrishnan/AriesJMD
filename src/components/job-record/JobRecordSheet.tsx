@@ -79,6 +79,11 @@ export default function JobRecordSheet() {
         endCell: null,
         fillValue: '',
     });
+
+    // Reset temp unlocks when view changes
+    useEffect(() => {
+        setTempUnlockedCells(new Set());
+    }, [activeTab, monthKey, searchTerm]);
     
     useEffect(() => {
         const runAutoCarryForward = async () => {
@@ -366,6 +371,13 @@ export default function JobRecordSheet() {
         }
         
         saveJobRecord(monthKey, employeeId, day, code, 'status');
+
+        // Relock after entry
+        setTempUnlockedCells(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(cellId);
+            return newSet;
+        });
     
         if (code === '') {
             saveJobRecord(monthKey, employeeId, day, null, 'dailyOvertime');
@@ -406,6 +418,13 @@ export default function JobRecordSheet() {
         const hours = Number(value);
         const finalHours = isNaN(hours) || hours <= 0 ? null : hours;
         saveJobRecord(monthKey, employeeId, day, finalHours, 'dailyOvertime');
+
+        // Relock after entry
+        setTempUnlockedCells(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(`${employeeId}-${day}`);
+            return newSet;
+        });
     };
 
     const handleCommentChange = (employeeId: string, day: number, value: string) => {
@@ -415,6 +434,13 @@ export default function JobRecordSheet() {
     const handleCommentBlur = (employeeId: string, day: number, value: string) => {
         const comment = value.trim() === '' ? null : value;
         saveJobRecord(monthKey, employeeId, day, comment, 'dailyComments');
+
+        // Relock after entry
+        setTempUnlockedCells(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(`${employeeId}-${day}`);
+            return newSet;
+        });
     };
     
     const handlePlantChange = (employeeId: string, plant: string) => {
@@ -432,6 +458,13 @@ export default function JobRecordSheet() {
         } else if (value === '') {
              saveJobRecord(monthKey, employeeId, null, null, 'sundayDuty');
         }
+
+        // Relock after entry
+        setTempUnlockedCells(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(`${employeeId}-sunday`);
+            return newSet;
+        });
     };
     
     const allTabs = useMemo(() => {
@@ -495,7 +528,7 @@ export default function JobRecordSheet() {
         const cellKey = `${overrideRequest.profileId}-${overrideRequest.day}`;
         setTempUnlockedCells(prev => new Set(prev).add(cellKey));
         setOverrideRequest(null);
-        toast({ title: "Override Activated", description: "Cell temporarily unlocked for this session." });
+        toast({ title: "Override Activated", description: "Cell temporarily unlocked for this entry." });
     };
 
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
