@@ -17,8 +17,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Search, UserMinus, UserCheck, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { ManpowerProfile } from '@/lib/types';
-import { Badge } from '../ui/badge';
-import { ScrollArea } from '../ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parseISO } from 'date-fns';
 
 interface ReportLeaveDialogProps {
@@ -35,7 +35,7 @@ export default function ReportLeaveDialog({ isOpen, setIsOpen }: ReportLeaveDial
   const filteredProfiles = useMemo(() => {
     const term = searchTerm.toLowerCase();
     return manpowerProfiles
-      .filter((p) => p.name.toLowerCase().includes(term) || p.employeeCode?.toLowerCase().includes(term))
+      .filter((p) => p.name.toLowerCase().includes(term) || (p.employeeCode && p.employeeCode.toLowerCase().includes(term)))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [manpowerProfiles, searchTerm]);
 
@@ -96,7 +96,7 @@ export default function ReportLeaveDialog({ isOpen, setIsOpen }: ReportLeaveDial
                           {isAway ? (
                             <Badge variant="destructive" className="gap-1">
                                 <AlertCircle className="h-3 w-3" />
-                                Away Since {format(parseISO(p.reportedOnLeave!.date), 'dd MMM')}
+                                Away Since {p.reportedOnLeave?.date ? format(parseISO(p.reportedOnLeave.date), 'dd MMM') : 'N/A'}
                             </Badge>
                           ) : (
                             <Badge variant="success">At Work</Badge>

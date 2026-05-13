@@ -20,7 +20,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
-import ReportLeaveDialog from '@/components/manpower/ReportLeaveDialog';
+import ReportLeaveDialog from '@/components/accommodation/ReportLeaveDialog';
 
 export default function AccommodationPage() {
     const { can, user } = useAuth();
