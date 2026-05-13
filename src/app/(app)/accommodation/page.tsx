@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -6,7 +5,7 @@ import { useAccommodation } from '@/contexts/accommodation-provider';
 import { useManpower } from '@/contexts/manpower-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, PlusCircle, Search, UserCog, Check, ChevronsUpDown, BedDouble, BedSingle, Building, Users } from 'lucide-react';
+import { AlertTriangle, PlusCircle, Search, UserCog, Check, ChevronsUpDown, BedDouble, BedSingle, Building, Users, UserMinus } from 'lucide-react';
 import StatCard from '@/components/dashboard/stat-card';
 import AccommodationDetails from '@/components/accommodation/accommodation-details';
 import AddBuildingDialog from '@/components/accommodation/add-building-dialog';
@@ -21,6 +20,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
+import ReportLeaveDialog from '@/components/manpower/ReportLeaveDialog';
 
 export default function AccommodationPage() {
     const { can, user } = useAuth();
@@ -31,6 +31,7 @@ export default function AccommodationPage() {
     const [isEditBuildingOpen, setIsEditBuildingOpen] = useState(false);
     const [isAddRoomOpen, setIsAddRoomOpen] = useState(false);
     const [isEditRoomOpen, setIsEditRoomOpen] = useState(false);
+    const [isReportLeaveOpen, setIsReportLeaveOpen] = useState(false);
     const [selectedBuilding, setSelectedBuilding] = useState<BuildingType | null>(null);
     const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -139,6 +140,12 @@ export default function AccommodationPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <AccommodationReportDownloads />
+                    {can.report_leave_from_accommodation && (
+                        <Button variant="outline" onClick={() => setIsReportLeaveOpen(true)}>
+                            <UserMinus className="mr-2 h-4 w-4" />
+                            Report Leave
+                        </Button>
+                    )}
                     {can.manage_accommodation && (
                         <Button onClick={() => setIsAddBuildingOpen(true)}>
                             <PlusCircle className="mr-2 h-4 w-4" />
@@ -319,6 +326,7 @@ export default function AccommodationPage() {
                     room={selectedRoom}
                 />
             )}
+            <ReportLeaveDialog isOpen={isReportLeaveOpen} setIsOpen={setIsReportLeaveOpen} />
         </div>
     );
 }

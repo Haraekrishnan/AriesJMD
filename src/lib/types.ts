@@ -163,6 +163,7 @@ export const ALL_PERMISSIONS = [
   'manage_delivery_notes',
   'manage_inward_outward',
   'manage_service_codes',
+  'report_leave_from_accommodation',
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -378,6 +379,10 @@ export type ManpowerProfile = {
     roomId: string;
     bedId: string;
   };
+  reportedOnLeave?: {
+    date: string;
+    reporterId: string;
+  } | null;
 };
 
 export type Skill = {

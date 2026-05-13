@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { ManpowerProfile, LeaveRecord, ManpowerLog, MemoRecord, PpeHistoryRecord, LogbookRecord, LogbookStatus, LogbookRequest, Comment, Role } from '@/lib/types';
+import { ManpowerProfile, LeaveRecord, ManpowerLog, MemoRecord, PpeHistoryRecord, LogbookRecord, LogbookStatus, LogbookRequest, Comment, Role, NotificationSettings } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -49,6 +49,9 @@ type ManpowerContextType = {
   markLogbookRequestAsViewed: (requestId: string) => void;
   deleteLogbookRequest: (requestId: string) => void;
   myLogbookRequestUpdates: number;
+
+  reportLeaveFromAccommodation: (manpowerId: string) => void;
+  clearReportedLeave: (manpowerId: string) => void;
 };
 
 // --- HELPER FUNCTIONS ---
@@ -479,6 +482,46 @@ export function ManpowerProvider({ children }: { children: ReactNode }) {
         return logbookRequests.filter(r => r.requesterId === user.id && !r.viewedBy?.[user.id] && r.status !== 'Pending').length;
     }, [logbookRequests, user]);
 
+    const reportLeaveFromAccommodation = useCallback((manpowerId: string) => {
+        if (!user) return;
+        const updates = {
+            reportedOnLeave: {
+                date: new Date().toISOString(),
+                reporterId: user.id
+            }
+        };
+        update(ref(rtdb, `manpowerProfiles/${manpowerId}`), updates);
+        
+        const profile = manpowerProfiles.find(p => p.id === manpowerId);
+        
+        // Notify Admins, Project Coordinators, and Document Controllers
+        const managementUsers = users.filter(u => ['Admin', 'Project Coordinator', 'Document Controller'].includes(u.role));
+        managementUsers.forEach(mUser => {
+            if (mUser.email) {
+                const htmlBody = `
+                    <p>Employee <strong>${profile?.name || 'Unknown'}</strong> has been reported as on leave from the Accommodation side by <strong>${user.name}</strong>.</p>
+                    <p>Their attendance in the Job Record Sheet will be automatically greyed out until cleared.</p>
+                    <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/job-record">View Job Record Sheet</a></p>
+                `;
+                sendNotificationEmail({
+                    to: [mUser.email],
+                    subject: `Manpower Reported Away: ${profile?.name || 'Unknown'}`,
+                    htmlBody,
+                    notificationSettings,
+                    event: 'onInternalRequest',
+                    involvedUser: mUser,
+                    creatorUser: user
+                });
+            }
+        });
+
+    }, [user, manpowerProfiles, users, notificationSettings]);
+
+    const clearReportedLeave = useCallback((manpowerId: string) => {
+        update(ref(rtdb, `manpowerProfiles/${manpowerId}`), { reportedOnLeave: null });
+    }, []);
+
+
     useEffect(() => {
         const unsubscribers = [
             createDataListener('manpowerProfiles', setManpowerProfilesById),
@@ -497,7 +540,8 @@ export function ManpowerProvider({ children }: { children: ReactNode }) {
         addPpeHistoryRecord, updatePpeHistoryRecord, deletePpeHistoryRecord,
         deleteLogbookRecord, addLogbookHistoryRecord, deleteLogbookHistoryRecord,
         addLogbookRequest, updateLogbookRequestStatus, addLogbookRequestComment, markLogbookRequestAsViewed, deleteLogbookRequest, myLogbookRequestUpdates,
-        addPpeHistoryFromExcel
+        addPpeHistoryFromExcel,
+        reportLeaveFromAccommodation, clearReportedLeave
     };
 
     return <ManpowerContext.Provider value={contextValue}>{children}</ManpowerContext.Provider>;
