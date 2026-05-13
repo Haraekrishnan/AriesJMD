@@ -56,6 +56,10 @@ export default function JobRecordSheet() {
     const [jobCodeSearchTerm, setJobCodeSearchTerm] = useState('');
     const { toast } = useToast();
 
+    // Override State
+    const [tempUnlockedRows, setTempUnlockedRows] = useState<Set<string>>(new Set());
+    const [overrideRequest, setOverrideRequest] = useState<{ profileId: string; step: 1 | 2 } | null>(null);
+
     const monthKey = format(currentMonth, 'yyyy-MM');
     const prevMonthKey = format(subMonths(currentMonth, 1), 'yyyy-MM');
     
@@ -127,27 +131,22 @@ export default function JobRecordSheet() {
 
         const groups: { [key: string]: ManpowerProfile[] } = {};
         
-        // Use the memoized and sorted plantProjects for stable order
         const orderedPlantNames = plantProjects.map(p => p.name);
 
-        // Initialize groups in a stable order
         orderedPlantNames.forEach(p => { groups[p] = []; });
         if (canViewUnassigned) {
             groups['Unassigned'] = [];
         }
     
-        // Group profiles
         filtered.forEach(profile => {
             const plantAssignment = getPlantForProfile(profile.id);
             if (groups[plantAssignment]) {
                 groups[plantAssignment].push(profile);
             } else if (canViewUnassigned) {
-                // If a profile's plant no longer exists, push to Unassigned
                 groups['Unassigned'].push(profile);
             }
         });
     
-        // Sort each group based on saved order or alphabetically, iterating in a stable order
         const allGroupNames = [...orderedPlantNames];
         if (canViewUnassigned) {
             allGroupNames.push('Unassigned');
@@ -227,8 +226,7 @@ export default function JobRecordSheet() {
                 const profile = profiles[i];
                 const isAway = !!profile.reportedOnLeave;
                 
-                // Strictly disable if marked as away
-                if (isAway) continue;
+                if (isAway && !tempUnlockedRows.has(profileId)) continue;
 
                 for (let j = minCol; j <= maxCol; j++) {
                     updates.push({ profileId, day: j, code: dragState.fillValue });
@@ -239,7 +237,7 @@ export default function JobRecordSheet() {
             setCellStates(newCellStates);
         }
         setDragState({ isDragging: false, startCell: null, endCell: null, fillValue: '' });
-    }, [dragState, batchUpdateJobRecords, cellStates, filteredAndGroupedProfiles, activeTab]);
+    }, [dragState, batchUpdateJobRecords, cellStates, filteredAndGroupedProfiles, activeTab, tempUnlockedRows]);
 
     useEffect(() => {
         window.addEventListener('mouseup', handleMouseUp);
@@ -486,6 +484,21 @@ export default function JobRecordSheet() {
         return hasPermission && !isCurrentSheetLocked && isEditableMonth;
     }, [user, isCurrentSheetLocked, currentMonth]);
 
+    const handleRequestOverride = (profileId: string) => {
+        setOverrideRequest({ profileId, step: 1 });
+    };
+
+    const handleConfirmOverride = () => {
+        if (!overrideRequest) return;
+        if (overrideRequest.step === 1) {
+            setOverrideRequest({ profileId: overrideRequest.profileId, step: 2 });
+        } else {
+            setTempUnlockedRows(prev => new Set(prev).add(overrideRequest.profileId));
+            setOverrideRequest(null);
+            toast({ title: "Override Activated", description: "Row temporarily unlocked for this session." });
+        }
+    };
+
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
         if (!jobCodes) return {};
         const counts: { [key: string]: number } = {};
@@ -530,11 +543,9 @@ export default function JobRecordSheet() {
                 const sheet = workbook.addWorksheet(plant);
                 const totalDays = getDaysInMonth(currentMonth);
 
-                // ---- Add Merged Header Section First ----
                 const totalCols = 2 + totalDays + 9;
                 const endCol = totalCols;
 
-                // Row 1 – Title
                 const row1 = sheet.addRow([]);
                 sheet.mergeCells(1, 1, 1, endCol);
                 const cell1 = sheet.getCell(1, 1);
@@ -543,7 +554,6 @@ export default function JobRecordSheet() {
                 cell1.alignment = { horizontal: "center", vertical: "middle" };
                 cell1.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D9D9D9" } };
 
-                // Row 2 – Month / Plant
                 const row2 = sheet.addRow([]);
                 sheet.mergeCells(2, 1, 2, endCol);
                 const cell2 = sheet.getCell(2, 1);
@@ -853,7 +863,7 @@ export default function JobRecordSheet() {
 
     const dayHeaders = useMemo(() => Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1), [currentMonth]);
 
-    const handleDeleteJobCode = (id: string) => {
+    const handleDeleteJobCode = (id: string, code: string) => {
         deleteJobCode(id);
         toast({ title: 'Job Code Deleted', variant: 'destructive' });
     }
@@ -1002,8 +1012,10 @@ export default function JobRecordSheet() {
                                 const dailyComments = record.dailyComments || {};
 
                                 const isAway = !!profile.reportedOnLeave;
-                                // Strictly disable inputs if reported away
-                                const isInputDisabled = isAway;
+                                const isOverridden = tempUnlockedRows.has(profile.id);
+                                
+                                // Disable inputs ONLY if they are away AND NOT overridden
+                                const isInputDisabled = isAway && !isOverridden;
                                 
                                 const workCodes = jobCodes ? jobCodes.filter(jc => !['X', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code) : [];
                                 const offCodes = ['OFF', 'PH', 'OS'];
@@ -1028,7 +1040,7 @@ export default function JobRecordSheet() {
 
                                 return (
                                     <React.Fragment key={profile.id}>
-                                    <TableRow className={cn(isAway && "bg-muted/80")}>
+                                    <TableRow className={cn(isAway && !isOverridden && "bg-muted/80", isAway && isOverridden && "bg-muted/40")}>
                                         <TableCell className={cn("sticky left-0 z-20 flex items-center border-r", isAway ? "bg-muted/80" : "bg-card")} style={{width: '120px'}}>
                                             <div className="flex items-center">
                                                 <span className="w-6 text-center">{index + 1}</span>
@@ -1045,17 +1057,17 @@ export default function JobRecordSheet() {
                                         </TableCell>
                                         <TableCell className={cn("sticky z-20 font-medium whitespace-nowrap border-r", isAway ? "bg-muted/80" : "bg-card")} style={{ left: '120px', width: '200px' }}>
                                             <div className="flex items-center gap-2">
-                                              <div className={cn(isAway && "opacity-60")}>
+                                              <div className={cn(isAway && !isOverridden && "opacity-60")}>
                                                 <p>{profile.name}</p>
-                                                <p className="text-xs text-muted-foreground">{profile.epNumber || 'No EP No.'}</p>
+                                                <p className="text-xs text-muted-foreground">{profile.employeeCode || profile.epNumber || 'No Code'}</p>
                                               </div>
                                               {isAway && (
                                                 <Tooltip>
                                                   <TooltipTrigger asChild>
-                                                    <UserMinus className="h-4 w-4 text-destructive" />
+                                                    <UserMinus className={cn("h-4 w-4", isOverridden ? "text-blue-500" : "text-destructive")} />
                                                   </TooltipTrigger>
                                                   <TooltipContent>
-                                                    <p>Reported Away from Accommodation</p>
+                                                    <p>{isOverridden ? "Reported Away (Manual Override Active)" : "Reported Away from Accommodation"}</p>
                                                   </TooltipContent>
                                                 </Tooltip>
                                               )}
@@ -1083,11 +1095,17 @@ export default function JobRecordSheet() {
                                                     className={cn(
                                                         "p-0 text-center relative min-w-[100px] border-r group",
                                                         isInSelection && "bg-blue-100 dark:bg-blue-900/50",
-                                                        isAway && "bg-muted/30"
+                                                        isAway && !isOverridden && "bg-muted/30"
                                                     )}
                                                     onMouseEnter={() => handleMouseEnter(profile.id, day)}
                                                 >
                                                     <div className="relative h-10 w-full">
+                                                        {isInputDisabled && can.manage_job_record && (
+                                                            <div 
+                                                                className="absolute inset-0 z-40 cursor-pointer" 
+                                                                onClick={() => handleRequestOverride(profile.id)}
+                                                            />
+                                                        )}
                                                         <Input
                                                             id={`${profile.id}-${day}-status`}
                                                             type="text"
@@ -1141,7 +1159,13 @@ export default function JobRecordSheet() {
                                         <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.workDays}</TableCell>
                                         <TableCell className="text-center font-bold border-r min-w-[150px]">{summary.reptOffice}</TableCell>
                                         <TableCell className="text-center font-bold border-r min-w-[150px]">{salaryDays}</TableCell>
-                                        <TableCell className="text-center min-w-[150px]">
+                                        <TableCell className="text-center min-w-[150px] relative group">
+                                            {isInputDisabled && can.manage_job_record && (
+                                                <div 
+                                                    className="absolute inset-0 z-40 cursor-pointer" 
+                                                    onClick={() => handleRequestOverride(profile.id)}
+                                                />
+                                            )}
                                             <Input
                                                 type="number"
                                                 value={sundayDutyStates[profile.id] ?? ''}
@@ -1155,7 +1179,7 @@ export default function JobRecordSheet() {
                                     </TableRow>
                                     {isExpanded && (
                                        <>
-                                            <TableRow className={cn("bg-muted/50 hover:bg-muted/50", isAway && "opacity-60")}>
+                                            <TableRow className={cn("bg-muted/50 hover:bg-muted/50", isAway && !isOverridden && "opacity-60")}>
                                                 <TableCell
                                                     colSpan={3}
                                                     className={cn("sticky left-0 text-right font-semibold text-xs pr-4 z-20 border-r", isAway ? "bg-muted/80" : "bg-muted/50")}
@@ -1166,7 +1190,13 @@ export default function JobRecordSheet() {
                                                 {dayHeaders.map(day => {
                                                     const overtimeValue = overtimeStates[`${profile.id}-${day}`] || '';
                                                     return (
-                                                        <TableCell key={`ot-${day}`} className={cn("p-0 border-r", isAway && "bg-muted/30")}>
+                                                        <TableCell key={`ot-${day}`} className={cn("p-0 border-r relative", isAway && !isOverridden && "bg-muted/30")}>
+                                                            {isInputDisabled && can.manage_job_record && (
+                                                                <div 
+                                                                    className="absolute inset-0 z-40 cursor-pointer" 
+                                                                    onClick={() => handleRequestOverride(profile.id)}
+                                                                />
+                                                            )}
                                                             <Input
                                                                 id={`${profile.id}-${day}-overtime`}
                                                                 type="number"
@@ -1186,7 +1216,7 @@ export default function JobRecordSheet() {
                                                 })}
                                                 <TableCell colSpan={9}></TableCell>
                                             </TableRow>
-                                             <TableRow className={cn("bg-muted/50 hover:bg-muted/50", isAway && "opacity-60")}>
+                                             <TableRow className={cn("bg-muted/50 hover:bg-muted/50", isAway && !isOverridden && "opacity-60")}>
                                                 <TableCell
                                                     colSpan={3}
                                                     className={cn("sticky left-0 text-right font-semibold text-xs pr-4 z-20 border-r", isAway ? "bg-muted/80" : "bg-muted/50")}
@@ -1197,7 +1227,13 @@ export default function JobRecordSheet() {
                                                 {dayHeaders.map(day => {
                                                     const commentValue = commentStates[`${profile.id}-${day}`] || '';
                                                     return (
-                                                        <TableCell key={`comment-${day}`} className={cn("p-0 border-r", isAway && "bg-muted/30")}>
+                                                        <TableCell key={`comment-${day}`} className={cn("p-0 border-r relative", isAway && !isOverridden && "bg-muted/30")}>
+                                                            {isInputDisabled && can.manage_job_record && (
+                                                                <div 
+                                                                    className="absolute inset-0 z-40 cursor-pointer" 
+                                                                    onClick={() => handleRequestOverride(profile.id)}
+                                                                />
+                                                            )}
                                                             <Input
                                                                 id={`${profile.id}-${day}-comment`}
                                                                 type="text"
@@ -1262,7 +1298,7 @@ export default function JobRecordSheet() {
                                                         </AlertDialogTrigger>
                                                         <AlertDialogContent>
                                                             <AlertDialogHeader><AlertDialogTitle>Delete Job Code {jc.code}?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
-                                                            <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteJobCode(jc.id)}>Delete</AlertDialogAction></AlertDialogFooter>
+                                                            <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteJobCode(jc.id, jc.code)}>Delete</AlertDialogAction></AlertDialogFooter>
                                                         </AlertDialogContent>
                                                     </AlertDialog>
                                                 </div>
@@ -1277,6 +1313,29 @@ export default function JobRecordSheet() {
                 </Accordion>
                 </div>
             </div>
+            
+            <AlertDialog open={!!overrideRequest} onOpenChange={() => setOverrideRequest(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {overrideRequest?.step === 1 ? "Manual Override Required" : "Final Confirmation"}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {overrideRequest?.step === 1 
+                                ? "This employee is currently reported as 'Away' from accommodation. Do you want to manually override this lock to enter attendance?"
+                                : "Are you absolutely sure? This bypasses the safety check. All manual overrides are logged and audited."
+                            }
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setOverrideRequest(null)}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmOverride}>
+                            {overrideRequest?.step === 1 ? "Yes, I need to override" : "Yes, I am certain"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
             <AddJobRecordPlantDialog isOpen={isAddPlantOpen} setIsOpen={setIsAddPlantOpen} />
             <AddJobCodeDialog isOpen={isAddJobCodeOpen} setIsOpen={setIsAddJobCodeOpen} />
             {editingJobCode && <EditJobCodeDialog isOpen={!!editingJobCode} setIsOpen={() => setEditingJobCode(null)} jobCode={editingJobCode} />}
