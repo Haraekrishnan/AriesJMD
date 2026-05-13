@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Settings, Search, MessageSquare, ArrowRightLeft, UserMinus } from 'lucide-react';
-import { format, getDay, getDaysInMonth, parseISO, isSameMonth, isAfter, isBefore, startOfToday, startOfMonth, addMonths, subMonths } from 'date-fns';
+import { eachDayOfInterval, endOfMonth, startOfMonth, format, getDay, getDaysInMonth, parseISO, isSameMonth, isAfter, isBefore, startOfToday, addMonths, subMonths } from 'date-fns';
 import { saveAs } from "file-saver";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -226,9 +226,9 @@ export default function JobRecordSheet() {
                 const profileId = profiles[i].id;
                 const profile = profiles[i];
                 const isAway = !!profile.reportedOnLeave;
-                const canBypassLeave = user?.role === 'Admin' || can.manage_job_record;
                 
-                if (isAway && !canBypassLeave) continue;
+                // Strictly disable if marked as away
+                if (isAway) continue;
 
                 for (let j = minCol; j <= maxCol; j++) {
                     updates.push({ profileId, day: j, code: dragState.fillValue });
@@ -239,7 +239,7 @@ export default function JobRecordSheet() {
             setCellStates(newCellStates);
         }
         setDragState({ isDragging: false, startCell: null, endCell: null, fillValue: '' });
-    }, [dragState, batchUpdateJobRecords, cellStates, filteredAndGroupedProfiles, activeTab, user, can]);
+    }, [dragState, batchUpdateJobRecords, cellStates, filteredAndGroupedProfiles, activeTab]);
 
     useEffect(() => {
         window.addEventListener('mouseup', handleMouseUp);
@@ -1002,8 +1002,8 @@ export default function JobRecordSheet() {
                                 const dailyComments = record.dailyComments || {};
 
                                 const isAway = !!profile.reportedOnLeave;
-                                const canBypassLeave = user?.role === 'Admin' || can.manage_job_record;
-                                const isInputDisabled = isAway && !canBypassLeave;
+                                // Strictly disable inputs if reported away
+                                const isInputDisabled = isAway;
                                 
                                 const workCodes = jobCodes ? jobCodes.filter(jc => !['X', 'Q', 'ST', 'NWS', 'R', 'OS', 'ML', 'L', 'TR', 'PD', 'EP', 'OFF', 'PH', 'S', 'CQ', 'RST'].includes(jc.code)).map(jc => jc.code) : [];
                                 const offCodes = ['OFF', 'PH', 'OS'];
@@ -1028,8 +1028,8 @@ export default function JobRecordSheet() {
 
                                 return (
                                     <React.Fragment key={profile.id}>
-                                    <TableRow>
-                                        <TableCell className="sticky left-0 z-20 flex items-center bg-card border-r" style={{width: '120px'}}>
+                                    <TableRow className={cn(isAway && "bg-muted/80")}>
+                                        <TableCell className={cn("sticky left-0 z-20 flex items-center border-r", isAway ? "bg-muted/80" : "bg-card")} style={{width: '120px'}}>
                                             <div className="flex items-center">
                                                 <span className="w-6 text-center">{index + 1}</span>
                                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleRow(profile.id)}>
@@ -1043,9 +1043,9 @@ export default function JobRecordSheet() {
                                                 )}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="sticky bg-card z-20 font-medium whitespace-nowrap border-r" style={{ left: '120px', width: '200px' }}>
+                                        <TableCell className={cn("sticky z-20 font-medium whitespace-nowrap border-r", isAway ? "bg-muted/80" : "bg-card")} style={{ left: '120px', width: '200px' }}>
                                             <div className="flex items-center gap-2">
-                                              <div>
+                                              <div className={cn(isAway && "opacity-60")}>
                                                 <p>{profile.name}</p>
                                                 <p className="text-xs text-muted-foreground">{profile.epNumber || 'No EP No.'}</p>
                                               </div>
@@ -1061,8 +1061,8 @@ export default function JobRecordSheet() {
                                               )}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="sticky bg-card z-20 font-medium whitespace-nowrap border-r" style={{ left: '320px', width: '150px' }}>
-                                        <Select value={plant} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet}>
+                                        <TableCell className={cn("sticky z-20 font-medium whitespace-nowrap border-r", isAway ? "bg-muted/80" : "bg-card")} style={{ left: '320px', width: '150px' }}>
+                                        <Select value={plant} onValueChange={(value) => handlePlantChange(profile.id, value)} disabled={!canEditSheet || isInputDisabled}>
                                                 <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="Unassigned">Unassigned</SelectItem>
@@ -1083,7 +1083,7 @@ export default function JobRecordSheet() {
                                                     className={cn(
                                                         "p-0 text-center relative min-w-[100px] border-r group",
                                                         isInSelection && "bg-blue-100 dark:bg-blue-900/50",
-                                                        isAway && !canBypassLeave && "bg-muted/80 opacity-50"
+                                                        isAway && "bg-muted/30"
                                                     )}
                                                     onMouseEnter={() => handleMouseEnter(profile.id, day)}
                                                 >
@@ -1099,7 +1099,8 @@ export default function JobRecordSheet() {
                                                             className={cn(
                                                                 "absolute inset-0 w-full h-full text-center font-bold rounded-none border-0 focus:ring-1 focus:ring-offset-0 focus:ring-ring",
                                                                 code ? colorInfo.bg : 'bg-transparent',
-                                                                code ? colorInfo.text : 'text-foreground'
+                                                                code ? colorInfo.text : 'text-foreground',
+                                                                isInputDisabled && "cursor-not-allowed opacity-50"
                                                             )}
                                                             style={{ boxShadow: 'none' }}
                                                             disabled={!canEditSheet || isInputDisabled}
@@ -1154,10 +1155,10 @@ export default function JobRecordSheet() {
                                     </TableRow>
                                     {isExpanded && (
                                        <>
-                                            <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                            <TableRow className={cn("bg-muted/50 hover:bg-muted/50", isAway && "opacity-60")}>
                                                 <TableCell
                                                     colSpan={3}
-                                                    className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r"
+                                                    className={cn("sticky left-0 text-right font-semibold text-xs pr-4 z-20 border-r", isAway ? "bg-muted/80" : "bg-muted/50")}
                                                     style={{ left: 0, width: '470px' }}
                                                 >
                                                     Overtime Hours
@@ -1165,7 +1166,7 @@ export default function JobRecordSheet() {
                                                 {dayHeaders.map(day => {
                                                     const overtimeValue = overtimeStates[`${profile.id}-${day}`] || '';
                                                     return (
-                                                        <TableCell key={`ot-${day}`} className={cn("p-0 border-r", isAway && !canBypassLeave && "bg-muted/80 opacity-50")}>
+                                                        <TableCell key={`ot-${day}`} className={cn("p-0 border-r", isAway && "bg-muted/30")}>
                                                             <Input
                                                                 id={`${profile.id}-${day}-overtime`}
                                                                 type="number"
@@ -1174,7 +1175,10 @@ export default function JobRecordSheet() {
                                                                 onChange={(e) => handleOvertimeChange(profile.id, day, e.target.value)}
                                                                 onBlur={(e) => handleOvertimeBlur(profile.id, day, e.target.value)}
                                                                 onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, 'overtime')}
-                                                                className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
+                                                                className={cn(
+                                                                    "w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring",
+                                                                    isInputDisabled && "cursor-not-allowed"
+                                                                )}
                                                                 disabled={!canEditSheet || isInputDisabled}
                                                             />
                                                         </TableCell>
@@ -1182,10 +1186,10 @@ export default function JobRecordSheet() {
                                                 })}
                                                 <TableCell colSpan={9}></TableCell>
                                             </TableRow>
-                                             <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                             <TableRow className={cn("bg-muted/50 hover:bg-muted/50", isAway && "opacity-60")}>
                                                 <TableCell
                                                     colSpan={3}
-                                                    className="sticky left-0 bg-muted/50 text-right font-semibold text-xs pr-4 z-20 border-r"
+                                                    className={cn("sticky left-0 text-right font-semibold text-xs pr-4 z-20 border-r", isAway ? "bg-muted/80" : "bg-muted/50")}
                                                     style={{ left: 0, width: '470px' }}
                                                 >
                                                     Comments
@@ -1193,7 +1197,7 @@ export default function JobRecordSheet() {
                                                 {dayHeaders.map(day => {
                                                     const commentValue = commentStates[`${profile.id}-${day}`] || '';
                                                     return (
-                                                        <TableCell key={`comment-${day}`} className={cn("p-0 border-r", isAway && !canBypassLeave && "bg-muted/80 opacity-50")}>
+                                                        <TableCell key={`comment-${day}`} className={cn("p-0 border-r", isAway && "bg-muted/30")}>
                                                             <Input
                                                                 id={`${profile.id}-${day}-comment`}
                                                                 type="text"
@@ -1202,7 +1206,10 @@ export default function JobRecordSheet() {
                                                                 onChange={(e) => handleCommentChange(profile.id, day, e.target.value)}
                                                                 onBlur={(e) => handleCommentBlur(profile.id, day, e.target.value)}
                                                                 onKeyDown={(e) => handleCellKeyDown(e, profile.id, day, 'comment')}
-                                                                className="w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
+                                                                className={cn(
+                                                                    "w-full h-8 text-center border-0 rounded-none bg-transparent focus-visible:ring-1 focus-visible:ring-ring",
+                                                                    isInputDisabled && "cursor-not-allowed"
+                                                                )}
                                                                 disabled={!canEditSheet || isInputDisabled}
                                                             />
                                                         </TableCell>
