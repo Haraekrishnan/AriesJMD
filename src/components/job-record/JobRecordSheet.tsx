@@ -534,6 +534,7 @@ export default function JobRecordSheet() {
     const manDaysCountByCodeForCurrentTab = useMemo(() => {
         if (!jobCodes) return {};
         const counts: { [key: string]: number } = {};
+        counts['S'] = 0; // Fixed key for Site Days count in legend
         jobCodes.forEach(jc => counts[jc.code] = 0);
 
         const profilesInTab = searchTerm ? Object.values(filteredAndGroupedProfiles).flat() : (filteredAndGroupedProfiles[activeTab || ''] || []);
@@ -1087,7 +1088,7 @@ export default function JobRecordSheet() {
                                             <div className="flex items-center gap-2">
                                               <div className={cn(isRowAway && "opacity-60")}>
                                                 <p>{profile.name}</p>
-                                                <p className="text-xs text-muted-foreground">{profile.employeeCode || profile.epNumber || 'No Code'}</p>
+                                                <p className="text-xs text-muted-foreground">{profile.epNumber || 'No EP Number'}</p>
                                               </div>
                                               {isRowAway && (
                                                 <Tooltip>
