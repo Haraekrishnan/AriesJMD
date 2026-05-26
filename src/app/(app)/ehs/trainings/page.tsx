@@ -1,15 +1,55 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { useEhs } from '@/contexts/ehs-provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, GraduationCap, Calendar, Clock, Trophy, Play, CheckCircle2, MoreVertical } from 'lucide-react';
+import { Users, GraduationCap, Clock, Trophy, Play } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { format, parseISO } from 'date-fns';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useToast } from '@/hooks/use-toast';
+
+const trainingSchema = z.object({
+  topic: z.string().min(1, 'Topic is required'),
+  type: z.enum(['Induction', 'Toolbox', 'Specialized']),
+  date: z.string().min(1, 'Date is required'),
+  trainer: z.string().min(1, 'Trainer name is required'),
+  attendeesCount: z.coerce.number().min(1, 'At least one attendee required'),
+});
+
+type TrainingFormValues = z.infer<typeof trainingSchema>;
 
 export default function EhsTrainingsPage() {
-  const { trainings } = useEhs();
+  const { trainings, addTraining } = useEhs();
+  const { toast } = useToast();
+  const [isDialogOpen, setIsOpen] = useState(false);
+
+  const form = useForm<TrainingFormValues>({
+    resolver: zodResolver(trainingSchema),
+    defaultValues: { type: 'Toolbox', date: format(new Date(), 'yyyy-MM-dd') },
+  });
+
+  const onSubmit = (data: TrainingFormValues) => {
+    addTraining({
+      ...data,
+      attendees: Array(data.attendeesCount).fill('attendee-id'),
+    });
+    toast({ title: 'Training Registered', description: 'The training session has been successfully logged.' });
+    setIsOpen(false);
+    form.reset();
+  };
+
+  const sortedTrainings = useMemo(() => {
+    return [...trainings].sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+  }, [trainings]);
 
   return (
     <div className="space-y-8">
@@ -18,13 +58,68 @@ export default function EhsTrainingsPage() {
           <h1 className="text-3xl font-bold text-white">Safety Trainings</h1>
           <p className="text-slate-400">Track workforce competency and toolbox talk records.</p>
         </div>
-        <Button className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold">
-           Register Training Session
-        </Button>
+        
+        <Dialog open={isDialogOpen} onOpenChange={setIsOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold">
+               Register Training Session
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-slate-900 border-slate-800 text-white">
+            <DialogHeader>
+              <DialogTitle>Log Training Session</DialogTitle>
+              <DialogDescription className="text-slate-400">Record a safety induction, toolbox talk, or specialized training event.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Topic / Module Title</Label>
+                <Input {...form.register('topic')} className="bg-slate-800 border-slate-700" placeholder="e.g., Fire Safety Level 1" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <Controller
+                    control={form.control}
+                    name="type"
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger className="bg-slate-800 border-slate-700">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                          <SelectItem value="Induction">Safety Induction</SelectItem>
+                          <SelectItem value="Toolbox">Toolbox Talk</SelectItem>
+                          <SelectItem value="Specialized">Specialized Certification</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Date</Label>
+                  <Input type="date" {...form.register('date')} className="bg-slate-800 border-slate-700" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Trainer / Issuer</Label>
+                  <Input {...form.register('trainer')} className="bg-slate-800 border-slate-700" placeholder="Name" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Attendees Count</Label>
+                  <Input type="number" {...form.register('attendeesCount')} className="bg-slate-800 border-slate-700" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsOpen(false)} className="bg-transparent border-slate-700 text-slate-300">Cancel</Button>
+                <Button type="submit" className="bg-indigo-500 hover:bg-indigo-600">Register</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Course Progress Section */}
         <div className="lg:col-span-2 space-y-6">
            <h2 className="text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
              <Play className="h-5 w-5 text-emerald-400" /> Current Competency Programs
@@ -61,14 +156,13 @@ export default function EhsTrainingsPage() {
            ))}
         </div>
 
-        {/* Recent Records Sidebar */}
         <div className="space-y-6">
            <h2 className="text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
              <Clock className="h-5 w-5 text-indigo-400" /> Recent Sessions
            </h2>
            
            <div className="space-y-4">
-              {trainings.map(t => (
+              {sortedTrainings.map(t => (
                 <div key={t.id} className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex gap-4 items-start">
                   <div className="bg-slate-800 p-2 rounded-lg">
                     <GraduationCap className="h-5 w-5 text-indigo-400" />
