@@ -4,9 +4,11 @@ import React from 'react';
 import { useEhs } from '@/contexts/ehs-provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Zap, ShieldCheck, MapPin, Calendar, FileText, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Zap, ShieldCheck, MapPin, Calendar, FileText, ChevronRight, AlertTriangle, PlusCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { format, parseISO } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 const riskColors: Record<string, string> = {
   'Low': 'bg-emerald-500/10 text-emerald-400',

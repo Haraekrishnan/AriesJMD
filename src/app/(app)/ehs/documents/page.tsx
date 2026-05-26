@@ -3,8 +3,10 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Search, FileText, Download, Filter, FileCheck, ShieldAlert, BadgeInfo } from 'lucide-react';
+import { BookOpen, Search, FileText, Download, Filter, FileCheck, ShieldAlert } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 const categories = [
   { name: 'Policies & Standards', count: 12, icon: ShieldAlert, color: 'text-rose-400' },

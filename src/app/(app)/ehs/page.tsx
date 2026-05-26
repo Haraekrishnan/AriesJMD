@@ -24,6 +24,7 @@ import {
   AreaChart,
   Area,
 } from 'recharts';
+import { cn } from '@/lib/utils';
 
 const dummyData = [
   { name: 'Jan', incidents: 4, audits: 85 },

@@ -8,6 +8,7 @@ import { Plus, Search, AlertCircle, MapPin, Calendar, Eye, Users, FileWarning } 
 import { Input } from '@/components/ui/input';
 import { format, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 const incidentTypeColors: Record<string, string> = {
   'Near Miss': 'bg-amber-500/10 text-amber-400 border-amber-500/20',
