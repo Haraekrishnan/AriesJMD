@@ -71,7 +71,7 @@ export default function EhsRiskAssessmentsPage() {
       reviewDate: new Date().toISOString(),
     });
     
-    toast({ title: 'JSA Registered', description: 'The risk assessment has been successfully added to the system.' });
+    toast({ title: 'Risk Assessment Registered', description: 'The risk assessment has been successfully added to the system.' });
     setIsDialogOpen(false);
     form.reset();
   };
@@ -80,14 +80,14 @@ export default function EhsRiskAssessmentsPage() {
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Risk Assessments (JSA/HIRA)</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Risk Assessments</h1>
           <p className="text-slate-400">Identify hazards and establish control measures for organizational safety.</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-500/20 px-6">
-              <PlusCircle className="mr-2 h-4 w-4" /> New JSA / Assessment
+              <PlusCircle className="mr-2 h-4 w-4" /> New Risk Assessment
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-xl">
@@ -157,7 +157,7 @@ export default function EhsRiskAssessmentsPage() {
               </div>
 
               <DialogFooter className="pt-4">
-                <Button variant="outline" type="button" onClick={() => setIsDialogOpen(false)} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800">Cancel</Button>
+                <Button variant="outline" type="button" onClick={() => setIsOpen(false)} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800">Cancel</Button>
                 <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600 font-bold">Register Assessment</Button>
               </DialogFooter>
             </form>
