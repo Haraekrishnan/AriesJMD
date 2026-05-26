@@ -28,6 +28,7 @@ type EhsContextType = {
   addSupportTicket: (ticket: Omit<EhsSupportTicket, 'id' | 'requesterId' | 'createdAt' | 'status' | 'comments'>) => Promise<void>;
   updateTicketStatus: (ticketId: string, status: EhsSupportTicket['status']) => void;
   addTicketComment: (ticketId: string, text: string) => void;
+  deleteSupportTicket: (ticketId: string) => void;
   updateContactInfo: (info: Partial<EhsContactInfo>) => void;
   
   stats: {
@@ -194,6 +195,12 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     });
   }, [user]);
 
+  const deleteSupportTicket = useCallback((ticketId: string) => {
+    if (user?.role !== 'Admin') return;
+    remove(ref(rtdb, `ehs/supportTickets/${ticketId}`));
+    toast({ title: 'Ticket Deleted', variant: 'destructive' });
+  }, [user, toast]);
+
   const updateContactInfo = useCallback((info: Partial<EhsContactInfo>) => {
     if (user?.role !== 'Admin' && user?.role !== 'Senior Safety Supervisor') return;
     update(ref(rtdb, 'ehs/contactInfo'), info);
@@ -216,7 +223,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
   }, [incidents, audits, trainings]);
 
   return (
-    <EhsContext.Provider value={{ audits, incidents, riskAssessments, trainings, supportTickets, contactInfo, addAudit, addIncident, addRiskAssessment, addTraining, reviewAudit, updateIncidentStatus, addSupportTicket, updateTicketStatus, addTicketComment, updateContactInfo, stats }}>
+    <EhsContext.Provider value={{ audits, incidents, riskAssessments, trainings, supportTickets, contactInfo, addAudit, addIncident, addRiskAssessment, addTraining, reviewAudit, updateIncidentStatus, addSupportTicket, updateTicketStatus, addTicketComment, deleteSupportTicket, updateContactInfo, stats }}>
       {children}
     </EhsContext.Provider>
   );

@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/auth-provider';
 import { useEhs } from '@/contexts/ehs-provider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { HelpCircle, MessageCircle, Phone, Mail, FileQuestion, Book, ShieldCheck, Send, Zap, Edit, Check, X, Clock, MessageSquare, CheckCircle } from 'lucide-react';
+import { HelpCircle, MessageCircle, Phone, Mail, FileQuestion, Book, ShieldCheck, Send, Zap, Edit, Check, X, Clock, MessageSquare, CheckCircle, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -16,10 +16,11 @@ import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 export default function EhsSupportPage() {
   const { user, users } = useAuth();
-  const { contactInfo, supportTickets, addSupportTicket, updateContactInfo, updateTicketStatus, addTicketComment } = useEhs();
+  const { contactInfo, supportTickets, addSupportTicket, updateContactInfo, updateTicketStatus, addTicketComment, deleteSupportTicket } = useEhs();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -200,7 +201,15 @@ export default function EhsSupportPage() {
                     <ScrollArea className="h-[500px]">
                         <div className="divide-y divide-slate-800">
                             {ticketsToReview.map(ticket => (
-                                <TicketReviewItem key={ticket.id} ticket={ticket} users={users} onStatusChange={updateTicketStatus} onAddComment={addTicketComment} />
+                                <TicketReviewItem 
+                                  key={ticket.id} 
+                                  ticket={ticket} 
+                                  users={users} 
+                                  currentUser={user}
+                                  onStatusChange={updateTicketStatus} 
+                                  onAddComment={addTicketComment} 
+                                  onDelete={deleteSupportTicket}
+                                />
                             ))}
                         </div>
                     </ScrollArea>
@@ -220,7 +229,7 @@ export default function EhsSupportPage() {
                     <div key={ticket.id} className="p-4 border border-slate-800 rounded-xl bg-slate-800/20 flex justify-between items-center">
                       <div>
                         <p className="font-bold text-slate-200">{ticket.category}</p>
-                        <p className="text-xs text-slate-500">{format(parseISO(ticket.createdAt), 'PPP')}</p>
+                        <p className="text-xs text-muted-foreground">{format(parseISO(ticket.createdAt), 'PPP')}</p>
                       </div>
                       <Badge variant={ticket.status === 'Open' ? 'destructive' : ticket.status === 'Closed' ? 'success' : 'default'}>
                         {ticket.status}
@@ -292,10 +301,11 @@ function ContactCard({ icon: Icon, label, value, desc, isEditable, onEdit, isEdi
   );
 }
 
-function TicketReviewItem({ ticket, users, onStatusChange, onAddComment }: any) {
+function TicketReviewItem({ ticket, users, currentUser, onStatusChange, onAddComment, onDelete }: any) {
     const requester = users.find((u: any) => u.id === ticket.requesterId);
     const [comment, setComment] = useState('');
     const comments = ticket.comments ? Object.values(ticket.comments) : [];
+    const isAdmin = currentUser?.role === 'Admin';
 
     return (
         <div className="p-6 space-y-4">
@@ -315,6 +325,33 @@ function TicketReviewItem({ ticket, users, onStatusChange, onAddComment }: any) 
                         {ticket.status}
                     </Badge>
                     <span className="text-[10px] text-slate-600 font-bold">{formatDistanceToNow(parseISO(ticket.createdAt), { addSuffix: true })}</span>
+                    
+                    {isAdmin && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-500 hover:bg-rose-500/10">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Support Ticket?</AlertDialogTitle>
+                            <AlertDialogDescription className="text-slate-400">
+                              This action will permanently remove this ticket and its entire conversation history.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel className="bg-transparent border-slate-700 text-slate-300">Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              className="bg-rose-600 hover:bg-rose-700"
+                              onClick={() => onDelete(ticket.id)}
+                            >
+                              Confirm Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                 </div>
             </div>
 
