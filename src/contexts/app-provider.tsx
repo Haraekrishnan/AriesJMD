@@ -11,6 +11,7 @@ import { ConsumableProvider, useConsumable } from './consumable-provider';
 import { AccommodationProvider, useAccommodation } from './accommodation-provider';
 import { DecorationContextProvider, useDecorations } from './decoration-provider';
 import { InwardOutwardProvider, useInwardOutward } from './inward-outward-provider';
+import { EhsProvider } from './ehs-provider';
 
 export function AppProvider({ children }: { children: ReactNode }) {
   return (
@@ -25,7 +26,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
                                 <PlannerProvider>
                                     <TaskProvider>
                                         <DecorationContextProvider>
-                                            {children}
+                                            <EhsProvider>
+                                                {children}
+                                            </EhsProvider>
                                         </DecorationContextProvider>
                                     </TaskProvider>
                                 </PlannerProvider>

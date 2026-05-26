@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { usePathname } from 'next/navigation';
@@ -39,6 +37,7 @@ import {
   Truck,
   Inbox,
   Settings,
+  ShieldAlert,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
@@ -190,6 +189,7 @@ const plannerNotificationCount =
   
   const navItems = useMemo(() => [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', notificationCount: 0, show: true },
+    { href: '/ehs', icon: ShieldAlert, label: 'EHS Portal', notificationCount: 0, show: can.access_ehs_portal },
     { href: '/my-requests', icon: Send, label: 'My Requests', notificationCount: notificationCounts.myRequests || 0, show: true },
     { href: '/management-requests', icon: MessageSquare, label: 'Management Requests', notificationCount: notificationCounts.managementRequests || 0, show: can.manage_directives },
     { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: notificationCounts.manageTasks || 0, show: true },
@@ -276,4 +276,3 @@ const plannerNotificationCount =
     </aside>
   );
 }
-

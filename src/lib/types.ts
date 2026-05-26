@@ -164,6 +164,7 @@ export const ALL_PERMISSIONS = [
   'manage_inward_outward',
   'manage_service_codes',
   'report_leave_from_accommodation',
+  'access_ehs_portal',
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -1307,4 +1308,50 @@ export type InwardOutwardRecord = {
     vendorId?: string;
     finalizedItemIds?: string[];
     isLocked?: boolean;
+};
+
+// --- EHS Portal Specific Types ---
+
+export type EhsAudit = {
+  id: string;
+  title: string;
+  type: 'Safety' | 'Environmental' | 'Health' | 'Fire';
+  date: string;
+  location: string;
+  inspectorId: string;
+  score: number;
+  findings: string[];
+  status: 'Draft' | 'Finalized';
+};
+
+export type EhsIncident = {
+  id: string;
+  type: 'Near Miss' | 'Minor Injury' | 'LTI' | 'Fatality' | 'Environmental' | 'Property Damage';
+  date: string;
+  location: string;
+  reporterId: string;
+  description: string;
+  immediateActions: string;
+  rootCause?: string;
+  status: 'Open' | 'Under Investigation' | 'Closed';
+};
+
+export type EhsRiskAssessment = {
+  id: string;
+  activityName: string;
+  location: string;
+  hazards: string[];
+  riskLevel: 'Low' | 'Medium' | 'High' | 'Critical';
+  controls: string[];
+  reviewedBy: string;
+  reviewDate: string;
+};
+
+export type EhsTraining = {
+  id: string;
+  topic: string;
+  date: string;
+  trainer: string;
+  attendees: string[]; // Manpower or user IDs
+  type: 'Induction' | 'Toolbox' | 'Specialized';
 };
