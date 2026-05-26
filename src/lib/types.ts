@@ -204,7 +204,8 @@ export type NotificationEventKey =
   | 'onPpeRequest'
   | 'onPpeRequestUpdate'
   | 'onManagementRequest'
-  | 'onPasswordReset';
+  | 'onPasswordReset'
+  | 'onEhsSupportTicket';
 
 export type NotificationSettings = {
   additionalRecipients?: string;
@@ -715,7 +716,7 @@ export type InventoryTransferRequest = {
 
 export type TransferReason = 'Temporary Use' | 'For TP certification' | 'Expired materials' | 'Not in use' | 'Damaged items' | 'Transfer to another project as requested by';
 
-export const TRANSFER_REASONS: TransferReason[] = ['Temporary Use', 'For TP certification', 'Expired materials', 'Not in use', 'Damaged items', 'Transfer to another project as requested by'];
+export const TRANSFER_REASONS: TransferReason[] = ['Temporary Use', 'For TP certification', 'Expired materials', 'Not in use' | 'Damaged items', 'Transfer to another project as requested by'];
 
 export type CertificateRequestType = 'Calibration Certificate' | 'TP Certificate' | 'Inspection Certificate';
 export type CertificateRequestStatus = 'Pending' | 'Completed' | 'Rejected';
@@ -1366,4 +1367,21 @@ export type EhsTraining = {
   type: 'Induction' | 'Toolbox' | 'Specialized';
 };
 
+export type EhsSupportTicketStatus = 'Open' | 'In Progress' | 'Closed';
 
+export type EhsSupportTicket = {
+  id: string;
+  requesterId: string;
+  category: string;
+  urgency: string;
+  description: string;
+  createdAt: string; // ISO
+  status: EhsSupportTicketStatus;
+  comments?: { [key: string]: Comment };
+};
+
+export type EhsContactInfo = {
+  hotline: string;
+  email: string;
+  liveChat: string;
+};
