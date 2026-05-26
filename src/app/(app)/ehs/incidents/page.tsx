@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, MapPin, Calendar, Eye, Users, FileWarning, AlertCircle, CheckCircle, ShieldCheck } from 'lucide-react';
+import { Plus, Search, MapPin, Calendar, Eye, Users, FileWarning, AlertCircle, CheckCircle, ShieldCheck, Clock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -183,7 +183,7 @@ export default function EhsIncidentsPage() {
                 </div>
 
                 <DialogFooter className="pt-2">
-                  <Button variant="outline" type="button" onClick={() => setIsDialogOpen(false)} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white">Cancel</Button>
+                  <Button variant="outline" type="button" onClick={() => setIsOpen(false)} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white">Cancel</Button>
                   <Button type="submit" className="bg-rose-500 hover:bg-rose-600 font-bold">Submit for Review</Button>
                 </DialogFooter>
               </form>
