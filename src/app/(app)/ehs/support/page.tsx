@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function EhsSupportPage() {
   const { user, users } = useAuth();
