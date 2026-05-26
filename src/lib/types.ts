@@ -17,6 +17,7 @@ export type User = {
   signatureUrl?: string;
   viewedBy?: { [key: string]: boolean };
   dismissedPendingUpdates?: { [key: string]: boolean };
+  viewedFeatures?: { [key: string]: boolean };
   viewPreferences?: {
     jmsTracker: 'board' | 'list';
     timesheetTracker: 'board' | 'list';

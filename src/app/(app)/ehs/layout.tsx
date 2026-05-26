@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-provider';
 import { 
@@ -33,9 +33,15 @@ const ehsNavItems = [
 ];
 
 export default function EhsLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading, can } = useAuth();
+  const { user, loading, can, markFeatureAsViewed } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+
+  useEffect(() => {
+    if (user && !user.viewedFeatures?.ehs) {
+        markFeatureAsViewed('ehs');
+    }
+  }, [user, markFeatureAsViewed]);
 
   if (loading) return null;
 

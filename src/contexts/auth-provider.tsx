@@ -1,9 +1,7 @@
-
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, Dispatch, SetStateAction, useMemo, useRef } from 'react';
-import { User, RoleDefinition, Permission, ALL_PERMISSIONS, PasswordResetRequest, UnlockRequest, Feedback, DailyPlannerComment, PlannerEvent, Role, NotificationSettings } from '@/lib/types';
+import { User, RoleDefinition, Permission, ALL_PERMISSIONS, PasswordResetRequest, UnlockRequest, Feedback, FeedbackStatus, DailyPlannerComment, PlannerEvent, Role, NotificationSettings } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, get, query, orderByChild, equalTo, update, push, set, remove } from 'firebase/database';
@@ -53,6 +51,7 @@ type AuthContextType = {
   clearInventoryTransferHistory: () => void;
   markPlannerEventAsViewed: (eventId: string) => void;
   updateUserViewPreference: (key: 'jmsTracker' | 'timesheetTracker', value: 'board' | 'list') => void;
+  markFeatureAsViewed: (featureId: string) => void;
 };
 
 // --- HELPER FUNCTIONS ---
@@ -455,6 +454,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     set(ref(rtdb, path), value);
   }, [user]);
 
+  const markFeatureAsViewed = useCallback((featureId: string) => {
+    if (!user) return;
+    const path = `users/${user.id}/viewedFeatures/${featureId}`;
+    set(ref(rtdb, path), true);
+  }, [user]);
+
   useEffect(() => {
     const unsubscribers = [
       createDataListener('users', setUsersById),
@@ -517,7 +522,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user, loading, users, roles, passwordResetRequests, unlockRequests, can, appName, appLogo, activeTheme, plannerNotificationCount,
     login, logout, updateProfile, requestPasswordReset,
     resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, updateBranding, updateActiveTheme, addActivityLog, getVisibleUsers, getAssignableUsers, clearInventoryTransferHistory, markPlannerEventAsViewed,
-    updateUserViewPreference
+    updateUserViewPreference, markFeatureAsViewed
   };
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
@@ -530,5 +535,3 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
-
-    
