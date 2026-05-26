@@ -24,8 +24,8 @@ export default function EhsSupportPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    category: 'audit',
-    urgency: 'normal',
+    category: 'Audit/Inspection Query',
+    urgency: 'Normal - 24hr Response',
     description: '',
   });
 
@@ -58,12 +58,12 @@ export default function EhsSupportPage() {
       description: 'Your request has been received and assigned to the Senior Safety Supervisor.' 
     });
     setIsSubmitting(false);
-    setFormData({ category: 'audit', urgency: 'normal', description: '' });
+    setFormData({ category: 'Audit/Inspection Query', urgency: 'Normal - 24hr Response', description: '' });
   };
 
   const handleStartEdit = (key: string, value: string) => {
     setEditingContact(key);
-    setEditValue(value);
+    setEditValue(value || '');
   };
 
   const handleSaveContact = () => {
@@ -175,7 +175,7 @@ export default function EhsSupportPage() {
                   <Textarea 
                     placeholder="Please provide specific details including Site, Date, and Case IDs if applicable..." 
                     className="bg-slate-800 border-slate-700 text-white min-h-[200px] rounded-2xl focus:ring-emerald-500/20 text-base p-6" 
-                    value={formData.description}
+                    value={formData.description || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   />
                 </div>
@@ -277,7 +277,7 @@ function ContactCard({ icon: Icon, label, value, desc, isEditable, onEdit, isEdi
           {isEditing ? (
             <div className="mt-2 flex gap-2">
               <Input 
-                value={editValue} 
+                value={editValue || ''} 
                 onChange={(e) => onValueChange(e.target.value)}
                 className="h-8 bg-slate-800 border-slate-700 text-white text-sm"
               />
@@ -382,7 +382,7 @@ function TicketReviewItem({ ticket, users, currentUser, onStatusChange, onAddCom
                     <Input 
                         placeholder="Type reply to user..." 
                         className="bg-slate-800 border-slate-700 text-white rounded-xl h-12 pr-12"
-                        value={comment}
+                        value={comment || ''}
                         onChange={e => setComment(e.target.value)}
                     />
                     <Button 
