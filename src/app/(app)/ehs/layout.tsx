@@ -44,8 +44,9 @@ export default function EhsLayout({ children }: { children: React.ReactNode }) {
     return null;
   }
 
+  // Changed z-index from 100 to 40 to ensure Radix/Shadcn dialogs (z-50) appear on top.
   return (
-    <div className="fixed inset-0 z-[100] flex bg-[#0b1120] text-slate-200 overflow-hidden">
+    <div className="fixed inset-0 z-40 flex bg-[#0b1120] text-slate-200 overflow-hidden">
       {/* EHS Side Navigation */}
       <aside className="w-72 border-r border-slate-800/60 bg-[#0b1120] flex flex-col shrink-0 h-full shadow-2xl">
         <div className="p-8 border-b border-slate-800/60">

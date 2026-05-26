@@ -1317,7 +1317,7 @@ export type EhsAudit = {
   title: string;
   type: 'Safety' | 'Environmental' | 'Health' | 'Fire';
   date: string;
-  location: string;
+  projectId: string;
   inspectorId: string;
   score: number;
   findings: string[];
@@ -1328,6 +1328,7 @@ export type EhsIncident = {
   id: string;
   type: 'Near Miss' | 'Minor Injury' | 'LTI' | 'Fatality' | 'Environmental' | 'Property Damage';
   date: string;
+  projectId: string;
   location: string;
   reporterId: string;
   description: string;
@@ -1339,7 +1340,7 @@ export type EhsIncident = {
 export type EhsRiskAssessment = {
   id: string;
   activityName: string;
-  location: string;
+  projectId: string;
   hazards: string[];
   riskLevel: 'Low' | 'Medium' | 'High' | 'Critical';
   controls: string[];
@@ -1355,3 +1356,4 @@ export type EhsTraining = {
   attendees: string[]; // Manpower or user IDs
   type: 'Induction' | 'Toolbox' | 'Specialized';
 };
+
