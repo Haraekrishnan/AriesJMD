@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, Calendar, MapPin, ClipboardList, Clock } from 'lucide-react';
+import { Plus, Search, Calendar, MapPin, ClipboardList, Clock, ThumbsUp, ThumbsDown, MessageSquare } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { Textarea } from '@/components/ui/textarea';
 
 const auditSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -31,12 +32,15 @@ const auditSchema = z.object({
 type AuditFormValues = z.infer<typeof auditSchema>;
 
 export default function EhsAuditsPage() {
-  const { audits, addAudit } = useEhs();
-  const { user } = useAuth();
+  const { audits, addAudit, reviewAudit } = useEhs();
+  const { user, users } = useAuth();
   const { projects } = useGeneral();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  const [reviewingAuditId, setReviewingAuditId] = useState<string | null>(null);
+  const [supervisorComment, setSupervisorComment] = useState('');
 
   const form = useForm<AuditFormValues>({
     resolver: zodResolver(auditSchema),
@@ -47,6 +51,8 @@ export default function EhsAuditsPage() {
       projectId: '',
     },
   });
+
+  const isSupervisor = user?.role === 'Senior Safety Supervisor' || user?.role === 'Admin';
 
   const filteredAudits = useMemo(() => {
     return audits.filter(a => {
@@ -65,12 +71,23 @@ export default function EhsAuditsPage() {
       ...data,
       inspectorId: user.id,
       findings: [],
-      status: 'Finalized',
+      status: 'Pending Review',
     });
     
-    toast({ title: 'Audit Registered', description: 'The site walkthrough record has been saved.' });
+    toast({ title: 'Audit Submitted', description: 'Sent to Higher Official for review.' });
     setIsDialogOpen(false);
     form.reset();
+  };
+
+  const handleReviewAction = (status: 'Approved' | 'Rejected') => {
+    if (!reviewingAuditId) return;
+    if (!supervisorComment.trim()) {
+      toast({ title: 'Comment Required', description: 'Please provide feedback for the review.', variant: 'destructive' });
+      return;
+    }
+    reviewAudit(reviewingAuditId, status, supervisorComment);
+    setReviewingAuditId(null);
+    setSupervisorComment('');
   };
 
   return (
@@ -78,19 +95,19 @@ export default function EhsAuditsPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-white">Audits & Inspections</h1>
-          <p className="text-slate-400">Manage site walkthroughs and compliance verification.</p>
+          <p className="text-slate-400">Manage site walkthroughs and higher official reviews.</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold shadow-lg shadow-emerald-500/20">
-              <Plus className="mr-2 h-4 w-4" /> Schedule New Audit
+              <Plus className="mr-2 h-4 w-4" /> New Audit Submission
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Register Site Audit</DialogTitle>
-              <DialogDescription className="text-slate-400">Record an inspection outcome for safety compliance tracking.</DialogDescription>
+              <DialogDescription className="text-slate-400">Submit an inspection outcome for higher official verification.</DialogDescription>
             </DialogHeader>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
               <div className="space-y-2">
@@ -138,7 +155,6 @@ export default function EhsAuditsPage() {
                       </Select>
                     )}
                   />
-                  {form.formState.errors.projectId && <p className="text-xs text-rose-400">{form.formState.errors.projectId.message}</p>}
                 </div>
               </div>
 
@@ -146,18 +162,16 @@ export default function EhsAuditsPage() {
                 <div className="space-y-2">
                   <Label className="text-slate-400">Date</Label>
                   <Input type="date" {...form.register('date')} className="bg-slate-800 border-slate-700 text-white" />
-                  {form.formState.errors.date && <p className="text-xs text-rose-400">{form.formState.errors.date.message}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label className="text-slate-400">Score (%)</Label>
                   <Input type="number" {...form.register('score')} className="bg-slate-800 border-slate-700 text-white" />
-                  {form.formState.errors.score && <p className="text-xs text-rose-400">{form.formState.errors.score.message}</p>}
                 </div>
               </div>
 
               <DialogFooter className="pt-4">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800">Cancel</Button>
-                <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600">Save Audit</Button>
+                <Button variant="outline" type="button" onClick={() => setIsDialogOpen(false)} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800">Cancel</Button>
+                <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600">Submit for Review</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -179,19 +193,24 @@ export default function EhsAuditsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {filteredAudits.map((audit) => {
           const site = projects.find(p => p.id === audit.projectId);
+          const reviewer = users.find(u => u.id === audit.reviewedById);
+          
           return (
             <Card key={audit.id} className="bg-slate-900 border-slate-800 hover:border-emerald-500/30 transition-all duration-300 group">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
-                     <Badge variant="outline" className="bg-emerald-500/5 border-emerald-500/20 text-emerald-400 mb-2 font-black uppercase text-[10px] tracking-widest">
-                       {audit.type}
+                     <Badge variant="outline" className={cn(
+                       "border-emerald-500/20 text-emerald-400 mb-2 font-black uppercase text-[10px] tracking-widest",
+                       audit.status === 'Rejected' && "text-rose-400 border-rose-500/20"
+                     )}>
+                       {audit.type} &middot; {audit.status}
                      </Badge>
                     <CardTitle className="text-white text-lg font-bold group-hover:text-emerald-400 transition-colors">{audit.title}</CardTitle>
                   </div>
                   <div className="text-right">
                     <div className="text-2xl font-black text-emerald-400">{audit.score}%</div>
-                    <p className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">Compliance</p>
+                    <p className="text-[9px] uppercase font-black text-slate-500 tracking-tighter">Site Score</p>
                   </div>
                 </div>
               </CardHeader>
@@ -207,22 +226,35 @@ export default function EhsAuditsPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between text-[10px] font-black uppercase tracking-[0.2em]">
-                    <span className="text-slate-500">Metric Status</span>
-                    <span className="text-white">{audit.score}%</span>
+                {audit.supervisorComment && (
+                  <div className="p-3 bg-slate-800/40 border border-slate-800 rounded-xl">
+                    <p className="text-[10px] uppercase font-black text-emerald-400 mb-1 flex items-center gap-1.5">
+                      <MessageSquare className="h-3 w-3" /> Higher Official Feedback
+                    </p>
+                    <p className="text-xs text-slate-300 italic">"{audit.supervisorComment}"</p>
+                    {reviewer && <p className="text-[9px] text-slate-500 mt-2">Reviewed by {reviewer.name}</p>}
                   </div>
-                  <Progress value={audit.score} className="h-1.5 bg-slate-800" />
-                </div>
+                )}
 
                 <div className="pt-4 border-t border-slate-800/50 flex justify-between items-center">
                   <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                     <Clock className="h-3 w-3" />
                     {audit.status}
                   </div>
-                  <Button variant="ghost" size="sm" className="text-emerald-400 h-8 hover:bg-emerald-500/10 hover:text-emerald-300 text-xs font-bold">
-                    View Report
-                  </Button>
+                  <div className="flex gap-2">
+                    {isSupervisor && audit.status === 'Pending Review' && (
+                      <Button 
+                        size="sm" 
+                        className="bg-emerald-500 hover:bg-emerald-600 h-8"
+                        onClick={() => setReviewingAuditId(audit.id)}
+                      >
+                        Action
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="sm" className="text-emerald-400 h-8 hover:bg-emerald-500/10 hover:text-emerald-300 text-xs font-bold">
+                      View Report
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -230,11 +262,40 @@ export default function EhsAuditsPage() {
         })}
       </div>
       
+      {/* REVIEW DIALOG */}
+      <Dialog open={!!reviewingAuditId} onOpenChange={(o) => !o && setReviewingAuditId(null)}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-white">
+          <DialogHeader>
+            <DialogTitle>Review Site Audit</DialogTitle>
+            <DialogDescription className="text-slate-400">The Senior Safety Supervisor is the higher authority for all EHS findings.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+             <div className="space-y-2">
+               <Label className="text-slate-400">Supervisor Feedback / Instructions</Label>
+               <Textarea 
+                 className="bg-slate-800 border-slate-700 text-white min-h-[120px]" 
+                 placeholder="Enter validation notes or required actions..."
+                 value={supervisorComment}
+                 onChange={(e) => setSupervisorComment(e.target.value)}
+               />
+             </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" className="bg-transparent border-slate-700 text-slate-300" onClick={() => handleReviewAction('Rejected')}>
+               <ThumbsDown className="mr-2 h-4 w-4" /> Reject Findings
+            </Button>
+            <Button className="bg-emerald-500 hover:bg-emerald-600" onClick={() => handleReviewAction('Approved')}>
+               <ThumbsUp className="mr-2 h-4 w-4" /> Approve Audit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {filteredAudits.length === 0 && (
         <div className="flex flex-col items-center justify-center py-24 text-slate-500 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-3xl">
           <ClipboardList className="h-16 w-16 mb-6 opacity-10" />
           <p className="text-xl font-bold text-slate-400">No audit records found</p>
-          <p className="text-sm mt-1">Refine your search or schedule a new walkthrough.</p>
+          <p className="text-sm mt-1">Refine your search or submit a new walkthrough.</p>
         </div>
       )}
     </div>

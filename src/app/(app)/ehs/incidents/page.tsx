@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, MapPin, Calendar, Eye, Users, FileWarning, AlertCircle } from 'lucide-react';
+import { Plus, Search, MapPin, Calendar, Eye, Users, FileWarning, AlertCircle, CheckCircle, ShieldCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +20,7 @@ import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import type { EhsIncidentStatus } from '@/lib/types';
 
 const incidentTypeColors: Record<string, string> = {
   'Near Miss': 'bg-amber-500/10 text-amber-400 border-amber-500/20',
@@ -41,17 +42,22 @@ const incidentSchema = z.object({
 type IncidentFormValues = z.infer<typeof incidentSchema>;
 
 export default function EhsIncidentsPage() {
-  const { incidents, addIncident } = useEhs();
-  const { user } = useAuth();
+  const { incidents, addIncident, updateIncidentStatus } = useEhs();
+  const { user, users } = useAuth();
   const { projects } = useGeneral();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  const [actingIncidentId, setActingIncidentId] = useState<string | null>(null);
+  const [resolutionNotes, setResolutionNotes] = useState('');
 
   const form = useForm<IncidentFormValues>({
     resolver: zodResolver(incidentSchema),
     defaultValues: { type: 'Near Miss', date: format(new Date(), 'yyyy-MM-dd'), projectId: '' },
   });
+
+  const isSupervisor = user?.role === 'Senior Safety Supervisor' || user?.role === 'Admin';
 
   const filteredIncidents = useMemo(() => {
     return incidents.filter(i => {
@@ -74,9 +80,20 @@ export default function EhsIncidentsPage() {
       status: 'Open',
     });
     
-    toast({ title: 'Incident Logged', description: 'The safety incident has been reported for investigation.' });
+    toast({ title: 'Incident Logged', description: 'The report has been sent to the higher official.' });
     setIsDialogOpen(false);
     form.reset();
+  };
+
+  const handleResolveAction = (status: EhsIncidentStatus) => {
+    if (!actingIncidentId) return;
+    if (!resolutionNotes.trim()) {
+      toast({ title: 'Notes Required', description: 'Provide resolution or root cause notes.', variant: 'destructive' });
+      return;
+    }
+    updateIncidentStatus(actingIncidentId, status, resolutionNotes);
+    setActingIncidentId(null);
+    setResolutionNotes('');
   };
 
   return (
@@ -84,7 +101,7 @@ export default function EhsIncidentsPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-white tracking-tight">Incident Management</h1>
-          <p className="text-slate-400">Track, investigate and resolve workplace safety incidents.</p>
+          <p className="text-slate-400">Track investigations led by the Senior Safety Supervisor.</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -96,7 +113,7 @@ export default function EhsIncidentsPage() {
           <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-xl">
             <DialogHeader>
               <DialogTitle className="text-white text-xl">Report Safety Incident</DialogTitle>
-              <DialogDescription className="text-slate-400">Immediate reporting of unsafe incidents, near misses, or injuries.</DialogDescription>
+              <DialogDescription className="text-slate-400">Immediate reporting of unsafe incidents for official investigation.</DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[70vh] pr-4">
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
@@ -158,18 +175,16 @@ export default function EhsIncidentsPage() {
                 <div className="space-y-2">
                   <Label className="text-slate-400">Detailed Description</Label>
                   <Textarea {...form.register('description')} className="bg-slate-800 border-slate-700 text-white min-h-[120px] focus:ring-rose-500/20" placeholder="Explain the sequence of events..." />
-                  {form.formState.errors.description && <p className="text-xs text-rose-400">{form.formState.errors.description.message}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label className="text-slate-400">Immediate Actions Taken</Label>
                   <Textarea {...form.register('immediateActions')} className="bg-slate-800 border-slate-700 text-white min-h-[100px] focus:ring-emerald-500/20" placeholder="Corrective measures taken to secure the area..." />
-                  {form.formState.errors.immediateActions && <p className="text-xs text-rose-400">{form.formState.errors.immediateActions.message}</p>}
                 </div>
 
                 <DialogFooter className="pt-2">
                   <Button variant="outline" type="button" onClick={() => setIsDialogOpen(false)} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white">Cancel</Button>
-                  <Button type="submit" className="bg-rose-500 hover:bg-rose-600 font-bold">Submit Incident Report</Button>
+                  <Button type="submit" className="bg-rose-500 hover:bg-rose-600 font-bold">Submit for Review</Button>
                 </DialogFooter>
               </form>
             </ScrollArea>
@@ -190,6 +205,8 @@ export default function EhsIncidentsPage() {
       <div className="space-y-6">
         {filteredIncidents.map((incident) => {
           const site = projects.find(p => p.id === incident.projectId);
+          const reviewer = users.find(u => u.id === incident.reviewedById);
+
           return (
             <Card key={incident.id} className="bg-slate-900 border-slate-800 hover:bg-slate-900/80 transition-all border-l-4 border-l-rose-500/50 overflow-hidden shadow-xl">
               <CardContent className="p-0">
@@ -205,6 +222,16 @@ export default function EhsIncidentsPage() {
                       
                       <h3 className="text-2xl font-bold text-white line-clamp-2 leading-tight">{incident.description}</h3>
                       
+                      {incident.resolutionNotes && (
+                        <div className="p-4 bg-slate-800/60 rounded-2xl border border-slate-700/50">
+                           <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                             <ShieldCheck className="h-3 w-3" /> Official Investigation Resolution
+                           </p>
+                           <p className="text-xs text-slate-300 italic">"{incident.resolutionNotes}"</p>
+                           {reviewer && <p className="text-[9px] text-slate-500 mt-2">Closed by {reviewer.name} &middot; {format(parseISO(incident.reviewDate!), 'dd MMM')}</p>}
+                        </div>
+                      )}
+
                       <div className="flex flex-wrap items-center gap-8 text-sm text-slate-400 pt-2">
                         <div className="flex items-center gap-2.5">
                           <div className="bg-slate-800 p-2 rounded-lg">
@@ -212,24 +239,27 @@ export default function EhsIncidentsPage() {
                           </div>
                           <span className="font-bold">{site?.name || 'Unknown Site'} &middot; {incident.location}</span>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <Badge variant="outline" className={cn(
-                            "font-black text-[10px] uppercase px-3",
-                            incident.status === 'Open' ? "text-rose-400 border-rose-400/20" : 
-                            incident.status === 'Under Investigation' ? "text-amber-400 border-amber-400/20" : "text-emerald-400 border-emerald-400/20"
-                          )}>
-                            {incident.status}
-                          </Badge>
-                        </div>
+                        <Badge variant="outline" className={cn(
+                          "font-black text-[10px] uppercase px-3",
+                          incident.status === 'Open' ? "text-rose-400 border-rose-400/20" : 
+                          incident.status === 'Closed' ? "text-emerald-400 border-emerald-400/20" : "text-amber-400 border-amber-400/20"
+                        )}>
+                          {incident.status}
+                        </Badge>
                       </div>
                    </div>
                    
                    <div className="p-8 md:border-l border-slate-800 flex items-center gap-4 bg-slate-900/30">
+                     {isSupervisor && incident.status !== 'Closed' && (
+                       <Button 
+                         className="bg-emerald-500 hover:bg-emerald-600 rounded-xl"
+                         onClick={() => setActingIncidentId(incident.id)}
+                       >
+                         Investigate
+                       </Button>
+                     )}
                      <Button variant="outline" className="border-slate-800 bg-slate-800/40 text-slate-300 hover:bg-slate-700 hover:text-white rounded-xl">
                        <Eye className="h-4 w-4 mr-2" /> Details
-                     </Button>
-                     <Button variant="outline" className="border-slate-800 bg-slate-800/40 text-slate-300 hover:bg-slate-700 hover:text-white rounded-xl">
-                       <Users className="h-4 w-4 mr-2" /> Review
                      </Button>
                    </div>
                  </div>
@@ -239,6 +269,35 @@ export default function EhsIncidentsPage() {
         })}
       </div>
       
+      {/* INVESTIGATION DIALOG */}
+      <Dialog open={!!actingIncidentId} onOpenChange={(o) => !o && setActingIncidentId(null)}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Incident Investigation & Resolution</DialogTitle>
+            <DialogDescription className="text-slate-400">Formal review and close-out of site incidents by the higher official.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+             <div className="space-y-2">
+               <Label className="text-slate-400">Resolution Notes / Root Cause Findings</Label>
+               <Textarea 
+                 className="bg-slate-800 border-slate-700 text-white min-h-[150px]" 
+                 placeholder="Enter investigation details and formal resolution..."
+                 value={resolutionNotes}
+                 onChange={(e) => setResolutionNotes(e.target.value)}
+               />
+             </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" className="bg-transparent border-slate-700 text-slate-300" onClick={() => handleResolveAction('Under Investigation')}>
+               <Clock className="mr-2 h-4 w-4" /> Move to Investigation
+            </Button>
+            <Button className="bg-emerald-500 hover:bg-emerald-600" onClick={() => handleResolveAction('Closed')}>
+               <CheckCircle className="mr-2 h-4 w-4" /> Resolve & Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {filteredIncidents.length === 0 && (
         <div className="flex flex-col items-center justify-center py-32 text-slate-500 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[2.5rem]">
           <div className="p-6 bg-slate-900 rounded-3xl mb-6 shadow-2xl">

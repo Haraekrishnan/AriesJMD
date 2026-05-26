@@ -1312,6 +1312,9 @@ export type InwardOutwardRecord = {
 
 // --- EHS Portal Specific Types ---
 
+export type EhsAuditStatus = 'Pending Review' | 'Approved' | 'Rejected' | 'Draft';
+export type EhsIncidentStatus = 'Open' | 'Under Investigation' | 'Resolved' | 'Closed';
+
 export type EhsAudit = {
   id: string;
   title: string;
@@ -1321,7 +1324,10 @@ export type EhsAudit = {
   inspectorId: string;
   score: number;
   findings: string[];
-  status: 'Draft' | 'Finalized';
+  status: EhsAuditStatus;
+  reviewedById?: string;
+  reviewDate?: string;
+  supervisorComment?: string;
 };
 
 export type EhsIncident = {
@@ -1334,7 +1340,10 @@ export type EhsIncident = {
   description: string;
   immediateActions: string;
   rootCause?: string;
-  status: 'Open' | 'Under Investigation' | 'Closed';
+  status: EhsIncidentStatus;
+  reviewedById?: string;
+  reviewDate?: string;
+  resolutionNotes?: string;
 };
 
 export type EhsRiskAssessment = {
@@ -1356,4 +1365,5 @@ export type EhsTraining = {
   attendees: string[]; // Manpower or user IDs
   type: 'Induction' | 'Toolbox' | 'Specialized';
 };
+
 
