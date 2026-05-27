@@ -11,7 +11,7 @@ import { ConsumableProvider, useConsumable } from './consumable-provider';
 import { AccommodationProvider, useAccommodation } from './accommodation-provider';
 import { DecorationContextProvider, useDecorations } from './decoration-provider';
 import { InwardOutwardProvider, useInwardOutward } from './inward-outward-provider';
-import { EhsProvider } from './ehs-provider';
+import { EhsProvider, useEhs } from './ehs-provider';
 
 export function AppProvider({ children }: { children: ReactNode }) {
   return (
@@ -55,6 +55,7 @@ export const useAppContext = () => {
     const accommodation = useAccommodation();
     const decorations = useDecorations();
     const inwardOutward = useInwardOutward();
+    const ehs = useEhs();
 
     return {
         ...auth,
@@ -68,5 +69,6 @@ export const useAppContext = () => {
         ...accommodation,
         ...decorations,
         ...inwardOutward,
+        ...ehs,
     };
 };
