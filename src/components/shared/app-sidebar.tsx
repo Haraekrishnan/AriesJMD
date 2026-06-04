@@ -27,6 +27,7 @@ import {
   ClipboardList,
   Briefcase,
   ShoppingCart,
+  HardHat,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
