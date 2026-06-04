@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { format, formatDistanceToNow, parseISO, isValid, isAfter, isBefore, startOfDay, subMonths, isSameMonth } from 'date-fns';
-import { CheckCircle, Clock, Circle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X, MessageSquare, Trash2, ArrowRight, ArrowUp, ArrowDown, XCircle, AlertTriangle, FolderKanban } from 'lucide-react';
+import { CheckCircle, Clock, Circle, Send, PlusCircle, UserRoundCog, Check, ChevronsUpDown, Milestone, Edit, Undo2, X, MessageSquare, Trash2, ArrowRight, ArrowUp, ArrowDown, XCircle, AlertTriangle } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
@@ -30,7 +30,6 @@ import { JOB_PROGRESS_STEPS, REOPEN_JOB_STEPS } from '@/lib/types';
 import ReturnStepDialog from './ReturnStepDialog';
 import ReassignStepDialog from './ReassignStepDialog';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import JmsBuilderDialog from './JmsBuilderDialog';
 
 
 const statusConfig: { [key in JobStepStatus]: { icon?: React.ElementType, color: string, label: string } } = {
@@ -331,10 +330,9 @@ interface ViewJobProgressDialogProps {
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
     job: JobProgress;
-    onOpenBuilder: (job: JobProgress) => void;
 }
 
-export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob, onOpenBuilder }: ViewJobProgressDialogProps) {
+export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJob }: ViewJobProgressDialogProps) {
     const { user, users, can } = useAuth();
     const {
         jobProgress,
@@ -666,9 +664,6 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                         )}
                     </div>
                     <div className="flex items-center gap-2">
-                         {can.manage_jms_builder && (
-                            <Button variant="secondary" onClick={() => onOpenBuilder(job)}><FolderKanban className="mr-2 h-4 w-4"/> Open Builder</Button>
-                         )}
                         <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
                     </div>
                 </DialogFooter>

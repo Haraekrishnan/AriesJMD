@@ -157,13 +157,10 @@ export const ALL_PERMISSIONS = [
   'manage_vehicle_usage',
   'manage_job_progress',
   'view_job_progress',
-  'create_jms',
-  'manage_jms_builder',
   'view_all',
   'manage_safety_observations',
   'manage_delivery_notes',
   'manage_inward_outward',
-  'manage_service_codes',
   'report_leave_from_accommodation',
   'access_ehs_portal',
 ] as const;
@@ -1001,15 +998,6 @@ export type JobCode = {
   jobNo?: string;
 };
 
-export type ServiceCode = {
-  id: string;
-  code: string;
-  description: string;
-  uom: string;
-  rate: number;
-  provision?: string;
-};
-
 export type VehicleUsageRecord = {
   [month: string]: { // yyyy-MM
     records: {
@@ -1099,24 +1087,6 @@ export type JobStep = {
     } | null;
 };
 
-export type SorItem = {
-  id: string;
-  serviceCode: string;
-  scopeDescription: string;
-  uom: string;
-  rate: number;
-  qtyPlanned?: number;
-  qtyExecuted?: number;
-  eicApprovedQty?: number;
-  workPermitNo?: string;
-  pmWorkOrderNo?: string;
-  dateWorkCompleted?: string | null;
-  provision?: string;
-  remarks?: string;
-};
-
-
-
 export type JobProgress = {
     id: string;
     title: string;
@@ -1134,11 +1104,6 @@ export type JobProgress = {
     ariesJobId?: string;
     dateFrom?: string | null;
     dateTo?: string | null;
-    // New JMS Builder fields
-    plantRegNo?: string;
-    arcOtcWoNo?: string;
-    ariesJobId?: string;
-    sorItems?: SorItem[];
 };
 
 export type TimesheetStatus = 'Pending' | 'Acknowledged' | 'Sent To Office' | 'Office Acknowledged' | 'Rejected';

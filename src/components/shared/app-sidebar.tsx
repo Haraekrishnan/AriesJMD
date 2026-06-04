@@ -47,7 +47,7 @@ import { usePurchase } from '@/contexts/purchase-provider';
 import { useTask } from '@/contexts/task-provider';
 import { useInwardOutward } from '@/contexts/inward-outward-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import Link from 'next/link';
+import Link from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
@@ -197,7 +197,6 @@ const plannerNotificationCount =
     { href: '/job-record', icon: ClipboardList, label: 'Job Record', notificationCount: 0, show: true },
     { href: '/job-progress', icon: ClipboardList, label: 'JMS Tracker', notificationCount: notificationCounts.jmsTracker || 0, show: can.view_job_progress },
     { href: '/project-management', icon: Briefcase, label: 'Project Management', notificationCount: 0, show: can.manage_projects },
-    { href: '/service-codes', icon: Settings, label: 'Service Codes', notificationCount: 0, show: can.manage_service_codes },
     { href: '/purchases', icon: ShoppingCart, label: 'Purchases', notificationCount: notificationCounts.purchases || 0, show: true },
     { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: notificationCounts.storeInventory || 0, show: true },
     { href: '/delivery-notes', icon: Truck, label: 'Delivery Notes', notificationCount: 0, show: false },

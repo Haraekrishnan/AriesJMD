@@ -41,7 +41,6 @@ type PlannerContextType = {
   saveVehicleUsageRecord: (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => Promise<void>;
   lockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
   unlockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
-  createJobProgress: (data: any) => void;
   updateJobProgress: (jobId: string, data: Partial<Omit<JobProgress, 'id' | 'steps' | 'creatorId' | 'createdAt'>>) => void;
   deleteJobProgress: (jobId: string) => void;
   updateJobStep: (jobId: string, stepId: string, newStepData: Partial<JobStep>) => void;
@@ -402,213 +401,13 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         set(ref(rtdb, path), false);
     }, []);
 
-    const addTimesheet = useCallback((data: Omit<Timesheet, 'id' | 'submitterId' | 'submissionDate' | 'status'>) => {
-        if (!user) return;
-        const newRef = push(ref(rtdb, 'timesheets'));
-        const newTimesheet: Omit<Timesheet, 'id'> = {
-            ...data,
-            submitterId: user.id,
-            submissionDate: new Date().toISOString(),
-            status: 'Pending',
-        };
-        set(newRef, newTimesheet);
-
-        const recipient = users.find(u => u.id === data.submittedToId);
-        if (recipient?.email) {
-            const startDate = data.startDate ? format(parseISO(data.startDate), 'dd MMM, yyyy') : 'N/A';
-            const endDate = data.endDate ? format(parseISO(data.endDate), 'dd MMM, yyyy') : 'N/A';
-            const htmlBody = `
-                <p>A new timesheet from <strong>${user.name}</strong> requires your acknowledgement.</p>
-                <p><strong>Period:</strong> ${startDate} - ${endDate}</p>
-                <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Timesheet</a></p>
-            `;
-            sendNotificationEmail({
-                to: [recipient.email],
-                subject: `New Timesheet from ${user.name}`,
-                htmlBody,
-                notificationSettings,
-                event: 'onTaskForApproval',
-                involvedUser: recipient,
-                creatorUser: user,
-            });
-        }
-    }, [user, users, notificationSettings]);
-    
-    const addTimesheetComment = useCallback((timesheetId: string, text: string) => {
-        if (!user) return;
-        const newCommentRef = push(ref(rtdb, `timesheets/${timesheetId}/comments`));
-        const newComment: Omit<Comment, 'id'> = {
-            id: newCommentRef.key!,
-            userId: user.id,
-            text,
-            date: new Date().toISOString(),
-            eventId: timesheetId,
-        };
-        set(newCommentRef, newComment);
-    }, [user]);
-
-    const updateTimesheet = useCallback((timesheet: Timesheet) => {
-        const { id, ...data } = timesheet;
-        const updates: Partial<Timesheet> & { lastUpdated?: string } = {
-          ...data,
-          lastUpdated: new Date().toISOString()
-        };
-    
-        const previousStatus = timesheetsById[id]?.status;
-    
-        if (updates.status === 'Pending' && previousStatus === 'Rejected') {
-          updates.acknowledgedById = undefined;
-          updates.acknowledgedDate = undefined;
-          updates.sentToOfficeById = undefined;
-          updates.sentToOfficeDate = undefined;
-          updates.officeAcknowledgedById = undefined;
-          updates.officeAcknowledgedDate = undefined;
-        }
-    
-        const finalUpdates: { [key: string]: any } = {};
-        for (const key in updates) {
-          finalUpdates[key] = (updates as any)[key] === undefined ? null : (updates as any)[key];
-        }
-        delete finalUpdates.comments;
-    
-        update(ref(rtdb, `timesheets/${id}`), finalUpdates);
-    }, [timesheetsById]);
-
-    const updateTimesheetStatus = useCallback((timesheetId: string, status: TimesheetStatus, comment?: string) => {
-        if (!user) return;
-        const timesheet = timesheetsById[timesheetId];
-        if (!timesheet) return;
-
-        const updates: { [key: string]: any } = {};
-        const basePath = `timesheets/${timesheetId}`;
-        updates[`${basePath}/status`] = status;
-        updates[`${basePath}/lastUpdated`] = new Date().toISOString();
-
-
-        if (comment) {
-            let commentText = comment;
-            if (status === 'Rejected') {
-                updates[`${basePath}/rejectedById`] = user.id;
-                updates[`${basePath}/rejectedDate`] = new Date().toISOString();
-                updates[`${basePath}/rejectionReason`] = comment;
-                commentText = `Timesheet Rejected. Reason: ${comment}`;
-            }
-            addTimesheetComment(timesheetId, commentText);
-        }
-    
-        if (status === 'Acknowledged') {
-            updates[`${basePath}/acknowledgedById`] = user.id;
-            updates[`${basePath}/acknowledgedDate`] = new Date().toISOString();
-            updates[`${basePath}/rejectedById`] = null;
-            updates[`${basePath}/rejectedDate`] = null;
-            updates[`${basePath}/rejectionReason`] = null;
-        } else if (status === 'Sent To Office') {
-            updates[`${basePath}/sentToOfficeById`] = user.id;
-            updates[`${basePath}/sentToOfficeDate`] = new Date().toISOString();
-        } else if (status === 'Office Acknowledged') {
-            updates[`${basePath}/officeAcknowledgedById`] = user.id;
-            updates[`${basePath}/officeAcknowledgedDate`] = new Date().toISOString();
-        } else if (status === 'Rejected' && timesheetsById[timesheetId]?.status !== 'Sent To Office') {
-            updates[`${basePath}/acknowledgedById`] = null;
-            updates[`${basePath}/acknowledgedDate`] = null;
-        }
-        
-        update(ref(rtdb), updates);
-
-        const submitter = users.find(u => u.id === timesheet.submitterId);
-        if (submitter?.email && submitter.id !== user.id) {
-            const htmlBody = `
-                <p>The status of your timesheet for <strong>${projects.find(p => p.id === timesheet.projectId)?.name || ''} - ${timesheet.plantUnit}</strong> has been updated to <strong>${status}</strong> by ${user.name}.</p>
-                ${comment ? `<p><strong>Comment:</strong> ${comment}</p>` : ''}
-                <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Timesheet</a></p>
-            `;
-            sendNotificationEmail({
-                to: [submitter.email],
-                subject: `Timesheet Status Updated: ${status}`,
-                htmlBody,
-                notificationSettings,
-                event: 'onTaskStatusSubmitted', 
-                involvedUser: submitter,
-                creatorUser: user,
-            });
-        }
-        if (status === 'Sent To Office') {
-            const officeUsers = users.filter(u => ['Admin', 'Document Controller', 'Project Coordinator'].includes(u.role));
-            const submitterName = users.find(u => u.id === timesheet.submitterId)?.name || 'a user';
-            const projectName = projects.find(p => p.id === timesheet.projectId)?.name || 'a project';
-            officeUsers.forEach(officeUser => {
-                 if (officeUser.email) {
-                     const htmlBody = `
-                        <p>A timesheet from <strong>${submitterName}</strong> for project <strong>${projectName} - ${timesheet.plantUnit}</strong> has been sent to the office for acknowledgement.</p>
-                        <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Timesheet</a></p>
-                    `;
-                    sendNotificationEmail({
-                        to: [officeUser.email],
-                        subject: `Timesheet Sent to Office: ${timesheet.plantUnit}`,
-                        htmlBody,
-                        notificationSettings,
-                        event: 'onTaskForApproval',
-                        involvedUser: officeUser,
-                        creatorUser: user
-                    });
-                 }
-            });
-        }
-    }, [user, timesheetsById, users, projects, notificationSettings, addTimesheetComment]);
-
-    const deleteTimesheet = useCallback((timesheetId: string) => {
-        remove(ref(rtdb, `timesheets/${timesheetId}`));
-    }, []);
-
-    const createJobProgress = useCallback((data: any) => {
-      if (!user) return;
-      const newRef = push(ref(rtdb, 'jobProgress'));
-      const now = new Date().toISOString();
-      
-      const firstStepData = data.steps?.[0] || {};
-      const assigneeId = firstStepData.assigneeId || data.assigneeId || null;
-      const isSelfAssigned = assigneeId === user.id;
-  
-      const initialStep: JobStep = {
-          id: 'step-0',
-          name: firstStepData.name || 'JMS created',
-          assigneeId: assigneeId,
-          status: isSelfAssigned ? 'Acknowledged' : 'Pending',
-          acknowledgedAt: isSelfAssigned ? now : null,
-          description: firstStepData.description || null,
-          dueDate: firstStepData.dueDate ? (firstStepData.dueDate instanceof Date ? firstStepData.dueDate.toISOString() : firstStepData.dueDate) : null,
-      };
-  
-      const newJob: Omit<JobProgress, 'id'> = {
-        title: data.title,
-        creatorId: user.id,
-        createdAt: now,
-        lastUpdated: now,
-        status: isSelfAssigned ? 'In Progress' : 'Not Started',
-        steps: [initialStep],
-        projectId: data.projectId,
-        plantUnit: data.plantUnit || null,
-        workOrderNo: data.workOrderNo || null,
-        foNo: data.foNo || null,
-        jmsNo: data.jmsNo || null,
-        amount: data.amount || null,
-        ariesJobId: data.ariesJobId || null,
-        dateFrom: data.dateFrom ? (data.dateFrom instanceof Date ? data.dateFrom.toISOString() : data.dateFrom) : null,
-        dateTo: data.dateTo ? (data.dateTo instanceof Date ? data.dateTo.toISOString() : data.dateTo) : null,
-        plantRegNo: data.plantRegNo || null,
-        arcOtcWoNo: data.arcOtcWoNo || null,
-        sorItems: data.sorItems || [],
-      };
-  
-      set(newRef, newJob);
-    }, [user]);
 
     const updateJobProgress = useCallback((jobId: string, data: Partial<Omit<JobProgress, 'id' | 'steps' | 'creatorId' | 'createdAt'>>) => {
         if (!user) return;
         const job = jobProgressById[jobId];
         if (!job) return;
     
-        const canEditRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
+        const canEditRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller', 'Supervisor', 'Senior Safety Supervisor'];
         const canEdit = canEditRoles.includes(user.role) || user.id === job.creatorId;
         if (!canEdit) {
           toast({ title: 'Permission Denied', variant: 'destructive' });
@@ -1015,7 +814,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             sendNotificationEmail({
                 to: [newAssignee.email],
                 subject: `Job Reopened & Step Assigned: ${job.title}`,
-                htmlBody: htmlBody,
+                htmlBody,
                 notificationSettings,
                 event: 'onNewTask',
                 involvedUser: newAssignee,
@@ -1054,6 +853,94 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       update(ref(rtdb), updates);
   }, [user, jobProgressById, addJobStepComment]);
   
+    const addTimesheet = useCallback((data: Omit<Timesheet, 'id' | 'submitterId' | 'submissionDate' | 'status' | 'lastUpdated'>) => {
+        if (!user) return;
+        const newRef = push(ref(rtdb, 'timesheets'));
+        const now = new Date().toISOString();
+        const newTimesheet: Omit<Timesheet, 'id'> = {
+            ...data,
+            submitterId: user.id,
+            submissionDate: now,
+            status: 'Pending',
+            lastUpdated: now,
+            comments: [{ id: 'c0', userId: user.id, text: 'Timesheet submitted for acknowledgment.', date: now, eventId: newRef.key! }]
+        };
+        set(newRef, newTimesheet);
+        
+        const recipient = users.find(u => u.id === data.submittedToId);
+        if (recipient?.email) {
+             const htmlBody = `
+                <p>A new timesheet has been submitted to you by <strong>${user.name}</strong> for acknowledgment.</p>
+                <hr>
+                <p><strong>Project:</strong> ${projects.find(p => p.id === data.projectId)?.name}</p>
+                <p><strong>Plant/Unit:</strong> ${data.plantUnit}</p>
+                <p><strong>Period:</strong> ${format(parseISO(data.startDate), 'dd MMM')} to ${format(parseISO(data.endDate), 'dd MMM, yyyy')}</p>
+                <p><strong>Quantity:</strong> ${data.numberOfTimesheets}</p>
+                <p>Please review and acknowledge in the app.</p>
+                <a href="${process.env.NEXT_PUBLIC_APP_URL}/job-progress">View Trackers</a>
+            `;
+            sendNotificationEmail({
+                to: [recipient.email],
+                subject: `Timesheet for Acknowledgment: ${data.plantUnit}`,
+                htmlBody: htmlBody,
+                notificationSettings,
+                event: 'onNewTask',
+                involvedUser: recipient,
+                creatorUser: user,
+            });
+        }
+    }, [user, users, projects, notificationSettings]);
+
+    const updateTimesheet = useCallback((timesheet: Timesheet) => {
+        const { id, ...data } = timesheet;
+        update(ref(rtdb, `timesheets/${id}`), { ...data, lastUpdated: new Date().toISOString() });
+    }, []);
+
+    const addTimesheetComment = useCallback((timesheetId: string, text: string) => {
+        if (!user) return;
+        const newCommentRef = push(ref(rtdb, `timesheets/${timesheetId}/comments`));
+        set(newCommentRef, {
+            id: newCommentRef.key!,
+            userId: user.id,
+            text,
+            date: new Date().toISOString(),
+            eventId: timesheetId
+        });
+        update(ref(rtdb, `timesheets/${timesheetId}`), { lastUpdated: new Date().toISOString() });
+    }, [user]);
+
+    const updateTimesheetStatus = useCallback((timesheetId: string, status: TimesheetStatus, comment?: string) => {
+        if (!user) return;
+        const updates: { [key: string]: any } = { status, lastUpdated: new Date().toISOString() };
+        const now = new Date().toISOString();
+
+        if (status === 'Acknowledged') {
+            updates.acknowledgedById = user.id;
+            updates.acknowledgedDate = now;
+        } else if (status === 'Sent To Office') {
+            updates.sentToOfficeById = user.id;
+            updates.sentToOfficeDate = now;
+        } else if (status === 'Office Acknowledged') {
+            updates.officeAcknowledgedById = user.id;
+            updates.officeAcknowledgedDate = now;
+        } else if (status === 'Rejected') {
+            updates.rejectedById = user.id;
+            updates.rejectedDate = now;
+            updates.rejectionReason = comment;
+        }
+
+        update(ref(rtdb, `timesheets/${timesheetId}`), updates);
+        
+        if (comment) {
+            const commentText = status === 'Rejected' ? `Timesheet Rejected. Reason: ${comment}` : comment;
+            addTimesheetComment(timesheetId, commentText);
+        }
+    }, [user, addTimesheetComment]);
+
+    const deleteTimesheet = useCallback((timesheetId: string) => {
+        remove(ref(rtdb, `timesheets/${timesheetId}`));
+    }, []);
+
     const addDocumentMovement = useCallback((data: { title: string; assigneeId: string; comment?: string }) => {
       if (!user) return;
       const newRef = push(ref(rtdb, 'documentMovements'));
@@ -1216,7 +1103,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         lockJobRecordSheet, unlockJobRecordSheet, addJobRecordPlant,
         deleteJobRecordPlant, carryForwardPlantAssignments,
         saveVehicleUsageRecord, lockVehicleUsageSheet, unlockVehicleUsageSheet,
-        createJobProgress, updateJobProgress, deleteJobProgress, updateJobStep, updateJobStepStatus,
+        updateJobProgress, deleteJobProgress, updateJobStep, updateJobStepStatus,
         addAndCompleteStep,
         addJobStepComment, reassignJobStep, assignJobStep,
         finalizeJob, returnJobStep, reopenJob,

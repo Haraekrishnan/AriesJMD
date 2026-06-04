@@ -5,10 +5,10 @@ import { useAuth } from '@/contexts/auth-provider';
 import { usePlanner } from '@/contexts/planner-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Bell, Clock, Folder, List, LayoutGrid, Settings, X, Info, Search, ChevronLeft, ChevronRight, AlertTriangle, FolderKanban } from 'lucide-react';
+import { Bell, Clock, Folder, List, LayoutGrid, Settings, Search, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress, Timesheet, Role, DocumentMovement } from '@/lib/types';
-import { format, startOfMonth, addMonths, subMonths, isSameMonth, parseISO, isBefore, isAfter, startOfToday, differenceInDays, endOfMonth, isValid } from 'date-fns';
+import { format, startOfMonth, addMonths, isSameMonth, parseISO, isBefore, isAfter, startOfToday, differenceInDays, endOfMonth, isValid } from 'date-fns';
 import CreateTimesheetDialog from '@/components/job-progress/CreateTimesheetDialog';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -26,23 +26,17 @@ import ViewDocumentMovementDialog from '@/components/job-progress/ViewDocumentMo
 import TimesheetTrackerTable from '@/components/job-progress/TimesheetTrackerTable';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import JmsBuilderDialog from '@/components/job-progress/JmsBuilderDialog';
-import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
+import { Card } from '@/components/ui/card';
 
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
 
 export default function JobProgressPage() {
-  const { can, user, users, updateUserViewPreference, getVisibleUsers } = useAuth();
+  const { user, users, updateUserViewPreference, getVisibleUsers, can } = useAuth();
   const { projects } = useGeneral();
   const { jobProgress, timesheets, trackerNotificationCount, documentMovements } = usePlanner();
 
-  const [isCreateJobDialogOpen, setCreateJobDialogOpen] = useState(false);
-  const [isJmsBuilderOpen, setIsJmsBuilderOpen] = useState(false);
-  const [jobForBuilder, setJobForBuilder] = useState<JobProgress | null>(null);
   const [isCreateTimesheetOpen, setIsCreateTimesheetOpen] = useState(false);
   const [isCreateDocumentOpen, setIsCreateDocumentOpen] = useState(false);
   const [viewingJob, setViewingJob] = useState<JobProgress | null>(null);
@@ -50,7 +44,6 @@ export default function JobProgressPage() {
   const [viewingDocument, setViewingDocument] = useState<DocumentMovement | null>(null);
   const [isPendingDialogOpen, setIsPendingDialogOpen] = useState(false);
   const [isLongPendingDialogOpen, setIsLongPendingDialogOpen] = useState(false);
-  const [showViewNotice, setShowViewNotice] = useState(true);
   
   const [jmsSearchTerm, setJmsSearchTerm] = useState('');
   const [jmsAssigneeFilter, setJmsAssigneeFilter] = useState('all');
@@ -88,17 +81,6 @@ export default function JobProgressPage() {
     }
   }, [user?.viewPreferences]);
   
-  const handleOpenBuilderForNew = () => {
-    setJobForBuilder(null);
-    setIsJmsBuilderOpen(true);
-  };
-  
-  const handleOpenBuilderForEdit = (job: JobProgress) => {
-    setViewingJob(null);
-    setJobForBuilder(job);
-    setIsJmsBuilderOpen(true);
-  };
-
   const handleJmsDefaultViewChange = (value: string) => {
     updateUserViewPreference('jmsTracker', value as 'board' | 'list');
   };
@@ -327,18 +309,6 @@ export default function JobProgressPage() {
                 <Button variant="outline" className="w-32" onClick={handleTodayClick}>{format(currentMonth, 'MMMM yyyy')}</Button>
                 <Button variant="outline" size="icon" onClick={() => changeMonth(1)} disabled={!canGoToNextMonth}><ChevronRight className="h-4 w-4" /></Button>
             </div>
-            <div className="flex gap-2">
-                {can.create_jms && (
-                    <Button onClick={() => setCreateJobDialogOpen(true)}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Create New JMS
-                    </Button>
-                )}
-                {can.manage_jms_builder && (
-                    <Button onClick={handleOpenBuilderForNew}>
-                        <FolderKanban className="mr-2 h-4 w-4" /> JMS Builder
-                    </Button>
-                )}
-            </div>
              <Button onClick={() => setIsCreateTimesheetOpen(true)}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Submit Timesheet
             </Button>
@@ -438,7 +408,7 @@ export default function JobProgressPage() {
                         {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                     </SelectContent>
                 </Select>
-                 <Select value={timesheetSubmitterFilter} onValueChange={setTimesheetSubmitterFilter}>
+                 <Select value={timesheetSubmitterFilter} onValueChange={timesheetSubmitterFilter}>
                     <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filter by submitter..." /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Submitters</SelectItem>
@@ -494,12 +464,6 @@ export default function JobProgressPage() {
         </TabsContent>
       </Tabs>
 
-      <CreateJobDialog isOpen={isCreateJobDialogOpen} setIsOpen={setCreateJobDialogOpen} />
-      <JmsBuilderDialog 
-        isOpen={isJmsBuilderOpen} 
-        setIsOpen={setIsJmsBuilderOpen} 
-        job={jobForBuilder}
-      />
       <CreateTimesheetDialog isOpen={isCreateTimesheetOpen} setIsOpen={setIsCreateTimesheetOpen} />
       <CreateDocumentMovementDialog isOpen={isCreateDocumentOpen} setIsOpen={setIsCreateDocumentOpen} />
       {viewingJob && (
@@ -507,7 +471,6 @@ export default function JobProgressPage() {
             isOpen={!!viewingJob} 
             setIsOpen={() => setViewingJob(null)} 
             job={viewingJob} 
-            onOpenBuilder={handleOpenBuilderForEdit}
         />
       )}
        {viewingTimesheet && (
