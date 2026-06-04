@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -170,13 +168,8 @@ const plannerNotificationCount =
       { href: '/job-record', icon: ClipboardList, label: 'Job Record', notificationCount: 0, show: true },
       { href: '/job-progress', icon: ClipboardList, label: 'JMS Tracker', notificationCount: notificationCounts.jmsTracker || 0, show: can.view_job_progress },
       { href: '/project-management', icon: Briefcase, label: 'Project Management', notificationCount: 0, show: can.manage_projects },
-      { href: '/service-codes', icon: Settings, label: 'Service Codes', notificationCount: 0, show: can.manage_service_codes },
       { href: '/purchases', icon: ShoppingCart, label: 'Purchases', notificationCount: notificationCounts.purchases || 0, show: true },
       { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: notificationCounts.storeInventory || 0, show: true },
-      { href: '/delivery-notes', icon: Truck, label: 'Delivery Notes', notificationCount: 0, show: false },
-      { href: '/consumables', icon: Package, label: 'Consumables', notificationCount: 0, show: false },
-      { href: '/igp-ogp', icon: ArrowRightLeft, label: 'IGP/OGP Register', notificationCount: 0, show: false },
-      { href: '/ppe-stock', icon: Package, label: 'PPE Stock', notificationCount: 0, show: false },
       { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: notificationCounts.equipment || 0, show: true },
       { href: '/vehicle-status', icon: Car, label: 'Fleet Management', notificationCount: 0, show: true },
       { href: '/planner', icon: CalendarDays, label: 'Planner', notificationCount: notificationCounts.planner || 0, show: true },
@@ -189,7 +182,6 @@ const plannerNotificationCount =
       { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },
       { href: '/account', icon: UserIcon, label: 'Account', notificationCount: notificationCounts.account || 0, show: true },
       { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: 0, show: true },
-      { href: '/tp-certification', icon: FileText, label: 'TP Certification', notificationCount: 0, show: false },
     ];
   
     return (
@@ -370,4 +362,3 @@ export default function Header() {
     </>
   );
 }
-

@@ -25,6 +25,8 @@ import {
   Settings,
   ShieldAlert,
   ClipboardList,
+  Briefcase,
+  ShoppingCart,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
@@ -255,4 +257,3 @@ export function AppSidebar() {
     </aside>
   );
 }
-
