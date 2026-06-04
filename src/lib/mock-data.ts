@@ -22,7 +22,7 @@ export const ROLES: RoleDefinition[] = [
       'approve_store_requests', 'manage_inventory', 'view_inventory',
       'manage_equipment_status',
       'manage_announcements', 'view_performance_reports', 'view_activity_logs',
-      'log_manpower', 'manage_job_schedule', 'manage_vendors', 'manage_payments', 'view_ppe_requests',
+      'log_manpower', 'manage_job_schedule', 'prepare_master_schedule', 'manage_vendors', 'manage_payments', 'view_ppe_requests',
       'manage_job_record', 'manage_purchase_register', 'manage_igp_ogp', 'manage_delivery_notes'
     ],
     isEditable: false,
@@ -63,7 +63,7 @@ export const ROLES: RoleDefinition[] = [
     id: 'role-hse',
     name: 'Senior Safety Supervisor',
     permissions: [
-      'manage_tasks', 'manage_planner', 'manage_incidents', 'view_performance_reports', 'manage_equipment_status', 'view_inventory', 'manage_safety_observations'
+      'manage_tasks', 'manage_planner', 'manage_incidents', 'view_performance_reports', 'manage_equipment_status', 'view_inventory', 'manage_safety_observations', 'access_ehs_portal'
     ],
     isEditable: false,
   },
@@ -76,7 +76,7 @@ export const ROLES: RoleDefinition[] = [
   {
     id: 'role-jr-hse',
     name: 'Safety Supervisor',
-    permissions: ['view_performance_reports', 'manage_safety_observations'],
+    permissions: ['view_performance_reports', 'manage_safety_observations', 'access_ehs_portal'],
     isEditable: false,
   },
     {

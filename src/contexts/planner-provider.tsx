@@ -90,7 +90,7 @@ const createDataListener = <T extends {}>(
 const PlannerContext = createContext<PlannerContextType | undefined>(undefined);
 
 export function PlannerProvider({ children }: { children: ReactNode }) {
-    const { user, users, getAssignableUsers, can } = useAuth();
+    const { user, users, can } = useAuth();
     const { notificationSettings, projects } = useGeneral();
     const { toast } = useToast();
     const [plannerEventsById, setPlannerEventsById] = useState<Record<string, PlannerEvent>>({});
@@ -814,7 +814,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             sendNotificationEmail({
                 to: [newAssignee.email],
                 subject: `Job Reopened & Step Assigned: ${job.title}`,
-                htmlBody,
+                htmlBody: htmlBody,
                 notificationSettings,
                 event: 'onNewTask',
                 involvedUser: newAssignee,

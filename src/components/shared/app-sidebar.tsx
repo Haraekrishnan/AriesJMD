@@ -5,17 +5,11 @@ import React, { useMemo } from 'react';
 import {
   LayoutDashboard,
   CheckSquare,
-  Calendar,
   TrendingUp,
   Trophy,
   LogOut,
   Ship,
-  Sparkles,
-  FileText,
   User as UserIcon,
-  History,
-  HardHat,
-  AlertTriangle,
   Users,
   Send,
   Warehouse,
@@ -23,21 +17,14 @@ import {
   Home,
   CalendarDays,
   CalendarCheck,
-  Package,
-  CreditCard,
-  Briefcase,
-  ShoppingCart,
-  ArrowRightLeft,
   HelpCircle,
-  ClipboardList,
   Download,
   MessageSquare,
-  Hammer,
   ShieldCheck,
   Truck,
-  Inbox,
   Settings,
   ShieldAlert,
+  ClipboardList,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
@@ -47,13 +34,11 @@ import { usePurchase } from '@/contexts/purchase-provider';
 import { useTask } from '@/contexts/task-provider';
 import { useInwardOutward } from '@/contexts/inward-outward-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import Link from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { isSameDay, parseISO } from 'date-fns';
-import type { DailyPlannerComment, PlannerEvent, Comment, LogbookRequest } from '@/lib/types';
 
 
 export function AppSidebar() {
@@ -86,29 +71,29 @@ export function AppSidebar() {
     const pendingStoreCertRequestCount = isStoreManager ? (certificateRequests || []).filter(r => r.status === 'Pending' && r.itemId).length : 0;
     const pendingEquipmentCertRequestCount = isStoreManager ? (certificateRequests || []).filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
     
-const newDelegatedEventsCount = (plannerEvents || []).filter(e =>
-  e.userId === user.id &&
-  e.creatorId !== user.id &&
-  !e.viewedBy?.[user.id]
-).length;
+    const newDelegatedEventsCount = (plannerEvents || []).filter(e =>
+      e.userId === user.id &&
+      e.creatorId !== user.id &&
+      !e.viewedBy?.[user.id]
+    ).length;
 
-const unreadCommentsForUser = (dailyPlannerComments || []).filter(dayComment => {
-    if (!dayComment.day || !dayComment.comments) return false;
-    const eventsOnDay = (plannerEvents || []).filter(e => e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
-    if (eventsOnDay.length === 0) return false;
+    const unreadCommentsForUser = (dailyPlannerComments || []).filter(dayComment => {
+        if (!dayComment.day || !dayComment.comments) return false;
+        const eventsOnDay = (plannerEvents || []).filter(e => e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
+        if (eventsOnDay.length === 0) return false;
 
-    const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments);
-    return comments.some(c => {
-        if (!c) return false;
-        const event = eventsOnDay.find(e => e.id === c.eventId);
-        if (!event) return false;
-        const isParticipant = event.userId === user.id || event.creatorId === user.id;
-        return isParticipant && c.userId !== user.id && !c.viewedBy?.[user.id];
+        const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments);
+        return comments.some(c => {
+            if (!c) return false;
+            const event = eventsOnDay.find(e => e.id === c.eventId);
+            if (!event) return false;
+            const isParticipant = event.userId === user.id || event.creatorId === user.id;
+            return isParticipant && c.userId !== user.id && !c.viewedBy?.[user.id];
+        });
     });
-});
 
-const plannerNotificationCount =
-  unreadCommentsForUser.length + newDelegatedEventsCount;
+    const plannerNotificationCount =
+      unreadCommentsForUser.length + newDelegatedEventsCount;
 
 
     const pendingInternalRequestCount = isStoreManager ? (internalRequests || []).filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;
@@ -199,10 +184,6 @@ const plannerNotificationCount =
     { href: '/project-management', icon: Briefcase, label: 'Project Management', notificationCount: 0, show: can.manage_projects },
     { href: '/purchases', icon: ShoppingCart, label: 'Purchases', notificationCount: notificationCounts.purchases || 0, show: true },
     { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: notificationCounts.storeInventory || 0, show: true },
-    { href: '/delivery-notes', icon: Truck, label: 'Delivery Notes', notificationCount: 0, show: false },
-    { href: '/consumables', icon: Package, label: 'Consumables', notificationCount: 0, show: false },
-    { href: '/igp-ogp', icon: ArrowRightLeft, label: 'IGP/OGP Register', notificationCount: 0, show: false },
-    { href: '/ppe-stock', icon: Package, label: 'PPE Stock', notificationCount: 0, show: false },
     { href: '/equipment-status', icon: HardHat, label: 'Equipment', notificationCount: notificationCounts.equipment || 0, show: true },
     { href: '/vehicle-status', icon: Car, label: 'Fleet Management', notificationCount: 0, show: true },
     { href: '/planner', icon: CalendarDays, label: 'Planner', notificationCount: notificationCounts.planner || 0, show: true },
@@ -215,7 +196,6 @@ const plannerNotificationCount =
     { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },
     { href: '/account', icon: UserIcon, label: 'Account', notificationCount: notificationCounts.account || 0, show: true },
     { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: 0, show: true },
-    { href: '/tp-certification', icon: FileText, label: 'TP Certification', notificationCount: 0, show: false },
   ], [can, notificationCounts]);
 
   return (
@@ -275,3 +255,4 @@ const plannerNotificationCount =
     </aside>
   );
 }
+
