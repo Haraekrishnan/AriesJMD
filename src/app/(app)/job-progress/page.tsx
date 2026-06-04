@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/auth-provider';
 import { usePlanner } from '@/contexts/planner-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
-import { Bell, Clock, Folder, List, LayoutGrid, Settings, Search, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Bell, Clock, Folder, List, LayoutGrid, Settings, Search, ChevronLeft, ChevronRight, AlertTriangle, PlusCircle } from 'lucide-react';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress, Timesheet, Role, DocumentMovement } from '@/lib/types';
 import { format, startOfMonth, addMonths, isSameMonth, parseISO, isBefore, isAfter, startOfToday, differenceInDays, endOfMonth, isValid } from 'date-fns';
@@ -396,7 +396,7 @@ export default function JobProgressPage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                       placeholder="Search by unit..."
-                      className="pl-9 w-full"
+                      className="pl-9"
                       value={timesheetSearchTerm}
                       onChange={e => setTimesheetSearchTerm(e.target.value)}
                   />
