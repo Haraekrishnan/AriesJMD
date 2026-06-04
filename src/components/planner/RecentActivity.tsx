@@ -265,7 +265,10 @@ export default function RecentPlannerActivity() {
                   key={comment.id}
                   className="rounded-lg border bg-muted/30 p-3 space-y-2"
                 >
-                  <p className="text-sm font-medium">{event.title}</p>
+                  <p className="text-sm font-medium">
+                    {event.title}
+                    <span className="text-[10px] text-muted-foreground font-normal ml-2">({format(parseISO(day), 'dd MMM')})</span>
+                  </p>
 
                   <div className="flex gap-3">
                     <Avatar className="h-8 w-8">
@@ -310,20 +313,16 @@ export default function RecentPlannerActivity() {
                     />
 
                     {/* SEND */}
-<Button
-  size="icon"
-  className="
-    bg-blue-600 text-white
-    hover:bg-blue-700
-    active:bg-blue-800
-  "
-  disabled={!newComments[key]?.trim()}
-  onClick={() =>
-    sendComment(event.id, day, event.userId, comment.id)
-  }
->
-  <Send className="h-4 w-4" />
-</Button>
+                    <Button
+                      size="icon"
+                      className="bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800"
+                      disabled={!newComments[key]?.trim()}
+                      onClick={() =>
+                        sendComment(event.id, day, event.userId, comment.id)
+                      }
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
 
 
                     {/* MARK READ */}
@@ -363,7 +362,7 @@ export default function RecentPlannerActivity() {
                     <div>
                       <p className="text-sm font-medium">{event.title}</p>
                       <p className="text-xs text-muted-foreground">
-                        Awaiting update from {delegatedTo?.name}
+                        Awaiting update for <span className="font-semibold text-foreground">{format(parseISO(day), 'PPP')}</span> from {delegatedTo?.name}
                       </p>
                     </div>
 
@@ -371,13 +370,7 @@ export default function RecentPlannerActivity() {
                       {/* DISMISS */}
                       <Button
                         size="sm"
-                        className="
-                          border border-border
-                          bg-muted/40
-                          text-muted-foreground
-                          hover:bg-muted
-                          hover:text-foreground
-                        "
+                        className="border border-border bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground"
                         onClick={() =>
                           dismissPendingUpdate(event.id, day)
                         }
@@ -392,12 +385,7 @@ export default function RecentPlannerActivity() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="
-                                text-red-600
-                                hover:bg-red-50
-                                hover:text-red-700
-                                dark:hover:bg-red-900/30
-                              "
+                              className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-900/30"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -443,21 +431,16 @@ export default function RecentPlannerActivity() {
                     />
 
                     {/* SEND */}
-<Button
-  size="icon"
-  className="
-    absolute right-1 top-1/2 -translate-y-1/2
-    bg-blue-600 text-white
-    hover:bg-blue-700
-    active:bg-blue-800
-  "
-  disabled={!newComments[key]?.trim()}
-  onClick={() =>
-    sendComment(event.id, day, event.userId)
-  }
->
-  <Send className="h-4 w-4" />
-</Button>
+                    <Button
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800"
+                      disabled={!newComments[key]?.trim()}
+                      onClick={() =>
+                        sendComment(event.id, day, event.userId)
+                      }
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
 
                   </div>
                 </div>
