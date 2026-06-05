@@ -5,7 +5,19 @@ import { PlannerEvent, DailyPlannerComment, Comment, JobSchedule, JobScheduleIte
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, update, get, remove } from 'firebase/database';
 import { useAuth } from './auth-provider';
-import { format, isBefore, parseISO, startOfDay, subMonths, isSameMonth } from 'date-fns';
+import { 
+  format, 
+  isBefore, 
+  parseISO, 
+  startOfDay, 
+  subMonths, 
+  isSameMonth, 
+  eachDayOfInterval, 
+  isSameDay, 
+  getDay, 
+  isWeekend, 
+  getDate 
+} from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { useGeneral } from './general-provider';
