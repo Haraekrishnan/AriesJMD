@@ -39,7 +39,7 @@ export const ROLES: RoleDefinition[] = [
       'log_manpower', 'manage_job_schedule', 'prepare_master_schedule', 'manage_igp_ogp',
       'manage_ppe_request', 'view_internal_store_request', 'manage_store_requests',
       'manage_job_record', 'manage_tp_certification', 'manage_delivery_notes',
-      'manage_inward_outward'
+      'manage_inward_outward', 'create_jms'
     ],
     isEditable: false,
   },
@@ -47,7 +47,7 @@ export const ROLES: RoleDefinition[] = [
     id: 'role-supervisor',
     name: 'Supervisor',
     permissions: [
-      'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements', 'view_performance_reports', 'manage_manpower', 'log_manpower', 'manage_job_schedule', 'manage_job_record', 'view_inventory'
+      'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements', 'view_performance_reports', 'manage_manpower', 'log_manpower', 'manage_job_schedule', 'manage_job_record', 'view_inventory', 'create_jms'
     ],
     isEditable: false,
   },
@@ -55,7 +55,7 @@ export const ROLES: RoleDefinition[] = [
     id: 'role-ndt-supervisor',
     name: 'NDT Supervisor',
     permissions: [
-      'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements', 'view_performance_reports', 'manage_manpower', 'log_manpower', 'manage_job_schedule', 'manage_job_record', 'manage_equipment_status', 'view_inventory'
+      'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements', 'view_performance_reports', 'manage_manpower', 'log_manpower', 'manage_job_schedule', 'manage_job_record', 'manage_equipment_status', 'view_inventory', 'create_jms'
     ],
     isEditable: true,
   },

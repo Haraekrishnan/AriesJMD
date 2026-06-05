@@ -156,6 +156,7 @@ export const ALL_PERMISSIONS = [
   'manage_inventory_database',
   'manage_vehicle_usage',
   'manage_job_progress',
+  'create_jms',
   'view_job_progress',
   'view_all',
   'manage_safety_observations',

@@ -307,11 +307,15 @@ export default function JobProgressPage() {
                 </Button>
             )}
             <div className="flex items-center gap-1">
-                <Button variant="outline" size="icon" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth}><ChevronLeft className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth}>
+                    <ChevronLeft className="h-4 w-4" />
+                </Button>
                 <Button variant="outline" className="w-32" onClick={handleTodayClick}>{format(currentMonth, 'MMMM yyyy')}</Button>
-                <Button variant="outline" size="icon" onClick={() => changeMonth(1)} disabled={!canGoToNextMonth}><ChevronRight className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" onClick={() => changeMonth(1)} disabled={!canGoToNextMonth}>
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
             </div>
-            {can.manage_job_progress && (
+            {can.create_jms && (
               <Button onClick={() => setIsCreateJmsOpen(true)}>
                   <PlusCircle className="mr-2 h-4 w-4" /> Create JMS
               </Button>
@@ -415,7 +419,7 @@ export default function JobProgressPage() {
                         {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                     </SelectContent>
                 </Select>
-                 <Select value={timesheetSubmitterFilter} onValueChange={timesheetSubmitterFilter}>
+                 <Select value={timesheetSubmitterFilter} onValueChange={setTimesheetSubmitterFilter}>
                     <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filter by submitter..." /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Submitters</SelectItem>
@@ -425,7 +429,7 @@ export default function JobProgressPage() {
               </div>
               <div className="flex items-center gap-2 self-end">
                 <Button variant={timesheetView === 'board' ? 'secondary' : 'outline'} size="icon" onClick={() => setTimesheetView('board')}><LayoutGrid className="h-4 w-4" /></Button>
-                <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" onClick={() => setView('list')}><List className="h-4 w-4" /></Button>
+                <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" onClick={() => setTimesheetView('list')}><List className="h-4 w-4" /></Button>
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
