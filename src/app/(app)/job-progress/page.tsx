@@ -28,6 +28,7 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/comp
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
+import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
@@ -39,6 +40,7 @@ export default function JobProgressPage() {
 
   const [isCreateTimesheetOpen, setIsCreateTimesheetOpen] = useState(false);
   const [isCreateDocumentOpen, setIsCreateDocumentOpen] = useState(false);
+  const [isCreateJmsOpen, setIsCreateJmsOpen] = useState(false);
   const [viewingJob, setViewingJob] = useState<JobProgress | null>(null);
   const [viewingTimesheet, setViewingTimesheet] = useState<Timesheet | null>(null);
   const [viewingDocument, setViewingDocument] = useState<DocumentMovement | null>(null);
@@ -309,6 +311,11 @@ export default function JobProgressPage() {
                 <Button variant="outline" className="w-32" onClick={handleTodayClick}>{format(currentMonth, 'MMMM yyyy')}</Button>
                 <Button variant="outline" size="icon" onClick={() => changeMonth(1)} disabled={!canGoToNextMonth}><ChevronRight className="h-4 w-4" /></Button>
             </div>
+            {can.manage_job_progress && (
+              <Button onClick={() => setIsCreateJmsOpen(true)}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Create JMS
+              </Button>
+            )}
              <Button onClick={() => setIsCreateTimesheetOpen(true)}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Submit Timesheet
             </Button>
@@ -418,7 +425,7 @@ export default function JobProgressPage() {
               </div>
               <div className="flex items-center gap-2 self-end">
                 <Button variant={timesheetView === 'board' ? 'secondary' : 'outline'} size="icon" onClick={() => setTimesheetView('board')}><LayoutGrid className="h-4 w-4" /></Button>
-                <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" onClick={() => setTimesheetView('list')}><List className="h-4 w-4" /></Button>
+                <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" onClick={() => setView('list')}><List className="h-4 w-4" /></Button>
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
@@ -466,6 +473,7 @@ export default function JobProgressPage() {
 
       <CreateTimesheetDialog isOpen={isCreateTimesheetOpen} setIsOpen={setIsCreateTimesheetOpen} />
       <CreateDocumentMovementDialog isOpen={isCreateDocumentOpen} setIsOpen={setIsCreateDocumentOpen} />
+      <CreateJobDialog isOpen={isCreateJmsOpen} setIsOpen={setIsCreateJmsOpen} />
       {viewingJob && (
         <ViewJobProgressDialog 
             isOpen={!!viewingJob} 

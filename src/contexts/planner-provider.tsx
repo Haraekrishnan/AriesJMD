@@ -5,7 +5,7 @@ import { PlannerEvent, DailyPlannerComment, Comment, JobSchedule, JobScheduleIte
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, update, get, remove } from 'firebase/database';
 import { useAuth } from './auth-provider';
-import { eachDayOfInterval, endOfMonth, startOfMonth, format, isSameDay, getDay, isWeekend, parseISO, getDate, endOfWeek, startOfWeek, startOfDay, isBefore, subMonths, isSameMonth } from 'date-fns';
+import { format, isBefore, parseISO, startOfDay, subMonths, isSameMonth } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { useGeneral } from './general-provider';
@@ -41,6 +41,7 @@ type PlannerContextType = {
   saveVehicleUsageRecord: (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => Promise<void>;
   lockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
   unlockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
+  createJobProgress: (data: Omit<JobProgress, 'id' | 'creatorId' | 'createdAt' | 'lastUpdated' | 'status'> & { steps: Omit<JobStep, 'id' | 'status'>[] }) => void;
   updateJobProgress: (jobId: string, data: Partial<Omit<JobProgress, 'id' | 'steps' | 'creatorId' | 'createdAt'>>) => void;
   deleteJobProgress: (jobId: string) => void;
   updateJobStep: (jobId: string, stepId: string, newStepData: Partial<JobStep>) => void;
@@ -401,6 +402,33 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         set(ref(rtdb, path), false);
     }, []);
 
+    const createJobProgress = useCallback((data: Omit<JobProgress, 'id' | 'creatorId' | 'createdAt' | 'lastUpdated' | 'status'> & { steps: Omit<JobStep, 'id' | 'status'>[] }) => {
+        if (!user) return;
+        const newRef = push(ref(rtdb, 'jobProgress'));
+        const now = new Date().toISOString();
+        
+        const stepsWithIds = data.steps.map((step, index) => {
+            const isSelfAssigning = !!(step.assigneeId && step.assigneeId === user.id);
+            return {
+                ...step,
+                id: `step-${index}`,
+                status: isSelfAssigning ? 'Acknowledged' : 'Pending' as JobStepStatus,
+                acknowledgedAt: isSelfAssigning ? now : null,
+                dueDate: step.dueDate || null,
+            };
+        });
+
+        const newJob: Omit<JobProgress, 'id'> = {
+            ...data,
+            creatorId: user.id,
+            createdAt: now,
+            lastUpdated: now,
+            status: 'In Progress',
+            steps: stepsWithIds as JobStep[],
+        };
+
+        set(newRef, newJob);
+    }, [user]);
 
     const updateJobProgress = useCallback((jobId: string, data: Partial<Omit<JobProgress, 'id' | 'steps' | 'creatorId' | 'createdAt'>>) => {
         if (!user) return;
@@ -757,7 +785,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             sendNotificationEmail({
                 to: [assignee.email],
                 subject: `Step Returned for Job: ${job.title}`,
-                htmlBody,
+                htmlBody: htmlBody,
                 notificationSettings,
                 event: 'onTaskReturned', 
                 involvedUser: assignee,
@@ -1103,7 +1131,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         lockJobRecordSheet, unlockJobRecordSheet, addJobRecordPlant,
         deleteJobRecordPlant, carryForwardPlantAssignments,
         saveVehicleUsageRecord, lockVehicleUsageSheet, unlockVehicleUsageSheet,
-        updateJobProgress, deleteJobProgress, updateJobStep, updateJobStepStatus,
+        createJobProgress, updateJobProgress, deleteJobProgress, updateJobStep, updateJobStepStatus,
         addAndCompleteStep,
         addJobStepComment, reassignJobStep, assignJobStep,
         finalizeJob, returnJobStep, reopenJob,
