@@ -22,6 +22,7 @@ import { useInventory } from '@/contexts/inventory-provider';
 import { useConsumable } from '@/contexts/consumable-provider';
 import AddNewItemForQuoteDialog from './AddNewItemForQuoteDialog';
 import type { NewItemForQuoteValues } from './AddNewItemForQuoteDialog';
+import AddVendorDialog from '../vendor-management/AddVendorDialog';
 
 
 const quotationItemSchema = z.object({
@@ -75,7 +76,7 @@ const VendorQuoteSection = ({ vendorIndex, control, formState }: { vendorIndex: 
     return (
         <div className="space-y-2">
             {fields.map((field, index) => (
-                <div key={field.id} className="flex gap-2 items-start">
+                <div className="flex gap-2 items-start" key={field.id}>
                     <div className="flex-1">
                       <Input {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.name`)} placeholder="Cost Name (e.g. Cess)" />
                        {formState.errors.vendors?.[vendorIndex]?.additionalCosts?.[index]?.name && 
@@ -119,6 +120,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
 
   const [popoverOpenState, setPopoverOpenState] = useState<Record<number, boolean>>({});
   const [isNewItemDialogOpen, setIsNewItemDialogOpen] = useState(false);
+  const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
 
   const allItemsForQuote = useMemo(() => {
     const all = [
@@ -322,7 +324,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                 <Label className="text-base font-semibold">Items to Quote</Label>
                 <div className="space-y-2 mt-2">
                     {itemFields.map((field, index) => (
-                        <div key={field.id} className="flex gap-2 items-start">
+                        <div className="flex gap-2 items-start" key={field.id}>
                             <Controller
                                 name={`items.${index}.itemId`}
                                 control={form.control}
@@ -347,7 +349,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                                         <span>Add New Item...</span>
                                                     </CommandItem>
                                                     {Object.entries(groupedItems).map(([category, items]) => (
-                                                        <CommandGroup key={category} heading={category}>
+                                                        <CommandGroup heading={category} key={category}>
                                                             {items.map(item => (
                                                                 <CommandItem
                                                                     key={item.id}
@@ -385,10 +387,13 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                         <CardHeader className="flex-row items-center justify-between p-4">
                             <div className="flex items-center gap-4">
                                 <Users2 className="h-6 w-6"/>
-                                <Select value={form.watch(`vendors.${vendorIndex}.vendorId`)} onValueChange={(vendorId) => handleVendorSelect(vendorIndex, vendorId)}>
-                                    <SelectTrigger className="w-64"><SelectValue placeholder="Select Vendor"/></SelectTrigger>
-                                    <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
-                                </Select>
+                                <div className="flex items-center gap-2">
+                                  <Select value={form.watch(`vendors.${vendorIndex}.vendorId`)} onValueChange={(vendorId) => handleVendorSelect(vendorIndex, vendorId)}>
+                                      <SelectTrigger className="w-64"><SelectValue placeholder="Select Vendor"/></SelectTrigger>
+                                      <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
+                                  </Select>
+                                  <Button type="button" variant="outline" size="sm" onClick={() => setIsAddVendorOpen(true)}>New Vendor</Button>
+                                </div>
                                 {form.formState.errors.vendors?.[vendorIndex]?.vendorId && 
                                   <p className="text-xs text-destructive">Select vendor</p>
                                 }
@@ -403,7 +408,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                 <span className="text-center">Tax %</span>
                             </div>
                             {itemFields.map((itemField, itemIndex) => (
-                                <div key={`${vendorIndex}-${itemIndex}`} className="grid grid-cols-[3fr,1fr,1fr,1fr] gap-4 items-start border-b py-2 last:border-b-0">
+                                <div className="grid grid-cols-[3fr,1fr,1fr,1fr] gap-4 items-start border-b py-2 last:border-b-0" key={`${vendorIndex}-${itemIndex}`}>
                                     <Label className="text-sm truncate pt-2">{form.watch(`items.${itemIndex}.description`) || `Item ${itemIndex + 1}`}</Label>
                                     <div>
                                         <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.quantity`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Qty"/>
@@ -441,6 +446,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
             setIsOpen={setIsNewItemDialogOpen}
             onItemCreate={handleNewItemCreate}
         />
+        <AddVendorDialog isOpen={isAddVendorOpen} setIsOpen={setIsAddVendorOpen} />
       </DialogContent>
     </Dialog>
   );
