@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Settings, Search, MessageSquare, ArrowRightLeft, UserMinus } from 'lucide-react';
-import { eachDayOfInterval, endOfMonth, startOfMonth, format, getDay, getDaysInMonth, parseISO, isSameMonth, isAfter, isBefore, startOfToday, addMonths, subMonths } from 'date-fns';
+import { eachDayOfInterval, endOfMonth, startOfMonth, format, getDay, getDaysInMonth, parseISO, isSameMonth, isAfter, isBefore, startOfToday, addMonths, subMonths, isValid } from 'date-fns';
 import { saveAs } from "file-saver";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -576,7 +576,7 @@ export default function JobRecordSheet() {
                 const sheet = workbook.addWorksheet(plant);
                 const totalDays = getDaysInMonth(currentMonth);
 
-                const totalCols = 2 + totalDays + 9;
+                const totalCols = 4 + totalDays + 9;
                 const endCol = totalCols;
 
                 const row1 = sheet.addRow([]);
@@ -618,6 +618,8 @@ export default function JobRecordSheet() {
                 const header = [
                     "S.No",
                     "Name",
+                    "Level",
+                    "Employee ID",
                     ...dayHeadersExcel.map(String),
                     "Total OFF",
                     "Total Leave",
@@ -706,6 +708,8 @@ export default function JobRecordSheet() {
                     const rowData = [
                         index + 1,
                         profile.name,
+                        profile.trade,
+                        profile.employeeCode || profile.epNumber || '',
                         ...dayHeadersExcel.map(day => employeeRecord[day] || ""),
                         summary.offDays,
                         summary.leaveDays,
@@ -724,7 +728,7 @@ export default function JobRecordSheet() {
                         const notes: string[] = [];
                         if (dailyOvertime[day]) notes.push(`Overtime: ${dailyOvertime[day]} Hours`);
                         if (dailyComments[day]) notes.push(`Comment: ${dailyComments[day]}`);
-                        if (notes.length > 0) row.getCell(dIndex + 3).note = notes.join("\\n");
+                        if (notes.length > 0) row.getCell(dIndex + 5).note = notes.join("\\n");
                     });
     
                     row.eachCell(cell => {
@@ -738,9 +742,12 @@ export default function JobRecordSheet() {
                     });
                 });
     
+                sheet.getColumn(1).width = 6;
                 sheet.getColumn(2).width = 32;
-                for (let i = 3; i <= 2 + totalDays; i++) { sheet.getColumn(i).width = 7; }
-                for (let i = 3 + totalDays; i <= header.length; i++) { sheet.getColumn(i).width = 12; }
+                sheet.getColumn(3).width = 20;
+                sheet.getColumn(4).width = 20;
+                for (let i = 5; i <= 4 + totalDays; i++) { sheet.getColumn(i).width = 7; }
+                for (let i = 5 + totalDays; i <= header.length; i++) { sheet.getColumn(i).width = 12; }
     
                  sheet.eachRow({ includeEmpty: true }, row => {
                     row.eachCell({ includeEmpty: true }, cell => {
@@ -1137,7 +1144,7 @@ export default function JobRecordSheet() {
                                                                 onClick={() => handleRequestOverride(profile.id, day)}
                                                             />
                                                         )}
-                                                        <Input
+                                                        <input
                                                             id={`${profile.id}-${day}-status`}
                                                             type="text"
                                                             list="jobcodes-datalist"
