@@ -329,25 +329,14 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
       if (itemInfo) {
         const lowerName = itemInfo.description.toLowerCase();
         const isShoes = lowerName.includes('safety shoes') || lowerName.includes('shoe');
-        const isCoverall = lowerName.includes('coverall');
 
-        if (isShoes || isCoverall) {
-            const ppeType = isShoes ? 'Safety Shoes' : 'Coverall';
-            
-            // Try to find size in description (e.g. "Safety Shoes Size 8" or "Coverall XL")
-            let size = 'N/A';
-            const sizeMatch = itemInfo.description.match(/(?:Size|Size:|SZ|SZ:)\s?(\w+)/i) || itemInfo.description.match(/\b(S|M|L|XL|XXL|XXXL|XXXXL)\b/i);
-            if (sizeMatch) {
-                size = sizeMatch[1].toUpperCase();
-            }
-
+        if (isShoes) {
             addPpeInwardRecord({
                 type: 'Inward',
-                ppeType: ppeType,
+                ppeType: 'Safety Shoes',
                 date: new Date(),
                 remarks: `Received from Price Comparison: ${quotation.title} (${quotation.id.slice(-6)})`,
-                quantity: isShoes ? quantity : undefined,
-                sizes: isCoverall ? { [size]: quantity } : undefined,
+                quantity: quantity,
             });
         } else {
             // General Inventory / Consumable Logic

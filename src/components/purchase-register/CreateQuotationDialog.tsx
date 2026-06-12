@@ -139,7 +139,6 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
       ...cordlessAngleGrinders.map((i) => ({ id: i.id, name: `Cordless Grinder ${i.serialNumber}`, uom: 'Nos', category: 'Equipment' as const, itemType: 'CordlessAngleGrinder' })),
       ...cordlessReciprocatingSaws.map((i) => ({ id: i.id, name: `Reciprocating Saw ${i.serialNumber}`, uom: 'Nos', category: 'Equipment' as const, itemType: 'CordlessReciprocatingSaw' })),
       { id: 'ppe-shoes', name: 'Safety Shoes', uom: 'Pairs', category: 'PPE' as const, itemType: 'PPE' },
-      { id: 'ppe-coverall', name: 'Coverall', uom: 'Nos', category: 'PPE' as const, itemType: 'PPE' },
     ];
     // Create a Set of unique names to avoid duplicates in the dropdown
     const uniqueNames = new Set(all.map(item => item.name));
