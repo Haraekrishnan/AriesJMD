@@ -1,8 +1,7 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { Vendor, Payment, PaymentStatus, PurchaseRegister, Comment, Quotation, InwardOutwardRecord, Permission, QuotationStatus, InventoryItem, OtherEquipment } from '@/lib/types';
+import { Vendor, Payment, PaymentStatus, PurchaseRegister, Comment, Quotation, InwardOutwardRecord, Permission, QuotationStatus, InventoryItem, OtherEquipment, PpeInwardRecord } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -69,10 +68,10 @@ const createDataListener = <T extends {}>(
 const PurchaseContext = createContext<PurchaseContextType | undefined>(undefined);
 
 export function PurchaseProvider({ children }: { children: ReactNode }) {
-    const { user, addActivityLog, can } = useAuth();
+    const { user, addActivityLog, can: authCan } = useAuth();
     const { toast } = useToast();
     const { addConsumableItem, consumableItems } = useConsumable();
-    const { inventoryItems } = useInventory();
+    const { inventoryItems, addPpeInwardRecord } = useInventory();
 
     const [vendorsById, setVendorsById] = useState<Record<string, Vendor>>({});
     const [paymentsById, setPaymentsById] = useState<Record<string, Payment>>({});
@@ -234,22 +233,25 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
                     } else if (category === 'Store Inventory') {
                         const newRef = push(ref(rtdb, 'inventoryItems'));
                         const itemToAdd: Partial<InventoryItem> = {
-                        ...itemBase,
-                        category: 'General',
-                        serialNumber: `new-item-${newRef.key}` // Placeholder serial
-                    };
-                    set(newRef, itemToAdd);
-                    itemsCreatedCount++;
-                } else if (category === 'Equipment') {
+                          ...itemBase,
+                          category: 'General',
+                          serialNumber: `new-item-${newRef.key}` // Placeholder serial
+                        };
+                        set(newRef, itemToAdd);
+                        itemsCreatedCount++;
+                    } else if (category === 'Equipment') {
                         const newRef = push(ref(rtdb, 'otherEquipments'));
                         const itemToAdd: Partial<OtherEquipment> = {
-                        equipmentName: newItem.description,
-                        serialNumber: `new-equip-${newRef.key}`, // Placeholder serial
-                        projectId: 'STORE',
-                        remarks: itemBase.remarks
-                    };
-                    set(newRef, itemToAdd);
-                    itemsCreatedCount++;
+                          equipmentName: newItem.description,
+                          serialNumber: `new-equip-${newRef.key}`, // Placeholder serial
+                          projectId: 'STORE',
+                          remarks: itemBase.remarks
+                        };
+                        set(newRef, itemToAdd);
+                        itemsCreatedCount++;
+                    } else if (category === 'PPE') {
+                         // PPE handled via inward register on receipt or initial approval
+                         // Logic added in receiveQuoteItem below
                     }
                 });
     
@@ -322,19 +324,44 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
           updates[`quotations/${quotationId}/status`] = 'Partially Received';
       }
   
-      // Now, update inventory stock
+      // Update inventory stock or PPE register
       const itemInfo = quotation.items.find(i => i.itemId === itemId);
       if (itemInfo) {
-        const allInventory = [...inventoryItems, ...consumableItems];
-        const stockItem = allInventory.find(i => i.id === itemId);
-        if (stockItem && stockItem.quantity !== undefined) {
-          updates[`inventoryItems/${itemId}/quantity`] = (stockItem.quantity || 0) + quantity;
+        const lowerName = itemInfo.description.toLowerCase();
+        const isShoes = lowerName.includes('safety shoes') || lowerName.includes('shoe');
+        const isCoverall = lowerName.includes('coverall');
+
+        if (isShoes || isCoverall) {
+            const ppeType = isShoes ? 'Safety Shoes' : 'Coverall';
+            
+            // Try to find size in description (e.g. "Safety Shoes Size 8" or "Coverall XL")
+            let size = 'N/A';
+            const sizeMatch = itemInfo.description.match(/(?:Size|Size:|SZ|SZ:)\s?(\w+)/i) || itemInfo.description.match(/\b(S|M|L|XL|XXL|XXXL|XXXXL)\b/i);
+            if (sizeMatch) {
+                size = sizeMatch[1].toUpperCase();
+            }
+
+            addPpeInwardRecord({
+                type: 'Inward',
+                ppeType: ppeType,
+                date: new Date(),
+                remarks: `Received from Price Comparison: ${quotation.title} (${quotation.id.slice(-6)})`,
+                quantity: isShoes ? quantity : undefined,
+                sizes: isCoverall ? { [size]: quantity } : undefined,
+            });
+        } else {
+            // General Inventory / Consumable Logic
+            const allInventory = [...inventoryItems, ...consumableItems];
+            const stockItem = allInventory.find(i => i.id === itemId);
+            if (stockItem && stockItem.quantity !== undefined) {
+              updates[`inventoryItems/${itemId}/quantity`] = (stockItem.quantity || 0) + quantity;
+            }
         }
       }
   
       update(ref(rtdb), updates);
     },
-    [quotations, inventoryItems, consumableItems]
+    [quotations, inventoryItems, consumableItems, addPpeInwardRecord]
   );
 
     useEffect(() => {
@@ -348,7 +375,7 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
     }, []);
     
     const contextValue: PurchaseContextType = {
-        vendors, payments, purchaseRegisters, pendingPaymentApprovalCount, quotations, can,
+        vendors, payments, purchaseRegisters, pendingPaymentApprovalCount, quotations, can: authCan,
         addVendor, updateVendor, deleteVendor,
         addPayment, updatePayment, deletePayment,
         addPurchaseRegister, updatePurchaseRegister, deletePurchaseRegister, updatePurchaseRegisterPoNumber,

@@ -11,7 +11,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 
 const newItemForQuoteSchema = z.object({
   name: z.string().min(1, "Item name is required"),
-  category: z.enum(['Store Inventory', 'Equipment', 'Daily Consumable', 'Job Consumable']),
+  category: z.enum(['Store Inventory', 'Equipment', 'Daily Consumable', 'Job Consumable', 'PPE']),
   uom: z.string().min(1, 'UOM is required'),
 });
 export type NewItemForQuoteValues = z.infer<typeof newItemForQuoteSchema>;
@@ -65,6 +65,7 @@ export default function AddNewItemForQuoteDialog({ isOpen, setIsOpen, onItemCrea
                     <SelectItem value="Equipment">Equipment</SelectItem>
                     <SelectItem value="Daily Consumable">Daily Consumable</SelectItem>
                     <SelectItem value="Job Consumable">Job Consumable</SelectItem>
+                    <SelectItem value="PPE">PPE Stock (Shoes/Coveralls)</SelectItem>
                   </SelectContent>
                 </Select>
               )}

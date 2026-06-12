@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Trash2, Users2, X, ChevronsUpDown, Check, AlertCircle } from 'lucide-react';
+import { PlusCircle, Trash2, Users2, X, ChevronsUpDown, Check } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -32,7 +32,7 @@ const quotationItemSchema = z.object({
     uom: z.string().min(1, "UOM is required"),
     itemType: z.string().min(1, 'Item Type is required'),
     isNew: z.boolean().optional(),
-    newItemCategory: z.enum(['Store Inventory', 'Equipment', 'Daily Consumable', 'Job Consumable']).optional(),
+    newItemCategory: z.enum(['Store Inventory', 'Equipment', 'Daily Consumable', 'Job Consumable', 'PPE']).optional(),
 });
 
 const quotationVendorSchema = z.object({
@@ -60,12 +60,6 @@ const quotationSchema = z.object({
 });
 
 type FormValues = z.infer<typeof quotationSchema>;
-
-interface CreateQuotationDialogProps {
-  isOpen: boolean;
-  setIsOpen: (open: boolean) => void;
-  existingQuotation?: Quotation | null;
-}
 
 const VendorQuoteSection = ({ vendorIndex, control, formState }: { vendorIndex: number; control: any; formState: any }) => {
     const { fields, append, remove } = useFieldArray({
@@ -102,7 +96,7 @@ const VendorQuoteSection = ({ vendorIndex, control, formState }: { vendorIndex: 
 type SearchableQuotationItem = {
     id: string; // The actual item ID
     name: string; // The display name
-    category: 'Store Inventory' | 'Equipment' | 'Consumables';
+    category: 'Store Inventory' | 'Equipment' | 'Consumables' | 'PPE';
     uom?: string;
     itemType: string; // specific type for later reference
 };
@@ -144,6 +138,8 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
       ...wiredAngleGrinders.map((i) => ({ id: i.id, name: `Wired Grinder ${i.serialNumber}`, uom: 'Nos', category: 'Equipment' as const, itemType: 'WiredAngleGrinder' })),
       ...cordlessAngleGrinders.map((i) => ({ id: i.id, name: `Cordless Grinder ${i.serialNumber}`, uom: 'Nos', category: 'Equipment' as const, itemType: 'CordlessAngleGrinder' })),
       ...cordlessReciprocatingSaws.map((i) => ({ id: i.id, name: `Reciprocating Saw ${i.serialNumber}`, uom: 'Nos', category: 'Equipment' as const, itemType: 'CordlessReciprocatingSaw' })),
+      { id: 'ppe-shoes', name: 'Safety Shoes', uom: 'Pairs', category: 'PPE' as const, itemType: 'PPE' },
+      { id: 'ppe-coverall', name: 'Coverall', uom: 'Nos', category: 'PPE' as const, itemType: 'PPE' },
     ];
     // Create a Set of unique names to avoid duplicates in the dropdown
     const uniqueNames = new Set(all.map(item => item.name));
@@ -296,7 +292,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
         itemId: tempId,
         description: data.name,
         uom: data.uom,
-        itemType: data.category,
+        itemType: data.category === 'PPE' ? 'PPE' : data.category,
         isNew: true,
         newItemCategory: data.category,
     });
