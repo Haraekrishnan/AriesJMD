@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Trash2, Users2, X, ChevronsUpDown, Check } from 'lucide-react';
+import { PlusCircle, Trash2, Users2, X, ChevronsUpDown, Check, ListChecks } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -23,7 +23,7 @@ import { useConsumable } from '@/contexts/consumable-provider';
 import AddNewItemForQuoteDialog from './AddNewItemForQuoteDialog';
 import type { NewItemForQuoteValues } from './AddNewItemForQuoteDialog';
 import AddVendorDialog from '../vendor-management/AddVendorDialog';
-
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const quotationItemSchema = z.object({
     id: z.string(),
@@ -41,7 +41,7 @@ const quotationVendorSchema = z.object({
     name: z.string(),
     quotes: z.array(z.object({
         itemId: z.string(),
-        quantity: z.coerce.number().min(1, 'Qty > 0'),
+        quantity: z.coerce.number().gt(0, 'Qty > 0'),
         rate: z.coerce.number().min(0),
         taxPercent: z.coerce.number().min(0).max(100),
         receivedQuantity: z.coerce.number().optional(),
@@ -78,7 +78,7 @@ const VendorQuoteSection = ({ vendorIndex, control, formState }: { vendorIndex: 
                       }
                     </div>
                     <div className="flex-1">
-                      <Input type="number" {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.value`, { valueAsNumber: true, setValueAs: v => v === "" ? 0 : Number(v) })} placeholder="Value"/>
+                      <Input type="number" step="any" {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.value`, { valueAsNumber: true, setValueAs: v => v === "" ? 0 : Number(v) })} placeholder="Value"/>
                       {formState.errors.vendors?.[vendorIndex]?.additionalCosts?.[index]?.value && 
                         <p className="text-xs text-destructive mt-1">{formState.errors.vendors[vendorIndex].additionalCosts[index].value.message}</p>
                       }
@@ -94,14 +94,14 @@ const VendorQuoteSection = ({ vendorIndex, control, formState }: { vendorIndex: 
 }
 
 type SearchableQuotationItem = {
-    id: string; // The actual item ID
-    name: string; // The display name
+    id: string;
+    name: string;
     category: 'Store Inventory' | 'Equipment' | 'Consumables' | 'PPE';
     uom?: string;
-    itemType: string; // specific type for later reference
+    itemType: string;
 };
 
-export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuotation }: CreateQuotationDialogProps) {
+export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuotation }: { isOpen: boolean; setIsOpen: (open: boolean) => void; existingQuotation?: Quotation | null }) {
   const { vendors, addQuotation, updateQuotation } = usePurchase();
   const { 
     inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, 
@@ -140,9 +140,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
       ...cordlessReciprocatingSaws.map((i) => ({ id: i.id, name: `Reciprocating Saw ${i.serialNumber}`, uom: 'Nos', category: 'Equipment' as const, itemType: 'CordlessReciprocatingSaw' })),
       { id: 'ppe-shoes', name: 'Safety Shoes', uom: 'Pairs', category: 'PPE' as const, itemType: 'PPE' },
     ];
-    // Create a Set of unique names to avoid duplicates in the dropdown
     const uniqueNames = new Set(all.map(item => item.name));
-    // Filter the original array to keep only the first occurrence of each name
     return Array.from(uniqueNames).map(name => all.find(item => item.name === name)!);
   }, [
     inventoryItems, consumableItems, utMachines, dftMachines, digitalCameras, anemometers, 
@@ -182,7 +180,6 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     if (isOpen) {
         if (existingQuotation) {
             const itemsFromQuote = existingQuotation.items || [];
-            
             const vendorsWithSyncedQuotes = (existingQuotation.vendors || []).map(vendor => {
                 const quotesMap = new Map<string, QuotationQuote>();
                 if (Array.isArray(vendor.quotes)) {
@@ -192,10 +189,8 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                         }
                     });
                 }
-
                 const syncedQuotes = itemsFromQuote.map(item => {
                     const existingQuote = quotesMap.get(item.itemId);
-
                     return {
                         itemId: item.itemId,
                         quantity: existingQuote?.quantity ?? 1,
@@ -206,7 +201,6 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                 });
                 return { ...vendor, quotes: syncedQuotes };
             });
-
             form.reset({
                 title: existingQuotation.title,
                 items: itemsFromQuote,
@@ -218,10 +212,32 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     }
   }, [isOpen, existingQuotation, form]);
 
+  // Sync Quantity and Tax % from the first vendor to all other vendors
+  const firstVendorQuotes = form.watch('vendors.0.quotes');
+  useEffect(() => {
+    if (!firstVendorQuotes || firstVendorQuotes.length === 0) return;
+    const vendors = form.getValues('vendors');
+    if (vendors.length <= 1) return;
+
+    vendors.forEach((vendor, vIndex) => {
+        if (vIndex === 0) return;
+        firstVendorQuotes.forEach((quote, iIndex) => {
+            const currentQty = form.getValues(`vendors.${vIndex}.quotes.${iIndex}.quantity`);
+            const currentTax = form.getValues(`vendors.${vIndex}.quotes.${iIndex}.taxPercent`);
+            
+            if (currentQty !== quote.quantity) {
+                form.setValue(`vendors.${vIndex}.quotes.${iIndex}.quantity`, quote.quantity, { shouldDirty: true });
+            }
+            if (currentTax !== quote.taxPercent) {
+                form.setValue(`vendors.${vIndex}.quotes.${iIndex}.taxPercent`, quote.taxPercent, { shouldDirty: true });
+            }
+        });
+    });
+  }, [firstVendorQuotes, form]);
+
   useEffect(() => {
     const items = form.getValues("items");
     const vendors = form.getValues("vendors");
-  
     vendors.forEach((vendor, vIndex) => {
       if (!vendor.quotes || vendor.quotes.length !== items.length) {
         const updatedQuotes = items.map((item, i) => ({
@@ -231,12 +247,10 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
           taxPercent: vendor.quotes?.[i]?.taxPercent ?? 0,
           receivedQuantity: vendor.quotes?.[i]?.receivedQuantity ?? 0,
         }));
-  
         form.setValue(`vendors.${vIndex}.quotes`, updatedQuotes);
       }
     });
   }, [itemFields.length, form]);
-
 
   const onSubmit = (data: FormValues) => {
     if (!data.vendors.length || !data.items.length) {
@@ -298,142 +312,165 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     setIsNewItemDialogOpen(false);
   };
 
-
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
+      <DialogContent className="max-w-7xl h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{isEditMode ? 'Edit' : 'New'} Price Comparison</DialogTitle>
-          <DialogDescription>Add items and vendors to compare quotes.</DialogDescription>
+          <DialogDescription>Add items and vendors to compare quotes. Quantity and Tax % from the first vendor will auto-fill others.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit, (errors) => console.log("FORM ERRORS:", errors))} className="flex-1 flex flex-col overflow-hidden">
-          <ScrollArea className="flex-1 pr-6 -mr-6">
-            <div className="space-y-6">
-              <div>
-                <Label htmlFor="title" className="text-base font-semibold">Comparison Title</Label>
-                <Input id="title" {...form.register('title')} />
-                 {form.formState.errors.title && <p className="text-xs text-destructive mt-1">{form.formState.errors.title.message}</p>}
-              </div>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
+          <div className="p-4 bg-muted/30 rounded-md border mb-4">
+            <Label htmlFor="title" className="text-base font-semibold">Comparison Title</Label>
+            <Input id="title" {...form.register('title')} placeholder="e.g., Monthly Consumables - Site A" className="mt-1 bg-background" />
+             {form.formState.errors.title && <p className="text-xs text-destructive mt-1">{form.formState.errors.title.message}</p>}
+          </div>
 
-              <div>
-                <Label className="text-base font-semibold">Items to Quote</Label>
-                <div className="space-y-2 mt-2">
-                    {itemFields.map((field, index) => (
-                        <div className="flex gap-2 items-start" key={field.id}>
-                            <Controller
-                                name={`items.${index}.itemId`}
-                                control={form.control}
-                                render={({ field: controllerField }) => (
-                                    <Popover open={popoverOpenState[index]} onOpenChange={(open) => setPopoverOpenState(prev => ({ ...prev, [index]: open }))}>
-                                        <PopoverTrigger asChild>
-                                            <Button variant="outline" className="w-full justify-start text-left font-normal">
-                                                <span className="truncate">{form.watch(`items.${index}.description`) || "Select item..."}</span>
-                                                <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50"/>
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                            <Command>
-                                                <CommandInput placeholder="Search all items..." />
-                                                <CommandList>
-                                                    <CommandEmpty>No items found.</CommandEmpty>
-                                                    <CommandItem key="add-new-item" onSelect={() => {
-                                                        setIsNewItemDialogOpen(true);
-                                                        setPopoverOpenState(prev => { const s = {...prev}; s[index] = false; return s; });
-                                                    }}>
-                                                        <PlusCircle className="mr-2 h-4 w-4" />
-                                                        <span>Add New Item...</span>
-                                                    </CommandItem>
-                                                    {Object.entries(groupedItems).map(([category, items]) => (
-                                                        <CommandGroup heading={category} key={category}>
-                                                            {items.map(item => (
-                                                                <CommandItem
-                                                                    key={item.id}
-                                                                    value={item.name}
-                                                                    onSelect={() => handleItemSelect(index, item)}
-                                                                >
-                                                                    <Check className={cn("mr-2 h-4 w-4", form.getValues(`items.${index}.itemId`) === item.id ? "opacity-100" : "opacity-0")} />
-                                                                    {item.name}
-                                                                </CommandItem>
-                                                            ))}
-                                                        </CommandGroup>
-                                                    ))}
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
-                                )}
-                            />
-                            <Input {...form.register(`items.${index}.uom`)} placeholder="UOM" className="w-24"/>
-                            <Button type="button" variant="destructive" size="icon" onClick={() => removeItem(index)}><Trash2 className="h-4 w-4"/></Button>
-                        </div>
-                    ))}
-                    <Button type="button" variant="outline" size="sm" onClick={() => appendItem({ id: `item-${Date.now()}`, itemId: '', description: '', uom: '', itemType: '' })}><PlusCircle className="h-4 w-4 mr-2"/>Add Item</Button>
-                    {form.formState.errors.items && <p className="text-xs text-destructive">{form.formState.errors.items.message || form.formState.errors.items.root?.message}</p>}
-                </div>
-              </div>
+          <ScrollArea className="flex-1">
+            <Accordion type="multiple" defaultValue={["items", "vendors"]} className="space-y-4 pr-4">
+              <AccordionItem value="items" className="border rounded-lg bg-card">
+                <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <ListChecks className="h-5 w-5 text-primary" />
+                    <span className="text-lg font-bold">1. Manage Items to Quote ({itemFields.length})</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="p-4 pt-0">
+                  <div className="space-y-2 mt-2">
+                      {itemFields.map((field, index) => (
+                          <div className="flex gap-2 items-start" key={field.id}>
+                              <div className="w-12 pt-2 text-xs font-bold text-muted-foreground text-center">{index + 1}.</div>
+                              <Controller
+                                  name={`items.${index}.itemId`}
+                                  control={form.control}
+                                  render={({ field: controllerField }) => (
+                                      <Popover open={popoverOpenState[index]} onOpenChange={(open) => setPopoverOpenState(prev => ({ ...prev, [index]: open }))}>
+                                          <PopoverTrigger asChild>
+                                              <Button variant="outline" className="w-full justify-start text-left font-normal">
+                                                  <span className="truncate">{form.watch(`items.${index}.description`) || "Select item..."}</span>
+                                                  <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50"/>
+                                              </Button>
+                                          </PopoverTrigger>
+                                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                              <Command>
+                                                  <CommandInput placeholder="Search all items..." />
+                                                  <CommandList>
+                                                      <CommandEmpty>No items found.</CommandEmpty>
+                                                      <CommandItem key="add-new-item" onSelect={() => {
+                                                          setIsNewItemDialogOpen(true);
+                                                          setPopoverOpenState(prev => { const s = {...prev}; s[index] = false; return s; });
+                                                      }}>
+                                                          <PlusCircle className="mr-2 h-4 w-4" />
+                                                          <span>Add New Item...</span>
+                                                      </CommandItem>
+                                                      {Object.entries(groupedItems).map(([category, items]) => (
+                                                          <CommandGroup heading={category} key={category}>
+                                                              {items.map(item => (
+                                                                  <CommandItem
+                                                                      key={item.id}
+                                                                      value={item.name}
+                                                                      onSelect={() => handleItemSelect(index, item)}
+                                                                  >
+                                                                      <Check className={cn("mr-2 h-4 w-4", form.getValues(`items.${index}.itemId`) === item.id ? "opacity-100" : "opacity-0")} />
+                                                                      {item.name}
+                                                                  </CommandItem>
+                                                              ))}
+                                                          </CommandGroup>
+                                                      ))}
+                                                  </CommandList>
+                                              </Command>
+                                          </PopoverContent>
+                                      </Popover>
+                                  )}
+                              />
+                              <Input {...form.register(`items.${index}.uom`)} placeholder="UOM" className="w-24"/>
+                              <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                          </div>
+                      ))}
+                      <div className="flex justify-center pt-2">
+                        <Button type="button" variant="outline" size="sm" onClick={() => appendItem({ id: `item-${Date.now()}`, itemId: '', description: '', uom: '', itemType: '' })}>
+                            <PlusCircle className="h-4 w-4 mr-2"/>Add Row
+                        </Button>
+                      </div>
+                      {form.formState.errors.items && <p className="text-xs text-destructive">{form.formState.errors.items.message || form.formState.errors.items.root?.message}</p>}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
 
-              <Separator />
-
-              <div>
-                <Label className="text-base font-semibold">Vendors & Quotes</Label>
-                 <div className="space-y-4 mt-2">
-                   {vendorFields.map((vendorField, vendorIndex) => (
-                    <Card key={vendorField.id}>
-                        <CardHeader className="flex-row items-center justify-between p-4">
-                            <div className="flex items-center gap-4">
-                                <Users2 className="h-6 w-6"/>
-                                <div className="flex items-center gap-2">
-                                  <Select value={form.watch(`vendors.${vendorIndex}.vendorId`)} onValueChange={(vendorId) => handleVendorSelect(vendorIndex, vendorId)}>
-                                      <SelectTrigger className="w-64"><SelectValue placeholder="Select Vendor"/></SelectTrigger>
-                                      <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
-                                  </Select>
-                                  <Button type="button" variant="outline" size="sm" onClick={() => setIsAddVendorOpen(true)}>New Vendor</Button>
-                                </div>
-                                {form.formState.errors.vendors?.[vendorIndex]?.vendorId && 
-                                  <p className="text-xs text-destructive">Select vendor</p>
-                                }
-                            </div>
-                            <Button type="button" variant="ghost" size="icon" onClick={() => removeVendor(vendorIndex)}><X className="h-4 w-4"/></Button>
-                        </CardHeader>
-                        <CardContent className="p-4 pt-0">
-                             <div className="grid grid-cols-[3fr,1fr,1fr,1fr] gap-4 mb-2 font-medium text-sm">
-                                <span>Item</span>
+              <AccordionItem value="vendors" className="border rounded-lg bg-card">
+                <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <Users2 className="h-5 w-5 text-primary" />
+                    <span className="text-lg font-bold">2. Manage Vendors & Quotes ({vendorFields.length})</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="p-4 pt-0">
+                   <div className="space-y-6 mt-2">
+                     {vendorFields.map((vendorField, vendorIndex) => (
+                      <Card key={vendorField.id} className={cn(vendorIndex === 0 && "border-primary shadow-sm")}>
+                          <CardHeader className="flex-row items-center justify-between p-4 bg-muted/20">
+                              <div className="flex items-center gap-4">
+                                  <div className="flex items-center gap-2">
+                                    <Label className="font-bold whitespace-nowrap">Vendor {vendorIndex + 1}:</Label>
+                                    <Select value={form.watch(`vendors.${vendorIndex}.vendorId`)} onValueChange={(vendorId) => handleVendorSelect(vendorIndex, vendorId)}>
+                                        <SelectTrigger className="w-64 bg-background"><SelectValue placeholder="Select Vendor"/></SelectTrigger>
+                                        <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => setIsAddVendorOpen(true)}>New Vendor</Button>
+                                  </div>
+                                  {form.formState.errors.vendors?.[vendorIndex]?.vendorId && 
+                                    <p className="text-xs text-destructive">Select vendor</p>
+                                  }
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {vendorIndex === 0 && <Badge variant="secondary" className="bg-primary/10 text-primary">Master Data Source</Badge>}
+                                <Button type="button" variant="ghost" size="icon" onClick={() => removeVendor(vendorIndex)}><X className="h-4 w-4"/></Button>
+                              </div>
+                          </CardHeader>
+                          <CardContent className="p-4 pt-4">
+                             <div className="grid grid-cols-[3fr,1fr,1fr,1fr] gap-4 mb-2 font-bold text-xs uppercase tracking-wider text-muted-foreground border-b pb-2 px-2">
+                                <span>Item Description</span>
                                 <span className="text-center">Quantity</span>
-                                <span className="text-center">Rate</span>
+                                <span className="text-center">Rate (INR)</span>
                                 <span className="text-center">Tax %</span>
                             </div>
                             {itemFields.map((itemField, itemIndex) => (
-                                <div className="grid grid-cols-[3fr,1fr,1fr,1fr] gap-4 items-start border-b py-2 last:border-b-0" key={`${vendorIndex}-${itemIndex}`}>
-                                    <Label className="text-sm truncate pt-2">{form.watch(`items.${itemIndex}.description`) || `Item ${itemIndex + 1}`}</Label>
+                                <div className="grid grid-cols-[3fr,1fr,1fr,1fr] gap-4 items-center border-b py-2 last:border-b-0 hover:bg-muted/10 px-2" key={`${vendorField.id}-${itemIndex}`}>
+                                    <Label className="text-sm truncate">{form.watch(`items.${itemIndex}.description`) || `Item ${itemIndex + 1}`}</Label>
                                     <div>
-                                        <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.quantity`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Qty"/>
-                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.quantity && <p className="text-xs text-destructive mt-1">Qty &gt; 0</p>}
+                                        <Input type="number" step="any" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.quantity`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Qty" className="text-center h-8"/>
+                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.quantity && <p className="text-[10px] text-destructive mt-1">Req.</p>}
                                     </div>
                                     <div>
-                                        <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.rate`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Rate"/>
-                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.rate && <p className="text-xs text-destructive mt-1">Invalid Rate</p>}
+                                        <Input type="number" step="any" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.rate`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Rate" className="text-right h-8"/>
+                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.rate && <p className="text-[10px] text-destructive mt-1">Req.</p>}
                                     </div>
                                     <div>
-                                        <Input type="number" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.taxPercent`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Tax %" />
-                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.taxPercent && <p className="text-xs text-destructive mt-1">Invalid Tax</p>}
+                                        <Input type="number" step="any" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.taxPercent`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Tax %" className="text-center h-8"/>
+                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.taxPercent && <p className="text-[10px] text-destructive mt-1">Req.</p>}
                                     </div>
                                 </div>
                             ))}
-                            <Separator className="my-4"/>
-                            <h5 className="font-semibold text-sm mb-2">Additional Costs</h5>
-                            <VendorQuoteSection vendorIndex={vendorIndex} control={form.control} formState={form.formState} />
-                        </CardContent>
-                    </Card>
+                            <div className="mt-6 pt-4 border-t">
+                                <h5 className="font-semibold text-sm mb-3">Additional Costs & Charges</h5>
+                                <VendorQuoteSection vendorIndex={vendorIndex} control={form.control} formState={form.formState} />
+                            </div>
+                          </CardContent>
+                      </Card>
                    ))}
-                    <Button type="button" variant="outline" size="sm" onClick={handleAddVendor} disabled={itemFields.length === 0}><PlusCircle className="h-4 w-4 mr-2"/>Add Vendor</Button>
+                    <Button type="button" variant="outline" className="w-full border-dashed" onClick={handleAddVendor} disabled={itemFields.length === 0}>
+                        <PlusCircle className="h-4 w-4 mr-2"/>Add Vendor Quote
+                    </Button>
                     {form.formState.errors.vendors && <p className="text-xs text-destructive">{form.formState.errors.vendors.message || form.formState.errors.vendors.root?.message}</p>}
                  </div>
-              </div>
-            </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </ScrollArea>
-          <DialogFooter className="pt-4 border-t">
+          
+          <DialogFooter className="pt-4 border-t mt-4">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit">{isEditMode ? 'Save Changes' : 'Create Comparison'}</Button>
+            <Button type="submit" className="min-w-[120px]">{isEditMode ? 'Save Changes' : 'Create Comparison'}</Button>
           </DialogFooter>
         </form>
          <AddNewItemForQuoteDialog
