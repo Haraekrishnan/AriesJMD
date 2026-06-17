@@ -1,4 +1,5 @@
 'use client';
+
 import { useForm, useFieldArray, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -8,14 +9,14 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { PlusCircle, Trash2, Users2, X, ChevronsUpDown, Check, ListChecks } from 'lucide-react';
-import { ScrollArea } from '../ui/scroll-area';
-import { Separator } from '../ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Card, CardHeader, CardContent } from '../ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { useEffect, useMemo, useState } from 'react';
 import type { Quotation, QuotationItem, QuotationQuote, QuotationVendorDetails, QuotationStatus } from '@/lib/types';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { usePurchase } from '@/contexts/purchase-provider';
 import { useInventory } from '@/contexts/inventory-provider';
@@ -24,11 +25,11 @@ import AddNewItemForQuoteDialog from './AddNewItemForQuoteDialog';
 import type { NewItemForQuoteValues } from './AddNewItemForQuoteDialog';
 import AddVendorDialog from '../vendor-management/AddVendorDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Badge } from '../ui/badge';
+import { Badge } from '@/components/ui/badge';
 
 const quotationItemSchema = z.object({
     id: z.string(),
-    itemId: z.string(),
+    itemId: z.string().min(1, "Item selection is required"),
     description: z.string().min(1, "Description is required"),
     uom: z.string().min(1, "UOM is required"),
     itemType: z.string().min(1, 'Item Type is required'),
@@ -42,7 +43,7 @@ const quotationVendorSchema = z.object({
     name: z.string(),
     quotes: z.array(z.object({
         itemId: z.string(),
-        quantity: z.coerce.number().gt(0, 'Qty > 0'),
+        quantity: z.coerce.number().min(0),
         rate: z.coerce.number().min(0),
         taxPercent: z.coerce.number().min(0).max(100),
         receivedQuantity: z.coerce.number().optional(),
@@ -215,7 +216,6 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     }
   }, [isOpen, existingQuotation, form]);
 
-  // Sync Quantity and Tax % from the first vendor to all other vendors
   const firstVendorQuotes = useWatch({
     control,
     name: 'vendors.0.quotes'
@@ -379,7 +379,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                                                       value={item.name}
                                                                       onSelect={() => handleItemSelect(index, item)}
                                                                   >
-                                                                      <Check className={cn("mr-2 h-4 w-4", form.getValues(`items.${index}.itemId`) === item.id ? "opacity-100" : "opacity-0")} />
+                                                                      <Check className={cn("mr-2 h-4 w-4", controllerField.value === item.id ? "opacity-100" : "opacity-0")} />
                                                                       {item.name}
                                                                   </CommandItem>
                                                               ))}
@@ -390,7 +390,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                           </PopoverContent>
                                       </Popover>
                                   )}
-                              </Controller>
+                              />
                               <Input {...form.register(`items.${index}.uom`)} placeholder="UOM" className="w-24"/>
                               <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
                           </div>
