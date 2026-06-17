@@ -53,7 +53,7 @@ export const exportToExcel = async (quotation: Quotation) => {
         let rowData: any[] = [itemIndex + 1, item.description];
         quotation.vendors.forEach(vendor => {
             const quotesArray = Array.isArray(vendor.quotes) ? vendor.quotes : Object.values(vendor.quotes || {});
-            const quote = quotesArray.find(q => q.itemId === item.itemId);
+            const quote = quotesArray.find(q => String(q.itemId) === String(item.itemId));
             rowData.push(
                 quote?.quantity || 0,
                 item.uom,
@@ -76,7 +76,7 @@ export const exportToExcel = async (quotation: Quotation) => {
         let totalTax = 0;
         const quotesArray = Array.isArray(vendor.quotes) ? vendor.quotes : Object.values(vendor.quotes || {});
         quotation.items.forEach((item) => {
-          const quote = quotesArray.find(q => q.itemId === item.itemId);
+          const quote = quotesArray.find(q => String(q.itemId) === String(item.itemId));
           if (quote) {
             const amount = (quote.quantity || 0) * (quote.rate || 0);
             subTotal += amount;

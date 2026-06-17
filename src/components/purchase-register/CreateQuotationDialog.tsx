@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { useEffect, useMemo, useState } from 'react';
-import type { Quotation, QuotationItem, QuotationQuote, QuotationVendorDetails, QuotationStatus } from '@/lib/types';
+import type { Quotation, QuotationItem, QuotationQuote, QuotationVendorDetails, QuotationStatus, InventoryItem, OtherEquipment } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
@@ -146,7 +146,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     cordlessReciprocatingSaws
   ]);
 
-  const groupedItems = useMemo(() => {
+  const groupedItemsMap = useMemo(() => {
       return allItemsForQuote.reduce((acc, item) => {
           const category = item.category;
           if (!acc[category]) {
@@ -162,7 +162,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     defaultValues: { title: '', items: [], vendors: [] },
   });
 
-  const { control, setValue, getValues, watch } = form;
+  const { control, setValue, getValues } = form;
 
   const { fields: itemFields, append: appendItem, remove: removeItem } = useFieldArray({
     control,
@@ -183,11 +183,11 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                 const quotesMap = new Map<string, QuotationQuote>();
                 quotesArray.forEach(q => {
                     if (q?.itemId) {
-                        quotesMap.set(q.itemId, q);
+                        quotesMap.set(String(q.itemId), q);
                     }
                 });
                 const syncedQuotes = itemsFromQuote.map(item => {
-                    const existingQuote = quotesMap.get(item.itemId);
+                    const existingQuote = quotesMap.get(String(item.itemId));
                     return {
                         itemId: item.itemId,
                         quantity: existingQuote?.quantity ?? 1,
@@ -208,33 +208,6 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
         }
     }
   }, [isOpen, existingQuotation, form]);
-
-  const firstVendorQuotes = useWatch({
-    control,
-    name: 'vendors.0.quotes'
-  });
-
-  useEffect(() => {
-    if (!firstVendorQuotes || firstVendorQuotes.length === 0) return;
-    const currentVendors = getValues('vendors');
-    if (!currentVendors || currentVendors.length <= 1) return;
-
-    currentVendors.forEach((vendor, vIndex) => {
-        if (vIndex === 0) return;
-        firstVendorQuotes.forEach((quote, iIndex) => {
-            if (!quote) return;
-            const currentQty = getValues(`vendors.${vIndex}.quotes.${iIndex}.quantity`);
-            const currentTax = getValues(`vendors.${vIndex}.quotes.${iIndex}.taxPercent`);
-            
-            if (currentQty !== quote.quantity) {
-                setValue(`vendors.${vIndex}.quotes.${iIndex}.quantity`, quote.quantity);
-            }
-            if (currentTax !== quote.taxPercent) {
-                setValue(`vendors.${vIndex}.quotes.${iIndex}.taxPercent`, quote.taxPercent);
-            }
-        });
-    });
-  }, [firstVendorQuotes, getValues, setValue]);
 
   const onSubmit = async (data: FormValues) => {
     if (!data.vendors.length || !data.items.length) {
@@ -265,15 +238,14 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
   
   const handleAddItemRow = () => {
     const tempId = `row-${Date.now()}`;
-    appendItem({ id: tempId, itemId: '', description: '', uom: 'Nos', itemType: 'Inventory' });
+    appendItem({ id: tempId, itemId: tempId, description: '', uom: 'Nos', itemType: 'Inventory' });
     
-    // Crucial: Add a corresponding quote entry to ALL current vendors
     const currentVendors = getValues('vendors');
     currentVendors.forEach((_, vIndex) => {
         const currentQuotes = getValues(`vendors.${vIndex}.quotes`) || [];
         setValue(`vendors.${vIndex}.quotes`, [
             ...currentQuotes,
-            { itemId: '', quantity: 1, rate: 0, taxPercent: 0, receivedQuantity: 0 }
+            { itemId: tempId, quantity: 1, rate: 0, taxPercent: 0, receivedQuantity: 0 }
         ]);
     });
   };
@@ -314,7 +286,6 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     setValue(`items.${index}.uom`, item.uom || 'Nos');
     setValue(`items.${index}.itemType`, item.itemType);
     
-    // Update all vendors' quote arrays for this item index
     const currentVendors = getValues('vendors');
     currentVendors.forEach((_, vIndex) => {
         setValue(`vendors.${vIndex}.quotes.${index}.itemId`, item.id);
@@ -354,7 +325,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
       <DialogContent className="max-w-7xl h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{isEditMode ? 'Edit' : 'New'} Price Comparison</DialogTitle>
-          <DialogDescription>Add items and vendors to compare quotes. Quantity and Tax % from the first vendor will auto-fill others.</DialogDescription>
+          <DialogDescription>Add items and vendors to compare quotes. Quantity and Tax % from the first vendor will auto-fill others during entry.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
           <div className="p-4 bg-muted/30 rounded-md border mb-4">
@@ -401,7 +372,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                                             <PlusCircle className="mr-2 h-4 w-4" />
                                                             <span>Add New Item...</span>
                                                         </CommandItem>
-                                                        {Object.entries(groupedItems).map(([category, items]) => (
+                                                        {Object.entries(groupedItemsMap).map(([category, items]) => (
                                                             <CommandGroup heading={category} key={category}>
                                                                 {items.map(item => (
                                                                     <CommandItem
@@ -477,13 +448,45 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                 <div className="grid grid-cols-[3fr,1fr,1fr,1fr] gap-4 items-center border-b py-2 last:border-b-0 hover:bg-muted/10 px-2" key={`${vendorField.id}-${itemIndex}`}>
                                     <Label className="text-sm truncate">{form.watch(`items.${itemIndex}.description`) || `Item ${itemIndex + 1}`}</Label>
                                     <div>
-                                        <Input type="number" step="any" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.quantity`)} className="text-center h-8"/>
+                                        <Input 
+                                            type="number" 
+                                            step="any" 
+                                            {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.quantity`, {
+                                                onChange: (e) => {
+                                                    if (vendorIndex === 0) {
+                                                        const val = e.target.value;
+                                                        vendorFields.forEach((_, vIdx) => {
+                                                            if (vIdx !== 0) {
+                                                                setValue(`vendors.${vIdx}.quotes.${itemIndex}.quantity`, Number(val));
+                                                            }
+                                                        });
+                                                    }
+                                                }
+                                            })} 
+                                            className="text-center h-8"
+                                        />
                                     </div>
                                     <div>
                                         <Input type="number" step="any" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.rate`)} className="text-right h-8"/>
                                     </div>
                                     <div>
-                                        <Input type="number" step="any" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.taxPercent`)} className="text-center h-8"/>
+                                        <Input 
+                                            type="number" 
+                                            step="any" 
+                                            {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.taxPercent`, {
+                                                onChange: (e) => {
+                                                    if (vendorIndex === 0) {
+                                                        const val = e.target.value;
+                                                        vendorFields.forEach((_, vIdx) => {
+                                                            if (vIdx !== 0) {
+                                                                setValue(`vendors.${vIdx}.quotes.${itemIndex}.taxPercent`, Number(val));
+                                                            }
+                                                        });
+                                                    }
+                                                }
+                                            })} 
+                                            className="text-center h-8"
+                                        />
                                     </div>
                                 </div>
                             ))}

@@ -13,7 +13,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import { Badge } from '../ui/badge';
+import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { useAuth } from '@/contexts/auth-provider';
 import { usePurchase } from '@/contexts/purchase-provider';
@@ -107,7 +107,7 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
         const quotesArray = Array.isArray(vendor.quotes) ? vendor.quotes : Object.values(vendor.quotes || {});
 
         quotation.items.forEach((item) => {
-            const quote = quotesArray.find(q => q.itemId === item.itemId);
+            const quote = quotesArray.find(q => String(q.itemId) === String(item.itemId));
             if (quote) {
                 const amount = (quote.quantity || 0) * (quote.rate || 0);
                 subTotal += amount;
@@ -226,7 +226,7 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
                   <TableCell>{item.uom}</TableCell>
                   {quotation.vendors.map((vendor) => {
                     const quotesArray = Array.isArray(vendor.quotes) ? vendor.quotes : Object.values(vendor.quotes || {});
-                    const quote = quotesArray.find(q => q.itemId === item.itemId);
+                    const quote = quotesArray.find(q => String(q.itemId) === String(item.itemId));
                     const amount = (quote?.quantity || 0) * (quote?.rate || 0);
 
                     return (
