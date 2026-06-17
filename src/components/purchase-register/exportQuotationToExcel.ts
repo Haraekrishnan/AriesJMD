@@ -1,24 +1,10 @@
 'use client';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import type { Quotation } from '@/lib/types';
+import type { Quotation, QuotationQuote } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 
 const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
-
-async function fetchImageAsBuffer(url: string): Promise<ArrayBuffer | null> {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-        console.error(`Failed to fetch image: ${response.statusText} from ${url}`);
-        return null;
-    }
-    return await response.arrayBuffer();
-  } catch (error) {
-    console.error('Error fetching image for Excel:', error);
-    return null;
-  }
-}
 
 export const exportToExcel = async (quotation: Quotation) => {
     const workbook = new ExcelJS.Workbook();
@@ -37,7 +23,7 @@ export const exportToExcel = async (quotation: Quotation) => {
 
 
     // ===== VENDOR HEADER (YELLOW) =====
-    let vendorHeader: any[] = ['', '']; // keep empty!
+    let vendorHeader: any[] = ['', '']; // skip Sl. No and Description
 
     quotation.vendors.forEach(v => {
         vendorHeader.push(v.name, '', '', '', '');
@@ -90,17 +76,7 @@ export const exportToExcel = async (quotation: Quotation) => {
         ];
 
         quotation.vendors.forEach(vendor => {
-            let quote: any;
-            if (Array.isArray(vendor.quotes)) {
-              quote =
-                vendor.quotes[itemIndex] || // ✅ index fallback
-                vendor.quotes.find(q => q.itemId === item.id || (q as any).id === item.id);
-            } else if (vendor.quotes) {
-              quote =
-                (vendor.quotes as any)[item.id] ||
-                Object.values(vendor.quotes)[itemIndex] || // ✅ index fallback
-                Object.values(vendor.quotes).find((q: any) => q.itemId === item.id || (q as any).id === item.id);
-            }
+            const quote = (vendor.quotes || []).find(q => q.itemId === item.itemId);
 
             rowData.push(
                 quote?.quantity || 0,
@@ -126,18 +102,8 @@ export const exportToExcel = async (quotation: Quotation) => {
         let subTotal = 0;
         let totalTax = 0;
       
-        quotation.items.forEach((item, itemIndex) => {
-          let quote;
-          if (Array.isArray(vendor.quotes)) {
-            quote =
-              vendor.quotes[itemIndex] ||
-              vendor.quotes.find(q => q.itemId === item.id || (q as any).id === item.id);
-          } else if (vendor.quotes) {
-            quote =
-              (vendor.quotes as any)[item.id] ||
-              Object.values(vendor.quotes)[itemIndex] ||
-              Object.values(vendor.quotes).find((q: any) => q.itemId === item.id || (q as any).id === item.id);
-          }
+        quotation.items.forEach((item) => {
+          const quote = (vendor.quotes || []).find(q => q.itemId === item.itemId);
       
           if (quote) {
             const amount = (quote.quantity || 0) * (quote.rate || 0);

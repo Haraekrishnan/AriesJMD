@@ -245,16 +245,28 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
 
   useEffect(() => {
     const items = getValues("items");
-    const vendors = getValues("vendors");
-    vendors.forEach((vendor, vIndex) => {
-      if (!vendor.quotes || vendor.quotes.length !== items.length) {
-        const updatedQuotes = items.map((item, i) => ({
-          itemId: item.itemId,
-          quantity: vendor.quotes?.[i]?.quantity ?? 1,
-          rate: vendor.quotes?.[i]?.rate ?? 0,
-          taxPercent: vendor.quotes?.[i]?.taxPercent ?? 0,
-          receivedQuantity: vendor.quotes?.[i]?.receivedQuantity ?? 0,
-        }));
+    const currentVendors = getValues("vendors");
+    
+    currentVendors.forEach((vendor, vIndex) => {
+      const existingQuotesMap = new Map();
+      if (vendor.quotes) {
+          vendor.quotes.forEach(q => {
+              if (q && q.itemId) existingQuotesMap.set(q.itemId, q);
+          });
+      }
+
+      const updatedQuotes = items.map((item) => {
+          const existing = existingQuotesMap.get(item.itemId);
+          return {
+            itemId: item.itemId,
+            quantity: existing?.quantity ?? 1,
+            rate: existing?.rate ?? 0,
+            taxPercent: existing?.taxPercent ?? 0,
+            receivedQuantity: existing?.receivedQuantity ?? 0,
+          };
+      });
+
+      if (JSON.stringify(vendor.quotes) !== JSON.stringify(updatedQuotes)) {
         setValue(`vendors.${vIndex}.quotes`, updatedQuotes);
       }
     });

@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../ui/dialog';
@@ -15,7 +14,7 @@ import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Badge } from '../ui/badge';
-import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { useAuth } from '@/contexts/auth-provider';
 import { usePurchase } from '@/contexts/purchase-provider';
 
@@ -105,22 +104,15 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
     return quotation.vendors.map(vendor => {
         let subTotal = 0;
         let totalTax = 0;
-        quotation.items.forEach((item, itemIndex) => {
-            let quote: QuotationQuote | undefined;
-             if (Array.isArray(vendor.quotes)) {
-                quote = vendor.quotes.find(q => q.itemId === item.itemId) || vendor.quotes[itemIndex];
-            } else if (vendor.quotes) {
-                quote = (vendor.quotes as any)[item.itemId] 
-                     || Object.values(vendor.quotes)[itemIndex] 
-                     || Object.values(vendor.quotes as any).find((q: any) => q.itemId === item.itemId);
-            }
+        quotation.items.forEach((item) => {
+            const quote = vendor.quotes.find(q => q.itemId === item.itemId);
             if (quote) {
                 const amount = (quote.quantity || 0) * (quote.rate || 0);
                 subTotal += amount;
                 totalTax += amount * ((quote.taxPercent || 0) / 100);
             }
         });
-      const additionalCostsArray = Array.isArray(vendor.additionalCosts) ? Object.values(vendor.additionalCosts || {}) : Object.values(vendor.additionalCosts || []);
+      const additionalCostsArray = Array.isArray(vendor.additionalCosts) ? vendor.additionalCosts : Object.values(vendor.additionalCosts || []);
       const additionalCostsTotal = additionalCostsArray.reduce((acc, cost) => acc + (cost.value || 0), 0);
       const grandTotal = subTotal + totalTax + additionalCostsTotal;
       return { vendorId: vendor.vendorId, subTotal, totalTax, additionalCosts: additionalCostsArray, grandTotal };
@@ -251,15 +243,8 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
                   <TableCell>{itemIndex + 1}</TableCell>
                   <TableCell className="font-medium">{item.description}</TableCell>
                   <TableCell>{item.uom}</TableCell>
-                  {quotation.vendors.map((vendor, vendorIndex) => {
-                    let quote: QuotationQuote | undefined;
-                    if (Array.isArray(vendor.quotes)) {
-                        quote = vendor.quotes.find(q => q.itemId === item.itemId) || vendor.quotes[itemIndex];
-                    } else if (vendor.quotes) {
-                        quote = (vendor.quotes as any)[item.itemId] 
-                             || Object.values(vendor.quotes)[itemIndex] 
-                             || Object.values(vendor.quotes as any).find((q: any) => q.itemId === item.itemId);
-                    }
+                  {quotation.vendors.map((vendor) => {
+                    const quote = vendor.quotes.find(q => q.itemId === item.itemId);
                     const amount = (quote?.quantity || 0) * (quote?.rate || 0);
 
                     return (
@@ -356,7 +341,7 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
         </DialogFooter>
       </DialogContent>
     </Dialog>
-    {receivingInfo && <ReceiveItemDialog isOpen={!!receivingInfo} setIsOpen={() => setReceivingInfo(null)} item={receivingInfo.item} quote={receivingInfo.quote} onReceive={handleReceiveItem} />}
+    {receivingInfo && <ReceiveItemDialog isOpen={!!receivingInfo} setIsOpen={() => setViewingAttachmentUrl(null)} item={receivingInfo.item} quote={receivingInfo.quote} onReceive={handleReceiveItem} />}
     </>
   );
 }
