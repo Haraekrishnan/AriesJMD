@@ -35,8 +35,8 @@ export type PurchaseContextType = {
   deletePurchaseRegister: (id: string) => void;
   updatePurchaseRegisterPoNumber: (id: string, poNumber: string) => void;
 
-  addQuotation: (quotationData: Omit<Quotation, 'id' | 'creatorId' | 'createdAt' | 'status'>) => void;
-  updateQuotation: (quotation: Quotation) => void;
+  addQuotation: (quotationData: Omit<Quotation, 'id' | 'creatorId' | 'createdAt' | 'status'>) => Promise<boolean>;
+  updateQuotation: (quotation: Quotation) => Promise<boolean>;
   deleteQuotation: (quotationId: string) => void;
   setQuotationLock: (quotationId: string, locked: boolean) => void;
   receiveQuoteItem: (quotationId: string, vendorId: string, itemId: string, quantity: number) => void;
@@ -177,95 +177,106 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
     }, []);
 
     // Quotation Functions
-    const addQuotation = useCallback((quotationData: Omit<Quotation, 'id' | 'creatorId' | 'createdAt' | 'status'>) => {
-        if (!user) return;
-        const newRef = push(ref(rtdb, 'quotations'));
-        const newQuotation: Omit<Quotation, 'id'> = {
-            ...quotationData,
-            creatorId: user.id,
-            createdAt: new Date().toISOString(),
-            status: 'Pending',
-        };
-        set(newRef, newQuotation);
-    }, [user]);
-
-    const updateQuotation = useCallback((quotation: Quotation) => {
-        const { id, ...data } = quotation;
-        const oldQuotation = quotationsById[id];
-        
-        const updateData: Partial<Quotation> = { ...data };
-    
-        const lockingStatuses: QuotationStatus[] = ['Approved', 'PO Sent', 'Partially Received', 'Completed'];
-        if (lockingStatuses.includes(data.status) && oldQuotation?.status !== data.status) {
-            if (!oldQuotation?.isLocked) {
-                 updateData.isLocked = true;
-            }
+    const addQuotation = useCallback(async (quotationData: Omit<Quotation, 'id' | 'creatorId' | 'createdAt' | 'status'>): Promise<boolean> => {
+        if (!user) return false;
+        try {
+            const newRef = push(ref(rtdb, 'quotations'));
+            const newQuotation: Omit<Quotation, 'id'> = {
+                ...quotationData,
+                creatorId: user.id,
+                createdAt: new Date().toISOString(),
+                status: 'Pending',
+            };
+            await set(newRef, newQuotation);
+            addActivityLog(user.id, 'Price Comparison Created', `Title: ${quotationData.title}`);
+            return true;
+        } catch (error) {
+            console.error("Failed to add quotation:", error);
+            return false;
         }
+    }, [user, addActivityLog]);
+
+    const updateQuotation = useCallback(async (quotation: Quotation): Promise<boolean> => {
+        if (!user) return false;
+        try {
+            const { id, ...data } = quotation;
+            const oldQuotation = quotationsById[id];
+            
+            const updateData: Partial<Quotation> = { ...data };
         
-        if (user && data.finalizedVendorId && data.finalizedVendorId !== oldQuotation?.finalizedVendorId) {
-            const finalizedVendor = data.vendors.find(v => v.vendorId === data.finalizedVendorId);
-            if (finalizedVendor) {
-                
-                const newItemsToCreate = data.items.filter(item => item.isNew);
-                let itemsCreatedCount = 0;
-    
-                newItemsToCreate.forEach(newItem => {
-                    const quote = finalizedVendor.quotes.find(q => q.itemId === newItem.itemId);
-                    if (!quote) return;
-    
-                    const quantity = quote.quantity;
-                    const category = newItem.newItemCategory!;
-    
-                    const itemBase = {
-                        name: newItem.description,
-                        quantity: quantity,
-                        unit: newItem.uom,
-                        status: 'In Store' as const,
-                        projectId: 'STORE',
-                        lastUpdated: new Date().toISOString(),
-                        remarks: `Added from quotation: ${quotation.title} (${quotation.id.slice(-6)})`,
-                        isArchived: false,
-                    };
-                    
-                    if (category === 'Daily Consumable' || category === 'Job Consumable') {
-                        addConsumableItem({...itemBase, category});
-                        itemsCreatedCount++;
-                    } else if (category === 'Store Inventory') {
-                        const newRef = push(ref(rtdb, 'inventoryItems'));
-                        const itemToAdd: Partial<InventoryItem> = {
-                          ...itemBase,
-                          category: 'General',
-                          serialNumber: `new-item-${newRef.key}` // Placeholder serial
-                        };
-                        set(newRef, itemToAdd);
-                        itemsCreatedCount++;
-                    } else if (category === 'Equipment') {
-                        const newRef = push(ref(rtdb, 'otherEquipments'));
-                        const itemToAdd: Partial<OtherEquipment> = {
-                          equipmentName: newItem.description,
-                          serialNumber: `new-equip-${newRef.key}`, // Placeholder serial
-                          projectId: 'STORE',
-                          remarks: itemBase.remarks
-                        };
-                        set(newRef, itemToAdd);
-                        itemsCreatedCount++;
-                    } else if (category === 'PPE') {
-                         // PPE handled via inward register on receipt or initial approval
-                         // Logic added in receiveQuoteItem below
-                    }
-                });
-    
-                if (itemsCreatedCount > 0) {
-                     toast({
-                        title: 'New Items Created',
-                        description: `${itemsCreatedCount} new item(s) have been added. You may need to edit them to add correct serial numbers.`,
-                    });
+            const lockingStatuses: QuotationStatus[] = ['Approved', 'PO Sent', 'Partially Received', 'Completed'];
+            if (lockingStatuses.includes(data.status) && oldQuotation?.status !== data.status) {
+                if (!oldQuotation?.isLocked) {
+                     updateData.isLocked = true;
                 }
             }
-        }
+            
+            if (data.finalizedVendorId && data.finalizedVendorId !== oldQuotation?.finalizedVendorId) {
+                const finalizedVendor = data.vendors.find(v => v.vendorId === data.finalizedVendorId);
+                if (finalizedVendor) {
+                    const newItemsToCreate = data.items.filter(item => item.isNew);
+                    let itemsCreatedCount = 0;
         
-        update(ref(rtdb, `quotations/${id}`), updateData);
-    }, [quotationsById, toast, user, addConsumableItem]);
+                    newItemsToCreate.forEach(newItem => {
+                        const quote = finalizedVendor.quotes.find(q => q.itemId === newItem.itemId);
+                        if (!quote) return;
+        
+                        const quantity = quote.quantity;
+                        const category = newItem.newItemCategory!;
+        
+                        const itemBase = {
+                            name: newItem.description,
+                            quantity: quantity,
+                            unit: newItem.uom,
+                            status: 'In Store' as const,
+                            projectId: 'STORE',
+                            lastUpdated: new Date().toISOString(),
+                            remarks: `Added from quotation: ${quotation.title} (${quotation.id.slice(-6)})`,
+                            isArchived: false,
+                        };
+                        
+                        if (category === 'Daily Consumable' || category === 'Job Consumable') {
+                            addConsumableItem({...itemBase, category});
+                            itemsCreatedCount++;
+                        } else if (category === 'Store Inventory') {
+                            const newRef = push(ref(rtdb, 'inventoryItems'));
+                            const itemToAdd: Partial<InventoryItem> = {
+                              ...itemBase,
+                              category: 'General',
+                              serialNumber: `new-item-${newRef.key}` 
+                            };
+                            set(newRef, itemToAdd);
+                            itemsCreatedCount++;
+                        } else if (category === 'Equipment') {
+                            const newRef = push(ref(rtdb, 'otherEquipments'));
+                            const itemToAdd: Partial<OtherEquipment> = {
+                              equipmentName: newItem.description,
+                              serialNumber: `new-equip-${newRef.key}`,
+                              projectId: 'STORE',
+                              remarks: itemBase.remarks
+                            };
+                            set(newRef, itemToAdd);
+                            itemsCreatedCount++;
+                        }
+                    });
+        
+                    if (itemsCreatedCount > 0) {
+                         toast({
+                            title: 'New Items Created',
+                            description: `${itemsCreatedCount} new item(s) have been added.`,
+                        });
+                    }
+                }
+            }
+            
+            await update(ref(rtdb, `quotations/${id}`), updateData);
+            addActivityLog(user.id, 'Price Comparison Updated', `ID: ${id}`);
+            return true;
+        } catch (error) {
+            console.error("Failed to update quotation:", error);
+            return false;
+        }
+    }, [quotationsById, toast, user, addConsumableItem, addActivityLog]);
 
     const deleteQuotation = useCallback((quotationId: string) => {
         if (!user || user.role !== 'Admin') {
@@ -301,7 +312,6 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
       const currentReceived = quotation.vendors[vendorIndex].quotes[quoteIndex].receivedQuantity || 0;
       updates[`quotations/${quotationId}/vendors/${vendorIndex}/quotes/${quoteIndex}/receivedQuantity`] = currentReceived + quantity;
   
-      // Check if all items are fully received to update main status
       const allItems = quotation.items;
       let allReceived = true;
       for (const item of allItems) {
@@ -324,7 +334,6 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
           updates[`quotations/${quotationId}/status`] = 'Partially Received';
       }
   
-      // Update inventory stock or PPE register
       const itemInfo = quotation.items.find(i => i.itemId === itemId);
       if (itemInfo) {
         const lowerName = itemInfo.description.toLowerCase();
@@ -339,7 +348,6 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
                 quantity: quantity,
             });
         } else {
-            // General Inventory / Consumable Logic
             const allInventory = [...inventoryItems, ...consumableItems];
             const stockItem = allInventory.find(i => i.id === itemId);
             if (stockItem && stockItem.quantity !== undefined) {

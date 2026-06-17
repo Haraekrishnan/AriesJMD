@@ -39,7 +39,7 @@ const quotationItemSchema = z.object({
 
 const quotationVendorSchema = z.object({
     id: z.string(),
-    vendorId: z.string().min(1, "Select vendor"),
+    vendorId: z.string().min(1, "Please select a vendor"),
     name: z.string(),
     quotes: z.array(z.object({
         itemId: z.string(),
@@ -236,19 +236,26 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     });
   }, [firstVendorQuotes, getValues, setValue]);
 
-  const onSubmit = (data: FormValues) => {
+  const onSubmit = async (data: FormValues) => {
     if (!data.vendors.length || !data.items.length) {
         toast({ title: "Missing items or vendors", variant: "destructive" });
         return;
     }
+    
+    let success = false;
     if (isEditMode && existingQuotation) {
-        updateQuotation({ ...existingQuotation, ...data });
-        toast({ title: "Price Comparison Updated" });
+        success = await updateQuotation({ ...existingQuotation, ...data });
+        if (success) toast({ title: "Price Comparison Updated" });
     } else {
-        addQuotation(data);
-        toast({ title: "Price Comparison Created" });
+        success = await addQuotation(data);
+        if (success) toast({ title: "Price Comparison Created" });
     }
-    setIsOpen(false);
+    
+    if (success) {
+        setIsOpen(false);
+    } else {
+        toast({ title: "Failed to save. Check your connection.", variant: "destructive" });
+    }
   };
 
   const handleOpenChange = (open: boolean) => {
@@ -256,6 +263,32 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     setIsOpen(open);
   };
   
+  const handleAddItemRow = () => {
+    const tempId = `row-${Date.now()}`;
+    appendItem({ id: tempId, itemId: '', description: '', uom: 'Nos', itemType: 'Inventory' });
+    
+    // Crucial: Add a corresponding quote entry to ALL current vendors
+    const currentVendors = getValues('vendors');
+    currentVendors.forEach((_, vIndex) => {
+        const currentQuotes = getValues(`vendors.${vIndex}.quotes`) || [];
+        setValue(`vendors.${vIndex}.quotes`, [
+            ...currentQuotes,
+            { itemId: '', quantity: 1, rate: 0, taxPercent: 0, receivedQuantity: 0 }
+        ]);
+    });
+  };
+
+  const handleRemoveItemRow = (index: number) => {
+    removeItem(index);
+    const currentVendors = getValues('vendors');
+    currentVendors.forEach((_, vIndex) => {
+        const currentQuotes = getValues(`vendors.${vIndex}.quotes`) || [];
+        const newQuotes = [...currentQuotes];
+        newQuotes.splice(index, 1);
+        setValue(`vendors.${vIndex}.quotes`, newQuotes);
+    });
+  };
+
   const handleAddVendor = () => {
     const items = getValues('items');
     appendVendor({
@@ -276,19 +309,15 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
   };
   
   const handleItemSelect = (index: number, item: SearchableQuotationItem) => {
-    const currentItemId = getValues(`items.${index}.itemId`);
-    const newItemId = item.id;
-    
-    // Update the item list
-    setValue(`items.${index}.itemId`, newItemId);
+    setValue(`items.${index}.itemId`, item.id);
     setValue(`items.${index}.description`, item.name);
     setValue(`items.${index}.uom`, item.uom || 'Nos');
     setValue(`items.${index}.itemType`, item.itemType);
     
-    // Update all vendors' quote arrays to use the new itemId for this row index
+    // Update all vendors' quote arrays for this item index
     const currentVendors = getValues('vendors');
     currentVendors.forEach((_, vIndex) => {
-        setValue(`vendors.${vIndex}.quotes.${index}.itemId`, newItemId);
+        setValue(`vendors.${vIndex}.quotes.${index}.itemId`, item.id);
     });
 
     setPopoverOpenState(prev => ({...prev, [index]: false}));
@@ -296,7 +325,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
 
   const handleNewItemCreate = (data: NewItemForQuoteValues) => {
     const tempId = `new-${Date.now()}`;
-    appendItem({
+    const newItem = {
         id: tempId,
         itemId: tempId,
         description: data.name,
@@ -304,7 +333,19 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
         itemType: data.category === 'PPE' ? 'PPE' : data.category,
         isNew: true,
         newItemCategory: data.category,
+    };
+    
+    appendItem(newItem);
+    
+    const currentVendors = getValues('vendors');
+    currentVendors.forEach((_, vIndex) => {
+        const currentQuotes = getValues(`vendors.${vIndex}.quotes`) || [];
+        setValue(`vendors.${vIndex}.quotes`, [
+            ...currentQuotes,
+            { itemId: tempId, quantity: 1, rate: 0, taxPercent: 0, receivedQuantity: 0 }
+        ]);
     });
+    
     setIsNewItemDialogOpen(false);
   };
 
@@ -383,11 +424,11 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                 {form.formState.errors.items?.[index]?.itemId && <p className="text-xs text-destructive mt-1">{form.formState.errors.items[index].itemId.message}</p>}
                               </div>
                               <Input {...form.register(`items.${index}.uom`)} placeholder="UOM" className="w-24"/>
-                              <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                              <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveItemRow(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
                           </div>
                       ))}
                       <div className="flex justify-center pt-2">
-                        <Button type="button" variant="outline" size="sm" onClick={() => appendItem({ id: `row-${Date.now()}`, itemId: '', description: '', uom: '', itemType: '' })}>
+                        <Button type="button" variant="outline" size="sm" onClick={handleAddItemRow}>
                             <PlusCircle className="h-4 w-4 mr-2"/>Add Row
                         </Button>
                       </div>
@@ -408,13 +449,16 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                       <Card key={vendorField.id} className={cn(vendorIndex === 0 && "border-primary shadow-sm")}>
                           <CardHeader className="flex-row items-center justify-between p-4 bg-muted/20">
                               <div className="flex items-center gap-4">
-                                  <div className="flex items-center gap-2">
-                                    <Label className="font-bold whitespace-nowrap">Vendor {vendorIndex + 1}:</Label>
-                                    <Select value={form.watch(`vendors.${vendorIndex}.vendorId`)} onValueChange={(vendorId) => handleVendorSelect(vendorIndex, vendorId)}>
-                                        <SelectTrigger className="w-64 bg-background"><SelectValue placeholder="Select Vendor"/></SelectTrigger>
-                                        <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                    <Button type="button" variant="outline" size="sm" onClick={() => setIsAddVendorOpen(true)}>New Vendor</Button>
+                                  <div className="flex flex-col gap-1">
+                                    <div className="flex items-center gap-2">
+                                      <Label className="font-bold whitespace-nowrap">Vendor {vendorIndex + 1}:</Label>
+                                      <Select value={form.watch(`vendors.${vendorIndex}.vendorId`)} onValueChange={(vendorId) => handleVendorSelect(vendorIndex, vendorId)}>
+                                          <SelectTrigger className="w-64 bg-background"><SelectValue placeholder="Select Vendor"/></SelectTrigger>
+                                          <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
+                                      </Select>
+                                      <Button type="button" variant="outline" size="sm" onClick={() => setIsAddVendorOpen(true)}>New Vendor</Button>
+                                    </div>
+                                    {form.formState.errors.vendors?.[vendorIndex]?.vendorId && <p className="text-xs text-destructive">{form.formState.errors.vendors[vendorIndex]!.vendorId!.message}</p>}
                                   </div>
                               </div>
                               <div className="flex items-center gap-2">
