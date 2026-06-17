@@ -75,15 +75,9 @@ const VendorQuoteSection = ({ vendorIndex, control, formState }: { vendorIndex: 
                 <div className="flex gap-2 items-start" key={field.id}>
                     <div className="flex-1">
                       <Input {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.name`)} placeholder="Cost Name (e.g. Cess)" />
-                       {formState.errors.vendors?.[vendorIndex]?.additionalCosts?.[index]?.name && 
-                        <p className="text-xs text-destructive mt-1">{formState.errors.vendors[vendorIndex].additionalCosts[index].name.message}</p>
-                      }
                     </div>
                     <div className="flex-1">
-                      <Input type="number" step="any" {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.value`, { valueAsNumber: true, setValueAs: v => v === "" ? 0 : Number(v) })} placeholder="Value"/>
-                      {formState.errors.vendors?.[vendorIndex]?.additionalCosts?.[index]?.value && 
-                        <p className="text-xs text-destructive mt-1">{formState.errors.vendors[vendorIndex].additionalCosts[index].value.message}</p>
-                      }
+                      <Input type="number" step="any" {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.value`)} placeholder="Value"/>
                     </div>
                     <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
                 </div>
@@ -168,7 +162,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     defaultValues: { title: '', items: [], vendors: [] },
   });
 
-  const { control, setValue, getValues } = form;
+  const { control, setValue, getValues, watch } = form;
 
   const { fields: itemFields, append: appendItem, remove: removeItem } = useFieldArray({
     control,
@@ -185,14 +179,13 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
         if (existingQuotation) {
             const itemsFromQuote = existingQuotation.items || [];
             const vendorsWithSyncedQuotes = (existingQuotation.vendors || []).map(vendor => {
+                const quotesArray = Array.isArray(vendor.quotes) ? vendor.quotes : Object.values(vendor.quotes || {});
                 const quotesMap = new Map<string, QuotationQuote>();
-                if (Array.isArray(vendor.quotes)) {
-                    vendor.quotes.forEach(q => {
-                        if (q?.itemId) {
-                            quotesMap.set(q.itemId, q);
-                        }
-                    });
-                }
+                quotesArray.forEach(q => {
+                    if (q?.itemId) {
+                        quotesMap.set(q.itemId, q);
+                    }
+                });
                 const syncedQuotes = itemsFromQuote.map(item => {
                     const existingQuote = quotesMap.get(item.itemId);
                     return {
@@ -234,43 +227,14 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
             const currentTax = getValues(`vendors.${vIndex}.quotes.${iIndex}.taxPercent`);
             
             if (currentQty !== quote.quantity) {
-                setValue(`vendors.${vIndex}.quotes.${iIndex}.quantity`, quote.quantity, { shouldDirty: true });
+                setValue(`vendors.${vIndex}.quotes.${iIndex}.quantity`, quote.quantity);
             }
             if (currentTax !== quote.taxPercent) {
-                setValue(`vendors.${vIndex}.quotes.${iIndex}.taxPercent`, quote.taxPercent, { shouldDirty: true });
+                setValue(`vendors.${vIndex}.quotes.${iIndex}.taxPercent`, quote.taxPercent);
             }
         });
     });
   }, [firstVendorQuotes, getValues, setValue]);
-
-  useEffect(() => {
-    const items = getValues("items");
-    const currentVendors = getValues("vendors");
-    
-    currentVendors.forEach((vendor, vIndex) => {
-      const existingQuotesMap = new Map();
-      if (vendor.quotes) {
-          vendor.quotes.forEach(q => {
-              if (q && q.itemId) existingQuotesMap.set(q.itemId, q);
-          });
-      }
-
-      const updatedQuotes = items.map((item) => {
-          const existing = existingQuotesMap.get(item.itemId);
-          return {
-            itemId: item.itemId,
-            quantity: existing?.quantity ?? 1,
-            rate: existing?.rate ?? 0,
-            taxPercent: existing?.taxPercent ?? 0,
-            receivedQuantity: existing?.receivedQuantity ?? 0,
-          };
-      });
-
-      if (JSON.stringify(vendor.quotes) !== JSON.stringify(updatedQuotes)) {
-        setValue(`vendors.${vIndex}.quotes`, updatedQuotes);
-      }
-    });
-  }, [itemFields.length, setValue, getValues]);
 
   const onSubmit = (data: FormValues) => {
     if (!data.vendors.length || !data.items.length) {
@@ -293,11 +257,12 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
   };
   
   const handleAddVendor = () => {
+    const items = getValues('items');
     appendVendor({
         id: `vendor-${Date.now()}`,
         vendorId: '',
         name: '',
-        quotes: itemFields.map(item => ({ itemId: item.itemId, quantity: 1, rate: 0, taxPercent: 0, receivedQuantity: 0 })),
+        quotes: items.map(item => ({ itemId: item.itemId, quantity: 1, rate: 0, taxPercent: 0, receivedQuantity: 0 })),
         additionalCosts: [],
     });
   };
@@ -311,10 +276,21 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
   };
   
   const handleItemSelect = (index: number, item: SearchableQuotationItem) => {
-    setValue(`items.${index}.itemId`, item.id);
+    const currentItemId = getValues(`items.${index}.itemId`);
+    const newItemId = item.id;
+    
+    // Update the item list
+    setValue(`items.${index}.itemId`, newItemId);
     setValue(`items.${index}.description`, item.name);
     setValue(`items.${index}.uom`, item.uom || 'Nos');
     setValue(`items.${index}.itemType`, item.itemType);
+    
+    // Update all vendors' quote arrays to use the new itemId for this row index
+    const currentVendors = getValues('vendors');
+    currentVendors.forEach((_, vIndex) => {
+        setValue(`vendors.${vIndex}.quotes.${index}.itemId`, newItemId);
+    });
+
     setPopoverOpenState(prev => ({...prev, [index]: false}));
   };
 
@@ -360,59 +336,61 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                       {itemFields.map((field, index) => (
                           <div className="flex gap-2 items-start" key={field.id}>
                               <div className="w-12 pt-2 text-xs font-bold text-muted-foreground text-center">{index + 1}.</div>
-                              <Controller
-                                  name={`items.${index}.itemId`}
-                                  control={control}
-                                  render={({ field: controllerField }) => (
-                                      <Popover open={popoverOpenState[index]} onOpenChange={(open) => setPopoverOpenState(prev => ({ ...prev, [index]: open }))}>
-                                          <PopoverTrigger asChild>
-                                              <Button variant="outline" className="w-full justify-start text-left font-normal">
-                                                  <span className="truncate">{form.watch(`items.${index}.description`) || "Select item..."}</span>
-                                                  <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50"/>
-                                              </Button>
-                                          </PopoverTrigger>
-                                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                              <Command>
-                                                  <CommandInput placeholder="Search all items..." />
-                                                  <CommandList>
-                                                      <CommandEmpty>No items found.</CommandEmpty>
-                                                      <CommandItem key="add-new-item" onSelect={() => {
-                                                          setIsNewItemDialogOpen(true);
-                                                          setPopoverOpenState(prev => { const s = {...prev}; s[index] = false; return s; });
-                                                      }}>
-                                                          <PlusCircle className="mr-2 h-4 w-4" />
-                                                          <span>Add New Item...</span>
-                                                      </CommandItem>
-                                                      {Object.entries(groupedItems).map(([category, items]) => (
-                                                          <CommandGroup heading={category} key={category}>
-                                                              {items.map(item => (
-                                                                  <CommandItem
-                                                                      key={item.id}
-                                                                      value={item.name}
-                                                                      onSelect={() => handleItemSelect(index, item)}
-                                                                  >
-                                                                      <Check className={cn("mr-2 h-4 w-4", controllerField.value === item.id ? "opacity-100" : "opacity-0")} />
-                                                                      {item.name}
-                                                                  </CommandItem>
-                                                              ))}
-                                                          </CommandGroup>
-                                                      ))}
-                                                  </CommandList>
-                                              </Command>
-                                          </PopoverContent>
-                                      </Popover>
-                                  )}
-                              />
+                              <div className="flex-1">
+                                <Controller
+                                    name={`items.${index}.itemId`}
+                                    control={control}
+                                    render={({ field: controllerField }) => (
+                                        <Popover open={popoverOpenState[index]} onOpenChange={(open) => setPopoverOpenState(prev => ({ ...prev, [index]: open }))}>
+                                            <PopoverTrigger asChild>
+                                                <Button variant="outline" className="w-full justify-start text-left font-normal">
+                                                    <span className="truncate">{form.watch(`items.${index}.description`) || "Select item..."}</span>
+                                                    <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50"/>
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                <Command>
+                                                    <CommandInput placeholder="Search all items..." />
+                                                    <CommandList>
+                                                        <CommandEmpty>No items found.</CommandEmpty>
+                                                        <CommandItem key="add-new-item" onSelect={() => {
+                                                            setIsNewItemDialogOpen(true);
+                                                            setPopoverOpenState(prev => { const s = {...prev}; s[index] = false; return s; });
+                                                        }}>
+                                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                                            <span>Add New Item...</span>
+                                                        </CommandItem>
+                                                        {Object.entries(groupedItems).map(([category, items]) => (
+                                                            <CommandGroup heading={category} key={category}>
+                                                                {items.map(item => (
+                                                                    <CommandItem
+                                                                        key={item.id}
+                                                                        value={item.name}
+                                                                        onSelect={() => handleItemSelect(index, item)}
+                                                                    >
+                                                                        <Check className={cn("mr-2 h-4 w-4", controllerField.value === item.id ? "opacity-100" : "opacity-0")} />
+                                                                        {item.name}
+                                                                    </CommandItem>
+                                                                ))}
+                                                            </CommandGroup>
+                                                        ))}
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
+                                    )}
+                                />
+                                {form.formState.errors.items?.[index]?.itemId && <p className="text-xs text-destructive mt-1">{form.formState.errors.items[index].itemId.message}</p>}
+                              </div>
                               <Input {...form.register(`items.${index}.uom`)} placeholder="UOM" className="w-24"/>
                               <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
                           </div>
                       ))}
                       <div className="flex justify-center pt-2">
-                        <Button type="button" variant="outline" size="sm" onClick={() => appendItem({ id: `item-${Date.now()}`, itemId: '', description: '', uom: '', itemType: '' })}>
+                        <Button type="button" variant="outline" size="sm" onClick={() => appendItem({ id: `row-${Date.now()}`, itemId: '', description: '', uom: '', itemType: '' })}>
                             <PlusCircle className="h-4 w-4 mr-2"/>Add Row
                         </Button>
                       </div>
-                      {form.formState.errors.items && <p className="text-xs text-destructive">{form.formState.errors.items.message || form.formState.errors.items.root?.message}</p>}
                   </div>
                 </AccordionContent>
               </AccordionItem>
@@ -438,9 +416,6 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                     </Select>
                                     <Button type="button" variant="outline" size="sm" onClick={() => setIsAddVendorOpen(true)}>New Vendor</Button>
                                   </div>
-                                  {form.formState.errors.vendors?.[vendorIndex]?.vendorId && 
-                                    <p className="text-xs text-destructive">Select vendor</p>
-                                  }
                               </div>
                               <div className="flex items-center gap-2">
                                 {vendorIndex === 0 && <Badge variant="secondary" className="bg-primary/10 text-primary">Master Data Source</Badge>}
@@ -458,16 +433,13 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                 <div className="grid grid-cols-[3fr,1fr,1fr,1fr] gap-4 items-center border-b py-2 last:border-b-0 hover:bg-muted/10 px-2" key={`${vendorField.id}-${itemIndex}`}>
                                     <Label className="text-sm truncate">{form.watch(`items.${itemIndex}.description`) || `Item ${itemIndex + 1}`}</Label>
                                     <div>
-                                        <Input type="number" step="any" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.quantity`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Qty" className="text-center h-8"/>
-                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.quantity && <p className="text-[10px] text-destructive mt-1">Req.</p>}
+                                        <Input type="number" step="any" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.quantity`)} className="text-center h-8"/>
                                     </div>
                                     <div>
-                                        <Input type="number" step="any" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.rate`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Rate" className="text-right h-8"/>
-                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.rate && <p className="text-[10px] text-destructive mt-1">Req.</p>}
+                                        <Input type="number" step="any" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.rate`)} className="text-right h-8"/>
                                     </div>
                                     <div>
-                                        <Input type="number" step="any" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.taxPercent`, { valueAsNumber: true, setValueAs: v => (v === "" || v === null || v === undefined) ? 0 : Number(v) })} placeholder="Tax %" className="text-center h-8"/>
-                                        {form.formState.errors.vendors?.[vendorIndex]?.quotes?.[itemIndex]?.taxPercent && <p className="text-[10px] text-destructive mt-1">Req.</p>}
+                                        <Input type="number" step="any" {...form.register(`vendors.${vendorIndex}.quotes.${itemIndex}.taxPercent`)} className="text-center h-8"/>
                                     </div>
                                 </div>
                             ))}
@@ -481,7 +453,6 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                     <Button type="button" variant="outline" className="w-full border-dashed" onClick={handleAddVendor} disabled={itemFields.length === 0}>
                         <PlusCircle className="h-4 w-4 mr-2"/>Add Vendor Quote
                     </Button>
-                    {form.formState.errors.vendors && <p className="text-xs text-destructive">{form.formState.errors.vendors.message || form.formState.errors.vendors.root?.message}</p>}
                  </div>
                 </AccordionContent>
               </AccordionItem>

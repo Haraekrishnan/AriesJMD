@@ -2,17 +2,14 @@
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import type { Quotation, QuotationQuote } from '@/lib/types';
-import { format, parseISO } from 'date-fns';
-
-const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
 
 export const exportToExcel = async (quotation: Quotation) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Price Comparison");
 
-    // ===== TITLE (dynamic) =====
+    // ===== TITLE =====
     const vendorCount = quotation.vendors.length;
-    const colsPerVendor = 5; // QTY, UOM, RATE, TAX %, AMOUNT
+    const colsPerVendor = 5; 
     const totalColumns = 2 + (vendorCount * colsPerVendor); 
 
     worksheet.mergeCells(1, 1, 1, totalColumns);
@@ -21,63 +18,42 @@ export const exportToExcel = async (quotation: Quotation) => {
     title.font = { bold: true, size: 14 };
     title.alignment = { horizontal: 'center' };
 
-
-    // ===== VENDOR HEADER (YELLOW) =====
-    let vendorHeader: any[] = ['', '']; // skip Sl. No and Description
-
+    // ===== VENDOR HEADER =====
+    let vendorHeader: any[] = ['', '']; 
     quotation.vendors.forEach(v => {
         vendorHeader.push(v.name, '', '', '', '');
     });
-
     const vendorRow = worksheet.addRow(vendorHeader);
 
-    // Merge each vendor block
     let colStart = 3;
     quotation.vendors.forEach((vendor) => {
         worksheet.mergeCells(vendorRow.number, colStart, vendorRow.number, colStart + colsPerVendor - 1);
-
         const cell = vendorRow.getCell(colStart);
         cell.value = vendor.name;
-        cell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FFFF00' } // Yellow
-        };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF00' } };
         cell.font = { bold: true };
         cell.alignment = { horizontal: 'center' };
-
         colStart += colsPerVendor;
     });
 
-
-    // ===== COLUMN HEADERS (BLUE) =====
+    // ===== COLUMN HEADERS =====
     let header: string[] = ['Sl. No', 'DESCRIPTION'];
-
     quotation.vendors.forEach(() => {
         header.push('QTY', 'UOM', 'RATE', 'TAX %', 'AMOUNT');
     });
-
     const headerRow = worksheet.addRow(header);
     headerRow.eachCell(cell => {
-        cell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: '305496' } // Blue
-        };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '305496' } };
         cell.font = { color: { argb: 'FFFFFF' }, bold: true };
         cell.alignment = { horizontal: 'center' };
     });
 
     // ===== ITEMS =====
     quotation.items.forEach((item, itemIndex) => {
-        let rowData: any[] = [
-            itemIndex + 1,
-            item.description
-        ];
-
+        let rowData: any[] = [itemIndex + 1, item.description];
         quotation.vendors.forEach(vendor => {
-            const quote = (vendor.quotes || []).find(q => q.itemId === item.itemId);
-
+            const quotesArray = Array.isArray(vendor.quotes) ? vendor.quotes : Object.values(vendor.quotes || {});
+            const quote = quotesArray.find(q => q.itemId === item.itemId);
             rowData.push(
                 quote?.quantity || 0,
                 item.uom,
@@ -86,80 +62,55 @@ export const exportToExcel = async (quotation: Quotation) => {
                 (quote?.quantity || 0) * (quote?.rate || 0)
             );
         });
-
         const addedRow = worksheet.addRow(rowData);
-
-        // Currency format
         for (let i = 0; i < vendorCount; i++) {
             const baseCol = 3 + (i * colsPerVendor);
-            addedRow.getCell(baseCol + 2).numFmt = '₹ #,##0.00'; // RATE
-            addedRow.getCell(baseCol + 4).numFmt = '₹ #,##0.00'; // AMOUNT
+            addedRow.getCell(baseCol + 2).numFmt = '₹ #,##0.00'; 
+            addedRow.getCell(baseCol + 4).numFmt = '₹ #,##0.00'; 
         }
     });
 
-    // ===== TOTAL CALCULATIONS =====
+    // ===== TOTALS =====
     const totals = quotation.vendors.map(vendor => {
         let subTotal = 0;
         let totalTax = 0;
-      
+        const quotesArray = Array.isArray(vendor.quotes) ? vendor.quotes : Object.values(vendor.quotes || {});
         quotation.items.forEach((item) => {
-          const quote = (vendor.quotes || []).find(q => q.itemId === item.itemId);
-      
+          const quote = quotesArray.find(q => q.itemId === item.itemId);
           if (quote) {
             const amount = (quote.quantity || 0) * (quote.rate || 0);
             subTotal += amount;
             totalTax += amount * ((quote.taxPercent || 0) / 100);
           }
         });
-      
         const additionalCostsArray = Array.isArray(vendor.additionalCosts) ? vendor.additionalCosts : Object.values(vendor.additionalCosts || []);
         const additionalCostsTotal = additionalCostsArray.reduce((acc, cost) => acc + (cost.value || 0), 0);
+        return { subTotal, totalTax, additionalCosts: additionalCostsArray, grandTotal: subTotal + totalTax + additionalCostsTotal };
+    });
       
-        const grandTotal = subTotal + totalTax + additionalCostsTotal;
-        return {
-          subTotal,
-          totalTax,
-          additionalCosts: additionalCostsArray,
-          grandTotal,
-        };
-      });
-      
-      const minGrandTotal = Math.min(...totals.map(t => t.grandTotal).filter(t => t > 0));
+    const minGrandTotal = Math.min(...totals.map(t => t.grandTotal).filter(t => t > 0));
 
-      const addRow = (label: string, values: number[], isGrandTotal = false) => {
+    const addRow = (label: string, values: number[], isGrandTotal = false) => {
         let rowData: any[] = ['', label];
-    
-        values.forEach(v => {
-            rowData.push('', '', '', '', v);
-        });
-    
+        values.forEach(v => { rowData.push('', '', '', '', v); });
         const row = worksheet.addRow(rowData);
-    
         row.font = { bold: true };
-    
         let col = 3;
-        values.forEach((value, index) => {
+        values.forEach((value) => {
             worksheet.mergeCells(row.number, col, row.number, col + colsPerVendor - 1);
             const cell = row.getCell(col);
             cell.value = value;
             cell.numFmt = '₹ #,##0.00'; 
             cell.alignment = { horizontal: 'right' };
-
             if (isGrandTotal && value > 0 && value === minGrandTotal) {
-                cell.fill = {
-                    type: 'pattern',
-                    pattern: 'solid',
-                    fgColor: { argb: 'FFC6EFCE' } // light green
-                };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } };
             }
             col += colsPerVendor;
         });
     };
 
-    worksheet.addRow([]); // Spacer
-
+    worksheet.addRow([]);
     addRow('Subtotal', totals.map(t => t.subTotal));
-
     const allCostNames = Array.from(new Set(totals.flatMap(t => t.additionalCosts.map(c => c.name))));
     allCostNames.forEach(costName => {
         if (costName) {
@@ -167,30 +118,24 @@ export const exportToExcel = async (quotation: Quotation) => {
             addRow(costName, costValues);
         }
     });
-
     addRow('GST', totals.map(t => t.totalTax));
     addRow('Grand Total', totals.map(t => t.grandTotal), true);
 
-    // ===== COLUMN WIDTHS =====
     worksheet.getColumn(1).width = 8;
     worksheet.getColumn(2).width = 35;
     for (let i = 0; i < vendorCount; i++) {
         const colBase = 3 + (i * colsPerVendor);
-        worksheet.getColumn(colBase).width = 8;     // QTY
-        worksheet.getColumn(colBase + 1).width = 8;     // UOM
-        worksheet.getColumn(colBase + 2).width = 12;    // RATE
-        worksheet.getColumn(colBase + 3).width = 10;    // TAX %
-        worksheet.getColumn(colBase + 4).width = 15;    // AMOUNT
+        worksheet.getColumn(colBase).width = 8;
+        worksheet.getColumn(colBase + 1).width = 8;
+        worksheet.getColumn(colBase + 2).width = 12;
+        worksheet.getColumn(colBase + 3).width = 10;
+        worksheet.getColumn(colBase + 4).width = 15;
     }
     
-    // ===== BORDERS =====
     worksheet.eachRow((row, rowNumber) => {
         if (rowNumber > 1) { 
             row.eachCell({ includeEmpty: true }, cell => {
-                cell.border = {
-                    top: { style: 'thin' }, left: { style: 'thin' },
-                    bottom: { style: 'thin' }, right: { style: 'thin' }
-                };
+                cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
             });
         }
     });

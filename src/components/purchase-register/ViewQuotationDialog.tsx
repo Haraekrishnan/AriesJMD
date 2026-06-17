@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import type { Quotation, QuotationItem, QuotationQuote, QuotationVendorDetails, QuotationStatus } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Crown, AlertCircle, ShoppingCart, FilePlus, ThumbsUp } from 'lucide-react';
+import { Crown, ThumbsUp } from 'lucide-react';
 import * as React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Input } from '../ui/input';
@@ -70,12 +70,12 @@ const ReceiveItemDialog = ({
                     <Input
                         id="receive-qty"
                         type="number"
+                        step="any"
                         value={quantity}
                         onChange={e => setQuantity(Number(e.target.value))}
                         max={maxReceivable}
                         min="0"
                     />
-                     {quantity > maxReceivable && <p className="text-xs text-destructive mt-1">Cannot exceed remaining quantity of {maxReceivable}.</p>}
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
@@ -104,8 +104,10 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
     return quotation.vendors.map(vendor => {
         let subTotal = 0;
         let totalTax = 0;
+        const quotesArray = Array.isArray(vendor.quotes) ? vendor.quotes : Object.values(vendor.quotes || {});
+
         quotation.items.forEach((item) => {
-            const quote = vendor.quotes.find(q => q.itemId === item.itemId);
+            const quote = quotesArray.find(q => q.itemId === item.itemId);
             if (quote) {
                 const amount = (quote.quantity || 0) * (quote.rate || 0);
                 subTotal += amount;
@@ -127,31 +129,12 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
   
  const handleStatusChange = (newStatus: QuotationStatus) => {
     if (!canFinalize) return;
-
-    if (newStatus === 'PO Sent' && !quotation.finalizedVendorId) {
-        toast({ title: 'Vendor Not Finalized', description: 'Please approve the quotation and finalize a vendor before marking "PO Sent".', variant: 'destructive'});
-        return;
-    }
-    
-    if (quotation.finalizedVendorId && (newStatus === 'Pending' || newStatus === 'Rejected')) {
-      toast({ title: 'Action Not Allowed', description: 'Cannot change status backward after a vendor has been finalized.', variant: 'destructive' });
-      return;
-    }
-    
     updateQuotation({ ...quotation, status: newStatus });
     toast({ title: `Status updated to ${newStatus}` });
   };
   
   const handleFinalizeVendor = (vendorId: string) => {
     if (!canFinalize) return;
-    if (quotation.status !== 'Approved') {
-      toast({
-        variant: 'destructive',
-        title: 'Approval Required',
-        description: 'You must set the status to "Approved" before you can finalize a vendor.',
-      });
-      return;
-    }
     updateQuotation({ ...quotation, finalizedVendorId: vendorId, status: 'PO Sent' });
     toast({
       title: 'Vendor Finalized & PO Sent',
@@ -167,10 +150,8 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
   const handleReceiveItem = (quantity: number) => {
     if (!receivingInfo) return;
     const { item, vendor } = receivingInfo;
-    
     receiveQuoteItem(quotation.id, vendor.vendorId, item.itemId, quantity);
-    
-    toast({ title: `Logged ${quantity} of ${item.description} as 'Pending Details'`});
+    toast({ title: `Logged ${quantity} of ${item.description} received.`});
     setReceivingInfo(null);
   };
   
@@ -244,7 +225,8 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
                   <TableCell className="font-medium">{item.description}</TableCell>
                   <TableCell>{item.uom}</TableCell>
                   {quotation.vendors.map((vendor) => {
-                    const quote = vendor.quotes.find(q => q.itemId === item.itemId);
+                    const quotesArray = Array.isArray(vendor.quotes) ? vendor.quotes : Object.values(vendor.quotes || {});
+                    const quote = quotesArray.find(q => q.itemId === item.itemId);
                     const amount = (quote?.quantity || 0) * (quote?.rate || 0);
 
                     return (
@@ -270,7 +252,6 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
                   })}
                 </TableRow>
               ))}
-              {/* --- FOOTER ROWS --- */}
               <TableRow className="font-bold bg-muted/50">
                   <TableCell colSpan={3} className="text-right">Sub-Total</TableCell>
                   {calculatedTotals.map((total, i) => <TableCell key={i} colSpan={quotation.finalizedVendorId === total.vendorId ? 6 : 4} className="text-right border-x">{formatCurrency(total.subTotal)}</TableCell>)}
@@ -318,7 +299,7 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
                                            <AlertDialogHeader>
                                                <AlertDialogTitle>Finalize Vendor?</AlertDialogTitle>
                                                <AlertDialogDescription>
-                                                   This will select '{quotation.vendors.find(v => v.vendorId === total.vendorId)?.name}' as the final vendor and move the status to "PO Sent". This action cannot be easily undone.
+                                                   This will select '{quotation.vendors.find(v => v.vendorId === total.vendorId)?.name}' as the final vendor.
                                                </AlertDialogDescription>
                                            </AlertDialogHeader>
                                            <AlertDialogFooter>
@@ -341,7 +322,7 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
         </DialogFooter>
       </DialogContent>
     </Dialog>
-    {receivingInfo && <ReceiveItemDialog isOpen={!!receivingInfo} setIsOpen={() => setViewingAttachmentUrl(null)} item={receivingInfo.item} quote={receivingInfo.quote} onReceive={handleReceiveItem} />}
+    {receivingInfo && <ReceiveItemDialog isOpen={!!receivingInfo} setIsOpen={() => setReceivingInfo(null)} item={receivingInfo.item} quote={receivingInfo.quote} onReceive={handleReceiveItem} />}
     </>
   );
 }
