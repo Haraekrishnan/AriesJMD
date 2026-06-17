@@ -24,6 +24,7 @@ import AddNewItemForQuoteDialog from './AddNewItemForQuoteDialog';
 import type { NewItemForQuoteValues } from './AddNewItemForQuoteDialog';
 import AddVendorDialog from '../vendor-management/AddVendorDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Badge } from '../ui/badge';
 
 const quotationItemSchema = z.object({
     id: z.string(),
