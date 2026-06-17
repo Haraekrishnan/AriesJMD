@@ -1,5 +1,5 @@
 'use client';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -167,13 +167,15 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     defaultValues: { title: '', items: [], vendors: [] },
   });
 
+  const { control, setValue, getValues } = form;
+
   const { fields: itemFields, append: appendItem, remove: removeItem } = useFieldArray({
-    control: form.control,
+    control,
     name: "items"
   });
   
   const { fields: vendorFields, append: appendVendor, remove: removeVendor } = useFieldArray({
-    control: form.control,
+    control,
     name: "vendors"
   });
 
@@ -214,31 +216,36 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
   }, [isOpen, existingQuotation, form]);
 
   // Sync Quantity and Tax % from the first vendor to all other vendors
-  const firstVendorQuotes = form.watch('vendors.0.quotes');
+  const firstVendorQuotes = useWatch({
+    control,
+    name: 'vendors.0.quotes'
+  });
+
   useEffect(() => {
     if (!firstVendorQuotes || firstVendorQuotes.length === 0) return;
-    const vendors = form.getValues('vendors');
-    if (vendors.length <= 1) return;
+    const currentVendors = getValues('vendors');
+    if (!currentVendors || currentVendors.length <= 1) return;
 
-    vendors.forEach((vendor, vIndex) => {
+    currentVendors.forEach((vendor, vIndex) => {
         if (vIndex === 0) return;
         firstVendorQuotes.forEach((quote, iIndex) => {
-            const currentQty = form.getValues(`vendors.${vIndex}.quotes.${iIndex}.quantity`);
-            const currentTax = form.getValues(`vendors.${vIndex}.quotes.${iIndex}.taxPercent`);
+            if (!quote) return;
+            const currentQty = getValues(`vendors.${vIndex}.quotes.${iIndex}.quantity`);
+            const currentTax = getValues(`vendors.${vIndex}.quotes.${iIndex}.taxPercent`);
             
             if (currentQty !== quote.quantity) {
-                form.setValue(`vendors.${vIndex}.quotes.${iIndex}.quantity`, quote.quantity, { shouldDirty: true });
+                setValue(`vendors.${vIndex}.quotes.${iIndex}.quantity`, quote.quantity, { shouldDirty: true });
             }
             if (currentTax !== quote.taxPercent) {
-                form.setValue(`vendors.${vIndex}.quotes.${iIndex}.taxPercent`, quote.taxPercent, { shouldDirty: true });
+                setValue(`vendors.${vIndex}.quotes.${iIndex}.taxPercent`, quote.taxPercent, { shouldDirty: true });
             }
         });
     });
-  }, [firstVendorQuotes, form]);
+  }, [firstVendorQuotes, getValues, setValue]);
 
   useEffect(() => {
-    const items = form.getValues("items");
-    const vendors = form.getValues("vendors");
+    const items = getValues("items");
+    const vendors = getValues("vendors");
     vendors.forEach((vendor, vIndex) => {
       if (!vendor.quotes || vendor.quotes.length !== items.length) {
         const updatedQuotes = items.map((item, i) => ({
@@ -248,10 +255,10 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
           taxPercent: vendor.quotes?.[i]?.taxPercent ?? 0,
           receivedQuantity: vendor.quotes?.[i]?.receivedQuantity ?? 0,
         }));
-        form.setValue(`vendors.${vIndex}.quotes`, updatedQuotes);
+        setValue(`vendors.${vIndex}.quotes`, updatedQuotes);
       }
     });
-  }, [itemFields.length, form]);
+  }, [itemFields.length, setValue, getValues]);
 
   const onSubmit = (data: FormValues) => {
     if (!data.vendors.length || !data.items.length) {
@@ -286,16 +293,16 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
   const handleVendorSelect = (vendorIndex: number, vendorId: string) => {
     const vendor = vendors.find(v => v.id === vendorId);
     if(vendor) {
-        form.setValue(`vendors.${vendorIndex}.vendorId`, vendor.id);
-        form.setValue(`vendors.${vendorIndex}.name`, vendor.name);
+        setValue(`vendors.${vendorIndex}.vendorId`, vendor.id);
+        setValue(`vendors.${vendorIndex}.name`, vendor.name);
     }
   };
   
   const handleItemSelect = (index: number, item: SearchableQuotationItem) => {
-    form.setValue(`items.${index}.itemId`, item.id);
-    form.setValue(`items.${index}.description`, item.name);
-    form.setValue(`items.${index}.uom`, item.uom || 'Nos');
-    form.setValue(`items.${index}.itemType`, item.itemType);
+    setValue(`items.${index}.itemId`, item.id);
+    setValue(`items.${index}.description`, item.name);
+    setValue(`items.${index}.uom`, item.uom || 'Nos');
+    setValue(`items.${index}.itemType`, item.itemType);
     setPopoverOpenState(prev => ({...prev, [index]: false}));
   };
 
@@ -343,7 +350,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                               <div className="w-12 pt-2 text-xs font-bold text-muted-foreground text-center">{index + 1}.</div>
                               <Controller
                                   name={`items.${index}.itemId`}
-                                  control={form.control}
+                                  control={control}
                                   render={({ field: controllerField }) => (
                                       <Popover open={popoverOpenState[index]} onOpenChange={(open) => setPopoverOpenState(prev => ({ ...prev, [index]: open }))}>
                                           <PopoverTrigger asChild>
@@ -383,7 +390,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                           </PopoverContent>
                                       </Popover>
                                   )}
-                              />
+                              </Controller>
                               <Input {...form.register(`items.${index}.uom`)} placeholder="UOM" className="w-24"/>
                               <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
                           </div>
@@ -454,7 +461,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                             ))}
                             <div className="mt-6 pt-4 border-t">
                                 <h5 className="font-semibold text-sm mb-3">Additional Costs & Charges</h5>
-                                <VendorQuoteSection vendorIndex={vendorIndex} control={form.control} formState={form.formState} />
+                                <VendorQuoteSection vendorIndex={vendorIndex} control={control} formState={form.formState} />
                             </div>
                           </CardContent>
                       </Card>
