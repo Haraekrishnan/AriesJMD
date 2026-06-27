@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { useInventory } from '@/contexts/inventory-provider';
@@ -22,7 +21,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '../ui/scroll-area';
 import { Trash2 } from 'lucide-react';
-import { InventoryItem, UTMachine, DftMachine, TpCertList, TpCertListItem, DigitalCamera, Anemometer, OtherEquipment, LaptopDesktop, MobileSim, WeldingMachine, WalkieTalkie } from '@/lib/types';
+import { InventoryItem, UTMachine, DftMachine, TpCertList, TpCertListItem, DigitalCamera, Anemometer, OtherEquipment, LaptopDesktop, MobileSim, WeldingMachine, WalkieTalkie, PneumaticDrillingMachine, PneumaticAngleGrinder, WiredDrillingMachine, CordlessDrillingMachine, WiredAngleGrinder, CordlessAngleGrinder, CordlessReciprocatingSaw } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Label } from '../ui/label';
@@ -37,11 +36,29 @@ interface GenerateTpCertDialogProps {
   listToCreate?: Partial<TpCertList> | null;
 }
 
-type SearchableItem = (InventoryItem | UTMachine | DftMachine | DigitalCamera | Anemometer | OtherEquipment | LaptopDesktop | MobileSim | WeldingMachine | WalkieTalkie) & { itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim' | 'WeldingMachine' | 'WalkieTalkie'; };
+type SearchableItem = 
+  | (InventoryItem & { itemType: 'Inventory' })
+  | (UTMachine & { itemType: 'UTMachine' })
+  | (DftMachine & { itemType: 'DftMachine' })
+  | (DigitalCamera & { itemType: 'DigitalCamera' })
+  | (Anemometer & { itemType: 'Anemometer' })
+  | (OtherEquipment & { itemType: 'OtherEquipment' })
+  | (LaptopDesktop & { itemType: 'LaptopDesktop' })
+  | (MobileSim & { itemType: 'MobileSim' })
+  | (WeldingMachine & { itemType: 'WeldingMachine' })
+  | (WalkieTalkie & { itemType: 'WalkieTalkie' })
+  | (PneumaticDrillingMachine & { itemType: 'PneumaticDrillingMachine' })
+  | (PneumaticAngleGrinder & { itemType: 'PneumaticAngleGrinder' })
+  | (WiredDrillingMachine & { itemType: 'WiredDrillingMachine' })
+  | (CordlessDrillingMachine & { itemType: 'CordlessDrillingMachine' })
+  | (WiredAngleGrinder & { itemType: 'WiredAngleGrinder' })
+  | (CordlessAngleGrinder & { itemType: 'CordlessAngleGrinder' })
+  | (CordlessReciprocatingSaw & { itemType: 'CordlessReciprocatingSaw' });
 
 export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList = null, listToCreate = null }: GenerateTpCertDialogProps) {
   const { 
-      inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies, 
+      inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies,
+      pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws,
       addTpCertList, updateTpCertList 
   } = useInventory();
       const { toast } = useToast();
@@ -63,8 +80,18 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
         mobileSims?.forEach(item => items.push({ ...item, itemType: 'MobileSim' }));
         weldingMachines?.forEach(item => items.push({ ...item, itemType: 'WeldingMachine' }));
         walkieTalkies?.forEach(item => items.push({ ...item, itemType: 'WalkieTalkie' }));
+        pneumaticDrillingMachines?.forEach(item => items.push({ ...item, itemType: 'PneumaticDrillingMachine' }));
+        pneumaticAngleGrinders?.forEach(item => items.push({ ...item, itemType: 'PneumaticAngleGrinder' }));
+        wiredDrillingMachines?.forEach(item => items.push({ ...item, itemType: 'WiredDrillingMachine' }));
+        cordlessDrillingMachines?.forEach(item => items.push({ ...item, itemType: 'CordlessDrillingMachine' }));
+        wiredAngleGrinders?.forEach(item => items.push({ ...item, itemType: 'WiredAngleGrinder' }));
+        cordlessAngleGrinders?.forEach(item => items.push({ ...item, itemType: 'CordlessAngleGrinder' }));
+        cordlessReciprocatingSaws?.forEach(item => items.push({ ...item, itemType: 'CordlessReciprocatingSaw' }));
         return items;
-      }, [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies]);
+      }, [
+        inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies,
+        pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws
+      ]);
 
       useEffect(() => {
         if (existingList) {
@@ -117,8 +144,8 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
         }
         const term = searchTerm.toLowerCase();
         return itemsOfSelectedName.filter(item => 
-            ((item as any).serialNumber && (item as any).serialNumber.toLowerCase().includes(term)) ||
-            (item.ariesId && item.ariesId.toLowerCase().includes(term))
+            ((item as any).serialNumber && String((item as any).serialNumber).toLowerCase().includes(term)) ||
+            (item.ariesId && String(item.ariesId).toLowerCase().includes(term))
         );
       }, [searchTerm, itemsOfSelectedName]);
 
@@ -131,9 +158,9 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
           itemId: item.id,
           itemType: item.itemType,
           materialName,
-          manufacturerSrNo: serialNumber,
-          chestCrollNo: (item as InventoryItem).chestCrollNo,
-          ariesId: item.ariesId || null,
+          manufacturerSrNo: String(serialNumber),
+          chestCrollNo: (item as InventoryItem).chestCrollNo || null,
+          ariesId: item.ariesId ? String(item.ariesId) : null,
         };
       
         if (!selectedItems.some(i => i.itemId === newItem.itemId && i.itemType === newItem.itemType)) {
@@ -235,8 +262,8 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                                       onSelect={() => handleSelect(item)}
                                       className="cursor-pointer"
                                   >
-                                      <span>{item.serialNumber || 'N/A'}</span>
-                                      {item.ariesId && <span className="ml-auto text-xs text-muted-foreground">(ID: {item.ariesId})</span>}
+                                      <span>{item.serialNumber ? String(item.serialNumber) : 'N/A'}</span>
+                                      {item.ariesId && <span className="ml-auto text-xs text-muted-foreground">(ID: {String(item.ariesId)})</span>}
                                   </CommandItem>
                                   ))}
                               </CommandGroup>
@@ -311,4 +338,3 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
         </Dialog>
       );
 }
-
