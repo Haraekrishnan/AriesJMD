@@ -73,8 +73,7 @@ export async function generateSchedulePdf(
   doc.autoTable({
     startY: tableStartY,
     tableWidth: usableWidth,
-    margin: { left: margin, right: margin, top: tableStartY, bottom: 70 },
-    pageBreak: 'auto',
+    margin: { left: margin, right: margin, top: tableStartY, bottom: 55 },
 
     head: [headRow],
     body: bodyRows,
@@ -88,11 +87,10 @@ export async function generateSchedulePdf(
             left: 3,
             right: 3
         },
-        minCellHeight: 18,
         lineWidth: 0.2,
         lineColor: [0, 0, 0],
         textColor: [0, 0, 0],
-        valign: 'top', 
+        valign: 'middle', 
     },
     headStyles: {
         fillColor: [255, 255, 255],
@@ -114,28 +112,20 @@ export async function generateSchedulePdf(
         9: { cellWidth: 'auto' },
     },
 
-    didParseCell: (data: any) => {
-      if (data.section === 'body' && data.column.index === 1) {
-        const rawNames = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
-        const namesOnly = rawNames.map(rn => {
-           const match = rn.match(/^(.*)\s\((.*)\)$/);
-           return match ? match[1].trim() : rn.trim();
-        });
-        
-        // We set the joined string so AutoTable can measure the needed row height
-        data.cell.text = [namesOnly.join(", ")];
-      }
-    },
-
-    willDrawCell: (data: any) => {
-      if (data.section === 'body' && data.column.index === 1) {
-        // Set text to white. This hides default rendering while preserving AutoTable's calculated layout
-        data.cell.styles.textColor = [255, 255, 255];
-      }
-    },
-
     didDrawCell: (data: any) => {
       if (data.section !== 'body' || data.column.index !== 1) return;
+
+      const currentDoc = data.doc;
+
+      // Hide AutoTable's original text by painting over it with a white rectangle
+      currentDoc.setFillColor(255, 255, 255);
+      currentDoc.rect(
+        data.cell.x + 0.5,
+        data.cell.y + 0.5,
+        data.cell.width - 1,
+        data.cell.height - 1,
+        "F"
+      );
 
       const rawNames = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
         
@@ -154,17 +144,16 @@ export async function generateSchedulePdf(
           return getRank(a.trade) - getRank(b.trade);
       });
 
-      const currentDoc = data.doc;
       const paddingLeft = data.cell.padding('left');
       const startX = data.cell.x + paddingLeft;
       const maxWidth = data.cell.width - paddingLeft - data.cell.padding('right');
-
       const fSize = data.cell.styles.fontSize;
       const lHeight = fSize * 1.8; 
       const separator = ", ";
 
       let cursorX = startX;
-      let cursorY = data.cell.y + data.cell.padding('top') + fSize + 2;
+      // Start drawing from top-padding + font size
+      let cursorY = data.cell.y + data.cell.padding('top') + fSize;
 
       currentDoc.setFontSize(fSize);
 
@@ -178,21 +167,22 @@ export async function generateSchedulePdf(
         if (isRA3 || isMgt) currentDoc.setFont('helvetica', 'bold');
         else currentDoc.setFont('helvetica', 'normal');
 
+        if (isMgt) currentDoc.setTextColor(0, 102, 204); // Blue
+        else currentDoc.setTextColor(0, 0, 0); // Black
+
         const displayWidth = currentDoc.getTextWidth(displayText);
 
-        // Check if name + separator exceeds column width
+        // Wrap to next line if it exceeds column width
         if (cursorX + displayWidth > startX + maxWidth && cursorX > startX) {
             cursorX = startX;
             cursorY += lHeight;
         }
 
-        if (isMgt) currentDoc.setTextColor(0, 102, 204); // Blue
-        else currentDoc.setTextColor(0, 0, 0); // Black
-
         currentDoc.text(displayText, cursorX, cursorY);
         cursorX += displayWidth;
       });
 
+      // Reset for subsequent cells
       currentDoc.setFont('helvetica', 'normal').setTextColor(0, 0, 0);
     },
 
@@ -218,6 +208,7 @@ export async function generateSchedulePdf(
 
   const finalTable = (doc as any).lastAutoTable;
   const footerHeight = 60;
+  // Dock footer directly to the bottom border of the table
   let footerY = finalTable.finalY - 0.2;
 
   // Page overflow protection for footer
