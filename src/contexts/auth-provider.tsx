@@ -134,7 +134,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       return comments.some(c => {
         if (!c) return false;
-        const event = eventsOnDay.find(e => e.id === c.eventId);
+        // Search in all plannerEvents to find the specific event referenced by the comment
+        const event = plannerEvents.find(e => e.id === c.eventId);
         if (!event) return false;
         const isParticipant = event.userId === user.id || event.creatorId === user.id;
         return isParticipant && c.userId !== user.id && !c.viewedBy?.[user.id];
@@ -222,8 +223,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await update(ref(rtdb, `users/${id}`), dataToSave);
         console.log(`[AuthProvider] RTDB write completed successfully for user ${id}`);
         
-        if (user?.id) addActivityLog(user.id, 'User Profile Updated', `Updated details for ${updatedUser.name}`);
-        
         // Update local state if the user being updated is the current user
         if (user?.id === updatedUser.id) {
             setUser(updatedUser);
@@ -233,7 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("[AuthProvider] Database update failed:", error);
         return false;
     }
-  }, [user, addActivityLog]);
+  }, [user]);
   
   const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string, signatureFile?: File | null): Promise<boolean> => {
     if (!user) {
