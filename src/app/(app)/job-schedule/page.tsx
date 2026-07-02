@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -50,11 +49,12 @@ export default function JobSchedulePage() {
         };
 
         const schedulerName = user.name;
+        const signature = user.signatureBase64;
 
         if (type === 'excel') {
-            await generateScheduleExcel(scheduleWithNames, selectedDate, footerDate, schedulerName);
+            await generateScheduleExcel(scheduleWithNames, selectedDate, footerDate, schedulerName, signature);
         } else {
-            await generateSchedulePdf(scheduleWithNames, selectedDate, footerDate, schedulerName);
+            await generateSchedulePdf(scheduleWithNames, selectedDate, footerDate, schedulerName, signature);
         }
     };
 

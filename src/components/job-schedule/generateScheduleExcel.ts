@@ -1,4 +1,3 @@
-
 import ExcelJS from 'exceljs';
 import { format } from 'date-fns';
 import { saveAs } from 'file-saver';
@@ -17,7 +16,8 @@ export async function generateScheduleExcel(
   schedule: JobSchedule | undefined,
   scheduleDate: Date,
   reportDate: Date,
-  schedulerName: string
+  schedulerName: string,
+  userSignature?: string
 ) {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Job Schedule');
@@ -158,6 +158,22 @@ export async function generateScheduleExcel(
   ws.getCell(`A${rowIndex}`).value = `Scheduled by: ${schedulerName}`;
   ws.getCell(`G${rowIndex}`).value = `Date: ${formattedReportDate}`;
   ws.getCell(`G${rowIndex}`).alignment = { horizontal: 'right' };
+
+  // --- Add Signature if available ---
+  if (userSignature) {
+    try {
+      const signatureId = wb.addImage({
+        base64: userSignature,
+        extension: 'png',
+      });
+      ws.addImage(signatureId, {
+        tl: { col: 0.5, row: rowIndex - 2 },
+        ext: { width: 100, height: 40 }
+      });
+    } catch (e) {
+      console.error("Could not add signature to Excel:", e);
+    }
+  }
 
   rowIndex += 2;
 

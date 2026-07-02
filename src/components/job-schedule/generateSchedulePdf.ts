@@ -1,4 +1,3 @@
-
 'use client';
 
 import jsPDF from 'jspdf';
@@ -34,7 +33,8 @@ export async function generateSchedulePdf(
   schedule: JobSchedule | undefined,
   scheduleDate: Date,
   reportDate: Date,
-  schedulerName: string
+  schedulerName: string,
+  userSignature?: string
 ) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -219,6 +219,11 @@ export async function generateSchedulePdf(
         margin + 6,
         footerStartY + footerHeight / 2 + 3
       );
+      
+      // --- Signature image ---
+      if (userSignature) {
+        doc.addImage(userSignature, 'PNG', margin + 6, footerStartY + 5, 80, 25);
+      }
 
       // ---- RIGHT COLUMN TOP ----
       doc.text(
