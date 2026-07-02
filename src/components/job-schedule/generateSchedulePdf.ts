@@ -2,7 +2,7 @@
 
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import type { JobSchedule } from '@/lib/types';
 
 declare module 'jspdf' {
@@ -89,14 +89,12 @@ export async function generateSchedulePdf(
 
   const estimateTableHeight = (font: number, padding: number) => {
     const headerH = font * 1.5 + padding * 2;
-    // Each line in Name column adds roughly its font size to height
     const rowsH = totalLines * (font * 1.2) + (bodyRows.length * padding * 2);
     return headerH + rowsH;
   };
   
   let estimatedTableHeight = estimateTableHeight(fontSize, cellPadding);
   
-  // Dynamically reduce until it fits (safe limits applied)
   while (estimatedTableHeight > availableTableHeight && fontSize > 4.2) {
     fontSize -= 0.1;
     cellPadding = Math.max(0.8, cellPadding - 0.1);
@@ -150,88 +148,88 @@ export async function generateSchedulePdf(
         9: { cellWidth: usableWidth - 470 },
     },
 
-    // Custom drawing for Name column with conditional styling
-    drawCell: (data: any) => {
-      if (data.column.index === 1 && data.cell.section === 'body') {
-        const names = data.cell.raw as string[];
-        const cell = data.cell;
-        const currentDoc = data.doc;
-        
-        // Draw standard background
-        currentDoc.setFillColor(cell.styles.fillColor as any);
-        currentDoc.rect(cell.x, cell.y, cell.width, cell.height, 'F');
-        
-        const padding = cell.padding('left');
-        const x = cell.x + padding;
-        const maxWidth = cell.width - padding - cell.padding('right');
-        const currentFontSize = cell.styles.fontSize;
-        const lineHeight = currentFontSize * 1.2;
-        
-        let y = cell.y + cell.padding('top');
-
-        names.forEach((name) => {
-          const isRA3 = name.includes('RA Level 3');
-          const isHSEOrSup = /Supervisor|HSE|Safety/.test(name);
-          
-          if (isRA3) {
-            currentDoc.setFont('helvetica', 'bold');
-            currentDoc.setTextColor(0, 0, 0); // Bold Black
-          } else if (isHSEOrSup) {
-            currentDoc.setFont('helvetica', 'bold');
-            currentDoc.setTextColor(0, 51, 153); // Bold Blue (Corporate shade)
-          } else {
-            currentDoc.setFont('helvetica', 'normal');
-            currentDoc.setTextColor(0, 0, 0); // Normal Black
-          }
-          
-          const wrapped = currentDoc.splitTextToSize(name, maxWidth);
-          wrapped.forEach((line: string) => {
-            y += currentFontSize;
-            currentDoc.text(line, x, y);
-            y += (lineHeight - currentFontSize);
-          });
-          y += currentFontSize * 0.2; // Tiny gap between names
-        });
-        
-        return false; // Skip default drawing for this cell
+    // Prevent default text drawing for Name column
+    willDrawCell: (data: any) => {
+      if (data.section === 'body' && data.column.index === 1) {
+        data.cell.text = [];
       }
     },
 
+    // Draw custom formatted text with conditional styling
+    didDrawCell: (data: any) => {
+      if (data.section !== 'body' || data.column.index !== 1) return;
+
+      const names = Array.isArray(data.cell.raw)
+        ? data.cell.raw
+        : [String(data.cell.raw)];
+
+      const currentDoc = data.doc;
+
+      const paddingLeft = data.cell.padding('left');
+      const paddingTop = data.cell.padding('top');
+
+      const x = data.cell.x + paddingLeft;
+      const maxWidth =
+        data.cell.width - paddingLeft - data.cell.padding('right');
+
+      let y = data.cell.y + paddingTop + data.cell.styles.fontSize;
+
+      names.forEach((name: string) => {
+        const isRA3 = /RA\s*Level\s*3/i.test(name);
+        const isSupervisor = /Supervisor|HSE|Safety/i.test(name);
+
+        if (isRA3) {
+          currentDoc.setFont('helvetica', 'bold');
+          currentDoc.setTextColor(0, 0, 0); // Bold Black
+        } else if (isSupervisor) {
+          currentDoc.setFont('helvetica', 'bold');
+          currentDoc.setTextColor(0, 102, 204); // Bold Blue
+        } else {
+          currentDoc.setFont('helvetica', 'normal');
+          currentDoc.setTextColor(0, 0, 0);
+        }
+
+        const wrapped = currentDoc.splitTextToSize(name, maxWidth);
+
+        wrapped.forEach((line: string) => {
+          currentDoc.text(line, x, y);
+          y += data.cell.styles.fontSize * 1.2;
+        });
+        y += data.cell.styles.fontSize * 0.2; // Small gap between names
+      });
+
+      // Reset styles for subsequent cells
+      currentDoc.setFont('helvetica', 'normal');
+      currentDoc.setTextColor(0, 0, 0);
+    },
+
     didDrawPage: (data) => {
-      // === HEADER SECTION ======================================================
+      // === HEADER SECTION ===
       const contentStartY = headerStartY + 2;
       const lineY = contentStartY + 20;
       
       doc.setLineWidth(0.2);
       doc.setDrawColor(0);
-
-      // Outer box
       doc.rect(margin, headerStartY, usableWidth, headerBoxHeight); 
-      
-      // Divider line
       doc.line(margin, lineY, pageWidth - margin, lineY);
 
-      // Logo
       if (logoBase64) {
         doc.addImage(logoBase64, 'PNG', margin + 5, contentStartY, 80, 18);
       }
 
-      // "Job Schedule" Title
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(14);
       doc.text('Job Schedule', pageWidth / 2, contentStartY + 12, { align: 'center' });
       
-      // Sub-header text
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.text('Division/Branch: I & M / Jamnagar', margin + 5, lineY + 12);
       doc.text('Sub-Div.: R.A', pageWidth / 2, lineY + 12, { align: 'center' });
       doc.text(formattedScheduleDate, pageWidth - margin - 5, lineY + 12, { align: 'right' });
       
-      // === FOOTER SECTION =======================================================
+      // === FOOTER SECTION ===
       const footerHeight = 60;
       const footerMidX = margin + usableWidth / 2;
-
       let footerStartY = data.cursor.y;
 
       const pageHeight = doc.internal.pageSize.getHeight();
@@ -242,39 +240,16 @@ export async function generateSchedulePdf(
 
       doc.setLineWidth(0.2);
       doc.setDrawColor(0);
-
-      // Outer footer box
       doc.rect(margin, footerStartY, usableWidth, footerHeight);
-
-      // Vertical divider (between columns)
       doc.line(footerMidX, footerStartY, footerMidX, footerStartY + footerHeight);
+      doc.line(footerMidX, footerStartY + footerHeight / 2, margin + usableWidth, footerStartY + footerHeight / 2);
 
-      // Horizontal divider ONLY on right column
-      doc.line(
-        footerMidX,
-        footerStartY + footerHeight / 2,
-        margin + usableWidth,
-        footerStartY + footerHeight / 2
-      );
-
-      // ---- LEFT COLUMN (merged cell) ----
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(0);
-      doc.text(
-        `Scheduled by ${schedulerName}`,
-        margin + 6,
-        footerStartY + footerHeight / 2 + 3
-      );
-      
-      // ---- RIGHT COLUMN TOP ----
-      doc.text(
-        'Signature:',
-        footerMidX + 6,
-        footerStartY + 15
-      );
+      doc.text(`Scheduled by ${schedulerName}`, margin + 6, footerStartY + footerHeight / 2 + 3);
+      doc.text('Signature:', footerMidX + 6, footerStartY + 15);
 
-      // ----- Signature image (Auto Fit) -----
       if (userSignature) {
         const cellX = footerMidX;
         const cellY = footerStartY;
@@ -301,28 +276,11 @@ export async function generateSchedulePdf(
         }
       }
 
-      // ---- RIGHT COLUMN BOTTOM ----
-      doc.text(
-        `Date: ${formattedReportDate}`,
-        footerMidX + 6,
-        footerStartY + footerHeight / 2 + 15
-      );
-
-      // ---- REFERENCE (OUTSIDE BOX, TOUCHING FOOTER) ----
+      doc.text(`Date: ${formattedReportDate}`, footerMidX + 6, footerStartY + footerHeight / 2 + 15);
       doc.setFontSize(7);
-      doc.text(
-        'Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020',
-        margin,
-        footerStartY + footerHeight + 10
-      );
-
+      doc.text('Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020', margin, footerStartY + footerHeight + 10);
       const pageCount = (doc as any).internal.getNumberOfPages();
-      doc.text(
-        `Page ${data.pageNumber} of ${pageCount}`,
-        pageWidth - margin,
-        footerStartY + footerHeight + 10,
-        { align: 'right' }
-      );
+      doc.text(`Page ${data.pageNumber} of ${pageCount}`, pageWidth - margin, footerStartY + footerHeight + 10, { align: 'right' });
     }
   });
 
