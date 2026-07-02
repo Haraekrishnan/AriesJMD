@@ -92,7 +92,7 @@ export async function generateSchedulePdf(
         lineWidth: 0.2,
         lineColor: [0, 0, 0],
         textColor: [0, 0, 0],
-        valign: 'top', // Match Aries format top-alignment
+        valign: 'top', 
     },
     headStyles: {
         fillColor: [255, 255, 255],
@@ -122,22 +122,15 @@ export async function generateSchedulePdf(
            return match ? match[1].trim() : rn.trim();
         });
         
-        // Manual row height calculation to avoid clipping
-        const text = namesOnly.join(", ");
-        const maxWidth = data.column.width - data.cell.padding('left') - data.cell.padding('right');
-        const lines = data.doc.splitTextToSize(text, maxWidth);
-        const lineHeight = data.cell.styles.fontSize * 1.8;
-        const requiredHeight = lines.length * lineHeight + data.cell.padding('top') + data.cell.padding('bottom') + 4;
-
-        if (requiredHeight > data.row.height) {
-            data.row.height = requiredHeight;
-        }
+        // We set the joined string so AutoTable can measure the needed row height
+        data.cell.text = [namesOnly.join(", ")];
       }
     },
 
     willDrawCell: (data: any) => {
       if (data.section === 'body' && data.column.index === 1) {
-        data.cell.text = []; // Clear for custom drawing in didDrawCell
+        // Set text to white. This hides default rendering while preserving AutoTable's calculated layout
+        data.cell.styles.textColor = [255, 255, 255];
       }
     },
 
@@ -228,7 +221,7 @@ export async function generateSchedulePdf(
   let footerY = finalTable.finalY - 0.2;
 
   // Page overflow protection for footer
-  if (footerY + footerHeight + 10 > pageHeight) {
+  if (footerY + footerHeight > pageHeight - 15) {
     doc.addPage();
     footerY = margin;
   }
