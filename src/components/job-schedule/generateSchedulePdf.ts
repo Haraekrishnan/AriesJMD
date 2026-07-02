@@ -159,9 +159,29 @@ export async function generateSchedulePdf(
     didDrawCell: (data: any) => {
       if (data.section !== 'body' || data.column.index !== 1) return;
 
-      const names = Array.isArray(data.cell.raw)
+      const rawNames = Array.isArray(data.cell.raw)
         ? data.cell.raw
         : [String(data.cell.raw)];
+        
+      // 1. Parse Name and Trade
+      const parsed = rawNames.map(rn => {
+          // Extracts "Name" and "Trade" from "Name (Trade)"
+          const match = rn.match(/^(.*)\s\((.*)\)$/);
+          if (match) {
+              return { name: match[1], trade: match[2] };
+          }
+          return { name: rn, trade: '' };
+      });
+
+      // 2. Sort: RA Level 3 (Rank 0) -> Others (Rank 1) -> Supervisor/HSE (Rank 2)
+      parsed.sort((a, b) => {
+          const getRank = (trade: string) => {
+              if (/RA\s*Level\s*3/i.test(trade)) return 0;
+              if (/Supervisor|HSE|Safety/i.test(trade)) return 2;
+              return 1;
+          };
+          return getRank(a.trade) - getRank(b.trade);
+      });
 
       const currentDoc = data.doc;
 
@@ -174,9 +194,9 @@ export async function generateSchedulePdf(
 
       let y = data.cell.y + paddingTop + data.cell.styles.fontSize;
 
-      names.forEach((name: string) => {
-        const isRA3 = /RA\s*Level\s*3/i.test(name);
-        const isSupervisor = /Supervisor|HSE|Safety/i.test(name);
+      parsed.forEach((item) => {
+        const isRA3 = /RA\s*Level\s*3/i.test(item.trade);
+        const isSupervisor = /Supervisor|HSE|Safety/i.test(item.trade);
 
         if (isRA3) {
           currentDoc.setFont('helvetica', 'bold');
@@ -189,7 +209,8 @@ export async function generateSchedulePdf(
           currentDoc.setTextColor(0, 0, 0);
         }
 
-        const wrapped = currentDoc.splitTextToSize(name, maxWidth);
+        // Only display the name, not the trade
+        const wrapped = currentDoc.splitTextToSize(item.name, maxWidth);
 
         wrapped.forEach((line: string) => {
           currentDoc.text(line, x, y);
