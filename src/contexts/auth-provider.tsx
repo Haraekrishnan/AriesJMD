@@ -10,6 +10,7 @@ import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { uploadFile } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { isSameDay, parseISO } from 'date-fns';
+import { fileToBase64 } from '@/lib/fileToBase64';
 
 // --- TYPE DEFINITIONS ---
 
@@ -133,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       return comments.some(c => {
         if (!c) return false;
-        const event = plannerEvents.find(e => e.id === c.eventId);
+        const event = eventsOnDay.find(e => e.id === c.eventId);
         if (!event) return false;
         const isParticipant = event.userId === user.id || event.creatorId === user.id;
         return isParticipant && c.userId !== user.id && !c.viewedBy?.[user.id];
@@ -204,10 +205,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       dataToSave.supervisorId = null;
     }
     
-    // Explicitly handle signatureUrl to prevent any stripping
-    if (updatedUser.signatureUrl) {
-      dataToSave.signatureUrl = updatedUser.signatureUrl;
-    }
+    // Explicitly handle fields to prevent stripping
+    if (updatedUser.signatureUrl) dataToSave.signatureUrl = updatedUser.signatureUrl;
+    if (updatedUser.signatureBase64) dataToSave.signatureBase64 = updatedUser.signatureBase64;
 
     // Remove undefined values to prevent errors in update()
     Object.keys(dataToSave).forEach(key => {
@@ -237,27 +237,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string, signatureFile?: File | null): Promise<boolean> => {
     if (!user) {
-        console.error("[AuthProvider] updateProfile called with no active user session.");
         return false;
     }
 
-    console.log("[AuthProvider] Entering updateProfile. Signature file present:", !!signatureFile);
-
     try {
-        // Create a copy of the current user data to avoid race conditions during async uploads
         const updatedUser: User = { ...user, name, email };
         if (password) updatedUser.password = password;
 
-        // Perform uploads sequentially to ensure clarity and error isolation
         if (avatarFile) {
             const avatarUrl = await uploadFile(avatarFile, `avatars/${user.id}/${Date.now()}_${avatarFile.name}`);
             updatedUser.avatar = avatarUrl;
         }
 
         if (signatureFile) {
-            const signatureUrl = await uploadFile(signatureFile, `signatures/${user.id}/${Date.now()}_${signatureFile.name}`);
-            console.log("[AuthProvider] Signature uploaded. URL:", signatureUrl);
-            updatedUser.signatureUrl = signatureUrl;
+            const base64 = await fileToBase64(signatureFile);
+            updatedUser.signatureBase64 = base64;
+            console.log("[AuthProvider] Signature converted to Base64.");
         }
         
         const success = await updateUser(updatedUser);
@@ -267,7 +262,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         toast({
             variant: "destructive",
             title: "Update Failed",
-            description: (error as Error).message || "An error occurred while uploading files or updating the profile."
+            description: (error as Error).message || "An error occurred while updating the profile."
         });
         return false;
     }
@@ -323,7 +318,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `passwordResetRequests/${requestId}`), { status: 'handled' });
   }, []);
 
-  const resetPassword = useCallback(async (email: string, code: string, newPass: string): Promise<boolean> => {
+  const resetPassword = useCallback(async (email: string, code: string, newPass: string): Promise<{ success: boolean; user?: User }> => {
     const requestsRef = query(ref(rtdb, 'passwordResetRequests'), orderByChild('email'), equalTo(email));
     const snapshot = await get(requestsRef);
     if (!snapshot.exists()) return false;
@@ -523,7 +518,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const unsubscribeUser = onValue(userRef, (snapshot) => {
         if(snapshot.exists()) {
           const userData = { id: snapshot.key!, ...snapshot.val() };
-          console.log("[AuthProvider] Realtime listener received updated user:", userData);
           setUser(currentUser => {
             if (JSON.stringify(currentUser) === JSON.stringify(userData)) {
               return currentUser;

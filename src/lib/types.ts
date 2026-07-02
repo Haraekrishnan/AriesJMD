@@ -15,6 +15,7 @@ export type User = {
   status?: 'active' | 'locked' | 'deactivated';
   projectIds?: string[];
   signatureUrl?: string;
+  signatureBase64?: string;
   viewedBy?: { [key: string]: boolean };
   dismissedPendingUpdates?: { [key: string]: boolean };
   viewedFeatures?: { [key: string]: boolean };

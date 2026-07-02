@@ -39,7 +39,7 @@ export default function AccountPage() {
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
-  const [signatureUrl, setSignatureUrl] = useState(user?.signatureUrl || '');
+  const [signaturePreview, setSignaturePreview] = useState(user?.signatureBase64 || user?.signatureUrl || '');
 
   const [newAppName, setNewAppName] = useState(appName);
   const [newAppLogo, setNewAppLogo] = useState<string | null>(appLogo);
@@ -60,7 +60,7 @@ export default function AccountPage() {
         setName(user.name);
         setEmail(user.email);
         setAvatar(user.avatar);
-        setSignatureUrl(user.signatureUrl || '');
+        setSignaturePreview(user.signatureBase64 || user.signatureUrl || '');
     }
   }, [user]);
 
@@ -135,7 +135,12 @@ export default function AccountPage() {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setSignatureFile(file);
-      setSignatureUrl(URL.createObjectURL(file));
+      
+      const reader = new FileReader();
+      reader.onload = () => {
+          setSignaturePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
       console.log("[Account] Signature file selected:", file.name);
     }
   };
@@ -271,8 +276,8 @@ export default function AccountPage() {
                     <div className="space-y-2">
                         <Label>Current Signature</Label>
                         <div className="w-full h-32 border rounded-md bg-muted flex items-center justify-center overflow-hidden">
-                            {signatureUrl ? (
-                                <img src={signatureUrl} alt="Signature" className="max-h-full max-w-full object-contain" />
+                            {signaturePreview ? (
+                                <img src={signaturePreview} alt="Signature" className="max-h-full max-w-full object-contain" />
                             ) : (
                                 <p className="text-sm text-muted-foreground">No signature uploaded</p>
                             )}
@@ -518,7 +523,7 @@ export default function AccountPage() {
 
       <AddEmployeeDialog isOpen={isAddEmployeeDialogOpen} setIsOpen={setIsAddEmployeeDialogOpen} />
       {selectedUser && (
-        <EditEmployeeDialog isOpen={isEditEmployeeDialogOpen} setIsOpen={setIsEditEmployeeDialogOpen} user={selectedUser} />
+        <EditEmployeeDialog isOpen={isEditEmployeeDialogOpen} setIsOpen={setIsAddEmployeeDialogOpen} user={selectedUser} />
       )}
       <AddRoleDialog isOpen={isAddRoleDialogOpen} setIsOpen={setIsAddRoleDialogOpen} />
     </div>
