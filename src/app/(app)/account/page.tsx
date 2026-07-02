@@ -1,3 +1,4 @@
+
 'use client';
 import { useAuth } from '@/contexts/auth-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
@@ -25,11 +26,9 @@ import UnlockRequests from '@/components/account/UnlockRequests';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { DecorationTheme } from '@/lib/types';
-import { useAppContext } from '@/contexts/app-provider';
 
 export default function AccountPage() {
   const { user, users, can, deleteUser, updateProfile, loading, getVisibleUsers, lockUser, unlockUser, appName, appLogo, updateBranding, clearInventoryTransferHistory, activeTheme, updateActiveTheme } = useAuth();
-  const appContext = useAppContext();
   const { toast } = useToast();
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');

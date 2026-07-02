@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, Dispatch, SetStateAction, useMemo, useRef } from 'react';
@@ -215,7 +216,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user?.id === updatedUser.id) setUser(updatedUser);
   }, [user, addActivityLog]);
   
- const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string, signatureFile?: File | null) => {
+  const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string, signatureFile?: File | null) => {
     if (user) {
         const updatedUser: User = { ...user, name, email };
         if (password) updatedUser.password = password;
@@ -242,8 +243,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if ('error' in result) {
                  toast({ variant: "destructive", title: "Upload Failed", description: `Could not upload new ${result.type}.` });
             } else {
-                if (result.type === 'avatar') updatedUser.avatar = result.url;
-                if (result.type === 'signature') updatedUser.signatureUrl = result.url;
+                if (result.type === 'avatar') updatedUser.avatar = (result as { url: string }).url;
+                if (result.type === 'signature') updatedUser.signatureUrl = (result as { url: string }).url;
             }
         });
         
@@ -333,7 +334,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const newRequestRef = push(ref(rtdb, 'unlockRequests'));
     set(newRequestRef, { userId, userName, date: new Date().toISOString(), status: 'pending' });
 
-  }, [users]);
+  }, []);
   
   const resolveUnlockRequest = useCallback((requestId: string, userId: string) => {
     unlockUser(userId);
