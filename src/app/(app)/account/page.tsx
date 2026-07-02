@@ -1,4 +1,3 @@
-
 'use client';
 import { useAuth } from '@/contexts/auth-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
@@ -48,6 +47,7 @@ export default function AccountPage() {
   
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setNewAppName(appName);
@@ -86,16 +86,27 @@ export default function AccountPage() {
     );
   }
   
-  const handleProfileSave = (e: React.FormEvent) => {
+  const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateProfile(name, email, avatarFile, password, signatureFile);
-    toast({
-      title: 'Profile Updated',
-      description: 'Your profile information has been saved.',
-    });
-    setPassword('');
-    setAvatarFile(null);
-    setSignatureFile(null);
+    setIsSaving(true);
+    const success = await updateProfile(name, email, avatarFile, password, signatureFile);
+    
+    if (success) {
+      toast({
+        title: 'Profile Updated',
+        description: 'Your profile information has been saved successfully.',
+      });
+      setPassword('');
+      setAvatarFile(null);
+      setSignatureFile(null);
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Save Failed',
+        description: 'Could not save your profile changes. Please check your connection.',
+      });
+    }
+    setIsSaving(false);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -244,7 +255,7 @@ export default function AccountPage() {
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
                         <Label>Current Signature</Label>
-                        <div className="w-full h-32 border rounded-md bg-muted flex items-center justify-center">
+                        <div className="w-full h-32 border rounded-md bg-muted flex items-center justify-center overflow-hidden">
                             {signatureUrl ? (
                                 <img src={signatureUrl} alt="Signature" className="max-h-full max-w-full object-contain" />
                             ) : (
@@ -254,7 +265,7 @@ export default function AccountPage() {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="signature-upload">Upload New Signature</Label>
-                        <Input id="signature-upload" type="file" onChange={handleSignatureFileChange} accept=".png" />
+                        <Input id="signature-upload" type="file" onChange={handleSignatureFileChange} accept=".png,.jpg,.jpeg" />
                         <p className="text-xs text-muted-foreground">For best results, upload a PNG with a transparent background.</p>
                     </div>
                 </CardContent>
@@ -262,7 +273,9 @@ export default function AccountPage() {
         )}
 
         <CardFooter className="px-0 pt-6">
-            <Button type="submit">Save All Changes</Button>
+            <Button type="submit" disabled={isSaving}>
+                {isSaving ? "Saving..." : "Save All Changes"}
+            </Button>
         </CardFooter>
       </form>
 

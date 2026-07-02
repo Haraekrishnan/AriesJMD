@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, Dispatch, SetStateAction, useMemo, useRef } from 'react';
@@ -31,7 +30,7 @@ type AuthContextType = {
 
   login: (email: string, pass: string) => Promise<{ success: boolean; user?: User }>;
   logout: () => void;
-  updateProfile: (name: string, email: string, avatarFile: File | null, password?: string, signatureFile?: File | null) => void;
+  updateProfile: (name: string, email: string, avatarFile: File | null, password?: string, signatureFile?: File | null) => Promise<boolean>;
   requestPasswordReset: (email: string) => Promise<boolean>;
   resetPassword: (email: string, code: string, newPass: string) => Promise<boolean>;
   lockUser: (userId: string) => void;
@@ -39,7 +38,7 @@ type AuthContextType = {
   requestUnlock: (userId: string, userName: string) => void;
   resolveUnlockRequest: (requestId: string, userId: string) => void;
   addUser: (user: Omit<User, 'id' | 'avatar' | 'status'>) => void;
-  updateUser: (user: User) => void;
+  updateUser: (user: User) => Promise<boolean>;
   deleteUser: (userId: string) => void;
   addRole: (role: Omit<RoleDefinition, 'id' | 'isEditable'>) => void;
   updateRole: (role: RoleDefinition) => void;
@@ -85,7 +84,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
-  const [storedUserId, setStoredUserId] = useLocalStorage<string | null>('aries-userId-v1', null);
+  const [storedUserId, setAppStoredUserId] = useLocalStorage<string | null>('aries-userId-v1', null);
   const [usersById, setUsersById] = useState<Record<string, User>>({});
   const [rolesById, setRolesById] = useState<Record<string, RoleDefinition>>({});
   const [passwordResetRequestsById, setPasswordResetRequestsById] = useState<Record<string, PasswordResetRequest>>({});
@@ -166,11 +165,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (foundUser.password === pass) {
         if (foundUser.status === 'locked' || foundUser.status === 'deactivated') {
             setUser(foundUser);
-            setStoredUserId(foundUser.id);
+            setAppStoredUserId(foundUser.id);
             setLoading(false);
             return { success: true, user: foundUser };
         } else {
-            setStoredUserId(foundUser.id);
+            setAppStoredUserId(foundUser.id);
             setUser(foundUser);
             addActivityLog(foundUser.id, 'User Logged In');
             setLoading(false);
@@ -180,14 +179,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setLoading(false);
     return { success: false };
-  }, [setStoredUserId, addActivityLog]);
+  }, [setAppStoredUserId, addActivityLog]);
 
   const logout = useCallback(() => {
-    setStoredUserId(null);
+    setAppStoredUserId(null);
     setUser(null);
-  }, [setStoredUserId]);
+  }, [setAppStoredUserId]);
   
-  const prevUserRef = useRef<User | null>();
+  const prevUserRef = useRef<User | null>(null);
   useEffect(() => {
     if (prevUserRef.current && !user) {
       addActivityLog(prevUserRef.current.id, 'User Logged Out');
@@ -197,7 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, addActivityLog, router]);
 
 
-  const updateUser = useCallback((updatedUser: User) => {
+  const updateUser = useCallback(async (updatedUser: User): Promise<boolean> => {
     const { id, ...data } = updatedUser;
     const dataToSave: any = { ...data };
     if (dataToSave.supervisorId === 'none' || dataToSave.supervisorId === undefined) {
@@ -211,12 +210,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     });
 
-    update(ref(rtdb, `users/${id}`), dataToSave);
-    if (user?.id) addActivityLog(user.id, 'User Profile Updated', `Updated details for ${updatedUser.name}`);
-    if (user?.id === updatedUser.id) setUser(updatedUser);
+    try {
+        await update(ref(rtdb, `users/${id}`), dataToSave);
+        if (user?.id) addActivityLog(user.id, 'User Profile Updated', `Updated details for ${updatedUser.name}`);
+        if (user?.id === updatedUser.id) setUser(updatedUser);
+        return true;
+    } catch (error) {
+        console.error("Database update failed:", error);
+        return false;
+    }
   }, [user, addActivityLog]);
   
-  const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string, signatureFile?: File | null) => {
+  const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string, signatureFile?: File | null): Promise<boolean> => {
     if (user) {
         const updatedUser: User = { ...user, name, email };
         if (password) updatedUser.password = password;
@@ -248,8 +253,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
         });
         
-        updateUser(updatedUser);
+        return await updateUser(updatedUser);
     }
+    return false;
   }, [user, updateUser, toast]);
 
   const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
