@@ -68,8 +68,6 @@ export async function generateSchedulePdf(
   const headerStartY = margin;
   const headerBottomY = headerStartY + headerBoxHeight;
   const tableStartY = headerBottomY;
-
-  // ---------- DYNAMIC FONT SETTINGS ----------
   const fontSize = 7;
 
   doc.autoTable({
@@ -94,7 +92,7 @@ export async function generateSchedulePdf(
         lineWidth: 0.2,
         lineColor: [0, 0, 0],
         textColor: [0, 0, 0],
-        valign: 'middle',
+        valign: 'top', // Match Aries format top-alignment
     },
     headStyles: {
         fillColor: [255, 255, 255],
@@ -124,14 +122,22 @@ export async function generateSchedulePdf(
            return match ? match[1].trim() : rn.trim();
         });
         
-        // Ensure height calculation is based on comma-separated list
-        data.cell.text = [namesOnly.join(', ')];
+        // Manual row height calculation to avoid clipping
+        const text = namesOnly.join(", ");
+        const maxWidth = data.column.width - data.cell.padding('left') - data.cell.padding('right');
+        const lines = data.doc.splitTextToSize(text, maxWidth);
+        const lineHeight = data.cell.styles.fontSize * 1.8;
+        const requiredHeight = lines.length * lineHeight + data.cell.padding('top') + data.cell.padding('bottom') + 4;
+
+        if (requiredHeight > data.row.height) {
+            data.row.height = requiredHeight;
+        }
       }
     },
 
     willDrawCell: (data: any) => {
       if (data.section === 'body' && data.column.index === 1) {
-        data.cell.text = []; // Clear for custom formatted drawing
+        data.cell.text = []; // Clear for custom drawing in didDrawCell
       }
     },
 
@@ -145,7 +151,7 @@ export async function generateSchedulePdf(
           return match ? { name: match[1].trim(), trade: match[2].trim() } : { name: rn.trim(), trade: '' };
       });
 
-      // SORT: Level 3 first, Supervisors/HSE/Mgt last
+      // SORT: Level 3 first, Management/HSE last
       parsed.sort((a, b) => {
           const getRank = (trade: string) => {
               if (/RA\s*Level\s*3/i.test(trade)) return 0;
@@ -181,7 +187,7 @@ export async function generateSchedulePdf(
 
         const displayWidth = currentDoc.getTextWidth(displayText);
 
-        // Wrapping check: account for the full text including potential comma
+        // Check if name + separator exceeds column width
         if (cursorX + displayWidth > startX + maxWidth && cursorX > startX) {
             cursorX = startX;
             cursorY += lHeight;
@@ -217,10 +223,8 @@ export async function generateSchedulePdf(
     }
   });
 
-  // ---------- DRAW FOOTER (ATTACHED TO TABLE) ----------
   const finalTable = (doc as any).lastAutoTable;
   const footerHeight = 60;
-  // Use negative offset to close the gap between table and footer borders
   let footerY = finalTable.finalY - 0.2;
 
   // Page overflow protection for footer
@@ -253,7 +257,6 @@ export async function generateSchedulePdf(
         imgW *= scale;
         imgH *= scale;
         
-        // Positioned after "Signature:" label
         doc.addImage(userSignature, 'PNG', footerMidX + labelWidth + padding, footerY + ((footerHeight/2) - imgH)/2, imgW, imgH);
     } catch (e) { console.error(e); }
   }
