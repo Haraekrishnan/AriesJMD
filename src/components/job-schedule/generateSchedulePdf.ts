@@ -148,14 +148,28 @@ export async function generateSchedulePdf(
         9: { cellWidth: usableWidth - 470 },
     },
 
-    // Prevent default text drawing for Name column
+    // 1. Calculate required height for the multi-line name cell
+    didParseCell: (data: any) => {
+      if (data.section === 'body' && data.column.index === 1) {
+        const rawNames = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
+        const lineHeight = data.cell.styles.fontSize * 1.4; // Estimate line height
+        const padding = data.cell.padding('top') + data.cell.padding('bottom');
+        // Ensure row is tall enough for all names
+        const minHeight = rawNames.length * lineHeight + padding;
+        if (data.row.height < minHeight) {
+          data.row.height = minHeight;
+        }
+      }
+    },
+
+    // 2. Prevent default text drawing for Name column so we can draw custom colored lines
     willDrawCell: (data: any) => {
       if (data.section === 'body' && data.column.index === 1) {
         data.cell.text = [];
       }
     },
 
-    // Draw custom formatted text with conditional styling
+    // 3. Draw custom formatted text with conditional styling and sorting
     didDrawCell: (data: any) => {
       if (data.section !== 'body' || data.column.index !== 1) return;
 
@@ -163,21 +177,21 @@ export async function generateSchedulePdf(
         ? data.cell.raw
         : [String(data.cell.raw)];
         
-      // 1. Parse Name and Trade
+      // 1. Parse Name and Trade/Role
       const parsed = rawNames.map(rn => {
-          // Extracts "Name" and "Trade" from "Name (Trade)"
+          // Extracts "Name" and "Trade" from "Name (Trade)" or "Name (Role, Details)"
           const match = rn.match(/^(.*)\s\((.*)\)$/);
           if (match) {
-              return { name: match[1], trade: match[2] };
+              return { name: match[1].trim(), trade: match[2].trim() };
           }
-          return { name: rn, trade: '' };
+          return { name: rn.trim(), trade: '' };
       });
 
-      // 2. Sort: RA Level 3 (Rank 0) -> Others (Rank 1) -> Supervisor/HSE (Rank 2)
+      // 2. Sort: RA Level 3 (Rank 0) -> Others (Rank 1) -> Supervisor/HSE/Admin/Manager (Rank 2)
       parsed.sort((a, b) => {
           const getRank = (trade: string) => {
               if (/RA\s*Level\s*3/i.test(trade)) return 0;
-              if (/Supervisor|HSE|Safety/i.test(trade)) return 2;
+              if (/Supervisor|HSE|Safety|Admin|Manager|Coordinator/i.test(trade)) return 2;
               return 1;
           };
           return getRank(a.trade) - getRank(b.trade);
@@ -189,27 +203,26 @@ export async function generateSchedulePdf(
       const paddingTop = data.cell.padding('top');
 
       const x = data.cell.x + paddingLeft;
-      const maxWidth =
-        data.cell.width - paddingLeft - data.cell.padding('right');
+      const maxWidth = data.cell.width - paddingLeft - data.cell.padding('right');
 
       let y = data.cell.y + paddingTop + data.cell.styles.fontSize;
 
       parsed.forEach((item) => {
         const isRA3 = /RA\s*Level\s*3/i.test(item.trade);
-        const isSupervisor = /Supervisor|HSE|Safety/i.test(item.trade);
+        const isSupervisor = /Supervisor|HSE|Safety|Admin|Manager|Coordinator/i.test(item.trade);
 
         if (isRA3) {
           currentDoc.setFont('helvetica', 'bold');
           currentDoc.setTextColor(0, 0, 0); // Bold Black
         } else if (isSupervisor) {
           currentDoc.setFont('helvetica', 'bold');
-          currentDoc.setTextColor(0, 102, 204); // Bold Blue
+          currentDoc.setTextColor(0, 102, 204); // Bold Corporate Blue
         } else {
           currentDoc.setFont('helvetica', 'normal');
           currentDoc.setTextColor(0, 0, 0);
         }
 
-        // Only display the name, not the trade
+        // Only display the name, not the trade/designation
         const wrapped = currentDoc.splitTextToSize(item.name, maxWidth);
 
         wrapped.forEach((line: string) => {
@@ -300,8 +313,8 @@ export async function generateSchedulePdf(
       doc.text(`Date: ${formattedReportDate}`, footerMidX + 6, footerStartY + footerHeight / 2 + 15);
       doc.setFontSize(7);
       doc.text('Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020', margin, footerStartY + footerHeight + 10);
-      const pageCount = (doc as any).internal.getNumberOfPages();
-      doc.text(`Page ${data.pageNumber} of ${pageCount}`, pageWidth - margin, footerStartY + footerHeight + 10, { align: 'right' });
+      const totalPages = doc.getNumberOfPages();
+      doc.text(`Page ${data.pageNumber} of ${totalPages}`, pageWidth - margin, footerStartY + footerHeight + 10, { align: 'right' });
     }
   });
 
