@@ -5,6 +5,7 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { JobSchedule, JobScheduleItem } from '@/lib/types';
 import { Badge } from '../ui/badge';
+import { Users } from 'lucide-react';
 
 interface ReadOnlyJobScheduleProps {
   schedule?: JobSchedule;
@@ -52,7 +53,8 @@ export default function ReadOnlyJobSchedule({ schedule }: ReadOnlyJobSchedulePro
             <TableCell className="font-medium text-center">{index + 1}</TableCell>
             <TableCell>
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="shrink-0 bg-muted/50 font-bold border-muted-foreground/30">
+                <Badge variant="secondary" className="shrink-0 font-bold px-2 py-0.5">
+                  <Users className="mr-1 h-3 w-3" />
                   {item.manpowerIds?.length || 0}
                 </Badge>
                 <span>{getManpowerNames(item.manpowerIds)}</span>

@@ -10,11 +10,11 @@ import { Textarea } from '../ui/textarea';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { Check, PlusCircle, Save, Trash2, Copy, Users } from 'lucide-react';
+import { Check, PlusCircle, Save, Trash2, Copy, Users, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { JobSchedule, JobScheduleItem } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { format, subDays } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
@@ -178,9 +178,11 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
               <TableCell className="font-medium text-center">{index + 1}</TableCell>
               <TableCell>
                 <div className="flex flex-col gap-1.5 min-w-[200px]">
-                  <div className="flex items-center gap-1 text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">
-                    <Users className="h-3 w-3" />
-                    Count: {watchedItems[index]?.manpowerIds?.length || 0}
+                  <div className="px-1">
+                    <Badge variant="secondary" className="font-bold text-xs h-6">
+                      <Users className="mr-1.5 h-3.5 w-3.5" />
+                      Count: {watchedItems[index]?.manpowerIds?.length || 0}
+                    </Badge>
                   </div>
                   <Controller
                     name={`items.${index}.manpowerIds`}
