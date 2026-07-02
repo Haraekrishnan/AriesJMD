@@ -89,8 +89,11 @@ export default function AccountPage() {
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+    console.log("[Account] Starting profile save. Files:", { avatar: avatarFile?.name, signature: signatureFile?.name });
+    
     try {
         const success = await updateProfile(name, email, avatarFile, password, signatureFile);
+        console.log("[Account] updateProfile result:", success);
         
         if (success) {
           toast({
@@ -108,7 +111,7 @@ export default function AccountPage() {
           });
         }
     } catch (error) {
-        console.error("Profile save error:", error);
+        console.error("[Account] Profile save exception:", error);
         toast({
             variant: 'destructive',
             title: 'Unexpected Error',
@@ -124,6 +127,7 @@ export default function AccountPage() {
       const file = e.target.files[0];
       setAvatarFile(file);
       setAvatar(URL.createObjectURL(file));
+      console.log("[Account] Avatar file selected:", file.name);
     }
   };
   
@@ -132,6 +136,7 @@ export default function AccountPage() {
       const file = e.target.files[0];
       setSignatureFile(file);
       setSignatureUrl(URL.createObjectURL(file));
+      console.log("[Account] Signature file selected:", file.name);
     }
   };
 

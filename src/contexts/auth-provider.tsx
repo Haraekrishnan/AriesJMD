@@ -204,6 +204,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       dataToSave.supervisorId = null;
     }
     
+    // Explicitly handle signatureUrl to prevent any stripping
+    if (updatedUser.signatureUrl) {
+      dataToSave.signatureUrl = updatedUser.signatureUrl;
+    }
+
     // Remove undefined values to prevent errors in update()
     Object.keys(dataToSave).forEach(key => {
         if (dataToSave[key] === undefined) {
@@ -211,8 +216,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     });
 
+    console.log(`[AuthProvider] Writing to RTDB path users/${id} with data:`, JSON.stringify(dataToSave));
+
     try {
         await update(ref(rtdb, `users/${id}`), dataToSave);
+        console.log(`[AuthProvider] RTDB write completed successfully for user ${id}`);
+        
         if (user?.id) addActivityLog(user.id, 'User Profile Updated', `Updated details for ${updatedUser.name}`);
         
         // Update local state if the user being updated is the current user
@@ -221,15 +230,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         return true;
     } catch (error) {
-        console.error("Database update failed:", error);
+        console.error("[AuthProvider] Database update failed:", error);
         return false;
     }
   }, [user, addActivityLog]);
   
   const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string, signatureFile?: File | null): Promise<boolean> => {
-    if (!user) return false;
+    if (!user) {
+        console.error("[AuthProvider] updateProfile called with no active user session.");
+        return false;
+    }
+
+    console.log("[AuthProvider] Entering updateProfile. Signature file present:", !!signatureFile);
 
     try {
+        // Create a copy of the current user data to avoid race conditions during async uploads
         const updatedUser: User = { ...user, name, email };
         if (password) updatedUser.password = password;
 
@@ -241,13 +256,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (signatureFile) {
             const signatureUrl = await uploadFile(signatureFile, `signatures/${user.id}/${Date.now()}_${signatureFile.name}`);
+            console.log("[AuthProvider] Signature uploaded. URL:", signatureUrl);
             updatedUser.signatureUrl = signatureUrl;
         }
         
         const success = await updateUser(updatedUser);
         return success;
     } catch (error) {
-        console.error("Profile update error:", error);
+        console.error("[AuthProvider] Profile update exception:", error);
         toast({
             variant: "destructive",
             title: "Update Failed",
@@ -507,6 +523,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const unsubscribeUser = onValue(userRef, (snapshot) => {
         if(snapshot.exists()) {
           const userData = { id: snapshot.key!, ...snapshot.val() };
+          console.log("[AuthProvider] Realtime listener received updated user:", userData);
           setUser(currentUser => {
             if (JSON.stringify(currentUser) === JSON.stringify(userData)) {
               return currentUser;
