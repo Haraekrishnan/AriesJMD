@@ -71,7 +71,7 @@ export async function generateSchedulePdf(
   // ---------- DYNAMIC TABLE SCALING ----------
   const pageHeight = doc.internal.pageSize.getHeight();
   
-  const footerReserve = 90;   // footer + ref + page no
+  const footerReserve = 100;   // Increased to accommodate taller footer
   const headerReserve = headerBoxHeight + margin + 10;
   
   const availableTableHeight =
@@ -181,7 +181,7 @@ export async function generateSchedulePdf(
       doc.text(formattedScheduleDate, pageWidth - margin - 5, lineY + 12, { align: 'right' });
       
       // === FOOTER SECTION =======================================================
-      const footerHeight = 50;
+      const footerHeight = 60; // Increased room for signatures
       const footerMidX = margin + usableWidth / 2;
 
       // Start footer immediately after table
@@ -227,19 +227,57 @@ export async function generateSchedulePdf(
         footerStartY + 15
       );
 
-      // --- Signature image (Right Signature Cell) ---
+      // ----- Signature image (Auto Fit) -----
       if (userSignature) {
-        const signatureX = footerMidX + 55;   // after "Signature:"
-        const signatureY = footerStartY + 4;
+        // Signature cell dimensions (Top half of the right column)
+        const cellX = footerMidX;
+        const cellY = footerStartY;
+        const cellWidth = usableWidth / 2;
+        const cellHeight = footerHeight / 2;
 
-        doc.addImage(
-          userSignature,
-          'PNG',
-          signatureX,
-          signatureY,
-          75,   // width
-          22    // height
-        );
+        // Reserve space for the "Signature:" label
+        const labelWidth = 52;
+
+        // Padding inside the cell
+        const padding = 4;
+
+        const maxWidth = cellWidth - labelWidth - padding * 2;
+        const maxHeight = cellHeight - padding * 2;
+
+        try {
+            // Read actual image size
+            const imgProps = doc.getImageProperties(userSignature);
+
+            let imgWidth = imgProps.width;
+            let imgHeight = imgProps.height;
+
+            // Scale proportionally to fit within the box
+            const scale = Math.min(
+                maxWidth / imgWidth,
+                maxHeight / imgHeight,
+                1
+            );
+
+            imgWidth *= scale;
+            imgHeight *= scale;
+
+            // Position after the "Signature:" text
+            const imgX = cellX + labelWidth + padding;
+
+            // Vertically center in the top half cell
+            const imgY = cellY + (cellHeight - imgHeight) / 2;
+
+            doc.addImage(
+                userSignature,
+                'PNG',
+                imgX,
+                imgY,
+                imgWidth,
+                imgHeight
+            );
+        } catch (e) {
+            console.error("Failed to add signature image:", e);
+        }
       }
 
       // ---- RIGHT COLUMN BOTTOM ----
