@@ -76,7 +76,7 @@ export async function generateSchedulePdf(
   doc.autoTable({
     startY: tableStartY,
     tableWidth: usableWidth,
-    margin: { left: margin, right: margin, top: tableStartY },
+    margin: { left: margin, right: margin, top: tableStartY, bottom: 115 },
     pageBreak: 'auto',
     rowPageBreak: 'avoid',
 
@@ -120,27 +120,15 @@ export async function generateSchedulePdf(
            return match ? match[1].trim() : rn.trim();
         });
         
-        const fullString = namesOnly.join(', ');
-        const padding = data.cell.padding('left') + data.cell.padding('right');
-        const maxWidth = data.column.width - padding;
-        
-        data.doc.setFontSize(data.cell.styles.fontSize);
-        const splitText = data.doc.splitTextToSize(fullString, maxWidth);
-        const lineCount = splitText.length;
-        
-        const lineHeight = data.cell.styles.fontSize * 1.3;
-        const cellPaddingY = data.cell.padding('top') + data.cell.padding('bottom');
-        const requiredHeight = lineCount * lineHeight + cellPaddingY;
-        
-        if (data.row.height < requiredHeight) {
-          data.row.height = requiredHeight;
-        }
+        // We set the text here so AutoTable can calculate height
+        // Comma separated list for the calculation
+        data.cell.text = [namesOnly.join(', ')];
       }
     },
 
     willDrawCell: (data: any) => {
       if (data.section === 'body' && data.column.index === 1) {
-        data.cell.text = []; // Clear for custom drawing
+        data.cell.text = []; // Clear for custom drawing in didDrawCell
       }
     },
 
@@ -194,7 +182,7 @@ export async function generateSchedulePdf(
         const nameWidth = currentDoc.getTextWidth(item.name);
         const sepWidth = isLast ? 0 : currentDoc.getTextWidth(separator);
 
-        // Word wrap check
+        // Word wrap check: if name doesn't fit on current line, start new line
         if (cursorX + nameWidth > startX + maxWidth && cursorX > startX) {
             cursorX = startX;
             cursorY += lHeight;
@@ -206,6 +194,7 @@ export async function generateSchedulePdf(
         if (!isLast) {
             currentDoc.setFont('helvetica', 'normal');
             currentDoc.setTextColor(0, 0, 0);
+            // Check if separator fits, if not wrap to next line
             if (cursorX + sepWidth > startX + maxWidth) {
                  cursorX = startX;
                  cursorY += lHeight;
@@ -243,6 +232,7 @@ export async function generateSchedulePdf(
   const footerHeight = 60;
   let footerY = finalTableY + 20;
 
+  // Manual page break check for footer
   if (footerY + footerHeight + 20 > pageHeight) {
     doc.addPage();
     footerY = margin;
