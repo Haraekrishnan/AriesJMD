@@ -105,7 +105,7 @@ export async function generateSchedulePdf(
     },
     columnStyles: {
         0: { cellWidth: 25 },
-        1: { cellWidth: 135 }, // Expanded for better flow
+        1: { cellWidth: 135 }, 
         2: { cellWidth: 30 },
         3: { cellWidth: 32 },
         4: { cellWidth: 65 },
@@ -145,7 +145,7 @@ export async function generateSchedulePdf(
           return match ? { name: match[1].trim(), trade: match[2].trim() } : { name: rn.trim(), trade: '' };
       });
 
-      // SORT: Level 3 first, Supervisors/HSE last
+      // SORT: Level 3 first, Supervisors/HSE/Mgt last
       parsed.sort((a, b) => {
           const getRank = (trade: string) => {
               if (/RA\s*Level\s*3/i.test(trade)) return 0;
@@ -161,10 +161,9 @@ export async function generateSchedulePdf(
       const maxWidth = data.cell.width - paddingLeft - data.cell.padding('right');
 
       const fSize = data.cell.styles.fontSize;
-      const lHeight = fSize * 1.8; // Improved line height
+      const lHeight = fSize * 1.8; 
       const separator = ", ";
 
-      // Position: Top aligned with padding + small offset
       let cursorX = startX;
       let cursorY = data.cell.y + data.cell.padding('top') + fSize + 2;
 
@@ -175,34 +174,24 @@ export async function generateSchedulePdf(
         const isRA3 = /RA\s*Level\s*3/i.test(item.trade);
         const isMgt = /Supervisor|HSE|Safety|Admin|Manager|Coordinator/i.test(item.trade);
 
+        const displayText = item.name + (isLast ? "" : separator);
+
         if (isRA3 || isMgt) currentDoc.setFont('helvetica', 'bold');
         else currentDoc.setFont('helvetica', 'normal');
 
-        if (isMgt) currentDoc.setTextColor(0, 102, 204);
-        else currentDoc.setTextColor(0, 0, 0);
+        const displayWidth = currentDoc.getTextWidth(displayText);
 
-        const nameWidth = currentDoc.getTextWidth(item.name);
-        const sepWidth = isLast ? 0 : currentDoc.getTextWidth(separator);
-
-        // Wrapping check
-        if (cursorX + nameWidth > startX + maxWidth && cursorX > startX) {
+        // Wrapping check: account for the full text including potential comma
+        if (cursorX + displayWidth > startX + maxWidth && cursorX > startX) {
             cursorX = startX;
             cursorY += lHeight;
         }
 
-        currentDoc.text(item.name, cursorX, cursorY);
-        cursorX += nameWidth;
+        if (isMgt) currentDoc.setTextColor(0, 102, 204); // Blue
+        else currentDoc.setTextColor(0, 0, 0); // Black
 
-        if (!isLast) {
-            currentDoc.setFont('helvetica', 'normal');
-            currentDoc.setTextColor(0, 0, 0);
-            if (cursorX + sepWidth > startX + maxWidth) {
-                 cursorX = startX;
-                 cursorY += lHeight;
-            }
-            currentDoc.text(separator, cursorX, cursorY);
-            cursorX += sepWidth;
-        }
+        currentDoc.text(displayText, cursorX, cursorY);
+        cursorX += displayWidth;
       });
 
       currentDoc.setFont('helvetica', 'normal').setTextColor(0, 0, 0);
@@ -231,7 +220,7 @@ export async function generateSchedulePdf(
   // ---------- DRAW FOOTER (ATTACHED TO TABLE) ----------
   const finalTable = (doc as any).lastAutoTable;
   const footerHeight = 60;
-  // Start exactly at table bottom to close the gap
+  // Use negative offset to close the gap between table and footer borders
   let footerY = finalTable.finalY - 0.2;
 
   // Page overflow protection for footer
@@ -263,6 +252,7 @@ export async function generateSchedulePdf(
         const scale = Math.min(maxWidth / imgW, maxHeight / imgH, 1);
         imgW *= scale;
         imgH *= scale;
+        
         // Positioned after "Signature:" label
         doc.addImage(userSignature, 'PNG', footerMidX + labelWidth + padding, footerY + ((footerHeight/2) - imgH)/2, imgW, imgH);
     } catch (e) { console.error(e); }
