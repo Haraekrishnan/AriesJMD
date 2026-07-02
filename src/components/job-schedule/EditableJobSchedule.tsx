@@ -1,4 +1,3 @@
-
 'use client';
 import { useFieldArray, useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,7 +10,7 @@ import { Textarea } from '../ui/textarea';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { Check, PlusCircle, Save, Trash2, Copy } from 'lucide-react';
+import { Check, PlusCircle, Save, Trash2, Copy, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { JobSchedule, JobScheduleItem } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -178,75 +177,81 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
             <TableRow key={field.id}>
               <TableCell className="font-medium text-center">{index + 1}</TableCell>
               <TableCell>
-                <Controller
-                  name={`items.${index}.manpowerIds`}
-                  control={form.control}
-                  render={({ field: controllerField }) => (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full justify-start h-auto min-h-10 text-left">
-                          <div className="flex flex-wrap gap-1">
-                            {controllerField.value?.length > 0
-                              ? controllerField.value.map(id => (
-                                  <Badge key={id} variant="secondary">{manpowerOptions.find(p => p.value === id)?.label || id}</Badge>
-                                ))
-                              : <span className="text-muted-foreground">Select...</span>}
-                          </div>
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[300px] p-0">
-                        <Command>
-                          <CommandInput placeholder="Search manpower..." />
-                          <CommandList>
-                            <CommandEmpty>No results found.</CommandEmpty>
-                            <CommandGroup>
-                             <TooltipProvider>
-                              {manpowerOptions.map(option => {
-                                const isSelectedInCurrentItem = controllerField.value?.includes(option.value);
-                                const isAssignedGlobally = globallyAssignedIds.has(option.value);
-                                const isAssignedInThisForm = currentlyAssignedManpowerIdsInThisForm.has(option.value);
-                                const isDisabled = (isAssignedGlobally || isAssignedInThisForm) && !isSelectedInCurrentItem;
+                <div className="flex flex-col gap-1.5 min-w-[200px]">
+                  <div className="flex items-center gap-1 text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">
+                    <Users className="h-3 w-3" />
+                    Count: {watchedItems[index]?.manpowerIds?.length || 0}
+                  </div>
+                  <Controller
+                    name={`items.${index}.manpowerIds`}
+                    control={form.control}
+                    render={({ field: controllerField }) => (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start h-auto min-h-10 text-left">
+                            <div className="flex flex-wrap gap-1">
+                              {controllerField.value?.length > 0
+                                ? controllerField.value.map(id => (
+                                    <Badge key={id} variant="secondary">{manpowerOptions.find(p => p.value === id)?.label || id}</Badge>
+                                  ))
+                                : <span className="text-muted-foreground">Select...</span>}
+                            </div>
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[300px] p-0">
+                          <Command>
+                            <CommandInput placeholder="Search manpower..." />
+                            <CommandList>
+                              <CommandEmpty>No results found.</CommandEmpty>
+                              <CommandGroup>
+                              <TooltipProvider>
+                                {manpowerOptions.map(option => {
+                                  const isSelectedInCurrentItem = controllerField.value?.includes(option.value);
+                                  const isAssignedGlobally = globallyAssignedIds.has(option.value);
+                                  const isAssignedInThisForm = currentlyAssignedManpowerIdsInThisForm.has(option.value);
+                                  const isDisabled = (isAssignedGlobally || isAssignedInThisForm) && !isSelectedInCurrentItem;
 
-                                return (
-                                <Tooltip key={option.value} open={isDisabled ? undefined : false}>
-                                    <TooltipTrigger asChild>
-                                        <div className={cn(isDisabled && 'cursor-not-allowed')}>
-                                        <CommandItem
-                                            onSelect={() => {
-                                                if (isDisabled) return;
-                                                const selected = new Set(controllerField.value);
-                                                if (isSelectedInCurrentItem) {
-                                                selected.delete(option.value);
-                                                } else {
-                                                selected.add(option.value);
-                                                }
-                                                controllerField.onChange(Array.from(selected));
-                                            }}
-                                            disabled={isDisabled}
-                                            className={cn('w-full', isDisabled && 'opacity-50')}
-                                        >
-                                            <Check className={cn("mr-2 h-4 w-4", isSelectedInCurrentItem ? "opacity-100" : "opacity-0")} />
-                                            {option.label}
-                                        </CommandItem>
-                                        </div>
-                                    </TooltipTrigger>
-                                    {isDisabled && (
-                                        <TooltipContent>
-                                            <p>{getAssignmentInfo(option.value)}</p>
-                                        </TooltipContent>
-                                    )}
-                                </Tooltip>
-                                )
-                              })}
-                              </TooltipProvider>
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                  )}
-                />
-                 {form.formState.errors.items?.[index]?.manpowerIds && <p className="text-xs text-destructive">{form.formState.errors.items[index]?.manpowerIds?.message}</p>}
+                                  return (
+                                  <Tooltip key={option.value} open={isDisabled ? undefined : false}>
+                                      <TooltipTrigger asChild>
+                                          <div className={cn(isDisabled && 'cursor-not-allowed')}>
+                                          <CommandItem
+                                              onSelect={() => {
+                                                  if (isDisabled) return;
+                                                  const selected = new Set(controllerField.value);
+                                                  if (isSelectedInCurrentItem) {
+                                                  selected.delete(option.value);
+                                                  } else {
+                                                  selected.add(option.value);
+                                                  }
+                                                  controllerField.onChange(Array.from(selected));
+                                              }}
+                                              disabled={isDisabled}
+                                              className={cn('w-full', isDisabled && 'opacity-50')}
+                                          >
+                                              <Check className={cn("mr-2 h-4 w-4", isSelectedInCurrentItem ? "opacity-100" : "opacity-0")} />
+                                              {option.label}
+                                          </CommandItem>
+                                          </div>
+                                      </TooltipTrigger>
+                                      {isDisabled && (
+                                          <TooltipContent>
+                                              <p>{getAssignmentInfo(option.value)}</p>
+                                          </TooltipContent>
+                                      )}
+                                  </Tooltip>
+                                  )
+                                })}
+                                </TooltipProvider>
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                  />
+                  {form.formState.errors.items?.[index]?.manpowerIds && <p className="text-xs text-destructive">{form.formState.errors.items[index]?.manpowerIds?.message}</p>}
+                </div>
               </TableCell>
               <TableCell><Input {...form.register(`items.${index}.jobType`)} className={cn(form.formState.errors.items?.[index]?.jobType && "border-destructive")} /></TableCell>
               <TableCell><Input {...form.register(`items.${index}.jobNo`)} className={cn(form.formState.errors.items?.[index]?.jobNo && "border-destructive")} /></TableCell>

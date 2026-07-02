@@ -4,6 +4,7 @@ import React, { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { JobSchedule, JobScheduleItem } from '@/lib/types';
+import { Badge } from '../ui/badge';
 
 interface ReadOnlyJobScheduleProps {
   schedule?: JobSchedule;
@@ -49,7 +50,14 @@ export default function ReadOnlyJobSchedule({ schedule }: ReadOnlyJobSchedulePro
         {schedule.items.map((item, index) => (
           <TableRow key={item.id}>
             <TableCell className="font-medium text-center">{index + 1}</TableCell>
-            <TableCell>{getManpowerNames(item.manpowerIds)}</TableCell>
+            <TableCell>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="shrink-0 bg-muted/50 font-bold border-muted-foreground/30">
+                  {item.manpowerIds?.length || 0}
+                </Badge>
+                <span>{getManpowerNames(item.manpowerIds)}</span>
+              </div>
+            </TableCell>
             <TableCell>{item.jobType}</TableCell>
             <TableCell>{item.jobNo}</TableCell>
             <TableCell>{item.projectVesselName}</TableCell>
