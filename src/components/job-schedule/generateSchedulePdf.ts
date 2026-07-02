@@ -220,17 +220,27 @@ export async function generateSchedulePdf(
         footerStartY + footerHeight / 2 + 3
       );
       
-      // --- Signature image ---
-      if (userSignature) {
-        doc.addImage(userSignature, 'PNG', margin + 6, footerStartY + 5, 80, 25);
-      }
-
       // ---- RIGHT COLUMN TOP ----
       doc.text(
         'Signature:',
         footerMidX + 6,
         footerStartY + 15
       );
+
+      // --- Signature image (Right Signature Cell) ---
+      if (userSignature) {
+        const signatureX = footerMidX + 55;   // after "Signature:"
+        const signatureY = footerStartY + 4;
+
+        doc.addImage(
+          userSignature,
+          'PNG',
+          signatureX,
+          signatureY,
+          75,   // width
+          22    // height
+        );
+      }
 
       // ---- RIGHT COLUMN BOTTOM ----
       doc.text(
