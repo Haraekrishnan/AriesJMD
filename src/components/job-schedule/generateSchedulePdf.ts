@@ -69,16 +69,14 @@ export async function generateSchedulePdf(
   const headerBottomY = headerStartY + headerBoxHeight;
   const tableStartY = headerBottomY;
 
-  // ---------- DYNAMIC FONT SCALING ----------
-  let fontSize = 7;
-  let cellPadding = 4;
+  // ---------- DYNAMIC FONT SETTINGS ----------
+  const fontSize = 7;
 
   doc.autoTable({
     startY: tableStartY,
     tableWidth: usableWidth,
     margin: { left: margin, right: margin, top: tableStartY, bottom: 70 },
     pageBreak: 'auto',
-    rowPageBreak: 'avoid',
 
     head: [headRow],
     body: bodyRows,
@@ -92,6 +90,7 @@ export async function generateSchedulePdf(
             left: 3,
             right: 3
         },
+        minCellHeight: 18,
         lineWidth: 0.2,
         lineColor: [0, 0, 0],
         textColor: [0, 0, 0],
@@ -106,13 +105,13 @@ export async function generateSchedulePdf(
     },
     columnStyles: {
         0: { cellWidth: 25 },
-        1: { cellWidth: 120 }, 
-        2: { cellWidth: 35 },
-        3: { cellWidth: 35 },
-        4: { cellWidth: 70 },
-        5: { cellWidth: 50 },
+        1: { cellWidth: 135 }, // Expanded for better flow
+        2: { cellWidth: 30 },
+        3: { cellWidth: 32 },
+        4: { cellWidth: 65 },
+        5: { cellWidth: 45 },
         6: { cellWidth: 40, halign: 'center' },
-        7: { cellWidth: 60 },
+        7: { cellWidth: 58 },
         8: { cellWidth: 35, halign: 'center' },
         9: { cellWidth: 'auto' },
     },
@@ -125,14 +124,14 @@ export async function generateSchedulePdf(
            return match ? match[1].trim() : rn.trim();
         });
         
-        // We set the text here so AutoTable can calculate height
+        // Ensure height calculation is based on comma-separated list
         data.cell.text = [namesOnly.join(', ')];
       }
     },
 
     willDrawCell: (data: any) => {
       if (data.section === 'body' && data.column.index === 1) {
-        data.cell.text = []; // Clear for custom drawing in didDrawCell
+        data.cell.text = []; // Clear for custom formatted drawing
       }
     },
 
@@ -162,17 +161,12 @@ export async function generateSchedulePdf(
       const maxWidth = data.cell.width - paddingLeft - data.cell.padding('right');
 
       const fSize = data.cell.styles.fontSize;
-      const lHeight = fSize * 1.55;
+      const lHeight = fSize * 1.8; // Improved line height
       const separator = ", ";
 
-      // Calculate total height for vertical centering
-      const namesString = parsed.map(p => p.name).join(separator);
-      const textLines = currentDoc.splitTextToSize(namesString, maxWidth);
-      const totalTextHeight = textLines.length * lHeight;
-      const startY = data.cell.y + (data.cell.height - totalTextHeight) / 2 + fSize;
-
+      // Position: Top aligned with padding + small offset
       let cursorX = startX;
-      let cursorY = startY;
+      let cursorY = data.cell.y + data.cell.padding('top') + fSize + 2;
 
       currentDoc.setFontSize(fSize);
 
@@ -190,7 +184,7 @@ export async function generateSchedulePdf(
         const nameWidth = currentDoc.getTextWidth(item.name);
         const sepWidth = isLast ? 0 : currentDoc.getTextWidth(separator);
 
-        // Word wrap check
+        // Wrapping check
         if (cursorX + nameWidth > startX + maxWidth && cursorX > startX) {
             cursorX = startX;
             cursorY += lHeight;
@@ -234,13 +228,14 @@ export async function generateSchedulePdf(
     }
   });
 
-  // ---------- DRAW FOOTER AFTER TABLE ----------
-  const finalTableY = (doc as any).lastAutoTable.finalY;
+  // ---------- DRAW FOOTER (ATTACHED TO TABLE) ----------
+  const finalTable = (doc as any).lastAutoTable;
   const footerHeight = 60;
-  let footerY = finalTableY + 2;
+  // Start exactly at table bottom to close the gap
+  let footerY = finalTable.finalY - 0.2;
 
-  // Manual page break check for footer
-  if (footerY + footerHeight + 20 > pageHeight) {
+  // Page overflow protection for footer
+  if (footerY + footerHeight + 10 > pageHeight) {
     doc.addPage();
     footerY = margin;
   }
@@ -252,7 +247,7 @@ export async function generateSchedulePdf(
   doc.line(footerMidX, footerY + footerHeight / 2, margin + usableWidth, footerY + footerHeight / 2);
 
   doc.setFontSize(8).setFont('helvetica', 'normal').setTextColor(0);
-  doc.text(`Scheduled by ${schedulerName}`, margin + 6, footerY + footerHeight / 2 + 3);
+  doc.text(`Scheduled by ${schedulerName}`, margin + 6, footerY + footerHeight / 2 + 15);
   doc.text('Signature:', footerMidX + 6, footerY + 15);
 
   if (userSignature) {
@@ -268,6 +263,7 @@ export async function generateSchedulePdf(
         const scale = Math.min(maxWidth / imgW, maxHeight / imgH, 1);
         imgW *= scale;
         imgH *= scale;
+        // Positioned after "Signature:" label
         doc.addImage(userSignature, 'PNG', footerMidX + labelWidth + padding, footerY + ((footerHeight/2) - imgH)/2, imgW, imgH);
     } catch (e) { console.error(e); }
   }
