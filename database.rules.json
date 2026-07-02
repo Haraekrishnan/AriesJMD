@@ -4,10 +4,8 @@
     ".write": false,
     "users": {
       ".read": true,
-      ".indexOn": "email",
-      "$uid": {
-        ".write": true
-      }
+      ".write": true,
+      ".indexOn": "email"
     },
     "roles": {
       ".read": true,

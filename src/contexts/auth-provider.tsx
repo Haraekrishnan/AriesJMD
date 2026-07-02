@@ -140,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     });
 
-    return newDelegatedEvents.length + unreadComments.length;
+    return new DelegatedEvents.length + unreadComments.length;
   }, [user, plannerEvents, dailyPlannerComments]);
 
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
