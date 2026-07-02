@@ -3,10 +3,10 @@
     ".read": false,
     ".write": false,
     "users": {
-      ".read": "true",
+      ".read": true,
       ".indexOn": "email",
       "$uid": {
-        ".write": "true"
+        ".write": true
       }
     },
     "roles": {
@@ -42,28 +42,28 @@
       ".write": true
     },
     "observationReports": {
-      ".read": "true",
-      ".write": "true"
+      ".read": true,
+      ".write": true
     },
     "inventoryItems": {
-      ".read": "true",
-      ".write": "true"
+      ".read": true,
+      ".write": true
     },
     "inventory_harness": {
-      ".read": "true",
-      ".write": "true"
+      ".read": true,
+      ".write": true
     },
     "inventory_tripod": {
-      ".read": "true",
-      ".write": "true"
+      ".read": true,
+      ".write": true
     },
     "inventory_lifeline": {
-      ".read": "true",
-      ".write": "true"
+      ".read": true,
+      ".write": true
     },
     "inventory_gas_detectors": {
-      ".read": "true",
-      ".write": "true"
+      ".read": true,
+      ".write": true
     },
     "utMachines": {
       ".read": true,
@@ -172,15 +172,15 @@
     },
     "feedback": {
         ".read": true,
-        ".write": "true"
+        ".write": true
     },
     "unlockRequests": {
-        ".read": "true",
+        ".read": true,
         ".write": true
     },
     "downloadableDocuments": {
-        ".read": "true",
-        ".write": "true"
+        ".read": true,
+        ".write": true
     },
     "logbookRequests": {
         ".read": true,
@@ -191,8 +191,8 @@
         ".write": true
     },
     "deliveryNotes": {
-      ".read": "true",
-      ".write": "true"
+      ".read": true,
+      ".write": true
     },
     "pneumaticDrillingMachines": {
         ".read": true,
@@ -223,16 +223,16 @@
         ".write": true
     },
     "quotations": {
-      ".read": "true",
-      ".write": "true"
+      ".read": true,
+      ".write": true
     },
     "ppeRequests": {
-      ".read": "true",
-      ".write": "true"
+      ".read": true,
+      ".write": true
     },
     "ppeStock": {
-      ".read": "true",
-      ".write": "true"
+      ".read": true,
+      ".write": true
     }
   }
 }

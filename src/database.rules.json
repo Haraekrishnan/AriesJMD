@@ -1,14 +1,12 @@
-
-
 {
   "rules": {
     ".read": false,
     ".write": false,
     "users": {
-      ".read": "auth != null",
+      ".read": true,
       ".indexOn": "email",
       "$uid": {
-        ".write": "$uid === auth.uid"
+        ".write": true
       }
     },
     "roles": {
@@ -44,28 +42,28 @@
       ".write": true
     },
     "observationReports": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": true,
+      ".write": true
     },
     "inventoryItems": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": true,
+      ".write": true
     },
     "inventory_harness": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": true,
+      ".write": true
     },
     "inventory_tripod": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": true,
+      ".write": true
     },
     "inventory_lifeline": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": true,
+      ".write": true
     },
     "inventory_gas_detectors": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": true,
+      ".write": true
     },
     "utMachines": {
       ".read": true,
@@ -170,15 +168,15 @@
     },
     "feedback": {
         ".read": true,
-        ".write": "auth != null"
+        ".write": true
     },
     "unlockRequests": {
-        ".read": "auth != null",
+        ".read": true,
         ".write": true
     },
     "downloadableDocuments": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": true,
+        ".write": true
     },
     "logbookRequests": {
         ".read": true,
@@ -189,8 +187,8 @@
         ".write": true
     },
     "deliveryNotes": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": true,
+      ".write": true
     },
     "pneumaticDrillingMachines": {
         ".read": true,
@@ -221,16 +219,16 @@
         ".write": true
     },
     "quotations": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": true,
+      ".write": true
+    },
+    "ppeRequests": {
+      ".read": true,
+      ".write": true
+    },
+    "ppeStock": {
+      ".read": true,
+      ".write": true
     }
   }
 }
-
-
-    
-
-
-    
-
-

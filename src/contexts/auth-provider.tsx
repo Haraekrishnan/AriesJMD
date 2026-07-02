@@ -204,10 +204,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       dataToSave.supervisorId = null;
     }
     
-    // Sanitize object to remove undefined values before sending to Firebase
+    // Remove undefined values to prevent errors in update()
     Object.keys(dataToSave).forEach(key => {
         if (dataToSave[key] === undefined) {
-            dataToSave[key] = null;
+            delete dataToSave[key];
         }
     });
 
@@ -215,7 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await update(ref(rtdb, `users/${id}`), dataToSave);
         if (user?.id) addActivityLog(user.id, 'User Profile Updated', `Updated details for ${updatedUser.name}`);
         
-        // Optimistically update local user state if it's the current user
+        // Update local state if the user being updated is the current user
         if (user?.id === updatedUser.id) {
             setUser(updatedUser);
         }
@@ -233,34 +233,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const updatedUser: User = { ...user, name, email };
         if (password) updatedUser.password = password;
 
-        const uploadPromises = [];
+        // Perform uploads sequentially to ensure clarity and error isolation
         if (avatarFile) {
-            uploadPromises.push(
-                uploadFile(avatarFile, `avatars/${user.id}/${Date.now()}_${avatarFile.name}`)
-                    .then(url => ({ type: 'avatar', url }))
-            );
+            const avatarUrl = await uploadFile(avatarFile, `avatars/${user.id}/${Date.now()}_${avatarFile.name}`);
+            updatedUser.avatar = avatarUrl;
         }
-        if (signatureFile) {
-            uploadPromises.push(
-                uploadFile(signatureFile, `signatures/${user.id}/${Date.now()}_${signatureFile.name}`)
-                    .then(url => ({ type: 'signature', url }))
-            );
-        }
-        
-        const results = await Promise.all(uploadPromises);
 
-        results.forEach(result => {
-            if (result.type === 'avatar') updatedUser.avatar = result.url;
-            if (result.type === 'signature') updatedUser.signatureUrl = result.url;
-        });
+        if (signatureFile) {
+            const signatureUrl = await uploadFile(signatureFile, `signatures/${user.id}/${Date.now()}_${signatureFile.name}`);
+            updatedUser.signatureUrl = signatureUrl;
+        }
         
-        return await updateUser(updatedUser);
+        const success = await updateUser(updatedUser);
+        return success;
     } catch (error) {
         console.error("Profile update error:", error);
         toast({
             variant: "destructive",
             title: "Update Failed",
-            description: "An error occurred while uploading files or updating the database."
+            description: (error as Error).message || "An error occurred while uploading files or updating the profile."
         });
         return false;
     }
