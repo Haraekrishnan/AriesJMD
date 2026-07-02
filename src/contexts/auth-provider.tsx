@@ -7,9 +7,7 @@ import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, get, query, orderByChild, equalTo, update, push, set, remove } from 'firebase/database';
 import useLocalStorage from '@/hooks/use-local-storage';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
-import { uploadFile } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
-import { isSameDay, parseISO } from 'date-fns';
 import { fileToBase64 } from '@/lib/fileToBase64';
 
 // --- TYPE DEFINITIONS ---
@@ -134,7 +132,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       return comments.some(c => {
         if (!c) return false;
-        // Search in all plannerEvents to find the specific event referenced by the comment
         const event = plannerEvents.find(e => e.id === c.eventId);
         if (!event) return false;
         const isParticipant = event.userId === user.id || event.creatorId === user.id;
@@ -206,9 +203,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       dataToSave.supervisorId = null;
     }
     
-    // Explicitly handle fields to prevent stripping
-    if (updatedUser.signatureUrl) dataToSave.signatureUrl = updatedUser.signatureUrl;
+    // Explicitly handle Base64 fields to prevent them from being stripped
     if (updatedUser.signatureBase64) dataToSave.signatureBase64 = updatedUser.signatureBase64;
+    if (updatedUser.avatar) dataToSave.avatar = updatedUser.avatar;
 
     // Remove undefined values to prevent errors in update()
     Object.keys(dataToSave).forEach(key => {
@@ -217,13 +214,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     });
 
-    console.log(`[AuthProvider] Writing to RTDB path users/${id} with data:`, JSON.stringify(dataToSave));
+    console.log(`[AuthProvider] Writing to RTDB path users/${id} with data:`, JSON.stringify({ ...dataToSave, signatureBase64: dataToSave.signatureBase64 ? 'BASE64_STUB' : null }));
 
     try {
         await update(ref(rtdb, `users/${id}`), dataToSave);
         console.log(`[AuthProvider] RTDB write completed successfully for user ${id}`);
         
-        // Update local state if the user being updated is the current user
         if (user?.id === updatedUser.id) {
             setUser(updatedUser);
         }
@@ -239,25 +235,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false;
     }
 
+    console.log("[AuthProvider] Entering updateProfile. Avatar:", !!avatarFile, "Signature:", !!signatureFile);
+
     try {
         const updatedUser: User = { ...user, name, email };
         if (password) updatedUser.password = password;
 
+        // Handle Avatar as Base64 (to avoid Storage issues on Spark plan)
         if (avatarFile) {
-            const avatarUrl = await uploadFile(avatarFile, `avatars/${user.id}/${Date.now()}_${avatarFile.name}`);
-            updatedUser.avatar = avatarUrl;
+            console.log("[AuthProvider] Converting avatar to Base64...");
+            const avatarBase64 = await fileToBase64(avatarFile);
+            updatedUser.avatar = avatarBase64;
         }
 
+        // Handle Signature as Base64
         if (signatureFile) {
-            const base64 = await fileToBase64(signatureFile);
-            updatedUser.signatureBase64 = base64;
-            console.log("[AuthProvider] Signature converted to Base64.");
+            console.log("[AuthProvider] Converting signature to Base64...");
+            const signatureBase64 = await fileToBase64(signatureFile);
+            updatedUser.signatureBase64 = signatureBase64;
+            // Clear old URL if it exists
+            updatedUser.signatureUrl = ""; 
         }
         
         const success = await updateUser(updatedUser);
+        console.log("[AuthProvider] updateProfile result:", success);
         return success;
     } catch (error) {
-        console.error("[AuthProvider] Profile update exception:", error);
+        console.error("[AuthProvider] updateProfile exception:", error);
         toast({
             variant: "destructive",
             title: "Update Failed",
@@ -451,12 +455,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const getAssignableUsers = useCallback(() => {
     if (!user) return [];
-    // Allow assigning to anyone except for Manager roles.
     return users.filter(u => u.role !== 'Manager');
   }, [user, users]);
   
   const clearInventoryTransferHistory = useCallback(() => {
-    // This is a placeholder now. The real implementation is in useInventory.
+    // Moved to useInventory
   }, []);
   
   const markPlannerEventAsViewed = useCallback((eventId: string) => {

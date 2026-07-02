@@ -1,5 +1,5 @@
 /**
- * Converts a File object to a Base64 string (Data URI).
+ * Converts a File object to a Base64 string (Data URI) using FileReader.
  * 
  * @param file - The File object to convert.
  * @returns A promise that resolves with the Base64 string.

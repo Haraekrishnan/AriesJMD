@@ -5,7 +5,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import type { User as UserType } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -18,7 +18,6 @@ import RoleManagementTable from '@/components/account/role-management-table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import ProjectManagementTable from '@/components/account/project-management-table';
 import { Skeleton } from '@/components/ui/skeleton';
-import PasswordResetRequests from '@/components/account/password-reset-requests';
 import FeedbackManagement from '@/components/account/FeedbackManagement';
 import { Badge } from '@/components/ui/badge';
 import UnlockRequests from '@/components/account/UnlockRequests';
@@ -32,14 +31,19 @@ export default function AccountPage() {
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [password, setPassword] = useState('');
-  const [avatar, setAvatar] = useState(user?.avatar || '');
+  const [avatarPreview, setAvatarPreview] = useState(user?.avatar || '');
+  const [signaturePreview, setSignaturePreview] = useState(user?.signatureBase64 || '');
+  
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [signatureFile, setSignatureFile] = useState<File | null>(null);
+  
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const signatureInputRef = useRef<HTMLInputElement>(null);
+
   const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false);
   const [isEditEmployeeDialogOpen, setIsEditEmployeeDialogOpen] = useState(false);
   const [isAddRoleDialogOpen, setIsAddRoleDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [signatureFile, setSignatureFile] = useState<File | null>(null);
-  const [signaturePreview, setSignaturePreview] = useState(user?.signatureBase64 || user?.signatureUrl || '');
 
   const [newAppName, setNewAppName] = useState(appName);
   const [newAppLogo, setNewAppLogo] = useState<string | null>(appLogo);
@@ -59,8 +63,8 @@ export default function AccountPage() {
     if (user) {
         setName(user.name);
         setEmail(user.email);
-        setAvatar(user.avatar);
-        setSignaturePreview(user.signatureBase64 || user.signatureUrl || '');
+        setAvatarPreview(user.avatar || '');
+        setSignaturePreview(user.signatureBase64 || '');
     }
   }, [user]);
 
@@ -89,25 +93,29 @@ export default function AccountPage() {
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    console.log("[Account] Starting profile save. Files:", { avatar: avatarFile?.name, signature: signatureFile?.name });
+    console.log("[Account] Starting profile save. Files:", { avatar: !!avatarFile, signature: !!signatureFile });
     
     try {
         const success = await updateProfile(name, email, avatarFile, password, signatureFile);
-        console.log("[Account] updateProfile result:", success);
         
         if (success) {
           toast({
             title: 'Profile Updated',
             description: 'Your profile information has been saved successfully.',
           });
+          
           setPassword('');
           setAvatarFile(null);
           setSignatureFile(null);
+          
+          if (avatarInputRef.current) avatarInputRef.current.value = "";
+          if (signatureInputRef.current) signatureInputRef.current.value = "";
+          
         } else {
           toast({
             variant: 'destructive',
             title: 'Save Failed',
-            description: 'Could not save your profile changes. Please check your connection.',
+            description: 'Could not save your profile changes.',
           });
         }
     } catch (error) {
@@ -122,23 +130,30 @@ export default function AccountPage() {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setAvatarFile(file);
-      setAvatar(URL.createObjectURL(file));
+      
+      const reader = new FileReader();
+      reader.onload = () => {
+        setAvatarPreview(reader.result as string);
+        console.log("[Account] Avatar preview updated via FileReader.");
+      };
+      reader.readAsDataURL(file);
       console.log("[Account] Avatar file selected:", file.name);
     }
   };
   
-  const handleSignatureFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSignatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setSignatureFile(file);
       
       const reader = new FileReader();
       reader.onload = () => {
-          setSignaturePreview(reader.result as string);
+        setSignaturePreview(reader.result as string);
+        console.log("[Account] Signature preview updated via FileReader.");
       };
       reader.readAsDataURL(file);
       console.log("[Account] Signature file selected:", file.name);
@@ -215,7 +230,7 @@ export default function AccountPage() {
             <Card>
               <CardHeader className="items-center text-center">
                 <Avatar className="h-24 w-24 mb-4">
-                  <AvatarImage src={avatar} alt={name} data-ai-hint="user avatar" />
+                  <AvatarImage src={avatarPreview} alt={name} />
                   <AvatarFallback>{name.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <CardTitle>{name}</CardTitle>
@@ -228,7 +243,7 @@ export default function AccountPage() {
               <Card>
                   <CardHeader>
                   <CardTitle>Update Profile</CardTitle>
-                  <CardDescription>Edit your personal information.</CardDescription>
+                  <CardDescription>Edit your personal information. Changes are saved locally and synced to the database.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                   <div className="space-y-2">
@@ -259,7 +274,7 @@ export default function AccountPage() {
                   </div>
                   <div className="space-y-2">
                       <Label htmlFor="avatar-upload">Change Profile Picture</Label>
-                      <Input id="avatar-upload" type="file" onChange={handleFileChange} accept=".jpg, .jpeg, .png" />
+                      <Input id="avatar-upload" type="file" ref={avatarInputRef} onChange={handleAvatarChange} accept=".jpg, .jpeg, .png" />
                   </div>
                   </CardContent>
               </Card>
@@ -269,12 +284,12 @@ export default function AccountPage() {
         {can.manage_signatures && (
             <Card className="mt-8">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Signature /> Signature</CardTitle>
-                    <CardDescription>Upload or update your digital signature. This will be used in reports you generate.</CardDescription>
+                    <CardTitle className="flex items-center gap-2"><Signature /> Digital Signature</CardTitle>
+                    <CardDescription>Upload a digital signature. It will be stored as a Base64 string for offline reliability and instant reports.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
-                        <Label>Current Signature</Label>
+                        <Label>Current Signature Preview</Label>
                         <div className="w-full h-32 border rounded-md bg-muted flex items-center justify-center overflow-hidden">
                             {signaturePreview ? (
                                 <img src={signaturePreview} alt="Signature" className="max-h-full max-w-full object-contain" />
@@ -285,8 +300,8 @@ export default function AccountPage() {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="signature-upload">Upload New Signature</Label>
-                        <Input id="signature-upload" type="file" onChange={handleSignatureFileChange} accept=".png,.jpg,.jpeg" />
-                        <p className="text-xs text-muted-foreground">For best results, upload a PNG with a transparent background.</p>
+                        <Input id="signature-upload" type="file" ref={signatureInputRef} onChange={handleSignatureChange} accept=".png,.jpg,.jpeg" />
+                        <p className="text-xs text-muted-foreground">For best results, use a transparent PNG background. Selecting the same file again will work.</p>
                     </div>
                 </CardContent>
             </Card>
@@ -294,7 +309,7 @@ export default function AccountPage() {
 
         <CardFooter className="px-0 pt-6">
             <Button type="submit" disabled={isSaving}>
-                {isSaving ? "Saving..." : "Save All Changes"}
+                {isSaving ? "Saving changes..." : "Save All Changes"}
             </Button>
         </CardFooter>
       </form>
