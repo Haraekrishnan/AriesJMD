@@ -33,7 +33,8 @@ async function fetchImageAsBase64(url: string): Promise<string> {
 export async function generateSchedulePdf(
   schedule: JobSchedule | undefined,
   scheduleDate: Date,
-  reportDate: Date
+  reportDate: Date,
+  schedulerName: string
 ) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -214,7 +215,7 @@ export async function generateSchedulePdf(
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.text(
-        'Scheduled by Rakhi Raj',
+        `Scheduled by ${schedulerName}`,
         margin + 6,
         footerStartY + footerHeight / 2 + 3
       );

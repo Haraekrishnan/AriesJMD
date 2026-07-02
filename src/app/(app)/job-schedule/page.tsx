@@ -33,7 +33,7 @@ export default function JobSchedulePage() {
     };
 
     const handleExport = async (type: 'excel' | 'pdf') => {
-        if (!scheduleForDate || !scheduleForDate.items || scheduleForDate.items.length === 0 || !vehicles) return;
+        if (!scheduleForDate || !scheduleForDate.items || scheduleForDate.items.length === 0 || !vehicles || !user) return;
 
         const scheduleWithNames = {
             ...scheduleForDate,
@@ -49,10 +49,12 @@ export default function JobSchedulePage() {
             }))
         };
 
+        const schedulerName = user.name;
+
         if (type === 'excel') {
-            await generateScheduleExcel(scheduleWithNames, selectedDate, footerDate);
+            await generateScheduleExcel(scheduleWithNames, selectedDate, footerDate, schedulerName);
         } else {
-            await generateSchedulePdf(scheduleWithNames, selectedDate, footerDate);
+            await generateSchedulePdf(scheduleWithNames, selectedDate, footerDate, schedulerName);
         }
     };
 

@@ -1,3 +1,4 @@
+
 import ExcelJS from 'exceljs';
 import { format } from 'date-fns';
 import { saveAs } from 'file-saver';
@@ -15,7 +16,8 @@ async function fetchImageAsArrayBuffer(url: string) {
 export async function generateScheduleExcel(
   schedule: JobSchedule | undefined,
   scheduleDate: Date,
-  reportDate: Date
+  reportDate: Date,
+  schedulerName: string
 ) {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Job Schedule');
@@ -153,7 +155,7 @@ export async function generateScheduleExcel(
   ws.mergeCells(`D${rowIndex}:F${rowIndex}`);
   ws.mergeCells(`G${rowIndex}:J${rowIndex}`);
 
-  ws.getCell(`A${rowIndex}`).value = 'Scheduled by:';
+  ws.getCell(`A${rowIndex}`).value = `Scheduled by: ${schedulerName}`;
   ws.getCell(`G${rowIndex}`).value = `Date: ${formattedReportDate}`;
   ws.getCell(`G${rowIndex}`).alignment = { horizontal: 'right' };
 
