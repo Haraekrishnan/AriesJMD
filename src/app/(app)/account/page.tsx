@@ -89,24 +89,34 @@ export default function AccountPage() {
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    const success = await updateProfile(name, email, avatarFile, password, signatureFile);
-    
-    if (success) {
-      toast({
-        title: 'Profile Updated',
-        description: 'Your profile information has been saved successfully.',
-      });
-      setPassword('');
-      setAvatarFile(null);
-      setSignatureFile(null);
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Save Failed',
-        description: 'Could not save your profile changes. Please check your connection.',
-      });
+    try {
+        const success = await updateProfile(name, email, avatarFile, password, signatureFile);
+        
+        if (success) {
+          toast({
+            title: 'Profile Updated',
+            description: 'Your profile information has been saved successfully.',
+          });
+          setPassword('');
+          setAvatarFile(null);
+          setSignatureFile(null);
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Save Failed',
+            description: 'Could not save your profile changes. Please check your connection.',
+          });
+        }
+    } catch (error) {
+        console.error("Profile save error:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Unexpected Error',
+            description: 'An error occurred while saving your profile.',
+        });
+    } finally {
+        setIsSaving(false);
     }
-    setIsSaving(false);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

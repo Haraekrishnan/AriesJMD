@@ -199,6 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateUser = useCallback(async (updatedUser: User): Promise<boolean> => {
     const { id, ...data } = updatedUser;
     const dataToSave: any = { ...data };
+    
     if (dataToSave.supervisorId === 'none' || dataToSave.supervisorId === undefined) {
       dataToSave.supervisorId = null;
     }
@@ -213,7 +214,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
         await update(ref(rtdb, `users/${id}`), dataToSave);
         if (user?.id) addActivityLog(user.id, 'User Profile Updated', `Updated details for ${updatedUser.name}`);
-        if (user?.id === updatedUser.id) setUser(updatedUser);
+        
+        // Optimistically update local user state if it's the current user
+        if (user?.id === updatedUser.id) {
+            setUser(updatedUser);
+        }
         return true;
     } catch (error) {
         console.error("Database update failed:", error);
@@ -222,40 +227,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, addActivityLog]);
   
   const updateProfile = useCallback(async (name: string, email: string, avatarFile: File | null, password?: string, signatureFile?: File | null): Promise<boolean> => {
-    if (user) {
+    if (!user) return false;
+
+    try {
         const updatedUser: User = { ...user, name, email };
         if (password) updatedUser.password = password;
 
         const uploadPromises = [];
         if (avatarFile) {
             uploadPromises.push(
-                uploadFile(avatarFile, `avatars/${user.id}/${avatarFile.name}`)
+                uploadFile(avatarFile, `avatars/${user.id}/${Date.now()}_${avatarFile.name}`)
                     .then(url => ({ type: 'avatar', url }))
-                    .catch(err => ({ type: 'avatar', error: err }))
             );
         }
         if (signatureFile) {
             uploadPromises.push(
-                uploadFile(signatureFile, `signatures/${user.id}/${signatureFile.name}`)
+                uploadFile(signatureFile, `signatures/${user.id}/${Date.now()}_${signatureFile.name}`)
                     .then(url => ({ type: 'signature', url }))
-                    .catch(err => ({ type: 'signature', error: err }))
             );
         }
         
         const results = await Promise.all(uploadPromises);
 
         results.forEach(result => {
-            if ('error' in result) {
-                 toast({ variant: "destructive", title: "Upload Failed", description: `Could not upload new ${result.type}.` });
-            } else {
-                if (result.type === 'avatar') updatedUser.avatar = (result as { url: string }).url;
-                if (result.type === 'signature') updatedUser.signatureUrl = (result as { url: string }).url;
-            }
+            if (result.type === 'avatar') updatedUser.avatar = result.url;
+            if (result.type === 'signature') updatedUser.signatureUrl = result.url;
         });
         
         return await updateUser(updatedUser);
+    } catch (error) {
+        console.error("Profile update error:", error);
+        toast({
+            variant: "destructive",
+            title: "Update Failed",
+            description: "An error occurred while uploading files or updating the database."
+        });
+        return false;
     }
-    return false;
   }, [user, updateUser, toast]);
 
   const requestPasswordReset = useCallback(async (email: string): Promise<boolean> => {
