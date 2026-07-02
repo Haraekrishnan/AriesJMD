@@ -50,7 +50,7 @@ export async function generateSchedulePdf(
 
   const bodyRows = (schedule?.items || []).map((item, i) => [
     i + 1,
-    Array.isArray(item.manpowerIds) ? item.manpowerIds.join(', ') : '',
+    item.manpowerIds, // Array of "Name (Trade)" strings
     item.jobType || '',
     item.jobNo || '',
     item.projectVesselName || '',
@@ -71,35 +71,36 @@ export async function generateSchedulePdf(
   // ---------- DYNAMIC TABLE SCALING ----------
   const pageHeight = doc.internal.pageSize.getHeight();
   
-  const footerReserve = 100;   // Increased to accommodate taller footer
+  const footerReserve = 100;
   const headerReserve = headerBoxHeight + margin + 10;
   
   const availableTableHeight =
     pageHeight - headerReserve - footerReserve;
   
-  // Base values
+  // Base values for scaling
   let fontSize = 6;
   let cellPadding = 2;
   
-  // Rough row height estimate formula
-  const estimateRowHeight = (font: number, padding: number) =>
-    font * 1.4 + padding * 2;
+  // Estimate height based on total line count
+  const totalLines = bodyRows.reduce((acc, row) => {
+    const names = row[1];
+    return acc + (Array.isArray(names) ? names.length : 1);
+  }, 0);
+
+  const estimateTableHeight = (font: number, padding: number) => {
+    const headerH = font * 1.5 + padding * 2;
+    // Each line in Name column adds roughly its font size to height
+    const rowsH = totalLines * (font * 1.2) + (bodyRows.length * padding * 2);
+    return headerH + rowsH;
+  };
   
-  const headerHeight = estimateRowHeight(fontSize + 0.5, cellPadding);
-  let rowHeight = estimateRowHeight(fontSize, cellPadding);
-  
-  const totalRows = bodyRows.length;
-  let estimatedTableHeight =
-    headerHeight + totalRows * rowHeight;
+  let estimatedTableHeight = estimateTableHeight(fontSize, cellPadding);
   
   // Dynamically reduce until it fits (safe limits applied)
-  while (estimatedTableHeight > availableTableHeight && fontSize > 4.5) {
-    fontSize -= 0.2;
-    cellPadding = Math.max(1, cellPadding - 0.1);
-  
-    rowHeight = estimateRowHeight(fontSize, cellPadding);
-    estimatedTableHeight =
-      headerHeight + totalRows * rowHeight;
+  while (estimatedTableHeight > availableTableHeight && fontSize > 4.2) {
+    fontSize -= 0.1;
+    cellPadding = Math.max(0.8, cellPadding - 0.1);
+    estimatedTableHeight = estimateTableHeight(fontSize, cellPadding);
   }
 
   doc.autoTable({
@@ -111,7 +112,7 @@ export async function generateSchedulePdf(
         top: tableStartY,
     },
 
-    pageBreak: 'avoid',   // 🚫 NEVER go to next page
+    pageBreak: 'avoid',
     rowPageBreak: 'avoid',
 
     head: [headRow],
@@ -138,7 +139,7 @@ export async function generateSchedulePdf(
 
     columnStyles: {
         0: { cellWidth: 25 },
-        1: { cellWidth: 120 },
+        1: { cellWidth: 120 }, // Name column
         2: { cellWidth: 30 },
         3: { cellWidth: 35 },
         4: { cellWidth: 75 },
@@ -147,6 +148,53 @@ export async function generateSchedulePdf(
         7: { cellWidth: 60 },
         8: { cellWidth: 35, halign: 'center' },
         9: { cellWidth: usableWidth - 470 },
+    },
+
+    // Custom drawing for Name column with conditional styling
+    drawCell: (data: any) => {
+      if (data.column.index === 1 && data.cell.section === 'body') {
+        const names = data.cell.raw as string[];
+        const cell = data.cell;
+        const currentDoc = data.doc;
+        
+        // Draw standard background
+        currentDoc.setFillColor(cell.styles.fillColor as any);
+        currentDoc.rect(cell.x, cell.y, cell.width, cell.height, 'F');
+        
+        const padding = cell.padding('left');
+        const x = cell.x + padding;
+        const maxWidth = cell.width - padding - cell.padding('right');
+        const currentFontSize = cell.styles.fontSize;
+        const lineHeight = currentFontSize * 1.2;
+        
+        let y = cell.y + cell.padding('top');
+
+        names.forEach((name) => {
+          const isRA3 = name.includes('RA Level 3');
+          const isHSEOrSup = /Supervisor|HSE|Safety/.test(name);
+          
+          if (isRA3) {
+            currentDoc.setFont('helvetica', 'bold');
+            currentDoc.setTextColor(0, 0, 0); // Bold Black
+          } else if (isHSEOrSup) {
+            currentDoc.setFont('helvetica', 'bold');
+            currentDoc.setTextColor(0, 51, 153); // Bold Blue (Corporate shade)
+          } else {
+            currentDoc.setFont('helvetica', 'normal');
+            currentDoc.setTextColor(0, 0, 0); // Normal Black
+          }
+          
+          const wrapped = currentDoc.splitTextToSize(name, maxWidth);
+          wrapped.forEach((line: string) => {
+            y += currentFontSize;
+            currentDoc.text(line, x, y);
+            y += (lineHeight - currentFontSize);
+          });
+          y += currentFontSize * 0.2; // Tiny gap between names
+        });
+        
+        return false; // Skip default drawing for this cell
+      }
     },
 
     didDrawPage: (data) => {
@@ -170,7 +218,7 @@ export async function generateSchedulePdf(
 
       // "Job Schedule" Title
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(16);
+      doc.setFontSize(14);
       doc.text('Job Schedule', pageWidth / 2, contentStartY + 12, { align: 'center' });
       
       // Sub-header text
@@ -181,13 +229,11 @@ export async function generateSchedulePdf(
       doc.text(formattedScheduleDate, pageWidth - margin - 5, lineY + 12, { align: 'right' });
       
       // === FOOTER SECTION =======================================================
-      const footerHeight = 60; // Increased room for signatures
+      const footerHeight = 60;
       const footerMidX = margin + usableWidth / 2;
 
-      // Start footer immediately after table
       let footerStartY = data.cursor.y;
 
-      // Page overflow check
       const pageHeight = doc.internal.pageSize.getHeight();
       if (footerStartY + footerHeight + 20 > pageHeight) {
         doc.addPage();
@@ -214,6 +260,7 @@ export async function generateSchedulePdf(
       // ---- LEFT COLUMN (merged cell) ----
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0);
       doc.text(
         `Scheduled by ${schedulerName}`,
         margin + 6,
@@ -229,52 +276,26 @@ export async function generateSchedulePdf(
 
       // ----- Signature image (Auto Fit) -----
       if (userSignature) {
-        // Signature cell dimensions (Top half of the right column)
         const cellX = footerMidX;
         const cellY = footerStartY;
         const cellWidth = usableWidth / 2;
         const cellHeight = footerHeight / 2;
-
-        // Reserve space for the "Signature:" label
         const labelWidth = 52;
-
-        // Padding inside the cell
         const padding = 4;
-
         const maxWidth = cellWidth - labelWidth - padding * 2;
         const maxHeight = cellHeight - padding * 2;
 
         try {
-            // Read actual image size
             const imgProps = doc.getImageProperties(userSignature);
-
             let imgWidth = imgProps.width;
             let imgHeight = imgProps.height;
-
-            // Scale proportionally to fit within the box
-            const scale = Math.min(
-                maxWidth / imgWidth,
-                maxHeight / imgHeight,
-                1
-            );
-
+            const scale = Math.min(maxWidth / imgWidth, maxHeight / imgHeight, 1);
             imgWidth *= scale;
             imgHeight *= scale;
-
-            // Position after the "Signature:" text
             const imgX = cellX + labelWidth + padding;
-
-            // Vertically center in the top half cell
             const imgY = cellY + (cellHeight - imgHeight) / 2;
 
-            doc.addImage(
-                userSignature,
-                'PNG',
-                imgX,
-                imgY,
-                imgWidth,
-                imgHeight
-            );
+            doc.addImage(userSignature, 'PNG', imgX, imgY, imgWidth, imgHeight);
         } catch (e) {
             console.error("Failed to add signature image:", e);
         }
@@ -295,7 +316,6 @@ export async function generateSchedulePdf(
         footerStartY + footerHeight + 10
       );
 
-      // ---- PAGE NUMBER (RIGHT SIDE, SAME LINE AS REF) ----
       const pageCount = (doc as any).internal.getNumberOfPages();
       doc.text(
         `Page ${data.pageNumber} of ${pageCount}`,

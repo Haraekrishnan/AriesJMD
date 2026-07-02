@@ -39,10 +39,10 @@ export default function JobSchedulePage() {
             items: scheduleForDate.items.map((item: any) => ({
                 ...item,
                 manpowerIds: item.manpowerIds.map((id: string) => {
-                  const manpowerProfile = manpowerProfiles.find(p => p.id === id);
-                  if (manpowerProfile) return manpowerProfile.name;
-                  const userProfile = users.find(u => u.id === id);
-                  return userProfile?.name || id;
+                  const mp = manpowerProfiles.find(p => p.id === id);
+                  if (mp) return `${mp.name} (${mp.trade})`;
+                  const up = users.find(u => u.id === id);
+                  return up ? `${up.name} (${up.role})` : id;
                 }),
                 vehicleId: vehicles.find(v => v.id === item.vehicleId)?.vehicleNumber || 'N/A'
             }))
