@@ -81,16 +81,11 @@ export async function generateSchedulePdf(
   let fontSize = 6;
   let cellPadding = 2;
   
-  // Estimate height based on total line count
-  const totalLines = bodyRows.reduce((acc, row) => {
-    const names = row[1];
-    return acc + (Array.isArray(names) ? names.length : 1);
-  }, 0);
-
+  // Estimate height based on total line count (approximate for wrapping)
   const estimateTableHeight = (font: number, padding: number) => {
     const headerH = font * 1.5 + padding * 2;
-    const rowsH = totalLines * (font * 1.2) + (bodyRows.length * padding * 2);
-    return headerH + rowsH;
+    // We estimate each row needs about 1-2 lines on average with commas
+    return headerH + (bodyRows.length * (font * 2.5 + padding * 2));
   };
   
   let estimatedTableHeight = estimateTableHeight(fontSize, cellPadding);
@@ -110,7 +105,7 @@ export async function generateSchedulePdf(
         top: tableStartY,
     },
 
-    pageBreak: 'avoid',
+    pageBreak: 'auto',
     rowPageBreak: 'avoid',
 
     head: [headRow],
@@ -148,28 +143,44 @@ export async function generateSchedulePdf(
         9: { cellWidth: usableWidth - 470 },
     },
 
-    // 1. Calculate required height for the multi-line name cell
+    // 1. Calculate required height for the wrapped names
     didParseCell: (data: any) => {
       if (data.section === 'body' && data.column.index === 1) {
         const rawNames = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
-        const lineHeight = data.cell.styles.fontSize * 1.4; // Estimate line height
-        const padding = data.cell.padding('top') + data.cell.padding('bottom');
-        // Ensure row is tall enough for all names
-        const minHeight = rawNames.length * lineHeight + padding;
+        
+        // Build the full string to estimate wrapped line count
+        const namesOnly = rawNames.map(rn => {
+           const match = rn.match(/^(.*)\s\((.*)\)$/);
+           return match ? match[1].trim() : rn.trim();
+        });
+        
+        const fullString = namesOnly.join(', ');
+        const padding = data.cell.padding('left') + data.cell.padding('right');
+        const maxWidth = data.column.width - padding;
+        
+        const currentDoc = data.doc;
+        currentDoc.setFontSize(data.cell.styles.fontSize);
+        const splitText = currentDoc.splitTextToSize(fullString, maxWidth);
+        const lineCount = splitText.length;
+        
+        const lineHeight = data.cell.styles.fontSize * 1.4;
+        const cellPaddingY = data.cell.padding('top') + data.cell.padding('bottom');
+        const minHeight = lineCount * lineHeight + cellPaddingY;
+        
         if (data.row.height < minHeight) {
           data.row.height = minHeight;
         }
       }
     },
 
-    // 2. Prevent default text drawing for Name column so we can draw custom colored lines
+    // 2. Prevent default text drawing for Name column
     willDrawCell: (data: any) => {
       if (data.section === 'body' && data.column.index === 1) {
         data.cell.text = [];
       }
     },
 
-    // 3. Draw custom formatted text with conditional styling and sorting
+    // 3. Draw custom formatted text with inline wrapping and role-based styling
     didDrawCell: (data: any) => {
       if (data.section !== 'body' || data.column.index !== 1) return;
 
@@ -177,9 +188,8 @@ export async function generateSchedulePdf(
         ? data.cell.raw
         : [String(data.cell.raw)];
         
-      // 1. Parse Name and Trade/Role
+      // Parse and sort
       const parsed = rawNames.map(rn => {
-          // Extracts "Name" and "Trade" from "Name (Trade)" or "Name (Role, Details)"
           const match = rn.match(/^(.*)\s\((.*)\)$/);
           if (match) {
               return { name: match[1].trim(), trade: match[2].trim() };
@@ -187,7 +197,6 @@ export async function generateSchedulePdf(
           return { name: rn.trim(), trade: '' };
       });
 
-      // 2. Sort: RA Level 3 (Rank 0) -> Others (Rank 1) -> Supervisor/HSE/Admin/Manager (Rank 2)
       parsed.sort((a, b) => {
           const getRank = (trade: string) => {
               if (/RA\s*Level\s*3/i.test(trade)) return 0;
@@ -198,41 +207,60 @@ export async function generateSchedulePdf(
       });
 
       const currentDoc = data.doc;
-
       const paddingLeft = data.cell.padding('left');
       const paddingTop = data.cell.padding('top');
-
-      const x = data.cell.x + paddingLeft;
+      const startX = data.cell.x + paddingLeft;
+      const startY = data.cell.y + paddingTop + data.cell.styles.fontSize;
       const maxWidth = data.cell.width - paddingLeft - data.cell.padding('right');
 
-      let y = data.cell.y + paddingTop + data.cell.styles.fontSize;
+      let cursorX = startX;
+      let cursorY = startY;
+      const fontSize = data.cell.styles.fontSize;
+      const lineHeight = fontSize * 1.2;
+      const separator = ", ";
 
-      parsed.forEach((item) => {
+      currentDoc.setFontSize(fontSize);
+
+      parsed.forEach((item, idx) => {
+        const isLast = idx === parsed.length - 1;
         const isRA3 = /RA\s*Level\s*3/i.test(item.trade);
         const isSupervisor = /Supervisor|HSE|Safety|Admin|Manager|Coordinator/i.test(item.trade);
 
-        if (isRA3) {
-          currentDoc.setFont('helvetica', 'bold');
-          currentDoc.setTextColor(0, 0, 0); // Bold Black
-        } else if (isSupervisor) {
-          currentDoc.setFont('helvetica', 'bold');
-          currentDoc.setTextColor(0, 102, 204); // Bold Corporate Blue
-        } else {
-          currentDoc.setFont('helvetica', 'normal');
-          currentDoc.setTextColor(0, 0, 0);
+        // Set font for measurement
+        if (isRA3 || isSupervisor) currentDoc.setFont('helvetica', 'bold');
+        else currentDoc.setFont('helvetica', 'normal');
+
+        const displayText = item.name + (isLast ? "" : separator);
+        let textWidth = currentDoc.getTextWidth(displayText);
+
+        // Check for wrapping
+        if (cursorX + textWidth > startX + maxWidth && cursorX > startX) {
+            cursorX = startX;
+            cursorY += lineHeight;
         }
 
-        // Only display the name, not the trade/designation
-        const wrapped = currentDoc.splitTextToSize(item.name, maxWidth);
+        // Draw Name
+        if (isRA3) {
+          currentDoc.setTextColor(0, 0, 0); // Bold Black
+        } else if (isSupervisor) {
+          currentDoc.setTextColor(0, 102, 204); // Bold Blue
+        } else {
+          currentDoc.setTextColor(0, 0, 0); // Normal Black
+        }
+        
+        currentDoc.text(item.name, cursorX, cursorY);
+        cursorX += currentDoc.getTextWidth(item.name);
 
-        wrapped.forEach((line: string) => {
-          currentDoc.text(line, x, y);
-          y += data.cell.styles.fontSize * 1.2;
-        });
-        y += data.cell.styles.fontSize * 0.2; // Small gap between names
+        // Draw Separator
+        if (!isLast) {
+            currentDoc.setFont('helvetica', 'normal');
+            currentDoc.setTextColor(0, 0, 0);
+            currentDoc.text(separator, cursorX, cursorY);
+            cursorX += currentDoc.getTextWidth(separator);
+        }
       });
 
-      // Reset styles for subsequent cells
+      // Reset styles for next cells
       currentDoc.setFont('helvetica', 'normal');
       currentDoc.setTextColor(0, 0, 0);
     },
