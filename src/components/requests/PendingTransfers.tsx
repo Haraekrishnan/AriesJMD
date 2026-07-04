@@ -74,8 +74,8 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false }: { req: 
 
     const canApprove = useMemo(() => {
         if (!user) return false;
-        return user.canApproveTransfers || user.role === 'Admin';
-    }, [user]);
+        return user.canApproveTransfers || user.role === 'Admin' || can.approve_transfer_requests;
+    }, [user, can.approve_transfer_requests]);
 
     const handleDelete = () => {
         deleteInventoryTransferRequest(req.id);
@@ -295,7 +295,7 @@ export default function PendingTransfers({ onEditRequest }: PendingTransfersProp
       const isMyProject = user.projectIds?.includes(req.fromProjectId) || user.projectIds?.includes(req.toProjectId);
       const isRequester = req.requesterId === user.id;
 
-      const canViewPending = user.canApproveTransfers || user.role === 'Admin' || user.role === 'Assistant Store Incharge';
+      const canViewPending = user.canApproveTransfers || user.role === 'Admin' || user.role === 'Assistant Store Incharge' || can.approve_transfer_requests;
       if (canViewPending && (req.status === 'Pending' || req.status === 'Disputed')) {
         forApproval.push(req);
       }
@@ -322,7 +322,7 @@ export default function PendingTransfers({ onEditRequest }: PendingTransfersProp
         myActiveRequests: myActiveRequests.sort(sortFn),
         allCompletedRequests: completed.sort((a,b) => (b.approvalDate || b.requestDate).localeCompare(a.approvalDate || a.requestDate)),
     };
-  }, [inventoryTransferRequests, user]);
+  }, [inventoryTransferRequests, user, can.approve_transfer_requests]);
   
   const { inventoryItems } = useInventory();
   const filteredCompletedRequests = useMemo(() => {

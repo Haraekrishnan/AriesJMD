@@ -70,7 +70,7 @@ export function AppSidebar() {
     const myFulfilledStoreCertRequestCount = (certificateRequests || []).filter(r => r.requesterId === user.id && r.status === 'Completed' && r.itemId && !r.viewedByRequester).length;
     const myFulfilledEquipmentCertRequests = (certificateRequests || []).filter(r => r.requesterId === user.id && r.status === 'Completed' && (r.utMachineId || r.dftMachineId) && !r.viewedByRequester);
 
-    const isStoreManager = user.canApproveTransfers || user.role === 'Admin';
+    const isStoreManager = user.canApproveTransfers || user.role === 'Admin' || can.approve_transfer_requests;
     const pendingStoreCertRequestCount = isStoreManager ? (certificateRequests || []).filter(r => r.status === 'Pending' && r.itemId).length : 0;
     const pendingEquipmentCertRequestCount = isStoreManager ? (certificateRequests || []).filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
     
@@ -146,7 +146,7 @@ export function AppSidebar() {
     const pendingFeedbackCount = can.manage_feedback ? (feedback || []).filter(f => !f.viewedBy?.[user.id]).length : 0;
     const pendingUnlockRequestCount = can.manage_user_lock_status ? (unlockRequests || []).filter(r => r.status === 'pending').length : 0;
 
-    const canApproveTransfers = user.canApproveTransfers || user?.role === 'Admin' || user?.role === 'Assistant Store Incharge';
+    const canApproveTransfers = user.canApproveTransfers || user?.role === 'Admin' || user?.role === 'Assistant Store Incharge' || can.approve_transfer_requests;
     const pendingInventoryTransferRequestCount = canApproveTransfers ? (inventoryTransferRequests || []).filter(r => r.status === 'Pending' || r.status === 'Disputed').length : 0;
     
     const pendingDamageReportCount = can.manage_inventory ? (damageReports || []).filter(r => r.status === 'Pending').length : 0;

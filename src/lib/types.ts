@@ -125,6 +125,7 @@ export const ALL_PERMISSIONS = [
   'manage_manpower_list',
   'view_manpower_list',
   'approve_store_requests',
+  'approve_transfer_requests',
   'manage_inventory',
   'view_inventory',
   'manage_equipment_status',

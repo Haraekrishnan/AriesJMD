@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -24,9 +23,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import InventoryReportDownloads from '@/components/inventory/InventoryReportDownloads';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import BulkUpdateTpCertDialog from '@/components/inventory/BulkUpdateTpCertDialog';
-import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
-import NewInventoryTransferRequestDialog from '@/components/requests/new-inventory-transfer-request-dialog';
-import PendingTransfers from '@/components/requests/PendingTransfers';
 import BulkUpdateInspectionDialog from '@/components/inventory/BulkUpdateInspectionDialog';
 import UpdateItemsDialog from '@/components/inventory/UpdateItemsDialog';
 import ActionRequiredReport from '@/components/inventory/ActionRequiredReport';
@@ -36,6 +32,7 @@ import { cn } from '@/lib/utils';
 import AddInwardRecordDialog from '@/components/inventory/AddInwardRecordDialog';
 import InwardOutwardHistory from '@/components/inventory/InwardOutwardHistory';
 import NewOutwardDialog from '@/components/inventory/NewOutwardDialog';
+import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
 
 
 export default function StoreInventoryPage() {
@@ -84,8 +81,12 @@ export default function StoreInventoryPage() {
     
     const [selectedItemsForTransfer, setSelectedItemsForTransfer] = useState<InventoryItem[]>([]);
     
-    const canApproveTransfers = can.approve_store_requests || user?.role === 'Assistant Store Incharge';
-    const pendingInventoryTransferRequestCount = canApproveTransfers ? (inventoryTransferRequests || []).filter(r => r.status === 'Pending' || r.status === 'Disputed').length : 0;
+    const hasTransferAuthority = useMemo(() => {
+        if (!user) return false;
+        return user.canApproveTransfers || user.role === 'Admin' || can.approve_transfer_requests;
+    }, [user, can.approve_transfer_requests]);
+
+    const pendingInventoryTransferRequestCount = hasTransferAuthority ? (inventoryTransferRequests || []).filter(r => r.status === 'Pending' || r.status === 'Disputed').length : 0;
     const pendingDamageReportCount = can.manage_inventory ? (damageReports || []).filter(r => r.status === 'Pending').length : 0;
 
     if (!can.view_inventory && !can.manage_inventory) {
@@ -145,7 +146,6 @@ export default function StoreInventoryPage() {
         });
 
         return notifications.sort((a,b) => {
-            // Sort logic to prioritize more urgent items, e.g., expired > expiring soon
             return 0; // Simple for now
         });
     }, [inventoryItems, user, projects]);
@@ -185,7 +185,6 @@ export default function StoreInventoryPage() {
             }
             
             // Status filter
-            const now = new Date();
             const inspectionDue = item.inspectionDueDate ? parseISO(item.inspectionDueDate) : null;
             const tpInspectionDue = item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : null;
 
