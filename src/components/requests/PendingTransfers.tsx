@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -75,8 +74,8 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false }: { req: 
 
     const canApprove = useMemo(() => {
         if (!user) return false;
-        return can.approve_store_requests;
-    }, [user, can.approve_store_requests]);
+        return user.canApproveTransfers || user.role === 'Admin';
+    }, [user]);
 
     const handleDelete = () => {
         deleteInventoryTransferRequest(req.id);
@@ -201,7 +200,7 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false }: { req: 
                         </AlertDialog>
                     </>
                     )}
-                    {req.status === 'Disputed' && can.approve_store_requests && (
+                    {req.status === 'Disputed' && canApprove && (
                          <div className="flex gap-2">
                             <Button size="sm" onClick={() => resolveInternalRequestDispute(req.id, 'reissue', 'Dispute accepted. Items will be re-issued.')}>Re-issue</Button>
                             <Button size="sm" variant="outline" onClick={() => resolveInternalRequestDispute(req.id, 'reverse', 'Dispute rejected. Items confirmed as issued.')}>Confirm Issued</Button>
@@ -296,7 +295,7 @@ export default function PendingTransfers({ onEditRequest }: PendingTransfersProp
       const isMyProject = user.projectIds?.includes(req.fromProjectId) || user.projectIds?.includes(req.toProjectId);
       const isRequester = req.requesterId === user.id;
 
-      const canViewPending = can.approve_store_requests || user.role === 'Assistant Store Incharge';
+      const canViewPending = user.canApproveTransfers || user.role === 'Admin' || user.role === 'Assistant Store Incharge';
       if (canViewPending && (req.status === 'Pending' || req.status === 'Disputed')) {
         forApproval.push(req);
       }
@@ -323,7 +322,7 @@ export default function PendingTransfers({ onEditRequest }: PendingTransfersProp
         myActiveRequests: myActiveRequests.sort(sortFn),
         allCompletedRequests: completed.sort((a,b) => (b.approvalDate || b.requestDate).localeCompare(a.approvalDate || a.requestDate)),
     };
-  }, [inventoryTransferRequests, user, can.approve_store_requests]);
+  }, [inventoryTransferRequests, user]);
   
   const { inventoryItems } = useInventory();
   const filteredCompletedRequests = useMemo(() => {
@@ -407,5 +406,3 @@ export default function PendingTransfers({ onEditRequest }: PendingTransfersProp
     </>
   );
 }
-
-    

@@ -30,7 +30,7 @@ interface InternalRequestTableProps {
   isConsumable?: boolean;
 }
 
-const statusVariant: Record<InternalRequestStatus, 'default' | 'secondary' | 'destructive' | 'outline' | 'success'> = {
+const statusVariant: Record<InternalRequestStatus, 'default' | 'secondary' | 'destructive' | 'success' | 'warning'> = {
   Pending: 'secondary',
   Approved: 'default',
   Issued: 'success',
@@ -70,9 +70,8 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false, showAckno
 
     const canApprove = useMemo(() => {
         if (!user) return false;
-        const userRole = roles.find(r => r.name === user.role);
-        return userRole?.permissions.includes('approve_store_requests');
-    }, [user, roles]);
+        return user.canApproveTransfers || user.role === 'Admin';
+    }, [user]);
 
     const isRequester = req.requesterId === user?.id;
     

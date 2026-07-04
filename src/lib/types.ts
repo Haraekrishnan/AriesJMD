@@ -19,6 +19,7 @@ export type User = {
   viewedBy?: { [key: string]: boolean };
   dismissedPendingUpdates?: { [key: string]: boolean };
   viewedFeatures?: { [key: string]: boolean };
+  canApproveTransfers?: boolean;
   viewPreferences?: {
     jmsTracker: 'board' | 'list';
     timesheetTracker: 'board' | 'list';
@@ -550,6 +551,8 @@ export type LaptopDesktop = {
   password?: string;
   remarks?: string;
 };
+
+export type MobileSimStatus = 'Active' | 'Inactive' | 'Returned' | 'Standby';
 
 export type DigitalCamera = {
   id: string;

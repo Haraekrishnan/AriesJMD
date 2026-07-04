@@ -1,4 +1,3 @@
-
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { User } from '@/lib/types';
 import { useMemo, useState } from 'react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
@@ -19,6 +17,7 @@ import { ChevronsUpDown, Check } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Switch } from '../ui/switch';
 
 const employeeSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -27,6 +26,7 @@ const employeeSchema = z.object({
   role: z.string().min(1, 'Role is required'),
   supervisorId: z.string().optional(),
   projectIds: z.array(z.string()).optional(),
+  canApproveTransfers: z.boolean().default(false),
 });
 
 type EmployeeFormValues = z.infer<typeof employeeSchema>;
@@ -50,6 +50,7 @@ export default function AddEmployeeDialog({ isOpen, setIsOpen }: AddEmployeeDial
       password: '',
       role: undefined,
       projectIds: [],
+      canApproveTransfers: false,
     },
   });
 
@@ -201,6 +202,24 @@ export default function AddEmployeeDialog({ isOpen, setIsOpen }: AddEmployeeDial
                           </Command>
                       </PopoverContent>
                   </Popover>
+              </div>
+
+              <div className="flex items-center justify-between p-2 border rounded-md bg-muted/50">
+                  <div className="space-y-0.5">
+                      <Label htmlFor="transfer-auth">Transfer Approval Authority</Label>
+                      <p className="text-[10px] text-muted-foreground leading-tight">Allow this user to approve or reject inventory transfers.</p>
+                  </div>
+                  <Controller
+                    name="canApproveTransfers"
+                    control={form.control}
+                    render={({ field }) => (
+                      <Switch
+                        id="transfer-auth"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    )}
+                  />
               </div>
             </div>
           </ScrollArea>

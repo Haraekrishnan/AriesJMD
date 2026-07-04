@@ -9,7 +9,7 @@ import { useMemo, useState, useEffect, useRef } from 'react';
 import type { User as UserType } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle, Trash2, Edit, Layers, Lock, Unlock, Eye, EyeOff, DatabaseZap, PartyPopper, Signature } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2, Edit, Layers, Lock, Unlock, Eye, EyeOff, DatabaseZap, PartyPopper, Signature, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AddEmployeeDialog from '@/components/account/add-employee-dialog';
 import EditEmployeeDialog from '@/components/account/edit-employee-dialog';
@@ -464,6 +464,7 @@ export default function AccountPage() {
                           <TableHead>User</TableHead>
                           <TableHead>Role</TableHead>
                           <TableHead>Supervisor</TableHead>
+                          <TableHead>Approver</TableHead>
                           {can.manage_users && <TableHead className="text-right">Actions</TableHead>}
                       </TableRow>
                   </TableHeader>
@@ -490,6 +491,20 @@ export default function AccountPage() {
                                 </TableCell>
                                 <TableCell>{report.role}</TableCell>
                                 <TableCell>{supervisor?.name || 'N/A'}</TableCell>
+                                <TableCell>
+                                    {report.canApproveTransfers && (
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <ShieldCheck className="h-5 w-5 text-green-600" />
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>Can Approve Transfers</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    )}
+                                </TableCell>
                                 {can.manage_users && (
                                     <TableCell className="text-right">
                                         <AlertDialog>
@@ -538,7 +553,7 @@ export default function AccountPage() {
 
       <AddEmployeeDialog isOpen={isAddEmployeeDialogOpen} setIsOpen={setIsAddEmployeeDialogOpen} />
       {selectedUser && (
-        <EditEmployeeDialog isOpen={isEditEmployeeDialogOpen} setIsOpen={setIsAddEmployeeDialogOpen} user={selectedUser} />
+        <EditEmployeeDialog isOpen={isEditEmployeeDialogOpen} setIsOpen={setIsEditEmployeeDialogOpen} user={selectedUser} />
       )}
       <AddRoleDialog isOpen={isAddRoleDialogOpen} setIsOpen={setIsAddRoleDialogOpen} />
     </div>

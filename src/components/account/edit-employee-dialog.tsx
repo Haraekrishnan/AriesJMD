@@ -1,4 +1,3 @@
-
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -18,6 +17,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { ChevronsUpDown, Check } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
+import { Switch } from '../ui/switch';
 
 const employeeSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -26,6 +26,7 @@ const employeeSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters').optional().or(z.literal('')),
   supervisorId: z.string().optional(),
   projectIds: z.array(z.string()).optional(),
+  canApproveTransfers: z.boolean().default(false),
 });
 
 type EmployeeFormValues = z.infer<typeof employeeSchema>;
@@ -59,6 +60,7 @@ export default function EditEmployeeDialog({ isOpen, setIsOpen, user: userToEdit
         password: '',
         supervisorId: userToEdit.supervisorId,
         projectIds: userToEdit.projectIds || [],
+        canApproveTransfers: userToEdit.canApproveTransfers || false,
       });
     }
   }, [userToEdit, isOpen, form, roles]);
@@ -77,6 +79,7 @@ export default function EditEmployeeDialog({ isOpen, setIsOpen, user: userToEdit
     finalUserData.role = roleName as User['role'];
     finalUserData.supervisorId = data.supervisorId;
     finalUserData.projectIds = data.projectIds;
+    finalUserData.canApproveTransfers = data.canApproveTransfers;
 
     if (data.password) {
         finalUserData.password = data.password;
@@ -204,6 +207,24 @@ export default function EditEmployeeDialog({ isOpen, setIsOpen, user: userToEdit
                       </PopoverContent>
                   </Popover>
                   {form.formState.errors.projectIds && <p className="text-xs text-destructive">{form.formState.errors.projectIds.message}</p>}
+              </div>
+
+              <div className="flex items-center justify-between p-2 border rounded-md bg-muted/50">
+                  <div className="space-y-0.5">
+                      <Label htmlFor="edit-transfer-auth">Transfer Approval Authority</Label>
+                      <p className="text-[10px] text-muted-foreground leading-tight">Allow this user to approve or reject inventory transfers.</p>
+                  </div>
+                  <Controller
+                    name="canApproveTransfers"
+                    control={form.control}
+                    render={({ field }) => (
+                      <Switch
+                        id="edit-transfer-auth"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    )}
+                  />
               </div>
             </div>
           </ScrollArea>
