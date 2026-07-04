@@ -3,7 +3,7 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { format, parseISO } from 'date-fns';
-import type { DeliveryNote } from '@/lib/types';
+import type { DeliveryNote, User } from '@/lib/types';
 
 declare module 'jspdf' {
   interface jsPDF {
@@ -43,7 +43,8 @@ function writeTextOnLines(
     doc.text(lines[i], x, startY + (i * lineSpacing));
   }
 }
-function drawPageBorderAndFooter(doc: jsPDF, pageWidth: number, pageHeight: number) {
+
+function drawPageBorderAndFooter(doc: jsPDF, pageWidth: number, pageHeight: number, note: DeliveryNote, creator?: User) {
   // BORDER
   doc.setLineWidth(1);
   doc.rect(20, 20, pageWidth - 40, pageHeight - 40);
@@ -55,15 +56,26 @@ function drawPageBorderAndFooter(doc: jsPDF, pageWidth: number, pageHeight: numb
   doc.setFont('helvetica', 'normal');
   doc.text('Received the above Items', 330, footerY - 30);
 
-  // Left
+  // Left (Aries Representative)
   doc.setFont('helvetica', 'bold');
   doc.text('Aries Representative', 60, footerY);
   doc.setFont('helvetica', 'normal');
-  doc.text('Name:', 60, footerY + 20);
+  doc.text(`Name: ${creator?.name || ''}`, 60, footerY + 20);
   doc.text('Signature:', 60, footerY + 40);
-  doc.text('Date:', 60, footerY + 60);
+  
+  if (creator?.signatureBase64) {
+    try {
+        // Positioned next to the "Signature:" label
+        doc.addImage(creator.signatureBase64, 'PNG', 110, footerY + 25, 80, 25);
+    } catch (e) {
+        console.error("Error adding signature to Delivery Note PDF:", e);
+    }
+  }
 
-  // Right
+  const deliveryDateFormatted = note.deliveryDate ? format(parseISO(note.deliveryDate), 'dd-MM-yyyy') : '';
+  doc.text(`Date: ${deliveryDateFormatted}`, 60, footerY + 60);
+
+  // Right (Client Representative - Empty for manual sign-off)
   const rightFooterX = 320;
   doc.setFont('helvetica', 'bold');
   doc.text('Client Representative', rightFooterX, footerY);
@@ -78,16 +90,15 @@ function drawPageBorderAndFooter(doc: jsPDF, pageWidth: number, pageHeight: numb
   doc.text('Ref.: QHSE/P 11/CL 03/Rev 06/01 Aug 2020', 40, pageHeight - 25);
   doc.text(`Page ${doc.getNumberOfPages()}`, pageWidth - 40, pageHeight - 25, { align: 'right' });
 }
-export async function generateOutwardNotePdf(note: DeliveryNote) {
+
+export async function generateOutwardNotePdf(note: DeliveryNote, creator?: User) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
-  const margin = 40;
-
-  // 1. ADD FULL PAGE BORDER
-  drawPageBorderAndFooter(doc, pageWidth, pageHeight);
+  // 1. ADD FULL PAGE BORDER & FOOTER
+  drawPageBorderAndFooter(doc, pageWidth, pageHeight, note, creator);
 
   // 2. HEADER
   const logo = await fetchImageAsBase64('/images/Aries_logo.png');
@@ -162,38 +173,30 @@ export async function generateOutwardNotePdf(note: DeliveryNote) {
   doc.text(format(new Date(note.deliveryDate), 'dd-MM-yyyy'), rightX + 95, startY + 40);
 
   // ================= TYPE OF SERVICE =================
-  const toFromEndY = lineStartY + (5 * 12); // last line
-const serviceY = toFromEndY + 20;         // proper gap BELOW lines
+  const toFromEndY = lineStartY + (5 * 12);
+  const serviceY = toFromEndY + 20;
   const tableLeft = 40;
   const tableWidth = 515;
 
   doc.setLineWidth(0.8);
   
-  
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-doc.setFontSize(9);
-doc.text('TYPE OF SERVICE:', 40, serviceY);
-
-doc.setFont('helvetica', 'normal');
-doc.text(note.serviceType || '', 160, serviceY);
+  doc.text('TYPE OF SERVICE:', 40, serviceY);
 
   doc.setFont('helvetica', 'normal');
-  
+  doc.text(note.serviceType || '', 160, serviceY);
 
   // ================= TABLE =================
   const tableTop = serviceY + 10;
-const tableHeight = 360;
+  const tableHeight = 360;
 
-const col1 = tableLeft + 50;   
-const col2 = tableLeft + 130;  
-const col3 = tableLeft + 405;  
+  const col1 = tableLeft + 50;   
+  const col2 = tableLeft + 130;  
+  const col3 = tableLeft + 405;  
 
-const headerHeight = 25;
-
-// ✅ ADD THIS HERE
-const maxTableBottomY = tableTop + headerHeight + tableHeight - 10;
+  const headerHeight = 25;
+  const maxTableBottomY = tableTop + headerHeight + tableHeight - 10;
 
   // Header Box
   doc.setLineWidth(0.8);
@@ -226,17 +229,12 @@ const maxTableBottomY = tableTop + headerHeight + tableHeight - 10;
   if (note.items?.length) {
     note.items.forEach((item, index) => {
   
-      // 🚨 CHECK IF EXCEEDS PAGE
       if (rowY > maxTableBottomY) {
-
         doc.addPage();
+        drawPageBorderAndFooter(doc, pageWidth, pageHeight, note, creator);
+        doc.setTextColor(0);
+        doc.setFont('helvetica', 'normal');
       
-        // ✅ ADD THIS LINE (IMPORTANT)
-        drawPageBorderAndFooter(doc, pageWidth, pageHeight);
-        doc.setTextColor(0); // 🔥 RESET TO BLACK
-doc.setFont('helvetica', 'normal');
-      
-        // reset Y for new page
         rowY = 60;
   
         // redraw table header on new page
@@ -263,7 +261,6 @@ doc.setFont('helvetica', 'normal');
       }
   
       doc.setFont('helvetica', 'normal');
-  
       doc.text(String(index + 1), tableLeft + 15, rowY);
       doc.text(String(item.quantity), col1 + 20, rowY);
       doc.text(item.description || '', col2 + 10, rowY);
@@ -272,37 +269,6 @@ doc.setFont('helvetica', 'normal');
       rowY += 20;
     });
   }
-
-  // ================= FOOTER =================
-  const footerY = pageHeight - 130;
-  
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Received the above Items', 330, footerY - 30);
-
-  // Left
-  doc.setFont('helvetica', 'bold');
-  doc.text('Aries Representative', 60, footerY);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Name:', 60, footerY + 20);
-  doc.text('Signature:', 60, footerY + 40);
-  doc.text('Date:', 60, footerY + 60);
-
-  // Right
-  const rightFooterX = 320;
-  doc.setFont('helvetica', 'bold');
-  doc.text('Client Representative', rightFooterX, footerY);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Name:', rightFooterX, footerY + 20);
-  doc.text('Signature:', rightFooterX, footerY + 40);
-  doc.text('Date:', rightFooterX, footerY + 60);
-
-  // ================= BOTTOM LINE =================
-  doc.setFontSize(7);
-  doc.setTextColor(120);
-  doc.text('Ref.: QHSE/P 11/CL 03/Rev 06/01 Aug 2020', 40, pageHeight - 25);
-  const totalPages = doc.getNumberOfPages();
-doc.text(`Page ${totalPages}`, pageWidth - 40, pageHeight - 25, { align: 'right' });
 
   // ================= SAVE =================
   doc.save(`Delivery_Note_${note.deliveryNoteNumber}.pdf`);

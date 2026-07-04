@@ -20,7 +20,7 @@ interface ViewDeliveryNoteDialogProps {
 }
 
 export default function ViewDeliveryNoteDialog({ isOpen, setIsOpen, note: initialNote }: ViewDeliveryNoteDialogProps) {
-  const { user } = useAuth();
+  const { user, users } = useAuth();
   const { deliveryNotes, updateDeliveryNote } = useInventory();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const { toast } = useToast();
@@ -28,9 +28,13 @@ export default function ViewDeliveryNoteDialog({ isOpen, setIsOpen, note: initia
   const note = useMemo(() => {
     return deliveryNotes.find(n => n.id === initialNote.id) || initialNote;
   }, [deliveryNotes, initialNote]);
+
+  const creator = useMemo(() => {
+    return users.find(u => u.id === note.creatorId);
+  }, [users, note.creatorId]);
   
   const handleDownload = () => {
-    generateOutwardNotePdf(note);
+    generateOutwardNotePdf(note, creator);
   };
   
   const handleDeleteAttachment = () => {
@@ -88,6 +92,14 @@ export default function ViewDeliveryNoteDialog({ isOpen, setIsOpen, note: initia
                                         This will remove the uploaded inward delivery note.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
+                                <Accordion type="single" collapsible className="w-full">
+                                    <AccordionItem value="details" className="border-none">
+                                        <AccordionTrigger className="text-xs hover:no-underline p-0">Details</AccordionTrigger>
+                                        <AccordionContent className="pt-2 text-xs text-muted-foreground">
+                                            Removing this attachment will not delete the record, but the scanned document will be lost.
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                </Accordion>
                                 <AlertDialogFooter>
                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                                     <AlertDialogAction onClick={handleDeleteAttachment}>Delete Attachment</AlertDialogAction>
