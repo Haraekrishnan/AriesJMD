@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Trash2, Users2, X, Upload, ListChecks } from 'lucide-react';
+import { PlusCircle, Trash2, Users2, X, Upload, ListChecks, Info } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -21,6 +21,7 @@ import AddVendorDialog from '../vendor-management/AddVendorDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from '@/components/ui/badge';
 import * as XLSX from 'xlsx';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const quotationItemSchema = z.object({
     id: z.string(),
@@ -97,12 +98,12 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
   const { control, setValue, getValues, watch } = form;
 
   const { fields: itemFields, append: appendItem, remove: removeItem, replace: replaceItems } = useFieldArray({
-    control,
+    control: form.control,
     name: "items"
   });
   
   const { fields: vendorFields, append: appendVendor, remove: removeVendor } = useFieldArray({
-    control,
+    control: form.control,
     name: "vendors"
   });
 
@@ -162,31 +163,28 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
             toast({ title: "Items Imported", description: `${newItems.length} items added successfully.` });
         } catch (error) {
             console.error(error);
-            toast({ title: "Import Failed", variant: "destructive" });
+            toast({ title: "Import Failed", description: "Invalid Excel format.", variant: "destructive" });
         }
     };
     reader.readAsArrayBuffer(file);
     e.target.value = ''; // Reset input
   };
 
-  const onSubmit = async (data: FormValues) => {
+  const onSubmit = (data: FormValues) => {
     if (!data.vendors.length || !data.items.length) {
         toast({ title: "Missing items or vendors", variant: "destructive" });
         return;
     }
     
-    let success = false;
     if (isEditMode && existingQuotation) {
-        success = await updateQuotation({ ...existingQuotation, ...data });
-        if (success) toast({ title: "Price Comparison Updated" });
+        updateQuotation({ ...existingQuotation, ...data });
+        toast({ title: "Price Comparison Updated" });
     } else {
-        success = await addQuotation(data);
-        if (success) toast({ title: "Price Comparison Created" });
+        addQuotation(data);
+        toast({ title: "Price Comparison Created" });
     }
     
-    if (success) {
-        setIsOpen(false);
-    }
+    setIsOpen(false);
   };
 
   const handleAddItemRow = () => {
@@ -248,11 +246,31 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
             </div>
             <div className="flex items-end gap-2">
                 <Input type="file" accept=".xlsx, .xls" className="hidden" id="item-import-file" onChange={handleImportItems} />
-                <Button type="button" variant="outline" asChild>
-                    <label htmlFor="item-import-file" className="cursor-pointer">
-                        <Upload className="h-4 w-4 mr-2"/>Bulk Import Items
-                    </label>
-                </Button>
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="flex items-center gap-2">
+                                <Button type="button" variant="outline" asChild>
+                                    <label htmlFor="item-import-file" className="cursor-pointer">
+                                        <Upload className="h-4 w-4 mr-2"/>Bulk Import Items
+                                    </label>
+                                </Button>
+                                <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" className="max-w-xs">
+                            <p className="font-bold mb-1 text-sm text-primary">Excel Import Guide:</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              Your Excel file must have a header row with these exact column names in the first sheet:
+                            </p>
+                            <ul className="list-disc list-inside mt-2 text-xs space-y-1 font-medium">
+                                <li><strong>Description</strong> (Item details)</li>
+                                <li><strong>UOM</strong> (Unit, e.g. Nos, kg)</li>
+                            </ul>
+                            <p className="mt-2 text-[10px] text-muted-foreground italic">Note: These will be added to Section 1 below.</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
             </div>
           </div>
 
