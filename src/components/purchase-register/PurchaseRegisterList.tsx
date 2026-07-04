@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -11,7 +12,7 @@ import { Save, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Role, PurchaseRegister } from '@/lib/types';
 import ViewPurchaseRegisterDialog from './ViewPurchaseRegisterDialog';
-import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import EditPurchaseLedgerDialog from '../vendor-management/EditPurchaseLedgerDialog';
 
 
@@ -31,6 +32,10 @@ export default function PurchaseRegisterList({ registers }: PurchaseRegisterList
         if (!user) return false;
         return ['Admin', 'Project Coordinator'].includes(user.role);
     }, [user]);
+
+    const purchaseRegisterMap = useMemo(() => {
+        return new Map(purchaseRegisters.map(pr => [pr.id, pr]));
+    }, [purchaseRegisters]);
 
     const handlePoChange = (id: string, value: string) => {
         setPoNumbers(prev => ({ ...prev, [id]: value }));
@@ -54,10 +59,6 @@ export default function PurchaseRegisterList({ registers }: PurchaseRegisterList
     if (registers.length === 0) {
         return <p className="text-center text-muted-foreground py-8">No purchase history found for the selected filters.</p>;
     }
-
-    const purchaseRegisterMap = useMemo(() => {
-        return new Map(purchaseRegisters.map(pr => [pr.id, pr]));
-    }, [purchaseRegisters]);
     
     return (
         <>

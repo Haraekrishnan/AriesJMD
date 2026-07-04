@@ -1,3 +1,4 @@
+
 'use client';
 
 import jsPDF from 'jspdf';
@@ -73,7 +74,7 @@ export async function generateSchedulePdf(
   doc.autoTable({
     startY: tableStartY,
     tableWidth: usableWidth,
-    margin: { left: margin, right: margin, top: tableStartY, bottom: 55 },
+    margin: { left: margin, right: margin, top: tableStartY, bottom: 70 },
 
     head: [headRow],
     body: bodyRows,
@@ -113,77 +114,63 @@ export async function generateSchedulePdf(
     },
 
     didDrawCell: (data: any) => {
-      if (data.section !== 'body' || data.column.index !== 1) return;
-
-      const currentDoc = data.doc;
-
-      // Hide AutoTable's original text by painting over it with a white rectangle
-      currentDoc.setFillColor(255, 255, 255);
-      currentDoc.rect(
-        data.cell.x + 0.5,
-        data.cell.y + 0.5,
-        data.cell.width - 1,
-        data.cell.height - 1,
-        "F"
-      );
-
-      const rawNames = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
-        
-      const parsed = rawNames.map(rn => {
-          const match = rn.match(/^(.*)\s\((.*)\)$/);
-          return match ? { name: match[1].trim(), trade: match[2].trim() } : { name: rn.trim(), trade: '' };
-      });
-
-      // SORT: Level 3 first, Management/HSE last
-      parsed.sort((a, b) => {
-          const getRank = (trade: string) => {
-              if (/RA\s*Level\s*3/i.test(trade)) return 0;
-              if (/Supervisor|HSE|Safety|Admin|Manager|Coordinator/i.test(trade)) return 2;
-              return 1;
-          };
-          return getRank(a.trade) - getRank(b.trade);
-      });
-
-      const paddingLeft = data.cell.padding('left');
-      const startX = data.cell.x + paddingLeft;
-      const maxWidth = data.cell.width - paddingLeft - data.cell.padding('right');
-      const fSize = data.cell.styles.fontSize;
-      const lHeight = fSize * 1.8; 
-      const separator = ", ";
-
-      let cursorX = startX;
-      // Start drawing from top-padding + font size
-      let cursorY = data.cell.y + data.cell.padding('top') + fSize;
-
-      currentDoc.setFontSize(fSize);
-
-      parsed.forEach((item, idx) => {
-        const isLast = idx === parsed.length - 1;
-        const isRA3 = /RA\s*Level\s*3/i.test(item.trade);
-        const isMgt = /Supervisor|HSE|Safety|Admin|Manager|Coordinator/i.test(item.trade);
-
-        const displayText = item.name + (isLast ? "" : separator);
-
-        if (isRA3 || isMgt) currentDoc.setFont('helvetica', 'bold');
-        else currentDoc.setFont('helvetica', 'normal');
-
-        if (isMgt) currentDoc.setTextColor(0, 102, 204); // Blue
-        else currentDoc.setTextColor(0, 0, 0); // Black
-
-        const displayWidth = currentDoc.getTextWidth(displayText);
-
-        // Wrap to next line if it exceeds column width
-        if (cursorX + displayWidth > startX + maxWidth && cursorX > startX) {
-            cursorX = startX;
-            cursorY += lHeight;
-        }
-
-        currentDoc.text(displayText, cursorX, cursorY);
-        cursorX += displayWidth;
-      });
-
-      // Reset for subsequent cells
-      currentDoc.setFont('helvetica', 'normal').setTextColor(0, 0, 0);
+        if (data.section !== "body" || data.column.index !== 1) return;
+    
+        const currentDoc = data.doc;
+    
+        // Hide AutoTable's original text by painting over it
+        currentDoc.setFillColor(255, 255, 255);
+        currentDoc.rect(
+            data.cell.x + 0.5,
+            data.cell.y + 0.5,
+            data.cell.width - 1,
+            data.cell.height - 1,
+            "F"
+        );
+    
+        const padding = data.cell.padding("left");
+        const x = data.cell.x + padding;
+        const maxWidth =
+            data.cell.width -
+            padding -
+            data.cell.padding("right");
+    
+        const fSize = data.cell.styles.fontSize;
+        const lHeight = fSize * 1.55;
+    
+        let y =
+            data.cell.y +
+            data.cell.padding("top") +
+            fSize;
+    
+        const rawNames = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
+    
+        rawNames.forEach((raw: string) => {
+            const m = raw.match(/^(.*?)\s*\((.*?)\)$/);
+            const name = m ? m[1].trim() : raw;
+            const trade = m ? m[2].trim() : "";
+    
+            const wrapped = currentDoc.splitTextToSize(name, maxWidth);
+    
+            if (/RA\s*Level\s*3/i.test(trade)) {
+                currentDoc.setFont("helvetica", "bold");
+                currentDoc.setTextColor(0, 0, 0);
+            } else if (/Supervisor|HSE|Safety|Admin|Manager|Coordinator/i.test(trade)) {
+                currentDoc.setFont("helvetica", "bold");
+                currentDoc.setTextColor(0, 102, 204);
+            } else {
+                currentDoc.setFont("helvetica", "normal");
+                currentDoc.setTextColor(0, 0, 0);
+            }
+    
+            wrapped.forEach((line: string) => {
+                currentDoc.text(line, x, y);
+                y += lHeight;
+            });
+        });
+    
+        currentDoc.setFont("helvetica", "normal");
+        currentDoc.setTextColor(0, 0, 0);
     },
 
     didDrawPage: (data) => {
