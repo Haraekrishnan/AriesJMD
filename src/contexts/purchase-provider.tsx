@@ -6,9 +6,6 @@ import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update } from 'firebase/database';
 import { useAuth } from './auth-provider';
 import { useToast } from '@/hooks/use-toast';
-import { useConsumable } from './consumable-provider';
-import { useInventory } from './inventory-provider';
-
 
 // --- TYPE DEFINITIONS ---
 
@@ -70,8 +67,6 @@ const PurchaseContext = createContext<PurchaseContextType | undefined>(undefined
 export function PurchaseProvider({ children }: { children: ReactNode }) {
     const { user, addActivityLog, can: authCan } = useAuth();
     const { toast } = useToast();
-    const { addConsumableItem, consumableItems } = useConsumable();
-    const { inventoryItems, addPpeInwardRecord } = useInventory();
 
     const [vendorsById, setVendorsById] = useState<Record<string, Vendor>>({});
     const [paymentsById, setPaymentsById] = useState<Record<string, Payment>>({});
@@ -211,63 +206,8 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
                 }
             }
             
-            if (data.finalizedVendorId && data.finalizedVendorId !== oldQuotation?.finalizedVendorId) {
-                const finalizedVendor = data.vendors.find(v => v.vendorId === data.finalizedVendorId);
-                if (finalizedVendor) {
-                    const newItemsToCreate = data.items.filter(item => item.isNew);
-                    let itemsCreatedCount = 0;
-        
-                    newItemsToCreate.forEach(newItem => {
-                        const quote = finalizedVendor.quotes.find(q => q.itemId === newItem.itemId);
-                        if (!quote) return;
-        
-                        const quantity = quote.quantity;
-                        const category = newItem.newItemCategory!;
-        
-                        const itemBase = {
-                            name: newItem.description,
-                            quantity: quantity,
-                            unit: newItem.uom,
-                            status: 'In Store' as const,
-                            projectId: 'STORE',
-                            lastUpdated: new Date().toISOString(),
-                            remarks: `Added from quotation: ${quotation.title} (${quotation.id.slice(-6)})`,
-                            isArchived: false,
-                        };
-                        
-                        if (category === 'Daily Consumable' || category === 'Job Consumable') {
-                            addConsumableItem({...itemBase, category});
-                            itemsCreatedCount++;
-                        } else if (category === 'Store Inventory') {
-                            const newRef = push(ref(rtdb, 'inventoryItems'));
-                            const itemToAdd: Partial<InventoryItem> = {
-                              ...itemBase,
-                              category: 'General',
-                              serialNumber: `new-item-${newRef.key}` 
-                            };
-                            set(newRef, itemToAdd);
-                            itemsCreatedCount++;
-                        } else if (category === 'Equipment') {
-                            const newRef = push(ref(rtdb, 'otherEquipments'));
-                            const itemToAdd: Partial<OtherEquipment> = {
-                              equipmentName: newItem.description,
-                              serialNumber: `new-equip-${newRef.key}`,
-                              projectId: 'STORE',
-                              remarks: itemBase.remarks
-                            };
-                            set(newRef, itemToAdd);
-                            itemsCreatedCount++;
-                        }
-                    });
-        
-                    if (itemsCreatedCount > 0) {
-                         toast({
-                            title: 'New Items Created',
-                            description: `${itemsCreatedCount} new item(s) have been added.`,
-                        });
-                    }
-                }
-            }
+            // NOTE: Auto-creation logic removed as per request.
+            // Items are now logged manually in their respective sections later.
             
             await update(ref(rtdb, `quotations/${id}`), updateData);
             addActivityLog(user.id, 'Price Comparison Updated', `ID: ${id}`);
@@ -276,11 +216,11 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
             console.error("Failed to update quotation:", error);
             return false;
         }
-    }, [quotationsById, toast, user, addConsumableItem, addActivityLog]);
+    }, [quotationsById, toast, user, addActivityLog]);
 
     const deleteQuotation = useCallback((quotationId: string) => {
         if (!user || user.role !== 'Admin') {
-            toast({ title: "Permission Denied", variant: "destructive" });
+            toast({ title: "Permission Denied", description: "Only admins can delete price comparisons.", variant: "destructive" });
             return;
         }
         remove(ref(rtdb, `quotations/${quotationId}`));
@@ -334,31 +274,12 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
           updates[`quotations/${quotationId}/status`] = 'Partially Received';
       }
   
-      const itemInfo = quotation.items.find(i => i.itemId === itemId);
-      if (itemInfo) {
-        const lowerName = itemInfo.description.toLowerCase();
-        const isShoes = lowerName.includes('safety shoes') || lowerName.includes('shoe');
-
-        if (isShoes) {
-            addPpeInwardRecord({
-                type: 'Inward',
-                ppeType: 'Safety Shoes',
-                date: new Date(),
-                remarks: `Received from Price Comparison: ${quotation.title} (${quotation.id.slice(-6)})`,
-                quantity: quantity,
-            });
-        } else {
-            const allInventory = [...inventoryItems, ...consumableItems];
-            const stockItem = allInventory.find(i => i.id === itemId);
-            if (stockItem && stockItem.quantity !== undefined) {
-              updates[`inventoryItems/${itemId}/quantity`] = (stockItem.quantity || 0) + quantity;
-            }
-        }
-      }
+      // NOTE: Auto-stock update logic removed as per request.
+      // Stock updates should be logged via Inward/Outward registers.
   
       update(ref(rtdb), updates);
     },
-    [quotations, inventoryItems, consumableItems, addPpeInwardRecord]
+    [quotations]
   );
 
     useEffect(() => {
