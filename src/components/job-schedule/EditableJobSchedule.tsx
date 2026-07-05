@@ -1,4 +1,3 @@
-
 'use client';
 import { useFieldArray, useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,7 +10,7 @@ import { Textarea } from '../ui/textarea';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { Check, PlusCircle, Save, Trash2, Copy, Users, ChevronsUpDown, ArrowUp } from 'lucide-react';
+import { Check, PlusCircle, Save, Trash2, Copy, Users, ChevronsUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { JobSchedule, JobScheduleItem } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -20,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format, subDays } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 
 const scheduleItemSchema = z.object({
   id: z.string(),
@@ -47,7 +47,7 @@ interface EditableJobScheduleProps {
 }
 
 export default function EditableJobSchedule({ schedule, selectedDate, globallyAssignedIds }: EditableJobScheduleProps) {
-  const { user, users, manpowerProfiles, vehicles, jobSchedules, saveJobSchedule, projects, can } = useAppContext();
+  const { user, users, manpowerProfiles, vehicles, jobSchedules, saveJobSchedule, projects } = useAppContext();
   const { toast } = useToast();
   
   const form = useForm<ScheduleFormValues>({
@@ -107,7 +107,7 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
     saveJobSchedule({
       id: schedule?.id || scheduleId,
       date: selectedDate,
-      projectId: 'all', // Centralized schedule
+      projectId: 'all', 
       supervisorId: user!.id,
       createdAt: schedule?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -192,7 +192,7 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
                     <TableHead>Client/Contact</TableHead>
                     <TableHead>Vehicle</TableHead>
                     <TableHead>Remarks</TableHead>
-                    <TableHead className="w-[120px] text-right">Actions</TableHead>
+                    <TableHead className="w-[80px] text-right">Actions</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -297,7 +297,7 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
                   </TableCell>
                   <TableCell><Textarea {...form.register(`items.${index}.remarks`)} className="min-h-[40px] w-[200px]"/></TableCell>
                   <TableCell>
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex flex-col items-center justify-center gap-1">
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -305,36 +305,52 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
                               type="button" 
                               variant="ghost" 
                               size="icon" 
-                              className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              className="h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                               onClick={() => insert(index, generateNewItem())}
                             >
-                              <ArrowUp className="h-4 w-4" />
+                              <ArrowUp className="h-3 w-3" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent><p>Insert row above</p></TooltipContent>
+                          <TooltipContent><p>Insert Above</p></TooltipContent>
                         </Tooltip>
+                        
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button 
                               type="button" 
                               variant="ghost" 
                               size="icon" 
-                              className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              className="h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                               onClick={() => insert(index + 1, generateNewItem())}
                             >
-                              <PlusCircle className="h-4 w-4" />
+                              <ArrowDown className="h-3 w-3" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent><p>Insert row below</p></TooltipContent>
+                          <TooltipContent><p>Insert Below</p></TooltipContent>
                         </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent><p>Delete row</p></TooltipContent>
-                        </Tooltip>
+
+                        <AlertDialog>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <AlertDialogTrigger asChild>
+                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10">
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </AlertDialogTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Delete Row</p></TooltipContent>
+                          </Tooltip>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Row?</AlertDialogTitle>
+                              <AlertDialogDescription>Are you sure you want to remove this entry from the schedule?</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => remove(index)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </TooltipProvider>
                     </div>
                   </TableCell>
