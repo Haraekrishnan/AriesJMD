@@ -1,6 +1,6 @@
 'use client';
 
-import jsPDF from 'jspdf';
+import jsPDF from 'jsPDF';
 import 'jspdf-autotable';
 import { format, parseISO, isValid } from 'date-fns';
 import type { JobSchedule } from '@/lib/types';
@@ -36,7 +36,10 @@ export async function generateSchedulePdf(
   schedulerName: string,
   userSignature?: string
 ) {
+  // Use Times font family as base
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  doc.setFont("times", "normal");
+  
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   
@@ -68,7 +71,7 @@ export async function generateSchedulePdf(
   const headerStartY = margin;
   const headerBottomY = headerStartY + headerBoxHeight;
   const tableStartY = headerBottomY;
-  const fontSize = 7;
+  const fontSize = 6;
 
   doc.autoTable({
     startY: tableStartY,
@@ -80,35 +83,37 @@ export async function generateSchedulePdf(
 
     theme: 'grid',
     styles: {
-        fontSize,
+        font: "times",
+        fontSize: fontSize,
+        halign: "center", // Center horizontally
+        valign: "middle", // Center vertically
         cellPadding: {
-            top: 4,
-            bottom: 4,
-            left: 3,
-            right: 3
+            top: 5,
+            bottom: 5,
+            left: 4,
+            right: 4
         },
+        overflow: "linebreak",
         lineWidth: 0.2,
         lineColor: [0, 0, 0],
         textColor: [0, 0, 0],
-        valign: 'middle', 
     },
     headStyles: {
         fillColor: [255, 255, 255],
         textColor: [0, 0, 0],
         fontStyle: 'bold',
-        halign: 'center',
         fontSize: fontSize + 0.5,
     },
     columnStyles: {
         0: { cellWidth: 25 },
-        1: { cellWidth: 135 }, 
-        2: { cellWidth: 30 },
-        3: { cellWidth: 32 },
-        4: { cellWidth: 65 },
-        5: { cellWidth: 45 },
-        6: { cellWidth: 40, halign: 'center' },
+        1: { cellWidth: 140 }, 
+        2: { cellWidth: 28 },
+        3: { cellWidth: 30 },
+        4: { cellWidth: 64 },
+        5: { cellWidth: 50 },
+        6: { cellWidth: 42 },
         7: { cellWidth: 58 },
-        8: { cellWidth: 35, halign: 'center' },
+        8: { cellWidth: 38 },
         9: { cellWidth: 'auto' },
     },
 
@@ -120,8 +125,17 @@ export async function generateSchedulePdf(
                 const m = n.match(/^(.*?)\s*\((.*?)\)$/);
                 return m ? m[1].trim() : n;
             });
-            // Combine names with commas for AutoTable to calculate height correctly
-            data.cell.text = [namesOnly.join(", ")];
+            const joined = namesOnly.join(", ");
+            // Set text for measurement so AutoTable calculates correct height automatically
+            data.cell.text = data.doc.splitTextToSize(joined, data.column.width - 8);
+        }
+    },
+
+    willDrawCell: (data: any) => {
+        if (data.section === 'body' && data.column.index === 1) {
+            // Hide the default text by drawing it in white.
+            // This ensures row height is reserved correctly without manual math.
+            data.cell.styles.textColor = [255, 255, 255];
         }
     },
 
@@ -129,28 +143,22 @@ export async function generateSchedulePdf(
         if (data.section !== "body" || data.column.index !== 1) return;
     
         const currentDoc = data.doc;
-    
-        // Hide AutoTable's original text by painting over it
+        const cell = data.cell;
+
+        // Hide AutoTable's invisible text by painting over it
         currentDoc.setFillColor(255, 255, 255);
-        currentDoc.rect(
-            data.cell.x + 0.5,
-            data.cell.y + 0.5,
-            data.cell.width - 1,
-            data.cell.height - 1,
-            "F"
-        );
+        currentDoc.rect(cell.x + 0.5, cell.y + 0.5, cell.width - 1, cell.height - 1, "F");
     
-        const paddingLeft = data.cell.padding("left");
-        const paddingTop = data.cell.padding("top");
-        const paddingRight = data.cell.padding("right");
-        const startX = data.cell.x + paddingLeft;
-        const maxWidth = data.cell.width - paddingLeft - paddingRight;
+        const paddingLeft = cell.padding("left");
+        const paddingRight = cell.padding("right");
+        const startX = cell.x + paddingLeft;
+        const maxWidth = cell.width - paddingLeft - paddingRight;
     
-        const fSize = data.cell.styles.fontSize;
-        const lHeight = fSize * 1.55;
+        const fSize = cell.styles.fontSize;
+        const lHeight = fSize * 2.0; // Increased spacing for names
         const separator = ", ";
 
-        const rawNames = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
+        const rawNames = Array.isArray(cell.raw) ? cell.raw : [String(cell.raw)];
         const parsed = rawNames.map((raw: string) => {
             const m = raw.match(/^(.*?)\s*\((.*?)\)$/);
             return {
@@ -170,7 +178,7 @@ export async function generateSchedulePdf(
             return 0;
         });
 
-        // 1. Pre-calculate lines to handle vertical centering accurately
+        // 1. Group segments into lines manually for centered rendering
         let lines: { text: string, color: number[], isBold: boolean }[][] = [[]];
         let currentLineWidth = 0;
         let lineIdx = 0;
@@ -179,8 +187,10 @@ export async function generateSchedulePdf(
             const isLast = idx === parsed.length - 1;
             const textToMeasure = item.name + (isLast ? "" : separator);
             
-            const isBold = /RA\s*Level\s*3|Supervisor|HSE|Safety|Admin|Manager|Coordinator/i.test(item.trade);
-            currentDoc.setFont("times", isBold ? "bold" : "normal");
+            const isL3 = /RA\s*Level\s*3/i.test(item.trade);
+            const isMgmt = /Supervisor|HSE|Safety|Admin|Manager|Coordinator/i.test(item.trade);
+            
+            currentDoc.setFont("times", (isL3 || isMgmt) ? "bold" : "normal");
             const wordWidth = currentDoc.getTextWidth(textToMeasure);
 
             if (currentLineWidth + wordWidth > maxWidth && currentLineWidth > 0) {
@@ -189,22 +199,29 @@ export async function generateSchedulePdf(
                 currentLineWidth = 0;
             }
 
-            const color = (/Supervisor|HSE|Safety|Admin|Manager|Coordinator/i.test(item.trade)) ? [0, 102, 204] : [0, 0, 0];
+            const color = isMgmt ? [0, 102, 204] : [0, 0, 0];
             
             lines[lineIdx].push({ 
                 text: textToMeasure, 
                 color, 
-                isBold
+                isBold: (isL3 || isMgmt)
             });
             currentLineWidth += wordWidth;
         });
 
-        // 2. Render centered lines
+        // 2. Render centered lines vertically and horizontally
         const totalTextHeight = lines.length * lHeight;
-        let cursorY = data.cell.y + (data.cell.height - totalTextHeight) / 2 + fSize;
+        let cursorY = cell.y + (cell.height - totalTextHeight) / 2 + fSize;
 
         lines.forEach(line => {
-            let cursorX = startX;
+            // Horizontal centering for the whole line
+            const lineWidth = line.reduce((acc, segment) => {
+                currentDoc.setFont("times", segment.isBold ? "bold" : "normal");
+                return acc + currentDoc.getTextWidth(segment.text);
+            }, 0);
+            
+            let cursorX = cell.x + (cell.width - lineWidth) / 2;
+
             line.forEach(segment => {
                 currentDoc.setFont("times", segment.isBold ? "bold" : "normal");
                 currentDoc.setTextColor(segment.color[0], segment.color[1], segment.color[2]);
@@ -214,7 +231,7 @@ export async function generateSchedulePdf(
             cursorY += lHeight;
         });
     
-        currentDoc.setFont("helvetica", "normal");
+        currentDoc.setFont("times", "normal");
         currentDoc.setTextColor(0, 0, 0);
     },
 
@@ -229,9 +246,9 @@ export async function generateSchedulePdf(
         doc.addImage(logoBase64, 'PNG', margin + 5, contentStartY, 80, 18);
       }
 
-      doc.setFont('helvetica', 'bold').setFontSize(14);
+      doc.setFont('times', 'bold').setFontSize(14);
       doc.text('Job Schedule', pageWidth / 2, contentStartY + 12, { align: 'center' });
-      doc.setFontSize(8).setFont('helvetica', 'normal');
+      doc.setFontSize(8).setFont('times', 'normal');
       doc.text('Division/Branch: I & M / Jamnagar', margin + 5, lineY + 12);
       doc.text('Sub-Div.: R.A', pageWidth / 2, lineY + 12, { align: 'center' });
       doc.text(formattedScheduleDate, pageWidth - margin - 5, lineY + 12, { align: 'right' });
@@ -255,7 +272,7 @@ export async function generateSchedulePdf(
   doc.line(footerMidX, footerY, footerMidX, footerY + footerHeight);
   doc.line(footerMidX, footerY + footerHeight / 2, margin + usableWidth, footerY + footerHeight / 2);
 
-  doc.setFontSize(8).setFont('helvetica', 'normal').setTextColor(0);
+  doc.setFontSize(8).setFont('times', 'normal').setTextColor(0);
   doc.text(`Scheduled by ${schedulerName}`, margin + 6, footerY + footerHeight / 2 + 15);
   doc.text('Signature:', footerMidX + 6, footerY + 15);
 
