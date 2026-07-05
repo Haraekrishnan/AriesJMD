@@ -71,175 +71,155 @@ export async function generateSchedulePdf(
   const headerStartY = margin;
   const headerBottomY = headerStartY + headerBoxHeight;
   const tableStartY = headerBottomY;
-  
-  let fontSize = 6;
-  let finalTableY = 0;
+  const fontSize = 6;
 
-  // Adaptive Font Loop: Reduces font size and padding until the content fits on one page
-  do {
-    doc.setPage(1);
-    while (doc.getNumberOfPages() > 1) {
-        doc.deletePage(doc.getNumberOfPages());
-    }
+  doc.autoTable({
+    startY: tableStartY,
+    tableWidth: usableWidth,
+    margin: { left: margin, right: margin, top: tableStartY, bottom: 55 },
 
-    const padding = 
-        fontSize > 5.5 ? 5 :
-        fontSize > 5 ? 4 :
-        fontSize > 4.5 ? 3 :
-        2;
+    head: [headRow],
+    body: bodyRows,
 
-    doc.autoTable({
-        startY: tableStartY,
-        tableWidth: usableWidth,
-        margin: { left: margin, right: margin, top: tableStartY, bottom: 55 },
-
-        head: [headRow],
-        body: bodyRows,
-
-        theme: 'grid',
-        styles: {
-            font: "times",
-            fontSize,
-            halign: "center",
-            valign: "middle",
-            cellPadding: {
-                top: padding,
-                bottom: padding,
-                left: 3,
-                right: 3
-            },
-            overflow: "linebreak",
-            lineWidth: 0.2,
-            lineColor: [0, 0, 0],
-            textColor: [0, 0, 0],
+    theme: 'grid',
+    styles: {
+        font: "times",
+        fontSize,
+        halign: "center",
+        valign: "middle",
+        cellPadding: {
+            top: 4,
+            bottom: 4,
+            left: 3,
+            right: 3
         },
-        headStyles: {
-            fillColor: [255, 255, 255],
-            textColor: [0, 0, 0],
-            fontStyle: 'bold',
-            fontSize: fontSize + 0.5,
-        },
-        columnStyles: {
-            0: { cellWidth: 25 },
-            1: { cellWidth: 175 }, 
-            2: { cellWidth: 28 },
-            3: { cellWidth: 30 },
-            4: { cellWidth: 64 },
-            5: { cellWidth: 50 },
-            6: { cellWidth: 42 },
-            7: { cellWidth: 58 },
-            8: { cellWidth: 38 },
-            9: { cellWidth: 'auto' },
-        },
+        overflow: "linebreak",
+        lineWidth: 0.2,
+        lineColor: [0, 0, 0],
+        textColor: [0, 0, 0],
+    },
+    headStyles: {
+        fillColor: [255, 255, 255],
+        textColor: [0, 0, 0],
+        fontStyle: 'bold',
+        halign: 'center',
+        fontSize: fontSize + 0.5,
+    },
+    columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 175 }, 
+        2: { cellWidth: 28 },
+        3: { cellWidth: 30 },
+        4: { cellWidth: 64 },
+        5: { cellWidth: 50 },
+        6: { cellWidth: 42 },
+        7: { cellWidth: 58 },
+        8: { cellWidth: 38 },
+        9: { cellWidth: 'auto' },
+    },
 
-        didParseCell: (data: any) => {
-            if (data.section === "body" && data.column.index === 1) {
-                const raw = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
-                const namesOnly = raw.map((r: string) => r.replace(/\s*\(.*?\)/, ""));
-                const joined = namesOnly.join(", ");
-                
-                const availableWidth = data.column.width - 8;
-                data.cell.text = data.doc.splitTextToSize(joined, availableWidth);
-            }
-        },
-
-        willDrawCell: (data: any) => {
-            if (data.section === "body" && data.column.index === 1) {
-                data.cell.text = [];
-            }
-        },
-
-        didDrawCell: (data: any) => {
-            if (data.section !== "body" || data.column.index !== 1) return;
-
-            const currentDoc = data.doc;
+    didParseCell: (data: any) => {
+        if (data.section === "body" && data.column.index === 1) {
             const raw = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
-
-            const people = raw.map((r: string) => {
-                const m = r.match(/^(.*?)\s*\((.*?)\)$/);
-                return {
-                    name: m ? m[1].trim() : r,
-                    trade: m ? m[2].trim() : ""
-                };
-            }).sort((a, b) => {
-                const isL3 = (t: string) => /RA\s*Level\s*3/i.test(t);
-                const isMgmt = (t: string) => /Supervisor|HSE|Safety|Manager|Coordinator|Admin/i.test(t);
-                if (isL3(a.trade) && !isL3(b.trade)) return -1;
-                if (!isL3(a.trade) && isL3(b.trade)) return 1;
-                if (isMgmt(a.trade) && !isMgmt(b.trade)) return 1;
-                if (!isMgmt(a.trade) && isMgmt(b.trade)) return -1;
-                return 0;
-            });
-
-            const left = data.cell.x + 4;
-            const width = data.cell.width - 8;
-            const fSize = fontSize;
-            const lineHeight = currentDoc.getLineHeightFactor() * fSize;
-
-            let x = left;
-            let y = data.cell.y + lineHeight + 2;
-
-            people.forEach((p, index) => {
-                const suffix = index === people.length - 1 ? "" : ", ";
-                const text = p.name + suffix;
-
-                if (/RA\s*Level\s*3/i.test(p.trade)) {
-                    currentDoc.setFont("times", "bold");
-                    currentDoc.setTextColor(0, 0, 0);
-                } else if (/Supervisor|HSE|Safety|Manager|Coordinator|Admin/i.test(p.trade)) {
-                    currentDoc.setFont("times", "bold");
-                    currentDoc.setTextColor(0, 102, 204);
-                } else {
-                    currentDoc.setFont("times", "normal");
-                    currentDoc.setTextColor(0, 0, 0);
-                }
-
-                const w = currentDoc.getTextWidth(text);
-                if (x + w > left + width) {
-                    x = left;
-                    y += lineHeight;
-                }
-
-                currentDoc.text(text, x, y);
-                x += w;
-            });
-
-            currentDoc.setFont("times", "normal");
-            currentDoc.setTextColor(0, 0, 0);
-        },
-
-        didDrawPage: (data: any) => {
-          const contentStartY = headerStartY + 2;
-          const lineY = contentStartY + 20;
-          doc.setLineWidth(0.2).setDrawColor(0);
-          doc.rect(margin, headerStartY, usableWidth, headerBoxHeight); 
-          doc.line(margin, lineY, pageWidth - margin, lineY);
-
-          if (logoBase64) {
-            doc.addImage(logoBase64, 'PNG', margin + 5, contentStartY, 80, 18);
-          }
-
-          doc.setFont('times', 'bold').setFontSize(14);
-          doc.text('Job Schedule', pageWidth / 2, contentStartY + 12, { align: 'center' });
-          doc.setFontSize(8).setFont('times', 'normal');
-          doc.text('Division/Branch: I & M / Jamnagar', margin + 5, lineY + 12);
-          doc.text('Sub-Div.: R.A', pageWidth / 2, lineY + 12, { align: 'center' });
-          doc.text(formattedScheduleDate, pageWidth - margin - 5, lineY + 12, { align: 'right' });
+            // Strip the (Trade) part for a cleaner comma-joined string measurement
+            const namesOnly = raw.map((r: string) => r.replace(/\s*\(.*?\)/, ""));
+            const joined = namesOnly.join(", ");
+            
+            // Measure using AutoTable's internal mechanism to reserve the right height
+            const availableWidth = data.column.width - 8;
+            data.cell.text = data.doc.splitTextToSize(joined, availableWidth);
         }
-    });
+    },
 
-    finalTableY = (doc as any).lastAutoTable.finalY;
-    const footerH = 60;
+    willDrawCell: (data: any) => {
+        if (data.section === "body" && data.column.index === 1) {
+            // Make AutoTable's default text white so it calculates height but doesn't print visibly
+            data.cell.styles.textColor = [255, 255, 255];
+        }
+    },
 
-    if (finalTableY + footerH <= pageHeight - 15) {
-        break;
+    didDrawCell: (data: any) => {
+        if (data.section !== "body" || data.column.index !== 1) return;
+
+        const currentDoc = data.doc;
+        const raw = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
+
+        const people = raw.map((r: string) => {
+            const m = r.match(/^(.*?)\s*\((.*?)\)$/);
+            return {
+                name: m ? m[1].trim() : r,
+                trade: m ? m[2].trim() : ""
+            };
+        }).sort((a, b) => {
+            const isL3 = (t: string) => /RA\s*Level\s*3/i.test(t);
+            const isMgmt = (t: string) => /Supervisor|HSE|Safety|Manager|Coordinator|Admin/i.test(t);
+            if (isL3(a.trade) && !isL3(b.trade)) return -1;
+            if (!isL3(a.trade) && isL3(b.trade)) return 1;
+            if (isMgmt(a.trade) && !isMgmt(b.trade)) return 1;
+            if (!isMgmt(a.trade) && isMgmt(b.trade)) return -1;
+            return 0;
+        });
+
+        const left = data.cell.x + 4;
+        const width = data.cell.width - 8;
+        const fSize = fontSize;
+        const lineHeight = currentDoc.getLineHeightFactor() * fSize;
+
+        let x = left;
+        let y = data.cell.y + lineHeight + 2;
+
+        people.forEach((p, index) => {
+            const suffix = index === people.length - 1 ? "" : ", ";
+            const text = p.name + suffix;
+
+            if (/RA\s*Level\s*3/i.test(p.trade)) {
+                currentDoc.setFont("times", "bold");
+                currentDoc.setTextColor(0, 0, 0);
+            } else if (/Supervisor|HSE|Safety|Manager|Coordinator|Admin/i.test(p.trade)) {
+                currentDoc.setFont("times", "bold");
+                currentDoc.setTextColor(0, 102, 204);
+            } else {
+                currentDoc.setFont("times", "normal");
+                currentDoc.setTextColor(0, 0, 0);
+            }
+
+            const w = currentDoc.getTextWidth(text);
+            if (x + w > left + width) {
+                x = left;
+                y += lineHeight;
+            }
+
+            currentDoc.text(text, x, y);
+            x += w;
+        });
+
+        currentDoc.setFont("times", "normal");
+        currentDoc.setTextColor(0, 0, 0);
+    },
+
+    didDrawPage: (data: any) => {
+      const contentStartY = headerStartY + 2;
+      const lineY = contentStartY + 20;
+      doc.setLineWidth(0.2).setDrawColor(0);
+      doc.rect(margin, headerStartY, usableWidth, headerBoxHeight); 
+      doc.line(margin, lineY, pageWidth - margin, lineY);
+
+      if (logoBase64) {
+        doc.addImage(logoBase64, 'PNG', margin + 5, contentStartY, 80, 18);
+      }
+
+      doc.setFont('times', 'bold').setFontSize(14);
+      doc.text('Job Schedule', pageWidth / 2, contentStartY + 12, { align: 'center' });
+      doc.setFontSize(8).setFont('times', 'normal');
+      doc.text('Division/Branch: I & M / Jamnagar', margin + 5, lineY + 12);
+      doc.text('Sub-Div.: R.A', pageWidth / 2, lineY + 12, { align: 'center' });
+      doc.text(formattedScheduleDate, pageWidth - margin - 5, lineY + 12, { align: 'right' });
     }
+  });
 
-    fontSize -= 0.2;
-
-  } while (fontSize >= 4);
-
+  const finalTableY = (doc as any).lastAutoTable.finalY;
   const footerHeight = 60;
+  // Dock footer directly to the bottom border of the table
   let footerY = finalTableY - 0.2;
 
   const footerMidX = margin + usableWidth / 2;
