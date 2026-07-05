@@ -125,12 +125,15 @@ export async function generateSchedulePdf(
         if (data.section === "body" && data.column.index === 1) {
           const raw = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
           const names = raw.map((r: string) => r.replace(/\s*\(.*?\)/, "")).join(", ");
-          data.cell.text = data.doc.splitTextToSize(names, data.column.width - 8);
+          
+          // Use a fixed width for measurement during parse phase (175 - padding)
+          const availableWidth = 167;
+          data.cell.text = data.doc.splitTextToSize(names, availableWidth);
         }
       },
       willDrawCell: (data: any) => {
         if (data.section === "body" && data.column.index === 1) {
-          data.cell.text = [];
+          data.cell.text = []; // Suppress default text to prevent overlap
         }
       },
       didDrawCell: (data: any) => {
@@ -138,6 +141,7 @@ export async function generateSchedulePdf(
 
         const cDoc = data.doc;
         const raw = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
+        
         const people = raw.map((r: string) => {
           const m = r.match(/^(.*?)\s*\((.*?)\)$/);
           return { name: m ? m[1].trim() : r, trade: m ? m[2].trim() : "" };
@@ -153,8 +157,14 @@ export async function generateSchedulePdf(
 
         const left = data.cell.x + 4;
         const width = data.cell.width - 8;
+        
+        // Calculate block height for vertical centering
+        const fullText = people.map((p, i) => p.name + (i === people.length - 1 ? "" : ", ")).join("");
+        const wrappedLines = cDoc.splitTextToSize(fullText, width);
+        const blockHeight = wrappedLines.length * lineHeight;
+        
         let x = left;
-        let y = data.cell.y + lineHeight + 2;
+        let y = data.cell.y + (data.cell.height - blockHeight) / 2 + (lineHeight * 0.8);
 
         people.forEach((p, idx) => {
           const suffix = idx === people.length - 1 ? "" : ", ";
@@ -185,6 +195,7 @@ export async function generateSchedulePdf(
         const cDoc = data.doc;
         const contentStartY = headerStartY + 2;
         const lineY = contentStartY + 20;
+        
         cDoc.setLineWidth(0.2).setDrawColor(0);
         cDoc.rect(margin, headerStartY, usableWidth, headerBoxHeight); 
         cDoc.line(margin, lineY, pageWidth - margin, lineY);
@@ -200,6 +211,7 @@ export async function generateSchedulePdf(
         cDoc.text('Sub-Div.: R.A', pageWidth / 2, lineY + 12, { align: 'center' });
         cDoc.text(formattedScheduleDate, pageWidth - margin - 5, lineY + 12, { align: 'right' });
 
+        // COMPLIANCE FOOTER
         cDoc.setFontSize(7).setTextColor(0);
         cDoc.text('Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020', margin, pageHeight - 15);
         cDoc.text(`Page ${data.pageNumber}`, pageWidth - margin, pageHeight - 15, { align: 'right' });
@@ -226,20 +238,6 @@ export async function generateSchedulePdf(
   let footerY = finalTableY;
   if (footerY + footerHeight + bottomMargin > pageHeight) {
     finalDoc.addPage();
-    const cDoc = finalDoc;
-    const contentStartY = headerStartY + 2;
-    const lineY = contentStartY + 20;
-    cDoc.setLineWidth(0.2).setDrawColor(0);
-    cDoc.rect(margin, headerStartY, usableWidth, headerBoxHeight); 
-    cDoc.line(margin, lineY, pageWidth - margin, lineY);
-    if (logoBase64) cDoc.addImage(logoBase64, 'PNG', margin + 5, contentStartY, 80, 18);
-    cDoc.setFont('times', 'bold').setFontSize(14);
-    cDoc.text('Job Schedule', pageWidth / 2, contentStartY + 12, { align: 'center' });
-    cDoc.setFontSize(8).setFont('times', 'normal');
-    cDoc.text('Division/Branch: I & M / Jamnagar', margin + 5, lineY + 12);
-    cDoc.text('Sub-Div.: R.A', pageWidth / 2, lineY + 12, { align: 'center' });
-    cDoc.text(formattedScheduleDate, pageWidth - margin - 5, lineY + 12, { align: 'right' });
-
     footerY = headerBottomY + 15;
   }
 
