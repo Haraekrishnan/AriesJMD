@@ -70,6 +70,7 @@ export async function generateSchedulePdf(
   const headerStartY = margin;
   const headerBottomY = headerStartY + headerBoxHeight;
   const tableStartY = headerBottomY;
+  const fontSize = 6;
 
   doc.autoTable({
     startY: tableStartY,
@@ -82,7 +83,7 @@ export async function generateSchedulePdf(
     theme: 'grid',
     styles: {
         font: "times",
-        fontSize: 6,
+        fontSize,
         halign: "center",
         valign: "middle",
         cellPadding: {
@@ -92,7 +93,6 @@ export async function generateSchedulePdf(
             right: 4
         },
         overflow: "linebreak",
-        minCellHeight: 18,
         lineWidth: 0.2,
         lineColor: [0, 0, 0],
         textColor: [0, 0, 0],
@@ -101,11 +101,11 @@ export async function generateSchedulePdf(
         fillColor: [255, 255, 255],
         textColor: [0, 0, 0],
         fontStyle: 'bold',
-        fontSize: 6.5,
+        fontSize: fontSize + 0.5,
     },
     columnStyles: {
         0: { cellWidth: 25 },
-        1: { cellWidth: 140 }, 
+        1: { cellWidth: 175 }, 
         2: { cellWidth: 28 },
         3: { cellWidth: 30 },
         4: { cellWidth: 64 },
@@ -124,20 +124,27 @@ export async function generateSchedulePdf(
     
             const names = raw.map((r: string) => {
                 const m = r.match(/^(.*?)\s*\((.*?)\)$/);
-                return m ? m[1].trim() : r;
-            });
+                return { 
+                    name: m ? m[1].trim() : r,
+                    trade: m ? m[2].trim() : ""
+                };
+            }).sort((a, b) => {
+                const l3 = (t: string) => /RA\s*Level\s*3/i.test(t);
+                const mg = (t: string) => /Supervisor|HSE|Safety|Manager|Coordinator|Admin/i.test(t);
+                
+                if (l3(a.trade) && !l3(b.trade)) return -1;
+                if (!l3(a.trade) && l3(b.trade)) return 1;
+                if (mg(a.trade) && !mg(b.trade)) return 1;
+                if (!mg(a.trade) && mg(b.trade)) return -1;
+                return 0;
+            }).map(item => item.name);
     
             const text = names.join(", ");
-    
+            // Column 1 is 175. Cell padding horizontal is 4 + 4 = 8. 175 - 8 = 167.
+            const availableWidth = 167;
             data.cell.text = data.doc.splitTextToSize(
                 text,
-                data.column.width - 8
-            );
-
-            const lineCount = data.cell.text.length;
-            data.row.height = Math.max(
-                18,
-                lineCount * 9 + 8
+                availableWidth
             );
         }
     },
@@ -164,10 +171,8 @@ export async function generateSchedulePdf(
 
   const finalTable = (doc as any).lastAutoTable;
   const footerHeight = 60;
-  // Dock footer directly to the bottom border of the table
   let footerY = finalTable.finalY - 0.2;
 
-  // Page overflow protection for footer
   if (footerY + footerHeight > pageHeight - 15) {
     doc.addPage();
     footerY = margin;
