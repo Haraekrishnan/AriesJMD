@@ -36,7 +36,6 @@ export async function generateSchedulePdf(
   schedulerName: string,
   userSignature?: string
 ) {
-  // Use Times font family as base
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   doc.setFont("times", "normal");
   
@@ -71,12 +70,11 @@ export async function generateSchedulePdf(
   const headerStartY = margin;
   const headerBottomY = headerStartY + headerBoxHeight;
   const tableStartY = headerBottomY;
-  const fontSize = 6;
 
   doc.autoTable({
     startY: tableStartY,
     tableWidth: usableWidth,
-    margin: { left: margin, right: margin, top: tableStartY, bottom: 70 },
+    margin: { left: margin, right: margin, top: tableStartY, bottom: 55 },
 
     head: [headRow],
     body: bodyRows,
@@ -84,9 +82,9 @@ export async function generateSchedulePdf(
     theme: 'grid',
     styles: {
         font: "times",
-        fontSize: fontSize,
-        halign: "center", 
-        valign: "middle", 
+        fontSize: 6,
+        halign: "center",
+        valign: "middle",
         cellPadding: {
             top: 5,
             bottom: 5,
@@ -94,6 +92,7 @@ export async function generateSchedulePdf(
             right: 4
         },
         overflow: "linebreak",
+        minCellHeight: 18,
         lineWidth: 0.2,
         lineColor: [0, 0, 0],
         textColor: [0, 0, 0],
@@ -102,7 +101,7 @@ export async function generateSchedulePdf(
         fillColor: [255, 255, 255],
         textColor: [0, 0, 0],
         fontStyle: 'bold',
-        fontSize: fontSize + 0.5,
+        fontSize: 6.5,
     },
     columnStyles: {
         0: { cellWidth: 25 },
@@ -118,124 +117,32 @@ export async function generateSchedulePdf(
     },
 
     didParseCell: (data: any) => {
-        if (data.section === 'body' && data.column.index === 1) {
-            const raw = data.cell.raw;
-            const names = Array.isArray(raw) ? raw : [String(raw)];
-            const namesOnly = names.map(n => {
-                const m = n.match(/^(.*?)\s*\((.*?)\)$/);
-                return m ? m[1].trim() : n;
+        if (data.section === "body" && data.column.index === 1) {
+            const raw = Array.isArray(data.cell.raw)
+                ? data.cell.raw
+                : [String(data.cell.raw)];
+    
+            const names = raw.map((r: string) => {
+                const m = r.match(/^(.*?)\s*\((.*?)\)$/);
+                return m ? m[1].trim() : r;
             });
-            const joined = namesOnly.join(", ");
-            // Set text for measurement so AutoTable calculates correct height automatically
-            data.cell.text = data.doc.splitTextToSize(joined, data.column.width - 8);
+    
+            const text = names.join(", ");
+    
+            data.cell.text = data.doc.splitTextToSize(
+                text,
+                data.column.width - 8
+            );
+
+            const lineCount = data.cell.text.length;
+            data.row.height = Math.max(
+                18,
+                lineCount * 9 + 8
+            );
         }
     },
 
-    willDrawCell: (data: any) => {
-        if (data.section === 'body' && data.column.index === 1) {
-            // Hide the default text by drawing it in white.
-            // This ensures row height is reserved correctly without manual math.
-            data.cell.styles.textColor = [255, 255, 255];
-        }
-    },
-
-    didDrawCell: (data: any) => {
-        if (data.section !== "body" || data.column.index !== 1) return;
-    
-        const currentDoc = data.doc;
-        const cell = data.cell;
-
-        // Hide AutoTable's invisible text by painting over it
-        currentDoc.setFillColor(255, 255, 255);
-        currentDoc.rect(cell.x + 0.5, cell.y + 0.5, cell.width - 1, cell.height - 1, "F");
-    
-        const paddingLeft = cell.padding("left");
-        const paddingRight = cell.padding("right");
-        const startX = cell.x + paddingLeft;
-        const maxWidth = cell.width - paddingLeft - paddingRight;
-    
-        const fSize = cell.styles.fontSize;
-        const lHeight = fSize * 2.0; // Increased spacing for names
-        const separator = ", ";
-
-        const rawNames = Array.isArray(cell.raw) ? cell.raw : [String(cell.raw)];
-        const parsed = rawNames.map((raw: string) => {
-            const m = raw.match(/^(.*?)\s*\((.*?)\)$/);
-            return {
-                name: m ? m[1].trim() : raw,
-                trade: m ? m[2].trim() : ""
-            };
-        }).sort((a, b) => {
-            const l3 = (t: string) => /RA\s*Level\s*3/i.test(t);
-            const mg = (t: string) => /Supervisor|HSE|Safety|Admin|Manager|Coordinator/i.test(t);
-
-            if (l3(a.trade) && !l3(b.trade)) return -1;
-            if (!l3(a.trade) && l3(b.trade)) return 1;
-
-            if (mg(a.trade) && !mg(b.trade)) return 1;
-            if (!mg(a.trade) && mg(b.trade)) return -1;
-
-            return 0;
-        });
-
-        // 1. Group segments into lines manually for centered rendering
-        let lines: { text: string, color: number[], isBold: boolean }[][] = [[]];
-        let currentLineWidth = 0;
-        let lineIdx = 0;
-
-        parsed.forEach((item, idx) => {
-            const isLast = idx === parsed.length - 1;
-            const textToMeasure = item.name + (isLast ? "" : separator);
-            
-            const isL3 = /RA\s*Level\s*3/i.test(item.trade);
-            const isMgmt = /Supervisor|HSE|Safety|Admin|Manager|Coordinator/i.test(item.trade);
-            
-            currentDoc.setFont("times", (isL3 || isMgmt) ? "bold" : "normal");
-            const wordWidth = currentDoc.getTextWidth(textToMeasure);
-
-            if (currentLineWidth + wordWidth > maxWidth && currentLineWidth > 0) {
-                lineIdx++;
-                lines[lineIdx] = [];
-                currentLineWidth = 0;
-            }
-
-            const color = isMgmt ? [0, 102, 204] : [0, 0, 0];
-            
-            lines[lineIdx].push({ 
-                text: textToMeasure, 
-                color, 
-                isBold: (isL3 || isMgmt)
-            });
-            currentLineWidth += wordWidth;
-        });
-
-        // 2. Render centered lines vertically and horizontally
-        const totalTextHeight = lines.length * lHeight;
-        let cursorY = cell.y + (cell.height - totalTextHeight) / 2 + fSize;
-
-        lines.forEach(line => {
-            // Horizontal centering for the whole line
-            const lineWidth = line.reduce((acc, segment) => {
-                currentDoc.setFont("times", segment.isBold ? "bold" : "normal");
-                return acc + currentDoc.getTextWidth(segment.text);
-            }, 0);
-            
-            let cursorX = cell.x + (cell.width - lineWidth) / 2;
-
-            line.forEach(segment => {
-                currentDoc.setFont("times", segment.isBold ? "bold" : "normal");
-                currentDoc.setTextColor(segment.color[0], segment.color[1], segment.color[2]);
-                currentDoc.text(segment.text, cursorX, cursorY);
-                cursorX += currentDoc.getTextWidth(segment.text);
-            });
-            cursorY += lHeight;
-        });
-    
-        currentDoc.setFont("times", "normal");
-        currentDoc.setTextColor(0, 0, 0);
-    },
-
-    didDrawPage: (data) => {
+    didDrawPage: (data: any) => {
       const contentStartY = headerStartY + 2;
       const lineY = contentStartY + 20;
       doc.setLineWidth(0.2).setDrawColor(0);
