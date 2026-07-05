@@ -22,12 +22,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 const scheduleItemSchema = z.object({
   id: z.string(),
   manpowerIds: z.array(z.string()).min(1, "Select at least one person"),
-  jobType: z.string().min(1, 'Required'),
-  jobNo: z.string().min(1, 'Required'),
-  projectVesselName: z.string().min(1, 'Required'),
-  location: z.string().min(1, 'Required'),
-  reportingTime: z.string().min(1, 'Required'),
-  clientContact: z.string().min(1, 'Required'),
+  jobType: z.string().optional().or(z.literal('')),
+  jobNo: z.string().optional().or(z.literal('')),
+  projectVesselName: z.string().optional().or(z.literal('')),
+  location: z.string().optional().or(z.literal('')),
+  reportingTime: z.string().optional().or(z.literal('')),
+  clientContact: z.string().optional().or(z.literal('')),
   vehicleId: z.string().optional(),
   remarks: z.string().optional(),
 });
@@ -255,12 +255,12 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
                   {form.formState.errors.items?.[index]?.manpowerIds && <p className="text-xs text-destructive">{form.formState.errors.items[index]?.manpowerIds?.message}</p>}
                 </div>
               </TableCell>
-              <TableCell><Input {...form.register(`items.${index}.jobType`)} className={cn(form.formState.errors.items?.[index]?.jobType && "border-destructive")} /></TableCell>
-              <TableCell><Input {...form.register(`items.${index}.jobNo`)} className={cn(form.formState.errors.items?.[index]?.jobNo && "border-destructive")} /></TableCell>
-              <TableCell><Input {...form.register(`items.${index}.projectVesselName`)} className={cn(form.formState.errors.items?.[index]?.projectVesselName && "border-destructive")} /></TableCell>
-              <TableCell><Input {...form.register(`items.${index}.location`)} className={cn(form.formState.errors.items?.[index]?.location && "border-destructive")} /></TableCell>
-              <TableCell><Input type="time" {...form.register(`items.${index}.reportingTime`)} className={cn(form.formState.errors.items?.[index]?.reportingTime && "border-destructive")} /></TableCell>
-              <TableCell><Input {...form.register(`items.${index}.clientContact`)} className={cn(form.formState.errors.items?.[index]?.clientContact && "border-destructive")} /></TableCell>
+              <TableCell><Input {...form.register(`items.${index}.jobType`)} /></TableCell>
+              <TableCell><Input {...form.register(`items.${index}.jobNo`)} /></TableCell>
+              <TableCell><Input {...form.register(`items.${index}.projectVesselName`)} /></TableCell>
+              <TableCell><Input {...form.register(`items.${index}.location`)} /></TableCell>
+              <TableCell><Input type="time" {...form.register(`items.${index}.reportingTime`)} /></TableCell>
+              <TableCell><Input {...form.register(`items.${index}.clientContact`)} /></TableCell>
               <TableCell>
                  <Controller name={`items.${index}.vehicleId`} control={form.control} render={({ field: controllerField }) => (
                     <Select onValueChange={controllerField.onChange} value={controllerField.value}>
