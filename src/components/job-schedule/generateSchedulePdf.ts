@@ -1,10 +1,9 @@
-
 'use client';
 
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { format, parseISO, isValid } from 'date-fns';
-import type { JobSchedule, User } from '@/lib/types';
+import type { JobSchedule } from '@/lib/types';
 
 declare module 'jspdf' {
   interface jsPDF {
@@ -12,27 +11,23 @@ declare module 'jspdf' {
   }
 }
 
+// Helper to fetch image as Base64 for PDF
 async function fetchImageAsBase64(url: string): Promise<string> {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Image not found at ${url}`);
-      const blob = await response.blob();
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    } catch (error) {
-      console.error('Error fetching image for PDF:', error);
-      return '';
-    }
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Logo not found at ' + url);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error('Error fetching image for PDF:', error);
+    return ''; 
+  }
 }
-
-const SIGNATURES: Record<string, string> = {
-    'Harirkrishnan P S': '/images/hari_sign.jpg',
-    'MANU M G': '/images/Manu_Sign.jpg',
-};
 
 export async function generateSchedulePdf(
   schedule: JobSchedule | undefined,
@@ -41,211 +36,229 @@ export async function generateSchedulePdf(
   schedulerName: string,
   userSignature?: string
 ) {
-  const doc = new jsPDF({
-    orientation: 'landscape',
-    unit: 'pt',
-    format: 'a4',
-  });
-
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 30;
-
-  // --- Header Helpers ---
+  
+  const formattedScheduleDate = format(scheduleDate, 'dd-MM-yyyy');
+  const formattedReportDate = format(reportDate, 'dd-MM-yyyy');
   const logoBase64 = await fetchImageAsBase64('/images/Aries_logo.png');
 
-  const addPageHeader = (currentDoc: jsPDF) => {
-    if (logoBase64) {
-      currentDoc.addImage(logoBase64, 'PNG', margin, 20, 140, 35);
-    }
-    
-    currentDoc.setFontSize(14);
-    currentDoc.setFont('helvetica', 'bold');
-    currentDoc.text('ARIES', pageWidth / 2, 40, { align: 'center' });
-    
-    currentDoc.setFontSize(10);
-    currentDoc.setFont('helvetica', 'normal');
-    currentDoc.text('Division/Branch: I & M / Jamnagar', margin, 75);
-    currentDoc.text(`Project/ Vessel’s name: Daily Schedule for ${format(scheduleDate, 'dd-MM-yyyy')}`, margin, 90);
-  };
-
-  const drawFooter = (currentDoc: jsPDF, finalY: number) => {
-    // Dock footer to table
-    let footerY = finalY - 0.2;
-    const footerHeight = 70;
-
-    // Check if footer fits
-    if (footerY + footerHeight > pageHeight - 20) {
-      currentDoc.addPage();
-      addPageHeader(currentDoc);
-      footerY = 110;
-    }
-
-    currentDoc.setLineWidth(0.5);
-    currentDoc.setDrawColor(180);
-
-    // Main Footer Box
-    currentDoc.rect(margin, footerY, pageWidth - margin * 2, 45);
-    currentDoc.line(margin + 250, footerY, margin + 250, footerY + 45);
-    currentDoc.line(pageWidth - margin - 200, footerY, pageWidth - margin - 200, footerY + 45);
-
-    currentDoc.setFontSize(9);
-    currentDoc.setFont('helvetica', 'normal');
-    
-    // Scheduled By
-    currentDoc.text(`Scheduled by: ${schedulerName}`, margin + 10, footerY + 20);
-    
-    // Date
-    currentDoc.text(`Date: ${format(reportDate, 'dd-MM-yyyy')}`, pageWidth - margin - 190, footerY + 20);
-
-    // Signature Area
-    currentDoc.text('Signature:', pageWidth - margin - 190, footerY + 40);
-    if (userSignature) {
-      try {
-        currentDoc.addImage(userSignature, 'PNG', pageWidth - margin - 130, footerY + 15, 80, 25);
-      } catch (e) {
-        console.error("Signature error:", e);
-      }
-    }
-
-    // Ref line
-    currentDoc.setFontSize(7);
-    currentDoc.setTextColor(100);
-    currentDoc.text('Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020', margin, pageHeight - 20);
-    currentDoc.text('Page 1 of 1', pageWidth - margin, pageHeight - 20, { align: 'right' });
-  };
-
-  addPageHeader(doc);
-
-  const head = [
-    ['Sr. No', 'Name', 'Job Type', 'Job No.', "Project/Vessel's name", 'Location', 'Reporting Time', 'Client / Contact Person Number', 'Vehicle', 'Special instruction/Remarks']
+  const headRow = [
+    'Sr. No', 'Name', 'Job Type', 'Job No.', "Project/Vessel's name",
+    'Location', 'Reporting Time', 'Client / Contact Person Number', 'Vehicle', 'Special instruction/Remarks',
   ];
 
-  const body = (schedule?.items || []).map((item, index) => [
-    index + 1,
-    item.manpowerIds || [], // Passing array for custom rendering
+  const bodyRows = (schedule?.items || []).map((item, i) => [
+    i + 1,
+    item.manpowerIds, // Array of strings: "Name (Trade)"
     item.jobType || '',
     item.jobNo || '',
     item.projectVesselName || '',
     item.location || '',
     item.reportingTime || '',
     item.clientContact || '',
-    item.vehicleId || '',
-    item.remarks || ''
+    item.vehicleId && item.vehicleId !== 'none' ? item.vehicleId : 'N/A',
+    item.remarks || '',
   ]);
 
+  const margin = 28;
+  const usableWidth = pageWidth - margin * 2;
+  const headerBoxHeight = 42;
+  const headerStartY = margin;
+  const headerBottomY = headerStartY + headerBoxHeight;
+  const tableStartY = headerBottomY;
+  const fontSize = 7;
+
   doc.autoTable({
-    head: head,
-    body: body,
-    startY: 105,
+    startY: tableStartY,
+    tableWidth: usableWidth,
+    margin: { left: margin, right: margin, top: tableStartY, bottom: 70 },
+
+    head: [headRow],
+    body: bodyRows,
+
     theme: 'grid',
     styles: {
-      fontSize: 7,
-      cellPadding: { top: 4, bottom: 4, left: 3, right: 3 },
-      valign: 'middle',
-      halign: 'center',
-      lineColor: [180, 180, 180],
-      lineWidth: 0.5,
-      overflow: 'linebreak',
+        fontSize,
+        cellPadding: {
+            top: 4,
+            bottom: 4,
+            left: 3,
+            right: 3
+        },
+        lineWidth: 0.2,
+        lineColor: [0, 0, 0],
+        textColor: [0, 0, 0],
+        valign: 'middle', 
     },
     headStyles: {
-      fillColor: [220, 220, 220],
-      textColor: 0,
-      fontStyle: 'bold'
+        fillColor: [255, 255, 255],
+        textColor: [0, 0, 0],
+        fontStyle: 'bold',
+        halign: 'center',
+        fontSize: fontSize + 0.5,
     },
     columnStyles: {
-      0: { cellWidth: 30 },
-      1: { cellWidth: 135, halign: 'left' },
-      2: { cellWidth: 60 },
-      3: { cellWidth: 60 },
-      4: { cellWidth: 100 },
-      5: { cellWidth: 80 },
-      6: { cellWidth: 55 },
-      7: { cellWidth: 90 },
-      8: { cellWidth: 50 },
-      9: { cellWidth: 'auto', halign: 'left' },
+        0: { cellWidth: 25 },
+        1: { cellWidth: 135 }, 
+        2: { cellWidth: 30 },
+        3: { cellWidth: 32 },
+        4: { cellWidth: 65 },
+        5: { cellWidth: 45 },
+        6: { cellWidth: 40, halign: 'center' },
+        7: { cellWidth: 58 },
+        8: { cellWidth: 35, halign: 'center' },
+        9: { cellWidth: 'auto' },
     },
-    margin: { left: margin, right: margin, bottom: 70 },
+
+    didParseCell: (data: any) => {
+        if (data.section === 'body' && data.column.index === 1) {
+            const rawNames = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
+            // Strip designation for measurement
+            const namesOnly = rawNames.map(raw => raw.split(' (')[0]);
+            data.cell.text = [namesOnly.join(', ')];
+        }
+    },
+
     didDrawCell: (data: any) => {
-      // Logic for multi-colored comma separated names in column index 1
-      if (data.section === 'body' && data.column.index === 1) {
+        if (data.section !== "body" || data.column.index !== 1) return;
+    
         const currentDoc = data.doc;
-        const rawNames = data.cell.raw;
-        if (!Array.isArray(rawNames)) return;
-
-        // Clear AutoTable's default text by painting over it
+    
+        // Hide AutoTable's original text by painting over it
         currentDoc.setFillColor(255, 255, 255);
-        currentDoc.rect(data.cell.x + 0.5, data.cell.y + 0.5, data.cell.width - 1, data.cell.height - 1, 'F');
-
-        // Parse and Sort Names
-        const parsed = rawNames.map(str => {
-          const m = str.match(/^(.*?)\s*\((.*?)\)$/);
-          return {
-            name: m ? m[1].trim() : str,
-            role: m ? m[2].trim() : ''
-          };
-        }).sort((a, b) => {
-          const isMgmt = (r: string) => /Supervisor|HSE|Safety|Coordinator/i.test(r);
-          const isL3 = (r: string) => /RA\s*Level\s*3/i.test(r);
-
-          if (isL3(a.role) && !isL3(b.role)) return -1;
-          if (!isL3(a.role) && isL3(b.role)) return 1;
-          if (isMgmt(a.role) && !isMgmt(b.role)) return 1;
-          if (!isMgmt(a.role) && isMgmt(b.role)) return -1;
-          return a.name.localeCompare(b.name);
-        });
-
+        currentDoc.rect(
+            data.cell.x + 0.5,
+            data.cell.y + 0.5,
+            data.cell.width - 1,
+            data.cell.height - 1,
+            "F"
+        );
+    
+        const padding = data.cell.padding("left");
+        const startX = data.cell.x + padding;
+        const maxWidth = data.cell.width - padding - data.cell.padding("right");
+    
         const fSize = data.cell.styles.fontSize;
         const lHeight = fSize * 1.55;
-        const paddingLeft = data.cell.padding('left');
-        const paddingRight = data.cell.padding('right');
-        const paddingTop = data.cell.padding('top');
-        const maxWidth = data.cell.width - paddingLeft - paddingRight;
+    
+        let cursorX = startX;
+        let cursorY = data.cell.y + data.cell.padding("top") + fSize;
+    
+        const rawNames = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
+    
+        // Sorting Logic: L3 First, Mgmt Last
+        const parsed = rawNames.map(raw => {
+            const m = raw.match(/^(.*?)\s*\((.*?)\)$/);
+            return {
+                name: m ? m[1].trim() : raw,
+                trade: m ? m[2].trim() : ""
+            };
+        }).sort((a, b) => {
+            const isMgmt = (t: string) => /Supervisor|HSE|Safety|Admin|Manager|Coordinator/i.test(t);
+            const isL3 = (t: string) => /RA\s*Level\s*3/i.test(t);
 
-        let cursorX = data.cell.x + paddingLeft;
-        let cursorY = data.cell.y + paddingTop + fSize;
-        const separator = ", ";
-
-        parsed.forEach((item, i) => {
-          const isLast = i === parsed.length - 1;
-          
-          // Style detection
-          if (/RA\s*Level\s*3/i.test(item.role)) {
-            currentDoc.setFont('helvetica', 'bold');
-            currentDoc.setTextColor(0, 0, 0);
-          } else if (/Supervisor|HSE|Safety|Coordinator/i.test(item.role)) {
-            currentDoc.setFont('helvetica', 'bold');
-            currentDoc.setTextColor(0, 102, 204);
-          } else {
-            currentDoc.setFont('helvetica', 'normal');
-            currentDoc.setTextColor(0, 0, 0);
-          }
-
-          const textToDraw = item.name + (isLast ? "" : separator);
-          const textWidth = currentDoc.getTextWidth(textToDraw);
-
-          // Wrap logic
-          if (cursorX + textWidth > data.cell.x + paddingLeft + maxWidth && cursorX > data.cell.x + paddingLeft) {
-            cursorX = data.cell.x + paddingLeft;
-            cursorY += lHeight;
-          }
-
-          currentDoc.text(textToDraw, cursorX, cursorY);
-          cursorX += textWidth;
+            if (isL3(a.trade) && !isL3(b.trade)) return -1;
+            if (!isL3(a.trade) && isL3(b.trade)) return 1;
+            if (isMgmt(a.trade) && !isMgmt(b.trade)) return 1;
+            if (!isMgmt(a.trade) && isMgmt(b.trade)) return -1;
+            return a.name.localeCompare(b.name);
         });
 
-        // Reset styles for other cells
-        currentDoc.setFont('helvetica', 'normal');
+        parsed.forEach((item, index) => {
+            const isLast = index === parsed.length - 1;
+            const separator = isLast ? "" : ", ";
+            const displayText = item.name + separator;
+
+            if (/RA\s*Level\s*3/i.test(item.trade)) {
+                currentDoc.setFont("helvetica", "bold");
+                currentDoc.setTextColor(0, 0, 0);
+            } else if (/Supervisor|HSE|Safety|Admin|Manager|Coordinator/i.test(item.trade)) {
+                currentDoc.setFont("helvetica", "bold");
+                currentDoc.setTextColor(0, 102, 204);
+            } else {
+                currentDoc.setFont("helvetica", "normal");
+                currentDoc.setTextColor(0, 0, 0);
+            }
+
+            const textWidth = currentDoc.getTextWidth(displayText);
+
+            // Wrap Check
+            if (cursorX + textWidth > startX + maxWidth && cursorX > startX) {
+                cursorX = startX;
+                cursorY += lHeight;
+            }
+
+            currentDoc.text(displayText, cursorX, cursorY);
+            cursorX += textWidth;
+        });
+    
+        currentDoc.setFont("helvetica", "normal");
         currentDoc.setTextColor(0, 0, 0);
-      }
     },
-    didDrawPage: (data: any) => {
-      // Footer only drawn at the end, handled outside AutoTable logic
+
+    didDrawPage: (data) => {
+      const contentStartY = headerStartY + 2;
+      const lineY = contentStartY + 20;
+      doc.setLineWidth(0.2).setDrawColor(0);
+      doc.rect(margin, headerStartY, usableWidth, headerBoxHeight); 
+      doc.line(margin, lineY, pageWidth - margin, lineY);
+
+      if (logoBase64) {
+        doc.addImage(logoBase64, 'PNG', margin + 5, contentStartY, 80, 18);
+      }
+
+      doc.setFont('helvetica', 'bold').setFontSize(14);
+      doc.text('Job Schedule', pageWidth / 2, contentStartY + 12, { align: 'center' });
+      doc.setFontSize(8).setFont('helvetica', 'normal');
+      doc.text('Division/Branch: I & M / Jamnagar', margin + 5, lineY + 12);
+      doc.text('Sub-Div.: R.A', pageWidth / 2, lineY + 12, { align: 'center' });
+      doc.text(formattedScheduleDate, pageWidth - margin - 5, lineY + 12, { align: 'right' });
     }
   });
 
-  const finalY = (doc as any).lastAutoTable.finalY;
-  drawFooter(doc, finalY);
+  const finalTable = (doc as any).lastAutoTable;
+  const footerHeight = 60;
+  let footerY = finalTable.finalY - 0.2;
+
+  if (footerY + footerHeight > pageHeight - 15) {
+    doc.addPage();
+    footerY = margin;
+  }
+
+  const footerMidX = margin + usableWidth / 2;
+  doc.setLineWidth(0.2).setDrawColor(0);
+  doc.rect(margin, footerY, usableWidth, footerHeight);
+  doc.line(footerMidX, footerY, footerMidX, footerY + footerHeight);
+  doc.line(footerMidX, footerY + footerHeight / 2, margin + usableWidth, footerY + footerHeight / 2);
+
+  doc.setFontSize(8).setFont('helvetica', 'normal').setTextColor(0);
+  doc.text(`Scheduled by ${schedulerName}`, margin + 6, footerY + footerHeight / 2 + 15);
+  doc.text('Signature:', footerMidX + 6, footerY + 15);
+
+  if (userSignature) {
+    const labelWidth = 52;
+    const padding = 4;
+    const maxWidth = (usableWidth / 2) - labelWidth - padding * 2;
+    const maxHeight = (footerHeight / 2) - padding * 2;
+
+    try {
+        const imgProps = doc.getImageProperties(userSignature);
+        let imgW = imgProps.width;
+        let imgH = imgProps.height;
+        const scale = Math.min(maxWidth / imgW, maxHeight / imgH, 1);
+        imgW *= scale;
+        imgH *= scale;
+        
+        doc.addImage(userSignature, 'PNG', footerMidX + labelWidth + padding, footerY + ((footerHeight/2) - imgH)/2, imgW, imgH);
+    } catch (e) { console.error(e); }
+  }
+
+  doc.text(`Date: ${formattedReportDate}`, footerMidX + 6, footerY + footerHeight / 2 + 15);
+  doc.setFontSize(7);
+  doc.text('Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020', margin, pageHeight - 15);
+  doc.text(`Page ${doc.getNumberOfPages()}`, pageWidth - margin, pageHeight - 15, { align: 'right' });
 
   doc.save(`JobSchedule_${format(scheduleDate, 'yyyy-MM-dd')}.pdf`);
 }
