@@ -1,3 +1,4 @@
+
 'use client';
 import { useFieldArray, useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,7 +11,7 @@ import { Textarea } from '../ui/textarea';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { Check, PlusCircle, Save, Trash2, Copy, Users, ChevronsUpDown } from 'lucide-react';
+import { Check, PlusCircle, Save, Trash2, Copy, Users, ChevronsUpDown, ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { JobSchedule, JobScheduleItem } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -156,6 +157,24 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
     return 'Assigned elsewhere on this date.';
   };
 
+  const emptyItem = { 
+    id: '', 
+    manpowerIds: [], 
+    jobType: '', 
+    jobNo: '', 
+    projectVesselName: '', 
+    location: '', 
+    reportingTime: '09:00', 
+    clientContact: '', 
+    vehicleId: 'none', 
+    remarks: '' 
+  };
+
+  const generateNewItem = () => ({
+    ...emptyItem,
+    id: `item-${Date.now()}-${Math.random()}`,
+  });
+
   return (
     <form onSubmit={form.handleSubmit(onSubmit)}>
       <ScrollArea className="w-full">
@@ -173,7 +192,7 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
                     <TableHead>Client/Contact</TableHead>
                     <TableHead>Vehicle</TableHead>
                     <TableHead>Remarks</TableHead>
-                    <TableHead className="w-[80px]"></TableHead>
+                    <TableHead className="w-[120px] text-right">Actions</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -278,7 +297,7 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
                   </TableCell>
                   <TableCell><Textarea {...form.register(`items.${index}.remarks`)} className="min-h-[40px] w-[200px]"/></TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center justify-end gap-1">
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -287,18 +306,21 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
                               variant="ghost" 
                               size="icon" 
                               className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                              onClick={() => insert(index + 1, { 
-                                id: `item-${Date.now()}-${Math.random()}`, 
-                                manpowerIds: [], 
-                                jobType: '', 
-                                jobNo: '', 
-                                projectVesselName: '', 
-                                location: '', 
-                                reportingTime: '09:00', 
-                                clientContact: '', 
-                                vehicleId: 'none', 
-                                remarks: '' 
-                              })}
+                              onClick={() => insert(index, generateNewItem())}
+                            >
+                              <ArrowUp className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Insert row above</p></TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              onClick={() => insert(index + 1, generateNewItem())}
                             >
                               <PlusCircle className="h-4 w-4" />
                             </Button>
@@ -339,7 +361,7 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
             )}
            </div>
            <div className="flex gap-2 w-full sm:w-auto">
-             <Button type="button" variant="outline" className="flex-1 sm:flex-none" onClick={() => append({ id: `item-${Date.now()}`, manpowerIds: [], jobType: '', jobNo: '', projectVesselName: '', location: '', reportingTime: '09:00', clientContact: '', vehicleId: 'none', remarks: '' })}>
+             <Button type="button" variant="outline" className="flex-1 sm:flex-none" onClick={() => append(generateNewItem())}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Row
             </Button>
             <Button type="submit" className="flex-1 sm:flex-none">
