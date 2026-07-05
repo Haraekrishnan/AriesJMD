@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { format } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 import { saveAs } from 'file-saver';
 import type { JobSchedule } from '@/lib/types';
 
@@ -11,42 +11,33 @@ async function fetchImageAsArrayBuffer(url: string) {
   return response.arrayBuffer();
 }
 
-
-export async function generateScheduleExcel(
+/**
+ * Helper to add a schedule to a specific worksheet
+ */
+function addScheduleToSheet(
+  ws: ExcelJS.Worksheet,
   schedule: JobSchedule | undefined,
   scheduleDate: Date,
   reportDate: Date,
   schedulerName: string,
-  userSignature?: string
+  workbook: ExcelJS.Workbook,
+  logoId?: number,
+  signatureId?: number
 ) {
-  const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet('Job Schedule');
-
   ws.pageSetup.orientation = 'landscape';
-
   const formattedReportDate = format(reportDate, 'dd-MM-yyyy');
+  const totalCols = 10;
 
-  // === LOGO =============================================================
-  try {
-    const logoBuffer = await fetchImageAsArrayBuffer('/images/Aries_logo.png');
-    const imgId = wb.addImage({
-      buffer: logoBuffer,
-      extension: 'png',
-    });
-
-    ws.addImage(imgId, {
+  // === LOGO ===
+  if (logoId !== undefined) {
+    ws.addImage(logoId, {
       tl: { col: 0.2, row: 0.3 },
       ext: { width: 160, height: 40 },
       editAs: "absolute",
     });
-  } catch (error) {
-    console.error("Could not add logo to Excel:", error);
   }
-  
 
-  // === HEADER ===========================================================
-  const totalCols = 10; 
-  
+  // === HEADER ===
   const row1 = ws.addRow([]);
   ws.mergeCells(1, 1, 1, totalCols);
   const cell1 = ws.getCell(1, 1);
@@ -68,10 +59,8 @@ export async function generateScheduleExcel(
   
   ws.getRow(1).height = 35;
 
-
-  // === TABLE HEADER =====================================================
+  // === TABLE HEADER ===
   const headerRowIndex = 5;
-
   const headerRow = ws.getRow(headerRowIndex);
   headerRow.values = [
     'Sr. No',
@@ -112,13 +101,12 @@ export async function generateScheduleExcel(
     { width: 30 },
   ];
 
-  // === TABLE BODY =======================================================
+  // === TABLE BODY ===
   let rowIndex = headerRowIndex + 1;
   const items = schedule?.items || [];
 
   items.forEach((item, index) => {
     const row = ws.getRow(rowIndex);
-
     row.values = [
       index + 1,
       Array.isArray(item.manpowerIds) ? item.manpowerIds.join(', ') : '',
@@ -144,13 +132,11 @@ export async function generateScheduleExcel(
     });
 
     row.getCell(1).alignment = { horizontal: 'center' };
-
     rowIndex++;
   });
 
-  // === FOOTER ===========================================================
+  // === FOOTER ===
   rowIndex += 1;
-
   ws.mergeCells(`A${rowIndex}:C${rowIndex}`);
   ws.mergeCells(`D${rowIndex}:F${rowIndex}`);
   ws.mergeCells(`G${rowIndex}:J${rowIndex}`);
@@ -159,31 +145,78 @@ export async function generateScheduleExcel(
   ws.getCell(`G${rowIndex}`).value = `Date: ${formattedReportDate}`;
   ws.getCell(`G${rowIndex}`).alignment = { horizontal: 'right' };
 
-  // --- Add Signature if available ---
-  if (userSignature) {
-    try {
-      const signatureId = wb.addImage({
-        base64: userSignature,
-        extension: 'png',
-      });
-      ws.addImage(signatureId, {
-        tl: { col: 0.5, row: rowIndex - 2 },
-        ext: { width: 100, height: 40 }
-      });
-    } catch (e) {
-      console.error("Could not add signature to Excel:", e);
-    }
+  if (signatureId !== undefined) {
+    ws.addImage(signatureId, {
+      tl: { col: 0.5, row: rowIndex - 2 },
+      ext: { width: 100, height: 40 }
+    });
   }
 
   rowIndex += 2;
-
   ws.mergeCells(`A${rowIndex}:F${rowIndex}`);
   ws.mergeCells(`G${rowIndex}:J${rowIndex}`);
-
   ws.getCell(`A${rowIndex}`).value = 'Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020';
   ws.getCell(`G${rowIndex}`).value = 'Page 1 of 1';
   ws.getCell(`G${rowIndex}`).alignment = { horizontal: 'right' };
+}
+
+export async function generateScheduleExcel(
+  schedule: JobSchedule | undefined,
+  scheduleDate: Date,
+  reportDate: Date,
+  schedulerName: string,
+  userSignature?: string
+) {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Job Schedule');
+
+  let logoId;
+  try {
+    const logoBuffer = await fetchImageAsArrayBuffer('/images/Aries_logo.png');
+    logoId = wb.addImage({ buffer: logoBuffer, extension: 'png' });
+  } catch (e) { console.error(e); }
+
+  let signatureId;
+  if (userSignature) {
+    try {
+      signatureId = wb.addImage({ base64: userSignature, extension: 'png' });
+    } catch (e) { console.error(e); }
+  }
+
+  addScheduleToSheet(ws, schedule, scheduleDate, reportDate, schedulerName, wb, logoId, signatureId);
 
   const buffer = await wb.xlsx.writeBuffer();
   saveAs(new Blob([buffer]), `JobSchedule_${format(scheduleDate, 'yyyy-MM-dd')}.xlsx`);
+}
+
+export async function generateScheduleWorkbook(
+    schedules: JobSchedule[],
+    reportDate: Date,
+    schedulerName: string,
+    userSignature?: string
+) {
+    const wb = new ExcelJS.Workbook();
+    
+    let logoId;
+    try {
+        const logoBuffer = await fetchImageAsArrayBuffer('/images/Aries_logo.png');
+        logoId = wb.addImage({ buffer: logoBuffer, extension: 'png' });
+    } catch (e) { console.error(e); }
+
+    let signatureId;
+    if (userSignature) {
+        try {
+            signatureId = wb.addImage({ base64: userSignature, extension: 'png' });
+        } catch (e) { console.error(e); }
+    }
+
+    schedules.forEach(schedule => {
+        const ws = wb.addWorksheet(schedule.date);
+        addScheduleToSheet(ws, schedule, parseISO(schedule.date), reportDate, schedulerName, wb, logoId, signatureId);
+    });
+
+    if (schedules.length === 0) return;
+
+    const buffer = await wb.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `JobSchedule_Batch_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
 }
