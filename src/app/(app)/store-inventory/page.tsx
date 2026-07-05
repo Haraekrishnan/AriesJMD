@@ -33,6 +33,8 @@ import AddInwardRecordDialog from '@/components/inventory/AddInwardRecordDialog'
 import InwardOutwardHistory from '@/components/inventory/InwardOutwardHistory';
 import NewOutwardDialog from '@/components/inventory/NewOutwardDialog';
 import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
+import PendingTransfers from '@/components/requests/PendingTransfers';
+import NewInventoryTransferRequestDialog from '@/components/requests/new-inventory-transfer-request-dialog';
 
 
 export default function StoreInventoryPage() {
