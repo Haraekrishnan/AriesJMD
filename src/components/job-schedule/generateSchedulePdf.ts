@@ -119,19 +119,24 @@ export async function generateSchedulePdf(
     didParseCell: (data: any) => {
         if (data.section === "body" && data.column.index === 1) {
             const raw = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
-            const namesOnly = raw.map((r: string) => {
-                const m = r.match(/^(.*?)\s*\((.*?)\)$/);
-                return m ? m[1].trim() : r;
-            });
+            // Strip designation for measurement string
+            const namesOnly = raw.map((r: string) => r.replace(/\s*\(.*?\)/, ""));
             const joined = namesOnly.join(", ");
-            // Set lines array for row height calculation
-            data.cell.text = data.doc.splitTextToSize(joined, data.column.width - 8);
+            
+            const availableWidth = 167; // 175 - 8 padding
+            const lines = data.doc.splitTextToSize(joined, availableWidth);
+            data.cell.text = lines;
+
+            // Set height based on actual wrapped lines
+            const lineHeight = 8;
+            data.row.height = Math.max(20, lines.length * lineHeight + 10);
         }
     },
 
     willDrawCell: (data: any) => {
-        // Prevent AutoTable from drawing text in the Name column
         if (data.section === "body" && data.column.index === 1) {
+            // Prevent AutoTable from drawing anything in this cell
+            // but the height is already established in didParseCell
             data.cell.text = [];
         }
     },
@@ -142,6 +147,7 @@ export async function generateSchedulePdf(
         const currentDoc = data.doc;
         const raw = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
 
+        // Parse and sort people
         const people = raw.map((r: string) => {
             const m = r.match(/^(.*?)\s*\((.*?)\)$/);
             return {
@@ -162,22 +168,12 @@ export async function generateSchedulePdf(
         const left = data.cell.x + padding;
         const width = data.cell.width - (padding * 2);
         const fSize = 6;
-        const lineHeight = fSize * 1.5;
+        const lineHeight = 8;
 
-        // Calculate block height for vertical centering
-        let tempX = 0;
-        let lineCount = 1;
-        people.forEach((p, i) => {
-            const text = p.name + (i === people.length - 1 ? "" : ", ");
-            const w = currentDoc.getTextWidth(text);
-            if (tempX + w > width) {
-                lineCount++;
-                tempX = w;
-            } else {
-                tempX += w;
-            }
-        });
-        const blockHeight = lineCount * lineHeight;
+        // Calculate exact block height for vertical centering
+        const fullText = people.map((p, i) => p.name + (i === people.length - 1 ? "" : ", ")).join("");
+        const wrappedLines = currentDoc.splitTextToSize(fullText, width);
+        const blockHeight = wrappedLines.length * lineHeight;
         
         let x = left;
         let y = data.cell.y + (data.cell.height - blockHeight) / 2 + fSize;
