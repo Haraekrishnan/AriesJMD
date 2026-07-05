@@ -3,7 +3,7 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { format, parseISO, isValid } from 'date-fns';
-import type { JobSchedule } from '@/lib/types';
+import type { JobSchedule, User } from '@/lib/types';
 
 declare module 'jspdf' {
   interface jsPDF {
@@ -12,7 +12,6 @@ declare module 'jspdf' {
   }
 }
 
-// Helper to fetch image as Base64 for PDF
 async function fetchImageAsBase64(url: string): Promise<string> {
   try {
     const response = await fetch(url);
@@ -121,20 +120,17 @@ export async function generateSchedulePdf(
     didParseCell: (data: any) => {
         if (data.section === "body" && data.column.index === 1) {
             const raw = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
-            // Strip the (Trade) part for a cleaner comma-joined string measurement
             const namesOnly = raw.map((r: string) => r.replace(/\s*\(.*?\)/, ""));
             const joined = namesOnly.join(", ");
-            
-            // Measure using AutoTable's internal mechanism to reserve the right height
-            const availableWidth = data.column.width - 8;
-            data.cell.text = data.doc.splitTextToSize(joined, availableWidth);
+            // Set as single string in array to let AutoTable handle wrapping/height calculation
+            data.cell.text = [joined];
         }
     },
 
     willDrawCell: (data: any) => {
         if (data.section === "body" && data.column.index === 1) {
-            // Make AutoTable's default text white so it calculates height but doesn't print visibly
-            data.cell.styles.textColor = [255, 255, 255];
+            // Hide AutoTable's default rendering to prevent "double text" ghosting
+            data.cell.text = [];
         }
     },
 
@@ -165,8 +161,22 @@ export async function generateSchedulePdf(
         const fSize = fontSize;
         const lineHeight = currentDoc.getLineHeightFactor() * fSize;
 
+        // Calculate block height for vertical centering
+        let tempX = left;
+        let linesCount = 1;
+        people.forEach((p, index) => {
+            const text = p.name + (index === people.length - 1 ? "" : ", ");
+            const w = currentDoc.getTextWidth(text);
+            if (tempX + w > left + width) {
+                tempX = left;
+                linesCount++;
+            }
+            tempX += w;
+        });
+
+        const blockHeight = linesCount * lineHeight;
         let x = left;
-        let y = data.cell.y + lineHeight + 2;
+        let y = data.cell.y + (data.cell.height - blockHeight) / 2 + lineHeight - 1;
 
         people.forEach((p, index) => {
             const suffix = index === people.length - 1 ? "" : ", ";
@@ -219,7 +229,6 @@ export async function generateSchedulePdf(
 
   const finalTableY = (doc as any).lastAutoTable.finalY;
   const footerHeight = 60;
-  // Dock footer directly to the bottom border of the table
   let footerY = finalTableY - 0.2;
 
   const footerMidX = margin + usableWidth / 2;
