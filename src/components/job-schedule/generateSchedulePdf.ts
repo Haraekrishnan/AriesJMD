@@ -118,86 +118,97 @@ export async function generateSchedulePdf(
 
     didParseCell: (data: any) => {
         if (data.section === "body" && data.column.index === 1) {
-            const raw = Array.isArray(data.cell.raw)
-                ? data.cell.raw
-                : [String(data.cell.raw)];
-
-            const names = raw.map((r: string) => {
+            const raw = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
+            const namesOnly = raw.map((r: string) => {
                 const m = r.match(/^(.*?)\s*\((.*?)\)$/);
-                return (m ? m[1].trim() : r) + ",";
+                return m ? m[1].trim() : r;
             });
-
-            data.cell.text = names; 
+            const joined = namesOnly.join(", ");
+            // Set lines array for row height calculation
+            data.cell.text = data.doc.splitTextToSize(joined, data.column.width - 8);
         }
     },
 
     willDrawCell: (data: any) => {
+        // Prevent AutoTable from drawing text in the Name column
         if (data.section === "body" && data.column.index === 1) {
-            data.cell.styles.textColor = [255, 255, 255];
+            data.cell.text = [];
         }
     },
 
     didDrawCell: (data: any) => {
         if (data.section !== "body" || data.column.index !== 1) return;
 
-        const doc = data.doc;
+        const currentDoc = data.doc;
+        const raw = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
 
-        const raw = Array.isArray(data.cell.raw)
-            ? data.cell.raw
-            : [String(data.cell.raw)];
-
-        const people = raw
-            .map((r: string) => {
-                const m = r.match(/^(.*?)\s*\((.*?)\)$/);
-                return {
-                    name: m ? m[1].trim() : r,
-                    trade: m ? m[2].trim() : ""
-                };
-            })
-            .sort((a, b) => {
-                const isL3 = (t: string) => /RA\s*Level\s*3/i.test(t);
-                const isMgmt = (t: string) =>
-                    /Supervisor|HSE|Safety|Manager|Coordinator|Admin/i.test(t);
-
-                if (isL3(a.trade) && !isL3(b.trade)) return -1;
-                if (!isL3(a.trade) && isL3(b.trade)) return 1;
-
-                if (isMgmt(a.trade) && !isMgmt(b.trade)) return 1;
-                if (!isMgmt(a.trade) && isMgmt(b.trade)) return -1;
-
-                return 0;
-            });
-
-        const left = data.cell.x + 4;
-        const top = data.cell.y + 8;
-        const width = data.cell.width - 8;
-
-        let y = top;
-
-        people.forEach((p) => {
-            if (/RA\s*Level\s*3/i.test(p.trade)) {
-                doc.setFont("times", "bold");
-                doc.setTextColor(0, 0, 0);
-            } else if (/Supervisor|HSE|Safety|Manager|Coordinator|Admin/i.test(p.trade)) {
-                doc.setFont("times", "bold");
-                doc.setTextColor(0, 102, 204);
-            } else {
-                doc.setFont("times", "normal");
-                doc.setTextColor(0, 0, 0);
-            }
-
-            const lines = doc.splitTextToSize(
-                p.name + ",",
-                width
-            );
-
-            doc.text(lines, left, y);
-
-            y += lines.length * 8;
+        const people = raw.map((r: string) => {
+            const m = r.match(/^(.*?)\s*\((.*?)\)$/);
+            return {
+                name: m ? m[1].trim() : r,
+                trade: m ? m[2].trim() : ""
+            };
+        }).sort((a, b) => {
+            const isL3 = (t: string) => /RA\s*Level\s*3/i.test(t);
+            const isMgmt = (t: string) => /Supervisor|HSE|Safety|Manager|Coordinator|Admin/i.test(t);
+            if (isL3(a.trade) && !isL3(b.trade)) return -1;
+            if (!isL3(a.trade) && isL3(b.trade)) return 1;
+            if (isMgmt(a.trade) && !isMgmt(b.trade)) return 1;
+            if (!isMgmt(a.trade) && isMgmt(b.trade)) return -1;
+            return 0;
         });
 
-        doc.setFont("times", "normal");
-        doc.setTextColor(0, 0, 0);
+        const padding = 4;
+        const left = data.cell.x + padding;
+        const width = data.cell.width - (padding * 2);
+        const fSize = 6;
+        const lineHeight = fSize * 1.5;
+
+        // Calculate block height for vertical centering
+        let tempX = 0;
+        let lineCount = 1;
+        people.forEach((p, i) => {
+            const text = p.name + (i === people.length - 1 ? "" : ", ");
+            const w = currentDoc.getTextWidth(text);
+            if (tempX + w > width) {
+                lineCount++;
+                tempX = w;
+            } else {
+                tempX += w;
+            }
+        });
+        const blockHeight = lineCount * lineHeight;
+        
+        let x = left;
+        let y = data.cell.y + (data.cell.height - blockHeight) / 2 + fSize;
+
+        people.forEach((p, index) => {
+            const suffix = index === people.length - 1 ? "" : ", ";
+            const text = p.name + suffix;
+
+            if (/RA\s*Level\s*3/i.test(p.trade)) {
+                currentDoc.setFont("times", "bold");
+                currentDoc.setTextColor(0, 0, 0);
+            } else if (/Supervisor|HSE|Safety|Admin|Manager|Coordinator/i.test(p.trade)) {
+                currentDoc.setFont("times", "bold");
+                currentDoc.setTextColor(0, 102, 204);
+            } else {
+                currentDoc.setFont("times", "normal");
+                currentDoc.setTextColor(0, 0, 0);
+            }
+
+            const w = currentDoc.getTextWidth(text);
+            if (x + w > left + width) {
+                x = left;
+                y += lineHeight;
+            }
+
+            currentDoc.text(text, x, y);
+            x += w;
+        });
+
+        currentDoc.setFont("times", "normal");
+        currentDoc.setTextColor(0, 0, 0);
     },
 
     didDrawPage: (data: any) => {
