@@ -1,6 +1,6 @@
 'use client';
 
-import jsPDF from 'jsPDF';
+import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { format, parseISO, isValid } from 'date-fns';
 import type { JobSchedule } from '@/lib/types';
@@ -85,8 +85,8 @@ export async function generateSchedulePdf(
     styles: {
         font: "times",
         fontSize: fontSize,
-        halign: "center", // Center horizontally
-        valign: "middle", // Center vertically
+        halign: "center", 
+        valign: "middle", 
         cellPadding: {
             top: 5,
             bottom: 5,
