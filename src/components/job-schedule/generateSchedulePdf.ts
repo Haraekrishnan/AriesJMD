@@ -2,7 +2,7 @@
 
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { format } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 import type { JobSchedule } from '@/lib/types';
 
 declare module 'jspdf' {
@@ -121,7 +121,7 @@ export async function generateSchedulePdf(
         },
         columnStyles: {
             0: { cellWidth: 25 },
-            1: { cellWidth: 140 }, 
+            1: { cellWidth: 175 }, 
             2: { cellWidth: 28 },
             3: { cellWidth: 30 },
             4: { cellWidth: 64 },
@@ -139,11 +139,7 @@ export async function generateSchedulePdf(
                 const joined = namesOnly.join(", ");
                 
                 const availableWidth = data.column.width - 8;
-                const lines = data.doc.splitTextToSize(joined, availableWidth);
-                data.cell.text = lines;
-
-                const lineHeight = fontSize * 1.6;
-                data.row.height = Math.max(fontSize * 2.5, lines.length * lineHeight + fontSize);
+                data.cell.text = data.doc.splitTextToSize(joined, availableWidth);
             }
         },
 
@@ -175,19 +171,13 @@ export async function generateSchedulePdf(
                 return 0;
             });
 
-            const currentPadding = data.cell.padding("left");
-            const left = data.cell.x + currentPadding;
-            const width = data.cell.width - (currentPadding * 2);
-            
+            const left = data.cell.x + 4;
+            const width = data.cell.width - 8;
             const fSize = fontSize;
-            const lineHeight = fSize * 1.6;
+            const lineHeight = currentDoc.getLineHeightFactor() * fSize;
 
-            const fullText = people.map((p, i) => p.name + (i === people.length - 1 ? "" : ", ")).join("");
-            const wrappedLines = currentDoc.splitTextToSize(fullText, width);
-            const blockHeight = wrappedLines.length * lineHeight;
-            
             let x = left;
-            let y = data.cell.y + (data.cell.height - blockHeight) / 2 + fSize;
+            let y = data.cell.y + lineHeight + 2;
 
             people.forEach((p, index) => {
                 const suffix = index === people.length - 1 ? "" : ", ";
@@ -196,7 +186,7 @@ export async function generateSchedulePdf(
                 if (/RA\s*Level\s*3/i.test(p.trade)) {
                     currentDoc.setFont("times", "bold");
                     currentDoc.setTextColor(0, 0, 0);
-                } else if (/Supervisor|HSE|Safety|Admin|Manager|Coordinator/i.test(p.trade)) {
+                } else if (/Supervisor|HSE|Safety|Manager|Coordinator|Admin/i.test(p.trade)) {
                     currentDoc.setFont("times", "bold");
                     currentDoc.setTextColor(0, 102, 204);
                 } else {
