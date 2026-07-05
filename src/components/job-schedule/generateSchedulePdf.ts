@@ -2,7 +2,7 @@
 
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { format } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 import type { JobSchedule } from '@/lib/types';
 
 declare module 'jspdf' {
@@ -91,7 +91,7 @@ export async function generateSchedulePdf(
             left: 4,
             right: 4
         },
-        overflow: "visible",
+        overflow: "linebreak",
         minCellHeight: 20,
         lineWidth: 0.2,
         lineColor: [0, 0, 0],
@@ -105,7 +105,7 @@ export async function generateSchedulePdf(
     },
     columnStyles: {
         0: { cellWidth: 25, halign: "center", valign: "middle" },
-        1: { cellWidth: 175, halign: "left", valign: "top" },
+        1: { cellWidth: 165, halign: "left", valign: "top" },
         2: { cellWidth: 28, halign: "center", valign: "middle" },
         3: { cellWidth: 30, halign: "center", valign: "middle" },
         4: { cellWidth: 64, halign: "center", valign: "middle" },
@@ -116,12 +116,26 @@ export async function generateSchedulePdf(
         9: { cellWidth: 'auto', halign: "center", valign: "middle" },
     },
 
+    didParseCell: (data: any) => {
+        if (data.section === 'body' && data.column.index === 1) {
+            const raw = data.cell.raw;
+            const names = Array.isArray(raw) ? raw : [String(raw)];
+            // Prepare names without trades for height calculation
+            const namesOnly = names.map(n => {
+                const m = n.match(/^(.*?)\s*\((.*?)\)$/);
+                return m ? m[1].trim() : n;
+            });
+            // Setting text as an array tells AutoTable to treat each as a new line
+            data.cell.text = namesOnly;
+        }
+    },
+
     didDrawCell: (data: any) => {
         if (data.section !== "body" || data.column.index !== 1) return;
 
         const currentDoc = data.doc;
 
-        // Hide original text by painting over it
+        // Hide AutoTable's original text by painting over it
         currentDoc.setFillColor(255, 255, 255);
         currentDoc.rect(
             data.cell.x + 0.5,
