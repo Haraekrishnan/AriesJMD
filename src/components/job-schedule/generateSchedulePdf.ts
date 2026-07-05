@@ -2,7 +2,7 @@
 
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { format, parseISO, isValid } from 'date-fns';
+import { format } from 'date-fns';
 import type { JobSchedule } from '@/lib/types';
 
 declare module 'jspdf' {
@@ -70,7 +70,6 @@ export async function generateSchedulePdf(
   const headerStartY = margin;
   const headerBottomY = headerStartY + headerBoxHeight;
   const tableStartY = headerBottomY;
-  const fontSize = 6;
 
   doc.autoTable({
     startY: tableStartY,
@@ -92,7 +91,8 @@ export async function generateSchedulePdf(
             left: 4,
             right: 4
         },
-        overflow: "linebreak",
+        overflow: "visible",
+        minCellHeight: 20,
         lineWidth: 0.2,
         lineColor: [0, 0, 0],
         textColor: [0, 0, 0],
@@ -105,7 +105,7 @@ export async function generateSchedulePdf(
     },
     columnStyles: {
         0: { cellWidth: 25, halign: "center", valign: "middle" },
-        1: { cellWidth: 140, halign: "center", valign: "middle" },
+        1: { cellWidth: 175, halign: "left", valign: "top" },
         2: { cellWidth: 28, halign: "center", valign: "middle" },
         3: { cellWidth: 30, halign: "center", valign: "middle" },
         4: { cellWidth: 64, halign: "center", valign: "middle" },
@@ -116,39 +116,25 @@ export async function generateSchedulePdf(
         9: { cellWidth: 'auto', halign: "center", valign: "middle" },
     },
 
-    didParseCell: (data: any) => {
-        if (data.section === 'body' && data.column.index === 1) {
-            const rawNames = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
-            const namesOnly = rawNames.map((raw: string) => raw.split(' (')[0]);
-            const joined = namesOnly.join(", ");
-            // Use splitTextToSize to let AutoTable know the required height
-            data.cell.text = data.doc.splitTextToSize(joined, data.column.width - 8);
-        }
-    },
-
-    willDrawCell: (data: any) => {
-        if (data.section === 'body' && data.column.index === 1) {
-            // Hide the default text so we can draw our colored version
-            data.cell.styles.textColor = [255, 255, 255];
-        }
-    },
-
     didDrawCell: (data: any) => {
         if (data.section !== "body" || data.column.index !== 1) return;
-    
+
         const currentDoc = data.doc;
-    
-        const paddingLeft = data.cell.padding("left");
-        const paddingRight = data.cell.padding("right");
-        const startX = data.cell.x + paddingLeft;
-        const maxWidth = data.cell.width - paddingLeft - paddingRight;
-    
-        const fSize = data.cell.styles.fontSize;
-        const lHeight = fSize * 2.0;
-    
-        const rawNames = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
-    
-        // Parse and Sort: Level 3 First, Mgmt Last
+
+        // Hide original text by painting over it
+        currentDoc.setFillColor(255, 255, 255);
+        currentDoc.rect(
+            data.cell.x + 0.5,
+            data.cell.y + 0.5,
+            data.cell.width - 1,
+            data.cell.height - 1,
+            "F"
+        );
+
+        const rawNames = Array.isArray(data.cell.raw)
+            ? data.cell.raw
+            : [String(data.cell.raw)];
+
         const parsed = rawNames.map((raw: string) => {
             const m = raw.match(/^(.*?)\s*\((.*?)\)$/);
             return {
@@ -156,62 +142,45 @@ export async function generateSchedulePdf(
                 trade: m ? m[2].trim() : ""
             };
         }).sort((a, b) => {
-            const isMgmt = (t: string) => /Supervisor|HSE|Safety|Admin|Manager|Coordinator/i.test(t);
-            const isL3 = (t: string) => /RA\s*Level\s*3/i.test(t);
+            const l3 = (t: string) => /RA\s*Level\s*3/i.test(t);
+            const mg = (t: string) => /Supervisor|HSE|Safety|Manager|Coordinator|Admin/i.test(t);
 
-            if (isL3(a.trade) && !isL3(b.trade)) return -1;
-            if (!isL3(a.trade) && isL3(b.trade)) return 1;
-            if (isMgmt(a.trade) && !isMgmt(b.trade)) return 1;
-            if (!isMgmt(a.trade) && isMgmt(b.trade)) return -1;
-            return a.name.localeCompare(b.name);
+            if (l3(a.trade) && !l3(b.trade)) return -1;
+            if (!l3(a.trade) && l3(b.trade)) return 1;
+
+            if (mg(a.trade) && !mg(b.trade)) return 1;
+            if (!mg(a.trade) && mg(b.trade)) return -1;
+
+            return 0;
         });
 
-        // Calculate total wrapped height for vertical centering
-        let dryCursorX = 0;
-        let dryLines = 1;
-        parsed.forEach((item, index) => {
-            const isLast = index === parsed.length - 1;
-            const text = item.name + (isLast ? "" : ", ");
-            const w = currentDoc.getTextWidth(text);
-            if (dryCursorX + w > maxWidth && dryCursorX > 0) {
-                dryCursorX = w;
-                dryLines++;
-            } else {
-                dryCursorX += w;
-            }
-        });
-        const totalTextHeight = dryLines * lHeight;
+        let y = data.cell.y + 8;
 
-        let cursorX = startX;
-        let cursorY = data.cell.y + (data.cell.height - totalTextHeight) / 2 + fSize;
-    
-        parsed.forEach((item, index) => {
-            const isLast = index === parsed.length - 1;
-            const separator = isLast ? "" : ", ";
-            const displayText = item.name + separator;
-            const textWidth = currentDoc.getTextWidth(displayText);
-
-            // Wrap logic: check if name + separator fits
-            if (cursorX + textWidth > startX + maxWidth && cursorX > startX) {
-                cursorX = startX;
-                cursorY += lHeight;
-            }
-
+        parsed.forEach((item) => {
             if (/RA\s*Level\s*3/i.test(item.trade)) {
                 currentDoc.setFont("times", "bold");
                 currentDoc.setTextColor(0, 0, 0);
-            } else if (/Supervisor|HSE|Safety|Admin|Manager|Coordinator/i.test(item.trade)) {
+            }
+            else if (/Supervisor|HSE|Safety|Manager|Coordinator|Admin/i.test(item.trade)) {
                 currentDoc.setFont("times", "bold");
                 currentDoc.setTextColor(0, 102, 204);
-            } else {
+            }
+            else {
                 currentDoc.setFont("times", "normal");
                 currentDoc.setTextColor(0, 0, 0);
             }
 
-            currentDoc.text(displayText, cursorX, cursorY);
-            cursorX += textWidth;
+            currentDoc.setFontSize(6);
+
+            currentDoc.text(
+                item.name,
+                data.cell.x + 4,
+                y
+            );
+
+            y += 9;
         });
-    
+
         currentDoc.setFont("times", "normal");
         currentDoc.setTextColor(0, 0, 0);
     },
