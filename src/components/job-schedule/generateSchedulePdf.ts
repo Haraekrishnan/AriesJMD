@@ -37,7 +37,6 @@ export async function generateSchedulePdf(
   userSignature?: string
 ) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
-  doc.setFont("times", "normal");
   
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -75,7 +74,7 @@ export async function generateSchedulePdf(
   doc.autoTable({
     startY: tableStartY,
     tableWidth: usableWidth,
-    margin: { left: margin, right: margin, top: tableStartY, bottom: 55 },
+    margin: { left: margin, right: margin, top: tableStartY, bottom: 100 }, // Reserved space for footer
 
     head: [headRow],
     body: bodyRows,
@@ -86,12 +85,7 @@ export async function generateSchedulePdf(
         fontSize,
         halign: "center",
         valign: "middle",
-        cellPadding: {
-            top: 4,
-            bottom: 4,
-            left: 3,
-            right: 3
-        },
+        cellPadding: { top: 4, bottom: 4, left: 3, right: 3 },
         overflow: "linebreak",
         lineWidth: 0.2,
         lineColor: [0, 0, 0],
@@ -122,15 +116,15 @@ export async function generateSchedulePdf(
             const raw = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
             const namesOnly = raw.map((r: string) => r.replace(/\s*\(.*?\)/, ""));
             const joined = namesOnly.join(", ");
-            // Set as single string in array to let AutoTable handle wrapping/height calculation
+            // Provide joined string in array for AutoTable height measurement
             data.cell.text = [joined];
         }
     },
 
     willDrawCell: (data: any) => {
         if (data.section === "body" && data.column.index === 1) {
-            // Hide AutoTable's default rendering to prevent "double text" ghosting
-            data.cell.text = [];
+            // Hide AutoTable's default rendering
+            data.cell.styles.textColor = [255, 255, 255];
         }
     },
 
@@ -163,18 +157,18 @@ export async function generateSchedulePdf(
 
         // Calculate block height for vertical centering
         let tempX = left;
-        let linesCount = 1;
+        let lineCount = 1;
         people.forEach((p, index) => {
             const text = p.name + (index === people.length - 1 ? "" : ", ");
             const w = currentDoc.getTextWidth(text);
             if (tempX + w > left + width) {
                 tempX = left;
-                linesCount++;
+                lineCount++;
             }
             tempX += w;
         });
 
-        const blockHeight = linesCount * lineHeight;
+        const blockHeight = lineCount * lineHeight;
         let x = left;
         let y = data.cell.y + (data.cell.height - blockHeight) / 2 + lineHeight - 1;
 
@@ -224,12 +218,43 @@ export async function generateSchedulePdf(
       doc.text('Division/Branch: I & M / Jamnagar', margin + 5, lineY + 12);
       doc.text('Sub-Div.: R.A', pageWidth / 2, lineY + 12, { align: 'center' });
       doc.text(formattedScheduleDate, pageWidth - margin - 5, lineY + 12, { align: 'right' });
+
+      // PAGE FOOTER (Drawn on every page)
+      doc.setFontSize(7).setTextColor(0);
+      doc.text('Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020', margin, pageHeight - 15);
+      doc.text(`Page ${data.pageNumber}`, pageWidth - margin, pageHeight - 15, { align: 'right' });
     }
   });
 
   const finalTableY = (doc as any).lastAutoTable.finalY;
   const footerHeight = 60;
-  let footerY = finalTableY - 0.2;
+  const bottomRefSpace = 30;
+  let footerY = finalTableY;
+
+  // Check if footer fits on current page before the ref text
+  if (footerY + footerHeight + bottomRefSpace > pageHeight) {
+    doc.addPage();
+    
+    // Manually draw header and bottom ref on the forced new page
+    const contentStartY = headerStartY + 2;
+    const lineY = contentStartY + 20;
+    doc.setLineWidth(0.2).setDrawColor(0);
+    doc.rect(margin, headerStartY, usableWidth, headerBoxHeight); 
+    doc.line(margin, lineY, pageWidth - margin, lineY);
+    if (logoBase64) doc.addImage(logoBase64, 'PNG', margin + 5, contentStartY, 80, 18);
+    doc.setFont('times', 'bold').setFontSize(14);
+    doc.text('Job Schedule', pageWidth / 2, contentStartY + 12, { align: 'center' });
+    doc.setFontSize(8).setFont('times', 'normal');
+    doc.text('Division/Branch: I & M / Jamnagar', margin + 5, lineY + 12);
+    doc.text('Sub-Div.: R.A', pageWidth / 2, lineY + 12, { align: 'center' });
+    doc.text(formattedScheduleDate, pageWidth - margin - 5, lineY + 12, { align: 'right' });
+
+    doc.setFontSize(7);
+    doc.text('Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020', margin, pageHeight - 15);
+    doc.text(`Page ${doc.getNumberOfPages()}`, pageWidth - margin, pageHeight - 15, { align: 'right' });
+
+    footerY = headerBottomY + 10;
+  }
 
   const footerMidX = margin + usableWidth / 2;
   doc.setLineWidth(0.2).setDrawColor(0);
@@ -260,9 +285,6 @@ export async function generateSchedulePdf(
   }
 
   doc.text(`Date: ${formattedReportDate}`, footerMidX + 6, footerY + footerHeight / 2 + 15);
-  doc.setFontSize(7);
-  doc.text('Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020', margin, pageHeight - 15);
-  doc.text(`Page ${doc.getNumberOfPages()}`, pageWidth - margin, pageHeight - 15, { align: 'right' });
 
   doc.save(`JobSchedule_${format(scheduleDate, 'yyyy-MM-dd')}.pdf`);
 }
