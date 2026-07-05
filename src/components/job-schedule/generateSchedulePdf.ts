@@ -121,32 +121,97 @@ export async function generateSchedulePdf(
             const raw = Array.isArray(data.cell.raw)
                 ? data.cell.raw
                 : [String(data.cell.raw)];
-    
+
             const names = raw.map((r: string) => {
                 const m = r.match(/^(.*?)\s*\((.*?)\)$/);
-                return { 
-                    name: m ? m[1].trim() : r,
-                    trade: m ? m[2].trim() : ""
-                };
-            }).sort((a, b) => {
-                const l3 = (t: string) => /RA\s*Level\s*3/i.test(t);
-                const mg = (t: string) => /Supervisor|HSE|Safety|Manager|Coordinator|Admin/i.test(t);
-                
-                if (l3(a.trade) && !l3(b.trade)) return -1;
-                if (!l3(a.trade) && l3(b.trade)) return 1;
-                if (mg(a.trade) && !mg(b.trade)) return 1;
-                if (!mg(a.trade) && mg(b.trade)) return -1;
-                return 0;
-            }).map(item => item.name);
-    
+                return m ? m[1].trim() : r;
+            });
+
             const text = names.join(", ");
-            // Column 1 is 175. Cell padding horizontal is 4 + 4 = 8. 175 - 8 = 167.
-            const availableWidth = 167;
+            // Use 167 (175 - padding) for sizing
             data.cell.text = data.doc.splitTextToSize(
                 text,
-                availableWidth
+                167
             );
         }
+    },
+
+    willDrawCell: (data: any) => {
+        if (data.section === "body" && data.column.index === 1) {
+            // Render text in white to make it invisible but keep the space reserved
+            data.cell.styles.textColor = [255, 255, 255];
+        }
+    },
+
+    didDrawCell: (data: any) => {
+        if (data.section !== "body" || data.column.index !== 1) return;
+
+        const currentDoc = data.doc;
+
+        const raw = Array.isArray(data.cell.raw)
+            ? data.cell.raw
+            : [String(data.cell.raw)];
+
+        const people = raw.map((r: string) => {
+            const m = r.match(/^(.*?)\s*\((.*?)\)$/);
+            return {
+                name: m ? m[1].trim() : r,
+                trade: m ? m[2].trim() : ""
+            };
+        }).sort((a, b) => {
+            const l3 = (t: string) => /RA\s*Level\s*3/i.test(t);
+            const mg = (t: string) => /Supervisor|HSE|Safety|Manager|Coordinator|Admin/i.test(t);
+
+            if (l3(a.trade) && !l3(b.trade)) return -1;
+            if (!l3(a.trade) && l3(b.trade)) return 1;
+
+            if (mg(a.trade) && !mg(b.trade)) return 1;
+            if (!mg(a.trade) && mg(b.trade)) return -1;
+
+            return 0;
+        });
+
+        const left = data.cell.x + 4;
+        const top = data.cell.y + 8;
+        const width = data.cell.width - 8;
+
+        let x = left;
+        let y = top;
+
+        const lineHeight = 8;
+
+        people.forEach((p, index) => {
+            const txt = p.name + (index === people.length - 1 ? "" : ", ");
+
+            let style = "normal";
+            let color = [0, 0, 0];
+
+            if (/RA\s*Level\s*3/i.test(p.trade)) {
+                style = "bold";
+                color = [0, 0, 0];
+            }
+
+            if (/Supervisor|HSE|Safety|Manager|Coordinator|Admin/i.test(p.trade)) {
+                style = "bold";
+                color = [0, 102, 204];
+            }
+
+            currentDoc.setFont("times", style);
+            currentDoc.setTextColor(color[0], color[1], color[2]);
+
+            const w = currentDoc.getTextWidth(txt);
+
+            if (x + w > left + width) {
+                x = left;
+                y += lineHeight;
+            }
+
+            currentDoc.text(txt, x, y);
+            x += w;
+        });
+
+        currentDoc.setFont("times", "normal");
+        currentDoc.setTextColor(0, 0, 0);
     },
 
     didDrawPage: (data: any) => {
