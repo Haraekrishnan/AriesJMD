@@ -27,6 +27,7 @@ const scheduleItemSchema = z.object({
   jobType: z.string().optional().or(z.literal('')),
   jobNo: z.string().optional().or(z.literal('')),
   projectVesselName: z.string().optional().or(z.literal('')),
+  projectId: z.string().optional().or(z.literal('')),
   location: z.string().optional().or(z.literal('')),
   reportingTime: z.string().optional().or(z.literal('')),
   clientContact: z.string().optional().or(z.literal('')),
@@ -163,6 +164,7 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
     jobType: '', 
     jobNo: '', 
     projectVesselName: '', 
+    projectId: '',
     location: '', 
     reportingTime: '09:00', 
     clientContact: '', 
@@ -178,7 +180,7 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
   return (
     <form onSubmit={form.handleSubmit(onSubmit)}>
       <ScrollArea className="w-full">
-        <div className="min-w-[1200px]">
+        <div className="min-w-[1400px]">
           <Table>
             <TableHeader>
                 <TableRow>
@@ -187,7 +189,8 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
                     <TableHead>Job Type</TableHead>
                     <TableHead>Job No.</TableHead>
                     <TableHead>Project/Vessel's Name</TableHead>
-                    <TableHead>Location</TableHead>
+                    <TableHead className="min-w-[200px]">Project</TableHead>
+                    <TableHead>Location Details</TableHead>
                     <TableHead>Reporting Time</TableHead>
                     <TableHead>Client/Contact</TableHead>
                     <TableHead>Vehicle</TableHead>
@@ -281,7 +284,25 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
                   <TableCell><Input {...form.register(`items.${index}.jobType`)} /></TableCell>
                   <TableCell><Input {...form.register(`items.${index}.jobNo`)} /></TableCell>
                   <TableCell><Input {...form.register(`items.${index}.projectVesselName`)} /></TableCell>
-                  <TableCell><Input {...form.register(`items.${index}.location`)} /></TableCell>
+                  <TableCell>
+                    <Controller
+                        name={`items.${index}.projectId`}
+                        control={form.control}
+                        render={({ field: controllerField }) => (
+                            <Select onValueChange={controllerField.onChange} value={controllerField.value}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Project" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {projects.map(p => (
+                                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
+                    />
+                  </TableCell>
+                  <TableCell><Input {...form.register(`items.${index}.location`)} placeholder="e.g. Tank 401" /></TableCell>
                   <TableCell><Input type="time" {...form.register(`items.${index}.reportingTime`)} /></TableCell>
                   <TableCell><Input {...form.register(`items.${index}.clientContact`)} /></TableCell>
                   <TableCell>
@@ -358,7 +379,7 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
               ))}
               {fields.length === 0 && (
                   <TableRow>
-                      <TableCell colSpan={11} className="text-center h-24 text-muted-foreground">
+                      <TableCell colSpan={12} className="text-center h-24 text-muted-foreground">
                           No schedule entries for this day. Click "Add Row" or copy from yesterday.
                       </TableCell>
                   </TableRow>

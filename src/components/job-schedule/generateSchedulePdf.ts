@@ -3,7 +3,7 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { format, parseISO, isValid } from 'date-fns';
-import type { JobSchedule } from '@/lib/types';
+import type { JobSchedule, Project } from '@/lib/types';
 
 declare module 'jspdf' {
   interface jsPDF {
@@ -33,6 +33,7 @@ export async function generateSchedulePdf(
   scheduleDate: Date,
   reportDate: Date,
   schedulerName: string,
+  projects: Project[],
   userSignature?: string
 ) {
   if (!schedule || !schedule.items || schedule.items.length === 0) {
@@ -48,7 +49,7 @@ export async function generateSchedulePdf(
   const headerBottomY = headerStartY + headerBoxHeight;
   const tableStartY = headerBottomY;
   const footerHeight = 60;
-  const bottomMargin = 40;
+  const bottomMarginSpace = 40;
 
   const formattedScheduleDate = format(scheduleDate, 'dd-MM-yyyy');
   const formattedReportDate = format(reportDate, 'dd-MM-yyyy');
@@ -59,18 +60,22 @@ export async function generateSchedulePdf(
     'Location', 'Reporting Time', 'Client / Contact Person Number', 'Vehicle', 'Special instruction/Remarks',
   ];
 
-  const bodyRows = schedule.items.map((item, i) => [
-    i + 1,
-    item.manpowerIds,
-    item.jobType || '',
-    item.jobNo || '',
-    item.projectVesselName || '',
-    item.location || '',
-    item.reportingTime || '',
-    item.clientContact || '',
-    item.vehicleId && item.vehicleId !== 'none' ? item.vehicleId : 'N/A',
-    item.remarks || '',
-  ]);
+  const bodyRows = schedule.items.map((item, i) => {
+      const project = projects.find(p => p.id === item.projectId);
+      const locationText = [project?.name, item.location].filter(Boolean).join(' - ');
+      return [
+        i + 1,
+        item.manpowerIds,
+        item.jobType || '',
+        item.jobNo || '',
+        item.projectVesselName || '',
+        locationText || '',
+        item.reportingTime || '',
+        item.clientContact || '',
+        item.vehicleId && item.vehicleId !== 'none' ? item.vehicleId : 'N/A',
+        item.remarks || '',
+      ];
+  });
 
   let fontSize = 6;
   let finalDoc: jsPDF | null = null;
@@ -122,12 +127,12 @@ export async function generateSchedulePdf(
         if (data.section === "body" && data.column.index === 1) {
           const raw = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
           const names = raw.map((r: string) => r.replace(/\s*\(.*?\)/, "")).join(", ");
-          data.cell.text = data.doc.splitTextToSize(names, 167); // Use fixed width for measurement
+          data.cell.text = data.doc.splitTextToSize(names, 167); 
         }
       },
       willDrawCell: (data: any) => {
         if (data.section === "body" && data.column.index === 1) {
-          data.cell.text = []; // Suppress default render
+          data.cell.text = []; 
         }
       },
       didDrawCell: (data: any) => {
@@ -151,8 +156,9 @@ export async function generateSchedulePdf(
 
         const left = data.cell.x + 4;
         const width = data.cell.width - 8;
-        const textToDraw = people.map((p, i) => p.name + (i === people.length - 1 ? "" : ", ")).join("");
-        const wrappedLines = cDoc.splitTextToSize(textToDraw, width);
+        
+        const wrapText = people.map((p, i) => p.name + (i === people.length - 1 ? "" : ", ")).join("");
+        const wrappedLines = cDoc.splitTextToSize(wrapText, width);
         const blockHeight = wrappedLines.length * lineHeight;
         
         let x = left;
@@ -210,7 +216,7 @@ export async function generateSchedulePdf(
     });
 
     const lastY = (currentDoc as any).lastAutoTable?.finalY || 0;
-    if (lastY + footerHeight + bottomMargin <= pageHeight) {
+    if (lastY + footerHeight + bottomMarginSpace <= pageHeight) {
       finalDoc = currentDoc;
       finalTableY = lastY;
       break;
@@ -226,7 +232,7 @@ export async function generateSchedulePdf(
   if (!finalDoc) return;
 
   let footerY = finalTableY;
-  if (footerY + footerHeight + bottomMargin > pageHeight) {
+  if (footerY + footerHeight + bottomMarginSpace > pageHeight) {
     finalDoc.addPage();
     footerY = headerBottomY + 15;
   }

@@ -15,12 +15,12 @@ import { useToast } from '@/hooks/use-toast';
 import type { JobSchedule } from '@/lib/types';
 import { Label } from '@/components/ui/label';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
 
 export default function JobSchedulePage() {
-    const { user, users, jobSchedules, can, manpowerProfiles, vehicles, saveJobSchedule } = useAppContext();
+    const { user, users, jobSchedules, can, manpowerProfiles, vehicles, saveJobSchedule, projects } = useAppContext();
     const { toast } = useToast();
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [footerDate, setFooterDate] = useState<Date>(new Date());
@@ -74,9 +74,9 @@ export default function JobSchedulePage() {
         const signature = user.signatureBase64;
 
         if (type === 'excel') {
-            await generateScheduleExcel(scheduleWithNames, selectedDate, footerDate, schedulerName, signature);
+            await generateScheduleExcel(scheduleWithNames, selectedDate, footerDate, schedulerName, projects, signature);
         } else {
-            await generateSchedulePdf(scheduleWithNames, selectedDate, footerDate, schedulerName, signature);
+            await generateSchedulePdf(scheduleWithNames, selectedDate, footerDate, schedulerName, projects, signature);
         }
     };
 
@@ -109,7 +109,7 @@ export default function JobSchedulePage() {
             }))
         }));
 
-        await generateScheduleWorkbook(schedulesWithNames, new Date(), user.name, user.signatureBase64);
+        await generateScheduleWorkbook(schedulesWithNames, new Date(), user.name, projects, user.signatureBase64);
         setIsBatchExportOpen(false);
     };
 

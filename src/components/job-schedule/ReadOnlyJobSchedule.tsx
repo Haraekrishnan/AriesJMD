@@ -12,7 +12,7 @@ interface ReadOnlyJobScheduleProps {
 }
 
 export default function ReadOnlyJobSchedule({ schedule }: ReadOnlyJobScheduleProps) {
-  const { manpowerProfiles, vehicles } = useAppContext();
+  const { manpowerProfiles, vehicles, projects } = useAppContext();
 
   const getManpowerNames = (ids: string[]) => {
     return ids.map(id => manpowerProfiles.find(p => p.id === id)?.name || id).join(', ');
@@ -22,6 +22,11 @@ export default function ReadOnlyJobSchedule({ schedule }: ReadOnlyJobSchedulePro
     if (!id || id === 'none') return 'N/A';
     return vehicles.find(v => v.id === id)?.vehicleNumber || 'N/A';
   };
+
+  const getLocationText = (item: JobScheduleItem) => {
+    const project = projects.find(p => p.id === item.projectId);
+    return [project?.name, item.location].filter(Boolean).join(' - ');
+  }
 
   if (!schedule || !schedule.items || schedule.items.length === 0) {
     return (
@@ -63,7 +68,7 @@ export default function ReadOnlyJobSchedule({ schedule }: ReadOnlyJobSchedulePro
             <TableCell>{item.jobType}</TableCell>
             <TableCell>{item.jobNo}</TableCell>
             <TableCell>{item.projectVesselName}</TableCell>
-            <TableCell>{item.location}</TableCell>
+            <TableCell>{getLocationText(item)}</TableCell>
             <TableCell>{item.reportingTime}</TableCell>
             <TableCell>{item.clientContact}</TableCell>
             <TableCell>{getVehicleNumber(item.vehicleId)}</TableCell>

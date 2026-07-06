@@ -1,7 +1,7 @@
 import ExcelJS from 'exceljs';
 import { format, parseISO, isValid } from 'date-fns';
 import { saveAs } from 'file-saver';
-import type { JobSchedule } from '@/lib/types';
+import type { JobSchedule, Project } from '@/lib/types';
 
 async function fetchImageAsArrayBuffer(url: string) {
   const response = await fetch(url);
@@ -20,6 +20,7 @@ function addScheduleToSheet(
   scheduleDate: Date,
   reportDate: Date,
   schedulerName: string,
+  projects: Project[],
   workbook: ExcelJS.Workbook,
   logoId?: number,
   signatureId?: number
@@ -106,6 +107,9 @@ function addScheduleToSheet(
   const items = schedule?.items || [];
 
   items.forEach((item, index) => {
+    const project = projects.find(p => p.id === item.projectId);
+    const locationText = [project?.name, item.location].filter(Boolean).join(' - ');
+
     const row = ws.getRow(rowIndex);
     row.values = [
       index + 1,
@@ -113,7 +117,7 @@ function addScheduleToSheet(
       item.jobType || '',
       item.jobNo || '',
       item.projectVesselName || '',
-      item.location || '',
+      locationText || '',
       item.reportingTime || '',
       item.clientContact || '',
       item.vehicleId || '',
@@ -165,6 +169,7 @@ export async function generateScheduleExcel(
   scheduleDate: Date,
   reportDate: Date,
   schedulerName: string,
+  projects: Project[],
   userSignature?: string
 ) {
   const wb = new ExcelJS.Workbook();
@@ -183,7 +188,7 @@ export async function generateScheduleExcel(
     } catch (e) { console.error(e); }
   }
 
-  addScheduleToSheet(ws, schedule, scheduleDate, reportDate, schedulerName, wb, logoId, signatureId);
+  addScheduleToSheet(ws, schedule, scheduleDate, reportDate, schedulerName, projects, wb, logoId, signatureId);
 
   const buffer = await wb.xlsx.writeBuffer();
   saveAs(new Blob([buffer]), `JobSchedule_${format(scheduleDate, 'yyyy-MM-dd')}.xlsx`);
@@ -193,6 +198,7 @@ export async function generateScheduleWorkbook(
     schedules: JobSchedule[],
     reportDate: Date,
     schedulerName: string,
+    projects: Project[],
     userSignature?: string
 ) {
     const wb = new ExcelJS.Workbook();
@@ -212,7 +218,7 @@ export async function generateScheduleWorkbook(
 
     schedules.forEach(schedule => {
         const ws = wb.addWorksheet(schedule.date);
-        addScheduleToSheet(ws, schedule, parseISO(schedule.date), reportDate, schedulerName, wb, logoId, signatureId);
+        addScheduleToSheet(ws, schedule, parseISO(schedule.date), reportDate, schedulerName, projects, wb, logoId, signatureId);
     });
 
     if (schedules.length === 0) return;
