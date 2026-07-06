@@ -286,7 +286,11 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
 
     const saveJobSchedule = useCallback((schedule: Omit<JobSchedule, 'id'> & { id?: string }) => {
         const id = schedule.id || `schedule_${schedule.date}`;
-        update(ref(rtdb, `jobSchedules/${id}`), { ...schedule, id });
+        // Sanitize object for Firebase (removes undefined)
+        const sanitizedSchedule = JSON.parse(JSON.stringify(schedule, (key, value) =>
+            value === undefined ? null : value
+        ));
+        update(ref(rtdb, `jobSchedules/${id}`), { ...sanitizedSchedule, id });
     }, []);
 
     const savePlantOrder = useCallback((monthKey: string, plantName: string, orderedProfileIds: string[]) => {
@@ -893,7 +897,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       update(ref(rtdb), updates);
   }, [user, jobProgressById, addJobStepComment]);
   
-    const addTimesheet = useCallback((data: Omit<Timesheet, 'id' | 'submitterId' | 'submissionDate' | 'status' | 'lastUpdated'>) => {
+    const addTimesheet = useCallback((data: Omit<Timesheet, 'id' | 'submitterId' | 'submissionDate' | 'status'>) => {
         if (!user) return;
         const newRef = push(ref(rtdb, 'timesheets'));
         const now = new Date().toISOString();
@@ -969,13 +973,13 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             updates.rejectionReason = comment;
         }
 
-        update(ref(rtdb, `timesheets/${timesheetId}`), updates);
+        update(ref(rtdb), { [`timesheets/${timesheetId}`]: { ...timesheetsById[timesheetId], ...updates } });
         
         if (comment) {
             const commentText = status === 'Rejected' ? `Timesheet Rejected. Reason: ${comment}` : comment;
             addTimesheetComment(timesheetId, commentText);
         }
-    }, [user, addTimesheetComment]);
+    }, [user, addTimesheetComment, timesheetsById]);
 
     const deleteTimesheet = useCallback((timesheetId: string) => {
         remove(ref(rtdb, `timesheets/${timesheetId}`));
