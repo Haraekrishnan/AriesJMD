@@ -176,7 +176,7 @@ export async function generateTpCertPdf(
       group.forEach((item) => {
           const isHarness = item.materialName.toLowerCase().includes('harness');
           body.push([
-              srNo,
+              srNo++,
               item.materialName,
               item.manufacturerSrNo,
               isHarness ? (item.chestCrollNo || '') : '',
@@ -187,7 +187,6 @@ export async function generateTpCertPdf(
               ''  // Submit report
           ]);
       });
-      srNo++;
     });
     
     (doc as any).autoTable({
@@ -317,7 +316,7 @@ export async function generateTpCertExcel(
     group.forEach(item => {
         const isHarness = item.materialName.toLowerCase().includes('harness');
         const row = worksheet.addRow([
-            srNo,
+            srNo++,
             item.materialName,
             item.manufacturerSrNo,
             isHarness ? (item.chestCrollNo || '') : '',
@@ -332,7 +331,6 @@ export async function generateTpCertExcel(
             cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
         });
     });
-    srNo++;
   });
 
 
