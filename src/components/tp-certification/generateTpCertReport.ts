@@ -16,6 +16,14 @@ import type {
   InspectionChecklist,
   User,
   WeldingMachine,
+  WalkieTalkie,
+  PneumaticDrillingMachine,
+  PneumaticAngleGrinder,
+  WiredDrillingMachine,
+  CordlessDrillingMachine,
+  WiredAngleGrinder,
+  CordlessAngleGrinder,
+  CordlessReciprocatingSaw,
 } from '@/lib/types';
 import { format, parseISO, isValid } from 'date-fns';
 
@@ -28,7 +36,15 @@ type FullItem =
   | OtherEquipment
   | LaptopDesktop
   | MobileSim
-  | WeldingMachine;
+  | WeldingMachine
+  | WalkieTalkie
+  | PneumaticDrillingMachine
+  | PneumaticAngleGrinder
+  | WiredDrillingMachine
+  | CordlessDrillingMachine
+  | WiredAngleGrinder
+  | CordlessAngleGrinder
+  | CordlessReciprocatingSaw;
 
 interface CertItem {
   itemId: string;
@@ -197,6 +213,13 @@ export async function generateTpCertPdf(
     (doc as any).autoTable({
       head: head,
       body: body,
+      foot: [
+        [
+          { content: 'TOTAL QUANTITY', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold', fillColor: [240, 240, 240] } },
+          { content: String(certItems.length), styles: { halign: 'center', fontStyle: 'bold', fillColor: [240, 240, 240] } },
+          { content: '', colSpan: 3, styles: { fillColor: [240, 240, 240] } }
+        ]
+      ],
       startY: 175,
       theme: 'grid',
       styles: { fontSize: 8, cellPadding: 2, halign: 'center', valign: 'middle' },
@@ -213,9 +236,7 @@ export async function generateTpCertPdf(
         if (data.section === 'body' && lastRowIndices.includes(data.row.index)) {
           doc.setLineWidth(1.5);
           doc.setDrawColor(0);
-          // Draw bottom line for all columns in the last row of a group
           doc.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
-          // Reset line width for subsequent rows
           doc.setLineWidth(0.2);
         }
       }
@@ -345,7 +366,7 @@ export async function generateTpCertExcel(
             cell.border = { 
                 top: { style: "thin" }, 
                 left: { style: "thin" }, 
-                bottom: { style: isLastInGroup ? "medium" : "thin" }, // Heavier border for end of group
+                bottom: { style: isLastInGroup ? "medium" : "thin" }, 
                 right: { style: "thin" } 
             };
             cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
@@ -353,8 +374,31 @@ export async function generateTpCertExcel(
     });
   });
 
+  // Final Total Row
+  const totalRowIndex = worksheet.lastRow!.number + 1;
+  const totalRow = worksheet.getRow(totalRowIndex);
+  worksheet.mergeCells(`A${totalRowIndex}:E${totalRowIndex}`);
+  totalRow.getCell(1).value = "TOTAL QUANTITY";
+  totalRow.getCell(1).alignment = { horizontal: 'right', vertical: 'middle' };
+  totalRow.getCell(1).font = { bold: true };
+  
+  totalRow.getCell(6).value = certItems.length;
+  totalRow.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
+  totalRow.getCell(6).font = { bold: true };
+  
+  totalRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      cell.border = { 
+        top: { style: "medium" }, 
+        left: { style: "thin" }, 
+        bottom: { style: "medium" }, 
+        right: { style: "thin" } 
+      };
+      if (colNumber <= 6) {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
+      }
+  });
 
-  const footerStart = worksheet.lastRow!.number + 2;
+  const footerStart = totalRowIndex + 2;
   const footerLines = [ "Company Authorised Contact Person", "Name : VIJAY SAI", "Contact Number : 919662095558", "Site : RELIANCE INDUSTRIES LTD", "email id: ariesril@ariesmar.com", 'Note : For "New Materials only" Manufacturer Test Certificates submitted.' ];
   footerLines.forEach((text, i) => {
     const rowIndex = footerStart + i;
