@@ -56,8 +56,6 @@ const buildCertItems = (items: TpCertListItem[], allItems: FullItem[]): CertItem
       it.ariesId ||
       null;
 
-    let finalSerial = serial;
-
     const materialName =
       it.materialName ||
       (original as any)?.name ||
@@ -75,7 +73,7 @@ const buildCertItems = (items: TpCertListItem[], allItems: FullItem[]): CertItem
       itemId: it.itemId,
       itemType: it.itemType,
       materialName,
-      manufacturerSrNo: finalSerial,
+      manufacturerSrNo: serial,
       chestCrollNo: chest,
       ariesId,
     };
@@ -122,7 +120,6 @@ const groupItemsForExport = (items: CertItem[]) => {
   return Array.from(grouped.values()).sort((a,b) => a[0].materialName.localeCompare(b[0].materialName));
 };
 
-
 async function fetchImageAsBufferAndBase64(
   imgPath: string,
 ): Promise<{ buffer: ArrayBuffer; base64: string }> {
@@ -156,20 +153,13 @@ export async function generateTpCertPdf(
     const dateToUse = listDate && typeof listDate === 'string' ? parseISO(listDate) : listDate || new Date();
     
     const addPageContent = () => {
-      // Header image
       doc.addImage(imgDataUrl, "PNG", 40, 20, 515, 70);
-  
-      // Date
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.text(`Date: ${format(dateToUse, 'dd-MM-yyyy')}`, 555, 105, { align: 'right' });
-  
-      // Titles
       doc.setFontSize(12);
       doc.text("Trivedi & Associates Technical Services (P.) Ltd.", doc.internal.pageSize.getWidth() / 2, 120, { align: 'center' });
       doc.text("Jamnagar.", doc.internal.pageSize.getWidth() / 2, 135, { align: 'center' });
-  
-      // Subject
       doc.text("Subject : Testing & Certification", 40, 160);
     };
     
@@ -183,42 +173,30 @@ export async function generateTpCertPdf(
     let srNo = 1;
     groupedItems.forEach(group => {
       const groupSize = group.length;
-      group.forEach((item, index) => {
+      group.forEach((item) => {
           const isHarness = item.materialName.toLowerCase().includes('harness');
-          
-          let chestCrollValue = '';
-          if (isHarness) {
-              chestCrollValue = item.chestCrollNo || '';
-          } else if (index === 0) {
-              // Use a non-empty, non-filterable value to hold the column space
-              // for the first row of non-harness items.
-              chestCrollValue = ' ';
-          }
-
-          const rowData = [
-              index === 0 ? { content: srNo, rowSpan: groupSize } : '',
-              index === 0 ? { content: item.materialName, rowSpan: groupSize } : '',
+          body.push([
+              srNo,
+              item.materialName,
               item.manufacturerSrNo,
-              chestCrollValue,
-              index === 0 ? { content: getCapacity(item.materialName), rowSpan: groupSize } : '',
-              index === 0 ? { content: groupSize, rowSpan: groupSize } : '',
-              index === 0 ? { content: 'OLD', rowSpan: groupSize } : '',
+              isHarness ? (item.chestCrollNo || '') : '',
+              getCapacity(item.materialName),
+              groupSize,
+              'OLD',
               '', // Valid upto
               ''  // Submit report
-          ];
-          // Filter out only the empty strings used for row-spanning logic, but keep the space ' '
-          body.push(rowData.filter(cell => cell !== ''));
+          ]);
       });
       srNo++;
     });
     
-    doc.autoTable({
+    (doc as any).autoTable({
       head: head,
       body: body,
       startY: 175,
       theme: 'grid',
       styles: { fontSize: 8, cellPadding: 2, halign: 'center', valign: 'middle' },
-      headStyles: { fontStyle: 'bold', fillColor: [220, 220, 220] },
+      headStyles: { fontStyle: 'bold', fillColor: [220, 220, 220], textColor: 0 },
       columnStyles: {
           0: { cellWidth: 30 },
           1: { cellWidth: 80 },
@@ -258,15 +236,14 @@ export async function generateTpCertExcel(
   const { buffer: imageBuffer } = await fetchImageAsBufferAndBase64(headerImagePath);
   
   const certItems = buildCertItems(items, allItems);
+  const groupedItems = groupItemsForExport(certItems);
   
   const workbook = existingWorkbook || new ExcelJS.Workbook();
   
-  // Sanitize sheet name
   let sanitizedSheetName = (sheetName || "TP Certification List")
-    .replace(/[\\/*?:[\]]/g, "") // Remove invalid characters
-    .substring(0, 31); // Enforce 31-character limit
+    .replace(/[\\/*?:[\]]/g, "")
+    .substring(0, 31);
 
-  // Ensure sheet name is unique
   let sheetExists = workbook.getWorksheet(sanitizedSheetName);
   let counter = 1;
   while (sheetExists) {
@@ -334,45 +311,27 @@ export async function generateTpCertExcel(
     { width: 15 },  // Submit Last Testing Report
   ];
 
-  const groupedItems = groupItemsForExport(certItems);
-  let currentRowIndex = headerRowIndex + 1;
   let srNo = 1;
 
   groupedItems.forEach(group => {
-    const groupStartRow = currentRowIndex;
     group.forEach(item => {
         const isHarness = item.materialName.toLowerCase().includes('harness');
         const row = worksheet.addRow([
-            '', // SR NO
-            '', // Material Name
+            srNo,
+            item.materialName,
             item.manufacturerSrNo,
             isHarness ? (item.chestCrollNo || '') : '',
-            '', // Cap
-            '', // Qty
-            '', // New/Old
+            getCapacity(item.materialName),
+            group.length,
+            'OLD',
             '', // Valid
-            '' // Report
+            ''  // Report
         ]);
-        row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        row.eachCell({ includeEmpty: true }, (cell) => {
             cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
             cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
         });
-        currentRowIndex++;
     });
-
-    const groupSize = group.length;
-    worksheet.getCell(groupStartRow, 1).value = srNo;
-    worksheet.getCell(groupStartRow, 2).value = group[0].materialName;
-    worksheet.getCell(groupStartRow, 5).value = getCapacity(group[0].materialName);
-    worksheet.getCell(groupStartRow, 6).value = groupSize;
-    worksheet.getCell(groupStartRow, 7).value = 'OLD';
-
-    if (groupSize > 1) {
-        [1, 2, 5, 6, 7, 8, 9].forEach(col => {
-            worksheet.mergeCells(groupStartRow, col, groupStartRow + groupSize - 1, col);
-        });
-    }
-
     srNo++;
   });
 
@@ -403,7 +362,6 @@ export async function generateChecklistPdf(
   const margin = 40;
   const contentWidth = pageWidth - margin * 2;
   
-  // Header
   const headerImagePath = '/images/aries-header.png';
   const { base64: imgDataUrl } = await fetchImageAsBufferAndBase64(headerImagePath);
   doc.addImage(imgDataUrl, "PNG", margin, 20, contentWidth, 60);
@@ -412,7 +370,6 @@ export async function generateChecklistPdf(
   doc.setFont('helvetica', 'bold');
   doc.text('HARNESS INSPECTION CHECKLIST', pageWidth / 2, 100, { align: 'center' });
 
-  // Details Table
   const detailsBody = [
     ['Product Name', item.name, 'Date of Purchase', checklist.purchaseDate ? format(parseISO(checklist.purchaseDate), 'dd-MM-yyyy') : ''],
     ['Model', item.name, 'Date of First Use', checklist.firstUseDate ? format(parseISO(checklist.firstUseDate), 'dd-MM-yyyy') : ''],
@@ -420,19 +377,15 @@ export async function generateChecklistPdf(
     ['ARIES ID', item.ariesId || '', 'Procedure Ref. No', 'ARIES-RAOP-001 [Rev 07]'],
     ['Known Product History', { content: checklist.knownHistory || '', colSpan: 3 }],
   ];
-  doc.autoTable({
+  (doc as any).autoTable({
     startY: 120,
     body: detailsBody,
     theme: 'grid',
     styles: { fontSize: 8, cellPadding: 3 },
     headStyles: { fontStyle: 'bold' },
     columnStyles: { 0: { fontStyle: 'bold' }, 2: { fontStyle: 'bold' } },
-    didDrawCell: (data) => {
-      if (data.row.index > 3) data.cell.styles.fontStyle = 'bold';
-    }
   });
 
-  // Inspection Criteria Table
   let finalY = (doc as any).lastAutoTable.finalY + 10;
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
@@ -447,13 +400,13 @@ export async function generateChecklistPdf(
       ['Other Components', checklist.findings?.otherComponents || 'N/A'],
   ];
 
-  doc.autoTable({
+  (doc as any).autoTable({
       head: [['Points to be checked', 'Condition (G/TM/TR/R/NA)']],
       body: inspectionBody,
       startY: finalY,
       theme: 'grid',
       styles: { fontSize: 8, cellPadding: 3 },
-      headStyles: { fontStyle: 'bold', fillColor: [230, 230, 230] },
+      headStyles: { fontStyle: 'bold', fillColor: [230, 230, 230], textColor: 0 },
       columnStyles: { 0: { fontStyle: 'bold' }, 1: { halign: 'center' } },
   });
   finalY = (doc as any).lastAutoTable.finalY + 15;
@@ -478,7 +431,7 @@ export async function generateChecklistPdf(
   doc.text(checklist.verdict || '', margin + 5, finalY + 10, { maxWidth: contentWidth - 10 });
   finalY += 45;
 
-  doc.autoTable({
+  (doc as any).autoTable({
     startY: finalY,
     body: [
       [
@@ -497,12 +450,11 @@ export async function generateChecklistPdf(
   doc.save(`Inspection_Checklist_${item.serialNumber}.pdf`);
 }
 
-
 export async function generateChecklistExcel(
   checklist: any,
   item: any,
   inspector: any,
   reviewer: any
 ) {
-  // Implementation for checklist Excel generation
+  // Implementation for checklist Excel generation can be added here if needed
 }
