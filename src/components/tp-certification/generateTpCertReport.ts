@@ -170,10 +170,12 @@ export async function generateTpCertPdf(
     ];
     
     const body: any[] = [];
+    const lastRowIndices: number[] = [];
+    
     groupedItems.forEach(group => {
-      let groupSrNo = 1; // Reset serial number for each item group
+      let groupSrNo = 1;
       const groupSize = group.length;
-      group.forEach((item) => {
+      group.forEach((item, index) => {
           const isHarness = item.materialName.toLowerCase().includes('harness');
           body.push([
               groupSrNo++,
@@ -184,8 +186,11 @@ export async function generateTpCertPdf(
               groupSize,
               'OLD',
               '', // Valid upto
-              ''  // Submit report
+              ''  // Submit last test report
           ]);
+          if (index === groupSize - 1) {
+            lastRowIndices.push(body.length - 1);
+          }
       });
     });
     
@@ -203,6 +208,16 @@ export async function generateTpCertPdf(
           3: { cellWidth: 70 },
           4: { cellWidth: 40 },
           5: { cellWidth: 30 },
+      },
+      didDrawCell: (data: any) => {
+        if (data.section === 'body' && lastRowIndices.includes(data.row.index)) {
+          doc.setLineWidth(1.5);
+          doc.setDrawColor(0);
+          // Draw bottom line for all columns in the last row of a group
+          doc.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+          // Reset line width for subsequent rows
+          doc.setLineWidth(0.2);
+        }
       }
     });
   
@@ -311,9 +326,10 @@ export async function generateTpCertExcel(
   ];
 
   groupedItems.forEach(group => {
-    let groupSrNo = 1; // Reset serial number for each item group
-    group.forEach(item => {
+    let groupSrNo = 1;
+    group.forEach((item, index) => {
         const isHarness = item.materialName.toLowerCase().includes('harness');
+        const isLastInGroup = index === group.length - 1;
         const row = worksheet.addRow([
             groupSrNo++,
             item.materialName,
@@ -326,7 +342,12 @@ export async function generateTpCertExcel(
             ''  // Report
         ]);
         row.eachCell({ includeEmpty: true }, (cell) => {
-            cell.border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+            cell.border = { 
+                top: { style: "thin" }, 
+                left: { style: "thin" }, 
+                bottom: { style: isLastInGroup ? "medium" : "thin" }, // Heavier border for end of group
+                right: { style: "thin" } 
+            };
             cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
         });
     });
