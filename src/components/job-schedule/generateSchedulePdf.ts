@@ -81,6 +81,7 @@ export async function generateSchedulePdf(
   let finalDoc: jsPDF | null = null;
   let finalTableY = 0;
 
+  // Adaptive sizing loop
   while (fontSize >= 4) {
     const currentDoc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
     const padding = fontSize > 5.5 ? 5 : fontSize > 5 ? 4 : fontSize > 4.5 ? 3 : 2;
@@ -266,7 +267,7 @@ export async function generateSchedulePdf(
         const signatureY = footerY + (footerHeight / 2 - targetHeight) / 2;
         finalDoc.addImage(userSignature, "PNG", signatureX, signatureY, targetWidth, targetHeight);
     } catch (e) {
-        console.error(e);
+        console.error("Signature add failed:", e);
     }
   }
 
