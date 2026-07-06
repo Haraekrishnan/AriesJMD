@@ -5,7 +5,7 @@ import 'jspdf-autotable';
 import { format, parseISO, isValid } from 'date-fns';
 import type { JobSchedule, Project } from '@/lib/types';
 
-declare module 'jspdf' {
+declare module 'jsPDF' {
   interface jsPDF {
     autoTable: (options: any) => jsPDF;
   }
@@ -125,14 +125,15 @@ export async function generateSchedulePdf(
       },
       didParseCell: (data: any) => {
         if (data.section === "body" && data.column.index === 1) {
-          const raw = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
-          const names = raw.map((r: string) => r.replace(/\s*\(.*?\)/, "")).join(", ");
-          data.cell.text = data.doc.splitTextToSize(names, 167); 
+            const raw = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
+            const names = raw.map((r: string) => r.replace(/\s*\(.*?\)/, "")).join(", ");
+            // Use fixed width for height measurement to prevent stacking
+            data.cell.text = data.doc.splitTextToSize(names, 167); 
         }
       },
       willDrawCell: (data: any) => {
         if (data.section === "body" && data.column.index === 1) {
-          data.cell.text = []; 
+            data.cell.text = []; // Suppress default text to prevent ghosting
         }
       },
       didDrawCell: (data: any) => {
@@ -157,12 +158,8 @@ export async function generateSchedulePdf(
         const left = data.cell.x + 4;
         const width = data.cell.width - 8;
         
-        const wrapText = people.map((p, i) => p.name + (i === people.length - 1 ? "" : ", ")).join("");
-        const wrappedLines = cDoc.splitTextToSize(wrapText, width);
-        const blockHeight = wrappedLines.length * lineHeight;
-        
         let x = left;
-        let y = data.cell.y + (data.cell.height - blockHeight) / 2 + (lineHeight * 0.8);
+        let y = data.cell.y + padding + (lineHeight * 0.8);
 
         people.forEach((p, idx) => {
           const suffix = idx === people.length - 1 ? "" : ", ";
@@ -235,6 +232,17 @@ export async function generateSchedulePdf(
   if (footerY + footerHeight + bottomMarginSpace > pageHeight) {
     finalDoc.addPage();
     footerY = headerBottomY + 15;
+    
+    // Manually redraw header on new footer page
+    const cDoc = finalDoc;
+    const contentStartY = headerStartY + 2;
+    const lineY = contentStartY + 20;
+    cDoc.setLineWidth(0.2).setDrawColor(0);
+    cDoc.rect(margin, headerStartY, usableWidth, headerBoxHeight); 
+    cDoc.line(margin, lineY, pageWidth - margin, lineY);
+    if (logoBase64) cDoc.addImage(logoBase64, 'PNG', margin + 5, contentStartY, 80, 18);
+    cDoc.setFont('times', 'bold').setFontSize(14);
+    cDoc.text('Job Schedule', pageWidth / 2, contentStartY + 12, { align: 'center' });
   }
 
   const footerMidX = margin + usableWidth / 2;

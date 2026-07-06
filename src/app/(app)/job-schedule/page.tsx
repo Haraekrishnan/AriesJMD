@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { JobSchedule } from '@/lib/types';
 import { Label } from '@/components/ui/label';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
 
