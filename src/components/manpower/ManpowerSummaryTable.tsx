@@ -3,6 +3,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { useManpower } from '@/contexts/manpower-provider';
+import { usePlanner } from '@/contexts/planner-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format, isBefore, parseISO, startOfDay, subDays } from 'date-fns';
 import { Input } from '../ui/input';
@@ -22,6 +23,7 @@ interface EditableCell {
 export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTableProps) {
   const { projects } = useGeneral();
   const { manpowerLogs, addManpowerLog, updateManpowerLog } = useManpower();
+  const { jobSchedules } = usePlanner();
   const { can } = useAuth();
   const { toast } = useToast();
   const [editableData, setEditableData] = useState<Record<string, Partial<any>>>({});
@@ -32,6 +34,7 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
     }
 
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const scheduleForDate = jobSchedules.find(s => s.date === dateStr);
     
     const summaryData = projects.map(project => {
         const logsForProjectDay = manpowerLogs.filter(log => log.date === dateStr && log.projectId === project.id);
@@ -45,7 +48,15 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
             
         const mostRecentPreviousLog = previousLogs[0];
         
-        const openingManpower = latestLogForDay?.openingManpower ?? mostRecentPreviousLog?.total ?? 0;
+        // Priority: 
+        // 1. Manually saved opening in log
+        // 2. Count from Job Schedule for this project/date
+        // 3. Last known total from previous log
+        const scheduledCount = scheduleForDate?.items?.filter(item => item.projectId === project.id)
+            .reduce((sum, item) => sum + (item.manpowerIds?.length || 0), 0) || 0;
+
+        const openingManpower = latestLogForDay?.openingManpower ?? (scheduledCount > 0 ? scheduledCount : (mostRecentPreviousLog?.total ?? 0));
+        
         const countIn = latestLogForDay?.countIn || 0;
         const countOut = latestLogForDay?.countOut || 0;
         const dayTotal = openingManpower + countIn - countOut;
@@ -70,7 +81,7 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
     const totalActive = summaryData.reduce((acc, curr) => acc + (curr.active || 0), 0);
     
     return { summary: summaryData, overallTotal, totalOnLeave, totalActive };
-  }, [projects, manpowerLogs, selectedDate]);
+  }, [projects, manpowerLogs, selectedDate, jobSchedules]);
   
   useEffect(() => {
     const data: Record<string, Partial<any>> = {};

@@ -2,6 +2,7 @@
 import { useMemo } from 'react';
 import { useManpower } from '@/contexts/manpower-provider';
 import { useGeneral } from '@/contexts/general-provider';
+import { usePlanner } from '@/contexts/planner-provider';
 import { Users, UserCheck, UserX, AlertCircle } from 'lucide-react';
 import StatCard from '../dashboard/stat-card';
 import { format, isBefore, parseISO, startOfDay, formatDistanceToNow } from 'date-fns';
@@ -14,13 +15,15 @@ export default function ManpowerSummary() {
     lastManpowerUpdate 
   } = useManpower();
   const { projects } = useGeneral();
+  const { jobSchedules } = usePlanner();
 
   const { totalWorking, totalOnLeave, totalActive } = useMemo(() => {
     const today = new Date();
     const dateStr = format(today, 'yyyy-MM-dd');
+    const scheduleForDate = jobSchedules.find(s => s.date === dateStr);
     
-    let totalWorking = 0;
-    let totalOnLeave = 0;
+    let totalWorkingCount = 0;
+    let totalOnLeaveCount = 0;
 
     projects.forEach(project => {
         const logsForProjectDay = manpowerLogs.filter(log => log.date === dateStr && log.projectId === project.id);
@@ -34,20 +37,25 @@ export default function ManpowerSummary() {
             
         const mostRecentPreviousLog = previousLogs[0];
         
-        const openingManpower = latestLogForDay?.openingManpower ?? mostRecentPreviousLog?.total ?? 0;
+        // Sync with schedule:
+        const scheduledCount = scheduleForDate?.items?.filter(item => item.projectId === project.id)
+            .reduce((sum, item) => sum + (item.manpowerIds?.length || 0), 0) || 0;
+
+        const openingManpower = latestLogForDay?.openingManpower ?? (scheduledCount > 0 ? scheduledCount : (mostRecentPreviousLog?.total ?? 0));
+        
         const countIn = latestLogForDay?.countIn || 0;
         const countOut = latestLogForDay?.countOut || 0;
         const dayTotal = openingManpower + countIn - countOut;
         const onLeave = latestLogForDay?.countOnLeave || 0;
 
-        totalWorking += dayTotal;
-        totalOnLeave += onLeave;
+        totalWorkingCount += dayTotal;
+        totalOnLeaveCount += onLeave;
     });
     
-    const totalActive = totalWorking - totalOnLeave;
+    const totalActiveCount = totalWorkingCount - totalOnLeaveCount;
     
-    return { totalWorking, totalOnLeave, totalActive };
-  }, [manpowerLogs, projects]);
+    return { totalWorking: totalWorkingCount, totalOnLeave: totalOnLeaveCount, totalActive: totalActiveCount };
+  }, [manpowerLogs, projects, jobSchedules]);
 
   const lastUpdateText = `Last update: ${lastManpowerUpdate ? formatDistanceToNow(new Date(lastManpowerUpdate), { addSuffix: true }) : 'never'}`;
   
