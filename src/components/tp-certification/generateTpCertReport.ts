@@ -199,7 +199,7 @@ export async function generateTpCertPdf(
               item.manufacturerSrNo,
               isHarness ? (item.chestCrollNo || '') : '',
               getCapacity(item.materialName),
-              groupSize,
+              index === 0 ? groupSize : '', // Show qty only on first row of group
               'OLD',
               '', // Valid upto
               ''  // Submit last test report
@@ -215,11 +215,12 @@ export async function generateTpCertPdf(
       body: body,
       foot: [
         [
-          { content: 'TOTAL QUANTITY', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold', fillColor: [240, 240, 240] } },
-          { content: String(certItems.length), styles: { halign: 'center', fontStyle: 'bold', fillColor: [240, 240, 240] } },
+          { content: 'TOTAL QUANTITY', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold', fillColor: [240, 240, 240], textColor: 0 } },
+          { content: String(certItems.length), styles: { halign: 'center', fontStyle: 'bold', fillColor: [240, 240, 240], textColor: 0 } },
           { content: '', colSpan: 3, styles: { fillColor: [240, 240, 240] } }
         ]
       ],
+      showFoot: 'lastPage', // Show footer only on the last page
       startY: 175,
       theme: 'grid',
       styles: { fontSize: 8, cellPadding: 2, halign: 'center', valign: 'middle' },
@@ -357,7 +358,7 @@ export async function generateTpCertExcel(
             item.manufacturerSrNo,
             isHarness ? (item.chestCrollNo || '') : '',
             getCapacity(item.materialName),
-            group.length,
+            index === 0 ? group.length : '', // Show qty only on first row of group
             'OLD',
             '', // Valid
             ''  // Report
@@ -380,11 +381,11 @@ export async function generateTpCertExcel(
   worksheet.mergeCells(`A${totalRowIndex}:E${totalRowIndex}`);
   totalRow.getCell(1).value = "TOTAL QUANTITY";
   totalRow.getCell(1).alignment = { horizontal: 'right', vertical: 'middle' };
-  totalRow.getCell(1).font = { bold: true };
+  totalRow.getCell(1).font = { bold: true, color: { argb: 'FF000000' } };
   
   totalRow.getCell(6).value = certItems.length;
   totalRow.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
-  totalRow.getCell(6).font = { bold: true };
+  totalRow.getCell(6).font = { bold: true, color: { argb: 'FF000000' } };
   
   totalRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
       cell.border = { 
@@ -395,6 +396,7 @@ export async function generateTpCertExcel(
       };
       if (colNumber <= 6) {
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
+          cell.font = { bold: true, color: { argb: 'FF000000' } };
       }
   });
 
