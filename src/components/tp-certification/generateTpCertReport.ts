@@ -170,13 +170,13 @@ export async function generateTpCertPdf(
     ];
     
     const body: any[] = [];
-    let srNo = 1;
     groupedItems.forEach(group => {
+      let groupSrNo = 1; // Reset serial number for each item group
       const groupSize = group.length;
       group.forEach((item) => {
           const isHarness = item.materialName.toLowerCase().includes('harness');
           body.push([
-              srNo++,
+              groupSrNo++,
               item.materialName,
               item.manufacturerSrNo,
               isHarness ? (item.chestCrollNo || '') : '',
@@ -310,13 +310,12 @@ export async function generateTpCertExcel(
     { width: 15 },  // Submit Last Testing Report
   ];
 
-  let srNo = 1;
-
   groupedItems.forEach(group => {
+    let groupSrNo = 1; // Reset serial number for each item group
     group.forEach(item => {
         const isHarness = item.materialName.toLowerCase().includes('harness');
         const row = worksheet.addRow([
-            srNo++,
+            groupSrNo++,
             item.materialName,
             item.manufacturerSrNo,
             isHarness ? (item.chestCrollNo || '') : '',
