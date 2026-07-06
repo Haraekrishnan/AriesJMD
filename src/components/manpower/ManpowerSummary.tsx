@@ -3,15 +3,13 @@ import { useMemo } from 'react';
 import { useManpower } from '@/contexts/manpower-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { usePlanner } from '@/contexts/planner-provider';
-import { Users, UserCheck, UserX, AlertCircle } from 'lucide-react';
+import { Users, UserCheck, UserX } from 'lucide-react';
 import StatCard from '../dashboard/stat-card';
-import { format, isBefore, parseISO, startOfDay, formatDistanceToNow } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { format, formatDistanceToNow } from 'date-fns';
 
 export default function ManpowerSummary() {
   const { 
     manpowerLogs, 
-    isManpowerUpdatedToday, 
     lastManpowerUpdate 
   } = useManpower();
   const { projects } = useGeneral();
@@ -31,17 +29,13 @@ export default function ManpowerSummary() {
             ? logsForProjectDay.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
             : null;
 
-        const previousLogs = manpowerLogs
-            .filter(l => l.projectId === project.id && isBefore(parseISO(l.date), startOfDay(today)))
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            
-        const mostRecentPreviousLog = previousLogs[0];
-        
         // Sync with schedule:
         const scheduledCount = scheduleForDate?.items?.filter(item => item.projectId === project.id)
             .reduce((sum, item) => sum + (item.manpowerIds?.length || 0), 0) || 0;
 
-        const openingManpower = latestLogForDay?.openingManpower ?? (scheduledCount > 0 ? scheduledCount : (mostRecentPreviousLog?.total ?? 0));
+        // If no log exists for today, we use the schedule count. 
+        // If that is also missing, it is 0 (per user request).
+        const openingManpower = latestLogForDay?.openingManpower ?? scheduledCount;
         
         const countIn = latestLogForDay?.countIn || 0;
         const countOut = latestLogForDay?.countOut || 0;

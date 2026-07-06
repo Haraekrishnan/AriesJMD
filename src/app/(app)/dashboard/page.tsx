@@ -1,30 +1,29 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-provider';
 import { useTask } from '@/contexts/task-provider';
 import { useManpower } from '@/contexts/manpower-provider';
 import { useGeneral } from '@/contexts/general-provider';
+import { usePlanner } from '@/contexts/planner-provider';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import StatCard from '@/components/dashboard/stat-card';
-import { FileText, Users, CheckCircle, ListTodo, Megaphone, PlusCircle, UserMinus, AlertCircle, ShieldAlert } from 'lucide-react';
+import { Users, CheckCircle, ListTodo, ShieldAlert } from 'lucide-react';
 import TasksCompletedChart from '@/components/dashboard/tasks-completed-chart';
 import TeamTaskDistributionChart from '@/components/dashboard/team-task-distribution-chart';
 import AnnouncementFeed from '@/components/announcements/AnnouncementFeed';
-import NewAnnouncementDialog from '@/components/announcements/NewAnnouncementDialog';
 import RecentPlannerActivity from '@/components/planner/RecentActivity';
-import { startOfMonth, formatDistanceToNow, isSameDay, parseISO } from 'date-fns';
-import { cn } from '@/lib/utils';
 import DelegatedEventFeed from '@/components/planner/DelegatedEventFeed';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function DashboardPage() {
   const { user, getVisibleUsers, markFeatureAsViewed, can } = useAuth();
   const { tasks: allTasks } = useTask();
-  const { isManpowerUpdatedToday, lastManpowerUpdate, manpowerLogs } = useManpower();
+  const { lastManpowerUpdate, manpowerLogs } = useManpower();
   const { projects } = useGeneral();
+  const { jobSchedules } = usePlanner();
 
   const visibleUserIds = useMemo(() => {
     const visibleUsers = getVisibleUsers();
@@ -39,22 +38,32 @@ export default function DashboardPage() {
   }, [allTasks, visibleUserIds]);
 
   const { totalWorking, totalOnLeave } = useMemo(() => {
-    if (!projects || !manpowerLogs) return { totalWorking: 0, totalOnLeave: 0 };
-    const todayStr = new Date().toISOString().split('T')[0];
+    const today = new Date();
+    const todayStr = format(today, 'yyyy-MM-dd');
+    const scheduleForToday = jobSchedules.find(s => s.date === todayStr);
+
     let working = 0;
     let onLeave = 0;
+
     projects.forEach(project => {
-      const latestLog = manpowerLogs
-        .filter(log => log.projectId === project.id && log.date <= todayStr)
-        .sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime())[0];
+      const latestLogForDay = manpowerLogs
+        .filter(log => log.projectId === project.id && log.date === todayStr)
+        .sort((a,b) => parseISO(b.updatedAt).getTime() - parseISO(a.updatedAt).getTime())[0];
       
-      if(latestLog) {
-        working += latestLog.total;
-        onLeave += latestLog.countOnLeave;
-      }
+      const scheduledCount = scheduleForToday?.items?.filter(item => item.projectId === project.id)
+          .reduce((sum, item) => sum + (item.manpowerIds?.length || 0), 0) || 0;
+
+      const openingManpower = latestLogForDay?.openingManpower ?? scheduledCount;
+      
+      const countIn = latestLogForDay?.countIn || 0;
+      const countOut = latestLogForDay?.countOut || 0;
+      const dayTotal = openingManpower + countIn - countOut;
+
+      working += dayTotal;
+      onLeave += (latestLogForDay?.countOnLeave || 0);
     });
     return { totalWorking: working, totalOnLeave: onLeave };
-  }, [manpowerLogs, projects]);
+  }, [manpowerLogs, projects, jobSchedules]);
 
 
   const completedTasks = useMemo(() => visibleTasks.filter(t => t.status === 'Done').length, [visibleTasks]);
@@ -79,7 +88,7 @@ export default function DashboardPage() {
             <span>{activeManpowerToday} active, {totalOnLeave} on leave.</span>
             <span className="block mt-1">{lastUpdateString}</span>
         </>
-    )
+  )
   }, [lastManpowerUpdate, activeManpowerToday, totalOnLeave]);
 
   const showEhsNotice = can.access_ehs_portal && !user?.viewedFeatures?.ehs;

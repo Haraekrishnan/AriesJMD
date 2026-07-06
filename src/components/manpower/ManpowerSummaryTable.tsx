@@ -5,10 +5,9 @@ import { useGeneral } from '@/contexts/general-provider';
 import { useManpower } from '@/contexts/manpower-provider';
 import { usePlanner } from '@/contexts/planner-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { format, isBefore, parseISO, startOfDay, subDays } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
-import type { ManpowerLog } from '@/lib/types';
 
 interface ManpowerSummaryTableProps {
   selectedDate?: Date;
@@ -41,21 +40,13 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
         const latestLogForDay = logsForProjectDay.length > 0
             ? logsForProjectDay.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
             : null;
-
-        const previousLogs = manpowerLogs
-            .filter(l => l.projectId === project.id && isBefore(parseISO(l.date), startOfDay(selectedDate)))
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            
-        const mostRecentPreviousLog = previousLogs[0];
         
-        // Priority: 
-        // 1. Manually saved opening in log
-        // 2. Count from Job Schedule for this project/date
-        // 3. Last known total from previous log
+        // Count from Job Schedule for this project/date
         const scheduledCount = scheduleForDate?.items?.filter(item => item.projectId === project.id)
             .reduce((sum, item) => sum + (item.manpowerIds?.length || 0), 0) || 0;
 
-        const openingManpower = latestLogForDay?.openingManpower ?? (scheduledCount > 0 ? scheduledCount : (mostRecentPreviousLog?.total ?? 0));
+        // If no manual override and no schedule, it is now ZERO (per user request)
+        const openingManpower = latestLogForDay?.openingManpower ?? scheduledCount;
         
         const countIn = latestLogForDay?.countIn || 0;
         const countOut = latestLogForDay?.countOut || 0;
@@ -97,7 +88,7 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
     setEditableData(data);
   }, [summary]);
 
-  const handleInputChange = (projectId: string, field: keyof EditableCell['value'], value: string | number) => {
+  const handleInputChange = (projectId: string, field: string, value: string | number) => {
     setEditableData(prev => ({
         ...prev,
         [projectId]: {
@@ -132,7 +123,7 @@ export default function ManpowerSummaryTable({ selectedDate }: ManpowerSummaryTa
                 ...logPayload
             }, selectedDate);
         }
-        toast({ title: 'Log Saved', description: `Manpower count for ${projects.find(p => p.id === projectId)?.name} has been updated.` });
+        toast({ title: 'Log Saved' });
     } catch(error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to save log.' });
     }
