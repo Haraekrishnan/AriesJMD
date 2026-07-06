@@ -3,12 +3,11 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { format, parseISO, isValid } from 'date-fns';
-import type { JobSchedule, User } from '@/lib/types';
+import type { JobSchedule } from '@/lib/types';
 
 declare module 'jspdf' {
   interface jsPDF {
     autoTable: (options: any) => jsPDF;
-    lastAutoTable: { finalY: number };
   }
 }
 
@@ -40,7 +39,6 @@ export async function generateSchedulePdf(
     return;
   }
 
-  // A4 dimensions in points
   const pageWidth = 595.28;
   const pageHeight = 841.89;
   const margin = 28;
@@ -78,7 +76,6 @@ export async function generateSchedulePdf(
   let finalDoc: jsPDF | null = null;
   let finalTableY = 0;
 
-  // Adaptive Font & Spacing Loop
   while (fontSize >= 4) {
     const currentDoc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
     const padding = fontSize > 5.5 ? 5 : fontSize > 5 ? 4 : fontSize > 4.5 ? 3 : 2;
@@ -125,15 +122,12 @@ export async function generateSchedulePdf(
         if (data.section === "body" && data.column.index === 1) {
           const raw = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
           const names = raw.map((r: string) => r.replace(/\s*\(.*?\)/, "")).join(", ");
-          
-          // Use a fixed width for measurement during parse phase (175 - padding)
-          const availableWidth = 167;
-          data.cell.text = data.doc.splitTextToSize(names, availableWidth);
+          data.cell.text = data.doc.splitTextToSize(names, 167); // Use fixed width for measurement
         }
       },
       willDrawCell: (data: any) => {
         if (data.section === "body" && data.column.index === 1) {
-          data.cell.text = []; // Suppress default text to prevent overlap
+          data.cell.text = []; // Suppress default render
         }
       },
       didDrawCell: (data: any) => {
@@ -157,10 +151,8 @@ export async function generateSchedulePdf(
 
         const left = data.cell.x + 4;
         const width = data.cell.width - 8;
-        
-        // Calculate block height for vertical centering
-        const fullText = people.map((p, i) => p.name + (i === people.length - 1 ? "" : ", ")).join("");
-        const wrappedLines = cDoc.splitTextToSize(fullText, width);
+        const textToDraw = people.map((p, i) => p.name + (i === people.length - 1 ? "" : ", ")).join("");
+        const wrappedLines = cDoc.splitTextToSize(textToDraw, width);
         const blockHeight = wrappedLines.length * lineHeight;
         
         let x = left;
@@ -211,14 +203,13 @@ export async function generateSchedulePdf(
         cDoc.text('Sub-Div.: R.A', pageWidth / 2, lineY + 12, { align: 'center' });
         cDoc.text(formattedScheduleDate, pageWidth - margin - 5, lineY + 12, { align: 'right' });
 
-        // COMPLIANCE FOOTER
         cDoc.setFontSize(7).setTextColor(0);
         cDoc.text('Ref.: QHSE/P 11/ CL 09/Rev 06/ 01 Aug 2020', margin, pageHeight - 15);
         cDoc.text(`Page ${data.pageNumber}`, pageWidth - margin, pageHeight - 15, { align: 'right' });
       }
     });
 
-    const lastY = (currentDoc as any).lastAutoTable.finalY;
+    const lastY = (currentDoc as any).lastAutoTable?.finalY || 0;
     if (lastY + footerHeight + bottomMargin <= pageHeight) {
       finalDoc = currentDoc;
       finalTableY = lastY;
@@ -234,7 +225,6 @@ export async function generateSchedulePdf(
 
   if (!finalDoc) return;
 
-  // Final footer placement check
   let footerY = finalTableY;
   if (footerY + footerHeight + bottomMargin > pageHeight) {
     finalDoc.addPage();
@@ -253,16 +243,17 @@ export async function generateSchedulePdf(
 
   if (userSignature) {
     const labelWidth = 52;
-    const paddingVal = 4;
-    const maxWidth = (usableWidth / 2) - labelWidth - paddingVal * 2;
-    const maxHeight = (footerHeight / 2) - paddingVal * 2;
     try {
         const imgProps = finalDoc.getImageProperties(userSignature);
-        let imgW = imgProps.width;
-        let imgH = imgProps.height;
-        const scale = Math.min(maxWidth / imgW, maxHeight / imgH, 1);
-        finalDoc.addImage(userSignature, 'PNG', footerMidX + labelWidth + paddingVal, footerY + ((footerHeight/2) - (imgH * scale))/2, imgW * scale, imgH * scale);
-    } catch (e) { console.error(e); }
+        const imgRatio = imgProps.width / imgProps.height;
+        const targetHeight = 32;
+        const targetWidth = targetHeight * imgRatio;
+        const signatureX = footerMidX + labelWidth + 8;
+        const signatureY = footerY + (footerHeight / 2 - targetHeight) / 2;
+        finalDoc.addImage(userSignature, "PNG", signatureX, signatureY, targetWidth, targetHeight);
+    } catch (e) {
+        console.error(e);
+    }
   }
 
   finalDoc.text(`Date: ${formattedReportDate}`, footerMidX + 6, footerY + footerHeight / 2 + 15);
