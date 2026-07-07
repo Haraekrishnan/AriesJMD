@@ -698,7 +698,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             sendNotificationEmail({
                 to: [newAssignee.email],
                 subject: `Job Step Reassigned: ${job.title}`,
-                htmlBody: htmlBody,
+                htmlBody,
                 notificationSettings,
                 event: 'onNewTask',
                 involvedUser: newAssignee,
@@ -739,7 +739,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             sendNotificationEmail({
                 to: [assignee.email],
                 subject: `Job Step Assigned: ${job.title}`,
-                htmlBody: htmlBody,
+                htmlBody,
                 notificationSettings,
                 event: 'onNewTask',
                 involvedUser: assignee,
@@ -801,7 +801,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             sendNotificationEmail({
                 to: [assignee.email],
                 subject: `Step Returned for Job: ${job.title}`,
-                htmlBody: htmlBody,
+                htmlBody,
                 notificationSettings,
                 event: 'onTaskReturned', 
                 involvedUser: assignee,
@@ -858,7 +858,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             sendNotificationEmail({
                 to: [newAssignee.email],
                 subject: `Job Reopened & Step Assigned: ${job.title}`,
-                htmlBody: htmlBody,
+                htmlBody,
                 notificationSettings,
                 event: 'onNewTask',
                 involvedUser: newAssignee,

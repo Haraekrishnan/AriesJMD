@@ -91,7 +91,7 @@ export async function generateSchedulePdf(
     currentDoc.autoTable({
       startY: tableStartY,
       tableWidth: usableWidth,
-      margin: { left: margin, right: margin, top: tableStartY, bottom: 100 },
+      margin: { left: margin, right: margin, top: tableStartY + 5, bottom: 100 },
       head: [headRow],
       body: bodyRows,
       theme: 'grid',
@@ -124,7 +124,7 @@ export async function generateSchedulePdf(
         8: { cellWidth: 38 },
         9: { cellWidth: 'auto' },
       },
-      pageBreak: 'avoid',
+      pageBreak: 'auto',
       rowPageBreak: 'avoid',
       didParseCell: (data: any) => {
         if (data.section === "body" && data.column.index === 1) {
