@@ -124,17 +124,18 @@ export async function generateSchedulePdf(
         8: { cellWidth: 38 },
         9: { cellWidth: 'auto' },
       },
+      pageBreak: 'avoid',
+      rowPageBreak: 'avoid',
       didParseCell: (data: any) => {
         if (data.section === "body" && data.column.index === 1) {
             const raw = Array.isArray(data.cell.raw) ? data.cell.raw : [String(data.cell.raw)];
             const names = raw.map((r: string) => r.replace(/\s*\(.*?\)/, "")).join(", ");
-            // Use fixed width for height measurement to prevent stacking
             data.cell.text = data.doc.splitTextToSize(names, 167); 
         }
       },
       willDrawCell: (data: any) => {
         if (data.section === "body" && data.column.index === 1) {
-            data.cell.text = []; // Suppress default text to prevent ghosting
+            data.cell.text = []; 
         }
       },
       didDrawCell: (data: any) => {
@@ -234,7 +235,6 @@ export async function generateSchedulePdf(
     finalDoc.addPage();
     footerY = headerBottomY + 15;
     
-    // Manually redraw header on new footer page
     const cDoc = finalDoc;
     const contentStartY = headerStartY + 2;
     const lineY = contentStartY + 20;

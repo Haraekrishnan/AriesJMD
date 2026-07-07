@@ -184,7 +184,7 @@ export default function JobSchedulePage() {
                         </Button>
                     </div>
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2 w-full sm:w-auto">
-                        {scheduleForDate && scheduleForDate.items && scheduleForDate.items.length > 0 && (
+                        {scheduleForDate?.items && scheduleForDate.items.length > 0 && (
                             <>
                                 <div className="hidden sm:block space-y-1.5">
                                     <Label htmlFor="footer-date" className="text-xs">Report Date</Label>
