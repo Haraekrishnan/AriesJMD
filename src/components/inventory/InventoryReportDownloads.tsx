@@ -71,7 +71,10 @@ export default function InventoryReportDownloads({ items, isSummary = false, sum
       });
 
       for (const itemName in groupedItems) {
-        const sheetName = itemName.replace(/[\\/*?:]/g, "").substring(0, 31);
+        // Sanitize sheet name for Excel (max 31 chars, no forbidden chars)
+        let sheetName = itemName.replace(/[\\/*?:]/g, "").substring(0, 31).trim();
+        if (!sheetName) sheetName = "Item";
+        
         const worksheet = workbook.addWorksheet(sheetName);
 
         const headerRow = [

@@ -74,7 +74,11 @@ export async function generateJobWiseExcel(
     const logoBuffer = await fetchImageAsArrayBuffer('/images/Aries_logo.png').catch(() => null);
 
     for (const sheetJobNo in uniqueJobNosWithData) {
-        const worksheet = workbook.addWorksheet(sheetJobNo.replace(/[\\/*?:[\]]/g, "").substring(0, 31));
+        // Sanitize sheet name
+        let sheetName = sheetJobNo.replace(/[\\/*?:[\]]/g, "").substring(0, 31).trim();
+        if (!sheetName) sheetName = "Job Report";
+        
+        const worksheet = workbook.addWorksheet(sheetName);
 
         const profileIdsForThisJob = Array.from(uniqueJobNosWithData[sheetJobNo].profileIds);
         const plantSet = new Set<string>();
@@ -90,18 +94,18 @@ export async function generateJobWiseExcel(
 
         // HEADER
         // Row 1
-worksheet.getCell('A1').value = "Project : JMD";
-worksheet.getCell('A1').font = { bold: true, size: 14 };
+        worksheet.getCell('A1').value = "Project : JMD";
+        worksheet.getCell('A1').font = { bold: true, size: 14 };
 
-worksheet.getCell('B1').value = `Job Record for ${format(currentMonth, "MMMM yyyy")} - Plant: ${plantName}`;
-worksheet.getCell('B1').font = { size: 11 };
+        worksheet.getCell('B1').value = `Job Record for ${format(currentMonth, "MMMM yyyy")} - Plant: ${plantName}`;
+        worksheet.getCell('B1').font = { size: 11 };
 
-// Row 2
-worksheet.getCell('A2').value = "Job No";
-worksheet.getCell('A2').font = { bold: true };
+        // Row 2
+        worksheet.getCell('A2').value = "Job No";
+        worksheet.getCell('A2').font = { bold: true };
 
-worksheet.getCell('B2').value = sheetJobNo;
-worksheet.getCell('B2').font = { bold: true };
+        worksheet.getCell('B2').value = sheetJobNo;
+        worksheet.getCell('B2').font = { bold: true };
 
         const header = [
           "Name",

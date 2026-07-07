@@ -24,6 +24,7 @@ import type {
   WiredAngleGrinder,
   CordlessAngleGrinder,
   CordlessReciprocatingSaw,
+  TpCertList,
 } from '@/lib/types';
 import { format, parseISO, isValid } from 'date-fns';
 
@@ -199,10 +200,10 @@ export async function generateTpCertPdf(
               item.manufacturerSrNo,
               isHarness ? (item.chestCrollNo || '') : '',
               getCapacity(item.materialName),
-              index === 0 ? groupSize : '', // Show qty only on first row of group
+              index === 0 ? groupSize : '', 
               'OLD',
-              '', // Valid upto
-              ''  // Submit last test report
+              '', 
+              ''  
           ]);
           if (index === groupSize - 1) {
             lastRowIndices.push(body.length - 1);
@@ -220,7 +221,7 @@ export async function generateTpCertPdf(
           { content: '', colSpan: 3, styles: { fillColor: [240, 240, 240] } }
         ]
       ],
-      showFoot: 'lastPage', // Show footer only on the last page
+      showFoot: 'lastPage', 
       startY: 175,
       theme: 'grid',
       styles: { fontSize: 8, cellPadding: 2, halign: 'center', valign: 'middle' },
@@ -276,9 +277,11 @@ export async function generateTpCertExcel(
   
   const workbook = existingWorkbook || new ExcelJS.Workbook();
   
+  // Sanitize sheet name
   let sanitizedSheetName = (sheetName || "TP Certification List")
     .replace(/[\\/*?:[\]]/g, "")
-    .substring(0, 31);
+    .substring(0, 31).trim();
+  if (!sanitizedSheetName) sanitizedSheetName = "TP List";
 
   let sheetExists = workbook.getWorksheet(sanitizedSheetName);
   let counter = 1;
@@ -358,10 +361,10 @@ export async function generateTpCertExcel(
             item.manufacturerSrNo,
             isHarness ? (item.chestCrollNo || '') : '',
             getCapacity(item.materialName),
-            index === 0 ? group.length : '', // Show qty only on first row of group
+            index === 0 ? group.length : '', 
             'OLD',
-            '', // Valid
-            ''  // Report
+            '', 
+            ''  
         ]);
         row.eachCell({ includeEmpty: true }, (cell) => {
             cell.border = { 
@@ -376,7 +379,8 @@ export async function generateTpCertExcel(
   });
 
   // Final Total Row
-  const totalRowIndex = worksheet.lastRow!.number + 1;
+  const lastRow = worksheet.lastRow;
+  const totalRowIndex = (lastRow ? lastRow.number : headerRowIndex) + 1;
   const totalRow = worksheet.getRow(totalRowIndex);
   worksheet.mergeCells(`A${totalRowIndex}:E${totalRowIndex}`);
   totalRow.getCell(1).value = "TOTAL QUANTITY";
