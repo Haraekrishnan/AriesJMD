@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm, Controller } from 'react-hook-form';
@@ -128,7 +129,15 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
   };
 
   const handleCreate = (data: JobFormValues) => {
-    createJobProgress(data);
+    createJobProgress({
+        ...data,
+        dateFrom: data.dateFrom?.toISOString() || null,
+        dateTo: data.dateTo?.toISOString() || null,
+        steps: data.steps.map(step => ({
+            ...step,
+            dueDate: step.dueDate?.toISOString() || null
+        }))
+    });
     toast({ title: 'JMS Created', description: data.title });
     setIsOpen(false);
   };

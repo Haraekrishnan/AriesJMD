@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -418,35 +419,42 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         set(ref(rtdb, path), false);
     }, []);
 
-    const createJobProgress = useCallback((data: Omit<JobProgress, 'id' | 'creatorId' | 'createdAt' | 'lastUpdated' | 'status'> & { steps: Omit<JobStep, 'id' | 'status'>[] }) => {
+    const createJobProgress = useCallback((data: any) => {
         if (!user) return;
         const newRef = push(ref(rtdb, 'jobProgress'));
         const now = new Date().toISOString();
         
-        const stepsWithIds = data.steps.map((step, index) => {
+        const stepsWithIds = (data.steps || []).map((step: any, index: number) => {
             const isSelfAssigning = !!(step.assigneeId && step.assigneeId === user.id);
             return {
                 ...step,
                 id: `step-${index}`,
                 status: isSelfAssigning ? 'Acknowledged' : 'Pending' as JobStepStatus,
                 acknowledgedAt: isSelfAssigning ? now : null,
-                dueDate: step.dueDate || null,
+                dueDate: step.dueDate instanceof Date ? step.dueDate.toISOString() : (step.dueDate || null),
             };
         });
 
-        const newJob: Omit<JobProgress, 'id'> = {
+        const newJob = {
             ...data,
+            dateFrom: data.dateFrom instanceof Date ? data.dateFrom.toISOString() : (data.dateFrom || null),
+            dateTo: data.dateTo instanceof Date ? data.dateTo.toISOString() : (data.dateTo || null),
             creatorId: user.id,
             createdAt: now,
             lastUpdated: now,
             status: 'In Progress',
-            steps: stepsWithIds as JobStep[],
+            steps: stepsWithIds,
         };
 
-        set(newRef, newJob);
+        // Firebase RTDB set/update fails on undefined. Sanitize to null or remove.
+        const sanitizedJob = JSON.parse(JSON.stringify(newJob, (key, value) =>
+            value === undefined ? null : value
+        ));
+
+        set(newRef, sanitizedJob);
     }, [user]);
 
-    const updateJobProgress = useCallback((jobId: string, data: Partial<Omit<JobProgress, 'id' | 'steps' | 'creatorId' | 'createdAt'>>) => {
+    const updateJobProgress = useCallback((jobId: string, data: any) => {
         if (!user) return;
         const job = jobProgressById[jobId];
         if (!job) return;
@@ -462,7 +470,11 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const jobPath = `jobProgress/${jobId}`;
     
         Object.entries(data).forEach(([key, value]) => {
-          updates[`${jobPath}/${key}`] = value === undefined ? null : value;
+          let finalValue = value;
+          if (value instanceof Date) {
+              finalValue = value.toISOString();
+          }
+          updates[`${jobPath}/${key}`] = finalValue === undefined ? null : finalValue;
         });
     
         updates[`${jobPath}/lastUpdated`] = new Date().toISOString();

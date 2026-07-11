@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -145,21 +146,28 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
   }, [job, isOpen, form]);
 
   const onSubmit = (data: BuilderFormValues) => {
+    const formattedData = {
+        ...data,
+        dateFrom: data.dateFrom?.toISOString() || null,
+        dateTo: data.dateTo?.toISOString() || null,
+        sorItems: data.sorItems?.map(item => ({ 
+            ...item, 
+            dateWorkCompleted: item.dateWorkCompleted?.toISOString() || null 
+        })),
+    };
+
     if (isEditMode && job) {
-        updateJobProgress(job.id, {
-            ...data,
-            sorItems: data.sorItems?.map(item => ({ ...item, dateWorkCompleted: item.dateWorkCompleted?.toISOString() || null })),
-        });
+        updateJobProgress(job.id, formattedData);
         toast({ title: "JMS Data Updated", description: "The SOR items and details have been updated." });
     } else {
          createJobProgress({
-            ...data,
+            ...formattedData,
             steps: [{
                 name: 'JMS created',
                 assigneeId: data.assigneeId,
-                description: 'Initial step from builder'
+                description: 'Initial step from builder',
+                dueDate: null,
             }],
-            sorItems: data.sorItems?.map(item => ({ ...item, dateWorkCompleted: item.dateWorkCompleted?.toISOString() || null })),
         });
         toast({ title: "JMS Created", description: "The new JMS has been added to the tracker." });
     }
@@ -373,5 +381,3 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
     </Dialog>
   );
 }
-
-  
