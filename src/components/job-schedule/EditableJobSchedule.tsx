@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useMemo, useEffect, useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { format, subDays } from 'date-fns';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 
@@ -316,9 +316,30 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
                                 <Button variant="outline" className="w-full justify-start h-auto min-h-10 text-left">
                                   <div className="flex flex-wrap gap-1">
                                     {(controllerField.value || []).length > 0
-                                      ? controllerField.value.map(id => (
-                                          <Badge key={id} variant="secondary">{manpowerOptions.find(p => p.value === id)?.label || id}</Badge>
-                                        ))
+                                      ? controllerField.value.map(id => {
+                                          const option = manpowerOptions.find(p => p.value === id);
+                                          return (
+                                            <Badge 
+                                              key={id} 
+                                              variant="secondary"
+                                              className="flex items-center gap-1 py-0.5"
+                                            >
+                                              <span className="max-w-[150px] truncate">{option?.label || id}</span>
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.preventDefault();
+                                                  e.stopPropagation();
+                                                  const currentIds = form.getValues(`items.${index}.manpowerIds`);
+                                                  form.setValue(`items.${index}.manpowerIds`, currentIds.filter(val => val !== id));
+                                                }}
+                                                className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5"
+                                              >
+                                                <X className="h-3 w-3" />
+                                              </button>
+                                            </Badge>
+                                          );
+                                        })
                                       : <span className="text-muted-foreground">Select...</span>}
                                   </div>
                                 </Button>
@@ -451,7 +472,7 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <AlertDialogTrigger asChild>
-                                  <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10">
+                                  <Button type="button" variant="ghost" size="icon" className="h-3 w-3 text-destructive hover:text-destructive hover:bg-destructive/10">
                                     <Trash2 className="h-3 w-3" />
                                   </Button>
                                 </AlertDialogTrigger>
