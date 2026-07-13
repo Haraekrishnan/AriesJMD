@@ -325,18 +325,23 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
                                               className="flex items-center gap-1 py-0.5"
                                             >
                                               <span className="max-w-[150px] truncate">{option?.label || id}</span>
-                                              <button
-                                                type="button"
+                                              {/* 
+                                                  FIX: Replaced <button> with <span> with onClick handler. 
+                                                  In HTML, <a> or <button> cannot be a descendant of a <button>.
+                                                  The PopoverTrigger renders a <button>, and we were putting another <button> inside it.
+                                              */}
+                                              <span
+                                                role="button"
                                                 onClick={(e) => {
                                                   e.preventDefault();
                                                   e.stopPropagation();
                                                   const currentIds = form.getValues(`items.${index}.manpowerIds`);
                                                   form.setValue(`items.${index}.manpowerIds`, currentIds.filter(val => val !== id));
                                                 }}
-                                                className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5"
+                                                className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5 cursor-pointer flex items-center justify-center"
                                               >
                                                 <X className="h-3 w-3" />
-                                              </button>
+                                              </span>
                                             </Badge>
                                           );
                                         })
