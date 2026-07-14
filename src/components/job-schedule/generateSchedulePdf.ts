@@ -158,10 +158,33 @@ export async function generateSchedulePdf(
         });
 
         const left = data.cell.x + 4;
-        const width = data.cell.width - 8;
-        
-        let x = left;
-        let y = data.cell.y + padding + (lineHeight * 0.8);
+const width = data.cell.width - 8;
+
+// Calculate total height of wrapped text
+let lines = 1;
+let currentWidth = 0;
+
+people.forEach((p, idx) => {
+  const suffix = idx === people.length - 1 ? "" : ", ";
+  const text = p.name + suffix;
+
+  cDoc.setFont("times", "normal");
+  cDoc.setFontSize(fSize);
+
+  const w = cDoc.getTextWidth(text);
+
+  if (currentWidth + w > width) {
+    lines++;
+    currentWidth = w;
+  } else {
+    currentWidth += w;
+  }
+});
+
+// Vertically center the block of text
+const textHeight = lines * lineHeight;
+let x = left;
+let y = data.cell.y + (data.cell.height - textHeight) / 2 + lineHeight * 0.8;
 
         people.forEach((p, idx) => {
           const suffix = idx === people.length - 1 ? "" : ", ";
