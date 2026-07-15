@@ -6,7 +6,7 @@ import { useManpower } from '@/contexts/manpower-provider';
 import { useAuth } from '@/contexts/auth-provider';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
-import { BedSingle, PlusCircle, User, UserX, Edit, Trash2 } from 'lucide-react';
+import { BedSingle, PlusCircle, User, UserX, Edit, Trash2, AlertCircle } from 'lucide-react';
 import AssignOccupantDialog from './assign-occupant-dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import type { Building, Room, Bed } from '@/lib/types';
@@ -38,7 +38,7 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding, onEdit
     const handleUnassign = async (buildingId: string, roomId: string, bedId: string) => {
         try {
             await unassignOccupant(buildingId, roomId, bedId);
-            toast({ title: 'Bed Unassigned', description: 'The occupant has been removed from the bed.' });
+            toast({ title: 'Bed Unassigned', description: 'The occupancy record has been cleared.' });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Unassignment Failed', description: error.message });
         }
@@ -160,20 +160,28 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding, onEdit
                                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mt-2">
                                                 {bedsArray.map((bed) => {
                                                     const occupant = bed.occupantId ? manpowerProfiles.find(p => p.id === bed.occupantId) : null;
-                                                    const isOccupied = !!occupant;
+                                                    // CRITICAL FIX: A bed is occupied if it has an occupantId, 
+                                                    // even if the manpower profile is missing or loading.
+                                                    const isOccupied = !!bed.occupantId;
+                                                    const isStale = isOccupied && !occupant;
+
                                                     return (
                                                         <div 
                                                           key={bed.id} 
                                                           className={cn(
-                                                            "p-3 border-2 rounded-lg flex flex-col items-center justify-center text-center relative",
+                                                            "p-3 border-2 rounded-lg flex flex-col items-center justify-center text-center relative min-h-[120px]",
                                                             isOccupied ? "bg-green-100 dark:bg-green-900/40 border-green-400" : "bg-red-100 dark:bg-red-900/40 border-red-400"
                                                           )}
                                                         >
                                                             <BedSingle className={cn("h-6 w-6 mb-2", isOccupied ? "text-green-700" : "text-red-700")} />
                                                             <p className="font-medium text-sm">Bed {bed.bedNumber}</p>
-                                                            {occupant ? (
+                                                            {isOccupied ? (
                                                                 <>
-                                                                    <p className="text-xs text-muted-foreground mt-1">{occupant.name}</p>
+                                                                    <p className={cn("text-xs mt-1", isStale ? "text-destructive font-bold flex items-center gap-1" : "text-muted-foreground")}>
+                                                                        {isStale && <AlertCircle className="h-3 w-3" />}
+                                                                        {occupant?.name || "Inconsistent Data"}
+                                                                    </p>
+                                                                    {isStale && <p className="text-[10px] text-destructive leading-tight">Profile missing. Unassign to clear.</p>}
                                                                     <div className="flex items-center gap-1 mt-2">
                                                                         <AlertDialog>
                                                                             <AlertDialogTrigger asChild>
@@ -183,8 +191,13 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding, onEdit
                                                                             </AlertDialogTrigger>
                                                                             <AlertDialogContent>
                                                                                 <AlertDialogHeader>
-                                                                                    <AlertDialogTitle>Unassign {occupant.name}?</AlertDialogTitle>
-                                                                                    <AlertDialogDescription>Are you sure you want to remove this person from this bed?</AlertDialogDescription>
+                                                                                    <AlertDialogTitle>Unassign Occupant?</AlertDialogTitle>
+                                                                                    <AlertDialogDescription>
+                                                                                        {isStale 
+                                                                                            ? "This bed has a stale occupant record. Unassigning will clear the bed so it can be used again."
+                                                                                            : `Are you sure you want to remove ${occupant?.name} from this bed?`
+                                                                                        }
+                                                                                    </AlertDialogDescription>
                                                                                 </AlertDialogHeader>
                                                                                 <AlertDialogFooter>
                                                                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -206,7 +219,7 @@ export default function AccommodationDetails({ onAddRoom, onEditBuilding, onEdit
                                                             )}
                                                             <div className="absolute top-1 right-1 flex">
                                                                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditBed(building.id, room.id, bed)}><Edit className="h-3 w-3"/></Button>
-                                                                {!bed.occupantId && (
+                                                                {!isOccupied && (
                                                                     <AlertDialog>
                                                                         <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive/80"><Trash2 className="h-3 w-3"/></Button></AlertDialogTrigger>
                                                                         <AlertDialogContent>
