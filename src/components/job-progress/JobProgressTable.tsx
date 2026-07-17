@@ -85,11 +85,11 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                       key={job.id} 
                       className={cn(
                         "hover:bg-blue-100/50 cursor-pointer border-b border-slate-300 transition-colors",
-                        index % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-[#F3F7FB] dark:bg-slate-800/50"
+                        index % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-slate-50/50 dark:bg-slate-800/50"
                       )}
                       onClick={() => onViewJob(job)}
                     >
-                      <TableCell className="border-r border-slate-300 text-center font-bold bg-slate-50/80 dark:bg-slate-900/50">{index + 1}</TableCell>
+                      <TableCell className="border-r border-slate-300 text-center font-bold bg-slate-100/30 dark:bg-slate-900/50">{index + 1}</TableCell>
                       <TableCell className="border-r border-slate-300 font-semibold">{job.workOrderNo || 'N/A'}</TableCell>
                       <TableCell className="border-r border-slate-300 uppercase font-bold">{project?.name || 'N/A'}{job.plantUnit ? ` / ${job.plantUnit}` : ''}</TableCell>
                       <TableCell className="border-r border-slate-300 font-medium uppercase">{job.title}</TableCell>
@@ -117,8 +117,8 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                             key={stepName} 
                             className={cn(
                               "border-r border-slate-300 p-1 text-center min-h-[40px] group text-[11px] relative",
-                              isCompleted && "bg-green-50/30",
-                              isUnacknowledged ? "bg-orange-50" : (isAcknowledgedPending ? "bg-yellow-50" : "")
+                              isCompleted && "bg-green-50/20",
+                              isUnacknowledged ? "bg-orange-50/40" : (isAcknowledgedPending ? "bg-yellow-50/40" : "")
                             )}
                           >
                             {isLongDelay && <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-600 z-10" />}
@@ -175,14 +175,13 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
         </ScrollArea>
       </TooltipProvider>
       
-      {/* Footer Summary - Like an Excel info bar */}
       <div className="bg-[#f3f4f6] p-1 px-4 border-t flex justify-between items-center text-[10px] font-medium text-slate-500 italic shrink-0">
         <div className="flex gap-4">
           <span>TOTAL JOBS: {jobs.length}</span>
           <span>COMPLETED: {jobs.filter(j => j.status === 'Completed').length}</span>
         </div>
         <div className="flex gap-2 items-center">
-            <div className="flex items-center gap-1"><div className="w-2 h-2 bg-green-200 border border-green-400"></div> Step Done</div>
+            <div className="flex items-center gap-1"><div className="w-2 h-2 bg-green-100 border border-green-400"></div> Step Done</div>
             <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-yellow-100 border border-yellow-500"></div> In Progress (PENDING)</div>
             <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-orange-100 border border-orange-300"></div> Not Acknowledged (NOT ACK)</div>
             <div className="flex items-center gap-1 ml-2">
