@@ -107,7 +107,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                         
                         // Calculate days since last update for alerting
                         const daysElapsed = differenceInDays(new Date(), parseISO(job.lastUpdated));
-                        const isLongDelay = daysElapsed > 2;
+                        const isLongDelay = daysElapsed > 2 && (isUnacknowledged || isAcknowledgedPending);
 
                         return (
                           <TableCell 
@@ -128,7 +128,12 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                                 <TooltipTrigger asChild>
                                   <div className="flex flex-col items-center gap-0.5 px-1">
                                     <div className="flex items-center gap-1">
-                                      {isLongDelay && <AlertCircle className="h-3.5 w-3.5 text-red-600 animate-pulse shrink-0" />}
+                                      {isLongDelay && (
+                                        <AlertCircle 
+                                          className="h-4 w-4 text-white fill-red-600 animate-pulse shrink-0" 
+                                          strokeWidth={3}
+                                        />
+                                      )}
                                       <Badge 
                                         variant={step?.isReturned ? "destructive" : "outline"} 
                                         className={cn(
@@ -180,7 +185,10 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             <div className="flex items-center gap-1"><div className="w-2 h-2 bg-green-200 border border-green-400"></div> Step Done</div>
             <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-yellow-100 border border-yellow-500"></div> In Progress (PENDING)</div>
             <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-orange-100 border border-orange-300"></div> Not Acknowledged (NOT ACK)</div>
-            <div className="flex items-center gap-1 ml-2"><AlertCircle className="h-3 w-3 text-red-600" /> Action Overdue (&gt;2 Days)</div>
+            <div className="flex items-center gap-1 ml-2">
+              <AlertCircle className="h-3.5 w-3.5 text-white fill-red-600" strokeWidth={3} /> 
+              Action Overdue (&gt;2 Days)
+            </div>
         </div>
       </div>
     </div>
