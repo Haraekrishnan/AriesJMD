@@ -57,7 +57,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <BroadcastFeed />
         </div>
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
-          <div className="mt-4">{children}</div>
+          <div className="h-full flex flex-col">{children}</div>
         </main>
       </div>
     </div>
