@@ -145,7 +145,7 @@ export default function TimesheetTrackerTable({
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden border rounded-md shadow-sm bg-white dark:bg-slate-950">
+    <div className="flex-1 flex flex-col overflow-hidden border rounded-md shadow-sm bg-white dark:bg-slate-950 h-full">
       <ScrollArea className="flex-1">
         <div className="min-w-max">
           <Table className="border-collapse text-[11px] font-sans">
@@ -186,7 +186,14 @@ export default function TimesheetTrackerTable({
           </Table>
         </div>
         <ScrollBar orientation="horizontal" />
+        <ScrollBar orientation="vertical" />
       </ScrollArea>
+      <div className="bg-[#f3f4f6] p-1 px-4 border-t flex justify-between items-center text-[10px] font-medium text-slate-500 italic shrink-0">
+        <div className="flex gap-4">
+          <span>TOTAL TIMESHEETS: {timesheets.length}</span>
+          <span>ACKNOWLEDGED: {timesheets.filter(ts => ts.status === 'Office Acknowledged').length}</span>
+        </div>
+      </div>
     </div>
   );
 }
