@@ -88,11 +88,11 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                     <TableCell className="border-r border-slate-300 uppercase">{project?.name || 'N/A'}{job.plantUnit ? ` / ${job.plantUnit}` : ''}</TableCell>
                     <TableCell className="border-r border-slate-300 font-medium uppercase">{job.title}</TableCell>
                     <TableCell className="border-r border-slate-300 text-blue-700 font-bold">{job.jmsNo || '-'}</TableCell>
-                    <TableCell className="border-r-2 border-black text-right font-mono">
+                    <TableCell className="border-r-2 border-black text-right font-bold">
                       {job.amount ? new Intl.NumberFormat('en-IN').format(job.amount) : '-'}
                     </TableCell>
-                    <TableCell className="border-r border-slate-300 text-center text-muted-foreground">{formatDate(job.dateFrom)}</TableCell>
-                    <TableCell className="border-r-2 border-black text-center text-muted-foreground">{formatDate(job.dateTo)}</TableCell>
+                    <TableCell className="border-r border-slate-300 text-center">{formatDate(job.dateFrom)}</TableCell>
+                    <TableCell className="border-r-2 border-black text-center">{formatDate(job.dateTo)}</TableCell>
 
                     {/* Workflow Step Cells */}
                     {JOB_PROGRESS_STEPS.map((stepName) => {
@@ -113,14 +113,14 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                           {isCompleted ? (
                             <div className="flex flex-col items-center gap-0.5">
                               <Check className="h-3 w-3 text-green-600" />
-                              <span className="text-[9px] text-green-700 font-bold">{formatDate(step.completedAt)}</span>
+                              <span className="text-green-700 font-bold">{formatDate(step.completedAt)}</span>
                             </div>
                           ) : isPending ? (
                             <div className="flex flex-col items-center gap-0.5 px-1">
-                              <Badge variant={step?.isReturned ? "destructive" : "outline"} className="text-[9px] h-4 px-1 py-0 border-yellow-500 bg-yellow-100 text-yellow-800">
+                              <Badge variant={step?.isReturned ? "destructive" : "outline"} className="text-[10px] h-4 px-1 py-0 border-yellow-500 bg-yellow-100 text-yellow-800">
                                 {step?.isReturned ? 'RETURNED' : 'PENDING'}
                               </Badge>
-                              <span className="text-[9px] font-semibold truncate w-full text-center" title={assignee?.name}>
+                              <span className="font-semibold truncate w-full text-center" title={assignee?.name}>
                                 {assignee ? assignee.name.split(' ')[0] : 'Unassigned'}
                               </span>
                             </div>
