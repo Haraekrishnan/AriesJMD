@@ -91,11 +91,11 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                       <TableCell className="border-r border-slate-300 uppercase">{project?.name || 'N/A'}{job.plantUnit ? ` / ${job.plantUnit}` : ''}</TableCell>
                       <TableCell className="border-r border-slate-300 font-medium uppercase">{job.title}</TableCell>
                       <TableCell className="border-r border-slate-300 text-blue-700 font-bold">{job.jmsNo || '-'}</TableCell>
-                      <TableCell className="border-r-2 border-black text-right font-bold">
+                      <TableCell className="border-r-2 border-black text-right font-bold text-[11px]">
                         {job.amount ? new Intl.NumberFormat('en-IN').format(job.amount) : '-'}
                       </TableCell>
-                      <TableCell className="border-r border-slate-300 text-center">{formatDate(job.dateFrom)}</TableCell>
-                      <TableCell className="border-r-2 border-black text-center">{formatDate(job.dateTo)}</TableCell>
+                      <TableCell className="border-r border-slate-300 text-center text-[11px]">{formatDate(job.dateFrom)}</TableCell>
+                      <TableCell className="border-r-2 border-black text-center text-[11px]">{formatDate(job.dateTo)}</TableCell>
 
                       {/* Workflow Step Cells */}
                       {JOB_PROGRESS_STEPS.map((stepName) => {
@@ -105,7 +105,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                         const isAcknowledgedPending = step?.status === 'Acknowledged';
                         const assignee = step ? users.find(u => u.id === step.assigneeId) : null;
                         
-                        // Calculate days since last update for the tooltip
+                        // Calculate days since last update for alerting
                         const daysElapsed = differenceInDays(new Date(), parseISO(job.lastUpdated));
                         const isLongDelay = daysElapsed > 2;
 
@@ -113,7 +113,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                           <TableCell 
                             key={stepName} 
                             className={cn(
-                              "border-r border-slate-300 p-1 text-center min-h-[40px] group",
+                              "border-r border-slate-300 p-1 text-center min-h-[40px] group text-[11px]",
                               isCompleted && "bg-green-50/30",
                               isUnacknowledged ? "bg-orange-50" : (isAcknowledgedPending ? "bg-yellow-50" : "")
                             )}
@@ -127,17 +127,20 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <div className="flex flex-col items-center gap-0.5 px-1">
-                                    <Badge 
-                                      variant={step?.isReturned ? "destructive" : "outline"} 
-                                      className={cn(
-                                        "text-[9px] h-4 px-1 py-0 font-black",
-                                        isUnacknowledged 
-                                          ? "bg-orange-100 text-orange-700 border-orange-300" 
-                                          : "bg-yellow-100 text-yellow-800 border-yellow-500"
-                                      )}
-                                    >
-                                      {step?.isReturned ? 'RETURNED' : isUnacknowledged ? 'NOT ACK' : 'PENDING'}
-                                    </Badge>
+                                    <div className="flex items-center gap-1">
+                                      {isLongDelay && <AlertCircle className="h-3.5 w-3.5 text-red-600 animate-pulse shrink-0" />}
+                                      <Badge 
+                                        variant={step?.isReturned ? "destructive" : "outline"} 
+                                        className={cn(
+                                          "text-[10px] h-4 px-1 py-0 font-black",
+                                          isUnacknowledged 
+                                            ? "bg-orange-100 text-orange-700 border-orange-300" 
+                                            : "bg-yellow-100 text-yellow-800 border-yellow-500"
+                                        )}
+                                      >
+                                        {step?.isReturned ? 'RETURNED' : isUnacknowledged ? 'NOT ACK' : 'PENDING'}
+                                      </Badge>
+                                    </div>
                                     <span className="font-bold truncate w-full text-center text-foreground" title={assignee?.name}>
                                       {assignee ? assignee.name.split(' ')[0] : 'Unassigned'}
                                     </span>
@@ -177,6 +180,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             <div className="flex items-center gap-1"><div className="w-2 h-2 bg-green-200 border border-green-400"></div> Step Done</div>
             <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-yellow-100 border border-yellow-500"></div> In Progress (PENDING)</div>
             <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-orange-100 border border-orange-300"></div> Not Acknowledged (NOT ACK)</div>
+            <div className="flex items-center gap-1 ml-2"><AlertCircle className="h-3 w-3 text-red-600" /> Action Overdue (&gt;2 Days)</div>
         </div>
       </div>
     </div>
