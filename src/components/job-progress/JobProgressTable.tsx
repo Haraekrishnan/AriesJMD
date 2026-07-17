@@ -47,13 +47,6 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
     );
   }
 
-  // Width calculations for sticky columns:
-  // SL: 40px (w-10)
-  // WO: 128px (w-32)
-  // PLANT: 160px (w-40)
-  // TITLE: 256px (w-64)
-  // JMS: 144px (w-36)
-
   return (
     <div className="flex-1 flex flex-col overflow-hidden border rounded-md shadow-sm bg-white dark:bg-slate-950 h-full">
       <TooltipProvider>
@@ -87,7 +80,8 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                 {sortedJobs.map((job, index) => {
                   const project = projects.find(p => p.id === job.projectId);
                   const isEven = index % 2 !== 0;
-                  const rowBg = isEven ? "bg-slate-50/50 dark:bg-slate-800/50" : "bg-white dark:bg-slate-900";
+                  // Use solid background colors to prevent transparency during scrolling
+                  const rowBg = isEven ? "bg-slate-50 dark:bg-slate-800" : "bg-white dark:bg-slate-900";
                   
                   return (
                     <TableRow 
