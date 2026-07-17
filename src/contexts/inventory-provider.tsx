@@ -252,20 +252,10 @@ type InventoryContextType = {
   updatedPpeRequestCount: number;
 };
 
-const createDataListener = <T extends {}>(
-    path: string,
-    setData: React.Dispatch<React.SetStateAction<Record<string, T>>>,
-) => {
-    const dbRef = ref(rtdb, path);
-    const unsubscribe = onValue(dbRef, (snapshot) => {
-        const data = (snapshot.val() || {}) as Record<string, T>;
-        const processedData = Object.keys(data).reduce((acc, key) => {
-            acc[key] = { ...data[key], id: key };
-            return acc;
-        }, {} as Record<string, T>);
-        setData(processedData);
-    });
-    return unsubscribe;
+const sanitizeData = (data: any) => {
+    return JSON.parse(JSON.stringify(data, (key, value) => {
+        return value === undefined ? null : value;
+    }));
 };
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
@@ -353,7 +343,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         let pendingConsumable = 0, updatedConsumable = 0;
         let pendingGeneral = 0, updatedGeneral = 0;
         
-        const isStoreApprover = can.approve_store_requests;
+        const isStoreApprover = user.canApproveTransfers || user.role === 'Admin' || can.approve_transfer_requests;
 
         internalRequests.forEach(r => {
             const isConsumable = r.items?.some(item => item.inventoryItemId && consumableItemIds.has(item.inventoryItemId));
@@ -375,7 +365,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         });
         
         return { pendingConsumableRequestCount: pendingConsumable, updatedConsumableRequestCount: updatedConsumable, pendingGeneralRequestCount: pendingGeneral, updatedGeneralRequestCount: updatedGeneral };
-    }, [user, internalRequests, can.approve_store_requests, consumableItemIds]);
+    }, [user, internalRequests, can.approve_transfer_requests, consumableItemIds]);
 
     const { pendingPpeRequestCount, updatedPpeRequestCount } = useMemo(() => {
         if (!user) return { pendingPpeRequestCount: 0, updatedPpeRequestCount: 0 };
@@ -563,7 +553,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             certification: data.certification || null,
             purchaseDate: data.purchaseDate || null,
         };
-        update(ref(rtdb, `inventoryItems/${id}`), updates);
+        const sanitizedUpdates = sanitizeData(updates);
+        update(ref(rtdb, `inventoryItems/${id}`), sanitizedUpdates);
     }, []);
 
     const batchUpdateInventoryItems = useCallback((updates: { id: string, data: Partial<InventoryItem> }[]) => {
@@ -574,9 +565,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         
         updates.forEach(({ id, data }) => {
             const basePath = `/inventoryItems/${id}`;
-            for (const key in data) {
+            const sanitizedData = sanitizeData(data);
+            for (const key in sanitizedData) {
                 const path = `${basePath}/${key}`;
-                dbUpdates[path] = data[key as keyof typeof data];
+                dbUpdates[path] = sanitizedData[key];
             }
             dbUpdates[`${basePath}/lastUpdated`] = timestamp;
         });
@@ -591,9 +583,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const itemsToUpdate = inventoryItems.filter(item => item.name === itemName && item.tpInspectionDueDate === originalDueDate);
         if(itemsToUpdate.length === 0) return;
         const dbUpdates: { [key: string]: any } = {};
+        const sanitizedUpdates = sanitizeData(updates);
         itemsToUpdate.forEach(item => {
-            dbUpdates[`/inventoryItems/${item.id}/tpInspectionDueDate`] = updates.tpInspectionDueDate || item.tpInspectionDueDate;
-            dbUpdates[`/inventoryItems/${item.id}/certificateUrl`] = updates.certificateUrl || item.certificateUrl;
+            dbUpdates[`/inventoryItems/${item.id}/tpInspectionDueDate`] = sanitizedUpdates.tpInspectionDueDate || item.tpInspectionDueDate;
+            dbUpdates[`/inventoryItems/${item.id}/certificateUrl`] = sanitizedUpdates.certificateUrl || item.certificateUrl;
         });
         update(ref(rtdb), dbUpdates);
     }, [inventoryItems]);
@@ -606,11 +599,13 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
         const dbUpdates: { [key: string]: any } = {};
         const timestamp = new Date().toISOString();
+        const sanitizedUpdates = sanitizeData(updates);
+
         itemsToUpdate.forEach(item => {
             const itemPath = `/inventoryItems/${item.id}`;
-            if (updates.inspectionDate) dbUpdates[`${itemPath}/inspectionDate`] = updates.inspectionDate;
-            if (updates.inspectionDueDate) dbUpdates[`${itemPath}/inspectionDueDate`] = updates.inspectionDueDate;
-            if (updates.inspectionCertificateUrl) dbUpdates[`${itemPath}/inspectionCertificateUrl`] = updates.inspectionCertificateUrl;
+            if (sanitizedUpdates.inspectionDate) dbUpdates[`${itemPath}/inspectionDate`] = sanitizedUpdates.inspectionDate;
+            if (sanitizedUpdates.inspectionDueDate) dbUpdates[`${itemPath}/inspectionDueDate`] = sanitizedUpdates.inspectionDueDate;
+            if (sanitizedUpdates.inspectionCertificateUrl) dbUpdates[`${itemPath}/inspectionCertificateUrl`] = sanitizedUpdates.inspectionCertificateUrl;
             dbUpdates[`${itemPath}/lastUpdated`] = timestamp;
         });
         update(ref(rtdb), dbUpdates);
@@ -676,7 +671,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
             if (Object.keys(dataToSave).length > 0) {
                 dataToSave.lastUpdated = new Date().toISOString();
-                updates[`/inventoryItems/${existingItem.id}`] = { ...existingItem, ...dataToSave };
+                updates[`/inventoryItems/${existingItem.id}`] = sanitizeData({ ...existingItem, ...dataToSave });
                 updatedCount++;
             }
         });
@@ -756,7 +751,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             creatorId: user.id,
             createdAt: new Date().toISOString(),
         };
-        set(newRef, newList);
+        const finalData = sanitizeData(newList);
+        set(newRef, finalData);
         addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
     }, [user, addActivityLog]);
 
@@ -767,7 +763,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         ariesId: item.ariesId || null,
         chestCrollNo: (item as any).chestCrollNo || null,
         }));
-        const sanitizedData = { ...data, items: sanitizedItems };
+        const sanitizedData = sanitizeData({ ...data, items: sanitizedItems });
         update(ref(rtdb, `tpCertLists/${id}`), sanitizedData);
     }, []);
 
@@ -793,7 +789,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 status: 'Pending',
                 requestedById: requestData.requestedById || null,
             };
-            await set(newRequestRef, newRequest);
+            const finalData = sanitizeData(newRequest);
+            await set(newRequestRef, finalData);
             addActivityLog(user.id, 'Inventory Transfer Request Created');
     
             const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge', 'Admin'].includes(u.role));
@@ -842,7 +839,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 ...item,
                 ariesId: item.ariesId || null,
             }));
-            const finalData = { ...data, items: sanitizedItems };
+            const finalData = sanitizeData({ ...data, items: sanitizedItems });
             await update(ref(rtdb, `inventoryTransferRequests/${id}`), finalData);
             return true;
         } catch (error) {
@@ -889,7 +886,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                     itemId: item.itemId,
                     itemType: item.itemType,
                     ariesId: item.ariesId || null,
-                    chestCrollNo: (allItems.find(i => i.id === item.itemId) as any)?.chestCrollNo || null,
+                    chestCrollNo: (inventoryItems.find(i => i.id === item.itemId))?.chestCrollNo || null,
                 })),
             };
             addTpCertList(listData);
@@ -923,10 +920,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 involvedUser: requester
             });
         }
-    }, [user, addActivityLog, addTpCertList, users, projects, notificationSettings]);
+    }, [user, addActivityLog, addTpCertList, users, projects, notificationSettings, inventoryItems]);
     
     const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
-        if (!user || !can.approve_store_requests) return;
+        if (!user || !user.canApproveTransfers) return;
         const request = inventoryTransferRequestsById[requestId];
         if (!request) return;
 
@@ -968,7 +965,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 creatorUser: user,
             });
         }
-    }, [user, can.approve_store_requests, addActivityLog, inventoryTransferRequestsById, users, notificationSettings]);
+    }, [user, addActivityLog, inventoryTransferRequestsById, users, notificationSettings]);
     
     const disputeInventoryTransfer = useCallback((requestId: string, comment: string) => {
         if (!user) return;
@@ -1047,7 +1044,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         requestDate: new Date().toISOString(),
         comments: [{ id: 'c-cert-1', userId: user.id, text: 'Request created.', date: new Date().toISOString(), eventId: 'cert-req-1' }],
         };
-        set(newRequestRef, newRequest);
+        const finalData = sanitizeData(newRequest);
+        set(newRequestRef, finalData);
         
         addActivityLog(user.id, "Certificate Request Created");
 
@@ -1133,13 +1131,13 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const addFn = (item: Omit<T, 'id'>) => {
           if (!user) return;
           const newRef = push(ref(rtdb, pluralName));
-          set(newRef, item);
+          set(newRef, sanitizeData(item));
           const activityDetail = (item as any).name || (item as any).equipmentName || (item as any).vehicleNumber || `ID: ${newRef.key}`;
           addActivityLog(user.id, `${pluralName.slice(0, -1)} Added`, activityDetail);
         };
         const updateFn = (item: T) => {
           const { id, ...data } = item;
-          update(ref(rtdb, `${pluralName}/${id}`), data);
+          update(ref(rtdb, `${pluralName}/${id}`), sanitizeData(data));
         };
         const deleteFn = (itemId: string) => {
           remove(ref(rtdb, `${pluralName}/${itemId}`));
@@ -1168,7 +1166,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         if(!user) return;
         const newRef = push(ref(rtdb, 'machineLogs'));
         const newLog: Omit<MachineLog, 'id'> = { ...log, machineId, loggedByUserId: user.id };
-        set(newRef, newLog);
+        set(newRef, sanitizeData(newLog));
     }, [user]);
 
     const deleteMachineLog = useCallback((logId: string) => {
@@ -1193,7 +1191,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
           comments: [{ id: 'comment-initial', userId: user.id, text: 'Request created.', date: new Date().toISOString(), eventId: 'internal-request' }],
           viewedByRequester: true,
         };
-        set(newRequestRef, newRequest);
+        set(newRequestRef, sanitizeData(newRequest));
         addActivityLog(user.id, 'Internal Store Request Created');
 
         const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge', 'Admin'].includes(u.role));
@@ -1244,12 +1242,12 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       }, [user]);
     
       const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus) => {
-        if (!user || !can.approve_store_requests) return;
+        if (!user || !(user.canApproveTransfers || user.role === 'Admin')) return;
         update(ref(rtdb, `internalRequests/${requestId}`), { status, approverId: user.id, acknowledgedByRequester: false });
-      }, [user, can.approve_store_requests]);
+      }, [user]);
     
       const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment?: string) => {
-        if (!user || !can.approve_store_requests) return;
+        if (!user || !(user.canApproveTransfers || user.role === 'Admin')) return;
         
         const request = internalRequestsById[requestId];
         if (!request) return;
@@ -1260,7 +1258,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const requestedItem = request.items[itemIndex];
 
         if (status === 'Issued') {
-            const itemsToCheck = isConsumable(request) ? consumableItems : inventoryItems;
+            const isConsumableReq = request.items.some(item => item.inventoryItemId && consumableItemIds.has(item.inventoryItemId));
+            const itemsToCheck = isConsumableReq ? consumableItems : inventoryItems;
             const stockItem = itemsToCheck.find(i => i.id === requestedItem.inventoryItemId);
             if (stockItem && stockItem.quantity !== undefined && stockItem.quantity < requestedItem.quantity) {
                 toast({
@@ -1309,7 +1308,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
 
         if (status === 'Issued' && requestedItem.inventoryItemId) {
-            const stockItem = (isConsumable(request) ? consumableItems : inventoryItems).find(i => i.id === requestedItem.inventoryItemId);
+            const isConsumableReq = request.items.some(item => item.inventoryItemId && consumableItemIds.has(item.inventoryItemId));
+            const stockItem = (isConsumableReq ? consumableItems : inventoryItems).find(i => i.id === requestedItem.inventoryItemId);
             if (stockItem && stockItem.quantity !== undefined) {
                 const newQuantity = Math.max(0, stockItem.quantity - requestedItem.quantity);
                 updates[`inventoryItems/${requestedItem.inventoryItemId}/quantity`] = newQuantity;
@@ -1317,24 +1317,20 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
     
         update(ref(rtdb), updates);
-      }, [user, can.approve_store_requests, internalRequestsById, inventoryItems, toast, consumableItems, users, notificationSettings]);
-    
-      const isConsumable = (request: InternalRequest) => {
-          return request.items.some(item => item.inventoryItemId && consumableItemIds.has(item.inventoryItemId));
-      }
+      }, [user, internalRequestsById, inventoryItems, toast, consumableItems, users, notificationSettings, consumableItemIds]);
     
       const updateInternalRequestItem = useCallback((requestId: string, updatedItem: InternalRequestItem, originalItem: InternalRequestItem, reason?: string) => {
         if (!user) return;
         const request = internalRequestsById[requestId];
         if (!request) return;
     
-        const canEdit = can.approve_store_requests || user.id === request.requesterId;
+        const canEdit = (user.canApproveTransfers || user.role === 'Admin') || user.id === request.requesterId;
         if (!canEdit) return;
     
         const itemIndex = request.items.findIndex(i => i.id === updatedItem.id);
         if (itemIndex === -1) return;
     
-        const sanitizedItem = { ...updatedItem, inventoryItemId: updatedItem.inventoryItemId || null };
+        const sanitizedItem = sanitizeData({ ...updatedItem, inventoryItemId: updatedItem.inventoryItemId || null });
         update(ref(rtdb, `internalRequests/${requestId}/items/${itemIndex}`), sanitizedItem);
     
         const commentParts: string[] = [];
@@ -1376,7 +1372,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 });
             }
         }
-      }, [user, can.approve_store_requests, internalRequestsById, addInternalRequestComment, users, notificationSettings]);
+      }, [user, internalRequestsById, addInternalRequestComment, users, notificationSettings]);
       
     
       const markInternalRequestAsViewed = useCallback((requestId: string) => {
@@ -1413,7 +1409,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
           comments: [{ id: 'comment-initial', userId: user.id, text: 'Request created.', date: new Date().toISOString(), eventId: 'ppe-request' }],
           viewedByRequester: true,
         };
-        set(newRequestRef, newRequest);
+        set(newRequestRef, sanitizeData(newRequest));
         addActivityLog(user.id, 'PPE Request Created', `For ${requestData.manpowerId}`);
         
         const employee = manpowerProfiles.find(p => p.id === requestData.manpowerId);
@@ -1464,7 +1460,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const newRef = push(ref(rtdb, 'ppeInwardHistory'));
         set(newRef, { ...record, date: record.date.toISOString(), addedByUserId: user.id });
 
-        const stockPath = record.ppeType === 'Coverall' ? 'ppeStock/coveralls/sizes' : 'ppeStock/safetyShoes';
+        const stockPath = record.ppeType === 'Coverall' ? `ppeStock/coveralls/sizes` : `ppeStock/safetyShoes`;
         const stockRef = ref(rtdb, stockPath);
         get(stockRef).then(snapshot => {
             const currentStock = snapshot.val() || {};
@@ -1484,12 +1480,13 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     const updatePpeInwardRecord = useCallback((record: PpeInwardRecord) => {
         const { id, ...data } = record;
-        update(ref(rtdb, `ppeInwardHistory/${id}`), data);
+        const sanitizedData = sanitizeData(data);
+        update(ref(rtdb, `ppeInwardHistory/${id}`), sanitizedData);
     }, []);
 
     const deletePpeInwardRecord = useCallback((record: PpeInwardRecord) => {
         remove(ref(rtdb, `ppeInwardHistory/${record.id}`));
-        const stockPath = record.ppeType === 'Coverall' ? 'ppeStock/coveralls/sizes' : 'ppeStock/safetyShoes';
+        const stockPath = record.ppeType === 'Coverall' ? `ppeStock/coveralls/sizes` : `ppeStock/safetyShoes`;
         const stockRef = ref(rtdb, stockPath);
         get(stockRef).then(snapshot => {
             const currentStock = snapshot.val() || {};
@@ -1515,7 +1512,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             creatorId: user.id,
             date: record.date.toISOString(),
         };
-        set(newRef, newRecord);
+        set(newRef, sanitizeData(newRecord));
     }, [user]);
 
     const deleteIgpOgpRecord = useCallback((mrnNumber: string) => {
@@ -1530,7 +1527,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
     const updatePpeRequest = useCallback((request: PpeRequest, reason?: string) => {
         const { id, ...data } = request;
-        update(ref(rtdb, `ppeRequests/${id}`), { ...data, attachmentUrl: data.attachmentUrl || null });
+        update(ref(rtdb, `ppeRequests/${id}`), sanitizeData({ ...data, attachmentUrl: data.attachmentUrl || null }));
         if (reason) {
             addPpeRequestComment(id, reason, true);
         }
@@ -1573,7 +1570,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
               attachmentUrl: null, // Legacy field
             };
         
-            await set(newReportRef, finalReport);
+            await set(newReportRef, sanitizeData(finalReport));
             addActivityLog(user.id, 'Damage Report Submitted');
             return { success: true };
         } catch (error: any) {
@@ -1670,11 +1667,11 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             creatorId: user.id,
             createdAt: new Date().toISOString(),
         };
-        set(newRef, newNote);
+        set(newRef, sanitizeData(newNote));
     }, [user]);
 
     const updateDeliveryNote = useCallback((noteId: string, updates: Partial<DeliveryNote>) => {
-        update(ref(rtdb, `deliveryNotes/${noteId}`), updates);
+        update(ref(rtdb, `deliveryNotes/${noteId}`), sanitizeData(updates));
     }, []);
 
     const deleteDeliveryNote = useCallback((noteId: string) => {

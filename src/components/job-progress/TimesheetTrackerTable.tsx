@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -144,7 +145,7 @@ export default function TimesheetTrackerTable({
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden border rounded-md shadow-sm bg-white dark:bg-slate-950 h-full">
+    <div className="flex-1 flex flex-col overflow-hidden border rounded-md shadow-sm bg-white dark:bg-slate-950">
       <ScrollArea className="flex-1">
         <div className="min-w-max">
           <Table className="border-collapse text-[11px] font-sans">
