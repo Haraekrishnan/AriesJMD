@@ -55,11 +55,11 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             <Table className="border-collapse text-[11px] font-sans">
               <TableHeader className="sticky top-0 z-40">
                 <TableRow className="bg-[#D9E2F3] hover:bg-[#D9E2F3] border-b-2 border-black">
-                  <TableHead className="w-10 border-r border-black text-black font-bold text-center sticky left-0 z-50 bg-[#D9E2F3]">SL</TableHead>
-                  <TableHead className="w-32 border-r border-black text-black font-bold sticky left-[40px] z-50 bg-[#D9E2F3]">WO / ARC NO</TableHead>
-                  <TableHead className="w-40 border-r border-black text-black font-bold sticky left-[168px] z-50 bg-[#D9E2F3]">PLANT / UNIT</TableHead>
-                  <TableHead className="w-64 border-r border-black text-black font-bold sticky left-[328px] z-50 bg-[#D9E2F3]">JOB DESCRIPTION</TableHead>
-                  <TableHead className="w-36 border-r-2 border-black text-black font-bold sticky left-[584px] z-50 bg-[#D9E2F3] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.2)]">JMS NO</TableHead>
+                  <TableHead className="w-10 border-r border-black text-black font-bold text-center md:sticky md:left-0 md:z-50 bg-[#D9E2F3]">SL</TableHead>
+                  <TableHead className="w-32 border-r border-black text-black font-bold md:sticky md:left-[40px] md:z-50 bg-[#D9E2F3]">WO / ARC NO</TableHead>
+                  <TableHead className="w-40 border-r border-black text-black font-bold md:sticky md:left-[168px] md:z-50 bg-[#D9E2F3]">PLANT / UNIT</TableHead>
+                  <TableHead className="w-64 border-r border-black text-black font-bold md:sticky md:left-[328px] md:z-50 bg-[#D9E2F3]">JOB DESCRIPTION</TableHead>
+                  <TableHead className="w-36 border-r-2 border-black text-black font-bold md:sticky md:left-[584px] md:z-50 bg-[#D9E2F3] md:shadow-[2px_0_5px_-2px_rgba(0,0,0,0.2)]">JMS NO</TableHead>
                   
                   <TableHead className="w-28 border-r-2 border-black text-black font-bold text-right">VALUE (INR)</TableHead>
                   <TableHead className="w-24 border-r border-black text-black font-bold text-center">START</TableHead>
@@ -92,11 +92,11 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                       )}
                       onClick={() => onViewJob(job)}
                     >
-                      <TableCell className={cn("border-r border-slate-300 text-center font-bold sticky left-0 z-20", rowBg)}>{index + 1}</TableCell>
-                      <TableCell className={cn("border-r border-slate-300 font-semibold sticky left-[40px] z-20", rowBg)}>{job.workOrderNo || 'N/A'}</TableCell>
-                      <TableCell className={cn("border-r border-slate-300 uppercase font-bold sticky left-[168px] z-20", rowBg)}>{project?.name || 'N/A'}{job.plantUnit ? ` / ${job.plantUnit}` : ''}</TableCell>
-                      <TableCell className={cn("border-r border-slate-300 font-medium uppercase sticky left-[328px] z-20", rowBg)}>{job.title}</TableCell>
-                      <TableCell className={cn("border-r-2 border-black text-blue-700 font-bold sticky left-[584px] z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]", rowBg)}>{job.jmsNo || '-'}</TableCell>
+                      <TableCell className={cn("border-r border-slate-300 text-center font-bold md:sticky md:left-0 md:z-20", rowBg)}>{index + 1}</TableCell>
+                      <TableCell className={cn("border-r border-slate-300 font-semibold md:sticky md:left-[40px] md:z-20", rowBg)}>{job.workOrderNo || 'N/A'}</TableCell>
+                      <TableCell className={cn("border-r border-slate-300 uppercase font-bold md:sticky md:left-[168px] md:z-20", rowBg)}>{project?.name || 'N/A'}{job.plantUnit ? ` / ${job.plantUnit}` : ''}</TableCell>
+                      <TableCell className={cn("border-r border-slate-300 font-medium uppercase md:sticky md:left-[328px] md:z-20", rowBg)}>{job.title}</TableCell>
+                      <TableCell className={cn("border-r-2 border-black text-blue-700 font-bold md:sticky md:left-[584px] md:z-20 md:shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]", rowBg)}>{job.jmsNo || '-'}</TableCell>
                       
                       <TableCell className="border-r-2 border-black text-right font-bold text-[11px] text-foreground">
                         {job.amount ? new Intl.NumberFormat('en-IN').format(job.amount) : '-'}
