@@ -29,6 +29,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadio
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
 import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
+import { Separator } from '@/components/ui/separator';
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
 
