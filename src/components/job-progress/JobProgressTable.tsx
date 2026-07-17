@@ -105,7 +105,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                         const isAcknowledgedPending = step?.status === 'Acknowledged';
                         const assignee = step ? users.find(u => u.id === step.assigneeId) : null;
                         
-                        // Calculate days since last update for the tooltip
+                        // Calculate days since last update for the tooltip and background color
                         const daysElapsed = differenceInDays(new Date(), parseISO(job.lastUpdated));
                         const isCritical = daysElapsed > 2 && (isUnacknowledged || isAcknowledgedPending);
 
@@ -115,9 +115,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                             className={cn(
                               "border-r border-slate-300 p-1 text-center min-h-[40px] group",
                               isCompleted && "bg-green-50/30",
-                              !isCritical && isUnacknowledged && "bg-orange-50",
-                              !isCritical && isAcknowledgedPending && "bg-yellow-50",
-                              isCritical && "bg-red-50"
+                              isCritical ? "bg-red-100" : (isUnacknowledged ? "bg-orange-50" : (isAcknowledgedPending ? "bg-yellow-50" : ""))
                             )}
                           >
                             {isCompleted ? (
@@ -133,14 +131,15 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                                       variant={step?.isReturned ? "destructive" : "outline"} 
                                       className={cn(
                                         "text-[9px] h-4 px-1 py-0 font-black",
-                                        isCritical 
-                                          ? "bg-red-100 text-red-700 border-red-300" 
-                                          : (isUnacknowledged ? "bg-orange-100 text-orange-700 border-orange-300" : "border-yellow-500 bg-yellow-50 text-yellow-800")
+                                        isUnacknowledged 
+                                          ? "bg-orange-100 text-orange-700 border-orange-300" 
+                                          : "bg-yellow-100 text-yellow-800 border-yellow-500",
+                                        isCritical && "border-red-600 shadow-[0_0_2px_rgba(220,38,38,0.5)]"
                                       )}
                                     >
                                       {step?.isReturned ? 'RETURNED' : isUnacknowledged ? 'NOT ACK' : 'PENDING'}
                                     </Badge>
-                                    <span className={cn("font-semibold truncate w-full text-center", isCritical ? "text-red-700 font-black" : "text-foreground")} title={assignee?.name}>
+                                    <span className={cn("font-bold truncate w-full text-center", isCritical ? "text-slate-900" : "text-foreground")} title={assignee?.name}>
                                       {assignee ? assignee.name.split(' ')[0] : 'Unassigned'}
                                     </span>
                                   </div>
@@ -177,9 +176,9 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
         </div>
         <div className="flex gap-2 items-center">
             <div className="flex items-center gap-1"><div className="w-2 h-2 bg-green-200 border border-green-400"></div> Step Done</div>
-            <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-yellow-50 border border-yellow-300"></div> In Progress</div>
-            <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-orange-50 border border-orange-300"></div> Not Acknowledged</div>
-            <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-red-50 border border-red-300"></div> Critical (&gt;2 Days)</div>
+            <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-yellow-100 border border-yellow-500"></div> In Progress (PENDING)</div>
+            <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-orange-100 border border-orange-300"></div> Not Acknowledged (NOT ACK)</div>
+            <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-red-100 border border-red-600"></div> Critical Delay (&gt;2 Days)</div>
         </div>
       </div>
     </div>
