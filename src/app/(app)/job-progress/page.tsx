@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -108,16 +109,33 @@ export default function JobProgressPage() {
     });
   }), [jobProgress, user, projects]);
 
+  // Step 1: Filter jobs by current month to determine valid unit filters
+  const jobsInMonth = useMemo(() => {
+    return visibleJobs.filter(job => {
+        const jobStartDate = job.dateFrom ? parseISO(job.dateFrom) : parseISO(job.createdAt);
+        const jobEndDate = job.dateTo ? parseISO(job.dateTo) : null;
+        if (!isValid(jobStartDate)) return false;
+
+        if (jobEndDate && isValid(jobEndDate)) {
+            return isSameMonth(jobStartDate, currentMonth) || 
+                   isSameMonth(jobEndDate, currentMonth) ||
+                   (isBefore(jobStartDate, startOfMonth(currentMonth)) && isAfter(jobEndDate, endOfMonth(currentMonth)));
+        }
+        return isSameMonth(jobStartDate, currentMonth);
+    });
+  }, [visibleJobs, currentMonth]);
+
+  // Step 2: Available units now only includes units from jobs occurring in currentMonth
   const availableUnits = useMemo(() => {
     const units = new Set<string>();
-    visibleJobs.forEach(job => {
+    jobsInMonth.forEach(job => {
       if (job.plantUnit) units.add(job.plantUnit);
     });
     return Array.from(units).sort();
-  }, [visibleJobs]);
+  }, [jobsInMonth]);
 
   const filteredJobs = useMemo(() => {
-    let jobs = visibleJobs;
+    let jobs = jobsInMonth;
 
     if (jmsProjectFilter !== 'all') {
       jobs = jobs.filter(job => job.projectId === jmsProjectFilter);
@@ -155,21 +173,8 @@ export default function JobProgressPage() {
       });
     }
     
-    jobs = jobs.filter(job => {
-        const jobStartDate = job.dateFrom ? parseISO(job.dateFrom) : parseISO(job.createdAt);
-        const jobEndDate = job.dateTo ? parseISO(job.dateTo) : null;
-        if (!isValid(jobStartDate)) return false;
-
-        if (jobEndDate && isValid(jobEndDate)) {
-            return isSameMonth(jobStartDate, currentMonth) || 
-                   isSameMonth(jobEndDate, currentMonth) ||
-                   (isBefore(jobStartDate, startOfMonth(currentMonth)) && isAfter(jobEndDate, endOfMonth(currentMonth)));
-        }
-        return isSameMonth(jobStartDate, currentMonth);
-    });
-
     return jobs;
-  }, [visibleJobs, jmsSearchTerm, jmsAssigneeFilter, jmsProjectFilter, jmsUnitFilter, projects, currentMonth]);
+  }, [jobsInMonth, jmsSearchTerm, jmsAssigneeFilter, jmsProjectFilter, jmsUnitFilter, projects]);
 
   const filteredTimesheets = useMemo(() => {
     let visibleTimesheets = timesheets.filter(ts => {
@@ -216,10 +221,13 @@ export default function JobProgressPage() {
 
   const changeMonth = (amount: number) => {
     setCurrentMonth(prev => addMonths(prev, amount));
+    // Clear unit filter when month changes to prevent invalid state
+    setJmsUnitFilter('all');
   };
   
   const handleTodayClick = () => {
     setCurrentMonth(startOfMonth(new Date()));
+    setJmsUnitFilter('all');
   };
 
   const allSubmitters = useMemo(() => {
@@ -380,7 +388,7 @@ export default function JobProgressPage() {
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                     <Button variant={timesheetView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-7 w-7" onClick={() => setTimesheetView('board')}><LayoutGrid className="h-3.5 w-3.5" /></Button>
-                    <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-7 w-7" onClick={() => setTimesheetView('list')}><List className="h-3.5 w-3.5" /></Button>
+                    <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-7 w-7" onClick={() => setHeaddingView('list')}><List className="h-3.5 w-3.5" /></Button>
                     <Button onClick={() => setIsCreateTimesheetOpen(true)} size="sm" className="h-7 px-3 text-[11px]">
                         <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> New Timesheet
                     </Button>
