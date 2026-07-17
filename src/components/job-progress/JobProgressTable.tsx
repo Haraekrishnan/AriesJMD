@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -48,19 +47,27 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
     );
   }
 
+  // Width calculations for sticky columns:
+  // SL: 40px (w-10)
+  // WO: 128px (w-32)
+  // PLANT: 160px (w-40)
+  // TITLE: 256px (w-64)
+  // JMS: 144px (w-36)
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden border rounded-md shadow-sm bg-white dark:bg-slate-950 h-full">
       <TooltipProvider>
         <ScrollArea className="flex-1">
           <div className="min-w-max">
             <Table className="border-collapse text-[11px] font-sans">
-              <TableHeader className="sticky top-0 z-20">
+              <TableHeader className="sticky top-0 z-40">
                 <TableRow className="bg-[#D9E2F3] hover:bg-[#D9E2F3] border-b-2 border-black">
-                  <TableHead className="w-10 border-r border-black text-black font-bold text-center">SL</TableHead>
-                  <TableHead className="w-32 border-r border-black text-black font-bold">WO / ARC NO</TableHead>
-                  <TableHead className="w-40 border-r border-black text-black font-bold">PLANT / UNIT</TableHead>
-                  <TableHead className="w-64 border-r border-black text-black font-bold">JOB DESCRIPTION</TableHead>
-                  <TableHead className="w-36 border-r border-black text-black font-bold">JMS NO</TableHead>
+                  <TableHead className="w-10 border-r border-black text-black font-bold text-center sticky left-0 z-50 bg-[#D9E2F3]">SL</TableHead>
+                  <TableHead className="w-32 border-r border-black text-black font-bold sticky left-[40px] z-50 bg-[#D9E2F3]">WO / ARC NO</TableHead>
+                  <TableHead className="w-40 border-r border-black text-black font-bold sticky left-[168px] z-50 bg-[#D9E2F3]">PLANT / UNIT</TableHead>
+                  <TableHead className="w-64 border-r border-black text-black font-bold sticky left-[328px] z-50 bg-[#D9E2F3]">JOB DESCRIPTION</TableHead>
+                  <TableHead className="w-36 border-r-2 border-black text-black font-bold sticky left-[584px] z-50 bg-[#D9E2F3] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.2)]">JMS NO</TableHead>
+                  
                   <TableHead className="w-28 border-r-2 border-black text-black font-bold text-right">VALUE (INR)</TableHead>
                   <TableHead className="w-24 border-r border-black text-black font-bold text-center">START</TableHead>
                   <TableHead className="w-24 border-r-2 border-black text-black font-bold text-center">END</TableHead>
@@ -79,21 +86,24 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
               <TableBody>
                 {sortedJobs.map((job, index) => {
                   const project = projects.find(p => p.id === job.projectId);
+                  const isEven = index % 2 !== 0;
+                  const rowBg = isEven ? "bg-slate-50/50 dark:bg-slate-800/50" : "bg-white dark:bg-slate-900";
                   
                   return (
                     <TableRow 
                       key={job.id} 
                       className={cn(
                         "hover:bg-blue-100/50 cursor-pointer border-b border-slate-300 transition-colors",
-                        index % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-slate-50/50 dark:bg-slate-800/50"
+                        rowBg
                       )}
                       onClick={() => onViewJob(job)}
                     >
-                      <TableCell className="border-r border-slate-300 text-center font-bold bg-slate-100/30 dark:bg-slate-900/50">{index + 1}</TableCell>
-                      <TableCell className="border-r border-slate-300 font-semibold">{job.workOrderNo || 'N/A'}</TableCell>
-                      <TableCell className="border-r border-slate-300 uppercase font-bold">{project?.name || 'N/A'}{job.plantUnit ? ` / ${job.plantUnit}` : ''}</TableCell>
-                      <TableCell className="border-r border-slate-300 font-medium uppercase">{job.title}</TableCell>
-                      <TableCell className="border-r border-slate-300 text-blue-700 font-bold">{job.jmsNo || '-'}</TableCell>
+                      <TableCell className={cn("border-r border-slate-300 text-center font-bold sticky left-0 z-20", rowBg)}>{index + 1}</TableCell>
+                      <TableCell className={cn("border-r border-slate-300 font-semibold sticky left-[40px] z-20", rowBg)}>{job.workOrderNo || 'N/A'}</TableCell>
+                      <TableCell className={cn("border-r border-slate-300 uppercase font-bold sticky left-[168px] z-20", rowBg)}>{project?.name || 'N/A'}{job.plantUnit ? ` / ${job.plantUnit}` : ''}</TableCell>
+                      <TableCell className={cn("border-r border-slate-300 font-medium uppercase sticky left-[328px] z-20", rowBg)}>{job.title}</TableCell>
+                      <TableCell className={cn("border-r-2 border-black text-blue-700 font-bold sticky left-[584px] z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]", rowBg)}>{job.jmsNo || '-'}</TableCell>
+                      
                       <TableCell className="border-r-2 border-black text-right font-bold text-[11px] text-foreground">
                         {job.amount ? new Intl.NumberFormat('en-IN').format(job.amount) : '-'}
                       </TableCell>
