@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -10,306 +11,144 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
-import type { JobProgress, JobProgressStatus } from '@/lib/types';
-import { format, formatDistanceToNow, parseISO } from 'date-fns';
+import type { JobProgress, JobStep } from '@/lib/types';
+import { format, parseISO, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Undo2, ArrowUpDown, User, Eye, FolderKanban } from 'lucide-react';
-import {
-    ColumnDef,
-    flexRender,
-    getCoreRowModel,
-    getSortedRowModel,
-    useReactTable,
-    SortingState,
-  } from "@tanstack/react-table"
+import { Check, Clock, AlertTriangle } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-
+import { JOB_PROGRESS_STEPS } from '@/lib/types';
 
 interface JobProgressTableProps {
   jobs: JobProgress[];
   onViewJob: (job: JobProgress) => void;
 }
 
-const statusVariantMap: { [key in JobProgressStatus]: 'default' | 'secondary' | 'destructive' | 'success' } = {
-  'Not Started': 'secondary',
-  'In Progress': 'default',
-  'On Hold': 'destructive',
-  'Completed': 'success',
-};
-
 export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   const { users } = useAuth();
   const { projects } = useGeneral();
-  const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: false }]);
-  
-  const columns: ColumnDef<JobProgress>[] = useMemo(
-    () => [
-      {
-        id: 'slNo',
-        header: 'Sl.No.',
-        cell: ({ row }) => row.index + 1,
-      },
-      {
-        id: 'project',
-        header: 'Project/Unit',
-        accessorFn: (row) => projects.find(p => p.id === row.projectId)?.name || '',
-        cell: ({ row }) => {
-          const project = projects.find(p => p.id === row.original.projectId);
-          return (
-            <div>
-              <p>{project?.name || 'N/A'}</p>
-              {row.original.plantUnit && <p className="text-xs text-muted-foreground">{row.original.plantUnit}</p>}
-            </div>
-          )
-        }
-      },
-      {
-        accessorKey: 'title',
-        header: 'Job Description',
-        cell: ({ row }) => <span className="font-medium">{row.original.title}</span>
-      },
-      {
-        accessorKey: 'dateFrom',
-        header: 'Start Date',
-        cell: ({ row }) => row.original.dateFrom ? format(parseISO(row.original.dateFrom), 'dd-MM-yyyy') : 'N/A'
-      },
-      {
-        accessorKey: 'dateTo',
-        header: 'End Date',
-        cell: ({ row }) => row.original.dateTo ? format(parseISO(row.original.dateTo), 'dd-MM-yyyy') : 'N/A'
-      },
-      {
-        accessorKey: 'jmsNo',
-        header: 'JMS No.',
-        cell: ({ row }) => row.original.jmsNo || 'N/A'
-      },
-      {
-        accessorKey: 'amount',
-        header: 'Value',
-        cell: ({ row }) => {
-          const amount = row.original.amount;
-          return amount ? new Intl.NumberFormat('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-          }).format(amount) : 'N/A';
-        }
-      },
-      {
-        id: 'assignee',
-        header: 'Current Assignee',
-        accessorFn: (row) => {
-            if (row.status === 'Completed') {
-                const lastStep = row.steps[row.steps.length - 1];
-                return users.find(u => u.id === lastStep?.completedBy)?.name || 'Completed';
-            }
-            const returnedStep = row.steps.find(s => s.isReturned === true);
-            const pendingStep = row.steps.find(s => s.status === 'Pending');
-            const acknowledgedStep = row.steps.find(s => s.status === 'Acknowledged');
-            const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
-            return users.find(u => u.id === currentStep?.assigneeId)?.name || '';
-        },
-        cell: ({ row }) => {
-            if (row.original.status === 'Completed') {
-                const lastStep = row.original.steps[row.original.steps.length - 1];
-                const completer = lastStep?.completedBy ? users.find(u => u.id === lastStep.completedBy) : null;
-                return completer ? (
-                    <div className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6">
-                            <AvatarImage src={completer.avatar} />
-                            <AvatarFallback>{completer.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <span className="truncate">{completer.name}</span>
-                    </div>
-                ) : <span className="text-muted-foreground">Completed</span>;
-            }
 
-            const returnedStep = row.original.steps.find(s => s.isReturned === true);
-            const pendingStep = row.original.steps.find(s => s.status === 'Pending');
-            const acknowledgedStep = row.original.steps.find(s => s.status === 'Acknowledged');
-            const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
-            const assignee = currentStep ? users.find(u => u.id === currentStep?.assigneeId) : null;
-            
-            return assignee ? (
-                <div className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6">
-                        <AvatarImage src={assignee.avatar} />
-                        <AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <span className="truncate">{assignee.name}</span>
-                </div>
-            ) : <span className="text-muted-foreground">Unassigned</span>;
-        }
-      },
-      {
-        id: 'duration',
-        header: 'Pending Since',
-        cell: ({ row }) => {
-            const job = row.original;
-            if (job.status === 'Completed') {
-                return <span className="text-muted-foreground">-</span>;
-            }
-    
-            const returnedStep = job.steps.find(s => s.isReturned);
-            const pendingStep = job.steps.find(s => s.status === 'Pending');
-            const acknowledgedStep = job.steps.find(s => s.status === 'Acknowledged');
-    
-            let dateToCompare: string | null | undefined = null;
-    
-            if (returnedStep && returnedStep.returnDetails?.date) {
-                dateToCompare = returnedStep.returnDetails.date;
-            } else if (acknowledgedStep && acknowledgedStep.acknowledgedAt) {
-                dateToCompare = acknowledgedStep.acknowledgedAt;
-            } else {
-                dateToCompare = job.lastUpdated; 
-            }
-    
-            if (!dateToCompare) {
-                return <span className="text-muted-foreground">-</span>;
-            }
-    
-            return (
-                <div className="text-xs whitespace-nowrap text-muted-foreground">
-                    {formatDistanceToNow(parseISO(dateToCompare), { addSuffix: true })}
-                </div>
-            );
-        }
-      },
-      {
-        id: 'acknowledgment',
-        header: 'Acknowledgment',
-        cell: ({ row }) => {
-          if (row.original.status === 'Completed') {
-            return <Badge variant="success">Completed</Badge>;
-          }
-          const returnedStep = row.original.steps.find(s => s.isReturned === true);
-          if (returnedStep) {
-            return <Badge variant="destructive">Returned</Badge>;
-          }
-          const acknowledgedStep = row.original.steps.find(s => s.status === 'Acknowledged');
-          if (acknowledgedStep) {
-            return <Badge variant="default">Acknowledged</Badge>;
-          }
-          const pendingStep = row.original.steps.find(s => s.status === 'Pending');
-          if (pendingStep) {
-            return <Badge variant="warning">Pending</Badge>;
-          }
-          return <Badge variant="secondary">{row.original.status}</Badge>;
-        }
-      },
-      { 
-        accessorKey: 'createdAt', 
-        header: ({ column }) => (
-          <div className="flex items-center cursor-pointer" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-            Created <ArrowUpDown className="ml-2 h-4 w-4" />
-          </div>
-        ),
-        cell: ({ row }) => (
-            <div className="text-xs whitespace-nowrap text-muted-foreground">
-                {formatDistanceToNow(parseISO(row.original.createdAt), { addSuffix: true })}
-            </div>
-        )
-      },
-      {
-        id: 'status',
-        header: 'Current Step',
-        accessorFn: (row) => {
-            if (row.status === 'Completed') {
-                const lastStep = row.steps[row.steps.length - 1];
-                if (lastStep?.status === 'Completed') {
-                    return lastStep.name;
-                }
-                return 'Completed';
-            }
-            const returnedStep = row.steps.find(s => s.isReturned === true);
-            if(returnedStep) return returnedStep.name;
-            const pendingStep = row.steps.find(s => s.status === 'Pending');
-            if(pendingStep) return pendingStep.name;
-            const acknowledgedStep = row.steps.find(s => s.status === 'Acknowledged');
-            if(acknowledgedStep) return acknowledgedStep.name;
-            return row.status;
-        },
-        cell: ({ row }) => {
-            const stepName = row.getValue('status') as string;
-            
-            let variant: 'success' | 'destructive' | 'default' | 'warning' | 'secondary' = 'secondary';
-            if (row.original.status === 'Completed') {
-              variant = 'success';
-            } else {
-              const returnedStep = row.original.steps.find(s => s.isReturned === true);
-              const pendingStep = row.original.steps.find(s => s.status === 'Pending');
-              const acknowledgedStep = row.original.steps.find(s => s.status === 'Acknowledged');
-              if (returnedStep) variant = 'destructive';
-              else if (acknowledgedStep) variant = 'default';
-              else if (pendingStep) variant = 'warning';
-            }
-            
-            return <Badge variant={variant}>{stepName}</Badge>
-        }
-      },
-      {
-        id: 'actions',
-        cell: ({ row }) => (
-            <div className="flex justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => onViewJob(row.original)}><Eye className="mr-2 h-4 w-4" /> View</Button>
-            </div>
-        )
-      }
-    ],
-    [projects, users, onViewJob]
-  );
-  
-  const table = useReactTable({
-    data: jobs,
-    columns,
-    state: { sorting },
-    onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-  });
+  const sortedJobs = useMemo(() => {
+    return [...jobs].sort((a, b) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime());
+  }, [jobs]);
+
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return '';
+    const date = parseISO(dateString);
+    return isValid(date) ? format(date, 'dd-MM-yy') : '';
+  };
 
   if (jobs.length === 0) {
-    return <p className="text-center text-muted-foreground py-8">No jobs found.</p>;
+    return (
+      <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg bg-muted/20">
+        <p className="text-muted-foreground">No JMS records found for this period.</p>
+      </div>
+    );
   }
 
   return (
-    <ScrollArea className="h-full whitespace-nowrap">
-        <Table className="text-sm">
-          <TableHeader>
-            {table.getHeaderGroups().map(headerGroup => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map(header => (
-                  <TableHead key={header.id} >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
+    <div className="flex-1 flex flex-col overflow-hidden border rounded-md shadow-sm bg-white dark:bg-slate-950">
+      <ScrollArea className="h-full">
+        <div className="min-w-max">
+          <Table className="border-collapse text-[11px] font-sans">
+            <TableHeader className="sticky top-0 z-20">
+              <TableRow className="bg-[#D9E2F3] hover:bg-[#D9E2F3] border-b-2 border-black">
+                <TableHead className="w-10 border-r border-black text-black font-bold text-center">SL</TableHead>
+                <TableHead className="w-32 border-r border-black text-black font-bold">WO / ARC NO</TableHead>
+                <TableHead className="w-40 border-r border-black text-black font-bold">PLANT / UNIT</TableHead>
+                <TableHead className="w-64 border-r border-black text-black font-bold">JOB DESCRIPTION</TableHead>
+                <TableHead className="w-36 border-r border-black text-black font-bold">JMS NO</TableHead>
+                <TableHead className="w-28 border-r-2 border-black text-black font-bold text-right">VALUE (INR)</TableHead>
+                <TableHead className="w-24 border-r border-black text-black font-bold text-center">START</TableHead>
+                <TableHead className="w-24 border-r-2 border-black text-black font-bold text-center">END</TableHead>
+                
+                {/* Workflow Step Headers */}
+                {JOB_PROGRESS_STEPS.map((stepName) => (
+                  <TableHead 
+                    key={stepName} 
+                    className="w-32 border-r border-slate-300 text-black font-bold text-center leading-tight px-1"
+                  >
+                    {stepName.toUpperCase()}
                   </TableHead>
                 ))}
               </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.map(row => (
-              <TableRow
-                key={row.id}
-                className="cursor-pointer"
-                onClick={() => onViewJob(row.original)}
-              >
-                {row.getVisibleCells().map(cell => (
-                  <TableCell key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {sortedJobs.map((job, index) => {
+                const project = projects.find(p => p.id === job.projectId);
+                
+                return (
+                  <TableRow 
+                    key={job.id} 
+                    className="hover:bg-blue-50/50 cursor-pointer border-b border-slate-300"
+                    onClick={() => onViewJob(job)}
+                  >
+                    <TableCell className="border-r border-slate-300 text-center font-bold bg-slate-50/50">{index + 1}</TableCell>
+                    <TableCell className="border-r border-slate-300 font-semibold">{job.workOrderNo || 'N/A'}</TableCell>
+                    <TableCell className="border-r border-slate-300 uppercase">{project?.name || 'N/A'}{job.plantUnit ? ` / ${job.plantUnit}` : ''}</TableCell>
+                    <TableCell className="border-r border-slate-300 font-medium uppercase">{job.title}</TableCell>
+                    <TableCell className="border-r border-slate-300 text-blue-700 font-bold">{job.jmsNo || '-'}</TableCell>
+                    <TableCell className="border-r-2 border-black text-right font-mono">
+                      {job.amount ? new Intl.NumberFormat('en-IN').format(job.amount) : '-'}
+                    </TableCell>
+                    <TableCell className="border-r border-slate-300 text-center text-muted-foreground">{formatDate(job.dateFrom)}</TableCell>
+                    <TableCell className="border-r-2 border-black text-center text-muted-foreground">{formatDate(job.dateTo)}</TableCell>
+
+                    {/* Workflow Step Cells */}
+                    {JOB_PROGRESS_STEPS.map((stepName) => {
+                      const step = job.steps.find(s => s.name === stepName);
+                      const isCompleted = step?.status === 'Completed';
+                      const isPending = step?.status === 'Pending' || step?.isReturned || step?.status === 'Acknowledged';
+                      const assignee = step ? users.find(u => u.id === step.assigneeId) : null;
+
+                      return (
+                        <TableCell 
+                          key={stepName} 
+                          className={cn(
+                            "border-r border-slate-300 p-1 text-center min-h-[40px]",
+                            isCompleted && "bg-green-50/30",
+                            isPending && "bg-yellow-50/50"
+                          )}
+                        >
+                          {isCompleted ? (
+                            <div className="flex flex-col items-center gap-0.5">
+                              <Check className="h-3 w-3 text-green-600" />
+                              <span className="text-[9px] text-green-700 font-bold">{formatDate(step.completedAt)}</span>
+                            </div>
+                          ) : isPending ? (
+                            <div className="flex flex-col items-center gap-0.5 px-1">
+                              <Badge variant={step?.isReturned ? "destructive" : "outline"} className="text-[9px] h-4 px-1 py-0 border-yellow-500 bg-yellow-100 text-yellow-800">
+                                {step?.isReturned ? 'RETURNED' : 'PENDING'}
+                              </Badge>
+                              <span className="text-[9px] font-semibold truncate w-full text-center" title={assignee?.name}>
+                                {assignee ? assignee.name.split(' ')[0] : 'Unassigned'}
+                              </span>
+                            </div>
+                          ) : null}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
+      
+      {/* Footer Summary - Like an Excel info bar */}
+      <div className="bg-[#f3f4f6] p-1 px-4 border-t flex justify-between items-center text-[10px] font-medium text-slate-500 italic">
+        <div className="flex gap-4">
+          <span>TOTAL JOBS: {jobs.length}</span>
+          <span>COMPLETED: {jobs.filter(j => j.status === 'Completed').length}</span>
+        </div>
+        <div className="flex gap-2 items-center">
+            <div className="flex items-center gap-1"><div className="w-2 h-2 bg-green-200 border border-green-400"></div> Step Done</div>
+            <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-yellow-100 border border-yellow-400"></div> In Progress</div>
+        </div>
+      </div>
+    </div>
   );
 }
