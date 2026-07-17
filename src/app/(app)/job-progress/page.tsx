@@ -5,10 +5,10 @@ import { useAuth } from '@/contexts/auth-provider';
 import { usePlanner } from '@/contexts/planner-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
-import { Bell, Clock, Folder, List, LayoutGrid, Settings, Search, ChevronLeft, ChevronRight, AlertTriangle, PlusCircle, FileStack } from 'lucide-react';
+import { Bell, Clock, Folder, List, LayoutGrid, Search, ChevronLeft, ChevronRight, AlertTriangle, PlusCircle, FolderKanban } from 'lucide-react';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress, Timesheet, Role, DocumentMovement } from '@/lib/types';
-import { format, startOfMonth, addMonths, isSameMonth, parseISO, isBefore, isAfter, startOfToday, differenceInDays, endOfMonth, isValid } from 'date-fns';
+import { format, startOfMonth, addMonths, isSameMonth, parseISO, isAfter, isBefore, startOfToday, differenceInDays, endOfMonth, isValid } from 'date-fns';
 import CreateTimesheetDialog from '@/components/job-progress/CreateTimesheetDialog';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -24,17 +24,15 @@ import CreateDocumentMovementDialog from '@/components/job-progress/CreateDocume
 import DocumentMovementList from '@/components/job-progress/DocumentMovementList';
 import ViewDocumentMovementDialog from '@/components/job-progress/ViewDocumentMovementDialog';
 import TimesheetTrackerTable from '@/components/job-progress/TimesheetTrackerTable';
-import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 import { Separator } from '@/components/ui/separator';
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
 
 export default function JobProgressPage() {
-  const { user, users, updateUserViewPreference, getVisibleUsers, can } = useAuth();
+  const { user, users, getVisibleUsers, can } = useAuth();
   const { projects } = useGeneral();
   const { jobProgress, timesheets, trackerNotificationCount, documentMovements } = usePlanner();
 
@@ -56,8 +54,8 @@ export default function JobProgressPage() {
   const [docSearchTerm, setDocSearchTerm] = useState('');
 
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
-  const [jmsView, setJmsView] = useState<'board' | 'list'>(user?.viewPreferences?.jmsTracker || 'list');
-  const [timesheetView, setTimesheetView] = useState<'board' | 'list'>(user?.viewPreferences?.timesheetTracker || 'list');
+  const [jmsView, setJmsView] = useState<'board' | 'list'>('list');
+  const [timesheetView, setTimesheetView] = useState<'board' | 'list'>('list');
   const [activeTab, setActiveTab] = useState('jms');
 
   const assignableUsers = useMemo(() => {
@@ -73,23 +71,6 @@ export default function JobProgressPage() {
     const firstDayOfCurrentMonth = startOfMonth(currentMonth);
     return isBefore(firstDayOfCurrentMonth, startOfToday());
   }, [currentMonth]);
-
-  useEffect(() => {
-    if (user?.viewPreferences?.jmsTracker) {
-        setJmsView(user.viewPreferences.jmsTracker);
-    }
-    if (user?.viewPreferences?.timesheetTracker) {
-        setTimesheetView(user.viewPreferences.timesheetTracker);
-    }
-  }, [user?.viewPreferences]);
-  
-  const handleJmsDefaultViewChange = (value: string) => {
-    updateUserViewPreference('jmsTracker', value as 'board' | 'list');
-  };
-
-  const handleTimesheetDefaultViewChange = (value: string) => {
-    updateUserViewPreference('timesheetTracker', value as 'board' | 'list');
-  };
 
   const longPendingJobs = useMemo(() => {
     if (!user) return [];
@@ -122,7 +103,7 @@ export default function JobProgressPage() {
     return user.projectIds.some(userProjectId => {
       if (job.projectId === userProjectId) return true;
       const project = projects.find(p => p.id === job.projectId);
-      return project && user.projectIds?.includes(project.name);
+      return project && user.projectIds?.includes(project.id);
     });
   }), [jobProgress, user, projects]);
 
@@ -134,15 +115,10 @@ export default function JobProgressPage() {
     }
     if (jmsAssigneeFilter !== 'all') {
       jobs = jobs.filter(job => {
-        const returnedStep = job.steps.find(s => s.isReturned === true);
-        const pendingStep = job.steps.find(s => s.status === 'Pending');
-        const acknowledgedStep = job.steps.find(s => s.status === 'Acknowledged');
-        const currentStep = returnedStep || pendingStep || acknowledgedStep || null;
-        
+        const currentStep = job.steps.find(s => s.status === 'Pending' || s.isReturned || s.status === 'Acknowledged');
         if (job.status === 'Completed') {
             const lastStep = job.steps[job.steps.length - 1];
-            const completerId = lastStep?.completedBy;
-            return completerId === jmsAssigneeFilter;
+            return lastStep?.completedBy === jmsAssigneeFilter;
         } else {
             return currentStep?.assigneeId === jmsAssigneeFilter;
         }
@@ -153,13 +129,11 @@ export default function JobProgressPage() {
       const lowercasedTerm = jmsSearchTerm.toLowerCase();
       return jobs.filter(job => {
         const project = projects.find(p => p.id === job.projectId);
-        const amountStr = job.amount?.toString() || '';
         return (
             job.title.toLowerCase().includes(lowercasedTerm) ||
             (job.jmsNo && job.jmsNo.toLowerCase().includes(lowercasedTerm)) ||
             (project && project.name.toLowerCase().includes(lowercasedTerm)) ||
-            (job.plantUnit && job.plantUnit.toLowerCase().includes(lowercasedTerm)) ||
-            amountStr.includes(lowercasedTerm)
+            (job.plantUnit && job.plantUnit.toLowerCase().includes(lowercasedTerm))
         );
       });
     }
@@ -184,9 +158,7 @@ export default function JobProgressPage() {
     let visibleTimesheets = timesheets.filter(ts => {
       const canViewAll = user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Document Controller';
       if (canViewAll) return true;
-
       if (ts.submitterId === user?.id || ts.submittedToId === user?.id) return true;
-
       if (!user?.projectIds) return false;
       return user.projectIds.includes(ts.projectId);
     });
@@ -200,21 +172,16 @@ export default function JobProgressPage() {
 
     if (timesheetSearchTerm) {
         const lowercasedTerm = timesheetSearchTerm.toLowerCase();
-        visibleTimesheets = visibleTimesheets.filter(ts => {
-            return (ts.plantUnit && ts.plantUnit.toLowerCase().includes(lowercasedTerm));
-        });
+        visibleTimesheets = visibleTimesheets.filter(ts => ts.plantUnit && ts.plantUnit.toLowerCase().includes(lowercasedTerm));
     }
 
     return visibleTimesheets.filter(ts => {
         const tsStartDate = parseISO(ts.startDate);
         const tsEndDate = parseISO(ts.endDate);
         if (!isValid(tsStartDate) || !isValid(tsEndDate)) return false;
-
-        return isSameMonth(tsStartDate, currentMonth) ||
-               isSameMonth(tsEndDate, currentMonth) ||
-               (isBefore(tsStartDate, startOfMonth(currentMonth)) && isAfter(tsEndDate, endOfMonth(currentMonth)));
+        return isSameMonth(tsStartDate, currentMonth) || isSameMonth(tsEndDate, currentMonth) || (isBefore(tsStartDate, startOfMonth(currentMonth)) && isAfter(tsEndDate, endOfMonth(currentMonth)));
     });
-  }, [timesheets, user, timesheetSearchTerm, projects, currentMonth, timesheetSubmitterFilter, timesheetProjectFilter]);
+  }, [timesheets, user, timesheetSearchTerm, currentMonth, timesheetSubmitterFilter, timesheetProjectFilter]);
   
   const filteredDocuments = useMemo(() => {
     if (!docSearchTerm) return documentMovements;
@@ -223,20 +190,10 @@ export default function JobProgressPage() {
   }, [documentMovements, docSearchTerm]);
 
   const handleViewJob = (job: JobProgress) => {
-    const jobDate = parseISO(job.dateFrom || job.createdAt);
-    if (jmsSearchTerm && !isSameMonth(jobDate, currentMonth)) {
-        setCurrentMonth(startOfMonth(jobDate));
-    }
     setViewingJob(job);
   };
   
   const handleViewTimesheet = (timesheet: Timesheet) => {
-    if (timesheetSearchTerm) {
-      const tsDate = parseISO(timesheet.startDate);
-      if (!isSameMonth(tsDate, currentMonth)) {
-        setCurrentMonth(startOfMonth(tsDate));
-      }
-    }
     setViewingTimesheet(timesheet);
   };
 
@@ -248,12 +205,12 @@ export default function JobProgressPage() {
     setCurrentMonth(startOfMonth(new Date()));
   };
 
-    const allSubmitters = useMemo(() => {
-        const submitterIds = new Set(timesheets.map(ts => ts.submitterId));
-        return users.filter(u => submitterIds.has(u.id));
-    }, [timesheets, users]);
+  const allSubmitters = useMemo(() => {
+    const submitterIds = new Set(timesheets.map(ts => ts.submitterId));
+    return users.filter(u => submitterIds.has(u.id));
+  }, [timesheets, users]);
     
-    if (!can.view_job_progress && !can.view_all) {
+  if (!can.view_job_progress && !can.view_all) {
       return (
          <Card className="w-full max-w-md mx-auto mt-20">
              <CardHeader className="text-center items-center">
@@ -265,15 +222,14 @@ export default function JobProgressPage() {
              </CardHeader>
          </Card>
      );
-    }
+  }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-10rem)] space-y-4">
-       {/* 1. Global Header Section */}
-       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-2 sticky top-0 z-20">
+    <div className="flex flex-col h-[calc(100vh-8.5rem)]">
+       {/* 1. Global Header Section - Compact */}
+       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-1 sticky top-0 z-20">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-primary">Trackers</h1>
-          <p className="text-muted-foreground text-xs">Monitor lifecycle of JMS, Timesheets, and Documents.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setIsPendingDialogOpen(true)} className="relative h-8">
@@ -309,7 +265,7 @@ export default function JobProgressPage() {
       </div>
       
       {/* 2. Main Tabs Navigation */}
-      <Tabs defaultValue="jms" onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
         <TabsList className="shrink-0 w-full grid grid-cols-3 h-10 p-1 bg-muted/50 rounded-lg">
           <TabsTrigger value="jms" className="data-[state=active]:bg-background">JMS Tracker</TabsTrigger>
           <TabsTrigger value="timesheets" className="data-[state=active]:bg-background">Timesheet Tracker</TabsTrigger>
@@ -317,27 +273,27 @@ export default function JobProgressPage() {
         </TabsList>
 
         {/* 3. JMS Content */}
-        <TabsContent value="jms" className="flex-1 min-h-0 flex flex-col pt-2 data-[state=active]:flex">
-           <div className="flex flex-col sm:flex-row justify-between items-center pb-2 gap-4 shrink-0">
+        <TabsContent value="jms" className="flex-1 min-h-0 flex flex-col pt-1 data-[state=active]:flex">
+           <div className="flex flex-col sm:flex-row justify-between items-center pb-1 gap-2 shrink-0">
               <div className="flex flex-wrap gap-2 items-center flex-1">
                   <div className="relative w-full sm:w-64">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                           placeholder="Search job, jms no..."
-                          className="pl-9 h-9 text-sm bg-background"
+                          className="pl-9 h-8 text-xs bg-background"
                           value={jmsSearchTerm}
                           onChange={e => setJmsSearchTerm(e.target.value)}
                       />
                   </div>
                   <Select value={jmsProjectFilter} onValueChange={setJmsProjectFilter}>
-                    <SelectTrigger className="w-full sm:w-[150px] h-9 text-sm bg-background"><SelectValue placeholder="Project" /></SelectTrigger>
+                    <SelectTrigger className="w-full sm:w-[150px] h-8 text-xs bg-background"><SelectValue placeholder="Project" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Projects</SelectItem>
                         {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Select value={jmsAssigneeFilter} onValueChange={setJmsAssigneeFilter}>
-                      <SelectTrigger className="w-full sm:w-[150px] h-9 text-sm bg-background">
+                      <SelectTrigger className="w-full sm:w-[150px] h-8 text-xs bg-background">
                           <SelectValue placeholder="Assignee" />
                       </SelectTrigger>
                       <SelectContent>
@@ -350,19 +306,19 @@ export default function JobProgressPage() {
                       </SelectContent>
                   </Select>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <OngoingJobsReport jobs={filteredJobs} />
                 <Separator orientation="vertical" className="h-6 mx-1" />
-                <Button variant={jmsView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-9 w-9" onClick={() => setJmsView('board')}><LayoutGrid className="h-4 w-4" /></Button>
-                <Button variant={jmsView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-9 w-9" onClick={() => setJmsView('list')}><List className="h-4 w-4" /></Button>
+                <Button variant={jmsView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setJmsView('board')}><LayoutGrid className="h-4 w-4" /></Button>
+                <Button variant={jmsView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setJmsView('list')}><List className="h-4 w-4" /></Button>
                 {can.create_jms && (
-                    <Button onClick={() => setIsCreateJmsOpen(true)} size="sm" className="h-9 px-4">
+                    <Button onClick={() => setIsCreateJmsOpen(true)} size="sm" className="h-8 px-4 text-xs">
                         <PlusCircle className="mr-2 h-4 w-4" /> New JMS
                     </Button>
                 )}
               </div>
           </div>
-          <div className="flex-1 min-h-0 bg-white dark:bg-slate-950 rounded-lg shadow-sm border overflow-hidden flex flex-col">
+          <div className="flex-1 min-h-0">
             {jmsView === 'board' ? (
                 <JobProgressBoard jobs={filteredJobs} onViewJob={handleViewJob} />
             ) : (
@@ -372,42 +328,42 @@ export default function JobProgressPage() {
         </TabsContent>
 
         {/* 4. Timesheet Content */}
-        <TabsContent value="timesheets" className="flex-1 min-h-0 flex flex-col pt-2 data-[state=active]:flex">
-          <div className="flex flex-col sm:flex-row justify-between items-center pb-2 gap-4 shrink-0">
+        <TabsContent value="timesheets" className="flex-1 min-h-0 flex flex-col pt-1 data-[state=active]:flex">
+          <div className="flex flex-col sm:flex-row justify-between items-center pb-1 gap-2 shrink-0">
               <div className="flex flex-wrap gap-2 items-center flex-1">
                 <div className="relative w-full sm:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                       placeholder="Search unit..."
-                      className="pl-9 h-9 text-sm bg-background"
+                      className="pl-9 h-8 text-xs bg-background"
                       value={timesheetSearchTerm}
                       onChange={e => setTimesheetSearchTerm(e.target.value)}
                   />
                 </div>
                  <Select value={timesheetProjectFilter} onValueChange={setTimesheetProjectFilter}>
-                    <SelectTrigger className="w-full sm:w-[150px] h-9 text-sm bg-background"><SelectValue placeholder="Project" /></SelectTrigger>
+                    <SelectTrigger className="w-full sm:w-[150px] h-8 text-xs bg-background"><SelectValue placeholder="Project" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Projects</SelectItem>
                         {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                     </SelectContent>
                 </Select>
                  <Select value={timesheetSubmitterFilter} onValueChange={setTimesheetSubmitterFilter}>
-                    <SelectTrigger className="w-full sm:w-[150px] h-9 text-sm bg-background"><SelectValue placeholder="Submitter" /></SelectTrigger>
+                    <SelectTrigger className="w-full sm:w-[150px] h-8 text-xs bg-background"><SelectValue placeholder="Submitter" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Submitters</SelectItem>
                         {allSubmitters.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                     </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Button variant={timesheetView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-9 w-9" onClick={() => setView('board')}><LayoutGrid className="h-4 w-4" /></Button>
-                <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-9 w-9" onClick={() => setView('list')}><List className="h-4 w-4" /></Button>
-                <Button onClick={() => setIsCreateTimesheetOpen(true)} size="sm" className="h-9 px-4">
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Button variant={timesheetView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setTimesheetView('board')}><LayoutGrid className="h-4 w-4" /></Button>
+                <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setTimesheetView('list')}><List className="h-4 w-4" /></Button>
+                <Button onClick={() => setIsCreateTimesheetOpen(true)} size="sm" className="h-8 px-4 text-xs">
                     <PlusCircle className="mr-2 h-4 w-4" /> New Timesheet
                 </Button>
               </div>
           </div>
-          <div className="flex-1 min-h-0 bg-white dark:bg-slate-950 rounded-lg shadow-sm border overflow-hidden flex flex-col">
+          <div className="flex-1 min-h-0">
             {timesheetView === 'board' ? (
                 <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
             ) : (
@@ -417,22 +373,22 @@ export default function JobProgressPage() {
         </TabsContent>
 
         {/* 5. Document Content */}
-        <TabsContent value="documents" className="flex-1 min-h-0 pt-2 data-[state=active]:flex flex-col">
-          <div className="flex flex-col sm:flex-row justify-between items-center pb-2 gap-4 shrink-0">
+        <TabsContent value="documents" className="flex-1 min-h-0 pt-1 data-[state=active]:flex flex-col">
+          <div className="flex flex-col sm:flex-row justify-between items-center pb-1 gap-2 shrink-0">
             <div className="relative w-full sm:w-80">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                     placeholder="Search document title..."
-                    className="pl-9 h-9 text-sm bg-background"
+                    className="pl-9 h-8 text-xs bg-background"
                     value={docSearchTerm}
                     onChange={e => setDocSearchTerm(e.target.value)}
                 />
             </div>
-            <Button onClick={() => setIsCreateDocumentOpen(true)} size="sm" className="h-9 px-4">
+            <Button onClick={() => setIsCreateDocumentOpen(true)} size="sm" className="h-8 px-4 text-xs">
                 <Folder className="mr-2 h-4 w-4" /> New Tracker
             </Button>
           </div>
-          <div className="flex-1 min-h-0 bg-white dark:bg-slate-950 rounded-lg shadow-sm border overflow-hidden flex flex-col">
+          <div className="flex-1 min-h-0">
             <DocumentMovementList documents={filteredDocuments} onViewDocument={setViewingDocument} />
           </div>
         </TabsContent>

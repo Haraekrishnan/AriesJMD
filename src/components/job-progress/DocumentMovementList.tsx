@@ -1,14 +1,12 @@
 'use client';
-import { useMemo } from 'react';
+
 import { DocumentMovement, DocumentMovementStatus } from '@/lib/types';
-import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Clock, Check, Undo2 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { format, parseISO, formatDistanceToNow } from 'date-fns';
+import { parseISO, formatDistanceToNow } from 'date-fns';
 import { Badge } from '../ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 
 const statusVariant: { [key in DocumentMovementStatus]: "default" | "secondary" | "destructive" | "success" } = {
@@ -23,14 +21,14 @@ const DocumentMovementList = ({ documents, onViewDocument }: { documents: Docume
 
     if (documents.length === 0) {
         return (
-            <div className="flex-1 flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg bg-muted/20 m-4">
+            <div className="flex-1 flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg bg-muted/20">
                 <p className="text-muted-foreground">No documents found for this period.</p>
             </div>
         );
     }
 
     return (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden border rounded-md shadow-sm bg-white dark:bg-slate-950 h-full">
             <ScrollArea className="flex-1">
                 <div className="min-w-max">
                     <Table className="border-collapse text-[11px] font-sans">

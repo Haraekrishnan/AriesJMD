@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -13,10 +12,10 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
-import type { JobProgress, JobStep } from '@/lib/types';
+import type { JobProgress } from '@/lib/types';
 import { format, parseISO, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Check, Clock, AlertTriangle } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { JOB_PROGRESS_STEPS } from '@/lib/types';
 
@@ -48,8 +47,8 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden border rounded-md shadow-sm bg-white dark:bg-slate-950">
-      <ScrollArea className="h-full">
+    <div className="flex-1 flex flex-col overflow-hidden border rounded-md shadow-sm bg-white dark:bg-slate-950 h-full">
+      <ScrollArea className="flex-1">
         <div className="min-w-max">
           <Table className="border-collapse text-[11px] font-sans">
             <TableHeader className="sticky top-0 z-20">
@@ -139,7 +138,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
       </ScrollArea>
       
       {/* Footer Summary - Like an Excel info bar */}
-      <div className="bg-[#f3f4f6] p-1 px-4 border-t flex justify-between items-center text-[10px] font-medium text-slate-500 italic">
+      <div className="bg-[#f3f4f6] p-1 px-4 border-t flex justify-between items-center text-[10px] font-medium text-slate-500 italic shrink-0">
         <div className="flex gap-4">
           <span>TOTAL JOBS: {jobs.length}</span>
           <span>COMPLETED: {jobs.filter(j => j.status === 'Completed').length}</span>

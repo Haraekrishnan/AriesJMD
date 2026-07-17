@@ -22,8 +22,8 @@ import {
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import type { Timesheet, TimesheetStatus } from '@/lib/types';
-import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import { Eye, ArrowUpDown } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { Eye } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 
@@ -137,14 +137,14 @@ export default function TimesheetTrackerTable({
 
   if (timesheets.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg bg-muted/20 m-4">
+      <div className="flex-1 flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg bg-muted/20">
         <p className="text-muted-foreground">No timesheets found for this period.</p>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden border rounded-md shadow-sm bg-white dark:bg-slate-950 h-full">
       <ScrollArea className="flex-1">
         <div className="min-w-max">
           <Table className="border-collapse text-[11px] font-sans">
