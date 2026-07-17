@@ -15,7 +15,7 @@ import { useGeneral } from '@/contexts/general-provider';
 import type { JobProgress } from '@/lib/types';
 import { format, parseISO, isValid, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Check, AlertCircle } from 'lucide-react';
+import { Check, AlertCircle, Clock } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { JOB_PROGRESS_STEPS } from '@/lib/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
@@ -87,14 +87,14 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                     >
                       <TableCell className="border-r border-slate-300 text-center font-bold bg-slate-50/50">{index + 1}</TableCell>
                       <TableCell className="border-r border-slate-300 font-semibold">{job.workOrderNo || 'N/A'}</TableCell>
-                      <TableCell className="border-r border-slate-300 uppercase">{project?.name || 'N/A'}{job.plantUnit ? ` / ${job.plantUnit}` : ''}</TableCell>
+                      <TableCell className="border-r border-slate-300 uppercase font-bold">{project?.name || 'N/A'}{job.plantUnit ? ` / ${job.plantUnit}` : ''}</TableCell>
                       <TableCell className="border-r border-slate-300 font-medium uppercase">{job.title}</TableCell>
                       <TableCell className="border-r border-slate-300 text-blue-700 font-bold">{job.jmsNo || '-'}</TableCell>
-                      <TableCell className="border-r-2 border-black text-right font-bold text-[11px]">
+                      <TableCell className="border-r-2 border-black text-right font-bold text-[11px] text-foreground">
                         {job.amount ? new Intl.NumberFormat('en-IN').format(job.amount) : '-'}
                       </TableCell>
-                      <TableCell className="border-r border-slate-300 text-center text-[11px]">{formatDate(job.dateFrom)}</TableCell>
-                      <TableCell className="border-r-2 border-black text-center text-[11px]">{formatDate(job.dateTo)}</TableCell>
+                      <TableCell className="border-r border-slate-300 text-center text-[11px] text-foreground">{formatDate(job.dateFrom)}</TableCell>
+                      <TableCell className="border-r-2 border-black text-center text-[11px] text-foreground">{formatDate(job.dateTo)}</TableCell>
 
                       {/* Workflow Step Cells */}
                       {JOB_PROGRESS_STEPS.map((stepName) => {
@@ -114,10 +114,10 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                             className={cn(
                               "border-r border-slate-300 p-1 text-center min-h-[40px] group text-[11px] relative",
                               isCompleted && "bg-green-50/30",
-                              isUnacknowledged ? "bg-orange-50" : (isAcknowledgedPending ? "bg-yellow-50" : ""),
-                              isLongDelay && "ring-2 ring-inset ring-red-600 z-10 shadow-[0_0_10px_rgba(220,38,38,0.2)] animate-pulse"
+                              isUnacknowledged ? "bg-orange-50" : (isAcknowledgedPending ? "bg-yellow-50" : "")
                             )}
                           >
+                            {isLongDelay && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-red-600 z-10" />}
                             {isCompleted ? (
                               <div className="flex flex-col items-center gap-0.5">
                                 <Check className="h-3 w-3 text-green-600" />
@@ -180,7 +180,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-yellow-100 border border-yellow-500"></div> In Progress (PENDING)</div>
             <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-orange-100 border border-orange-300"></div> Not Acknowledged (NOT ACK)</div>
             <div className="flex items-center gap-1 ml-2">
-              <div className="w-2 h-2 border-2 border-red-600 animate-pulse"></div> 
+              <div className="w-1 h-3 bg-red-600"></div> 
               Action Overdue (&gt;2 Days)
             </div>
         </div>

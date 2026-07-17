@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, PpeRequestStatus, Role, ConsumableInwardRecord, Directive, DirectiveStatus, DamageReport, User, NotificationSettings, DamageReportStatus, WeldingMachine, WalkieTalkie, PneumaticDrillingMachine, PneumaticAngleGrinder, WiredDrillingMachine, CordlessDrillingMachine, WiredAngleGrinder, CordlessAngleGrinder, CordlessReciprocatingSaw, DeliveryNote } from '@/lib/types';
+import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, PpeRequestStatus, Role, ConsumableInwardRecord, DamageReport, User, NotificationSettings, DamageReportStatus, WeldingMachine, WalkieTalkie, PneumaticDrillingMachine, PneumaticAngleGrinder, WiredDrillingMachine, CordlessDrillingMachine, WiredAngleGrinder, CordlessAngleGrinder, CordlessReciprocatingSaw, DeliveryNote } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -10,12 +10,37 @@ import { useToast } from '@/hooks/use-toast';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { useManpower } from './manpower-provider';
 import { sendPpeRequestEmail } from '@/app/actions/sendPpeRequestEmail';
-import { format, parseISO, isValid, isAfter } from 'date-fns';
+import { format, parseISO, isValid, isAfter, isPast } from 'date-fns';
 import { useConsumable } from './consumable-provider';
 import { getStorage, ref as storageRef, deleteObject } from "firebase/storage";
-import { v4 as uuidv4 } from 'uuid';
-import { uploadFile } from '@/lib/storage';
 import { normalizeGoogleDriveLink } from '@/lib/utils';
+
+const sanitizeData = (data: any) => {
+    return JSON.parse(JSON.stringify(data, (key, value) => {
+        return value === undefined ? null : value;
+    }));
+};
+
+const createDataListener = <T extends {}>(
+    path: string,
+    setData: Dispatch<SetStateAction<Record<string, T>>>,
+) => {
+    const dbRef = ref(rtdb, path);
+    const listener = onValue(dbRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        const processedData = Object.keys(data).reduce((acc, key) => {
+            acc[key] = { ...data[key], id: key };
+            return acc;
+        }, {} as Record<string, T>);
+        setData(currentData => {
+            if (JSON.stringify(currentData) === JSON.stringify(processedData)) {
+                return currentData;
+            }
+            return processedData;
+        });
+    });
+    return () => listener();
+};
 
 const _addInternalRequestComment = (
     requestId: string,
@@ -69,27 +94,6 @@ const _addInternalRequestComment = (
     }
 };
 
-const createDataListener = <T extends {}>(
-    path: string,
-    setData: Dispatch<SetStateAction<Record<string, T>>>,
-) => {
-    const dbRef = ref(rtdb, path);
-    const listener = onValue(dbRef, (snapshot) => {
-        const data = snapshot.val() || {};
-        const processedData = Object.keys(data).reduce((acc, key) => {
-            acc[key] = { ...data[key], id: key };
-            return acc;
-        }, {} as Record<string, T>);
-        setData(currentData => {
-            if (JSON.stringify(currentData) === JSON.stringify(processedData)) {
-                return currentData;
-            }
-            return processedData;
-        });
-    });
-    return () => listener();
-};
-
 type InventoryContextType = {
   inventoryItems: InventoryItem[];
   utMachines: UTMachine[];
@@ -115,11 +119,9 @@ type InventoryContextType = {
   ppeRequests: PpeRequest[];
   ppeStock: PpeStock[];
   ppeInwardHistory: PpeInwardRecord[];
-  consumableInwardHistory: ConsumableInwardRecord[];
   tpCertLists: TpCertList[];
   inspectionChecklists: InspectionChecklist[];
   igpOgpRecords: IgpOgpRecord[];
-  directives: Directive[];
   damageReports: DamageReport[];
   deliveryNotes: DeliveryNote[];
 
@@ -247,10 +249,6 @@ type InventoryContextType = {
   updateTpCertList: (listData: TpCertList) => void;
   deleteTpCertList: (listId: string) => void;
 
-  addInspectionChecklist: (checklist: Omit<InspectionChecklist, 'id'>) => void;
-  updateInspectionChecklist: (checklist: InspectionChecklist) => void;
-  deleteInspectionChecklist: (id: string) => void;
-
   addIgpOgpRecord: (record: Omit<IgpOgpRecord, 'id' | 'creatorId'>) => void;
   deleteIgpOgpRecord: (mrnNumber: string) => void;
 
@@ -269,22 +267,21 @@ type InventoryContextType = {
   updatedGeneralRequestCount: number;
   pendingPpeRequestCount: number;
   updatedPpeRequestCount: number;
-};
-
-const sanitizeData = (data: any) => {
-    return JSON.parse(JSON.stringify(data, (key, value) => {
-        return value === undefined ? null : value;
-    }));
+  
+  addInspectionChecklist: (checklist: Omit<InspectionChecklist, 'id'>) => void;
+  updateInspectionChecklist: (checklist: InspectionChecklist) => void;
+  deleteInspectionChecklist: (id: string) => void;
+  inspectionChecklists: InspectionChecklist[];
 };
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
 
 export function InventoryProvider({ children }: { children: ReactNode }) {
     const { user, users, can, addActivityLog } = useAuth();
-    const { projects, notificationSettings, managementRequests } = useGeneral();
+    const { projects, notificationSettings } = useGeneral();
     const { manpowerProfiles } = useManpower();
     const { toast } = useToast();
-    const { consumableItems, consumableInwardHistory } = useConsumable();
+    const { consumableItems } = useConsumable();
 
     // State
     const [inventoryItemsById, setInventoryItemsById] = useState<Record<string, InventoryItem>>({});
@@ -309,7 +306,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const [igpOgpRecordsById, setIgpOgpRecordsById] = useState<Record<string, IgpOgpRecord>>({});
     const [damageReportsById, setDamageReportsById] = useState<Record<string, DamageReport>>({});
     const [deliveryNotesById, setDeliveryNotesById] = useState<Record<string, DeliveryNote>>({});
-    const [directives, setDirectives] = useState<Directive[]>([]);
     
     const [pneumaticDrillingMachinesById, setPneumaticDrillingMachinesById] = useState<Record<string, PneumaticDrillingMachine>>({});
     const [pneumaticAngleGrindersById, setPneumaticAngleGrindersById] = useState<Record<string, PneumaticAngleGrinder>>({});
@@ -987,7 +983,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
     const disputeInventoryTransfer = useCallback((requestId: string, comment: string) => {
         if (!user) return;
-        const request = inventoryTransferRequests.find(r => r.id === requestId);
+        const request = inventoryTransferRequestsById[requestId];
         if (!request) return;
 
         const updates: { [key: string]: any } = {};
@@ -995,7 +991,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         
         update(ref(rtdb), updates);
         addActivityLog(user.id, 'Inventory Transfer Disputed', `Request ID: ${requestId}`);
-    }, [user, inventoryTransferRequests, addActivityLog]);
+    }, [user, inventoryTransferRequestsById, addActivityLog]);
     
     const acknowledgeTransfer = useCallback((requestId: string) => {
         if (!user) return;
@@ -1025,7 +1021,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, [user, toast, addActivityLog]);
     
     const clearInventoryTransferHistory = useCallback(() => {
-        const allRequests = inventoryTransferRequests;
+        const allRequests = Object.values(inventoryTransferRequestsById);
         const updates: { [key: string]: null } = {};
         allRequests.forEach(req => {
             if (req.status === 'Completed' || req.status === 'Rejected') {
@@ -1035,7 +1031,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         if (Object.keys(updates).length > 0) {
             update(ref(rtdb), updates);
         }
-    }, [inventoryTransferRequests]);
+    }, [inventoryTransferRequestsById]);
     
     const addCertificateRequestComment = useCallback((requestId: string, comment: string) => {
         if (!user) return;
@@ -1060,7 +1056,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         requesterId: user.id,
         status: 'Pending',
         requestDate: new Date().toISOString(),
-        comments: [{ id: 'c-cert-1', userId: user.id, text: 'Request created.', date: new Date().toISOString(), eventId: 'cert-req-1' }],
+        comments: [{ id: 'comment-initial', userId: user.id, text: 'Request created.', date: new Date().toISOString(), eventId: 'cert-req-1' }],
         };
         const finalData = sanitizeData(newRequest);
         set(newRequestRef, finalData);
@@ -1535,13 +1531,13 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     const deleteIgpOgpRecord = useCallback((mrnNumber: string) => {
         if (!user || user.role !== 'Admin') return;
-        const recordsToDelete = igpOgpRecords.filter(r => r.mrnNumber === mrnNumber);
+        const recordsToDelete = Object.values(igpOgpRecordsById).filter(r => r.mrnNumber === mrnNumber);
         const updates: { [key: string]: null } = {};
         recordsToDelete.forEach(record => {
             updates[`/igpOgpRecords/${record.id}`] = null;
         });
         update(ref(rtdb), updates);
-    }, [user, igpOgpRecords]);
+    }, [user, igpOgpRecordsById]);
     
     const updatePpeRequest = useCallback((request: PpeRequest, reason?: string) => {
         const { id, ...data } = request;
@@ -1736,7 +1732,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, []);
     
     const contextValue: InventoryContextType = {
-        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, weldingMachines, walkieTalkies, machineLogs, certificateRequests, internalRequests, managementRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists, igpOgpRecords, consumableInwardHistory, directives: [], damageReports, deliveryNotes,
+        inventoryItems, utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, weldingMachines, walkieTalkies, machineLogs, certificateRequests, internalRequests, inventoryTransferRequests, ppeRequests, ppeStock, ppeInwardHistory, tpCertLists, inspectionChecklists: [], igpOgpRecords, damageReports, deliveryNotes,
         pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws,
         addInventoryItem, addMultipleInventoryItems, batchAddInventoryItems, updateInventoryItem, batchUpdateInventoryItems, updateInventoryItemGroup, updateInspectionItemGroup, updateMultipleInventoryItems, batchDeleteInventoryItems, deleteInventoryItemGroup, renameInventoryItemGroup, revalidateExpiredItems,
         addInventoryTransferRequest, updateInventoryTransferRequest, deleteInventoryTransferRequest, approveInventoryTransferRequest, rejectInventoryTransferRequest, disputeInventoryTransfer, acknowledgeTransfer, clearInventoryTransferHistory,
