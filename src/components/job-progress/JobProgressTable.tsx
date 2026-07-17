@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -82,10 +83,13 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                   return (
                     <TableRow 
                       key={job.id} 
-                      className="hover:bg-blue-50/50 cursor-pointer border-b border-slate-300"
+                      className={cn(
+                        "hover:bg-blue-100/50 cursor-pointer border-b border-slate-300 transition-colors",
+                        index % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-[#F3F7FB] dark:bg-slate-800/50"
+                      )}
                       onClick={() => onViewJob(job)}
                     >
-                      <TableCell className="border-r border-slate-300 text-center font-bold bg-slate-50/50">{index + 1}</TableCell>
+                      <TableCell className="border-r border-slate-300 text-center font-bold bg-slate-50/80 dark:bg-slate-900/50">{index + 1}</TableCell>
                       <TableCell className="border-r border-slate-300 font-semibold">{job.workOrderNo || 'N/A'}</TableCell>
                       <TableCell className="border-r border-slate-300 uppercase font-bold">{project?.name || 'N/A'}{job.plantUnit ? ` / ${job.plantUnit}` : ''}</TableCell>
                       <TableCell className="border-r border-slate-300 font-medium uppercase">{job.title}</TableCell>
@@ -117,7 +121,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                               isUnacknowledged ? "bg-orange-50" : (isAcknowledgedPending ? "bg-yellow-50" : "")
                             )}
                           >
-                            {isLongDelay && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-red-600 z-10" />}
+                            {isLongDelay && <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-600 z-10" />}
                             {isCompleted ? (
                               <div className="flex flex-col items-center gap-0.5">
                                 <Check className="h-3 w-3 text-green-600" />
@@ -128,13 +132,15 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                                 <TooltipTrigger asChild>
                                   <div className="flex flex-col items-center gap-0.5 px-1">
                                     <div className="flex items-center gap-1">
+                                      {isLongDelay && <Clock className="h-3 w-3 text-red-600" />}
                                       <Badge 
                                         variant={step?.isReturned ? "destructive" : "outline"} 
                                         className={cn(
                                           "text-[10px] h-4 px-1 py-0 font-black",
                                           isUnacknowledged 
                                             ? "bg-orange-100 text-orange-700 border-orange-300" 
-                                            : "bg-yellow-100 text-yellow-800 border-yellow-500"
+                                            : "bg-yellow-100 text-yellow-800 border-yellow-500",
+                                          isLongDelay && "border-red-500 shadow-[0_0_2px_rgba(220,38,38,0.5)]"
                                         )}
                                       >
                                         {step?.isReturned ? 'RETURNED' : isUnacknowledged ? 'NOT ACK' : 'PENDING'}
