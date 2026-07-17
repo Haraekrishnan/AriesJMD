@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { Badge } from '../ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Button } from '@/components/ui/button';
 
 const statusVariant: { [key in DocumentMovementStatus]: "default" | "secondary" | "destructive" | "success" } = {
     'Pending': 'secondary',
