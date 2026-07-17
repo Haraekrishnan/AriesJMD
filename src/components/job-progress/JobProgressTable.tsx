@@ -115,9 +115,9 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                             className={cn(
                               "border-r border-slate-300 p-1 text-center min-h-[40px] group",
                               isCompleted && "bg-green-50/30",
-                              !isCritical && isUnacknowledged && "bg-orange-200/50",
-                              !isCritical && isAcknowledgedPending && "bg-yellow-50/50",
-                              isCritical && "bg-red-600/20"
+                              !isCritical && isUnacknowledged && "bg-orange-50",
+                              !isCritical && isAcknowledgedPending && "bg-yellow-50",
+                              isCritical && "bg-red-50"
                             )}
                           >
                             {isCompleted ? (
@@ -134,11 +134,11 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                                       className={cn(
                                         "text-[9px] h-4 px-1 py-0 font-black",
                                         isCritical 
-                                          ? "bg-red-600 text-white border-red-700 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" 
-                                          : (isUnacknowledged ? "bg-orange-500 text-white border-orange-600 animate-pulse" : "border-yellow-500 bg-yellow-100 text-yellow-800")
+                                          ? "bg-red-100 text-red-700 border-red-300" 
+                                          : (isUnacknowledged ? "bg-orange-100 text-orange-700 border-orange-300" : "border-yellow-500 bg-yellow-50 text-yellow-800")
                                       )}
                                     >
-                                      {isCritical ? 'URGENT' : (step?.isReturned ? 'RETURNED' : isUnacknowledged ? 'NOT ACK' : 'PENDING')}
+                                      {step?.isReturned ? 'RETURNED' : isUnacknowledged ? 'NOT ACK' : 'PENDING'}
                                     </Badge>
                                     <span className={cn("font-semibold truncate w-full text-center", isCritical ? "text-red-700 font-black" : "text-foreground")} title={assignee?.name}>
                                       {assignee ? assignee.name.split(' ')[0] : 'Unassigned'}
@@ -177,9 +177,9 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
         </div>
         <div className="flex gap-2 items-center">
             <div className="flex items-center gap-1"><div className="w-2 h-2 bg-green-200 border border-green-400"></div> Step Done</div>
-            <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-yellow-100 border border-yellow-400"></div> In Progress</div>
-            <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-orange-200 border border-orange-500 animate-pulse"></div> Not Acknowledged</div>
-            <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-red-600/30 border border-red-600 animate-pulse"></div> Critical (&gt;2 Days)</div>
+            <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-yellow-50 border border-yellow-300"></div> In Progress</div>
+            <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-orange-50 border border-orange-300"></div> Not Acknowledged</div>
+            <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-red-50 border border-red-300"></div> Critical (&gt;2 Days)</div>
         </div>
       </div>
     </div>
