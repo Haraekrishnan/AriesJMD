@@ -317,8 +317,8 @@ export default function JobProgressPage() {
         </TabsList>
 
         {/* 3. JMS Content */}
-        <TabsContent value="jms" className="flex-1 min-h-0 flex flex-col pt-4 data-[state=active]:flex">
-           <div className="flex flex-col sm:flex-row justify-between items-center pb-4 gap-4 shrink-0">
+        <TabsContent value="jms" className="flex-1 min-h-0 flex flex-col pt-2 data-[state=active]:flex">
+           <div className="flex flex-col sm:flex-row justify-between items-center pb-2 gap-4 shrink-0">
               <div className="flex flex-wrap gap-2 items-center flex-1">
                   <div className="relative w-full sm:w-64">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -372,8 +372,8 @@ export default function JobProgressPage() {
         </TabsContent>
 
         {/* 4. Timesheet Content */}
-        <TabsContent value="timesheets" className="flex-1 min-h-0 flex flex-col pt-4 data-[state=active]:flex">
-          <div className="flex flex-col sm:flex-row justify-between items-center pb-4 gap-4 shrink-0">
+        <TabsContent value="timesheets" className="flex-1 min-h-0 flex flex-col pt-2 data-[state=active]:flex">
+          <div className="flex flex-col sm:flex-row justify-between items-center pb-2 gap-4 shrink-0">
               <div className="flex flex-wrap gap-2 items-center flex-1">
                 <div className="relative w-full sm:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -400,8 +400,8 @@ export default function JobProgressPage() {
                 </Select>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <Button variant={timesheetView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-9 w-9" onClick={() => setTimesheetView('board')}><LayoutGrid className="h-4 w-4" /></Button>
-                <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-9 w-9" onClick={() => setTimesheetView('list')}><List className="h-4 w-4" /></Button>
+                <Button variant={timesheetView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-9 w-9" onClick={() => setView('board')}><LayoutGrid className="h-4 w-4" /></Button>
+                <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-9 w-9" onClick={() => setView('list')}><List className="h-4 w-4" /></Button>
                 <Button onClick={() => setIsCreateTimesheetOpen(true)} size="sm" className="h-9 px-4">
                     <PlusCircle className="mr-2 h-4 w-4" /> New Timesheet
                 </Button>
@@ -417,8 +417,8 @@ export default function JobProgressPage() {
         </TabsContent>
 
         {/* 5. Document Content */}
-        <TabsContent value="documents" className="flex-1 min-h-0 pt-4 data-[state=active]:flex flex-col">
-          <div className="flex flex-col sm:flex-row justify-between items-center pb-4 gap-4 shrink-0">
+        <TabsContent value="documents" className="flex-1 min-h-0 pt-2 data-[state=active]:flex flex-col">
+          <div className="flex flex-col sm:flex-row justify-between items-center pb-2 gap-4 shrink-0">
             <div className="relative w-full sm:w-80">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input

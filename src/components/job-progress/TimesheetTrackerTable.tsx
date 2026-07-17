@@ -19,7 +19,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import type { Timesheet, TimesheetStatus } from '@/lib/types';
@@ -56,92 +55,72 @@ export default function TimesheetTrackerTable({
     () => [
       {
         id: 'slNo',
-        header: 'Sl.No.',
+        header: 'SL',
         cell: ({ row }) => row.index + 1,
       },
       {
         id: 'project',
-        header: 'Project/Unit',
+        header: 'PROJECT / UNIT',
         accessorFn: (row) => projects.find(p => p.id === row.projectId)?.name || '',
         cell: ({ row }) => {
           const project = projects.find(p => p.id === row.original.projectId);
           return (
-            <div>
-              <p>{project?.name || 'N/A'}</p>
-              <p className="text-xs text-muted-foreground">{row.original.plantUnit}</p>
+            <div className="uppercase">
+              <p className="font-bold">{project?.name || 'N/A'}</p>
+              <p className="text-[10px] text-muted-foreground">{row.original.plantUnit}</p>
             </div>
           )
         }
       },
       {
         id: 'submitter',
-        header: 'Submitted By',
+        header: 'SUBMITTED BY',
         accessorFn: (row) => users.find(u => u.id === row.submitterId)?.name || '',
         cell: ({ row }) => {
           const submitter = users.find(u => u.id === row.original.submitterId);
           return submitter ? (
             <div className="flex items-center gap-2">
-              <Avatar className="h-6 w-6">
+              <Avatar className="h-6 w-6 border">
                 <AvatarImage src={submitter.avatar} />
                 <AvatarFallback>{submitter.name.charAt(0)}</AvatarFallback>
               </Avatar>
-              <span className="truncate">{submitter.name}</span>
+              <span className="truncate font-medium">{submitter.name}</span>
             </div>
           ) : null;
         }
       },
       {
         id: 'period',
-        header: 'Period',
+        header: 'PERIOD',
         cell: ({ row }) => (
-          <div className="whitespace-nowrap">
+          <div className="whitespace-nowrap font-mono">
             {format(parseISO(row.original.startDate), 'dd/MM/yy')} - {format(parseISO(row.original.endDate), 'dd/MM/yy')}
           </div>
         )
       },
       {
         accessorKey: 'numberOfTimesheets',
-        header: 'Qty',
-        cell: ({ row }) => <div className="text-center font-semibold">{row.original.numberOfTimesheets}</div>
+        header: 'QTY',
+        cell: ({ row }) => <div className="text-center font-bold">{row.original.numberOfTimesheets}</div>
       },
       {
         accessorKey: 'submissionDate',
-        header: ({ column }) => (
-            <div className="flex items-center cursor-pointer" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-              Submitted Date <ArrowUpDown className="ml-2 h-4 w-4" />
-            </div>
-        ),
+        header: 'SUBMITTED DATE',
         cell: ({ row }) => (
-          <div className="whitespace-nowrap">
-            {format(parseISO(row.original.submissionDate), 'dd MMM, yyyy')}
+          <div className="whitespace-nowrap text-muted-foreground">
+            {format(parseISO(row.original.submissionDate), 'dd MMM, yy')}
           </div>
         )
       },
       {
         accessorKey: 'status',
-        header: 'Status',
-        cell: ({ row }) => <Badge variant={statusVariantMap[row.original.status]}>{row.original.status}</Badge>
-      },
-      {
-        id: 'lastUpdated',
-        header: ({ column }) => (
-            <div className="flex items-center cursor-pointer" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-              Last Updated <ArrowUpDown className="ml-2 h-4 w-4" />
-            </div>
-        ),
-        accessorFn: (row) => row.officeAcknowledgedDate || row.sentToOfficeDate || row.acknowledgedDate || row.submissionDate,
-        cell: ({ row }) => {
-          const lastUpdateDate = row.original.officeAcknowledgedDate || row.original.sentToOfficeDate || row.original.acknowledgedDate || row.original.submissionDate;
-          return (
-            <div className="text-xs">
-              {formatDistanceToNow(parseISO(lastUpdateDate), { addSuffix: true })}
-            </div>
-          );
-        },
+        header: 'STATUS',
+        cell: ({ row }) => <Badge variant={statusVariantMap[row.original.status]} className="text-[10px] py-0">{row.original.status.toUpperCase()}</Badge>
       },
       {
         id: 'actions',
-        cell: ({ row }) => <div className="text-right"><Button variant="outline" size="sm" onClick={() => onViewTimesheet(row.original)}><Eye className="mr-2 h-4 w-4" /> View</Button></div>
+        header: 'VIEW',
+        cell: ({ row }) => <div className="text-right"><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onViewTimesheet(row.original)}><Eye className="h-4 w-4" /></Button></div>
       }
     ],
     [users, projects, onViewTimesheet]
@@ -158,62 +137,22 @@ export default function TimesheetTrackerTable({
 
   if (timesheets.length === 0) {
     return (
-      <p className="text-center text-muted-foreground py-8">
-        No timesheets found for this period.
-      </p>
+      <div className="flex-1 flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg bg-muted/20 m-4">
+        <p className="text-muted-foreground">No timesheets found for this period.</p>
+      </div>
     );
   }
 
   return (
-    <>
-      {/* Mobile View */}
-      <div className="md:hidden">
-        <ScrollArea className="h-[calc(100vh-32rem)]">
-          <div className="space-y-3 p-2">
-            {timesheets.map((ts) => {
-              const submitter = users.find((u) => u.id === ts.submitterId);
-              const project = projects.find((p) => p.id === ts.projectId);
-              return (
-                <Card key={ts.id} onClick={() => onViewTimesheet(ts)} className="cursor-pointer">
-                  <CardContent className="p-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-semibold">{project?.name} - {ts.plantUnit}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {format(parseISO(ts.startDate), 'dd/MM/yy')} - {format(parseISO(ts.endDate), 'dd/MM/yy')}
-                        </p>
-                      </div>
-                      <Badge variant={statusVariantMap[ts.status]}>{ts.status}</Badge>
-                    </div>
-                    <div className="flex justify-between items-center mt-2 text-xs">
-                      {submitter && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Avatar className="h-5 w-5">
-                            <AvatarImage src={submitter.avatar} />
-                            <AvatarFallback>{submitter.name.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <span>{submitter.name}</span>
-                        </div>
-                      )}
-                      <span className="font-semibold">Qty: {ts.numberOfTimesheets}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </ScrollArea>
-      </div>
-
-      {/* Desktop View */}
-      <div className="hidden md:block h-full">
-        <ScrollArea className="h-[calc(100vh-28rem)] whitespace-nowrap">
-          <Table className="text-sm">
-            <TableHeader>
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <ScrollArea className="flex-1">
+        <div className="min-w-max">
+          <Table className="border-collapse text-[11px] font-sans">
+            <TableHeader className="sticky top-0 z-20">
               {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
+                <TableRow key={headerGroup.id} className="bg-[#D9E2F3] hover:bg-[#D9E2F3] border-b-2 border-black">
                   {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id}>
+                    <TableHead key={header.id} className="border-r border-black text-black font-bold h-10 px-3">
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -229,11 +168,11 @@ export default function TimesheetTrackerTable({
               {table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className="cursor-pointer"
+                  className="hover:bg-blue-50/50 cursor-pointer border-b border-slate-300"
                   onClick={() => onViewTimesheet(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell key={cell.id} className="border-r border-slate-300 p-2">
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
@@ -244,9 +183,9 @@ export default function TimesheetTrackerTable({
               ))}
             </TableBody>
           </Table>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
-      </div>
-    </>
+        </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
+    </div>
   );
 }
