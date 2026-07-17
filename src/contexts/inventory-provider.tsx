@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -70,6 +69,26 @@ const _addInternalRequestComment = (
     }
 };
 
+const createDataListener = <T extends {}>(
+    path: string,
+    setData: Dispatch<SetStateAction<Record<string, T>>>,
+) => {
+    const dbRef = ref(rtdb, path);
+    const listener = onValue(dbRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        const processedData = Object.keys(data).reduce((acc, key) => {
+            acc[key] = { ...data[key], id: key };
+            return acc;
+        }, {} as Record<string, T>);
+        setData(currentData => {
+            if (JSON.stringify(currentData) === JSON.stringify(processedData)) {
+                return currentData;
+            }
+            return processedData;
+        });
+    });
+    return () => listener();
+};
 
 type InventoryContextType = {
   inventoryItems: InventoryItem[];
@@ -265,7 +284,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const { projects, notificationSettings, managementRequests } = useGeneral();
     const { manpowerProfiles } = useManpower();
     const { toast } = useToast();
-    const { consumableItems, consumableInwardHistory, addConsumableInwardRecord } = useConsumable();
+    const { consumableItems, consumableInwardHistory } = useConsumable();
 
     // State
     const [inventoryItemsById, setInventoryItemsById] = useState<Record<string, InventoryItem>>({});
@@ -633,7 +652,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
             const dataToSave: Partial<InventoryItem> = {};
             
-            const fieldsToUpdate: (keyof InventoryItem)[] = ['name', 'chestCrollNo', 'ariesId', 'status', 'certificateUrl', 'inspectionCertificateUrl'];
             const excelHeaderMap: Record<string, keyof InventoryItem> = {
                 'ITEM NAME': 'name',
                 'CHEST CROLL NO': 'chestCrollNo',
