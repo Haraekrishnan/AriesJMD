@@ -16,7 +16,7 @@ import { useGeneral } from '@/contexts/general-provider';
 import type { JobProgress } from '@/lib/types';
 import { format, parseISO, isValid, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Check } from 'lucide-react';
+import { Check, AlertCircle } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { JOB_PROGRESS_STEPS } from '@/lib/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
@@ -107,6 +107,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                         
                         // Calculate days since last update for the tooltip
                         const daysElapsed = differenceInDays(new Date(), parseISO(job.lastUpdated));
+                        const isCritical = daysElapsed > 2 && (isUnacknowledged || isAcknowledgedPending);
 
                         return (
                           <TableCell 
@@ -114,8 +115,9 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                             className={cn(
                               "border-r border-slate-300 p-1 text-center min-h-[40px] group",
                               isCompleted && "bg-green-50/30",
-                              isUnacknowledged && "bg-orange-200/50",
-                              isAcknowledgedPending && "bg-yellow-50/50"
+                              !isCritical && isUnacknowledged && "bg-orange-200/50",
+                              !isCritical && isAcknowledgedPending && "bg-yellow-50/50",
+                              isCritical && "bg-red-600/20"
                             )}
                           >
                             {isCompleted ? (
@@ -131,19 +133,23 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                                       variant={step?.isReturned ? "destructive" : "outline"} 
                                       className={cn(
                                         "text-[9px] h-4 px-1 py-0 font-black",
-                                        isUnacknowledged ? "bg-orange-500 text-white border-orange-600 animate-pulse" : "border-yellow-500 bg-yellow-100 text-yellow-800"
+                                        isCritical 
+                                          ? "bg-red-600 text-white border-red-700 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" 
+                                          : (isUnacknowledged ? "bg-orange-500 text-white border-orange-600 animate-pulse" : "border-yellow-500 bg-yellow-100 text-yellow-800")
                                       )}
                                     >
-                                      {step?.isReturned ? 'RETURNED' : isUnacknowledged ? 'NOT ACK' : 'PENDING'}
+                                      {isCritical ? 'URGENT' : (step?.isReturned ? 'RETURNED' : isUnacknowledged ? 'NOT ACK' : 'PENDING')}
                                     </Badge>
-                                    <span className="font-semibold truncate w-full text-center" title={assignee?.name}>
+                                    <span className={cn("font-semibold truncate w-full text-center", isCritical ? "text-red-700 font-black" : "text-foreground")} title={assignee?.name}>
                                       {assignee ? assignee.name.split(' ')[0] : 'Unassigned'}
                                     </span>
                                   </div>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   <div className="text-xs space-y-1">
-                                    <p className="font-bold">{isUnacknowledged ? 'Awaiting Acknowledgment' : 'In Progress'}</p>
+                                    <p className={cn("font-bold", isCritical && "text-red-600")}>
+                                      {isCritical ? 'CRITICAL DELAY' : (isUnacknowledged ? 'Awaiting Acknowledgment' : 'In Progress')}
+                                    </p>
                                     <p>{daysElapsed} days since last update</p>
                                     {assignee && <p className="italic">Current: {assignee.name}</p>}
                                   </div>
@@ -173,6 +179,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             <div className="flex items-center gap-1"><div className="w-2 h-2 bg-green-200 border border-green-400"></div> Step Done</div>
             <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-yellow-100 border border-yellow-400"></div> In Progress</div>
             <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-orange-200 border border-orange-500 animate-pulse"></div> Not Acknowledged</div>
+            <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-red-600/30 border border-red-600 animate-pulse"></div> Critical (&gt;2 Days)</div>
         </div>
       </div>
     </div>
