@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -113,9 +112,10 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                           <TableCell 
                             key={stepName} 
                             className={cn(
-                              "border-r border-slate-300 p-1 text-center min-h-[40px] group text-[11px]",
+                              "border-r border-slate-300 p-1 text-center min-h-[40px] group text-[11px] relative",
                               isCompleted && "bg-green-50/30",
-                              isUnacknowledged ? "bg-orange-50" : (isAcknowledgedPending ? "bg-yellow-50" : "")
+                              isUnacknowledged ? "bg-orange-50" : (isAcknowledgedPending ? "bg-yellow-50" : ""),
+                              isLongDelay && "ring-2 ring-inset ring-red-600 z-10 shadow-[0_0_10px_rgba(220,38,38,0.2)] animate-pulse"
                             )}
                           >
                             {isCompleted ? (
@@ -128,12 +128,6 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                                 <TooltipTrigger asChild>
                                   <div className="flex flex-col items-center gap-0.5 px-1">
                                     <div className="flex items-center gap-1">
-                                      {isLongDelay && (
-                                        <AlertCircle 
-                                          className="h-4 w-4 text-white fill-red-600 animate-pulse shrink-0" 
-                                          strokeWidth={3}
-                                        />
-                                      )}
                                       <Badge 
                                         variant={step?.isReturned ? "destructive" : "outline"} 
                                         className={cn(
@@ -186,7 +180,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
             <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-yellow-100 border border-yellow-500"></div> In Progress (PENDING)</div>
             <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-orange-100 border border-orange-300"></div> Not Acknowledged (NOT ACK)</div>
             <div className="flex items-center gap-1 ml-2">
-              <AlertCircle className="h-3.5 w-3.5 text-white fill-red-600" strokeWidth={3} /> 
+              <div className="w-2 h-2 border-2 border-red-600 animate-pulse"></div> 
               Action Overdue (&gt;2 Days)
             </div>
         </div>
