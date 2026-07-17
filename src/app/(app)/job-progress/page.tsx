@@ -48,6 +48,7 @@ export default function JobProgressPage() {
   const [jmsSearchTerm, setJmsSearchTerm] = useState('');
   const [jmsAssigneeFilter, setJmsAssigneeFilter] = useState('all');
   const [jmsProjectFilter, setJmsProjectFilter] = useState('all');
+  const [jmsUnitFilter, setJmsUnitFilter] = useState('all');
   const [timesheetSearchTerm, setTimesheetSearchTerm] = useState('');
   const [timesheetSubmitterFilter, setTimesheetSubmitterFilter] = useState('all');
   const [timesheetProjectFilter, setTimesheetProjectFilter] = useState('all');
@@ -107,11 +108,22 @@ export default function JobProgressPage() {
     });
   }), [jobProgress, user, projects]);
 
+  const availableUnits = useMemo(() => {
+    const units = new Set<string>();
+    visibleJobs.forEach(job => {
+      if (job.plantUnit) units.add(job.plantUnit);
+    });
+    return Array.from(units).sort();
+  }, [visibleJobs]);
+
   const filteredJobs = useMemo(() => {
     let jobs = visibleJobs;
 
     if (jmsProjectFilter !== 'all') {
       jobs = jobs.filter(job => job.projectId === jmsProjectFilter);
+    }
+    if (jmsUnitFilter !== 'all') {
+      jobs = jobs.filter(job => job.plantUnit === jmsUnitFilter);
     }
     if (jmsAssigneeFilter !== 'all') {
       jobs = jobs.filter(job => {
@@ -127,7 +139,7 @@ export default function JobProgressPage() {
 
     if (jmsSearchTerm) {
       const lowercasedTerm = jmsSearchTerm.toLowerCase();
-      return jobs.filter(job => {
+      jobs = jobs.filter(job => {
         const project = projects.find(p => p.id === job.projectId);
         const amountStr = job.amount?.toString() || '';
         const formattedAmount = job.amount ? new Intl.NumberFormat('en-IN').format(job.amount) : '';
@@ -157,7 +169,7 @@ export default function JobProgressPage() {
     });
 
     return jobs;
-  }, [visibleJobs, jmsSearchTerm, jmsAssigneeFilter, jmsProjectFilter, projects, currentMonth]);
+  }, [visibleJobs, jmsSearchTerm, jmsAssigneeFilter, jmsProjectFilter, jmsUnitFilter, projects, currentMonth]);
 
   const filteredTimesheets = useMemo(() => {
     let visibleTimesheets = timesheets.filter(ts => {
@@ -295,6 +307,13 @@ export default function JobProgressPage() {
                         <SelectContent>
                             <SelectItem value="all">All Projects</SelectItem>
                             {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Select value={jmsUnitFilter} onValueChange={setJmsUnitFilter}>
+                        <SelectTrigger className="w-full sm:w-[130px] h-7 text-[11px] bg-background"><SelectValue placeholder="Plant Unit" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Units</SelectItem>
+                            {availableUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <Select value={jmsAssigneeFilter} onValueChange={setJmsAssigneeFilter}>
