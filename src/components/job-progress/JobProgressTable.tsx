@@ -15,7 +15,7 @@ import { useGeneral } from '@/contexts/general-provider';
 import type { JobProgress } from '@/lib/types';
 import { format, parseISO, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Check } from 'lucide-react';
+import { Check, CheckCircle, AlertCircle } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { JOB_PROGRESS_STEPS } from '@/lib/types';
 
@@ -98,7 +98,9 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                     {JOB_PROGRESS_STEPS.map((stepName) => {
                       const step = job.steps.find(s => s.name === stepName);
                       const isCompleted = step?.status === 'Completed';
-                      const isPending = step?.status === 'Pending' || step?.isReturned || step?.status === 'Acknowledged';
+                      const isNotAcknowledged = step?.status === 'Pending' || step?.isReturned;
+                      const isAcknowledged = step?.status === 'Acknowledged';
+                      const isActive = isNotAcknowledged || isAcknowledged;
                       const assignee = step ? users.find(u => u.id === step.assigneeId) : null;
 
                       return (
@@ -107,7 +109,8 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                           className={cn(
                             "border-r border-slate-300 p-1 text-center min-h-[40px]",
                             isCompleted && "bg-green-50/30",
-                            isPending && "bg-yellow-50/50"
+                            isNotAcknowledged && "bg-orange-100/40", // Stronger highlight for unacknowledged
+                            isAcknowledged && "bg-yellow-50/50"
                           )}
                         >
                           {isCompleted ? (
@@ -115,12 +118,26 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                               <Check className="h-3 w-3 text-green-600" />
                               <span className="text-green-700 font-bold">{formatDate(step.completedAt)}</span>
                             </div>
-                          ) : isPending ? (
+                          ) : isActive ? (
                             <div className="flex flex-col items-center gap-0.5 px-1">
-                              <Badge variant={step?.isReturned ? "destructive" : "outline"} className="text-[10px] h-4 px-1 py-0 border-yellow-500 bg-yellow-100 text-yellow-800">
-                                {step?.isReturned ? 'RETURNED' : 'PENDING'}
-                              </Badge>
-                              <span className="font-semibold truncate w-full text-center" title={assignee?.name}>
+                              {isNotAcknowledged && (
+                                <Badge 
+                                  variant={step?.isReturned ? "destructive" : "outline"} 
+                                  className={cn(
+                                    "text-[9px] h-3.5 px-1 py-0 leading-none mb-0.5",
+                                    !step?.isReturned && "bg-yellow-400 text-black border-yellow-600 font-black animate-pulse"
+                                  )}
+                                >
+                                  {step?.isReturned ? 'RETURNED' : 'PENDING'}
+                                </Badge>
+                              )}
+                              {isAcknowledged && (
+                                <div className="flex items-center gap-1 text-[10px] text-blue-700 font-bold mb-0.5">
+                                  <CheckCircle className="h-2.5 w-2.5" />
+                                  <span>ACK</span>
+                                </div>
+                              )}
+                              <span className={cn("font-semibold truncate w-full text-center", isNotAcknowledged ? "text-orange-900" : "text-slate-700")} title={assignee?.name}>
                                 {assignee ? assignee.name.split(' ')[0] : 'Unassigned'}
                               </span>
                             </div>
@@ -144,8 +161,18 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
           <span>COMPLETED: {jobs.filter(j => j.status === 'Completed').length}</span>
         </div>
         <div className="flex gap-2 items-center">
-            <div className="flex items-center gap-1"><div className="w-2 h-2 bg-green-200 border border-green-400"></div> Step Done</div>
-            <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-yellow-100 border border-yellow-400"></div> In Progress</div>
+            <div className="flex items-center gap-1">
+              <div className="w-2.5 h-2.5 bg-green-100 border border-green-400 rounded-sm"></div> 
+              <span>Step Done</span>
+            </div>
+            <div className="flex items-center gap-1 ml-2">
+              <div className="w-2.5 h-2.5 bg-yellow-50 border border-yellow-400 rounded-sm"></div> 
+              <span>In Progress</span>
+            </div>
+            <div className="flex items-center gap-1 ml-2">
+              <div className="w-2.5 h-2.5 bg-orange-100 border border-orange-400 rounded-sm animate-pulse"></div> 
+              <span>Awaiting Ack.</span>
+            </div>
         </div>
       </div>
     </div>
