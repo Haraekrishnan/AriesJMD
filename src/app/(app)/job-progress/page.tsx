@@ -129,11 +129,16 @@ export default function JobProgressPage() {
       const lowercasedTerm = jmsSearchTerm.toLowerCase();
       return jobs.filter(job => {
         const project = projects.find(p => p.id === job.projectId);
+        const amountStr = job.amount?.toString() || '';
+        const formattedAmount = job.amount ? new Intl.NumberFormat('en-IN').format(job.amount) : '';
+
         return (
             job.title.toLowerCase().includes(lowercasedTerm) ||
             (job.jmsNo && job.jmsNo.toLowerCase().includes(lowercasedTerm)) ||
             (project && project.name.toLowerCase().includes(lowercasedTerm)) ||
-            (job.plantUnit && job.plantUnit.toLowerCase().includes(lowercasedTerm))
+            (job.plantUnit && job.plantUnit.toLowerCase().includes(lowercasedTerm)) ||
+            amountStr.includes(lowercasedTerm) ||
+            formattedAmount.includes(lowercasedTerm)
         );
       });
     }
@@ -227,30 +232,7 @@ export default function JobProgressPage() {
   return (
     <div className="flex flex-col flex-1 min-h-0">
        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shrink-0 pb-1">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-primary">Trackers</h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setIsPendingDialogOpen(true)} className="relative h-8 text-xs">
-              <Bell className="mr-1.5 h-3.5 w-3.5" />
-              Pending
-              {trackerNotificationCount > 0 && (
-                <Badge variant="destructive" className="absolute -top-1.5 -right-1.5 h-4 min-w-[1rem] flex items-center justify-center p-0.5 rounded-full text-[9px] animate-pulse">
-                  {trackerNotificationCount}
-                </Badge>
-              )}
-            </Button>
-            {user && ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role) && (
-                <Button variant="outline" size="sm" onClick={() => setIsLongPendingDialogOpen(true)} className="h-8 text-xs">
-                    <Clock className="mr-1.5 h-3.5 w-3.5" />
-                    Long Pending
-                    {longPendingJobs.length > 0 && (
-                    <Badge variant="destructive" className="ml-1.5 h-4 min-w-[1rem] text-[9px]">
-                        {longPendingJobs.length}
-                    </Badge>
-                    )}
-                </Button>
-            )}
+        <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded-md border h-8">
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth}>
                     <ChevronLeft className="h-4 w-4" />
@@ -260,134 +242,161 @@ export default function JobProgressPage() {
                     <ChevronRight className="h-4 w-4" />
                 </Button>
             </div>
+            <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setIsPendingDialogOpen(true)} className="relative h-8 text-xs">
+                <Bell className="mr-1.5 h-3.5 w-3.5" />
+                Pending
+                {trackerNotificationCount > 0 && (
+                    <Badge variant="destructive" className="absolute -top-1.5 -right-1.5 h-4 min-w-[1rem] flex items-center justify-center p-0.5 rounded-full text-[9px] animate-pulse">
+                    {trackerNotificationCount}
+                    </Badge>
+                )}
+                </Button>
+                {user && ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role) && (
+                    <Button variant="outline" size="sm" onClick={() => setIsLongPendingDialogOpen(true)} className="h-8 text-xs">
+                        <Clock className="mr-1.5 h-3.5 w-3.5" />
+                        Long Pending
+                        {longPendingJobs.length > 0 && (
+                        <Badge variant="destructive" className="ml-1.5 h-4 min-w-[1rem] text-[9px]">
+                            {longPendingJobs.length}
+                        </Badge>
+                        )}
+                    </Button>
+                )}
+            </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-8">
+                <TabsList className="h-8 p-0.5 bg-muted/50 rounded-md">
+                <TabsTrigger value="jms" className="text-xs px-3 h-7 data-[state=active]:bg-background">JMS Tracker</TabsTrigger>
+                <TabsTrigger value="timesheets" className="text-xs px-3 h-7 data-[state=active]:bg-background">Timesheet Tracker</TabsTrigger>
+                <TabsTrigger value="documents" className="text-xs px-3 h-7 data-[state=active]:bg-background">Document Tracker</TabsTrigger>
+                </TabsList>
+            </Tabs>
         </div>
       </div>
       
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-        <TabsList className="shrink-0 w-full grid grid-cols-3 h-9 p-0.5 bg-muted/50 rounded-md">
-          <TabsTrigger value="jms" className="text-xs data-[state=active]:bg-background">JMS Tracker</TabsTrigger>
-          <TabsTrigger value="timesheets" className="text-xs data-[state=active]:bg-background">Timesheet Tracker</TabsTrigger>
-          <TabsTrigger value="documents" className="text-xs data-[state=active]:bg-background">Document Tracker</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="jms" className="flex-1 min-h-0 pt-1 flex-col data-[state=active]:flex">
-           <div className="flex flex-col sm:flex-row justify-between items-center pb-1 gap-2 shrink-0">
-              <div className="flex flex-wrap gap-2 items-center flex-1">
-                  <div className="relative w-full sm:w-56">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                      <Input
-                          placeholder="Search job, jms no..."
-                          className="pl-8 h-7 text-[11px] bg-background"
-                          value={jmsSearchTerm}
-                          onChange={e => setJmsSearchTerm(e.target.value)}
-                      />
-                  </div>
-                  <Select value={jmsProjectFilter} onValueChange={setJmsProjectFilter}>
-                    <SelectTrigger className="w-full sm:w-[130px] h-7 text-[11px] bg-background"><SelectValue placeholder="Project" /></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Projects</SelectItem>
-                        {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select value={jmsAssigneeFilter} onValueChange={setJmsAssigneeFilter}>
-                      <SelectTrigger className="w-full sm:w-[130px] h-7 text-[11px] bg-background">
-                          <SelectValue placeholder="Assignee" />
-                      </SelectTrigger>
-                      <SelectContent>
-                          <SelectItem value="all">All Assignees</SelectItem>
-                          {assignableUsers.map(u => (
-                              <SelectItem key={u.id} value={u.id} disabled={u.status === 'locked'}>
-                                  {u.name}
-                              </SelectItem>
-                          ))}
-                      </SelectContent>
-                  </Select>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <OngoingJobsReport jobs={filteredJobs} />
-                <Separator orientation="vertical" className="h-5 mx-0.5" />
-                <Button variant={jmsView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-7 w-7" onClick={() => setJmsView('board')}><LayoutGrid className="h-3.5 w-3.5" /></Button>
-                <Button variant={jmsView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-7 w-7" onClick={() => setJmsView('list')}><List className="h-3.5 w-3.5" /></Button>
-                {can.create_jms && (
-                    <Button onClick={() => setIsCreateJmsOpen(true)} size="sm" className="h-7 px-3 text-[11px]">
-                        <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> New JMS
-                    </Button>
-                )}
-              </div>
-          </div>
-          <div className="flex-1 min-h-0">
-            {jmsView === 'board' ? (
-                <JobProgressBoard jobs={filteredJobs} onViewJob={handleViewJob} />
-            ) : (
-                <JobProgressTable jobs={filteredJobs} onViewJob={handleViewJob} />
-            )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="timesheets" className="flex-1 min-h-0 pt-1 flex-col data-[state=active]:flex">
-          <div className="flex flex-col sm:flex-row justify-between items-center pb-1 gap-2 shrink-0">
-              <div className="flex flex-wrap gap-2 items-center flex-1">
-                <div className="relative w-full sm:w-56">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                      placeholder="Search unit..."
-                      className="pl-8 h-7 text-[11px] bg-background"
-                      value={timesheetSearchTerm}
-                      onChange={e => setTimesheetSearchTerm(e.target.value)}
-                  />
+      <div className="flex-1 flex flex-col min-h-0">
+        <Tabs value={activeTab} className="flex-1 flex flex-col min-h-0">
+            <TabsContent value="jms" className="flex-1 min-h-0 mt-0 flex-col data-[state=active]:flex">
+            <div className="flex flex-col sm:flex-row justify-between items-center pb-1 gap-2 shrink-0">
+                <div className="flex flex-wrap gap-2 items-center flex-1">
+                    <div className="relative w-full sm:w-56">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input
+                            placeholder="Search job, jms no, value..."
+                            className="pl-8 h-7 text-[11px] bg-background"
+                            value={jmsSearchTerm}
+                            onChange={e => setJmsSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <Select value={jmsProjectFilter} onValueChange={setJmsProjectFilter}>
+                        <SelectTrigger className="w-full sm:w-[130px] h-7 text-[11px] bg-background"><SelectValue placeholder="Project" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Projects</SelectItem>
+                            {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Select value={jmsAssigneeFilter} onValueChange={setJmsAssigneeFilter}>
+                        <SelectTrigger className="w-full sm:w-[130px] h-7 text-[11px] bg-background">
+                            <SelectValue placeholder="Assignee" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Assignees</SelectItem>
+                            {assignableUsers.map(u => (
+                                <SelectItem key={u.id} value={u.id} disabled={u.status === 'locked'}>
+                                    {u.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
-                 <Select value={timesheetProjectFilter} onValueChange={setTimesheetProjectFilter}>
-                    <SelectTrigger className="w-full sm:w-[130px] h-7 text-[11px] bg-background"><SelectValue placeholder="Project" /></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Projects</SelectItem>
-                        {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-                 <Select value={timesheetSubmitterFilter} onValueChange={setTimesheetSubmitterFilter}>
-                    <SelectTrigger className="w-full sm:w-[130px] h-7 text-[11px] bg-background"><SelectValue placeholder="Submitter" /></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Submitters</SelectItem>
-                        {allSubmitters.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <Button variant={timesheetView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-7 w-7" onClick={() => setTimesheetView('board')}><LayoutGrid className="h-3.5 w-3.5" /></Button>
-                <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-7 w-7" onClick={() => setTimesheetView('list')}><List className="h-3.5 w-3.5" /></Button>
-                <Button onClick={() => setIsCreateTimesheetOpen(true)} size="sm" className="h-7 px-3 text-[11px]">
-                    <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> New Timesheet
-                </Button>
-              </div>
-          </div>
-          <div className="flex-1 min-h-0">
-            {timesheetView === 'board' ? (
-                <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
-            ) : (
-                <TimesheetTrackerTable timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
-            )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="documents" className="flex-1 min-h-0 pt-1 flex-col data-[state=active]:flex">
-          <div className="flex flex-col sm:flex-row justify-between items-center pb-1 gap-2 shrink-0">
-            <div className="relative w-full sm:w-72">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                    placeholder="Search document title..."
-                    className="pl-8 h-7 text-[11px] bg-background"
-                    value={docSearchTerm}
-                    onChange={e => setDocSearchTerm(e.target.value)}
-                />
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <OngoingJobsReport jobs={filteredJobs} />
+                    <Separator orientation="vertical" className="h-5 mx-0.5" />
+                    <Button variant={jmsView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-7 w-7" onClick={() => setJmsView('board')}><LayoutGrid className="h-3.5 w-3.5" /></Button>
+                    <Button variant={jmsView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-7 w-7" onClick={() => setJmsView('list')}><List className="h-3.5 w-3.5" /></Button>
+                    {can.create_jms && (
+                        <Button onClick={() => setIsCreateJmsOpen(true)} size="sm" className="h-7 px-3 text-[11px]">
+                            <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> New JMS
+                        </Button>
+                    )}
+                </div>
             </div>
-            <Button onClick={() => setIsCreateDocumentOpen(true)} size="sm" className="h-7 px-3 text-[11px]">
-                <Folder className="mr-1.5 h-3.5 w-3.5" /> New Tracker
-            </Button>
-          </div>
-          <div className="flex-1 min-h-0">
-            <DocumentMovementList documents={filteredDocuments} onViewDocument={setViewingDocument} />
-          </div>
-        </TabsContent>
-      </Tabs>
+            <div className="flex-1 min-h-0">
+                {jmsView === 'board' ? (
+                    <JobProgressBoard jobs={filteredJobs} onViewJob={handleViewJob} />
+                ) : (
+                    <JobProgressTable jobs={filteredJobs} onViewJob={handleViewJob} />
+                )}
+            </div>
+            </TabsContent>
+
+            <TabsContent value="timesheets" className="flex-1 min-h-0 mt-0 flex-col data-[state=active]:flex">
+            <div className="flex flex-col sm:flex-row justify-between items-center pb-1 gap-2 shrink-0">
+                <div className="flex flex-wrap gap-2 items-center flex-1">
+                    <div className="relative w-full sm:w-56">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                        placeholder="Search unit..."
+                        className="pl-8 h-7 text-[11px] bg-background"
+                        value={timesheetSearchTerm}
+                        onChange={e => setTimesheetSearchTerm(e.target.value)}
+                    />
+                    </div>
+                    <Select value={timesheetProjectFilter} onValueChange={setTimesheetProjectFilter}>
+                        <SelectTrigger className="w-full sm:w-[130px] h-7 text-[11px] bg-background"><SelectValue placeholder="Project" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Projects</SelectItem>
+                            {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Select value={timesheetSubmitterFilter} onValueChange={setTimesheetSubmitterFilter}>
+                        <SelectTrigger className="w-full sm:w-[130px] h-7 text-[11px] bg-background"><SelectValue placeholder="Submitter" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Submitters</SelectItem>
+                            {allSubmitters.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <Button variant={timesheetView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-7 w-7" onClick={() => setTimesheetView('board')}><LayoutGrid className="h-3.5 w-3.5" /></Button>
+                    <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-7 w-7" onClick={() => setTimesheetView('list')}><List className="h-3.5 w-3.5" /></Button>
+                    <Button onClick={() => setIsCreateTimesheetOpen(true)} size="sm" className="h-7 px-3 text-[11px]">
+                        <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> New Timesheet
+                    </Button>
+                </div>
+            </div>
+            <div className="flex-1 min-h-0">
+                {timesheetView === 'board' ? (
+                    <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
+                ) : (
+                    <TimesheetTrackerTable timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
+                )}
+            </div>
+            </TabsContent>
+
+            <TabsContent value="documents" className="flex-1 min-h-0 mt-0 flex-col data-[state=active]:flex">
+            <div className="flex flex-col sm:flex-row justify-between items-center pb-1 gap-2 shrink-0">
+                <div className="relative w-full sm:w-72">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                        placeholder="Search document title..."
+                        className="pl-8 h-7 text-[11px] bg-background"
+                        value={docSearchTerm}
+                        onChange={e => setDocSearchTerm(e.target.value)}
+                    />
+                </div>
+                <Button onClick={() => setIsCreateDocumentOpen(true)} size="sm" className="h-7 px-3 text-[11px]">
+                    <Folder className="mr-1.5 h-3.5 w-3.5" /> New Tracker
+                </Button>
+            </div>
+            <div className="flex-1 min-h-0">
+                <DocumentMovementList documents={filteredDocuments} onViewDocument={setViewingDocument} />
+            </div>
+            </TabsContent>
+        </Tabs>
+      </div>
 
       {/* Dialogs */}
       <CreateTimesheetDialog isOpen={isCreateTimesheetOpen} setIsOpen={setIsCreateTimesheetOpen} />
