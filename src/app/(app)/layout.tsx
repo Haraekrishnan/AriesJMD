@@ -48,16 +48,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen w-full bg-background">
+    <div className="flex min-h-screen w-full bg-background overflow-hidden">
       <DecorationProvider />
       <AppSidebar />
-      <div className="flex h-screen w-full flex-col md:pl-64">
+      <div className="flex h-screen w-full flex-col md:pl-64 overflow-hidden">
         <Header />
-        <div className="p-2 border-b">
+        <div className="p-2 border-b shrink-0">
           <BroadcastFeed />
         </div>
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
-          <div className="mt-4">{children}</div>
+        <main className="flex-1 flex flex-col min-h-0 overflow-hidden p-4 sm:p-6 lg:p-8">
+          <div className="flex-1 flex flex-col min-h-0">
+            {children}
+          </div>
         </main>
       </div>
     </div>

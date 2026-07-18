@@ -1,4 +1,3 @@
-
 'use client';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -24,8 +23,8 @@ export default function VehicleUsageSummaryPage() {
     }
     
     return (
-        <div className="h-[calc(100vh-10rem)] flex flex-col space-y-4">
-             <div>
+        <div className="flex-1 flex flex-col min-h-0 h-full space-y-4">
+             <div className="shrink-0">
                 <h1 className="text-3xl font-bold tracking-tight">Vehicle Usage Summary</h1>
                 <p className="text-muted-foreground">
                     Track monthly vehicle usage, kilometers, and overtime.

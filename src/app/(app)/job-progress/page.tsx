@@ -246,7 +246,7 @@ export default function JobProgressPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-10rem)] flex flex-col space-y-4">
+    <div className="flex-1 flex flex-col min-h-0 space-y-4">
        <div className="shrink-0">
           <h1 className="text-3xl font-bold tracking-tight">JMS Tracker</h1>
           <p className="text-muted-foreground">Monitor the progress of Job Measurement Sheets, Timesheets, and Documents.</p>
@@ -336,7 +336,7 @@ export default function JobProgressPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="overflow-auto flex-1 relative">
+                    <div className="flex-1 min-h-0 overflow-hidden">
                         {jmsView === 'board' ? (
                             <JobProgressBoard jobs={filteredJobs} onViewJob={handleViewJob} />
                         ) : (
@@ -389,11 +389,11 @@ export default function JobProgressPage() {
                             </Select>
                             <div className="flex items-center gap-1.5 ml-auto">
                                 <Button variant={timesheetView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setTimesheetView('board')}><LayoutGrid className="h-4 w-4" /></Button>
-                                <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setTimesheetView('list')}><List className="h-4 w-4" /></Button>
+                                <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setHeighView('list')}><List className="h-4 w-4" /></Button>
                             </div>
                         </div>
                     </div>
-                    <div className="overflow-auto flex-1 relative">
+                    <div className="flex-1 min-h-0 overflow-hidden">
                         {timesheetView === 'board' ? (
                             <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
                         ) : (
@@ -419,7 +419,7 @@ export default function JobProgressPage() {
                             <Folder className="mr-1.5 h-3.5 w-3.5" /> New Tracker
                         </Button>
                     </div>
-                    <div className="overflow-auto flex-1 relative">
+                    <div className="flex-1 min-h-0 overflow-hidden">
                         <DocumentMovementList documents={filteredDocuments} onViewDocument={setViewingDocument} />
                     </div>
                 </div>
