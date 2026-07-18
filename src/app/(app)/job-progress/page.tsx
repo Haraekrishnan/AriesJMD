@@ -246,13 +246,13 @@ export default function JobProgressPage() {
   }
 
   return (
-    <div className="flex h-full flex-col min-h-0 overflow-hidden gap-4">
+    <div className="flex h-[calc(100vh-170px)] flex-col overflow-hidden gap-4">
        <div className="shrink-0">
           <h1 className="text-3xl font-bold tracking-tight">JMS Tracker</h1>
           <p className="text-muted-foreground">Monitor the progress of Job Measurement Sheets, Timesheets, and Documents.</p>
        </div>
       
-       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 h-0 flex-col min-h-0">
+       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col overflow-hidden">
             <div className="shrink-0 mb-2">
                 <TabsList className="bg-muted/50">
                     <TabsTrigger value="jms" className="text-xs px-3">JMS Tracker</TabsTrigger>
@@ -261,8 +261,8 @@ export default function JobProgressPage() {
                 </TabsList>
             </div>
 
-            <TabsContent value="jms" className="flex flex-1 h-0 min-h-0 flex-col overflow-hidden data-[state=active]:flex">
-                <div className="flex flex-1 h-0 min-h-0 flex-col rounded-lg border bg-card overflow-hidden">
+            <TabsContent value="jms" className="flex-1 flex flex-col overflow-hidden data-[state=active]:flex">
+                <div className="flex-1 flex flex-col overflow-hidden rounded-lg border bg-card">
                     <div className="border-b shrink-0 p-4 space-y-4">
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-2">
@@ -336,7 +336,7 @@ export default function JobProgressPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="flex-1 min-h-0 overflow-hidden">
+                    <div className="flex-1 overflow-hidden">
                         {jmsView === 'board' ? (
                             <div className="h-full relative overflow-auto">
                               <JobProgressBoard jobs={filteredJobs} onViewJob={handleViewJob} />
@@ -348,8 +348,8 @@ export default function JobProgressPage() {
                 </div>
             </TabsContent>
 
-            <TabsContent value="timesheets" className="flex flex-1 h-0 min-h-0 flex-col overflow-hidden data-[state=active]:flex">
-                <div className="flex flex-1 h-0 min-h-0 flex-col rounded-lg border bg-card overflow-hidden">
+            <TabsContent value="timesheets" className="flex-1 flex flex-col overflow-hidden data-[state=active]:flex">
+                <div className="flex-1 flex flex-col overflow-hidden rounded-lg border bg-card">
                     <div className="border-b shrink-0 p-4 space-y-4">
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-2">
@@ -395,7 +395,7 @@ export default function JobProgressPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="flex-1 min-h-0 overflow-hidden">
+                    <div className="flex-1 overflow-hidden">
                         {timesheetView === 'board' ? (
                             <div className="h-full relative overflow-auto">
                               <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
@@ -407,8 +407,8 @@ export default function JobProgressPage() {
                 </div>
             </TabsContent>
 
-            <TabsContent value="documents" className="flex flex-1 h-0 min-h-0 flex-col overflow-hidden data-[state=active]:flex">
-                <div className="flex flex-1 h-0 min-h-0 flex-col rounded-lg border bg-card overflow-hidden">
+            <TabsContent value="documents" className="flex-1 flex flex-col overflow-hidden data-[state=active]:flex">
+                <div className="flex-1 flex flex-col overflow-hidden rounded-lg border bg-card">
                     <div className="border-b shrink-0 p-4 flex justify-between items-center">
                         <div className="relative w-full sm:w-72">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -423,7 +423,7 @@ export default function JobProgressPage() {
                             <Folder className="mr-1.5 h-3.5 w-3.5" /> New Tracker
                         </Button>
                     </div>
-                    <div className="flex-1 min-h-0 overflow-hidden">
+                    <div className="flex-1 overflow-hidden">
                         <DocumentMovementList documents={filteredDocuments} onViewDocument={setViewingDocument} />
                     </div>
                 </div>
