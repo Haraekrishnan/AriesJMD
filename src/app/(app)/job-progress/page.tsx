@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/auth-provider';
 import { usePlanner } from '@/contexts/planner-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
-import { Bell, Clock, Folder, List, LayoutGrid, Search, ChevronLeft, ChevronRight, AlertTriangle, PlusCircle, FolderKanban } from 'lucide-react';
+import { Bell, Clock, Folder, List, LayoutGrid, Search, ChevronLeft, ChevronRight, AlertTriangle, PlusCircle, CheckCircle } from 'lucide-react';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress, Timesheet, Role, DocumentMovement } from '@/lib/types';
 import { format, startOfMonth, addMonths, isSameMonth, parseISO, isAfter, isBefore, startOfToday, differenceInDays, endOfMonth, isValid } from 'date-fns';
@@ -27,9 +27,7 @@ import TimesheetTrackerTable from '@/components/job-progress/TimesheetTrackerTab
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
-import { Separator } from '@/components/ui/separator';
 import CompletedJmsDialog from '@/components/job-progress/CompletedJmsDialog';
-import { CheckCircle } from 'lucide-react';
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
 
@@ -52,9 +50,11 @@ export default function JobProgressPage() {
   const [jmsAssigneeId, setJmsAssigneeId] = useState('all');
   const [jmsProjectFilter, setJmsProjectFilter] = useState('all');
   const [jmsUnitFilter, setJmsUnitFilter] = useState('all');
+  
   const [timesheetSearchTerm, setTimesheetSearchTerm] = useState('');
   const [timesheetSubmitterFilter, setTimesheetSubmitterFilter] = useState('all');
   const [timesheetProjectFilter, setTimesheetProjectFilter] = useState('all');
+  
   const [docSearchTerm, setDocSearchTerm] = useState('');
 
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
@@ -90,6 +90,16 @@ export default function JobProgressPage() {
             return daysIdle > 3;
         }
         return false;
+    });
+  }, [jobProgress, user]);
+
+  const completedJobs = useMemo(() => {
+    if (!user) return [];
+    const isPrivileged = ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role);
+    return jobProgress.filter(job => {
+      if (job.status !== 'Completed') return false;
+      if (job.notedById) return false;
+      return isPrivileged || job.creatorId === user.id;
     });
   }, [jobProgress, user]);
 
@@ -233,19 +243,6 @@ export default function JobProgressPage() {
     const submitterIds = new Set(timesheets.map(ts => ts.submitterId));
     return users.filter(u => submitterIds.has(u.id));
   }, [timesheets, users]);
-
-  const completedJobs = useMemo(() => {
-    if (!user) return [];
-  
-    const isPrivileged = ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role);
-  
-    return jobProgress.filter(job => {
-      if (job.status !== 'Completed') return false;
-      if (job.notedById) return false;
-  
-      return isPrivileged || job.creatorId === user.id;
-    });
-  }, [jobProgress, user]);
     
   if (!can.view_job_progress && !can.view_all) {
       return (
@@ -472,7 +469,7 @@ export default function JobProgressPage() {
       {viewingTimesheet && <ViewTimesheetDialog isOpen={!!viewingTimesheet} setIsOpen={() => setViewingTimesheet(null)} timesheet={viewingTimesheet} />}
       {viewingDocument && <ViewDocumentMovementDialog isOpen={!!viewingDocument} setIsOpen={() => setViewingDocument(null)} movement={viewingDocument} />}
       <PendingActionsDialog isOpen={isPendingDialogOpen} setIsOpen={setIsPendingDialogOpen} onViewJob={handleViewJob} onViewTimesheet={handleViewTimesheet} onViewDocument={setViewingDocument} />
-      <LongPendingJmsDialog isOpen={isPendingDialogOpen} setIsOpen={setIsLongPendingDialogOpen} longPendingJobs={longPendingJobs} onViewJob={handleViewJob} />
+      <LongPendingJmsDialog isOpen={isLongPendingDialogOpen} setIsOpen={setIsLongPendingDialogOpen} longPendingJobs={longPendingJobs} onViewJob={handleViewJob} />
       <CompletedJmsDialog
         isOpen={isCompletedDialogOpen}
         setIsOpen={setIsCompletedDialogOpen}

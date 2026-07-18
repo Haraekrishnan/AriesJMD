@@ -20,6 +20,7 @@ import { format, subDays } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { Label } from '../ui/label';
 
 const scheduleItemSchema = z.object({
   id: z.string(),
