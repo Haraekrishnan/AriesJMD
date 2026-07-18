@@ -313,30 +313,30 @@ export default function JobProgressPage() {
                                     </Button>
                                 )}
                                 <Button
-    variant="outline"
-    size="sm"
-    className="h-8"
-    onClick={() => setIsCompletedDialogOpen(true)}
->
-    <CheckCircle className="mr-1.5 h-3.5 w-3.5 text-green-600" />
-    Completed
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8"
+                                    onClick={() => setIsCompletedDialogOpen(true)}
+                                >
+                                    <CheckCircle className="mr-1.5 h-3.5 w-3.5 text-green-600" />
+                                    Completed
 
-    {completedJobs.length > 0 && (
-        <Badge
-            variant="success"
-            className="ml-1.5 h-4 text-[9px]"
-        >
-            {completedJobs.length}
-        </Badge>
-    )}
-</Button>
+                                    {completedJobs.length > 0 && (
+                                        <Badge
+                                            variant="success"
+                                            className="ml-1.5 h-4 text-[9px]"
+                                        >
+                                            {completedJobs.length}
+                                        </Badge>
+                                    )}
+                                </Button>
                                 <OngoingJobsReport jobs={filteredJobs} />
                                 {can.create_jms && (
                                     <Button onClick={() => setIsCreateJmsOpen(true)} size="sm" className="h-8">
                                         <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> New JMS
                                     </Button>
                                 )}
-                                                            </div>
+                            </div>
                         </div>
                         <div className="flex flex-wrap gap-2 items-center">
                             <div className="relative w-full sm:w-56">
@@ -472,12 +472,12 @@ export default function JobProgressPage() {
       {viewingTimesheet && <ViewTimesheetDialog isOpen={!!viewingTimesheet} setIsOpen={() => setViewingTimesheet(null)} timesheet={viewingTimesheet} />}
       {viewingDocument && <ViewDocumentMovementDialog isOpen={!!viewingDocument} setIsOpen={() => setViewingDocument(null)} movement={viewingDocument} />}
       <PendingActionsDialog isOpen={isPendingDialogOpen} setIsOpen={setIsPendingDialogOpen} onViewJob={handleViewJob} onViewTimesheet={handleViewTimesheet} onViewDocument={setViewingDocument} />
-      <LongPendingJmsDialog isOpen={isLongPendingDialogOpen} setIsOpen={setIsLongPendingDialogOpen} longPendingJobs={longPendingJobs} onViewJob={handleViewJob} />
+      <LongPendingJmsDialog isOpen={isPendingDialogOpen} setIsOpen={setIsLongPendingDialogOpen} longPendingJobs={longPendingJobs} onViewJob={handleViewJob} />
       <CompletedJmsDialog
-    isOpen={isCompletedDialogOpen}
-    setIsOpen={setIsCompletedDialogOpen}
-    onViewJob={handleViewJob}
-/>
+        isOpen={isCompletedDialogOpen}
+        setIsOpen={setIsCompletedDialogOpen}
+        onViewJob={handleViewJob}
+      />
     </div>
   );
 }
