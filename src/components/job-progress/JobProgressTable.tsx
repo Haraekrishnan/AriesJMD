@@ -48,7 +48,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden border rounded-md shadow-sm bg-white dark:bg-slate-950 h-full">
+    <div className="flex flex-col h-full overflow-hidden border rounded-md shadow-sm bg-white dark:bg-slate-950">
       <TooltipProvider>
         <ScrollArea className="flex-1">
           <div className="min-w-max">
@@ -80,7 +80,6 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                 {sortedJobs.map((job, index) => {
                   const project = projects.find(p => p.id === job.projectId);
                   const isEven = index % 2 !== 0;
-                  // Use solid background colors to prevent transparency during scrolling
                   const rowBg = isEven ? "bg-slate-50 dark:bg-slate-800" : "bg-white dark:bg-slate-900";
                   
                   return (
@@ -112,7 +111,6 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                         const isAcknowledgedPending = step?.status === 'Acknowledged';
                         const assignee = step ? users.find(u => u.id === step.assigneeId) : null;
                         
-                        // Calculate days since last update for alerting
                         const daysElapsed = differenceInDays(new Date(), parseISO(job.lastUpdated));
                         const isLongDelay = daysElapsed > 2 && (isUnacknowledged || isAcknowledgedPending);
 
