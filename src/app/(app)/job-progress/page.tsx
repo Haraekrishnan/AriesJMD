@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -247,13 +246,13 @@ export default function JobProgressPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 space-y-4">
+    <div className="flex-1 flex flex-col min-h-0 h-full space-y-4">
        <div className="shrink-0">
           <h1 className="text-3xl font-bold tracking-tight">JMS Tracker</h1>
           <p className="text-muted-foreground">Monitor the progress of Job Measurement Sheets, Timesheets, and Documents.</p>
        </div>
       
-       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 h-full">
             <div className="shrink-0 mb-2">
                 <TabsList className="bg-muted/50">
                     <TabsTrigger value="jms" className="text-xs px-3">JMS Tracker</TabsTrigger>
@@ -374,14 +373,14 @@ export default function JobProgressPage() {
                                     onChange={e => setTimesheetSearchTerm(e.target.value)}
                                 />
                             </div>
-                            <Select value={timesheetProjectFilter} onValueChange={setProjectFilter}>
+                            <Select value={timesheetProjectFilter} onValueChange={setTimesheetProjectFilter}>
                                 <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Project" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Projects</SelectItem>
                                     {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-                            <Select value={timesheetSubmitterFilter} onValueChange={setSubmitterFilter}>
+                            <Select value={timesheetSubmitterFilter} onValueChange={setTimesheetSubmitterFilter}>
                                 <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Submitter" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Submitters</SelectItem>
