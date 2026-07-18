@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -370,7 +371,7 @@ export default function JobProgressPage() {
                                     placeholder="Search unit..."
                                     className="pl-8 h-7 text-[11px] bg-background"
                                     value={timesheetSearchTerm}
-                                    onChange={e => setTimesheetSearchTerm(e.target.value)}
+                                    onChange={e => setSearchTerm(e.target.value)}
                                 />
                                 </div>
                                 <Select value={timesheetProjectFilter} onValueChange={setTimesheetProjectFilter}>
