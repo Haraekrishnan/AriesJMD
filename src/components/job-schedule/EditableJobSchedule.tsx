@@ -5,22 +5,22 @@ import { z } from 'zod';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Input } from '../ui/input';
-import { Textarea } from '../ui/textarea';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { Check, PlusCircle, Save, Trash2, Copy, Users, ChevronsUpDown, ArrowUp, ArrowDown, Search, UserX, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { JobSchedule, JobScheduleItem } from '@/lib/types';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useMemo, useEffect, useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { format, subDays, parseISO } from 'date-fns';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { ScrollArea, ScrollBar } from '../ui/scroll-area';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import { Label } from '../ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 const scheduleItemSchema = z.object({
   id: z.string(),
@@ -167,7 +167,6 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
     const currentName = (form.getValues('name') || '').trim();
     
     // Specifically look for a schedule with the same name from yesterday
-    // Normalizing names to handle legacy records where name might be undefined
     const yesterdaySchedule = jobSchedules.find(s => 
         s.date === yesterdayStr && 
         (s.name || '').trim() === currentName

@@ -301,7 +301,7 @@ export default function JobSchedulePage() {
                                         <TabsTrigger value={s.id} className="data-[state=active]:bg-background">
                                             {s.name || `Schedule ${i + 1}`}
                                         </TabsTrigger>
-                                        {can.manage_job_schedule && schedulesForDate.length > 1 && (
+                                        {can.manage_job_schedule && (
                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild>
                                                     <Button variant="ghost" size="icon" className="absolute -top-1 -right-1 h-4 w-4 p-0 bg-destructive text-white rounded-full hidden group-hover:flex">
