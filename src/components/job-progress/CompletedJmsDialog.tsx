@@ -70,30 +70,30 @@ export default function CompletedJmsDialog({ isOpen, setIsOpen, onViewJob }: Com
               return (
                 <div key={job.id} className="border p-4 rounded-lg flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-muted/20">
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold truncate text-sm sm:text-base mb-1">{job.title}</p>
+                    <p className="font-bold truncate text-sm sm:text-base mb-1 uppercase">{job.title}</p>
                     <p className="text-xs text-muted-foreground truncate mb-2">{locationText || 'N/A'}</p>
                     <div className="flex flex-wrap items-center gap-2 text-[10px]">
                         <Badge variant="outline" className="h-4 py-0 text-[9px] font-mono">JMS: {job.jmsNo || 'N/A'}</Badge>
-                        <span className="text-muted-foreground">by {creator?.name}</span>
+                        <span className="text-muted-foreground font-medium">by {creator?.name}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="h-9 text-xs px-3 font-semibold whitespace-nowrap" 
+                      className="h-9 text-xs px-4 font-bold whitespace-nowrap" 
                       onClick={() => handleView(job)}
                     >
-                        <Eye className="mr-1.5 h-3.5 w-3.5" />
-                        Details
+                        <Eye className="mr-2 h-4 w-4" />
+                        DETAILS
                     </Button>
                     <Button 
                       size="sm" 
-                      className="h-9 text-xs px-3 bg-green-600 hover:bg-green-700 font-semibold whitespace-nowrap" 
+                      className="h-9 text-xs px-4 bg-green-600 hover:bg-green-700 font-bold whitespace-nowrap text-white" 
                       onClick={() => handleNoted(job.id)}
                     >
-                        <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
-                        Mark as Noted
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        MARK AS NOTED
                     </Button>
                   </div>
                 </div>
