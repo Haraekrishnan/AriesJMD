@@ -246,7 +246,12 @@ export default function JobProgressPage() {
   }
 
   return (
-    <div className="flex flex-1 h-full flex-col min-h-0 overflow-hidden gap-4">
+    <div
+    className="flex flex-col gap-4"
+    style={{
+        height: "calc(100vh - 165px)"
+    }}
+>
        <div className="shrink-0">
           <h1 className="text-3xl font-bold tracking-tight">JMS Tracker</h1>
           <p className="text-muted-foreground text-sm">Monitor the progress of Job Measurement Sheets, Timesheets, and Documents.</p>
@@ -336,7 +341,7 @@ export default function JobProgressPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="flex-1 min-h-0 overflow-auto">
+                    <div className="flex-1 flex flex-col rounded-lg border bg-card overflow-hidden">
                         {jmsView === 'board' ? (
                               <JobProgressBoard jobs={filteredJobs} onViewJob={handleViewJob} />
                         ) : (
