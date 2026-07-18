@@ -145,8 +145,8 @@ export default function TimesheetTrackerTable({
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-auto relative">
-        <div className="min-w-max">
-          <Table className="border-collapse text-[11px] font-sans">
+        <div className="min-w-max h-full">
+          <Table className="h-full w-full border-collapse text-[11px] font-sans">
             <TableHeader className="sticky top-0 z-20">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id} className="bg-[#D9E2F3] hover:bg-[#D9E2F3] border-b-2 border-black">

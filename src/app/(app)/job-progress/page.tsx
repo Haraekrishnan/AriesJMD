@@ -249,7 +249,7 @@ export default function JobProgressPage() {
     <div className="flex flex-1 h-full flex-col min-h-0 overflow-hidden gap-4">
        <div className="shrink-0">
           <h1 className="text-3xl font-bold tracking-tight">JMS Tracker</h1>
-          <p className="text-muted-foreground">Monitor the progress of Job Measurement Sheets, Timesheets, and Documents.</p>
+          <p className="text-muted-foreground text-sm">Monitor the progress of Job Measurement Sheets, Timesheets, and Documents.</p>
        </div>
       
        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 h-0 flex-col min-h-0">
@@ -262,8 +262,8 @@ export default function JobProgressPage() {
             </div>
 
             <TabsContent value="jms" className="flex flex-1 h-0 min-h-0 flex-col overflow-hidden data-[state=active]:flex">
-                <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card">
-                    <div className="border-b shrink-0 p-4 space-y-4">
+                <div className="flex flex-1 h-0 min-h-0 flex-col rounded-lg border bg-card overflow-hidden">
+                    <div className="border-b shrink-0 p-3 space-y-3">
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-2">
                                 <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth}>
@@ -336,7 +336,7 @@ export default function JobProgressPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="overflow-auto flex-1 relative">
+                    <div className="flex-1 relative overflow-auto min-h-[650px]">
                         {jmsView === 'board' ? (
                               <JobProgressBoard jobs={filteredJobs} onViewJob={handleViewJob} />
                         ) : (
@@ -347,8 +347,8 @@ export default function JobProgressPage() {
             </TabsContent>
 
             <TabsContent value="timesheets" className="flex flex-1 h-0 min-h-0 flex-col overflow-hidden data-[state=active]:flex">
-                <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card">
-                    <div className="border-b shrink-0 p-4 space-y-4">
+                <div className="flex flex-1 h-0 min-h-0 flex-col rounded-lg border bg-card overflow-hidden">
+                    <div className="border-b shrink-0 p-3 space-y-3">
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-2">
                                 <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth}>
@@ -389,11 +389,11 @@ export default function JobProgressPage() {
                             </Select>
                             <div className="flex items-center gap-1.5 ml-auto">
                                 <Button variant={timesheetView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setTimesheetView('board')}><LayoutGrid className="h-4 w-4" /></Button>
-                                <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setTimesheetView('list')}><List className="h-4 w-4" /></Button>
+                                <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setViewingTimesheet(null)}><List className="h-4 w-4" /></Button>
                             </div>
                         </div>
                     </div>
-                    <div className="overflow-auto flex-1 relative">
+                    <div className="flex-1 relative overflow-auto min-h-[650px]">
                         {timesheetView === 'board' ? (
                               <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
                         ) : (
@@ -404,8 +404,8 @@ export default function JobProgressPage() {
             </TabsContent>
 
             <TabsContent value="documents" className="flex flex-1 h-0 min-h-0 flex-col overflow-hidden data-[state=active]:flex">
-                <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card">
-                    <div className="border-b shrink-0 p-4 flex justify-between items-center">
+                <div className="flex flex-1 h-0 min-h-0 flex-col rounded-lg border bg-card overflow-hidden">
+                    <div className="border-b shrink-0 p-3 flex justify-between items-center">
                         <div className="relative w-full sm:w-72">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                             <Input
@@ -419,7 +419,7 @@ export default function JobProgressPage() {
                             <Folder className="mr-1.5 h-3.5 w-3.5" /> New Tracker
                         </Button>
                     </div>
-                    <div className="overflow-auto flex-1 relative">
+                    <div className="flex-1 relative overflow-auto min-h-[650px]">
                         <DocumentMovementList documents={filteredDocuments} onViewDocument={setViewingDocument} />
                     </div>
                 </div>
