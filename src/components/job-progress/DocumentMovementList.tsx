@@ -29,7 +29,7 @@ const DocumentMovementList = ({ documents, onViewDocument }: { documents: Docume
     return (
         <div className="flex flex-col h-full">
             <div className="flex-1 overflow-auto relative">
-                <div className="min-w-max flex-1 h-full">
+                <div className="min-w-max h-full">
                     <Table className="h-full w-full border-collapse text-[11px] font-sans">
                         <TableHeader className="sticky top-0 z-20">
                             <TableRow className="bg-[#D9E2F3] hover:bg-[#D9E2F3] border-b-2 border-black">

@@ -47,10 +47,10 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   }
 
   return (
-    <div className="flex flex-1 h-full min-h-0 flex-col">
-    <TooltipProvider>
-        <div className="flex-1 min-h-0 overflow-auto relative">
-        <div className="min-w-max min-h-full">
+    <div className="flex flex-col h-full">
+      <TooltipProvider>
+        <div className="flex-1 overflow-auto relative">
+          <div className="min-w-max h-full">
             <Table className="h-full w-full border-collapse text-[11px] font-sans">
               <TableHeader className="sticky top-0 z-40">
                 <TableRow className="bg-[#D9E2F3] hover:bg-[#D9E2F3] border-b-2 border-black">

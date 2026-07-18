@@ -68,22 +68,22 @@ export default function CompletedJmsDialog({ isOpen, setIsOpen, onViewJob }: Com
               const locationText = [project?.name, job.plantUnit].filter(Boolean).join(' / ');
               
               return (
-                <div key={job.id} className="border p-4 rounded-lg flex justify-between items-center gap-4 bg-muted/20">
+                <div key={job.id} className="border p-3 rounded-lg flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-muted/20">
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold truncate">{job.title}</p>
-                    <p className="text-xs text-muted-foreground">{locationText || 'N/A'}</p>
-                    <div className="flex items-center gap-2 mt-1 text-xs">
-                        <Badge variant="outline" className="h-4 py-0 text-[10px]">JMS: {job.jmsNo || 'N/A'}</Badge>
+                    <p className="font-bold truncate text-sm sm:text-base">{job.title}</p>
+                    <p className="text-xs text-muted-foreground truncate">{locationText || 'N/A'}</p>
+                    <div className="flex flex-wrap items-center gap-2 mt-1 text-[10px]">
+                        <Badge variant="outline" className="h-4 py-0 text-[9px] font-mono">JMS: {job.jmsNo || 'N/A'}</Badge>
                         <span className="text-muted-foreground">by {creator?.name}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Button variant="outline" size="sm" onClick={() => handleView(job)}>
-                        <Eye className="mr-1.5 h-3.5 w-3.5" />
+                    <Button variant="outline" size="sm" className="h-8 text-xs px-2" onClick={() => handleView(job)}>
+                        <Eye className="mr-1 h-3 w-3" />
                         Details
                     </Button>
-                    <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleNoted(job.id)}>
-                        <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+                    <Button size="sm" className="h-8 text-xs px-2 bg-green-600 hover:bg-green-700" onClick={() => handleNoted(job.id)}>
+                        <CheckCircle className="mr-1 h-3 w-3" />
                         Mark as Noted
                     </Button>
                   </div>
