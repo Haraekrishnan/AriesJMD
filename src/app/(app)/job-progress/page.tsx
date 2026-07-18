@@ -261,8 +261,8 @@ export default function JobProgressPage() {
                 </TabsList>
             </div>
 
-            <TabsContent value="jms" className="flex flex-1 h-0 min-h-0 flex-col overflow-hidden data-[state=active]:flex">
-                <div className="flex flex-1 h-0 min-h-0 flex-col rounded-lg border bg-card overflow-hidden">
+            <TabsContent value="jms" className="m-0 flex-1 overflow-hidden">
+                <div className="flex h-full flex-col rounded-lg border bg-card">
                     <div className="border-b shrink-0 p-3 space-y-3">
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-2">
@@ -336,7 +336,7 @@ export default function JobProgressPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="flex-1 relative overflow-auto min-h-[650px]">
+                    <div className="flex-1 min-h-0 overflow-auto">
                         {jmsView === 'board' ? (
                               <JobProgressBoard jobs={filteredJobs} onViewJob={handleViewJob} />
                         ) : (
@@ -346,8 +346,8 @@ export default function JobProgressPage() {
                 </div>
             </TabsContent>
 
-            <TabsContent value="timesheets" className="flex flex-1 h-0 min-h-0 flex-col overflow-hidden data-[state=active]:flex">
-                <div className="flex flex-1 h-0 min-h-0 flex-col rounded-lg border bg-card overflow-hidden">
+            <TabsContent value="timesheets" className="m-0 flex-1 overflow-hidden">
+                <div className="flex h-full flex-col rounded-lg border bg-card">
                     <div className="border-b shrink-0 p-3 space-y-3">
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-2">
@@ -393,7 +393,7 @@ export default function JobProgressPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="flex-1 relative overflow-auto min-h-[650px]">
+                    <div className="flex-1 min-h-0 overflow-auto">
                         {timesheetView === 'board' ? (
                               <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
                         ) : (
@@ -403,8 +403,8 @@ export default function JobProgressPage() {
                 </div>
             </TabsContent>
 
-            <TabsContent value="documents" className="flex flex-1 h-0 min-h-0 flex-col overflow-hidden data-[state=active]:flex">
-                <div className="flex flex-1 h-0 min-h-0 flex-col rounded-lg border bg-card overflow-hidden">
+            <TabsContent value="documents" className="m-0 flex-1 overflow-hidden">
+                <div className="flex h-full flex-col rounded-lg border bg-card">
                     <div className="border-b shrink-0 p-3 flex justify-between items-center">
                         <div className="relative w-full sm:w-72">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -419,7 +419,7 @@ export default function JobProgressPage() {
                             <Folder className="mr-1.5 h-3.5 w-3.5" /> New Tracker
                         </Button>
                     </div>
-                    <div className="flex-1 relative overflow-auto min-h-[650px]">
+                    <div className="flex-1 min-h-0 overflow-auto">
                         <DocumentMovementList documents={filteredDocuments} onViewDocument={setViewingDocument} />
                     </div>
                 </div>

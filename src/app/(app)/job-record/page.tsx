@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useAppContext } from '@/contexts/app-provider';
@@ -7,8 +8,8 @@ import { AlertTriangle } from 'lucide-react';
 
 export default function JobRecordPage() {
     return (
-        <div className="flex-1 flex flex-col min-h-0 h-full space-y-4">
-            <div className="shrink-0">
+        <div className="h-[calc(100vh-10rem)] flex flex-col space-y-4">
+            <div>
                 <h1 className="text-3xl font-bold tracking-tight">Job Record Sheet</h1>
                 <p className="text-muted-foreground">
                     Track monthly attendance and work allocation for each employee.

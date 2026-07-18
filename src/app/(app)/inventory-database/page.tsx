@@ -47,15 +47,15 @@ export default function InventoryDatabasePage() {
     }
 
     return (
-        <div className="flex-1 flex flex-col min-h-0 h-full space-y-4">
-            <div className="shrink-0">
+        <div className="h-full flex flex-col space-y-4">
+            <div>
                 <h1 className="text-3xl font-bold tracking-tight">Inventory Database</h1>
                 <p className="text-muted-foreground">
                     Directly edit inventory items in a spreadsheet-like interface. All changes are saved automatically.
                 </p>
             </div>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-                <ScrollArea className="w-full shrink-0 whitespace-nowrap rounded-md border">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+                <ScrollArea className="w-full whitespace-nowrap rounded-md border">
                     <TabsList className="inline-flex h-auto p-1">
                         {inventoryCategories.map(cat => (
                             <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
@@ -64,7 +64,7 @@ export default function InventoryDatabasePage() {
                     <ScrollBar orientation="horizontal" />
                 </ScrollArea>
                 {inventoryCategories.map(cat => (
-                    <TabsContent key={cat} value={cat} className="flex-1 h-full min-h-0 mt-4 flex flex-col data-[state=active]:flex">
+                    <TabsContent key={cat} value={cat} className="flex-1 mt-4">
                         <InventorySheet category={cat} />
                     </TabsContent>
                 ))}
