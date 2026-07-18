@@ -46,7 +46,7 @@ export default function JobProgressPage() {
   const [isLongPendingDialogOpen, setIsLongPendingDialogOpen] = useState(false);
   
   const [jmsSearchTerm, setJmsSearchTerm] = useState('');
-  const [jmsAssigneeFilter, setJmsAssigneeFilter] = useState('all');
+  const [jmsAssigneeId, setJmsAssigneeId] = useState('all');
   const [jmsProjectFilter, setJmsProjectFilter] = useState('all');
   const [jmsUnitFilter, setJmsUnitFilter] = useState('all');
   const [timesheetSearchTerm, setTimesheetSearchTerm] = useState('');
@@ -140,14 +140,14 @@ export default function JobProgressPage() {
     if (jmsUnitFilter !== 'all') {
       jobs = jobs.filter(job => job.plantUnit === jmsUnitFilter);
     }
-    if (jmsAssigneeFilter !== 'all') {
+    if (jmsAssigneeId !== 'all') {
       jobs = jobs.filter(job => {
         const currentStep = job.steps.find(s => s.status === 'Pending' || s.isReturned || s.status === 'Acknowledged');
         if (job.status === 'Completed') {
             const lastStep = job.steps[job.steps.length - 1];
-            return lastStep?.completedBy === jmsAssigneeFilter;
+            return lastStep?.completedBy === jmsAssigneeId;
         } else {
-            return currentStep?.assigneeId === jmsAssigneeFilter;
+            return currentStep?.assigneeId === jmsAssigneeId;
         }
       });
     }
@@ -171,7 +171,7 @@ export default function JobProgressPage() {
     }
     
     return jobs;
-  }, [jobsInMonth, jmsSearchTerm, jmsAssigneeFilter, jmsProjectFilter, jmsUnitFilter, projects]);
+  }, [jobsInMonth, jmsSearchTerm, jmsAssigneeId, jmsProjectFilter, jmsUnitFilter, projects]);
 
   const filteredTimesheets = useMemo(() => {
     let visibleTimesheets = timesheets.filter(ts => {
@@ -246,13 +246,13 @@ export default function JobProgressPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-170px)] flex-col overflow-hidden gap-4">
+    <div className="flex flex-1 h-full flex-col min-h-0 overflow-hidden gap-4">
        <div className="shrink-0">
           <h1 className="text-3xl font-bold tracking-tight">JMS Tracker</h1>
           <p className="text-muted-foreground">Monitor the progress of Job Measurement Sheets, Timesheets, and Documents.</p>
        </div>
       
-       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col overflow-hidden">
+       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 h-0 flex-col min-h-0">
             <div className="shrink-0 mb-2">
                 <TabsList className="bg-muted/50">
                     <TabsTrigger value="jms" className="text-xs px-3">JMS Tracker</TabsTrigger>
@@ -261,7 +261,7 @@ export default function JobProgressPage() {
                 </TabsList>
             </div>
 
-            <TabsContent value="jms" className="flex-1 flex flex-col overflow-hidden data-[state=active]:flex">
+            <TabsContent value="jms" className="flex flex-1 h-0 min-h-0 flex-col overflow-hidden data-[state=active]:flex">
                 <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card">
                     <div className="border-b shrink-0 p-4 space-y-4">
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -323,7 +323,7 @@ export default function JobProgressPage() {
                                     {availableUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-                            <Select value={jmsAssigneeFilter} onValueChange={setJmsAssigneeFilter}>
+                            <Select value={jmsAssigneeId} onValueChange={setJmsAssigneeId}>
                                 <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Assignee" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Assignees</SelectItem>
@@ -346,7 +346,7 @@ export default function JobProgressPage() {
                 </div>
             </TabsContent>
 
-            <TabsContent value="timesheets" className="flex-1 flex flex-col overflow-hidden data-[state=active]:flex">
+            <TabsContent value="timesheets" className="flex flex-1 h-0 min-h-0 flex-col overflow-hidden data-[state=active]:flex">
                 <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card">
                     <div className="border-b shrink-0 p-4 space-y-4">
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -403,7 +403,7 @@ export default function JobProgressPage() {
                 </div>
             </TabsContent>
 
-            <TabsContent value="documents" className="flex-1 flex flex-col overflow-hidden data-[state=active]:flex">
+            <TabsContent value="documents" className="flex flex-1 h-0 min-h-0 flex-col overflow-hidden data-[state=active]:flex">
                 <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card">
                     <div className="border-b shrink-0 p-4 flex justify-between items-center">
                         <div className="relative w-full sm:w-72">
