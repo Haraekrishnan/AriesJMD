@@ -16,7 +16,7 @@ import type { JobSchedule, JobScheduleItem } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useMemo, useEffect, useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { format, subDays } from 'date-fns';
+import { format, subDays, parseISO } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -102,6 +102,7 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
   }, [manpowerProfiles, users, projects]);
 
   const watchedItems = form.watch('items');
+  const watchedName = form.watch('name');
 
   const currentlyAssignedManpowerIdsInThisForm = useMemo(() => {
     return new Set(watchedItems.flatMap(item => item.manpowerIds || []));
@@ -158,11 +159,19 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
   };
   
   const handleCopyYesterday = () => {
-    const yesterdayStr = format(subDays(new Date(selectedDate), 1), 'yyyy-MM-dd');
-    const currentName = form.getValues('name');
+    if (!selectedDate) return;
+    
+    // Robust date parsing for YYYY-MM-DD
+    const dateObj = parseISO(selectedDate);
+    const yesterdayStr = format(subDays(dateObj, 1), 'yyyy-MM-dd');
+    const currentName = (form.getValues('name') || '').trim();
     
     // Specifically look for a schedule with the same name from yesterday
-    const yesterdaySchedule = jobSchedules.find(s => s.date === yesterdayStr && s.name === currentName);
+    // Normalizing names to handle legacy records where name might be undefined
+    const yesterdaySchedule = jobSchedules.find(s => 
+        s.date === yesterdayStr && 
+        (s.name || '').trim() === currentName
+    );
     
     if (yesterdaySchedule && yesterdaySchedule.items) {
       const newItems = yesterdaySchedule.items.map(item => ({
@@ -172,16 +181,21 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
       replace(newItems);
       toast({ title: `Copied "${currentName}" from Yesterday` });
     } else {
-      toast({ variant: 'destructive', title: `No matching schedule "${currentName}" found from yesterday.` });
+      toast({ 
+          variant: 'destructive', 
+          title: 'Copy Failed',
+          description: `No matching schedule "${currentName || 'Untitled'}" found from yesterday (${yesterdayStr}).` 
+      });
     }
   };
 
   const yesterdayScheduleExists = useMemo(() => {
-    if (!jobSchedules) return false;
-    const yesterdayStr = format(subDays(new Date(selectedDate), 1), 'yyyy-MM-dd');
-    const currentName = form.watch('name');
-    return jobSchedules.some(s => s.date === yesterdayStr && s.name === currentName);
-  }, [jobSchedules, selectedDate, watchedItems]); // Re-calculate when items or name changes
+    if (!jobSchedules || !selectedDate) return false;
+    const dateObj = parseISO(selectedDate);
+    const yesterdayStr = format(subDays(dateObj, 1), 'yyyy-MM-dd');
+    const currentName = (watchedName || '').trim();
+    return jobSchedules.some(s => s.date === yesterdayStr && (s.name || '').trim() === currentName);
+  }, [jobSchedules, selectedDate, watchedName]);
   
   const getAssignmentInfo = (manpowerId: string) => {
     if (!jobSchedules) return 'Loading...';
