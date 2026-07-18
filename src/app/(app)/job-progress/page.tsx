@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/auth-provider';
 import { usePlanner } from '@/contexts/planner-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
-import { Bell, Clock, Folder, List, LayoutGrid, Search, ChevronLeft, ChevronRight, AlertTriangle, PlusCircle, FolderKanban } from 'lucide-react';
+import { Bell, Clock, Folder, List, LayoutGrid, Search, ChevronLeft, ChevronRight, AlertTriangle, PlusCircle, CheckCircle } from 'lucide-react';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress, Timesheet, Role, DocumentMovement } from '@/lib/types';
 import { format, startOfMonth, addMonths, isSameMonth, parseISO, isAfter, isBefore, startOfToday, differenceInDays, endOfMonth, isValid } from 'date-fns';
@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import PendingActionsDialog from '@/components/job-progress/PendingActionsDialog';
 import OngoingJobsReport from '@/components/job-progress/OngoingJobsReport';
 import LongPendingJmsDialog from '@/components/job-progress/LongPendingJmsDialog';
+import CompletedJmsDialog from '@/components/job-progress/CompletedJmsDialog';
 import CreateDocumentMovementDialog from '@/components/job-progress/CreateDocumentMovementDialog';
 import DocumentMovementList from '@/components/job-progress/DocumentMovementList';
 import ViewDocumentMovementDialog from '@/components/job-progress/ViewDocumentMovementDialog';
@@ -44,6 +45,7 @@ export default function JobProgressPage() {
   const [viewingDocument, setViewingDocument] = useState<DocumentMovement | null>(null);
   const [isPendingDialogOpen, setIsPendingDialogOpen] = useState(false);
   const [isLongPendingDialogOpen, setIsLongPendingDialogOpen] = useState(false);
+  const [isCompletedDialogOpen, setIsCompletedDialogOpen] = useState(false);
   
   const [jmsSearchTerm, setJmsSearchTerm] = useState('');
   const [jmsAssigneeId, setJmsAssigneeId] = useState('all');
@@ -88,6 +90,16 @@ export default function JobProgressPage() {
         }
         return false;
     });
+  }, [jobProgress, user]);
+
+  const unnotedCompletedCount = useMemo(() => {
+    if (!user) return 0;
+    const isPrivileged = ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role);
+    return jobProgress.filter(job => 
+        job.status === 'Completed' && 
+        !job.notedById && 
+        (isPrivileged || job.creatorId === user.id)
+    ).length;
   }, [jobProgress, user]);
 
   const visibleJobs = useMemo(() => jobProgress.filter(job => {
@@ -282,7 +294,7 @@ export default function JobProgressPage() {
                             <div className="flex items-center gap-2">
                                 <Button variant="outline" size="sm" onClick={() => setIsPendingDialogOpen(true)} className="relative h-8">
                                     <Bell className="mr-1.5 h-3.5 w-3.5" />
-                                    Pending
+                                    Pending with Me
                                     {trackerNotificationCount > 0 && (
                                         <Badge variant="destructive" className="absolute -top-1.5 -right-1.5 h-4 min-w-[1rem] flex items-center justify-center p-0.5 rounded-full text-[9px] animate-pulse">
                                             {trackerNotificationCount}
@@ -296,6 +308,15 @@ export default function JobProgressPage() {
                                         {longPendingJobs.length > 0 && <Badge variant="destructive" className="ml-1.5 h-4 text-[9px]">{longPendingJobs.length}</Badge>}
                                     </Button>
                                 )}
+                                <Button variant="outline" size="sm" onClick={() => setIsCompletedDialogOpen(true)} className="relative h-8">
+                                    <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+                                    Completed
+                                    {unnotedCompletedCount > 0 && (
+                                        <Badge variant="destructive" className="absolute -top-1.5 -right-1.5 h-4 min-w-[1rem] flex items-center justify-center p-0.5 rounded-full text-[9px]">
+                                            {unnotedCompletedCount}
+                                        </Badge>
+                                    )}
+                                </Button>
                                 <OngoingJobsReport jobs={filteredJobs} />
                                 {can.create_jms && (
                                     <Button onClick={() => setIsCreateJmsOpen(true)} size="sm" className="h-8">
@@ -439,6 +460,7 @@ export default function JobProgressPage() {
       {viewingDocument && <ViewDocumentMovementDialog isOpen={!!viewingDocument} setIsOpen={() => setViewingDocument(null)} movement={viewingDocument} />}
       <PendingActionsDialog isOpen={isPendingDialogOpen} setIsOpen={setIsPendingDialogOpen} onViewJob={handleViewJob} onViewTimesheet={handleViewTimesheet} onViewDocument={setViewingDocument} />
       <LongPendingJmsDialog isOpen={isLongPendingDialogOpen} setIsOpen={setIsLongPendingDialogOpen} longPendingJobs={longPendingJobs} onViewJob={handleViewJob} />
+      <CompletedJmsDialog isOpen={isCompletedDialogOpen} setIsOpen={setIsCompletedDialogOpen} onViewJob={handleViewJob} />
     </div>
   );
 }

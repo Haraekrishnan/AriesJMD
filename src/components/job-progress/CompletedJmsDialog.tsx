@@ -53,7 +53,7 @@ export default function CompletedJmsDialog({ isOpen, setIsOpen, onViewJob }: Com
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl h-full max-h-[80vh] flex flex-col">
+      <DialogContent className="sm:max-w-3xl h-full max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Completed JMS (Awaiting Review)</DialogTitle>
           <DialogDescription>
@@ -81,7 +81,7 @@ export default function CompletedJmsDialog({ isOpen, setIsOpen, onViewJob }: Com
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="h-9 text-xs px-3 whitespace-nowrap" 
+                      className="h-9 text-xs px-3 font-semibold whitespace-nowrap" 
                       onClick={() => handleView(job)}
                     >
                         <Eye className="mr-1.5 h-3.5 w-3.5" />
@@ -89,7 +89,7 @@ export default function CompletedJmsDialog({ isOpen, setIsOpen, onViewJob }: Com
                     </Button>
                     <Button 
                       size="sm" 
-                      className="h-9 text-xs px-3 bg-green-600 hover:bg-green-700 whitespace-nowrap" 
+                      className="h-9 text-xs px-3 bg-green-600 hover:bg-green-700 font-semibold whitespace-nowrap" 
                       onClick={() => handleNoted(job.id)}
                     >
                         <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
