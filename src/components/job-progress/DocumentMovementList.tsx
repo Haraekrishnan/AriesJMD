@@ -21,14 +21,14 @@ const DocumentMovementList = ({ documents, onViewDocument }: { documents: Docume
 
     if (documents.length === 0) {
         return (
-            <div className="flex-1 flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg bg-muted/20">
+            <div className="flex-1 flex flex-col items-center justify-center h-full border-2 border-dashed rounded-lg bg-muted/20">
                 <p className="text-muted-foreground">No documents found for this period.</p>
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col flex-1 h-full min-h-0 overflow-hidden rounded-md border shadow-sm bg-white dark:bg-slate-950">
+        <div className="flex flex-col h-full min-h-0 overflow-hidden bg-white dark:bg-slate-950">
             <ScrollArea className="flex-1 min-h-0 h-full">
                 <div className="min-w-max min-h-full">
                     <Table className="border-collapse text-[11px] font-sans">

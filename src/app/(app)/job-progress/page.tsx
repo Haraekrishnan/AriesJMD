@@ -346,14 +346,14 @@ export default function JobProgressPage() {
                         )}
                     </div>
                 </div>
-                <div className="flex-1 h-full min-h-0 overflow-hidden">
-                    {jmsView === 'board' ? (
-                        <div className="flex-1 min-h-0">
+                <div className="flex-1 min-h-0 overflow-hidden">
+                    <div className="h-full rounded-lg border bg-background shadow-sm overflow-hidden">
+                        {jmsView === 'board' ? (
                             <JobProgressBoard jobs={filteredJobs} onViewJob={handleViewJob} />
-                        </div>
-                    ) : (
-                        <JobProgressTable jobs={filteredJobs} onViewJob={handleViewJob} />
-                    )}
+                        ) : (
+                            <JobProgressTable jobs={filteredJobs} onViewJob={handleViewJob} />
+                        )}
+                    </div>
                 </div>
             </TabsContent>
 
@@ -392,14 +392,14 @@ export default function JobProgressPage() {
                         </Button>
                     </div>
                 </div>
-                <div className="flex-1 h-full min-h-0 overflow-hidden">
-                    {timesheetView === 'board' ? (
-                        <div className="flex-1 min-h-0">
+                <div className="flex-1 min-h-0 overflow-hidden">
+                    <div className="h-full rounded-lg border bg-background shadow-sm overflow-hidden">
+                        {timesheetView === 'board' ? (
                             <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
-                        </div>
-                    ) : (
-                        <TimesheetTrackerTable timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
-                    )}
+                        ) : (
+                            <TimesheetTrackerTable timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
+                        )}
+                    </div>
                 </div>
             </TabsContent>
 
@@ -418,8 +418,10 @@ export default function JobProgressPage() {
                         <Folder className="mr-1.5 h-3.5 w-3.5" /> New Tracker
                     </Button>
                 </div>
-                <div className="flex-1 h-full min-h-0 overflow-hidden">
-                    <DocumentMovementList documents={filteredDocuments} onViewDocument={setViewingDocument} />
+                <div className="flex-1 min-h-0 overflow-hidden">
+                    <div className="h-full rounded-lg border bg-background shadow-sm overflow-hidden">
+                        <DocumentMovementList documents={filteredDocuments} onViewDocument={setViewingDocument} />
+                    </div>
                 </div>
             </TabsContent>
         </Tabs>
