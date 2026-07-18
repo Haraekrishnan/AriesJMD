@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -66,7 +65,6 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                   <TableHead className="w-24 border-r border-black text-black font-bold text-center">START</TableHead>
                   <TableHead className="w-24 border-r-2 border-black text-black font-bold text-center">END</TableHead>
                   
-                  {/* Workflow Step Headers */}
                   {JOB_PROGRESS_STEPS.map((stepName) => (
                     <TableHead 
                       key={stepName} 
@@ -104,7 +102,6 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                       <TableCell className="border-r border-slate-300 text-center text-[11px] text-foreground">{formatDate(job.dateFrom)}</TableCell>
                       <TableCell className="border-r-2 border-black text-center text-[11px] text-foreground">{formatDate(job.dateTo)}</TableCell>
 
-                      {/* Workflow Step Cells */}
                       {JOB_PROGRESS_STEPS.map((stepName) => {
                         const step = job.steps.find(s => s.name === stepName);
                         const isCompleted = step?.status === 'Completed';

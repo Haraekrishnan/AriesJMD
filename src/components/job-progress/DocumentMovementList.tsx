@@ -1,4 +1,3 @@
-
 'use client';
 
 import { DocumentMovement, DocumentMovementStatus } from '@/lib/types';

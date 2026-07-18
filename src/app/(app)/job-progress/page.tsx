@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -247,106 +246,93 @@ export default function JobProgressPage() {
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden">
-       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shrink-0 pb-2">
-        <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded-md border h-8">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth}>
-                    <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" className="h-7 px-2 text-[11px] font-bold" onClick={handleTodayClick}>{format(currentMonth, 'MMM yyyy')}</Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => changeMonth(1)} disabled={!canGoToNextMonth}>
-                    <ChevronRight className="h-4 w-4" />
-                </Button>
-            </div>
-            <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setIsPendingDialogOpen(true)} className="relative h-8 text-xs">
-                <Bell className="mr-1.5 h-3.5 w-3.5" />
-                Pending
-                {trackerNotificationCount > 0 && (
-                    <Badge variant="destructive" className="absolute -top-1.5 -right-1.5 h-4 min-w-[1rem] flex items-center justify-center p-0.5 rounded-full text-[9px] animate-pulse">
-                    {trackerNotificationCount}
-                    </Badge>
-                )}
-                </Button>
-                {user && ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role) && (
-                    <Button variant="outline" size="sm" onClick={() => setIsLongPendingDialogOpen(true)} className="h-8 text-xs">
-                        <Clock className="mr-1.5 h-3.5 w-3.5" />
-                        Long Pending
-                        {longPendingJobs.length > 0 && (
-                        <Badge variant="destructive" className="ml-1.5 h-4 min-w-[1rem] text-[9px]">
-                            {longPendingJobs.length}
-                        </Badge>
-                        )}
-                    </Button>
-                )}
-            </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-8">
-                <TabsList className="h-8 p-0.5 bg-muted/50 rounded-md">
-                <TabsTrigger value="jms" className="text-xs px-3 h-7 data-[state=active]:bg-background">JMS Tracker</TabsTrigger>
-                <TabsTrigger value="timesheets" className="text-xs px-3 h-7 data-[state=active]:bg-background">Timesheet Tracker</TabsTrigger>
-                <TabsTrigger value="documents" className="text-xs px-3 h-7 data-[state=active]:bg-background">Document Tracker</TabsTrigger>
-                </TabsList>
-            </Tabs>
-        </div>
-      </div>
+    <div className="h-[calc(100vh-10rem)] flex flex-col space-y-4">
+       <div className="shrink-0">
+          <h1 className="text-3xl font-bold tracking-tight">JMS Tracker</h1>
+          <p className="text-muted-foreground">Monitor the progress of Job Measurement Sheets, Timesheets, and Documents.</p>
+       </div>
       
-      <div className="flex-1 flex flex-col min-h-0">
-        <Tabs value={activeTab} className="flex-1 flex flex-col min-h-0">
+       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+            <div className="shrink-0 mb-2">
+                <TabsList className="bg-muted/50">
+                    <TabsTrigger value="jms" className="text-xs px-3">JMS Tracker</TabsTrigger>
+                    <TabsTrigger value="timesheets" className="text-xs px-3">Timesheet Tracker</TabsTrigger>
+                    <TabsTrigger value="documents" className="text-xs px-3">Document Tracker</TabsTrigger>
+                </TabsList>
+            </div>
+
             <TabsContent value="jms" className="flex-1 h-full min-h-0 mt-0 flex flex-col data-[state=active]:flex">
                 <div className="flex flex-col h-full border rounded-lg bg-card overflow-hidden">
                     <div className="border-b shrink-0 p-4 space-y-4">
-                        <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
-                            <div className="flex flex-wrap gap-2 items-center flex-1">
-                                <div className="relative w-full sm:w-56">
-                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                                    <Input
-                                        placeholder="Search job, jms no, value..."
-                                        className="pl-8 h-7 text-[11px] bg-background"
-                                        value={jmsSearchTerm}
-                                        onChange={e => setJmsSearchTerm(e.target.value)}
-                                    />
-                                </div>
-                                <Select value={jmsProjectFilter} onValueChange={setJmsProjectFilter}>
-                                    <SelectTrigger className="w-full sm:w-[130px] h-7 text-[11px] bg-background"><SelectValue placeholder="Project" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Projects</SelectItem>
-                                        {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                                <Select value={jmsUnitFilter} onValueChange={setJmsUnitFilter}>
-                                    <SelectTrigger className="w-full sm:w-[130px] h-7 text-[11px] bg-background"><SelectValue placeholder="Plant Unit" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Units</SelectItem>
-                                        {availableUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                                <Select value={jmsAssigneeFilter} onValueChange={setJmsAssigneeFilter}>
-                                    <SelectTrigger className="w-full sm:w-[130px] h-7 text-[11px] bg-background">
-                                        <SelectValue placeholder="Assignee" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Assignees</SelectItem>
-                                        {assignableUsers.map(u => (
-                                            <SelectItem key={u.id} value={u.id} disabled={u.status === 'locked'}>
-                                                {u.name} {u.status === 'locked' && <span className="text-muted-foreground">(Locked)</span>}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth}>
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" className="h-8 px-2 text-sm font-bold" onClick={handleTodayClick}>{format(currentMonth, 'MMMM yyyy')}</Button>
+                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => changeMonth(1)} disabled={!canGoToNextMonth}>
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
                             </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
+                            <div className="flex items-center gap-2">
+                                <Button variant="outline" size="sm" onClick={() => setIsPendingDialogOpen(true)} className="relative h-8">
+                                    <Bell className="mr-1.5 h-3.5 w-3.5" />
+                                    Pending
+                                    {trackerNotificationCount > 0 && (
+                                        <Badge variant="destructive" className="absolute -top-1.5 -right-1.5 h-4 min-w-[1rem] flex items-center justify-center p-0.5 rounded-full text-[9px] animate-pulse">
+                                            {trackerNotificationCount}
+                                        </Badge>
+                                    )}
+                                </Button>
+                                {user && ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role) && (
+                                    <Button variant="outline" size="sm" onClick={() => setIsLongPendingDialogOpen(true)} className="h-8">
+                                        <Clock className="mr-1.5 h-3.5 w-3.5" />
+                                        Long Pending
+                                        {longPendingJobs.length > 0 && <Badge variant="destructive" className="ml-1.5 h-4 text-[9px]">{longPendingJobs.length}</Badge>}
+                                    </Button>
+                                )}
                                 <OngoingJobsReport jobs={filteredJobs} />
-                                <Separator orientation="vertical" className="h-5 mx-0.5" />
-                                <Button variant={jmsView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-7 w-7" onClick={() => setJmsView('board')}><LayoutGrid className="h-3.5 w-3.5" /></Button>
-                                <Button variant={jmsView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-7 w-7" onClick={() => setJmsView('list')}><List className="h-3.5 w-3.5" /></Button>
                                 {can.create_jms && (
-                                    <Button onClick={() => setIsCreateJmsOpen(true)} size="sm" className="h-7 px-3 text-[11px]">
+                                    <Button onClick={() => setIsCreateJmsOpen(true)} size="sm" className="h-8">
                                         <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> New JMS
                                     </Button>
                                 )}
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2 items-center">
+                            <div className="relative w-full sm:w-56">
+                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search job, jms no, value..."
+                                    className="pl-8 h-8 text-xs"
+                                    value={jmsSearchTerm}
+                                    onChange={e => setJmsSearchTerm(e.target.value)}
+                                />
+                            </div>
+                            <Select value={jmsProjectFilter} onValueChange={setJmsProjectFilter}>
+                                <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Project" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Projects</SelectItem>
+                                    {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <Select value={jmsUnitFilter} onValueChange={setJmsUnitFilter}>
+                                <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Plant Unit" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Units</SelectItem>
+                                    {availableUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <Select value={jmsAssigneeFilter} onValueChange={setJmsAssigneeFilter}>
+                                <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Assignee" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Assignees</SelectItem>
+                                    {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <div className="flex items-center gap-1.5 ml-auto">
+                                <Button variant={jmsView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setJmsView('board')}><LayoutGrid className="h-4 w-4" /></Button>
+                                <Button variant={jmsView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setJmsView('list')}><List className="h-4 w-4" /></Button>
                             </div>
                         </div>
                     </div>
@@ -363,38 +349,47 @@ export default function JobProgressPage() {
             <TabsContent value="timesheets" className="flex-1 h-full min-h-0 mt-0 flex flex-col data-[state=active]:flex">
                 <div className="flex flex-col h-full border rounded-lg bg-card overflow-hidden">
                     <div className="border-b shrink-0 p-4 space-y-4">
-                        <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
-                            <div className="flex flex-wrap gap-2 items-center flex-1">
-                                <div className="relative w-full sm:w-56">
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth}>
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" className="h-8 px-2 text-sm font-bold" onClick={handleTodayClick}>{format(currentMonth, 'MMMM yyyy')}</Button>
+                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => changeMonth(1)} disabled={!canGoToNextMonth}>
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            </div>
+                            <Button onClick={() => setIsCreateTimesheetOpen(true)} size="sm" className="h-8">
+                                <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> New Timesheet
+                            </Button>
+                        </div>
+                        <div className="flex flex-wrap gap-2 items-center">
+                            <div className="relative w-full sm:w-56">
                                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                                 <Input
                                     placeholder="Search unit..."
-                                    className="pl-8 h-7 text-[11px] bg-background"
+                                    className="pl-8 h-8 text-xs"
                                     value={timesheetSearchTerm}
-                                    onChange={e => setSearchTerm(e.target.value)}
+                                    onChange={e => setTimesheetSearchTerm(e.target.value)}
                                 />
-                                </div>
-                                <Select value={timesheetProjectFilter} onValueChange={setTimesheetProjectFilter}>
-                                    <SelectTrigger className="w-full sm:w-[130px] h-7 text-[11px] bg-background"><SelectValue placeholder="Project" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Projects</SelectItem>
-                                        {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                                <Select value={timesheetSubmitterFilter} onValueChange={setTimesheetSubmitterFilter}>
-                                    <SelectTrigger className="w-full sm:w-[130px] h-7 text-[11px] bg-background"><SelectValue placeholder="Submitter" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Submitters</SelectItem>
-                                        {allSubmitters.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
                             </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                                <Button variant={timesheetView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-7 w-7" onClick={() => setTimesheetView('board')}><LayoutGrid className="h-3.5 w-3.5" /></Button>
-                                <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-7 w-7" onClick={() => setTimesheetView('list')}><List className="h-3.5 w-3.5" /></Button>
-                                <Button onClick={() => setIsCreateTimesheetOpen(true)} size="sm" className="h-7 px-3 text-[11px]">
-                                    <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> New Timesheet
-                                </Button>
+                            <Select value={timesheetProjectFilter} onValueChange={setTimesheetProjectFilter}>
+                                <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Project" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Projects</SelectItem>
+                                    {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <Select value={timesheetSubmitterFilter} onValueChange={setTimesheetSubmitterFilter}>
+                                <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Submitter" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Submitters</SelectItem>
+                                    {allSubmitters.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <div className="flex items-center gap-1.5 ml-auto">
+                                <Button variant={timesheetView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setTimesheetView('board')}><LayoutGrid className="h-4 w-4" /></Button>
+                                <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setTimesheetView('list')}><List className="h-4 w-4" /></Button>
                             </div>
                         </div>
                     </div>
@@ -415,12 +410,12 @@ export default function JobProgressPage() {
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                             <Input
                                 placeholder="Search document title..."
-                                className="pl-8 h-7 text-[11px] bg-background"
+                                className="pl-8 h-8 text-xs"
                                 value={docSearchTerm}
                                 onChange={e => setDocSearchTerm(e.target.value)}
                             />
                         </div>
-                        <Button onClick={() => setIsCreateDocumentOpen(true)} size="sm" className="h-7 px-3 text-[11px]">
+                        <Button onClick={() => setIsCreateDocumentOpen(true)} size="sm" className="h-8 px-3">
                             <Folder className="mr-1.5 h-3.5 w-3.5" /> New Tracker
                         </Button>
                     </div>
@@ -430,7 +425,6 @@ export default function JobProgressPage() {
                 </div>
             </TabsContent>
         </Tabs>
-      </div>
 
       <CreateTimesheetDialog isOpen={isCreateTimesheetOpen} setIsOpen={setIsCreateTimesheetOpen} />
       <CreateDocumentMovementDialog isOpen={isCreateDocumentOpen} setIsOpen={setIsCreateDocumentOpen} />
