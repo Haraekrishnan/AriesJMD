@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -78,6 +77,7 @@ type PlannerContextType = {
   forwardDocumentMovement: (movementId: string, newAssigneeId: string, comment: string) => void;
   returnDocumentMovement: (movementId: string, comment: string) => void;
   deleteDocumentMovement: (movementId: string) => void;
+  markJmsAsNoted: (jobId: string) => void;
 };
 
 const createDataListener = <T extends {}>(
@@ -1110,6 +1110,15 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       }
     }, [user, documentMovementsById, toast]);
     
+    const markJmsAsNoted = useCallback((jobId: string) => {
+        if (!user) return;
+        update(ref(rtdb, `jobProgress/${jobId}`), {
+            notedById: user.id,
+            notedAt: new Date().toISOString(),
+        });
+        toast({ title: 'JMS Marked as Noted' });
+    }, [user, toast]);
+
     useEffect(() => {
         const unsubscribers = [
             createDataListener('plannerEvents', setPlannerEventsById),
@@ -1175,6 +1184,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         forwardDocumentMovement,
         returnDocumentMovement,
         deleteDocumentMovement,
+        markJmsAsNoted,
     };
 
     return <PlannerContext.Provider value={contextValue}>{children}</PlannerContext.Provider>;

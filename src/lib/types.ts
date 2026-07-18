@@ -1093,6 +1093,8 @@ export type JobProgress = {
     ariesJobId?: string;
     dateFrom?: string | null;
     dateTo?: string | null;
+    notedById?: string | null;
+    notedAt?: string | null;
 };
 
 export type TimesheetStatus = 'Pending' | 'Acknowledged' | 'Sent To Office' | 'Office Acknowledged' | 'Rejected';
