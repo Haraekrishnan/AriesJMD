@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -49,7 +48,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   }
 
   return (
-    <div className="flex flex-col flex-1 h-full min-h-0">
+    <div className="flex flex-col h-full">
       <TooltipProvider>
         <ScrollArea className="flex-1 min-h-0 h-full">
           <div className="min-w-max min-h-full">
