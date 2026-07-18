@@ -298,7 +298,7 @@ export default function JobProgressPage() {
                             <div className="flex items-center gap-2">
                                 <Button variant="outline" size="sm" onClick={() => setIsPendingDialogOpen(true)} className="relative h-8">
                                     <Bell className="mr-1.5 h-3.5 w-3.5" />
-                                    Pending
+                                    Pending with Me
                                     {trackerNotificationCount > 0 && (
                                         <Badge variant="destructive" className="absolute -top-1.5 -right-1.5 h-4 min-w-[1rem] flex items-center justify-center p-0.5 rounded-full text-[9px] animate-pulse">
                                             {trackerNotificationCount}
