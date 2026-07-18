@@ -144,7 +144,7 @@ export default function TimesheetTrackerTable({
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0 overflow-hidden bg-white dark:bg-slate-950">
+    <div className="flex flex-col h-full">
       <ScrollArea className="flex-1 min-h-0 h-full">
         <div className="min-w-max min-h-full">
           <Table className="border-collapse text-[11px] font-sans">
