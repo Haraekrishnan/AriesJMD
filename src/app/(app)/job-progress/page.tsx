@@ -246,8 +246,8 @@ export default function JobProgressPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)]">
-       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shrink-0 pb-1">
+    <div className="flex flex-col h-[calc(100vh-11.5rem)]">
+       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shrink-0 pb-2">
         <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded-md border h-8">
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth}>
@@ -295,7 +295,7 @@ export default function JobProgressPage() {
       <div className="flex-1 flex flex-col min-h-0">
         <Tabs value={activeTab} className="flex-1 flex flex-col min-h-0">
             <TabsContent value="jms" className="flex-1 min-h-0 mt-0 flex flex-col data-[state=active]:flex">
-                <div className="flex flex-col sm:flex-row justify-between items-center pb-1 gap-2 shrink-0">
+                <div className="flex flex-col sm:flex-row justify-between items-center pb-2 gap-2 shrink-0">
                     <div className="flex flex-wrap gap-2 items-center flex-1">
                         <div className="relative w-full sm:w-56">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -346,17 +346,21 @@ export default function JobProgressPage() {
                         )}
                     </div>
                 </div>
-                <div className="flex-1 min-h-0">
+                <div className="flex-1 min-h-0 flex flex-col">
                     {jmsView === 'board' ? (
-                        <JobProgressBoard jobs={filteredJobs} onViewJob={handleViewJob} />
+                        <div className="flex-1 min-h-0">
+                            <JobProgressBoard jobs={filteredJobs} onViewJob={handleViewJob} />
+                        </div>
                     ) : (
-                        <JobProgressTable jobs={filteredJobs} onViewJob={handleViewJob} />
+                        <div className="flex-1 min-h-0 flex flex-col">
+                            <JobProgressTable jobs={filteredJobs} onViewJob={handleViewJob} />
+                        </div>
                     )}
                 </div>
             </TabsContent>
 
             <TabsContent value="timesheets" className="flex-1 min-h-0 mt-0 flex flex-col data-[state=active]:flex">
-                <div className="flex flex-col sm:flex-row justify-between items-center pb-1 gap-2 shrink-0">
+                <div className="flex flex-col sm:flex-row justify-between items-center pb-2 gap-2 shrink-0">
                     <div className="flex flex-wrap gap-2 items-center flex-1">
                         <div className="relative w-full sm:w-56">
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -390,17 +394,21 @@ export default function JobProgressPage() {
                         </Button>
                     </div>
                 </div>
-                <div className="flex-1 min-h-0">
+                <div className="flex-1 min-h-0 flex flex-col">
                     {timesheetView === 'board' ? (
-                        <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
+                        <div className="flex-1 min-h-0">
+                            <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
+                        </div>
                     ) : (
-                        <TimesheetTrackerTable timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
+                        <div className="flex-1 min-h-0 flex flex-col">
+                            <TimesheetTrackerTable timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
+                        </div>
                     )}
                 </div>
             </TabsContent>
 
             <TabsContent value="documents" className="flex-1 min-h-0 mt-0 flex flex-col data-[state=active]:flex">
-                <div className="flex flex-col sm:flex-row justify-between items-center pb-1 gap-2 shrink-0">
+                <div className="flex flex-col sm:flex-row justify-between items-center pb-2 gap-2 shrink-0">
                     <div className="relative w-full sm:w-72">
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                         <Input
@@ -414,7 +422,7 @@ export default function JobProgressPage() {
                         <Folder className="mr-1.5 h-3.5 w-3.5" /> New Tracker
                     </Button>
                 </div>
-                <div className="flex-1 min-h-0">
+                <div className="flex-1 min-h-0 flex flex-col">
                     <DocumentMovementList documents={filteredDocuments} onViewDocument={setViewingDocument} />
                 </div>
             </TabsContent>

@@ -41,7 +41,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
 
   if (jobs.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg bg-muted/20">
+      <div className="flex flex-col items-center justify-center h-full border-2 border-dashed rounded-lg bg-muted/20">
         <p className="text-muted-foreground">No JMS records found for this period.</p>
       </div>
     );
