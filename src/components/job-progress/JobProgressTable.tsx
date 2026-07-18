@@ -48,10 +48,10 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden border rounded-md shadow-sm bg-white dark:bg-slate-950">
+    <div className="flex flex-col flex-1 h-full min-h-0 overflow-hidden rounded-md border shadow-sm bg-white dark:bg-slate-950">
       <TooltipProvider>
-        <ScrollArea className="flex-1">
-          <div className="min-w-max">
+        <ScrollArea className="flex-1 min-h-0 h-full">
+          <div className="min-w-max min-h-full">
             <Table className="border-collapse text-[11px] font-sans">
               <TableHeader className="sticky top-0 z-40">
                 <TableRow className="bg-[#D9E2F3] hover:bg-[#D9E2F3] border-b-2 border-black">
@@ -177,7 +177,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
         </ScrollArea>
       </TooltipProvider>
       
-      <div className="bg-[#f3f4f6] p-1 px-4 border-t flex justify-between items-center text-[10px] font-medium text-slate-500 italic shrink-0">
+      <div className="shrink-0 border-t bg-[#f3f4f6] p-1 px-4 flex justify-between items-center text-[10px] font-medium text-slate-500 italic">
         <div className="flex gap-4">
           <span>TOTAL JOBS: {jobs.length}</span>
           <span>COMPLETED: {jobs.filter(j => j.status === 'Completed').length}</span>

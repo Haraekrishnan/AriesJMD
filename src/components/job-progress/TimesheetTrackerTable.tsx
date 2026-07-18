@@ -144,9 +144,9 @@ export default function TimesheetTrackerTable({
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden border rounded-md shadow-sm bg-white dark:bg-slate-950">
-      <ScrollArea className="flex-1">
-        <div className="min-w-max">
+    <div className="flex flex-col flex-1 h-full min-h-0 overflow-hidden rounded-md border shadow-sm bg-white dark:bg-slate-950">
+      <ScrollArea className="flex-1 min-h-0 h-full">
+        <div className="min-w-max min-h-full">
           <Table className="border-collapse text-[11px] font-sans">
             <TableHeader className="sticky top-0 z-20">
               {table.getHeaderGroups().map((headerGroup) => (
@@ -186,7 +186,7 @@ export default function TimesheetTrackerTable({
         </div>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
-      <div className="bg-[#f3f4f6] p-1 px-4 border-t flex justify-between items-center text-[10px] font-medium text-slate-500 italic shrink-0">
+      <div className="shrink-0 border-t bg-[#f3f4f6] p-1 px-4 flex justify-between items-center text-[10px] font-medium text-slate-500 italic">
         <div className="flex gap-4">
           <span>TOTAL TIMESHEETS: {timesheets.length}</span>
           <span>ACKNOWLEDGED: {timesheets.filter(ts => ts.status === 'Office Acknowledged').length}</span>
