@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect } from 'react';
@@ -48,16 +49,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen w-full bg-background overflow-hidden">
+    <div className="flex h-screen w-full bg-background overflow-hidden">
       <DecorationProvider />
       <AppSidebar />
-      <div className="flex h-screen w-full flex-col md:pl-64 overflow-hidden">
+      <div className="flex flex-col flex-1 min-h-0 md:pl-64 overflow-hidden h-full">
         <Header />
         <div className="p-2 border-b shrink-0">
           <BroadcastFeed />
         </div>
         <main className="flex-1 flex flex-col min-h-0 overflow-hidden p-4 sm:p-6 lg:p-8">
-          <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 flex flex-col min-h-0 h-full">
             {children}
           </div>
         </main>

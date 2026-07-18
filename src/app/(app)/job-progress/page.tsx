@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -262,7 +263,7 @@ export default function JobProgressPage() {
             </div>
 
             <TabsContent value="jms" className="flex-1 h-full min-h-0 mt-0 flex flex-col data-[state=active]:flex">
-                <div className="flex flex-col h-full border rounded-lg bg-card overflow-hidden">
+                <div className="flex flex-col flex-1 h-full min-h-0 border rounded-lg bg-card overflow-hidden">
                     <div className="border-b shrink-0 p-4 space-y-4">
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-2">
@@ -336,7 +337,7 @@ export default function JobProgressPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="flex-1 min-h-0 overflow-hidden">
+                    <div className="flex-1 min-h-0 overflow-auto relative">
                         {jmsView === 'board' ? (
                             <JobProgressBoard jobs={filteredJobs} onViewJob={handleViewJob} />
                         ) : (
@@ -347,7 +348,7 @@ export default function JobProgressPage() {
             </TabsContent>
 
             <TabsContent value="timesheets" className="flex-1 h-full min-h-0 mt-0 flex flex-col data-[state=active]:flex">
-                <div className="flex flex-col h-full border rounded-lg bg-card overflow-hidden">
+                <div className="flex flex-col flex-1 h-full min-h-0 border rounded-lg bg-card overflow-hidden">
                     <div className="border-b shrink-0 p-4 space-y-4">
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-2">
@@ -373,14 +374,14 @@ export default function JobProgressPage() {
                                     onChange={e => setTimesheetSearchTerm(e.target.value)}
                                 />
                             </div>
-                            <Select value={timesheetProjectFilter} onValueChange={setTimesheetProjectFilter}>
+                            <Select value={timesheetProjectFilter} onValueChange={setProjectFilter}>
                                 <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Project" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Projects</SelectItem>
                                     {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-                            <Select value={timesheetSubmitterFilter} onValueChange={setTimesheetSubmitterFilter}>
+                            <Select value={timesheetSubmitterFilter} onValueChange={setSubmitterFilter}>
                                 <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Submitter" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Submitters</SelectItem>
@@ -389,11 +390,11 @@ export default function JobProgressPage() {
                             </Select>
                             <div className="flex items-center gap-1.5 ml-auto">
                                 <Button variant={timesheetView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setTimesheetView('board')}><LayoutGrid className="h-4 w-4" /></Button>
-                                <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setHeighView('list')}><List className="h-4 w-4" /></Button>
+                                <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setTimesheetView('list')}><List className="h-4 w-4" /></Button>
                             </div>
                         </div>
                     </div>
-                    <div className="flex-1 min-h-0 overflow-hidden">
+                    <div className="flex-1 min-h-0 overflow-auto relative">
                         {timesheetView === 'board' ? (
                             <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
                         ) : (
@@ -404,7 +405,7 @@ export default function JobProgressPage() {
             </TabsContent>
 
             <TabsContent value="documents" className="flex-1 h-full min-h-0 mt-0 flex flex-col data-[state=active]:flex">
-                <div className="flex flex-col h-full border rounded-lg bg-card overflow-hidden">
+                <div className="flex flex-col flex-1 h-full min-h-0 border rounded-lg bg-card overflow-hidden">
                     <div className="border-b shrink-0 p-4 flex justify-between items-center">
                         <div className="relative w-full sm:w-72">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -419,7 +420,7 @@ export default function JobProgressPage() {
                             <Folder className="mr-1.5 h-3.5 w-3.5" /> New Tracker
                         </Button>
                     </div>
-                    <div className="flex-1 min-h-0 overflow-hidden">
+                    <div className="flex-1 min-h-0 overflow-auto relative">
                         <DocumentMovementList documents={filteredDocuments} onViewDocument={setViewingDocument} />
                     </div>
                 </div>
