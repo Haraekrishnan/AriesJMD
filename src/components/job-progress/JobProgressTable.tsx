@@ -16,7 +16,6 @@ import type { JobProgress } from '@/lib/types';
 import { format, parseISO, isValid, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Check, Clock } from 'lucide-react';
-import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { JOB_PROGRESS_STEPS } from '@/lib/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
@@ -50,8 +49,8 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   return (
     <div className="flex flex-col h-full">
       <TooltipProvider>
-        <ScrollArea className="flex-1 min-h-0 h-full">
-          <div className="min-w-max min-h-full">
+        <div className="flex-1 overflow-auto relative">
+          <div className="min-w-max">
             <Table className="border-collapse text-[11px] font-sans">
               <TableHeader className="sticky top-0 z-40">
                 <TableRow className="bg-[#D9E2F3] hover:bg-[#D9E2F3] border-b-2 border-black">
@@ -171,8 +170,7 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
               </TableBody>
             </Table>
           </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        </div>
       </TooltipProvider>
       
       <div className="shrink-0 border-t bg-[#f3f4f6] p-1 px-4 flex justify-between items-center text-[10px] font-medium text-slate-500 italic">

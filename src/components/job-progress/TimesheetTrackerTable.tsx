@@ -25,7 +25,6 @@ import type { Timesheet, TimesheetStatus } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { Eye } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 
 const statusVariantMap: Record<
   TimesheetStatus,
@@ -145,8 +144,8 @@ export default function TimesheetTrackerTable({
 
   return (
     <div className="flex flex-col h-full">
-      <ScrollArea className="flex-1 min-h-0 h-full">
-        <div className="min-w-max min-h-full">
+      <div className="flex-1 overflow-auto relative">
+        <div className="min-w-max">
           <Table className="border-collapse text-[11px] font-sans">
             <TableHeader className="sticky top-0 z-20">
               {table.getHeaderGroups().map((headerGroup) => (
@@ -184,8 +183,7 @@ export default function TimesheetTrackerTable({
             </TableBody>
           </Table>
         </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
+      </div>
       <div className="shrink-0 border-t bg-[#f3f4f6] p-1 px-4 flex justify-between items-center text-[10px] font-medium text-slate-500 italic">
         <div className="flex gap-4">
           <span>TOTAL TIMESHEETS: {timesheets.length}</span>

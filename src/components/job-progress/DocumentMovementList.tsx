@@ -1,7 +1,6 @@
 'use client';
 
 import { DocumentMovement, DocumentMovementStatus } from '@/lib/types';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/auth-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { parseISO, formatDistanceToNow } from 'date-fns';
@@ -29,8 +28,8 @@ const DocumentMovementList = ({ documents, onViewDocument }: { documents: Docume
 
     return (
         <div className="flex flex-col h-full">
-            <ScrollArea className="flex-1 min-h-0 h-full">
-                <div className="min-w-max min-h-full">
+            <div className="flex-1 overflow-auto relative">
+                <div className="min-w-max">
                     <Table className="border-collapse text-[11px] font-sans">
                         <TableHeader className="sticky top-0 z-20">
                             <TableRow className="bg-[#D9E2F3] hover:bg-[#D9E2F3] border-b-2 border-black">
@@ -69,8 +68,7 @@ const DocumentMovementList = ({ documents, onViewDocument }: { documents: Docume
                         </TableBody>
                     </Table>
                 </div>
-                <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+            </div>
             <div className="shrink-0 border-t bg-[#f3f4f6] p-1 px-4 flex justify-between items-center text-[10px] font-medium text-slate-500 italic">
                 <div className="flex gap-4">
                     <span>TRACKING DOCUMENTS: {documents.length}</span>

@@ -163,7 +163,7 @@ export default function JobProgressPage() {
             job.title.toLowerCase().includes(lowercasedTerm) ||
             (job.jmsNo && job.jmsNo.toLowerCase().includes(lowercasedTerm)) ||
             (project && project.name.toLowerCase().includes(lowercasedTerm)) ||
-            (job.plantUnit && job.plantUnit.toLowerCase().includes(lowercercasedTerm)) ||
+            (job.plantUnit && job.plantUnit.toLowerCase().includes(lowercercercTerm)) ||
             amountStr.includes(lowercasedTerm) ||
             formattedAmount.includes(lowercasedTerm)
         );
@@ -262,7 +262,7 @@ export default function JobProgressPage() {
             </div>
 
             <TabsContent value="jms" className="flex-1 flex flex-col overflow-hidden data-[state=active]:flex">
-                <div className="flex-1 flex flex-col overflow-hidden rounded-lg border bg-card">
+                <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card">
                     <div className="border-b shrink-0 p-4 space-y-4">
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-2">
@@ -336,7 +336,7 @@ export default function JobProgressPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="flex-1 overflow-hidden">
+                    <div className="flex-1 overflow-auto">
                         {jmsView === 'board' ? (
                             <div className="h-full relative overflow-auto">
                               <JobProgressBoard jobs={filteredJobs} onViewJob={handleViewJob} />
@@ -349,7 +349,7 @@ export default function JobProgressPage() {
             </TabsContent>
 
             <TabsContent value="timesheets" className="flex-1 flex flex-col overflow-hidden data-[state=active]:flex">
-                <div className="flex-1 flex flex-col overflow-hidden rounded-lg border bg-card">
+                <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card">
                     <div className="border-b shrink-0 p-4 space-y-4">
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-2">
@@ -395,7 +395,7 @@ export default function JobProgressPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="flex-1 overflow-hidden">
+                    <div className="flex-1 overflow-auto">
                         {timesheetView === 'board' ? (
                             <div className="h-full relative overflow-auto">
                               <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
@@ -408,7 +408,7 @@ export default function JobProgressPage() {
             </TabsContent>
 
             <TabsContent value="documents" className="flex-1 flex flex-col overflow-hidden data-[state=active]:flex">
-                <div className="flex-1 flex flex-col overflow-hidden rounded-lg border bg-card">
+                <div className="flex flex-1 flex-col overflow-hidden rounded-lg border bg-card">
                     <div className="border-b shrink-0 p-4 flex justify-between items-center">
                         <div className="relative w-full sm:w-72">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -423,7 +423,7 @@ export default function JobProgressPage() {
                             <Folder className="mr-1.5 h-3.5 w-3.5" /> New Tracker
                         </Button>
                     </div>
-                    <div className="flex-1 overflow-hidden">
+                    <div className="flex-1 overflow-auto">
                         <DocumentMovementList documents={filteredDocuments} onViewDocument={setViewingDocument} />
                     </div>
                 </div>
