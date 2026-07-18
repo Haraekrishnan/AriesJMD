@@ -102,7 +102,11 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                       <TableCell className="border-r-2 border-black text-center text-[11px] text-foreground">{formatDate(job.dateTo)}</TableCell>
 
                       {JOB_PROGRESS_STEPS.map((stepName) => {
-                        const step = job.steps.find(s => s.name === stepName);
+                        const stepsWithThisName = job.steps.filter(s => s.name === stepName);
+                        // CRITICAL FIX: If a step name is repeated, find the first one that isn't completed. 
+                        // If all are completed, show the last completed one.
+                        const step = stepsWithThisName.find(s => s.status !== 'Completed') || [...stepsWithThisName].reverse()[0];
+                        
                         const isCompleted = step?.status === 'Completed';
                         const isUnacknowledged = step?.status === 'Pending' || step?.isReturned;
                         const isAcknowledgedPending = step?.status === 'Acknowledged';
