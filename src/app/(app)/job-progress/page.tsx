@@ -163,7 +163,7 @@ export default function JobProgressPage() {
             job.title.toLowerCase().includes(lowercasedTerm) ||
             (job.jmsNo && job.jmsNo.toLowerCase().includes(lowercasedTerm)) ||
             (project && project.name.toLowerCase().includes(lowercasedTerm)) ||
-            (job.plantUnit && job.plantUnit.toLowerCase().includes(lowercercercTerm)) ||
+            (job.plantUnit && job.plantUnit.toLowerCase().includes(lowercasedTerm)) ||
             amountStr.includes(lowercasedTerm) ||
             formattedAmount.includes(lowercasedTerm)
         );
@@ -336,11 +336,9 @@ export default function JobProgressPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="flex-1 overflow-auto">
+                    <div className="overflow-auto flex-1 relative">
                         {jmsView === 'board' ? (
-                            <div className="h-full relative overflow-auto">
                               <JobProgressBoard jobs={filteredJobs} onViewJob={handleViewJob} />
-                            </div>
                         ) : (
                             <JobProgressTable jobs={filteredJobs} onViewJob={handleViewJob} />
                         )}
@@ -395,11 +393,9 @@ export default function JobProgressPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="flex-1 overflow-auto">
+                    <div className="overflow-auto flex-1 relative">
                         {timesheetView === 'board' ? (
-                            <div className="h-full relative overflow-auto">
                               <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
-                            </div>
                         ) : (
                             <TimesheetTrackerTable timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
                         )}
@@ -423,7 +419,7 @@ export default function JobProgressPage() {
                             <Folder className="mr-1.5 h-3.5 w-3.5" /> New Tracker
                         </Button>
                     </div>
-                    <div className="flex-1 overflow-auto">
+                    <div className="overflow-auto flex-1 relative">
                         <DocumentMovementList documents={filteredDocuments} onViewDocument={setViewingDocument} />
                     </div>
                 </div>
