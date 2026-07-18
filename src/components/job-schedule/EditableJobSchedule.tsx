@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { Check, PlusCircle, Save, Trash2, Copy, Users, ChevronsUpDown, ArrowUp, ArrowDown, Search, UserX, X } from 'lucide-react';
@@ -159,7 +159,10 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
   
   const handleCopyYesterday = () => {
     const yesterdayStr = format(subDays(new Date(selectedDate), 1), 'yyyy-MM-dd');
-    const yesterdaySchedule = jobSchedules.find(s => s.date === yesterdayStr);
+    const currentName = form.getValues('name');
+    
+    // Specifically look for a schedule with the same name from yesterday
+    const yesterdaySchedule = jobSchedules.find(s => s.date === yesterdayStr && s.name === currentName);
     
     if (yesterdaySchedule && yesterdaySchedule.items) {
       const newItems = yesterdaySchedule.items.map(item => ({
@@ -167,17 +170,18 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
         id: `item-${Date.now()}-${Math.random()}`, 
       }));
       replace(newItems);
-      toast({ title: "Yesterday's Schedule Copied" });
+      toast({ title: `Copied "${currentName}" from Yesterday` });
     } else {
-      toast({ variant: 'destructive', title: 'No Schedule Found' });
+      toast({ variant: 'destructive', title: `No matching schedule "${currentName}" found from yesterday.` });
     }
   };
 
   const yesterdayScheduleExists = useMemo(() => {
     if (!jobSchedules) return false;
     const yesterdayStr = format(subDays(new Date(selectedDate), 1), 'yyyy-MM-dd');
-    return jobSchedules.some(s => s.date === yesterdayStr);
-  }, [jobSchedules, selectedDate]);
+    const currentName = form.watch('name');
+    return jobSchedules.some(s => s.date === yesterdayStr && s.name === currentName);
+  }, [jobSchedules, selectedDate, watchedItems]); // Re-calculate when items or name changes
   
   const getAssignmentInfo = (manpowerId: string) => {
     if (!jobSchedules) return 'Loading...';
