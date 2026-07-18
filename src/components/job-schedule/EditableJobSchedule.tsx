@@ -161,16 +161,21 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
   const handleCopyYesterday = () => {
     if (!selectedDate) return;
     
-    // Robust date parsing for YYYY-MM-DD
     const dateObj = parseISO(selectedDate);
     const yesterdayStr = format(subDays(dateObj, 1), 'yyyy-MM-dd');
     const currentName = (form.getValues('name') || '').trim();
     
-    // Specifically look for a schedule with the same name from yesterday
-    const yesterdaySchedule = jobSchedules.find(s => 
-        s.date === yesterdayStr && 
-        (s.name || '').trim() === currentName
-    );
+    // Improved matching with fallback for "Schedule 1"
+    const yesterdaySchedule = jobSchedules.find(s => {
+        const isDateMatch = s.date === yesterdayStr;
+        if (!isDateMatch) return false;
+        
+        const nameMatch = (s.name || '').trim() === currentName;
+        // Fallback for "Schedule 1" to match old un-named records or records with default date IDs
+        const isFirstScheduleFallback = currentName === 'Schedule 1' && (!s.name || s.id === `schedule_${yesterdayStr}`);
+        
+        return nameMatch || isFirstScheduleFallback;
+    });
     
     if (yesterdaySchedule && yesterdaySchedule.items) {
       const newItems = yesterdaySchedule.items.map(item => ({
@@ -193,12 +198,20 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
     const dateObj = parseISO(selectedDate);
     const yesterdayStr = format(subDays(dateObj, 1), 'yyyy-MM-dd');
     const currentName = (watchedName || '').trim();
-    return jobSchedules.some(s => s.date === yesterdayStr && (s.name || '').trim() === currentName);
+    
+    return jobSchedules.some(s => {
+        const isDateMatch = s.date === yesterdayStr;
+        if (!isDateMatch) return false;
+        
+        const nameMatch = (s.name || '').trim() === currentName;
+        const isFirstScheduleFallback = currentName === 'Schedule 1' && (!s.name || s.id === `schedule_${yesterdayStr}`);
+        
+        return nameMatch || isFirstScheduleFallback;
+    });
   }, [jobSchedules, selectedDate, watchedName]);
   
   const getAssignmentInfo = (manpowerId: string) => {
     if (!jobSchedules) return 'Loading...';
-    // Check other schedules for this date
     for (const s of jobSchedules) {
       if (s.date === selectedDate) {
         if (s.items && Array.isArray(s.items)) {
