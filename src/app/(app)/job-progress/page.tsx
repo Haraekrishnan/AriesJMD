@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/auth-provider';
 import { usePlanner } from '@/contexts/planner-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { Button } from '@/components/ui/button';
-import { Bell, Clock, Folder, List, LayoutGrid, Search, ChevronLeft, ChevronRight, AlertTriangle, PlusCircle, CheckCircle } from 'lucide-react';
+import { Bell, Clock, Folder, List, LayoutGrid, Search, ChevronLeft, ChevronRight, AlertTriangle, PlusCircle, FolderKanban } from 'lucide-react';
 import ViewJobProgressDialog from '@/components/job-progress/ViewJobProgressDialog';
 import { JobProgress, Timesheet, Role, DocumentMovement } from '@/lib/types';
 import { format, startOfMonth, addMonths, isSameMonth, parseISO, isAfter, isBefore, startOfToday, differenceInDays, endOfMonth, isValid } from 'date-fns';
@@ -20,7 +20,6 @@ import { Badge } from '@/components/ui/badge';
 import PendingActionsDialog from '@/components/job-progress/PendingActionsDialog';
 import OngoingJobsReport from '@/components/job-progress/OngoingJobsReport';
 import LongPendingJmsDialog from '@/components/job-progress/LongPendingJmsDialog';
-import CompletedJmsDialog from '@/components/job-progress/CompletedJmsDialog';
 import CreateDocumentMovementDialog from '@/components/job-progress/CreateDocumentMovementDialog';
 import DocumentMovementList from '@/components/job-progress/DocumentMovementList';
 import ViewDocumentMovementDialog from '@/components/job-progress/ViewDocumentMovementDialog';
@@ -29,6 +28,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import CreateJobDialog from '@/components/job-progress/CreateJobDialog';
 import { Separator } from '@/components/ui/separator';
+import CompletedJmsDialog from '@/components/job-progress/CompletedJmsDialog';
+import { CheckCircle } from 'lucide-react';
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
 
@@ -90,16 +91,6 @@ export default function JobProgressPage() {
         }
         return false;
     });
-  }, [jobProgress, user]);
-
-  const unnotedCompletedCount = useMemo(() => {
-    if (!user) return 0;
-    const isPrivileged = ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role);
-    return jobProgress.filter(job => 
-        job.status === 'Completed' && 
-        !job.notedById && 
-        (isPrivileged || job.creatorId === user.id)
-    ).length;
   }, [jobProgress, user]);
 
   const visibleJobs = useMemo(() => jobProgress.filter(job => {
@@ -242,6 +233,19 @@ export default function JobProgressPage() {
     const submitterIds = new Set(timesheets.map(ts => ts.submitterId));
     return users.filter(u => submitterIds.has(u.id));
   }, [timesheets, users]);
+
+  const completedJobs = useMemo(() => {
+    if (!user) return [];
+  
+    const isPrivileged = ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role);
+  
+    return jobProgress.filter(job => {
+      if (job.status !== 'Completed') return false;
+      if (job.notedById) return false;
+  
+      return isPrivileged || job.creatorId === user.id;
+    });
+  }, [jobProgress, user]);
     
   if (!can.view_job_progress && !can.view_all) {
       return (
@@ -278,8 +282,8 @@ export default function JobProgressPage() {
                 </TabsList>
             </div>
 
-            <TabsContent value="jms" className="m-0 flex-1 overflow-hidden flex flex-col data-[state=active]:flex h-0 min-h-0">
-                <div className="flex flex-1 h-0 min-h-0 flex-col rounded-lg border bg-card overflow-hidden">
+            <TabsContent value="jms" className="m-0 flex-1 overflow-hidden">
+                <div className="flex h-full flex-col rounded-lg border bg-card">
                     <div className="border-b shrink-0 p-3 space-y-3">
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-2">
@@ -294,7 +298,7 @@ export default function JobProgressPage() {
                             <div className="flex items-center gap-2">
                                 <Button variant="outline" size="sm" onClick={() => setIsPendingDialogOpen(true)} className="relative h-8">
                                     <Bell className="mr-1.5 h-3.5 w-3.5" />
-                                    Pending with Me
+                                    Pending
                                     {trackerNotificationCount > 0 && (
                                         <Badge variant="destructive" className="absolute -top-1.5 -right-1.5 h-4 min-w-[1rem] flex items-center justify-center p-0.5 rounded-full text-[9px] animate-pulse">
                                             {trackerNotificationCount}
@@ -308,22 +312,31 @@ export default function JobProgressPage() {
                                         {longPendingJobs.length > 0 && <Badge variant="destructive" className="ml-1.5 h-4 text-[9px]">{longPendingJobs.length}</Badge>}
                                     </Button>
                                 )}
-                                <Button variant="outline" size="sm" onClick={() => setIsCompletedDialogOpen(true)} className="relative h-8">
-                                    <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
-                                    Completed
-                                    {unnotedCompletedCount > 0 && (
-                                        <Badge variant="success" className="absolute -top-1.5 -right-1.5 h-4 min-w-[1rem] flex items-center justify-center p-0.5 rounded-full text-[9px]">
-                                            {unnotedCompletedCount}
-                                        </Badge>
-                                    )}
-                                </Button>
+                                <Button
+    variant="outline"
+    size="sm"
+    className="h-8"
+    onClick={() => setIsCompletedDialogOpen(true)}
+>
+    <CheckCircle className="mr-1.5 h-3.5 w-3.5 text-green-600" />
+    Completed
+
+    {completedJobs.length > 0 && (
+        <Badge
+            variant="success"
+            className="ml-1.5 h-4 text-[9px]"
+        >
+            {completedJobs.length}
+        </Badge>
+    )}
+</Button>
                                 <OngoingJobsReport jobs={filteredJobs} />
                                 {can.create_jms && (
                                     <Button onClick={() => setIsCreateJmsOpen(true)} size="sm" className="h-8">
                                         <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> New JMS
                                     </Button>
                                 )}
-                            </div>
+                                                            </div>
                         </div>
                         <div className="flex flex-wrap gap-2 items-center">
                             <div className="relative w-full sm:w-56">
@@ -362,7 +375,7 @@ export default function JobProgressPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="flex-1 min-h-[650px] overflow-auto relative">
+                    <div className="flex-1 flex flex-col rounded-lg border bg-card overflow-hidden">
                         {jmsView === 'board' ? (
                               <JobProgressBoard jobs={filteredJobs} onViewJob={handleViewJob} />
                         ) : (
@@ -372,8 +385,8 @@ export default function JobProgressPage() {
                 </div>
             </TabsContent>
 
-            <TabsContent value="timesheets" className="m-0 flex-1 overflow-hidden flex flex-col data-[state=active]:flex h-0 min-h-0">
-                <div className="flex flex-1 h-0 min-h-0 flex-col rounded-lg border bg-card overflow-hidden">
+            <TabsContent value="timesheets" className="m-0 flex-1 overflow-hidden">
+                <div className="flex h-full flex-col rounded-lg border bg-card">
                     <div className="border-b shrink-0 p-3 space-y-3">
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-2">
@@ -419,7 +432,7 @@ export default function JobProgressPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="flex-1 min-h-[650px] overflow-auto relative">
+                    <div className="flex-1 min-h-0 overflow-auto">
                         {timesheetView === 'board' ? (
                               <TimesheetBoard timesheets={filteredTimesheets} onViewTimesheet={handleViewTimesheet} />
                         ) : (
@@ -429,8 +442,8 @@ export default function JobProgressPage() {
                 </div>
             </TabsContent>
 
-            <TabsContent value="documents" className="m-0 flex-1 overflow-hidden flex flex-col data-[state=active]:flex h-0 min-h-0">
-                <div className="flex flex-1 h-0 min-h-0 flex-col rounded-lg border bg-card overflow-hidden">
+            <TabsContent value="documents" className="m-0 flex-1 overflow-hidden">
+                <div className="flex h-full flex-col rounded-lg border bg-card">
                     <div className="border-b shrink-0 p-3 flex justify-between items-center">
                         <div className="relative w-full sm:w-72">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -445,7 +458,7 @@ export default function JobProgressPage() {
                             <Folder className="mr-1.5 h-3.5 w-3.5" /> New Tracker
                         </Button>
                     </div>
-                    <div className="flex-1 min-h-[650px] overflow-auto relative">
+                    <div className="flex-1 min-h-0 overflow-auto">
                         <DocumentMovementList documents={filteredDocuments} onViewDocument={setViewingDocument} />
                     </div>
                 </div>
@@ -460,7 +473,11 @@ export default function JobProgressPage() {
       {viewingDocument && <ViewDocumentMovementDialog isOpen={!!viewingDocument} setIsOpen={() => setViewingDocument(null)} movement={viewingDocument} />}
       <PendingActionsDialog isOpen={isPendingDialogOpen} setIsOpen={setIsPendingDialogOpen} onViewJob={handleViewJob} onViewTimesheet={handleViewTimesheet} onViewDocument={setViewingDocument} />
       <LongPendingJmsDialog isOpen={isLongPendingDialogOpen} setIsOpen={setIsLongPendingDialogOpen} longPendingJobs={longPendingJobs} onViewJob={handleViewJob} />
-      <CompletedJmsDialog isOpen={isCompletedDialogOpen} setIsOpen={setIsCompletedDialogOpen} onViewJob={handleViewJob} />
+      <CompletedJmsDialog
+    isOpen={isCompletedDialogOpen}
+    setIsOpen={setIsCompletedDialogOpen}
+    onViewJob={handleViewJob}
+/>
     </div>
   );
 }

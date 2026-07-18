@@ -77,7 +77,7 @@ export default function CompletedJmsDialog({ isOpen, setIsOpen, onViewJob }: Com
                         <span className="text-muted-foreground font-medium">by {creator?.name}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
                     <Button 
                       variant="outline" 
                       size="sm" 
