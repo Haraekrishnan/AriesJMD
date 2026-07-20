@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -77,6 +78,8 @@ type PlannerContextType = {
   forwardDocumentMovement: (movementId: string, newAssigneeId: string, comment: string) => void;
   returnDocumentMovement: (movementId: string, comment: string) => void;
   deleteDocumentMovement: (movementId: string) => void;
+  markJmsAsNoted: (jobId: string) => void;
+  bulkMarkJmsAsNoted: (jobIds: string[]) => void;
   markJmsAsNoted: (jobId: string) => void;
 };
 
@@ -1119,6 +1122,21 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         toast({ title: 'JMS Marked as Noted' });
     }, [user, toast]);
 
+    const bulkMarkJmsAsNoted = useCallback((jobIds: string[]) => {
+        if (!user || jobIds.length === 0) return;
+        
+        const updates: { [key: string]: any } = {};
+        const now = new Date().toISOString();
+        
+        jobIds.forEach(id => {
+            updates[`jobProgress/${id}/notedById`] = user.id;
+            updates[`jobProgress/${id}/notedAt`] = now;
+        });
+        
+        update(ref(rtdb), updates);
+        toast({ title: `${jobIds.length} JMS entries marked as noted.` });
+    }, [user, toast]);
+
     useEffect(() => {
         const unsubscribers = [
             createDataListener('plannerEvents', setPlannerEventsById),
@@ -1185,6 +1203,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         returnDocumentMovement,
         deleteDocumentMovement,
         markJmsAsNoted,
+        bulkMarkJmsAsNoted,
     };
 
     return <PlannerContext.Provider value={contextValue}>{children}</PlannerContext.Provider>;
