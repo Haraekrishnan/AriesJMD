@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -123,7 +122,7 @@ export default function CompletedJmsDialog({ isOpen, setIsOpen, onViewJob }: Com
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-4xl h-[95vh] flex flex-col">
         <DialogHeader>
-          <div className="flex justify-between items-center pr-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pr-8">
             <div>
               <DialogTitle>Completed JMS (Awaiting Review)</DialogTitle>
               <DialogDescription>
@@ -134,18 +133,18 @@ export default function CompletedJmsDialog({ isOpen, setIsOpen, onViewJob }: Com
                 <Button 
                     variant="success" 
                     size="sm" 
-                    className="font-bold"
+                    className="font-black h-10 px-4 bg-green-600 hover:bg-green-700 text-white shadow-md transition-all active:scale-95"
                     onClick={handleMarkAllAsNoted}
                 >
                     <CheckCheck className="mr-2 h-4 w-4" />
-                    MARK {filteredJms.length === baseCompletedJms.length ? 'ALL' : 'FILTERED'} AS NOTED
+                    MARK FILTERED AS NOTED
                 </Button>
             )}
           </div>
         </DialogHeader>
 
         {/* Filter Bar */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 p-4 bg-muted/20 border rounded-lg">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 p-4 bg-muted/20 border rounded-lg shrink-0">
             <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input 
@@ -214,7 +213,7 @@ export default function CompletedJmsDialog({ isOpen, setIsOpen, onViewJob }: Com
                         <span className="text-muted-foreground italic ml-auto">{format(parseISO(job.lastUpdated), 'dd MMM, p')}</span>
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+                  <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3 shrink-0">
                     <Button 
                       variant="outline" 
                       size="sm" 
