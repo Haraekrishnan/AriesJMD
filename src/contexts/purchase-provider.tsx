@@ -3,13 +3,19 @@
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
 import { Vendor, Payment, PaymentStatus, PurchaseRegister, Comment, Quotation, InwardOutwardRecord, Permission, QuotationStatus, InventoryItem, OtherEquipment, PpeInwardRecord } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
-import { ref, onValue, set, push, remove, update } from 'firebase/database';
+import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
 import { useAuth } from './auth-provider';
 import { useToast } from '@/hooks/use-toast';
 
 // --- TYPE DEFINITIONS ---
 
 type PermissionsObject = Record<Permission, boolean>;
+
+const sanitizeData = (data: any) => {
+    return JSON.parse(JSON.stringify(data, (key, value) => {
+        return value === undefined ? null : value;
+    }));
+};
 
 export type PurchaseContextType = {
   vendors: Vendor[];
@@ -86,12 +92,12 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
     // Vendor Functions
     const addVendor = useCallback((vendorData: Omit<Vendor, 'id'>) => {
         const newRef = push(ref(rtdb, 'vendors'));
-        set(newRef, vendorData);
+        set(newRef, sanitizeData(vendorData));
     }, []);
 
     const updateVendor = useCallback((vendor: Vendor) => {
         const { id, ...data } = vendor;
-        update(ref(rtdb, `vendors/${id}`), data);
+        update(ref(rtdb, `vendors/${id}`), sanitizeData(data));
     }, []);
 
     const deleteVendor = useCallback((vendorId: string) => {
@@ -108,7 +114,7 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
             requesterId: user.id,
             date: new Date().toISOString(),
         };
-        set(newRef, newPayment);
+        set(newRef, sanitizeData(newPayment));
     }, [user]);
 
     const updatePayment = useCallback((paymentId: string, data: Partial<Payment>) => {
@@ -117,7 +123,7 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
         delete (updateData as Partial<Payment>).requesterId;
         delete (updateData as Partial<Payment>).date;
     
-        update(ref(rtdb, `payments/${paymentId}`), updateData);
+        update(ref(rtdb, `payments/${paymentId}`), sanitizeData(updateData));
     }, []);
 
     const deletePayment = useCallback((paymentId: string) => {
@@ -135,7 +141,7 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
             date: new Date().toISOString(),
         };
 
-        set(newPurchaseRef, newPurchase).then(() => {
+        set(newPurchaseRef, sanitizeData(newPurchase)).then(() => {
             const paymentData = {
                 vendorId: purchaseData.vendorId,
                 amount: purchaseData.grandTotal,
@@ -148,7 +154,7 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
 
     const updatePurchaseRegister = useCallback((purchase: PurchaseRegister) => {
         const { id, ...data } = purchase;
-        update(ref(rtdb, `purchaseRegisters/${id}`), data);
+        update(ref(rtdb, `purchaseRegisters/${id}`), sanitizeData(data));
         
         // If there's an associated payment, update its amount
         const associatedPayment = payments.find(p => p.purchaseRegisterId === id);
@@ -182,7 +188,7 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
                 createdAt: new Date().toISOString(),
                 status: 'Pending',
             };
-            await set(newRef, newQuotation);
+            await set(newRef, sanitizeData(newQuotation));
             addActivityLog(user.id, 'Price Comparison Created', `Title: ${quotationData.title}`);
             return true;
         } catch (error) {
@@ -206,17 +212,14 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
                 }
             }
             
-            // NOTE: Auto-creation logic removed as per request.
-            // Items are now logged manually in their respective sections later.
-            
-            await update(ref(rtdb, `quotations/${id}`), updateData);
+            await update(ref(rtdb, `quotations/${id}`), sanitizeData(updateData));
             addActivityLog(user.id, 'Price Comparison Updated', `ID: ${id}`);
             return true;
         } catch (error) {
             console.error("Failed to update quotation:", error);
             return false;
         }
-    }, [quotationsById, toast, user, addActivityLog]);
+    }, [quotationsById, user, addActivityLog]);
 
     const deleteQuotation = useCallback((quotationId: string) => {
         if (!user || user.role !== 'Admin') {
@@ -273,9 +276,6 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
       } else {
           updates[`quotations/${quotationId}/status`] = 'Partially Received';
       }
-  
-      // NOTE: Auto-stock update logic removed as per request.
-      // Stock updates should be logged via Inward/Outward registers.
   
       update(ref(rtdb), updates);
     },

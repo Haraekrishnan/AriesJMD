@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Trash2, Users2, X, Upload, ListChecks, Info } from 'lucide-react';
+import { PlusCircle, Trash2, Users2, X, Upload, ListChecks, Info, Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -89,13 +89,14 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
   const isEditMode = !!existingQuotation;
 
   const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(quotationSchema),
     defaultValues: { title: '', items: [], vendors: [] },
   });
 
-  const { control, setValue, getValues, watch } = form;
+  const { control, setValue, getValues, formState: { errors } } = form;
 
   const { fields: itemFields, append: appendItem, remove: removeItem, replace: replaceItems } = useFieldArray({
     control: form.control,
@@ -170,21 +171,34 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     e.target.value = ''; // Reset input
   };
 
-  const onSubmit = (data: FormValues) => {
+  const onSubmit = async (data: FormValues) => {
     if (!data.vendors.length || !data.items.length) {
         toast({ title: "Missing items or vendors", variant: "destructive" });
         return;
     }
     
-    if (isEditMode && existingQuotation) {
-        updateQuotation({ ...existingQuotation, ...data });
-        toast({ title: "Price Comparison Updated" });
-    } else {
-        addQuotation(data);
-        toast({ title: "Price Comparison Created" });
+    setIsSubmitting(true);
+    try {
+        let success = false;
+        if (isEditMode && existingQuotation) {
+            success = await updateQuotation({ ...existingQuotation, ...data });
+            if (success) toast({ title: "Price Comparison Updated" });
+        } else {
+            success = await addQuotation(data);
+            if (success) toast({ title: "Price Comparison Created" });
+        }
+        
+        if (success) {
+            setIsOpen(false);
+        } else {
+            toast({ variant: 'destructive', title: 'Save Failed', description: 'Internal error. Check data fields.' });
+        }
+    } catch (e: any) {
+        console.error("Save Error:", e);
+        toast({ variant: 'destructive', title: 'Error', description: e.message || 'Submission failed' });
+    } finally {
+        setIsSubmitting(false);
     }
-    
-    setIsOpen(false);
   };
 
   const handleAddItemRow = () => {
@@ -233,7 +247,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-7xl h-[90vh] flex flex-col">
+      <DialogContent className="max-w-7xl h-[90vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>{isEditMode ? 'Edit' : 'New'} Price Comparison</DialogTitle>
           <DialogDescription>List items to quote and enter rates from multiple vendors. Use the Import feature for long lists.</DialogDescription>
@@ -243,6 +257,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
             <div className="flex-1 mr-4">
               <Label htmlFor="title" className="text-base font-semibold">Comparison Title</Label>
               <Input id="title" {...form.register('title')} placeholder="e.g., Monthly Consumables - Site A" className="mt-1 bg-background" />
+              {errors.title && <p className="text-xs text-destructive mt-1">{errors.title.message}</p>}
             </div>
             <div className="flex items-end gap-2">
                 <Input type="file" accept=".xlsx, .xls" className="hidden" id="item-import-file" onChange={handleImportItems} />
@@ -290,8 +305,12 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                               <div className="w-12 pt-2 text-xs font-bold text-muted-foreground text-center">{index + 1}.</div>
                               <div className="flex-1">
                                 <Input {...form.register(`items.${index}.description`)} placeholder="Item Name / Description" />
+                                {errors.items?.[index]?.description && <p className="text-[10px] text-destructive mt-0.5">{errors.items[index].description?.message}</p>}
                               </div>
-                              <Input {...form.register(`items.${index}.uom`)} placeholder="UOM" className="w-24"/>
+                              <div className="w-24">
+                                <Input {...form.register(`items.${index}.uom`)} placeholder="UOM" />
+                                {errors.items?.[index]?.uom && <p className="text-[10px] text-destructive mt-0.5">{errors.items[index].uom?.message}</p>}
+                              </div>
                               <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveItemRow(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
                           </div>
                       ))}
@@ -320,10 +339,13 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                   <div className="flex flex-col gap-1">
                                     <div className="flex items-center gap-2">
                                       <Label className="font-bold whitespace-nowrap">Vendor {vendorIndex + 1}:</Label>
-                                      <Select value={form.watch(`vendors.${vendorIndex}.vendorId`)} onValueChange={(vendorId) => handleVendorSelect(vendorIndex, vendorId)}>
-                                          <SelectTrigger className="w-64 bg-background"><SelectValue placeholder="Select Vendor"/></SelectTrigger>
-                                          <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
-                                      </Select>
+                                      <div className="flex flex-col gap-1">
+                                          <Select value={form.watch(`vendors.${vendorIndex}.vendorId`)} onValueChange={(vendorId) => handleVendorSelect(vendorIndex, vendorId)}>
+                                              <SelectTrigger className="w-64 bg-background"><SelectValue placeholder="Select Vendor"/></SelectTrigger>
+                                              <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
+                                          </Select>
+                                          {errors.vendors?.[vendorIndex]?.vendorId && <p className="text-[10px] text-destructive font-bold">{errors.vendors[vendorIndex]?.vendorId?.message}</p>}
+                                      </div>
                                       <Button type="button" variant="outline" size="sm" onClick={() => setIsAddVendorOpen(true)}>New Vendor</Button>
                                     </div>
                                   </div>
@@ -397,7 +419,9 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
           
           <DialogFooter className="pt-4 border-t mt-4">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit" className="min-w-[120px]">{isEditMode ? 'Save Changes' : 'Create Comparison'}</Button>
+            <Button type="submit" className="min-w-[120px]" disabled={isSubmitting}>
+                {isSubmitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin"/>Saving...</> : (isEditMode ? 'Save Changes' : 'Create Comparison')}
+            </Button>
           </DialogFooter>
         </form>
         <AddVendorDialog isOpen={isAddVendorOpen} setIsOpen={setIsAddVendorOpen} />
