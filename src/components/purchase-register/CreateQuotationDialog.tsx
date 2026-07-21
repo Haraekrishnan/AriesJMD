@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Trash2, Users2, X, Upload, ListChecks, Loader2, AlertTriangle } from 'lucide-react';
+import { PlusCircle, Trash2, Users2, X, Upload, ListChecks, Loader2, AlertTriangle, Check } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEffect, useMemo, useState } from 'react';
@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { usePurchase } from '@/contexts/purchase-provider';
 import AddVendorDialog from '../vendor-management/AddVendorDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import * as XLSX from 'xlsx';
 
 const quotationItemSchema = z.object({
@@ -73,8 +74,8 @@ const VendorCostSection = ({ vendorIndex, control }: { vendorIndex: number; cont
                 <PlusCircle className="h-3 w-3 mr-1"/> Add Cost
             </Button>
         </div>
-    )
-}
+    );
+};
 
 export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuotation }: { isOpen: boolean; setIsOpen: (open: boolean) => void; existingQuotation?: Quotation | null }) {
   const { vendors, addQuotation, updateQuotation } = usePurchase();
@@ -265,7 +266,6 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
           <div className="flex-1 flex flex-col overflow-hidden px-6 pb-2">
             <Accordion type="multiple" defaultValue={["items", "vendors"]} className="flex-1 flex flex-col gap-4 overflow-hidden">
               
-              {/* 1. ITEMS SECTION */}
               <AccordionItem value="items" className="border rounded-lg bg-card shrink-0">
                 <AccordionTrigger className="px-4 py-2 hover:no-underline">
                   <div className="flex items-center gap-2">
@@ -296,7 +296,6 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                 </AccordionContent>
               </AccordionItem>
 
-              {/* 2. VENDOR COMPARISON SECTION */}
               <AccordionItem value="vendors" className="border rounded-lg bg-card flex-1 flex flex-col overflow-hidden">
                 <AccordionTrigger className="px-4 py-2 hover:no-underline shrink-0">
                   <div className="flex items-center gap-2">
@@ -308,7 +307,6 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                    <div className="flex-1 flex flex-col overflow-hidden border-t">
                       <ScrollArea className="flex-1">
                           <div className="flex h-full">
-                              {/* Fixed Left Column for Descriptions */}
                               <div className="w-[300px] shrink-0 border-r bg-muted/20 sticky left-0 z-20">
                                   <div className="h-[60px] p-3 border-b flex items-center bg-muted/30">
                                       <span className="text-[11px] font-black uppercase text-muted-foreground">Item Description</span>
@@ -322,11 +320,9 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                   ))}
                               </div>
 
-                              {/* Dynamic Vendor Columns */}
                               <div className="flex flex-1 overflow-x-auto min-w-0">
                                   {vendorFields.map((vendorField, vIdx) => (
                                       <div key={vendorField.id} className={cn("w-[280px] shrink-0 border-r", vIdx === 0 && "bg-blue-50/10")}>
-                                          {/* Vendor Header */}
                                           <div className="h-[60px] p-2 border-b bg-muted/10 flex flex-col justify-center gap-1">
                                               <div className="flex items-center gap-1">
                                                   <Select value={watch(`vendors.${vIdx}.vendorId`)} onValueChange={(val) => handleVendorSelect(vIdx, val)}>
@@ -338,66 +334,84 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                               {vIdx === 0 && <span className="text-[9px] font-black text-blue-600 uppercase text-center block">Primary Source</span>}
                                           </div>
 
-                                          {/* Quotes for this Vendor */}
                                           {itemFields.map((item, iIdx) => (
                                               <div key={`${vendorField.id}-${iIdx}`} className="h-[48px] p-2 border-b flex items-center gap-1">
                                                   <div className="flex-1 space-y-0.5">
                                                       <Label className="text-[9px] text-muted-foreground font-bold uppercase block px-1">Qty</Label>
-                                                      <Input 
-                                                          type="number" 
-                                                          step="any"
-                                                          className="h-7 text-xs text-center px-1"
-                                                          {...form.register(`vendors.${vIdx}.quotes.${iIdx}.quantity`, {
-                                                              onChange: (e) => {
-                                                                  if (vIdx === 0) {
-                                                                      const val = e.target.value;
-                                                                      vendorFields.forEach((_, otherIdx) => {
-                                                                          if (otherIdx !== 0) setValue(`vendors.${otherIdx}.quotes.${iIdx}.quantity`, Number(val));
-                                                                      });
-                                                                  }
-                                                              }
-                                                          })}
+                                                      <Controller
+                                                        name={`vendors.${vIdx}.quotes.${iIdx}.quantity`}
+                                                        control={control}
+                                                        render={({ field }) => (
+                                                          <Input 
+                                                              type="number" 
+                                                              step="any"
+                                                              className="h-7 text-xs text-center px-1"
+                                                              value={field.value ?? ''}
+                                                              onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                const numVal = val === '' ? 0 : Number(val);
+                                                                field.onChange(numVal);
+                                                                if (vIdx === 0) {
+                                                                  vendorFields.forEach((_, otherIdx) => {
+                                                                    if (otherIdx !== 0) setValue(`vendors.${otherIdx}.quotes.${iIdx}.quantity`, numVal);
+                                                                  });
+                                                                }
+                                                              }}
+                                                          />
+                                                        )}
                                                       />
                                                   </div>
                                                   <div className="flex-1 space-y-0.5">
                                                       <Label className="text-[9px] text-muted-foreground font-bold uppercase block px-1">Rate</Label>
-                                                      <Input 
-                                                          type="number" 
-                                                          step="any"
-                                                          placeholder="0"
-                                                          className="h-7 text-xs text-right font-bold text-primary px-1"
-                                                          {...form.register(`vendors.${vIdx}.quotes.${iIdx}.rate`)}
+                                                      <Controller
+                                                        name={`vendors.${vIdx}.quotes.${iIdx}.rate`}
+                                                        control={control}
+                                                        render={({ field }) => (
+                                                          <Input 
+                                                              type="number" 
+                                                              step="any"
+                                                              placeholder=""
+                                                              className="h-7 text-xs text-right font-bold text-primary px-1"
+                                                              value={field.value || ''}
+                                                              onChange={(e) => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
+                                                          />
+                                                        )}
                                                       />
                                                   </div>
                                                   <div className="flex-1 space-y-0.5">
                                                       <Label className="text-[9px] text-muted-foreground font-bold uppercase block px-1">Tax%</Label>
-                                                      <Input 
-                                                          type="number" 
-                                                          step="any"
-                                                          className="h-7 text-xs text-center px-1"
-                                                          {...form.register(`vendors.${vIdx}.quotes.${iIdx}.taxPercent`, {
-                                                              onChange: (e) => {
-                                                                  if (vIdx === 0) {
-                                                                      const val = e.target.value;
-                                                                      vendorFields.forEach((_, otherIdx) => {
-                                                                          if (otherIdx !== 0) setValue(`vendors.${otherIdx}.quotes.${iIdx}.taxPercent`, Number(val));
-                                                                      });
-                                                                  }
-                                                              }
-                                                          })}
+                                                      <Controller
+                                                        name={`vendors.${vIdx}.quotes.${iIdx}.taxPercent`}
+                                                        control={control}
+                                                        render={({ field }) => (
+                                                          <Input 
+                                                              type="number" 
+                                                              step="any"
+                                                              className="h-7 text-xs text-center px-1"
+                                                              value={field.value ?? ''}
+                                                              onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                const numVal = val === '' ? 0 : Number(val);
+                                                                field.onChange(numVal);
+                                                                if (vIdx === 0) {
+                                                                  vendorFields.forEach((_, otherIdx) => {
+                                                                    if (otherIdx !== 0) setValue(`vendors.${otherIdx}.quotes.${iIdx}.taxPercent`, numVal);
+                                                                  });
+                                                                }
+                                                              }}
+                                                          />
+                                                        )}
                                                       />
                                                   </div>
                                               </div>
                                           ))}
                                           
-                                          {/* Vendor Specific Footer (Totals/Costs) */}
                                           <div className="p-3 bg-muted/5">
                                               <VendorCostSection vendorIndex={vIdx} control={control} />
                                           </div>
                                       </div>
                                   ))}
                                   
-                                  {/* Add Vendor Column Button */}
                                   <div className="w-[100px] shrink-0 border-r bg-muted/20 flex items-center justify-center">
                                       <Button type="button" variant="ghost" className="h-full w-full flex-col gap-2 rounded-none" onClick={handleAddVendor}>
                                           <PlusCircle className="h-6 w-6"/>
