@@ -145,7 +145,6 @@ export default function JobProgressPage() {
   }, [jobsInMonth]);
 
   const filteredJobs = useMemo(() => {
-    // GLOBAL SEARCH: If searching, return matches from all visible jobs regardless of month/filters
     if (jmsSearchTerm) {
       const lowercasedTerm = jmsSearchTerm.toLowerCase();
       return visibleJobs.filter(job => {
@@ -164,7 +163,6 @@ export default function JobProgressPage() {
       });
     }
 
-    // NORMAL VIEW: Filtered by month and other controls
     let jobs = jobsInMonth;
 
     if (jmsProjectFilter !== 'all') {

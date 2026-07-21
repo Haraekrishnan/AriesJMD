@@ -4,24 +4,20 @@ import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Trash2, Users2, X, Upload, ListChecks, Info, Loader2, ChevronRight, ChevronLeft } from 'lucide-react';
+import { PlusCircle, Trash2, Users2, X, Upload, ListChecks, Loader2, AlertTriangle } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { useEffect, useMemo, useState } from 'react';
-import type { Quotation, QuotationItem, QuotationQuote, QuotationVendorDetails, QuotationStatus, Role } from '@/lib/types';
+import type { Quotation, QuotationStatus } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { usePurchase } from '@/contexts/purchase-provider';
 import AddVendorDialog from '../vendor-management/AddVendorDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Badge } from '@/components/ui/badge';
 import * as XLSX from 'xlsx';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const quotationItemSchema = z.object({
     id: z.string(),
@@ -244,179 +240,181 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
       <DialogContent className="max-w-[95vw] w-full h-[95vh] flex flex-col p-0 overflow-hidden" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader className="p-6 pb-2">
           <DialogTitle className="text-2xl">{isEditMode ? 'Edit' : 'New'} Price Comparison</DialogTitle>
-          <DialogDescription>List items to quote and enter rates from multiple vendors. Use the side-by-side view to compare.</DialogDescription>
+          <DialogDescription>List items to quote and enter rates from multiple vendors. Side-by-side view for easier comparison.</DialogDescription>
         </DialogHeader>
 
-        <div className="px-6 pb-2">
-          <div className="p-4 bg-muted/30 rounded-md border flex justify-between items-center gap-4">
-            <div className="flex-1">
-              <Label htmlFor="title" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Comparison Title</Label>
-              <Input id="title" {...form.register('title')} placeholder="e.g., Monthly Consumables - Site A" className="mt-1 bg-background" />
-              {errors.title && <p className="text-[10px] text-destructive mt-1 font-bold">{errors.title.message}</p>}
-            </div>
-            <div className="flex items-end gap-2">
-                <Input type="file" accept=".xlsx, .xls" className="hidden" id="item-import-file" onChange={handleImportItems} />
-                <Button type="button" variant="outline" asChild size="sm">
-                    <label htmlFor="item-import-file" className="cursor-pointer">
-                        <Upload className="h-3.5 w-3.5 mr-2"/>Bulk Import Items
-                    </label>
-                </Button>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
+          <div className="px-6 pb-2">
+            <div className="p-4 bg-muted/30 rounded-md border flex justify-between items-center gap-4">
+              <div className="flex-1">
+                <Label htmlFor="title" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Comparison Title</Label>
+                <Input id="title" {...form.register('title')} placeholder="e.g., Monthly Consumables - Site A" className="mt-1 bg-background" />
+                {errors.title && <p className="text-[10px] text-destructive mt-1 font-bold">{errors.title.message}</p>}
+              </div>
+              <div className="flex items-end gap-2">
+                  <Input type="file" accept=".xlsx, .xls" className="hidden" id="item-import-file" onChange={handleImportItems} />
+                  <Button type="button" variant="outline" asChild size="sm">
+                      <label htmlFor="item-import-file" className="cursor-pointer">
+                          <Upload className="h-3.5 w-3.5 mr-2"/>Bulk Import Items
+                      </label>
+                  </Button>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex-1 flex flex-col overflow-hidden px-6 pb-6">
-          <Accordion type="multiple" defaultValue={["items", "vendors"]} className="flex-1 flex flex-col gap-4 overflow-hidden">
-            
-            {/* 1. ITEMS SECTION */}
-            <AccordionItem value="items" className="border rounded-lg bg-card shrink-0">
-              <AccordionTrigger className="px-4 py-2 hover:no-underline">
-                <div className="flex items-center gap-2">
-                  <ListChecks className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-bold uppercase tracking-wider">1. Items to Quote ({itemFields.length})</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="p-4 pt-0">
-                <ScrollArea className="max-h-[200px]">
-                    <div className="space-y-2 mt-2">
-                        {itemFields.map((field, index) => (
-                            <div className="flex gap-2 items-start" key={field.id}>
-                                <div className="w-8 pt-2 text-[10px] font-black text-muted-foreground text-center">{index + 1}.</div>
-                                <div className="flex-1">
-                                    <Input {...form.register(`items.${index}.description`)} placeholder="Item Name / Description" className="h-8 text-sm" />
-                                </div>
-                                <div className="w-20">
-                                    <Input {...form.register(`items.${index}.uom`)} placeholder="UOM" className="h-8 text-sm" />
-                                </div>
-                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRemoveItemRow(index)}><Trash2 className="h-3.5 w-3.5 text-destructive"/></Button>
-                            </div>
-                        ))}
-                        <Button type="button" variant="outline" size="sm" className="w-full h-8 border-dashed mt-2" onClick={handleAddItemRow}>
-                            <PlusCircle className="h-3.5 w-3.5 mr-2"/>Add Item Row
-                        </Button>
-                    </div>
-                </ScrollArea>
-              </AccordionContent>
-            </AccordionItem>
+          <div className="flex-1 flex flex-col overflow-hidden px-6 pb-2">
+            <Accordion type="multiple" defaultValue={["items", "vendors"]} className="flex-1 flex flex-col gap-4 overflow-hidden">
+              
+              {/* 1. ITEMS SECTION */}
+              <AccordionItem value="items" className="border rounded-lg bg-card shrink-0">
+                <AccordionTrigger className="px-4 py-2 hover:no-underline">
+                  <div className="flex items-center gap-2">
+                    <ListChecks className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-bold uppercase tracking-wider">1. Items to Quote ({itemFields.length})</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="p-4 pt-0">
+                  <ScrollArea className="max-h-[200px]">
+                      <div className="space-y-2 mt-2">
+                          {itemFields.map((field, index) => (
+                              <div className="flex gap-2 items-start" key={field.id}>
+                                  <div className="w-8 pt-2 text-[10px] font-black text-muted-foreground text-center">{index + 1}.</div>
+                                  <div className="flex-1">
+                                      <Input {...form.register(`items.${index}.description`)} placeholder="Item Name / Description" className="h-8 text-sm" />
+                                  </div>
+                                  <div className="w-20">
+                                      <Input {...form.register(`items.${index}.uom`)} placeholder="UOM" className="h-8 text-sm" />
+                                  </div>
+                                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRemoveItemRow(index)}><Trash2 className="h-3.5 w-3.5 text-destructive"/></Button>
+                              </div>
+                          ))}
+                          <Button type="button" variant="outline" size="sm" className="w-full h-8 border-dashed mt-2" onClick={handleAddItemRow}>
+                              <PlusCircle className="h-3.5 w-3.5 mr-2"/>Add Item Row
+                          </Button>
+                      </div>
+                  </ScrollArea>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* 2. VENDOR COMPARISON SECTION (SIDE WAYS) */}
-            <AccordionItem value="vendors" className="border rounded-lg bg-card flex-1 flex flex-col overflow-hidden">
-              <AccordionTrigger className="px-4 py-2 hover:no-underline shrink-0">
-                <div className="flex items-center gap-2">
-                  <Users2 className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-bold uppercase tracking-wider">2. Vendor Comparison ({vendorFields.length})</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="flex-1 flex flex-col overflow-hidden p-0">
-                 <div className="flex-1 flex flex-col overflow-hidden border-t">
-                    <ScrollArea className="flex-1">
-                        <div className="flex h-full">
-                            {/* Fixed Left Column for Descriptions */}
-                            <div className="w-[300px] shrink-0 border-r bg-muted/20 sticky left-0 z-20">
-                                <div className="h-[60px] p-3 border-b flex items-center bg-muted/30">
-                                    <span className="text-[11px] font-black uppercase text-muted-foreground">Item Description</span>
-                                </div>
-                                {itemFields.map((item, idx) => (
-                                    <div key={item.id} className="h-[48px] p-3 border-b flex items-center bg-card">
-                                        <span className="text-xs font-bold truncate" title={watch(`items.${idx}.description`)}>
-                                            {idx + 1}. {watch(`items.${idx}.description`) || 'Untitled Item'}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
+              {/* 2. VENDOR COMPARISON SECTION */}
+              <AccordionItem value="vendors" className="border rounded-lg bg-card flex-1 flex flex-col overflow-hidden">
+                <AccordionTrigger className="px-4 py-2 hover:no-underline shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Users2 className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-bold uppercase tracking-wider">2. Vendor Comparison ({vendorFields.length})</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="flex-1 flex flex-col overflow-hidden p-0">
+                   <div className="flex-1 flex flex-col overflow-hidden border-t">
+                      <ScrollArea className="flex-1">
+                          <div className="flex h-full">
+                              {/* Fixed Left Column for Descriptions */}
+                              <div className="w-[300px] shrink-0 border-r bg-muted/20 sticky left-0 z-20">
+                                  <div className="h-[60px] p-3 border-b flex items-center bg-muted/30">
+                                      <span className="text-[11px] font-black uppercase text-muted-foreground">Item Description</span>
+                                  </div>
+                                  {itemFields.map((item, idx) => (
+                                      <div key={item.id} className="h-[48px] p-3 border-b flex items-center bg-card">
+                                          <span className="text-xs font-bold truncate" title={watch(`items.${idx}.description`)}>
+                                              {idx + 1}. {watch(`items.${idx}.description`) || 'Untitled Item'}
+                                          </span>
+                                      </div>
+                                  ))}
+                              </div>
 
-                            {/* Dynamic Vendor Columns */}
-                            <div className="flex flex-1 overflow-x-auto min-w-0">
-                                {vendorFields.map((vendorField, vIdx) => (
-                                    <div key={vendorField.id} className={cn("w-[280px] shrink-0 border-r", vIdx === 0 && "bg-blue-50/10")}>
-                                        {/* Vendor Header */}
-                                        <div className="h-[60px] p-2 border-b bg-muted/10 flex flex-col justify-center gap-1">
-                                            <div className="flex items-center gap-1">
-                                                <Select value={watch(`vendors.${vIdx}.vendorId`)} onValueChange={(val) => handleVendorSelect(vIdx, val)}>
-                                                    <SelectTrigger className="h-7 text-[10px] font-bold"><SelectValue placeholder="Select Vendor"/></SelectTrigger>
-                                                    <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
-                                                </Select>
-                                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeVendor(vIdx)}><X className="h-3 w-3"/></Button>
-                                            </div>
-                                            {vIdx === 0 && <span className="text-[9px] font-black text-blue-600 uppercase text-center block">Primary Source</span>}
-                                        </div>
+                              {/* Dynamic Vendor Columns */}
+                              <div className="flex flex-1 overflow-x-auto min-w-0">
+                                  {vendorFields.map((vendorField, vIdx) => (
+                                      <div key={vendorField.id} className={cn("w-[280px] shrink-0 border-r", vIdx === 0 && "bg-blue-50/10")}>
+                                          {/* Vendor Header */}
+                                          <div className="h-[60px] p-2 border-b bg-muted/10 flex flex-col justify-center gap-1">
+                                              <div className="flex items-center gap-1">
+                                                  <Select value={watch(`vendors.${vIdx}.vendorId`)} onValueChange={(val) => handleVendorSelect(vIdx, val)}>
+                                                      <SelectTrigger className="h-7 text-[10px] font-bold"><SelectValue placeholder="Select Vendor"/></SelectTrigger>
+                                                      <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
+                                                  </Select>
+                                                  <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeVendor(vIdx)}><X className="h-3 w-3"/></Button>
+                                              </div>
+                                              {vIdx === 0 && <span className="text-[9px] font-black text-blue-600 uppercase text-center block">Primary Source</span>}
+                                          </div>
 
-                                        {/* Quotes for this Vendor */}
-                                        {itemFields.map((item, iIdx) => (
-                                            <div key={`${vendorField.id}-${iIdx}`} className="h-[48px] p-2 border-b flex items-center gap-1">
-                                                <div className="flex-1 space-y-0.5">
-                                                    <Label className="text-[9px] text-muted-foreground font-bold uppercase block px-1">Qty</Label>
-                                                    <Input 
-                                                        type="number" 
-                                                        step="any"
-                                                        className="h-7 text-xs text-center px-1"
-                                                        {...form.register(`vendors.${vIdx}.quotes.${iIdx}.quantity`, {
-                                                            onChange: (e) => {
-                                                                if (vIdx === 0) {
-                                                                    const val = e.target.value;
-                                                                    vendorFields.forEach((_, otherIdx) => {
-                                                                        if (otherIdx !== 0) setValue(`vendors.${otherIdx}.quotes.${iIdx}.quantity`, Number(val));
-                                                                    });
-                                                                }
-                                                            }
-                                                        })}
-                                                    />
-                                                </div>
-                                                <div className="flex-1 space-y-0.5">
-                                                    <Label className="text-[9px] text-muted-foreground font-bold uppercase block px-1">Rate</Label>
-                                                    <Input 
-                                                        type="number" 
-                                                        step="any"
-                                                        placeholder="0"
-                                                        className="h-7 text-xs text-right font-bold text-primary px-1"
-                                                        {...form.register(`vendors.${vIdx}.quotes.${iIdx}.rate`)}
-                                                    />
-                                                </div>
-                                                <div className="flex-1 space-y-0.5">
-                                                    <Label className="text-[9px] text-muted-foreground font-bold uppercase block px-1">Tax%</Label>
-                                                    <Input 
-                                                        type="number" 
-                                                        step="any"
-                                                        className="h-7 text-xs text-center px-1"
-                                                        {...form.register(`vendors.${vIdx}.quotes.${iIdx}.taxPercent`, {
-                                                            onChange: (e) => {
-                                                                if (vIdx === 0) {
-                                                                    const val = e.target.value;
-                                                                    vendorFields.forEach((_, otherIdx) => {
-                                                                        if (otherIdx !== 0) setValue(`vendors.${otherIdx}.quotes.${iIdx}.taxPercent`, Number(val));
-                                                                    });
-                                                                }
-                                                            }
-                                                        })}
-                                                    />
-                                                </div>
-                                            </div>
-                                        ))}
-                                        
-                                        {/* Vendor Specific Footer (Totals/Costs) */}
-                                        <div className="p-3 bg-muted/5">
-                                            <VendorCostSection vendorIndex={vIdx} control={control} />
-                                        </div>
-                                    </div>
-                                ))}
-                                
-                                {/* Add Vendor Column Button */}
-                                <div className="w-[100px] shrink-0 border-r bg-muted/20 flex items-center justify-center">
-                                    <Button type="button" variant="ghost" className="h-full w-full flex-col gap-2 rounded-none" onClick={handleAddVendor}>
-                                        <PlusCircle className="h-6 w-6"/>
-                                        <span className="text-[10px] font-black uppercase">Add Vendor</span>
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                        <ScrollBar orientation="horizontal" />
-                    </ScrollArea>
-                 </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+                                          {/* Quotes for this Vendor */}
+                                          {itemFields.map((item, iIdx) => (
+                                              <div key={`${vendorField.id}-${iIdx}`} className="h-[48px] p-2 border-b flex items-center gap-1">
+                                                  <div className="flex-1 space-y-0.5">
+                                                      <Label className="text-[9px] text-muted-foreground font-bold uppercase block px-1">Qty</Label>
+                                                      <Input 
+                                                          type="number" 
+                                                          step="any"
+                                                          className="h-7 text-xs text-center px-1"
+                                                          {...form.register(`vendors.${vIdx}.quotes.${iIdx}.quantity`, {
+                                                              onChange: (e) => {
+                                                                  if (vIdx === 0) {
+                                                                      const val = e.target.value;
+                                                                      vendorFields.forEach((_, otherIdx) => {
+                                                                          if (otherIdx !== 0) setValue(`vendors.${otherIdx}.quotes.${iIdx}.quantity`, Number(val));
+                                                                      });
+                                                                  }
+                                                              }
+                                                          })}
+                                                      />
+                                                  </div>
+                                                  <div className="flex-1 space-y-0.5">
+                                                      <Label className="text-[9px] text-muted-foreground font-bold uppercase block px-1">Rate</Label>
+                                                      <Input 
+                                                          type="number" 
+                                                          step="any"
+                                                          placeholder="0"
+                                                          className="h-7 text-xs text-right font-bold text-primary px-1"
+                                                          {...form.register(`vendors.${vIdx}.quotes.${iIdx}.rate`)}
+                                                      />
+                                                  </div>
+                                                  <div className="flex-1 space-y-0.5">
+                                                      <Label className="text-[9px] text-muted-foreground font-bold uppercase block px-1">Tax%</Label>
+                                                      <Input 
+                                                          type="number" 
+                                                          step="any"
+                                                          className="h-7 text-xs text-center px-1"
+                                                          {...form.register(`vendors.${vIdx}.quotes.${iIdx}.taxPercent`, {
+                                                              onChange: (e) => {
+                                                                  if (vIdx === 0) {
+                                                                      const val = e.target.value;
+                                                                      vendorFields.forEach((_, otherIdx) => {
+                                                                          if (otherIdx !== 0) setValue(`vendors.${otherIdx}.quotes.${iIdx}.taxPercent`, Number(val));
+                                                                      });
+                                                                  }
+                                                              }
+                                                          })}
+                                                      />
+                                                  </div>
+                                              </div>
+                                          ))}
+                                          
+                                          {/* Vendor Specific Footer (Totals/Costs) */}
+                                          <div className="p-3 bg-muted/5">
+                                              <VendorCostSection vendorIndex={vIdx} control={control} />
+                                          </div>
+                                      </div>
+                                  ))}
+                                  
+                                  {/* Add Vendor Column Button */}
+                                  <div className="w-[100px] shrink-0 border-r bg-muted/20 flex items-center justify-center">
+                                      <Button type="button" variant="ghost" className="h-full w-full flex-col gap-2 rounded-none" onClick={handleAddVendor}>
+                                          <PlusCircle className="h-6 w-6"/>
+                                          <span className="text-[10px] font-black uppercase">Add Vendor</span>
+                                      </Button>
+                                  </div>
+                              </div>
+                          </div>
+                          <ScrollBar orientation="horizontal" />
+                      </ScrollArea>
+                   </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
           
-          <div className="shrink-0 flex justify-between items-center mt-4 pt-4 border-t">
+          <div className="p-6 pt-2 border-t bg-card shrink-0 flex justify-between items-center">
             <div className="flex gap-4">
                 {errors.vendors && <p className="text-[11px] text-destructive font-bold flex items-center gap-1"><AlertTriangle className="h-3.5 w-3.5"/> Please select a merchant for each quote.</p>}
             </div>
