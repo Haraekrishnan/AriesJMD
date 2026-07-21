@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { format, parseISO, isSameMonth } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { CheckCircle, Eye, Search, FilterX, CheckCheck } from 'lucide-react';
 import type { JobProgress } from '@/lib/types';
 import { Input } from '../ui/input';
@@ -96,6 +96,25 @@ export default function CompletedJmsDialog({ isOpen, setIsOpen, onViewJob }: Com
     });
   }, [baseCompletedJms, searchTerm, monthFilter, plantFilter, unitFilter]);
 
+  const dynamicButtonLabel = useMemo(() => {
+    if (searchTerm) return 'MARK SEARCH RESULTS AS NOTED';
+    
+    const parts = [];
+    if (monthFilter !== 'all') {
+        parts.push(format(parseISO(`${monthFilter}-01`), 'MMMM'));
+    }
+    if (plantFilter !== 'all') {
+        const plant = filterOptions.plants.find(p => p.id === plantFilter);
+        if (plant) parts.push(plant.name);
+    }
+    if (unitFilter !== 'all') {
+        parts.push(unitFilter);
+    }
+
+    if (parts.length === 0) return 'MARK ALL AS NOTED';
+    return `MARK ${parts.join(' ')} AS NOTED`.toUpperCase();
+  }, [searchTerm, monthFilter, plantFilter, unitFilter, filterOptions]);
+
   const handleNoted = (jobId: string) => {
     markJmsAsNoted(jobId);
   };
@@ -133,11 +152,11 @@ export default function CompletedJmsDialog({ isOpen, setIsOpen, onViewJob }: Com
                 <Button 
                     variant="success" 
                     size="sm" 
-                    className="font-black h-10 px-4 bg-green-600 hover:bg-green-700 text-white shadow-md transition-all active:scale-95"
+                    className="font-black h-10 px-4 bg-green-600 hover:bg-green-700 text-white shadow-md transition-all active:scale-95 uppercase text-[11px] tracking-wider"
                     onClick={handleMarkAllAsNoted}
                 >
                     <CheckCheck className="mr-2 h-4 w-4" />
-                    MARK FILTERED AS NOTED
+                    {dynamicButtonLabel}
                 </Button>
             )}
           </div>
