@@ -12,12 +12,11 @@ import { PlusCircle, Trash2, Users2, X, Upload, ListChecks, Loader2, AlertTriang
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEffect, useMemo, useState } from 'react';
-import type { Quotation, QuotationStatus } from '@/lib/types';
+import type { Quotation, QuotationItem, QuotationQuote, QuotationVendorDetails, QuotationStatus } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { usePurchase } from '@/contexts/purchase-provider';
 import AddVendorDialog from '../vendor-management/AddVendorDialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import * as XLSX from 'xlsx';
 
 const quotationItemSchema = z.object({
@@ -219,11 +218,19 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
 
   const handleAddVendor = () => {
     const items = getValues('items');
+    const firstVendorQuotes = getValues('vendors.0.quotes');
+    
     appendVendor({
         id: `vendor-${Date.now()}`,
         vendorId: '',
         name: '',
-        quotes: items.map(item => ({ itemId: item.itemId, quantity: 1, rate: 0, taxPercent: 0, receivedQuantity: 0 })),
+        quotes: items.map((item, idx) => ({
+            itemId: item.itemId,
+            quantity: firstVendorQuotes ? (firstVendorQuotes[idx]?.quantity ?? 1) : 1,
+            rate: 0,
+            taxPercent: firstVendorQuotes ? (firstVendorQuotes[idx]?.taxPercent ?? 0) : 0,
+            receivedQuantity: 0
+        })),
         additionalCosts: [],
     });
   };
@@ -352,7 +359,8 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                                                 const numVal = val === '' ? 0 : Number(val);
                                                                 field.onChange(numVal);
                                                                 if (vIdx === 0) {
-                                                                  vendorFields.forEach((_, otherIdx) => {
+                                                                  const currentVendors = getValues('vendors');
+                                                                  currentVendors.forEach((_, otherIdx) => {
                                                                     if (otherIdx !== 0) setValue(`vendors.${otherIdx}.quotes.${iIdx}.quantity`, numVal);
                                                                   });
                                                                 }
@@ -373,7 +381,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                                               placeholder=""
                                                               className="h-7 text-xs text-right font-bold text-primary px-1"
                                                               value={field.value || ''}
-                                                              onChange={(e) => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
+                                                              onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
                                                           />
                                                         )}
                                                       />
@@ -394,7 +402,8 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                                                 const numVal = val === '' ? 0 : Number(val);
                                                                 field.onChange(numVal);
                                                                 if (vIdx === 0) {
-                                                                  vendorFields.forEach((_, otherIdx) => {
+                                                                  const currentVendors = getValues('vendors');
+                                                                  currentVendors.forEach((_, otherIdx) => {
                                                                     if (otherIdx !== 0) setValue(`vendors.${otherIdx}.quotes.${iIdx}.taxPercent`, numVal);
                                                                   });
                                                                 }
