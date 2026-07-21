@@ -145,6 +145,26 @@ export default function JobProgressPage() {
   }, [jobsInMonth]);
 
   const filteredJobs = useMemo(() => {
+    // GLOBAL SEARCH: If searching, return matches from all visible jobs regardless of month/filters
+    if (jmsSearchTerm) {
+      const lowercasedTerm = jmsSearchTerm.toLowerCase();
+      return visibleJobs.filter(job => {
+        const project = projects.find(p => p.id === job.projectId);
+        const amountStr = job.amount?.toString() || '';
+        const formattedAmount = job.amount ? new Intl.NumberFormat('en-IN').format(job.amount) : '';
+
+        return (
+            job.title.toLowerCase().includes(lowercasedTerm) ||
+            (job.jmsNo && job.jmsNo.toLowerCase().includes(lowercasedTerm)) ||
+            (project && project.name.toLowerCase().includes(lowercasedTerm)) ||
+            (job.plantUnit && job.plantUnit.toLowerCase().includes(lowercasedTerm)) ||
+            amountStr.includes(lowercasedTerm) ||
+            formattedAmount.includes(lowercasedTerm)
+        );
+      });
+    }
+
+    // NORMAL VIEW: Filtered by month and other controls
     let jobs = jobsInMonth;
 
     if (jmsProjectFilter !== 'all') {
@@ -164,27 +184,9 @@ export default function JobProgressPage() {
         }
       });
     }
-
-    if (jmsSearchTerm) {
-      const lowercasedTerm = jmsSearchTerm.toLowerCase();
-      jobs = jobs.filter(job => {
-        const project = projects.find(p => p.id === job.projectId);
-        const amountStr = job.amount?.toString() || '';
-        const formattedAmount = job.amount ? new Intl.NumberFormat('en-IN').format(job.amount) : '';
-
-        return (
-            job.title.toLowerCase().includes(lowercasedTerm) ||
-            (job.jmsNo && job.jmsNo.toLowerCase().includes(lowercasedTerm)) ||
-            (project && project.name.toLowerCase().includes(lowercasedTerm)) ||
-            (job.plantUnit && job.plantUnit.toLowerCase().includes(lowercasedTerm)) ||
-            amountStr.includes(lowercasedTerm) ||
-            formattedAmount.includes(lowercasedTerm)
-        );
-      });
-    }
     
     return jobs;
-  }, [jobsInMonth, jmsSearchTerm, jmsAssigneeId, jmsProjectFilter, jmsUnitFilter, projects]);
+  }, [visibleJobs, jobsInMonth, jmsSearchTerm, jmsAssigneeId, jmsProjectFilter, jmsUnitFilter, projects]);
 
   const filteredTimesheets = useMemo(() => {
     let visibleTimesheets = timesheets.filter(ts => {
@@ -284,11 +286,13 @@ export default function JobProgressPage() {
                     <div className="border-b shrink-0 p-3 space-y-3">
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-2">
-                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth}>
+                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth || !!jmsSearchTerm}>
                                     <ChevronLeft className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" className="h-8 px-2 text-sm font-bold" onClick={handleTodayClick}>{format(currentMonth, 'MMMM yyyy')}</Button>
-                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => changeMonth(1)} disabled={!canGoToNextMonth}>
+                                <Button variant="ghost" className="h-8 px-2 text-sm font-bold" onClick={handleTodayClick} disabled={!!jmsSearchTerm}>
+                                  {jmsSearchTerm ? 'Global Search Results' : format(currentMonth, 'MMMM yyyy')}
+                                </Button>
+                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => changeMonth(1)} disabled={!canGoToNextMonth || !!jmsSearchTerm}>
                                     <ChevronRight className="h-4 w-4" />
                                 </Button>
                             </div>
@@ -345,21 +349,21 @@ export default function JobProgressPage() {
                                     onChange={e => setJmsSearchTerm(e.target.value)}
                                 />
                             </div>
-                            <Select value={jmsProjectFilter} onValueChange={setJmsProjectFilter}>
+                            <Select value={jmsProjectFilter} onValueChange={setJmsProjectFilter} disabled={!!jmsSearchTerm}>
                                 <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Project" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Projects</SelectItem>
                                     {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-                            <Select value={jmsUnitFilter} onValueChange={setJmsUnitFilter}>
+                            <Select value={jmsUnitFilter} onValueChange={setJmsUnitFilter} disabled={!!jmsSearchTerm}>
                                 <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Plant Unit" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Units</SelectItem>
                                     {availableUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-                            <Select value={jmsAssigneeId} onValueChange={setJmsAssigneeId}>
+                            <Select value={jmsAssigneeId} onValueChange={setJmsAssigneeId} disabled={!!jmsSearchTerm}>
                                 <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Assignee" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Assignees</SelectItem>
