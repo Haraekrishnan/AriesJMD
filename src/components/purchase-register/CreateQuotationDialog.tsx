@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray, Controller, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -29,7 +29,7 @@ const quotationItemSchema = z.object({
 
 const quotationVendorSchema = z.object({
     id: z.string(),
-    vendorId: z.string().min(1, "Please select a vendor"),
+    vendorId: z.string().min(1, "Vendor required"),
     name: z.string(),
     quotes: z.array(z.object({
         itemId: z.string(),
@@ -60,17 +60,17 @@ const VendorCostSection = ({ vendorIndex, control }: { vendorIndex: number; cont
     });
 
     return (
-        <div className="space-y-4 mt-4 p-4 bg-muted/30 rounded-md border">
-            <p className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-2">Extra Costs (Freight, Cess etc)</p>
+        <div className="space-y-2 mt-4 p-3 bg-muted/20 rounded-md border border-dashed">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Extra Costs (Freight, etc)</p>
             {fields.map((field, index) => (
                 <div className="flex gap-2 items-start" key={field.id}>
-                    <Input {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.name`)} placeholder="Cost Name" className="h-10 text-sm font-medium" />
-                    <Input type="number" step="any" {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.value`)} placeholder="Value" className="h-10 text-sm w-32 font-bold text-right"/>
-                    <Button type="button" variant="ghost" size="icon" className="h-10 w-10 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-5 w-5"/></Button>
+                    <Input {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.name`)} placeholder="Name" className="h-8 text-xs" />
+                    <Input type="number" step="any" {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.value`)} placeholder="Value" className="h-8 text-xs w-20 text-right"/>
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => remove(index)}><Trash2 className="h-4 w-4"/></Button>
                 </div>
             ))}
-            <Button type="button" variant="ghost" size="sm" className="h-9 text-xs w-full font-bold uppercase tracking-wider" onClick={() => append({ id: `cost-${Date.now()}`, name: '', value: 0 })}>
-                <PlusCircle className="h-4 w-4 mr-2"/> Add Additional Cost
+            <Button type="button" variant="ghost" size="sm" className="h-7 text-[10px] w-full" onClick={() => append({ id: `cost-${Date.now()}`, name: '', value: 0 })}>
+                <PlusCircle className="h-3 w-3 mr-1"/> Add Cost
             </Button>
         </div>
     );
@@ -136,7 +136,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
             })).filter(item => item.description);
 
             if (newItems.length === 0) {
-                toast({ title: "No valid items found", description: "Ensure your columns are named 'Description' and 'UOM'.", variant: "destructive" });
+                toast({ title: "No valid items found", variant: "destructive" });
                 return;
             }
 
@@ -153,10 +153,9 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                 })));
             });
 
-            toast({ title: "Items Imported", description: `${newItems.length} items added successfully.` });
+            toast({ title: "Items Imported", description: `${newItems.length} items added.` });
         } catch (error) {
-            console.error(error);
-            toast({ title: "Import Failed", description: "Invalid Excel format.", variant: "destructive" });
+            toast({ title: "Import Failed", variant: "destructive" });
         }
     };
     reader.readAsArrayBuffer(file);
@@ -165,7 +164,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
 
   const onSubmit = async (data: FormValues) => {
     if (!data.vendors.length || !data.items.length) {
-        toast({ title: "Missing items or vendors", variant: "destructive" });
+        toast({ title: "Missing data", description: "Add at least one item and one vendor.", variant: "destructive" });
         return;
     }
     
@@ -174,17 +173,15 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
         let success = false;
         if (isEditMode && existingQuotation) {
             success = await updateQuotation({ ...existingQuotation, ...data });
-            if (success) toast({ title: "Price Comparison Updated" });
         } else {
             success = await addQuotation(data);
-            if (success) toast({ title: "Price Comparison Created" });
         }
         
         if (success) {
             setIsOpen(false);
+            toast({ title: isEditMode ? "Comparison Updated" : "Comparison Created" });
         }
     } catch (e: any) {
-        console.error("Save Error:", e);
         toast({ variant: 'destructive', title: 'Error', description: e.message || 'Submission failed' });
     } finally {
         setIsSubmitting(false);
@@ -198,9 +195,16 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     const currentVendors = getValues('vendors');
     currentVendors.forEach((_, vIndex) => {
         const currentQuotes = getValues(`vendors.${vIndex}.quotes`) || [];
+        const primaryQuotes = getValues(`vendors.0.quotes`) || [];
         setValue(`vendors.${vIndex}.quotes`, [
             ...currentQuotes,
-            { itemId: tempId, quantity: 1, rate: 0, taxPercent: 0, receivedQuantity: 0 }
+            { 
+              itemId: tempId, 
+              quantity: primaryQuotes[itemFields.length]?.quantity || 1, 
+              rate: 0, 
+              taxPercent: primaryQuotes[itemFields.length]?.taxPercent || 0, 
+              receivedQuantity: 0 
+            }
         ]);
     });
   };
@@ -218,7 +222,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
 
   const handleAddVendor = () => {
     const items = getValues('items');
-    const firstVendorQuotes = getValues('vendors.0.quotes');
+    const primaryVendorQuotes = getValues('vendors.0.quotes');
     
     appendVendor({
         id: `vendor-${Date.now()}`,
@@ -226,9 +230,9 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
         name: '',
         quotes: items.map((item, idx) => ({
             itemId: item.itemId,
-            quantity: firstVendorQuotes ? (firstVendorQuotes[idx]?.quantity ?? 1) : 1,
+            quantity: primaryVendorQuotes?.[idx]?.quantity ?? 1,
             rate: 0,
-            taxPercent: firstVendorQuotes ? (firstVendorQuotes[idx]?.taxPercent ?? 0) : 0,
+            taxPercent: primaryVendorQuotes?.[idx]?.taxPercent ?? 0,
             receivedQuantity: 0
         })),
         additionalCosts: [],
@@ -246,204 +250,196 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-[98vw] w-full h-[95vh] flex flex-col p-0 overflow-hidden" onInteractOutside={(e) => e.preventDefault()}>
-        <DialogHeader className="p-8 pb-4">
-          <DialogTitle className="text-3xl font-black tracking-tight">{isEditMode ? 'EDIT' : 'NEW'} PRICE COMPARISON</DialogTitle>
-          <DialogDescription className="text-lg font-medium text-muted-foreground mt-1">List items and enter merchant rates side-by-side for rapid evaluation.</DialogDescription>
+        <DialogHeader className="p-6 pb-2 border-b bg-muted/10">
+          <DialogTitle className="text-xl font-bold tracking-tight">{isEditMode ? 'EDIT' : 'NEW'} PRICE COMPARISON</DialogTitle>
+          <DialogDescription className="text-sm font-medium text-muted-foreground mt-0.5">List items and enter merchant rates side-by-side.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
-          <div className="px-8 pb-4">
-            <div className="p-6 bg-muted/40 rounded-xl border-2 flex justify-between items-center gap-8 shadow-sm">
-              <div className="flex-1">
-                <Label htmlFor="title" className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">Comparison Title</Label>
-                <Input id="title" {...form.register('title')} placeholder="e.g., Monthly Consumables - Site A" className="mt-2 bg-background h-12 text-lg font-bold border-muted-foreground/20 focus:border-primary transition-all" />
-                {errors.title && <p className="text-sm text-destructive mt-2 font-bold flex items-center gap-1"><AlertTriangle className="h-4 w-4"/>{errors.title.message}</p>}
+          <div className="px-6 py-4 border-b bg-card">
+            <div className="flex justify-between items-center gap-6">
+              <div className="flex-1 max-w-xl">
+                <Label htmlFor="title" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Comparison Title</Label>
+                <Input id="title" {...form.register('title')} placeholder="e.g., Monthly Consumables" className="mt-1 h-9 font-semibold" />
               </div>
-              <div className="flex items-end gap-3">
+              <div className="flex items-center gap-2">
                   <Input type="file" accept=".xlsx, .xls" className="hidden" id="item-import-file" onChange={handleImportItems} />
-                  <Button type="button" variant="outline" asChild className="h-12 px-8 font-bold uppercase tracking-wider border-2 hover:bg-muted transition-colors">
-                      <label htmlFor="item-import-file" className="cursor-pointer flex items-center gap-2">
-                          <Upload className="h-5 w-5"/>Excel Import
+                  <Button type="button" variant="outline" asChild className="h-9 font-bold uppercase tracking-wider text-xs">
+                      <label htmlFor="item-import-file" className="cursor-pointer flex items-center gap-1.5">
+                          <Upload className="h-4 w-4"/>Import Items
                       </label>
                   </Button>
               </div>
             </div>
           </div>
 
-          <div className="flex-1 flex flex-col overflow-hidden px-8 pb-4">
-            <Accordion type="multiple" defaultValue={["items", "vendors"]} className="flex-1 flex flex-col gap-6 overflow-hidden">
-              
-              <AccordionItem value="items" className="border rounded-xl bg-card shrink-0 shadow-sm overflow-hidden">
-                <AccordionTrigger className="px-6 py-4 hover:no-underline bg-muted/20 border-b">
-                  <div className="flex items-center gap-3">
-                    <ListChecks className="h-6 w-6 text-primary" />
-                    <span className="text-lg font-black uppercase tracking-widest">1. Requirements List ({itemFields.length})</span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="p-0">
-                  <ScrollArea className="max-h-[300px] visible-scrollbar">
-                      <div className="space-y-3 p-6">
-                          {itemFields.map((field, index) => (
-                              <div className="flex gap-4 items-center group" key={field.id}>
-                                  <div className="w-10 text-xs font-black text-muted-foreground text-center bg-muted h-10 flex items-center justify-center rounded-lg">{index + 1}.</div>
-                                  <div className="flex-1">
-                                      <Input {...form.register(`items.${index}.description`)} placeholder="Item Name / Description" className="h-12 text-base font-bold bg-muted/10 border-transparent focus:bg-background transition-all" />
-                                  </div>
-                                  <div className="w-32">
-                                      <Input {...form.register(`items.${index}.uom`)} placeholder="UOM" className="h-12 text-base font-bold text-center bg-muted/10 border-transparent focus:bg-background" />
-                                  </div>
-                                  <Button type="button" variant="ghost" size="icon" className="h-12 w-12 text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleRemoveItemRow(index)}><Trash2 className="h-5 w-5"/></Button>
-                              </div>
-                          ))}
-                          <Button type="button" variant="outline" className="w-full h-12 border-dashed border-2 mt-4 text-base font-bold uppercase tracking-wider hover:bg-muted" onClick={handleAddItemRow}>
-                              <PlusCircle className="h-5 w-5 mr-3"/>Add New Line Item
-                          </Button>
-                      </div>
-                  </ScrollArea>
-                </AccordionContent>
-              </AccordionItem>
+          <ScrollArea className="flex-1 overflow-hidden">
+            <div className="p-6 space-y-6">
+              <Accordion type="multiple" defaultValue={["items", "vendors"]} className="space-y-4">
+                
+                <AccordionItem value="items" className="border rounded-lg bg-card overflow-hidden">
+                  <AccordionTrigger className="px-4 py-2 hover:no-underline bg-muted/10 border-b">
+                    <div className="flex items-center gap-2">
+                      <ListChecks className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-bold uppercase tracking-wider">1. Requirements List ({itemFields.length})</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="p-0">
+                    <div className="p-4 space-y-2">
+                        {itemFields.map((field, index) => (
+                            <div className="flex gap-2 items-center group" key={field.id}>
+                                <div className="w-8 text-[10px] font-bold text-muted-foreground text-center bg-muted h-8 flex items-center justify-center rounded">{index + 1}</div>
+                                <Input {...form.register(`items.${index}.description`)} placeholder="Item Description" className="h-9 text-sm font-medium" />
+                                <Input {...form.register(`items.${index}.uom`)} placeholder="UOM" className="h-9 text-sm w-20 text-center" />
+                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-destructive" onClick={() => handleRemoveItemRow(index)}><Trash2 className="h-4 w-4"/></Button>
+                            </div>
+                        ))}
+                        <Button type="button" variant="outline" className="w-full h-9 border-dashed text-xs font-bold uppercase tracking-wider mt-2" onClick={handleAddItemRow}>
+                            <PlusCircle className="h-3.5 w-3.5 mr-2"/>Add Line Item
+                        </Button>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
 
-              <AccordionItem value="vendors" className="border rounded-xl bg-card flex-1 flex flex-col overflow-hidden shadow-sm">
-                <AccordionTrigger className="px-6 py-4 hover:no-underline shrink-0 bg-muted/20 border-b">
-                  <div className="flex items-center gap-3">
-                    <Users2 className="h-6 w-6 text-primary" />
-                    <span className="text-lg font-black uppercase tracking-widest">2. Quotation Comparison Matrix ({vendorFields.length})</span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="flex-1 flex flex-col overflow-hidden p-0">
-                   <ScrollArea className="flex-1 border-t visible-scrollbar">
-                      <div className="flex min-w-max h-full">
-                          {/* Sticky Item Column */}
-                          <div className="w-[360px] shrink-0 border-r bg-muted/30 sticky left-0 z-20 shadow-2xl">
-                              <div className="h-[100px] p-6 border-b flex items-center bg-muted/40">
-                                  <span className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">Item Description</span>
-                              </div>
-                              {itemFields.map((item, idx) => (
-                                  <div key={item.id} className="h-[80px] p-6 border-b flex items-center bg-card">
-                                      <span className="text-base font-black truncate leading-tight text-foreground" title={watch(`items.${idx}.description`)}>
-                                          {idx + 1}. {watch(`items.${idx}.description`) || <span className="text-muted-foreground/30 italic font-medium">Empty Line</span>}
-                                      </span>
-                                  </div>
-                              ))}
-                          </div>
+                <AccordionItem value="vendors" className="border rounded-lg bg-card overflow-hidden">
+                  <AccordionTrigger className="px-4 py-2 hover:no-underline bg-muted/10 border-b">
+                    <div className="flex items-center gap-2">
+                      <Users2 className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-bold uppercase tracking-wider">2. Comparison Matrix</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="p-0">
+                     <ScrollArea className="w-full border-t visible-scrollbar">
+                        <div className="flex min-w-max">
+                            {/* Sticky Column */}
+                            <div className="w-[280px] shrink-0 border-r bg-muted/30 sticky left-0 z-20 shadow-lg">
+                                <div className="h-14 p-4 border-b flex items-center bg-muted/40">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Item Name</span>
+                                </div>
+                                {itemFields.map((item, idx) => (
+                                    <div key={item.id} className="h-16 p-4 border-b flex items-center bg-card">
+                                        <span className="text-xs font-bold truncate leading-tight" title={watch(`items.${idx}.description`)}>
+                                            {idx + 1}. {watch(`items.${idx}.description`) || "..."}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
 
-                          {/* Scrollable Vendor Columns */}
-                          <div className="flex flex-1">
-                              {vendorFields.map((vendorField, vIdx) => (
-                                  <div key={vendorField.id} className={cn("w-[360px] shrink-0 border-r transition-all duration-300", vIdx === 0 ? "bg-primary/[0.03] ring-inset ring-2 ring-primary/20" : "bg-card")}>
-                                      <div className="h-[100px] p-4 border-b bg-muted/10 flex flex-col justify-center gap-3">
-                                          <div className="flex items-center gap-3">
-                                              <Select value={watch(`vendors.${vIdx}.vendorId`)} onValueChange={(val) => handleVendorSelect(vIdx, val)}>
-                                                  <SelectTrigger className="h-11 text-sm font-black shadow-sm uppercase tracking-wider"><SelectValue placeholder="Select Merchant"/></SelectTrigger>
-                                                  <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
-                                              </Select>
-                                              <Button type="button" variant="ghost" size="icon" className="h-10 w-10 text-destructive hover:bg-destructive/10" onClick={() => removeVendor(vIdx)}><X className="h-5 w-5"/></Button>
-                                          </div>
-                                          {vIdx === 0 && <span className="text-[10px] font-black text-primary uppercase text-center tracking-[0.1em] bg-primary/10 py-1 rounded-full">Primary Vendor (Autosync Active)</span>}
-                                      </div>
+                            {/* Vendor Columns */}
+                            <div className="flex">
+                                {vendorFields.map((vendorField, vIdx) => (
+                                    <div key={vendorField.id} className={cn("w-[280px] shrink-0 border-r", vIdx === 0 && "bg-primary/[0.02] border-primary/20 shadow-[inset_0_0_10px_rgba(0,0,0,0.02)]")}>
+                                        <div className="h-14 p-2 border-b flex items-center gap-1 bg-muted/5">
+                                            <div className="flex-1">
+                                                <Select value={watch(`vendors.${vIdx}.vendorId`)} onValueChange={(val) => handleVendorSelect(vIdx, val)}>
+                                                    <SelectTrigger className="h-8 text-[10px] font-bold uppercase tracking-wider"><SelectValue placeholder="Merchant..."/></SelectTrigger>
+                                                    <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
+                                                </Select>
+                                            </div>
+                                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeVendor(vIdx)}><X className="h-3.5 w-3.5"/></Button>
+                                        </div>
 
-                                      {itemFields.map((item, iIdx) => (
-                                          <div key={`${vendorField.id}-${iIdx}`} className="h-[80px] p-4 border-b flex items-center gap-4 bg-muted/5">
-                                              <div className="w-20 space-y-1.5">
-                                                  <Label className="text-[10px] text-muted-foreground font-black uppercase block text-center tracking-tighter">Qty</Label>
-                                                  <Controller
-                                                    name={`vendors.${vIdx}.quotes.${iIdx}.quantity`}
-                                                    control={control}
-                                                    render={({ field }) => (
-                                                      <Input 
-                                                          type="number" 
-                                                          step="any"
-                                                          className="h-10 text-base text-center px-1 font-black bg-background"
-                                                          value={field.value ?? ''}
-                                                          onChange={(e) => {
-                                                            const val = e.target.value;
-                                                            const numVal = val === '' ? 0 : Number(val);
-                                                            field.onChange(numVal);
-                                                            if (vIdx === 0) {
-                                                              const currentVendors = getValues('vendors');
-                                                              currentVendors.forEach((_, otherIdx) => {
-                                                                if (otherIdx !== 0) setValue(`vendors.${otherIdx}.quotes.${iIdx}.quantity`, numVal);
-                                                              });
-                                                            }
-                                                          }}
-                                                      />
-                                                    )}
-                                                  />
-                                              </div>
-                                              <div className="flex-1 space-y-1.5">
-                                                  <Label className="text-[10px] text-muted-foreground font-black uppercase block text-center tracking-tighter">Unit Rate (INR)</Label>
-                                                  <Controller
-                                                    name={`vendors.${vIdx}.quotes.${iIdx}.rate`}
-                                                    control={control}
-                                                    render={({ field }) => (
-                                                      <Input 
-                                                          type="number" 
-                                                          step="any"
-                                                          className="h-10 text-lg text-right font-black text-primary px-3 bg-background border-primary/20 shadow-inner"
-                                                          value={field.value || ''}
-                                                          onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
-                                                      />
-                                                    )}
-                                                  />
-                                              </div>
-                                              <div className="w-20 space-y-1.5">
-                                                  <Label className="text-[10px] text-muted-foreground font-black uppercase block text-center tracking-tighter">Tax %</Label>
-                                                  <Controller
-                                                    name={`vendors.${vIdx}.quotes.${iIdx}.taxPercent`}
-                                                    control={control}
-                                                    render={({ field }) => (
-                                                      <Input 
-                                                          type="number" 
-                                                          step="any"
-                                                          className="h-10 text-base text-center px-1 font-black bg-background"
-                                                          value={field.value ?? ''}
-                                                          onChange={(e) => {
-                                                            const val = e.target.value;
-                                                            const numVal = val === '' ? 0 : Number(val);
-                                                            field.onChange(numVal);
-                                                            if (vIdx === 0) {
-                                                              const currentVendors = getValues('vendors');
-                                                              currentVendors.forEach((_, otherIdx) => {
-                                                                if (otherIdx !== 0) setValue(`vendors.${otherIdx}.quotes.${iIdx}.taxPercent`, numVal);
-                                                              });
-                                                            }
-                                                          }}
-                                                      />
-                                                    )}
-                                                  />
-                                              </div>
-                                          </div>
-                                      ))}
-                                      
-                                      <div className="p-6 bg-muted/10 border-t">
-                                          <VendorCostSection vendorIndex={vIdx} control={control} />
-                                      </div>
-                                  </div>
-                              ))}
-                              
-                              <div className="w-[160px] shrink-0 border-r bg-muted/30 flex items-center justify-center p-4">
-                                  <Button type="button" variant="ghost" className="h-full w-full flex-col gap-6 rounded-2xl hover:bg-muted/50 transition-all border-4 border-dashed border-muted-foreground/10" onClick={handleAddVendor}>
-                                      <PlusCircle className="h-12 w-12 text-primary/40"/>
-                                      <span className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground/60 text-center">Add<br/>Merchant</span>
-                                  </Button>
-                              </div>
-                          </div>
-                      </div>
-                      <ScrollBar orientation="horizontal" className="visible-scrollbar h-4" />
-                   </ScrollArea>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </div>
-          
-          <div className="p-10 pt-6 border-t bg-card shrink-0 flex justify-between items-center shadow-[0_-15px_50px_-15px_rgba(0,0,0,0.1)] z-30">
-            <div className="flex gap-4">
-                {errors.vendors && <p className="text-base text-destructive font-black flex items-center gap-3 animate-bounce"><AlertTriangle className="h-6 w-6"/> MISSING DATA: Assign a merchant to each column before saving.</p>}
+                                        {itemFields.map((item, iIdx) => (
+                                            <div key={`${vendorField.id}-${iIdx}`} className="h-16 p-2 border-b flex items-center gap-2">
+                                                <div className="w-12 space-y-1">
+                                                    <Label className="text-[9px] text-muted-foreground font-bold uppercase block text-center">Qty</Label>
+                                                    <Controller
+                                                        name={`vendors.${vIdx}.quotes.${iIdx}.quantity`}
+                                                        control={control}
+                                                        render={({ field }) => (
+                                                            <Input 
+                                                                type="number" 
+                                                                step="any"
+                                                                className="h-7 text-xs text-center px-0.5 font-bold"
+                                                                value={field.value ?? ''}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    const numVal = val === '' ? 0 : Number(val);
+                                                                    field.onChange(numVal);
+                                                                    if (vIdx === 0) {
+                                                                        const currentVendors = getValues('vendors');
+                                                                        currentVendors.forEach((_, otherIdx) => {
+                                                                            if (otherIdx !== 0) setValue(`vendors.${otherIdx}.quotes.${iIdx}.quantity`, numVal);
+                                                                        });
+                                                                    }
+                                                                }}
+                                                            />
+                                                        )}
+                                                    />
+                                                </div>
+                                                <div className="flex-1 space-y-1">
+                                                    <Label className="text-[9px] text-muted-foreground font-bold uppercase block text-center">Rate</Label>
+                                                    <Controller
+                                                        name={`vendors.${vIdx}.quotes.${iIdx}.rate`}
+                                                        control={control}
+                                                        render={({ field }) => (
+                                                            <Input 
+                                                                type="number" 
+                                                                step="any"
+                                                                className="h-7 text-xs text-right font-bold text-primary px-1"
+                                                                value={field.value || ''}
+                                                                onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+                                                            />
+                                                        )}
+                                                    />
+                                                </div>
+                                                <div className="w-12 space-y-1">
+                                                    <Label className="text-[9px] text-muted-foreground font-bold uppercase block text-center">Tax%</Label>
+                                                    <Controller
+                                                        name={`vendors.${vIdx}.quotes.${iIdx}.taxPercent`}
+                                                        control={control}
+                                                        render={({ field }) => (
+                                                            <Input 
+                                                                type="number" 
+                                                                step="any"
+                                                                className="h-7 text-xs text-center px-0.5 font-bold"
+                                                                value={field.value ?? ''}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    const numVal = val === '' ? 0 : Number(val);
+                                                                    field.onChange(numVal);
+                                                                    if (vIdx === 0) {
+                                                                        const currentVendors = getValues('vendors');
+                                                                        currentVendors.forEach((_, otherIdx) => {
+                                                                            if (otherIdx !== 0) setValue(`vendors.${otherIdx}.quotes.${iIdx}.taxPercent`, numVal);
+                                                                        });
+                                                                    }
+                                                                }}
+                                                            />
+                                                        )}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+                                        
+                                        <VendorCostSection vendorIndex={vIdx} control={control} />
+                                    </div>
+                                ))}
+                                
+                                <div className="w-[120px] shrink-0 border-r bg-muted/10 flex items-center justify-center p-4">
+                                    <Button type="button" variant="ghost" className="h-20 w-full flex-col gap-2 rounded-lg border-2 border-dashed" onClick={handleAddVendor}>
+                                        <PlusCircle className="h-5 w-5 text-muted-foreground"/>
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Add Vendor</span>
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                        <ScrollBar orientation="horizontal" />
+                     </ScrollArea>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </div>
-            <div className="flex gap-4">
-                <Button type="button" variant="outline" className="h-14 px-10 text-lg font-bold uppercase tracking-widest border-2" onClick={() => setIsOpen(false)}>Cancel</Button>
-                <Button type="submit" className="h-14 px-12 text-lg font-black uppercase tracking-[0.2em] min-w-[280px] shadow-xl shadow-primary/20" disabled={isSubmitting}>
-                    {isSubmitting ? <><Loader2 className="h-6 w-6 mr-3 animate-spin"/>TRANSMITTING...</> : (isEditMode ? 'Update Evaluation' : 'Finalize Comparison')}
+          </ScrollArea>
+          
+          <div className="p-4 border-t bg-card shrink-0 flex justify-between items-center shadow-lg">
+            <div className="text-xs text-destructive font-bold">
+                {errors.vendors && <p className="flex items-center gap-1"><AlertTriangle className="h-3 w-3"/> Select a vendor for each column.</p>}
+            </div>
+            <div className="flex gap-2">
+                <Button type="button" variant="outline" className="h-10 px-6 font-bold uppercase tracking-wider" onClick={() => setIsOpen(false)}>Cancel</Button>
+                <Button type="submit" className="h-10 px-8 font-black uppercase tracking-widest min-w-[200px]" disabled={isSubmitting}>
+                    {isSubmitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin"/>SAVING...</> : (isEditMode ? 'Update Comparison' : 'Finalize Comparison')}
                 </Button>
             </div>
           </div>
