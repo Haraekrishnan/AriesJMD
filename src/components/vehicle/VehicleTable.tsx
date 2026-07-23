@@ -1,8 +1,10 @@
+
 'use client';
 
 import React, { useMemo } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Edit, Trash2, FileText } from 'lucide-react';
@@ -66,7 +68,7 @@ export default function VehicleTable({ onEdit, onLogManager }: VehicleTableProps
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto visible-scrollbar">
     <TooltipProvider>
     <Table>
       <TableHeader>
@@ -88,10 +90,10 @@ export default function VehicleTable({ onEdit, onLogManager }: VehicleTableProps
       <TableBody>
         {vehicles.map(vehicle => (
           <TableRow key={vehicle.id}>
-            <TableCell className="font-medium whitespace-nowrap">{vehicle.vehicleNumber}</TableCell>
+            <TableCell className="font-bold whitespace-nowrap">{vehicle.vehicleNumber}</TableCell>
             <TableCell className="whitespace-nowrap"><Badge variant={statusVariant[vehicle.status || 'Active']}>{vehicle.status || 'Active'}</Badge></TableCell>
             <TableCell className="whitespace-nowrap">{vehicle.vapNumber || 'N/A'}</TableCell>
-            <TableCell className="whitespace-nowrap">{getDriverName(vehicle.driverId)}</TableCell>
+            <TableCell className="whitespace-nowrap font-medium">{getDriverName(vehicle.driverId)}</TableCell>
             <TableCell className="whitespace-nowrap">{vehicle.vendorName || 'N/A'}</TableCell>
             <TableCell>
               <div className="flex flex-wrap gap-1">
@@ -107,12 +109,12 @@ export default function VehicleTable({ onEdit, onLogManager }: VehicleTableProps
             <TableCell className={cn('whitespace-nowrap', getDateStyles(vehicle.puccValidity))}>{formatDate(vehicle.puccValidity)}</TableCell>
             <TableCell className="text-right">
                  <div className="flex items-center justify-end gap-2">
-                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => onLogManager(vehicle)}><FileText className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>View/Add Logs</p></TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => onLogManager(vehicle)}><FileText className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent><p>View/Add Logs</p></TooltipContent></Tooltip>
                     {can.manage_vehicles && (
                       <>
-                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => onEdit(vehicle)}><Edit className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Edit</p></TooltipContent></Tooltip>
+                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => onEdit(vehicle)}><Edit className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent><p>Edit</p></TooltipContent></Tooltip>
                         <AlertDialog>
-                            <Tooltip><TooltipTrigger asChild><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4"/></Button></AlertDialogTrigger></TooltipTrigger><TooltipContent><p>Delete</p></TooltipContent></Tooltip>
+                            <Tooltip><TooltipTrigger asChild><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10"><Trash2 className="h-5 w-5"/></Button></AlertDialogTrigger></TooltipTrigger><TooltipContent><p>Delete</p></TooltipContent></Tooltip>
                             <AlertDialogContent>
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
