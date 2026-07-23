@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -167,7 +166,7 @@ export default function VehicleStatusPage() {
             
              {expiringItems.length > 0 && (
                 <Card>
-                    <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                    <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div>
                             <CardTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive"/>Expiring Documents</CardTitle>
                             <CardDescription>The following vehicles or drivers have documents expiring within 30 days.</CardDescription>
@@ -199,7 +198,7 @@ export default function VehicleStatusPage() {
 
                 <TabsContent value="vehicles" className="mt-4">
                     <Card>
-                        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div>
                                 <CardTitle>Vehicle Fleet</CardTitle>
                                 <CardDescription>A list of all vehicles in the system.</CardDescription>
@@ -219,7 +218,7 @@ export default function VehicleStatusPage() {
 
                 <TabsContent value="drivers" className="mt-4">
                     <Card>
-                        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div>
                                 <CardTitle>Driver List</CardTitle>
                                 <CardDescription>A list of all driver profiles in the system.</CardDescription>
