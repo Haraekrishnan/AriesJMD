@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
@@ -61,17 +60,17 @@ const VendorCostSection = ({ vendorIndex, control }: { vendorIndex: number; cont
     });
 
     return (
-        <div className="space-y-3 mt-4 p-4 bg-muted/30 rounded-md border">
-            <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">Extra Costs (Freight, Cess etc)</p>
+        <div className="space-y-4 mt-4 p-4 bg-muted/30 rounded-md border">
+            <p className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-2">Extra Costs (Freight, Cess etc)</p>
             {fields.map((field, index) => (
                 <div className="flex gap-2 items-start" key={field.id}>
-                    <Input {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.name`)} placeholder="Cost Name" className="h-9 text-sm" />
-                    <Input type="number" step="any" {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.value`)} placeholder="Value" className="h-9 text-sm w-24"/>
-                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                    <Input {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.name`)} placeholder="Cost Name" className="h-10 text-sm font-medium" />
+                    <Input type="number" step="any" {...control.register(`vendors.${vendorIndex}.additionalCosts.${index}.value`)} placeholder="Value" className="h-10 text-sm w-32 font-bold text-right"/>
+                    <Button type="button" variant="ghost" size="icon" className="h-10 w-10 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-5 w-5"/></Button>
                 </div>
             ))}
-            <Button type="button" variant="ghost" size="sm" className="h-8 text-xs w-full" onClick={() => append({ id: `cost-${Date.now()}`, name: '', value: 0 })}>
-                <PlusCircle className="h-4 w-4 mr-2"/> Add Cost
+            <Button type="button" variant="ghost" size="sm" className="h-9 text-xs w-full font-bold uppercase tracking-wider" onClick={() => append({ id: `cost-${Date.now()}`, name: '', value: 0 })}>
+                <PlusCircle className="h-4 w-4 mr-2"/> Add Additional Cost
             </Button>
         </div>
     );
@@ -248,23 +247,23 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-[98vw] w-full h-[95vh] flex flex-col p-0 overflow-hidden" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader className="p-8 pb-4">
-          <DialogTitle className="text-3xl font-bold">{isEditMode ? 'Edit' : 'New'} Price Comparison</DialogTitle>
-          <DialogDescription className="text-base">List items to quote and enter rates from multiple vendors. Side-by-side view for easier comparison.</DialogDescription>
+          <DialogTitle className="text-3xl font-black tracking-tight">{isEditMode ? 'EDIT' : 'NEW'} PRICE COMPARISON</DialogTitle>
+          <DialogDescription className="text-lg font-medium text-muted-foreground mt-1">List items and enter merchant rates side-by-side for rapid evaluation.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
           <div className="px-8 pb-4">
-            <div className="p-6 bg-muted/30 rounded-lg border flex justify-between items-center gap-6">
+            <div className="p-6 bg-muted/40 rounded-xl border-2 flex justify-between items-center gap-8 shadow-sm">
               <div className="flex-1">
-                <Label htmlFor="title" className="text-sm font-black uppercase tracking-widest text-muted-foreground">Comparison Title</Label>
-                <Input id="title" {...form.register('title')} placeholder="e.g., Monthly Consumables - Site A" className="mt-2 bg-background h-11 text-base font-semibold" />
-                {errors.title && <p className="text-xs text-destructive mt-1 font-bold">{errors.title.message}</p>}
+                <Label htmlFor="title" className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">Comparison Title</Label>
+                <Input id="title" {...form.register('title')} placeholder="e.g., Monthly Consumables - Site A" className="mt-2 bg-background h-12 text-lg font-bold border-muted-foreground/20 focus:border-primary transition-all" />
+                {errors.title && <p className="text-sm text-destructive mt-2 font-bold flex items-center gap-1"><AlertTriangle className="h-4 w-4"/>{errors.title.message}</p>}
               </div>
               <div className="flex items-end gap-3">
                   <Input type="file" accept=".xlsx, .xls" className="hidden" id="item-import-file" onChange={handleImportItems} />
-                  <Button type="button" variant="outline" asChild className="h-11 px-6">
-                      <label htmlFor="item-import-file" className="cursor-pointer">
-                          <Upload className="h-4 w-4 mr-2"/>Bulk Import Items
+                  <Button type="button" variant="outline" asChild className="h-12 px-8 font-bold uppercase tracking-wider border-2 hover:bg-muted transition-colors">
+                      <label htmlFor="item-import-file" className="cursor-pointer flex items-center gap-2">
+                          <Upload className="h-5 w-5"/>Excel Import
                       </label>
                   </Button>
               </div>
@@ -275,178 +274,176 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
             <Accordion type="multiple" defaultValue={["items", "vendors"]} className="flex-1 flex flex-col gap-6 overflow-hidden">
               
               <AccordionItem value="items" className="border rounded-xl bg-card shrink-0 shadow-sm overflow-hidden">
-                <AccordionTrigger className="px-6 py-4 hover:no-underline bg-muted/10">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline bg-muted/20 border-b">
                   <div className="flex items-center gap-3">
-                    <ListChecks className="h-5 w-5 text-primary" />
-                    <span className="text-base font-bold uppercase tracking-wider">1. Items to Quote ({itemFields.length})</span>
+                    <ListChecks className="h-6 w-6 text-primary" />
+                    <span className="text-lg font-black uppercase tracking-widest">1. Requirements List ({itemFields.length})</span>
                   </div>
                 </AccordionTrigger>
-                <AccordionContent className="p-6 pt-2">
-                  <div className="overflow-y-auto max-h-[350px] visible-scrollbar pr-4">
-                      <div className="space-y-3 mt-4">
+                <AccordionContent className="p-0">
+                  <ScrollArea className="max-h-[300px] visible-scrollbar">
+                      <div className="space-y-3 p-6">
                           {itemFields.map((field, index) => (
-                              <div className="flex gap-3 items-center" key={field.id}>
-                                  <div className="w-10 text-xs font-black text-muted-foreground text-center">{index + 1}.</div>
+                              <div className="flex gap-4 items-center group" key={field.id}>
+                                  <div className="w-10 text-xs font-black text-muted-foreground text-center bg-muted h-10 flex items-center justify-center rounded-lg">{index + 1}.</div>
                                   <div className="flex-1">
-                                      <Input {...form.register(`items.${index}.description`)} placeholder="Item Name / Description" className="h-10 text-sm font-medium" />
+                                      <Input {...form.register(`items.${index}.description`)} placeholder="Item Name / Description" className="h-12 text-base font-bold bg-muted/10 border-transparent focus:bg-background transition-all" />
                                   </div>
-                                  <div className="w-24">
-                                      <Input {...form.register(`items.${index}.uom`)} placeholder="UOM" className="h-10 text-sm text-center" />
+                                  <div className="w-32">
+                                      <Input {...form.register(`items.${index}.uom`)} placeholder="UOM" className="h-12 text-base font-bold text-center bg-muted/10 border-transparent focus:bg-background" />
                                   </div>
-                                  <Button type="button" variant="ghost" size="icon" className="h-10 w-10 text-destructive hover:bg-destructive/10" onClick={() => handleRemoveItemRow(index)}><Trash2 className="h-4 w-4"/></Button>
+                                  <Button type="button" variant="ghost" size="icon" className="h-12 w-12 text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleRemoveItemRow(index)}><Trash2 className="h-5 w-5"/></Button>
                               </div>
                           ))}
-                          <Button type="button" variant="outline" className="w-full h-11 border-dashed mt-4 text-sm" onClick={handleAddItemRow}>
-                              <PlusCircle className="h-4 w-4 mr-2"/>Add New Item Row
+                          <Button type="button" variant="outline" className="w-full h-12 border-dashed border-2 mt-4 text-base font-bold uppercase tracking-wider hover:bg-muted" onClick={handleAddItemRow}>
+                              <PlusCircle className="h-5 w-5 mr-3"/>Add New Line Item
                           </Button>
                       </div>
-                  </div>
+                  </ScrollArea>
                 </AccordionContent>
               </AccordionItem>
 
               <AccordionItem value="vendors" className="border rounded-xl bg-card flex-1 flex flex-col overflow-hidden shadow-sm">
-                <AccordionTrigger className="px-6 py-4 hover:no-underline shrink-0 bg-muted/10">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline shrink-0 bg-muted/20 border-b">
                   <div className="flex items-center gap-3">
-                    <Users2 className="h-5 w-5 text-primary" />
-                    <span className="text-base font-bold uppercase tracking-wider">2. Vendor Comparison Grid ({vendorFields.length})</span>
+                    <Users2 className="h-6 w-6 text-primary" />
+                    <span className="text-lg font-black uppercase tracking-widest">2. Quotation Comparison Matrix ({vendorFields.length})</span>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="flex-1 flex flex-col overflow-hidden p-0">
-                   <div className="flex-1 flex flex-col overflow-hidden border-t">
-                      <div className="flex-1 overflow-auto visible-scrollbar">
-                          <div className="flex h-full">
-                              {/* Sticky Item Column */}
-                              <div className="w-[320px] shrink-0 border-r bg-muted/20 sticky left-0 z-20 shadow-xl">
-                                  <div className="h-[80px] p-4 border-b flex items-center bg-muted/30">
-                                      <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Item Description</span>
-                                  </div>
-                                  {itemFields.map((item, idx) => (
-                                      <div key={item.id} className="h-[64px] p-4 border-b flex items-center bg-card">
-                                          <span className="text-sm font-bold truncate leading-tight" title={watch(`items.${idx}.description`)}>
-                                              {idx + 1}. {watch(`items.${idx}.description`) || <span className="text-muted-foreground/50 italic">Empty Item</span>}
-                                          </span>
-                                      </div>
-                                  ))}
+                   <ScrollArea className="flex-1 border-t visible-scrollbar">
+                      <div className="flex min-w-max h-full">
+                          {/* Sticky Item Column */}
+                          <div className="w-[360px] shrink-0 border-r bg-muted/30 sticky left-0 z-20 shadow-2xl">
+                              <div className="h-[100px] p-6 border-b flex items-center bg-muted/40">
+                                  <span className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">Item Description</span>
                               </div>
-
-                              {/* Scrollable Vendor Columns */}
-                              <div className="flex flex-1">
-                                  {vendorFields.map((vendorField, vIdx) => (
-                                      <div key={vendorField.id} className={cn("w-[320px] shrink-0 border-r transition-colors", vIdx === 0 ? "bg-blue-50/20" : "bg-card")}>
-                                          <div className="h-[80px] p-3 border-b bg-muted/5 flex flex-col justify-center gap-2">
-                                              <div className="flex items-center gap-2">
-                                                  <Select value={watch(`vendors.${vIdx}.vendorId`)} onValueChange={(val) => handleVendorSelect(vIdx, val)}>
-                                                      <SelectTrigger className="h-9 text-xs font-bold shadow-sm"><SelectValue placeholder="Select Vendor"/></SelectTrigger>
-                                                      <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
-                                                  </Select>
-                                                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => removeVendor(vIdx)}><X className="h-4 w-4"/></Button>
-                                              </div>
-                                              {vIdx === 0 && <span className="text-[10px] font-black text-blue-600 uppercase text-center tracking-tighter">Primary Source (Syncs Qty/Tax)</span>}
-                                          </div>
-
-                                          {itemFields.map((item, iIdx) => (
-                                              <div key={`${vendorField.id}-${iIdx}`} className="h-[64px] p-3 border-b flex items-center gap-2">
-                                                  <div className="w-16 space-y-1">
-                                                      <Label className="text-[9px] text-muted-foreground font-black uppercase block text-center">Qty</Label>
-                                                      <Controller
-                                                        name={`vendors.${vIdx}.quotes.${iIdx}.quantity`}
-                                                        control={control}
-                                                        render={({ field }) => (
-                                                          <Input 
-                                                              type="number" 
-                                                              step="any"
-                                                              className="h-8 text-sm text-center px-1 font-semibold"
-                                                              value={field.value ?? ''}
-                                                              onChange={(e) => {
-                                                                const val = e.target.value;
-                                                                const numVal = val === '' ? 0 : Number(val);
-                                                                field.onChange(numVal);
-                                                                if (vIdx === 0) {
-                                                                  const currentVendors = getValues('vendors');
-                                                                  currentVendors.forEach((_, otherIdx) => {
-                                                                    if (otherIdx !== 0) setValue(`vendors.${otherIdx}.quotes.${iIdx}.quantity`, numVal);
-                                                                  });
-                                                                }
-                                                              }}
-                                                          />
-                                                        )}
-                                                      />
-                                                  </div>
-                                                  <div className="flex-1 space-y-1">
-                                                      <Label className="text-[9px] text-muted-foreground font-black uppercase block text-center">Unit Rate</Label>
-                                                      <Controller
-                                                        name={`vendors.${vIdx}.quotes.${iIdx}.rate`}
-                                                        control={control}
-                                                        render={({ field }) => (
-                                                          <Input 
-                                                              type="number" 
-                                                              step="any"
-                                                              className="h-8 text-sm text-right font-black text-primary px-2"
-                                                              value={field.value || ''}
-                                                              onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
-                                                          />
-                                                        )}
-                                                      />
-                                                  </div>
-                                                  <div className="w-16 space-y-1">
-                                                      <Label className="text-[9px] text-muted-foreground font-black uppercase block text-center">Tax %</Label>
-                                                      <Controller
-                                                        name={`vendors.${vIdx}.quotes.${iIdx}.taxPercent`}
-                                                        control={control}
-                                                        render={({ field }) => (
-                                                          <Input 
-                                                              type="number" 
-                                                              step="any"
-                                                              className="h-8 text-sm text-center px-1 font-semibold"
-                                                              value={field.value ?? ''}
-                                                              onChange={(e) => {
-                                                                const val = e.target.value;
-                                                                const numVal = val === '' ? 0 : Number(val);
-                                                                field.onChange(numVal);
-                                                                if (vIdx === 0) {
-                                                                  const currentVendors = getValues('vendors');
-                                                                  currentVendors.forEach((_, otherIdx) => {
-                                                                    if (otherIdx !== 0) setValue(`vendors.${otherIdx}.quotes.${iIdx}.taxPercent`, numVal);
-                                                                  });
-                                                                }
-                                                              }}
-                                                          />
-                                                        )}
-                                                      />
-                                                  </div>
-                                              </div>
-                                          ))}
-                                          
-                                          <div className="p-4 bg-muted/10">
-                                              <VendorCostSection vendorIndex={vIdx} control={control} />
-                                          </div>
-                                      </div>
-                                  ))}
-                                  
-                                  <div className="w-[120px] shrink-0 border-r bg-muted/20 flex items-center justify-center">
-                                      <Button type="button" variant="ghost" className="h-full w-full flex-col gap-4 rounded-none hover:bg-muted/40 transition-colors" onClick={handleAddVendor}>
-                                          <PlusCircle className="h-8 w-8 text-primary"/>
-                                          <span className="text-xs font-black uppercase tracking-wider">Add Vendor</span>
-                                      </Button>
+                              {itemFields.map((item, idx) => (
+                                  <div key={item.id} className="h-[80px] p-6 border-b flex items-center bg-card">
+                                      <span className="text-base font-black truncate leading-tight text-foreground" title={watch(`items.${idx}.description`)}>
+                                          {idx + 1}. {watch(`items.${idx}.description`) || <span className="text-muted-foreground/30 italic font-medium">Empty Line</span>}
+                                      </span>
                                   </div>
+                              ))}
+                          </div>
+
+                          {/* Scrollable Vendor Columns */}
+                          <div className="flex flex-1">
+                              {vendorFields.map((vendorField, vIdx) => (
+                                  <div key={vendorField.id} className={cn("w-[360px] shrink-0 border-r transition-all duration-300", vIdx === 0 ? "bg-primary/[0.03] ring-inset ring-2 ring-primary/20" : "bg-card")}>
+                                      <div className="h-[100px] p-4 border-b bg-muted/10 flex flex-col justify-center gap-3">
+                                          <div className="flex items-center gap-3">
+                                              <Select value={watch(`vendors.${vIdx}.vendorId`)} onValueChange={(val) => handleVendorSelect(vIdx, val)}>
+                                                  <SelectTrigger className="h-11 text-sm font-black shadow-sm uppercase tracking-wider"><SelectValue placeholder="Select Merchant"/></SelectTrigger>
+                                                  <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
+                                              </Select>
+                                              <Button type="button" variant="ghost" size="icon" className="h-10 w-10 text-destructive hover:bg-destructive/10" onClick={() => removeVendor(vIdx)}><X className="h-5 w-5"/></Button>
+                                          </div>
+                                          {vIdx === 0 && <span className="text-[10px] font-black text-primary uppercase text-center tracking-[0.1em] bg-primary/10 py-1 rounded-full">Primary Vendor (Autosync Active)</span>}
+                                      </div>
+
+                                      {itemFields.map((item, iIdx) => (
+                                          <div key={`${vendorField.id}-${iIdx}`} className="h-[80px] p-4 border-b flex items-center gap-4 bg-muted/5">
+                                              <div className="w-20 space-y-1.5">
+                                                  <Label className="text-[10px] text-muted-foreground font-black uppercase block text-center tracking-tighter">Qty</Label>
+                                                  <Controller
+                                                    name={`vendors.${vIdx}.quotes.${iIdx}.quantity`}
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                      <Input 
+                                                          type="number" 
+                                                          step="any"
+                                                          className="h-10 text-base text-center px-1 font-black bg-background"
+                                                          value={field.value ?? ''}
+                                                          onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            const numVal = val === '' ? 0 : Number(val);
+                                                            field.onChange(numVal);
+                                                            if (vIdx === 0) {
+                                                              const currentVendors = getValues('vendors');
+                                                              currentVendors.forEach((_, otherIdx) => {
+                                                                if (otherIdx !== 0) setValue(`vendors.${otherIdx}.quotes.${iIdx}.quantity`, numVal);
+                                                              });
+                                                            }
+                                                          }}
+                                                      />
+                                                    )}
+                                                  />
+                                              </div>
+                                              <div className="flex-1 space-y-1.5">
+                                                  <Label className="text-[10px] text-muted-foreground font-black uppercase block text-center tracking-tighter">Unit Rate (INR)</Label>
+                                                  <Controller
+                                                    name={`vendors.${vIdx}.quotes.${iIdx}.rate`}
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                      <Input 
+                                                          type="number" 
+                                                          step="any"
+                                                          className="h-10 text-lg text-right font-black text-primary px-3 bg-background border-primary/20 shadow-inner"
+                                                          value={field.value || ''}
+                                                          onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+                                                      />
+                                                    )}
+                                                  />
+                                              </div>
+                                              <div className="w-20 space-y-1.5">
+                                                  <Label className="text-[10px] text-muted-foreground font-black uppercase block text-center tracking-tighter">Tax %</Label>
+                                                  <Controller
+                                                    name={`vendors.${vIdx}.quotes.${iIdx}.taxPercent`}
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                      <Input 
+                                                          type="number" 
+                                                          step="any"
+                                                          className="h-10 text-base text-center px-1 font-black bg-background"
+                                                          value={field.value ?? ''}
+                                                          onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            const numVal = val === '' ? 0 : Number(val);
+                                                            field.onChange(numVal);
+                                                            if (vIdx === 0) {
+                                                              const currentVendors = getValues('vendors');
+                                                              currentVendors.forEach((_, otherIdx) => {
+                                                                if (otherIdx !== 0) setValue(`vendors.${otherIdx}.quotes.${iIdx}.taxPercent`, numVal);
+                                                              });
+                                                            }
+                                                          }}
+                                                      />
+                                                    )}
+                                                  />
+                                              </div>
+                                          </div>
+                                      ))}
+                                      
+                                      <div className="p-6 bg-muted/10 border-t">
+                                          <VendorCostSection vendorIndex={vIdx} control={control} />
+                                      </div>
+                                  </div>
+                              ))}
+                              
+                              <div className="w-[160px] shrink-0 border-r bg-muted/30 flex items-center justify-center p-4">
+                                  <Button type="button" variant="ghost" className="h-full w-full flex-col gap-6 rounded-2xl hover:bg-muted/50 transition-all border-4 border-dashed border-muted-foreground/10" onClick={handleAddVendor}>
+                                      <PlusCircle className="h-12 w-12 text-primary/40"/>
+                                      <span className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground/60 text-center">Add<br/>Merchant</span>
+                                  </Button>
                               </div>
                           </div>
                       </div>
-                      <ScrollBar orientation="horizontal" className="visible-scrollbar" />
-                   </div>
+                      <ScrollBar orientation="horizontal" className="visible-scrollbar h-4" />
+                   </ScrollArea>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
           </div>
           
-          <div className="p-8 pt-4 border-t bg-card shrink-0 flex justify-between items-center shadow-2xl">
+          <div className="p-10 pt-6 border-t bg-card shrink-0 flex justify-between items-center shadow-[0_-15px_50px_-15px_rgba(0,0,0,0.1)] z-30">
             <div className="flex gap-4">
-                {errors.vendors && <p className="text-sm text-destructive font-black flex items-center gap-2"><AlertTriangle className="h-4 w-4"/> Ensure a merchant is selected for each column.</p>}
+                {errors.vendors && <p className="text-base text-destructive font-black flex items-center gap-3 animate-bounce"><AlertTriangle className="h-6 w-6"/> MISSING DATA: Assign a merchant to each column before saving.</p>}
             </div>
             <div className="flex gap-4">
-                <Button type="button" variant="outline" className="h-12 px-8 text-base font-semibold" onClick={() => setIsOpen(false)}>Cancel</Button>
-                <Button type="submit" className="h-12 px-10 text-base font-bold min-w-[200px]" disabled={isSubmitting}>
-                    {isSubmitting ? <><Loader2 className="h-5 w-5 mr-2 animate-spin"/>Processing...</> : (isEditMode ? 'Update Comparison' : 'Create Comparison')}
+                <Button type="button" variant="outline" className="h-14 px-10 text-lg font-bold uppercase tracking-widest border-2" onClick={() => setIsOpen(false)}>Cancel</Button>
+                <Button type="submit" className="h-14 px-12 text-lg font-black uppercase tracking-[0.2em] min-w-[280px] shadow-xl shadow-primary/20" disabled={isSubmitting}>
+                    {isSubmitting ? <><Loader2 className="h-6 w-6 mr-3 animate-spin"/>TRANSMITTING...</> : (isEditMode ? 'Update Evaluation' : 'Finalize Comparison')}
                 </Button>
             </div>
           </div>

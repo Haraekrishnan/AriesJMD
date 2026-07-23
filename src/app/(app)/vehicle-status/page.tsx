@@ -143,7 +143,7 @@ export default function VehicleStatusPage() {
                 </div>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-3">
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 <StatCard 
                     title="Active Vehicles"
                     value={activeVehiclesCount}
@@ -166,23 +166,27 @@ export default function VehicleStatusPage() {
             
              {expiringItems.length > 0 && (
                 <Card>
-                    <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                        <div>
-                            <CardTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive"/>Expiring Documents</CardTitle>
-                            <CardDescription>The following vehicles or drivers have documents expiring within 30 days.</CardDescription>
+                    <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+                        <div className="flex-1">
+                            <CardTitle className="flex items-center gap-2 font-bold text-destructive"><AlertTriangle className="h-6 w-6"/>EXPIRING DOCUMENTS</CardTitle>
+                            <CardDescription className="text-sm font-medium">Critical documentation requires renewal within 30 days.</CardDescription>
                         </div>
-                        <ExpiringDocumentsReport expiringVehicles={expiringVehicles} expiringDrivers={expiringDrivers} />
+                        <div className="shrink-0 flex gap-2 w-full sm:w-auto">
+                            <ExpiringDocumentsReport expiringVehicles={expiringVehicles} expiringDrivers={expiringDrivers} />
+                        </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                        <div className="space-y-3 max-h-60 overflow-y-auto pr-2 visible-scrollbar">
                             {expiringVehicles.map((item, i) => (
-                                <div key={`v-${i}`} className="text-sm p-2 bg-amber-50 dark:bg-amber-900/20 rounded-md">
-                                    <span className="font-semibold">Vehicle {item.vehicle.vehicleNumber}</span>: {item.expiringDocs.join(', ')}
+                                <div key={`v-${i}`} className="text-sm p-3 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-400 rounded-r-md flex justify-between items-center gap-4">
+                                    <span className="font-black text-foreground">VEHICLE {item.vehicle.vehicleNumber}</span>
+                                    <span className="text-muted-foreground text-right">{item.expiringDocs.join(', ')}</span>
                                 </div>
                             ))}
                              {expiringDrivers.map(item => (
-                                <div key={item.driver.id} className="text-sm p-2 bg-amber-50 dark:bg-amber-900/20 rounded-md">
-                                    <span className="font-semibold">{item.driver.name}</span>: {item.expiringDocs.join(', ')}
+                                <div key={item.driver.id} className="text-sm p-3 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-400 rounded-r-md flex justify-between items-center gap-4">
+                                    <span className="font-black text-foreground">{item.driver.name.toUpperCase()}</span>
+                                    <span className="text-muted-foreground text-right">{item.expiringDocs.join(', ')}</span>
                                 </div>
                             ))}
                         </div>
@@ -190,47 +194,47 @@ export default function VehicleStatusPage() {
                 </Card>
             )}
 
-            <Tabs defaultValue={tab || "vehicles"}>
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="vehicles">Vehicles</TabsTrigger>
-                    <TabsTrigger value="drivers">Drivers</TabsTrigger>
+            <Tabs defaultValue={tab || "vehicles"} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 h-12 bg-muted/50 p-1">
+                    <TabsTrigger value="vehicles" className="text-sm font-black uppercase tracking-widest">Vehicles</TabsTrigger>
+                    <TabsTrigger value="drivers" className="text-sm font-black uppercase tracking-widest">Drivers</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="vehicles" className="mt-4">
-                    <Card>
-                        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <TabsContent value="vehicles" className="mt-6">
+                    <Card className="border-2 shadow-sm overflow-hidden">
+                        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-muted/20 border-b p-6">
                             <div>
-                                <CardTitle>Vehicle Fleet</CardTitle>
-                                <CardDescription>A list of all vehicles in the system.</CardDescription>
+                                <CardTitle className="text-xl font-black uppercase tracking-tight">Vehicle Fleet</CardTitle>
+                                <CardDescription className="text-sm font-medium">Register and track technical data for all company vehicles.</CardDescription>
                             </div>
                             {can.manage_vehicles && (
-                                <Button onClick={handleAddVehicle} className="w-full sm:w-auto">
-                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                <Button onClick={handleAddVehicle} className="w-full sm:w-auto h-11 px-6 font-black uppercase tracking-widest shadow-lg shadow-primary/20">
+                                    <PlusCircle className="mr-2 h-5 w-5" />
                                     Add Vehicle
                                 </Button>
                             )}
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="p-0">
                             <VehicleTable onEdit={handleEditVehicle} onLogManager={handleLogManager} />
                         </CardContent>
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="drivers" className="mt-4">
-                    <Card>
-                        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <TabsContent value="drivers" className="mt-6">
+                    <Card className="border-2 shadow-sm overflow-hidden">
+                        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-muted/20 border-b p-6">
                             <div>
-                                <CardTitle>Driver List</CardTitle>
-                                <CardDescription>A list of all driver profiles in the system.</CardDescription>
+                                <CardTitle className="text-xl font-black uppercase tracking-tight">Personnel Directory</CardTitle>
+                                <CardDescription className="text-sm font-medium">Manage driver records, licensing, and medical validity.</CardDescription>
                             </div>
                             {can.manage_vehicles && (
-                                <Button onClick={handleAddDriver} className="w-full sm:w-auto">
-                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                <Button onClick={handleAddDriver} className="w-full sm:w-auto h-11 px-6 font-black uppercase tracking-widest shadow-lg shadow-primary/20">
+                                    <PlusCircle className="mr-2 h-5 w-5" />
                                     Add Driver
                                 </Button>
                             )}
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="p-0">
                             <DriverListTable onEdit={handleEditDriver} />
                         </CardContent>
                     </Card>
