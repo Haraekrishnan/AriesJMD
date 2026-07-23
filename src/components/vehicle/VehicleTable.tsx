@@ -4,11 +4,10 @@
 import React, { useMemo } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
-import { useInventory } from '@/contexts/inventory-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Edit, Trash2, FileText } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { format, isPast, parseISO, differenceInDays } from 'date-fns';
 import type { Vehicle, VehicleStatus } from '@/lib/types';
@@ -68,33 +67,33 @@ export default function VehicleTable({ onEdit, onLogManager }: VehicleTableProps
   }
 
   return (
-    <div className="overflow-x-auto visible-scrollbar">
+    <div className="overflow-x-auto">
     <TooltipProvider>
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="whitespace-nowrap">Vehicle No.</TableHead>
-          <TableHead className="whitespace-nowrap">Status</TableHead>
-          <TableHead className="whitespace-nowrap">VAP Number</TableHead>
-          <TableHead className="whitespace-nowrap">Driver</TableHead>
-          <TableHead className="whitespace-nowrap">Vendor</TableHead>
-          <TableHead className="whitespace-nowrap">VAP Access</TableHead>
-          <TableHead className="whitespace-nowrap">VAP Validity</TableHead>
-          <TableHead className="whitespace-nowrap">Insurance</TableHead>
-          <TableHead className="whitespace-nowrap">Fitness</TableHead>
-          <TableHead className="whitespace-nowrap">Tax</TableHead>
-          <TableHead className="whitespace-nowrap">PUCC</TableHead>
+          <TableHead>Vehicle No.</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>VAP Number</TableHead>
+          <TableHead>Driver</TableHead>
+          <TableHead>Vendor</TableHead>
+          <TableHead>VAP Access</TableHead>
+          <TableHead>VAP Validity</TableHead>
+          <TableHead>Insurance</TableHead>
+          <TableHead>Fitness</TableHead>
+          <TableHead>Tax</TableHead>
+          <TableHead>PUCC</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {vehicles.map(vehicle => (
           <TableRow key={vehicle.id}>
-            <TableCell className="font-bold whitespace-nowrap">{vehicle.vehicleNumber}</TableCell>
-            <TableCell className="whitespace-nowrap"><Badge variant={statusVariant[vehicle.status || 'Active']}>{vehicle.status || 'Active'}</Badge></TableCell>
-            <TableCell className="whitespace-nowrap">{vehicle.vapNumber || 'N/A'}</TableCell>
-            <TableCell className="whitespace-nowrap font-medium">{getDriverName(vehicle.driverId)}</TableCell>
-            <TableCell className="whitespace-nowrap">{vehicle.vendorName || 'N/A'}</TableCell>
+            <TableCell className="font-medium">{vehicle.vehicleNumber}</TableCell>
+            <TableCell><Badge variant={statusVariant[vehicle.status || 'Active']}>{vehicle.status || 'Active'}</Badge></TableCell>
+            <TableCell>{vehicle.vapNumber || 'N/A'}</TableCell>
+            <TableCell>{getDriverName(vehicle.driverId)}</TableCell>
+            <TableCell>{vehicle.vendorName || 'N/A'}</TableCell>
             <TableCell>
               <div className="flex flex-wrap gap-1">
                 {(vehicle.vapAccess || []).map(access => (
@@ -102,19 +101,19 @@ export default function VehicleTable({ onEdit, onLogManager }: VehicleTableProps
                 ))}
               </div>
             </TableCell>
-            <TableCell className={cn('whitespace-nowrap', getDateStyles(vehicle.vapValidity))}>{formatDate(vehicle.vapValidity)}</TableCell>
-            <TableCell className={cn('whitespace-nowrap', getDateStyles(vehicle.insuranceValidity))}>{formatDate(vehicle.insuranceValidity)}</TableCell>
-            <TableCell className={cn('whitespace-nowrap', getDateStyles(vehicle.fitnessValidity))}>{formatDate(vehicle.fitnessValidity)}</TableCell>
-            <TableCell className={cn('whitespace-nowrap', getDateStyles(vehicle.taxValidity))}>{formatDate(vehicle.taxValidity)}</TableCell>
-            <TableCell className={cn('whitespace-nowrap', getDateStyles(vehicle.puccValidity))}>{formatDate(vehicle.puccValidity)}</TableCell>
+            <TableCell className={cn(getDateStyles(vehicle.vapValidity))}>{formatDate(vehicle.vapValidity)}</TableCell>
+            <TableCell className={cn(getDateStyles(vehicle.insuranceValidity))}>{formatDate(vehicle.insuranceValidity)}</TableCell>
+            <TableCell className={cn(getDateStyles(vehicle.fitnessValidity))}>{formatDate(vehicle.fitnessValidity)}</TableCell>
+            <TableCell className={cn(getDateStyles(vehicle.taxValidity))}>{formatDate(vehicle.taxValidity)}</TableCell>
+            <TableCell className={cn(getDateStyles(vehicle.puccValidity))}>{formatDate(vehicle.puccValidity)}</TableCell>
             <TableCell className="text-right">
                  <div className="flex items-center justify-end gap-2">
-                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => onLogManager(vehicle)}><FileText className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent><p>View/Add Logs</p></TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => onLogManager(vehicle)}><FileText className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>View/Add Logs</p></TooltipContent></Tooltip>
                     {can.manage_vehicles && (
                       <>
-                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => onEdit(vehicle)}><Edit className="h-5 w-5"/></Button></TooltipTrigger><TooltipContent><p>Edit</p></TooltipContent></Tooltip>
+                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => onEdit(vehicle)}><Edit className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Edit</p></TooltipContent></Tooltip>
                         <AlertDialog>
-                            <Tooltip><TooltipTrigger asChild><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10"><Trash2 className="h-5 w-5"/></Button></AlertDialogTrigger></TooltipTrigger><TooltipContent><p>Delete</p></TooltipContent></Tooltip>
+                            <Tooltip><TooltipTrigger asChild><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4"/></Button></AlertDialogTrigger></TooltipTrigger><TooltipContent><p>Delete</p></TooltipContent></Tooltip>
                             <AlertDialogContent>
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
