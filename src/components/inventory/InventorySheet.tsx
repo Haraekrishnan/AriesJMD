@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -26,17 +25,17 @@ import {
     ArrowUpDown, Database, Link as LinkIcon, ExternalLink, Hammer, MoreHorizontal, Edit, ShieldQuestion 
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ScrollArea, ScrollBar } from '../ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { format, parseISO, isValid, parse, isPast } from 'date-fns';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { InventoryItem, InventoryItemStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { Label } from '../ui/label';
+import { Label } from '@/components/ui/label';
 import EditItemDialog from './EditItemDialog';
 import NewCertificateRequestDialog from './NewCertificateRequestDialog';
 
@@ -89,7 +88,7 @@ const EditableCell = React.memo(({ getValue, row, column, table }: any) => {
         onFocus={onFocus}
         readOnly={!isEditable}
         className={cn(
-            "w-full h-full border-transparent bg-transparent focus:bg-white dark:focus:bg-slate-800 focus:border focus:ring-1 focus:ring-ring p-1 text-sm font-bold text-foreground",
+            "w-full h-full border-transparent bg-transparent focus:bg-white dark:focus:bg-slate-800 focus:border focus:ring-1 focus:ring-ring p-1 text-xs font-bold text-slate-900 dark:text-slate-100",
             !isEditable && "cursor-default"
         )}
       />
@@ -117,7 +116,7 @@ const SelectCell = React.memo(({ getValue, row, column, table, options, placehol
           >
               <SelectTrigger className={cn(
                 "border-transparent bg-transparent focus:ring-0 w-full h-full p-1 text-[11px] font-black uppercase shadow-none disabled:opacity-100",
-                status ? "text-inherit" : "text-foreground",
+                status ? "text-inherit" : "text-slate-900 dark:text-slate-100",
                 !isEditable && "cursor-default"
               )}>
                   <SelectValue placeholder={placeholder} />
@@ -154,7 +153,7 @@ const DateCell = React.memo(({ getValue, row, column, table }: any) => {
           disabled={!isEditable}
           className={cn(
             "h-full border-none shadow-none focus-visible:ring-0 font-bold text-[11px] disabled:opacity-100",
-            isExpired ? "text-rose-600 font-black" : "text-foreground"
+            isExpired ? "text-rose-600 font-black" : "text-slate-900 dark:text-slate-100"
           )}
         />
       </div>
@@ -305,7 +304,7 @@ const InventorySheet = ({ category, items: itemsProp }: { category: string, item
       {
         id: 'slNo',
         header: () => <div className="text-[10px] uppercase font-black tracking-widest text-slate-800 text-center">SL</div>,
-        cell: ({ row }) => <div className="text-center font-bold text-slate-600">{row.index + 1}</div>,
+        cell: ({ row }) => <div className="text-center font-black text-slate-900 dark:text-slate-100">{row.index + 1}</div>,
         size: 50,
       },
       { accessorKey: 'serialNumber', header: ({column}) => <FilterableHeader title="SERIAL NO." column={column} />, cell: EditableCell, size: 180 },
@@ -329,7 +328,7 @@ const InventorySheet = ({ category, items: itemsProp }: { category: string, item
           const value = getValue() as string;
           if (!value) return <span className="text-[10px] text-slate-400 italic">N/A</span>;
           try {
-              return <span className="text-[10px] font-bold text-slate-900">{format(parseISO(value), 'dd-MM-yy HH:mm')}</span>;
+              return <span className="text-[10px] font-black text-slate-900 dark:text-slate-100">{format(parseISO(value), 'dd-MM-yy HH:mm')}</span>;
           } catch {
               return <span className="text-[10px] text-rose-500 font-bold">Error</span>;
           }
@@ -408,7 +407,7 @@ const InventorySheet = ({ category, items: itemsProp }: { category: string, item
             <div className="flex justify-center">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4 text-slate-900" /></Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         {can.manage_inventory && (
@@ -616,7 +615,7 @@ const InventorySheet = ({ category, items: itemsProp }: { category: string, item
   };
   
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-card border rounded-lg">
+    <div className="flex flex-col h-full overflow-hidden bg-card">
       <div className="p-3 border-b flex flex-col sm:flex-row justify-between items-center gap-3 bg-muted/20">
         <div className="flex items-center gap-2">
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-800 flex items-center gap-2">

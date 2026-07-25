@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -13,8 +12,8 @@ import { PlusCircle, Upload, ChevronsUpDown, FilePen, FilePlus, FileText, ArrowR
 import AddItemDialog from '@/components/inventory/AddItemDialog';
 import ImportItemsDialog from '@/components/inventory/ImportItemsDialog';
 import InventoryFilters, { type InventoryFilterValues } from '@/components/inventory/InventoryFilters';
-import type { InventoryItem, CertificateRequest, Role, InventoryTransferRequest, InventoryItemStatus, UTMachine, DftMachine, DigitalCamera, Anemometer, OtherEquipment, LaptopDesktop, MobileSim, WeldingMachine, WalkieTalkie } from '@/lib/types';
-import { isAfter, isBefore, addDays, parseISO, isWithinInterval, subDays, format, isValid, isPast, startOfDay } from 'date-fns';
+import type { InventoryItem, CertificateRequest, Role, InventoryTransferRequest, InventoryItemStatus, TpCertList } from '@/lib/types';
+import { isAfter, addDays, parseISO, isWithinInterval, format, isValid, isPast, startOfDay } from 'date-fns';
 import ViewCertificateRequestDialog from '@/components/inventory/ViewCertificateRequestDialog';
 import InventorySummary from '@/components/inventory/InventorySummary';
 import { Badge } from '@/components/ui/badge';
@@ -124,10 +123,7 @@ export default function StoreInventoryPage() {
         const notifications: { message: string, item: InventoryItem }[] = [];
         const canViewAllProjects = user?.role === 'Admin' || user?.role === 'Manager';
 
-        const userVisibleItems = inventoryItems.filter(item => {
-            if (canViewAllProjects) return true;
-            return user?.projectIds?.includes(item.projectId);
-        });
+        const userVisibleItems = globalFilteredItems; // Use filtered items for the notification list to keep consistency
 
         userVisibleItems.forEach(item => {
             if (item.isArchived || item.status === 'Damaged' || item.status === 'Quarantine') return;
@@ -155,7 +151,7 @@ export default function StoreInventoryPage() {
         });
 
         return notifications;
-    }, [inventoryItems, user]);
+    }, [globalFilteredItems]);
 
     if (!can.view_inventory && !can.manage_inventory) {
         return (
@@ -187,37 +183,37 @@ export default function StoreInventoryPage() {
     return (
         <div className="space-y-6 flex flex-col h-full">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
-                <div>
+                <div className="flex flex-col gap-1">
                     <h1 className="text-3xl font-bold tracking-tight">Store Inventory</h1>
-                    <p className="text-muted-foreground">Comprehensive database and spreadsheet view for all assets.</p>
+                    <p className="text-muted-foreground text-sm">Comprehensive database and spreadsheet view for all assets.</p>
                 </div>
                 <div className="flex items-center flex-wrap gap-2">
-                    <Button asChild variant="outline"><Link href="/consumables"><Package className="mr-2 h-4 w-4"/> Consumables</Link></Button>
-                    <Button asChild variant="outline"><Link href="/ppe-stock"><Package className="mr-2 h-4 w-4"/> PPE Stock</Link></Button>
-                    <Button asChild variant="outline"><Link href="/tp-certification"><FileText className="mr-2 h-4 w-4"/> TP Cert Lists</Link></Button>
+                    <Button asChild variant="outline" className="h-9 font-bold text-xs"><Link href="/consumables"><Package className="mr-2 h-4 w-4"/> Consumables</Link></Button>
+                    <Button asChild variant="outline" className="h-9 font-bold text-xs"><Link href="/ppe-stock"><Package className="mr-2 h-4 w-4"/> PPE Stock</Link></Button>
+                    <Button asChild variant="outline" className="h-9 font-bold text-xs"><Link href="/tp-certification"><FileText className="mr-2 h-4 w-4"/> TP Cert Lists</Link></Button>
                     
-                    <Button onClick={() => setIsNewDamageReportOpen(true)} variant="destructive">
-                        <Hammer className="mr-2 h-4 w-4 stroke-black fill-white" /> Report Damage
+                    <Button onClick={() => setIsNewDamageReportOpen(true)} variant="destructive" className="h-9 font-bold text-xs">
+                        <Hammer className="mr-2 h-4 w-4" /> Report Damage
                     </Button>
 
-                    <Button onClick={() => setView(v => v === 'list' ? 'summary' : 'list')} variant="outline">
+                    <Button onClick={() => setView(v => v === 'list' ? 'summary' : 'list')} variant="outline" className="h-9 font-bold text-xs">
                         {view === 'list' ? <><Database className="mr-2 h-4 w-4" />View Summary</> : <><TableIcon className="mr-2 h-4 w-4" />View Database</>}
                     </Button>
                     
-                    <Button variant="outline" onClick={() => openTransferRequestDialog(null)}>
+                    <Button variant="outline" onClick={() => openTransferRequestDialog(null)} className="h-9 font-bold text-xs">
                         <ArrowRightLeft className="mr-2 h-4 w-4" /> Transfer Items
                     </Button>
 
                     {can.manage_inventory && (
                         <>
-                            <Button onClick={() => setIsInwardOpen(true)} variant="outline"><Inbox className="mr-2 h-4 w-4"/>New Inward</Button>
-                            <Button onClick={() => setIsOutwardOpen(true)} variant="outline"><ArrowRightLeft className="mr-2 h-4 w-4"/>New Outward</Button>
-                            <Button onClick={revalidateExpiredItems} variant="outline"><CheckCircle className="mr-2 h-4 w-4" />Check Validity</Button>
-                            <Button onClick={() => setIsBulkInspectionUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4"/>Bulk Update Insp. Cert</Button>
-                            <Button onClick={() => setIsBulkUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4" /> Bulk Update TP Cert</Button>
-                            <Button onClick={() => setIsGenerateCertOpen(true)} variant="outline"><FilePlus className="mr-2 h-4 w-4" /> Generate TP Cert List</Button>
-                            <Button onClick={() => setIsImportOpen(true)} variant="outline"><Upload className="mr-2 h-4 w-4" /> Import</Button>
-                            <Button onClick={() => setIsAddItemOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Add Item</Button>
+                            <Button onClick={() => setIsInwardOpen(true)} variant="outline" className="h-9 font-bold text-xs"><Inbox className="mr-2 h-4 w-4"/>New Inward</Button>
+                            <Button onClick={() => setIsOutwardOpen(true)} variant="outline" className="h-9 font-bold text-xs"><ArrowRightLeft className="mr-2 h-4 w-4"/>New Outward</Button>
+                            <Button onClick={revalidateExpiredItems} variant="outline" className="h-9 font-bold text-xs"><CheckCircle className="mr-2 h-4 w-4" />Check Validity</Button>
+                            <Button onClick={() => setIsBulkInspectionUpdateOpen(true)} variant="outline" className="h-9 font-bold text-xs"><FilePen className="mr-2 h-4 w-4"/>Bulk Update Insp. Cert</Button>
+                            <Button onClick={() => setIsBulkUpdateOpen(true)} variant="outline" className="h-9 font-bold text-xs"><FilePen className="mr-2 h-4 w-4" /> Bulk Update TP Cert</Button>
+                            <Button onClick={() => setIsGenerateCertOpen(true)} variant="outline" className="h-9 font-bold text-xs"><FilePlus className="mr-2 h-4 w-4" /> Generate TP Cert List</Button>
+                            <Button onClick={() => setIsImportOpen(true)} variant="outline" className="h-9 font-bold text-xs"><Upload className="mr-2 h-4 w-4" /> Import</Button>
+                            <Button onClick={() => setIsAddItemOpen(true)} className="h-9 font-bold text-xs"><PlusCircle className="mr-2 h-4 w-4" /> Add Item</Button>
                         </>
                     )}
                 </div>
@@ -226,11 +222,11 @@ export default function StoreInventoryPage() {
             <div className="shrink-0 space-y-4">
                 <Accordion type="multiple" className="w-full space-y-4">
                     <AccordionItem value="inventory-transfers">
-                        <AccordionTrigger className={cn("text-lg font-semibold border rounded-lg p-4", pendingInventoryTransferRequestCount > 0 && "text-destructive border-destructive")}>
+                        <AccordionTrigger className={cn("text-sm font-bold border rounded-lg p-3 bg-muted/5", pendingInventoryTransferRequestCount > 0 && "text-destructive border-destructive")}>
                             <div className="flex items-center gap-2">
-                            {pendingInventoryTransferRequestCount > 0 && <AlertTriangle className="text-destructive h-5 w-5" />}
+                                <AlertTriangle className={cn("h-4 w-4", pendingInventoryTransferRequestCount > 0 ? "text-destructive" : "text-muted-foreground")} />
                                 Inventory Transfers
-                                {pendingInventoryTransferRequestCount > 0 && <Badge variant="destructive">{pendingInventoryTransferRequestCount}</Badge>}
+                                {pendingInventoryTransferRequestCount > 0 && <Badge variant="destructive" className="ml-1 h-5 min-w-[20px] p-0 flex justify-center items-center font-black">{pendingInventoryTransferRequestCount}</Badge>}
                             </div>
                         </AccordionTrigger>
                         <AccordionContent className="p-4 border border-t-0 rounded-b-lg">
@@ -238,27 +234,25 @@ export default function StoreInventoryPage() {
                         </AccordionContent>
                     </AccordionItem>
                     
-                    {can.manage_inward_outward && (
-                        <AccordionItem value="inward-outward-register">
-                            <AccordionTrigger className={cn("text-lg font-semibold border rounded-lg p-4", pendingFinalizationCount > 0 && "text-destructive border-destructive")}>
-                                <div className="flex items-center gap-2">
-                                    <Inbox />
-                                    Inward/Outward Register
-                                    {pendingFinalizationCount > 0 && <Badge variant="destructive">{pendingFinalizationCount}</Badge>}
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="p-4 border border-t-0 rounded-b-lg">
-                                <InwardOutwardHistory records={inwardOutwardRecords} />
-                            </AccordionContent>
-                        </AccordionItem>
-                    )}
+                    <AccordionItem value="inward-outward-register">
+                        <AccordionTrigger className={cn("text-sm font-bold border rounded-lg p-3 bg-muted/5", pendingFinalizationCount > 0 && "text-destructive border-destructive")}>
+                            <div className="flex items-center gap-2">
+                                <Inbox className={cn("h-4 w-4", pendingFinalizationCount > 0 ? "text-destructive" : "text-muted-foreground")} />
+                                Inward/Outward Register
+                                {pendingFinalizationCount > 0 && <Badge variant="destructive" className="ml-1 h-5 min-w-[20px] p-0 flex justify-center items-center font-black">{pendingFinalizationCount}</Badge>}
+                            </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="p-4 border border-t-0 rounded-b-lg">
+                            <InwardOutwardHistory records={inwardOutwardRecords} />
+                        </AccordionContent>
+                    </AccordionItem>
 
                     <AccordionItem value="action-required">
-                        <AccordionTrigger className={cn("text-lg font-semibold border rounded-lg p-4", actionRequiredNotifications.length > 0 && "text-destructive border-destructive")}>
+                        <AccordionTrigger className={cn("text-sm font-bold border rounded-lg p-3 bg-muted/5", actionRequiredNotifications.length > 0 && "text-destructive border-destructive bg-destructive/5")}>
                             <div className="flex items-center gap-2">
-                                <AlertTriangle className={actionRequiredNotifications.length > 0 ? "text-destructive h-5 w-5" : "text-muted-foreground h-5 w-5"} />
+                                <AlertTriangle className={actionRequiredNotifications.length > 0 ? "text-destructive h-4 w-4" : "text-muted-foreground h-4 w-4"} />
                                 Action Required (Expiring Items)
-                                {actionRequiredNotifications.length > 0 && <Badge variant="destructive">{actionRequiredNotifications.length}</Badge>}
+                                {actionRequiredNotifications.length > 0 && <Badge variant="destructive" className="ml-1 h-5 min-w-[20px] p-0 flex justify-center items-center font-black">{actionRequiredNotifications.length}</Badge>}
                             </div>
                         </AccordionTrigger>
                         <AccordionContent className="p-4 border border-t-0 rounded-b-lg">
@@ -276,15 +270,15 @@ export default function StoreInventoryPage() {
             <div className="flex-1 min-h-0">
                 {view === 'list' ? (
                     <div className="h-full flex flex-col space-y-4">
-                        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-                            <ScrollArea className="w-full whitespace-nowrap rounded-md border bg-muted/30 p-1">
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+                            <ScrollArea className="w-full whitespace-nowrap rounded-md border bg-muted/20 p-1 shrink-0">
                                 <TabsList className="inline-flex h-10 bg-transparent gap-1">
                                     {inventoryCategories.map(cat => {
                                         const count = globalFilteredItems.filter(i => i.name === cat).length;
                                         return (
-                                            <TabsTrigger key={cat} value={cat} className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider data-[state=active]:bg-background">
+                                            <TabsTrigger key={cat} value={cat} className="px-5 py-1.5 text-[11px] font-black uppercase tracking-wider data-[state=active]:bg-background data-[state=active]:shadow-sm">
                                                 {cat}
-                                                <Badge variant="secondary" className="ml-2 h-5 px-1.5 min-w-[1.25rem] font-bold">{count}</Badge>
+                                                <Badge variant="secondary" className="ml-3 h-5 px-1.5 min-w-[1.25rem] font-black text-[10px]">{count}</Badge>
                                             </TabsTrigger>
                                         )
                                     })}
@@ -292,8 +286,10 @@ export default function StoreInventoryPage() {
                                 <ScrollBar orientation="horizontal" />
                             </ScrollArea>
                             {inventoryCategories.map(cat => (
-                                <TabsContent key={cat} value={cat} className="flex-1 mt-4">
-                                    <InventorySheet category={cat} items={globalFilteredItems.filter(i => i.name === cat)} />
+                                <TabsContent key={cat} value={cat} className="flex-1 mt-4 focus-visible:ring-0">
+                                    <div className="h-[calc(100vh-420px)] border rounded-lg overflow-hidden bg-card">
+                                        <InventorySheet category={cat} items={globalFilteredItems.filter(i => i.name === cat)} />
+                                    </div>
                                 </TabsContent>
                             ))}
                             {inventoryCategories.length === 0 && (

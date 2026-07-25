@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -59,7 +58,7 @@ export default function InventoryFilters({ onApplyFilters, initialFilters }: Inv
     const canViewAllProjects = can.manage_equipment_status || user?.role === 'Admin' || user?.role === 'NDT Supervisor';
 
     return (
-        <Card className="border-none shadow-none bg-transparent">
+        <Card className="border shadow-sm bg-card p-2">
             <CardContent className="p-0 flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-3 flex-1">
                     <div className="relative">
@@ -68,12 +67,12 @@ export default function InventoryFilters({ onApplyFilters, initialFilters }: Inv
                             placeholder="Search by serial, aries id..." 
                             value={filters.search} 
                             onChange={(e) => handleFilterChange('search', e.target.value)} 
-                            className="h-9 w-full sm:w-[200px] pl-8 text-xs font-bold"
+                            className="h-9 w-full sm:w-[200px] pl-8 text-[11px] font-black uppercase"
                         />
                     </div>
 
                     <Select value={filters.name} onValueChange={(v) => handleFilterChange('name', v)}>
-                        <SelectTrigger className="h-9 w-full sm:w-[150px] text-xs font-bold">
+                        <SelectTrigger className="h-9 w-full sm:w-[150px] text-[11px] font-black uppercase">
                             <SelectValue placeholder="All Items" />
                         </SelectTrigger>
                         <SelectContent>
@@ -83,7 +82,7 @@ export default function InventoryFilters({ onApplyFilters, initialFilters }: Inv
                     </Select>
                     
                     <Select value={filters.status} onValueChange={(v) => handleFilterChange('status', v)}>
-                        <SelectTrigger className="h-9 w-full sm:w-[150px] text-xs font-bold">
+                        <SelectTrigger className="h-9 w-full sm:w-[150px] text-[11px] font-black uppercase">
                             <SelectValue placeholder="All Statuses" />
                         </SelectTrigger>
                         <SelectContent>
@@ -94,7 +93,7 @@ export default function InventoryFilters({ onApplyFilters, initialFilters }: Inv
                     </Select>
 
                     <Select value={filters.projectId} onValueChange={(v) => handleFilterChange('projectId', v)}>
-                        <SelectTrigger className="h-9 w-full sm:w-[150px] text-xs font-bold">
+                        <SelectTrigger className="h-9 w-full sm:w-[150px] text-[11px] font-black uppercase">
                             <SelectValue placeholder="All Projects" />
                         </SelectTrigger>
                         <SelectContent>
@@ -114,15 +113,15 @@ export default function InventoryFilters({ onApplyFilters, initialFilters }: Inv
                         placeholder="Filter by updated date..." 
                         date={filters.updatedDateRange} 
                         onDateChange={(d) => handleFilterChange('updatedDateRange', d)}
-                        className="h-9 text-xs"
+                        className="h-9 text-[11px] font-black uppercase"
                     />
 
-                    <Button variant="ghost" size="sm" onClick={handleClear} className="h-9 text-xs font-bold text-muted-foreground hover:text-foreground">
+                    <Button variant="ghost" size="sm" onClick={handleClear} className="h-9 text-[11px] font-black uppercase text-muted-foreground hover:text-foreground">
                         <X className="mr-1.5 h-3.5 w-3.5" /> Clear
                     </Button>
                 </div>
 
-                <div className="shrink-0">
+                <div className="shrink-0 flex items-center gap-2">
                     <InventoryReportDownloads items={inventoryItems} />
                 </div>
             </CardContent>
