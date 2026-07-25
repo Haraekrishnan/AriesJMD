@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useEffect, useMemo, useState, useCallback, useRef, MouseEvent } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -21,15 +20,14 @@ import { Input } from '@/components/ui/input';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { PlusCircle, Trash2, CheckCircle, Save, ArrowUp, ArrowDown, Download, ArrowUpDown } from 'lucide-react';
+import { PlusCircle, Trash2, CheckCircle, Save, ArrowUp, ArrowDown, Download, ArrowUpDown, Database } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { isPast, parseISO, isValid, format, parse } from 'date-fns';
+import { format, parseISO, isValid, formatDistanceToNow, parse } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import type { InventoryItem, InventoryItemStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardHeader, CardContent } from '../ui/card';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { Label } from '../ui/label';
