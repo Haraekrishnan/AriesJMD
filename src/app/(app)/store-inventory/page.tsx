@@ -14,7 +14,7 @@ import AddItemDialog from '@/components/inventory/AddItemDialog';
 import ImportItemsDialog from '@/components/inventory/ImportItemsDialog';
 import InventoryFilters, { type InventoryFilterValues } from '@/components/inventory/InventoryFilters';
 import type { InventoryItem, CertificateRequest, Role, InventoryTransferRequest, InventoryItemStatus, UTMachine, DftMachine, DigitalCamera, Anemometer, OtherEquipment, LaptopDesktop, MobileSim, WeldingMachine, WalkieTalkie } from '@/lib/types';
-import { isAfter, isBefore, addDays, parseISO, isWithinInterval, subDays, format, isValid, isPast } from 'date-fns';
+import { isAfter, isBefore, addDays, parseISO, isWithinInterval, subDays, format, isValid, isPast, startOfDay } from 'date-fns';
 import ViewCertificateRequestDialog from '@/components/inventory/ViewCertificateRequestDialog';
 import InventorySummary from '@/components/inventory/InventorySummary';
 import { Badge } from '@/components/ui/badge';
@@ -224,16 +224,11 @@ export default function StoreInventoryPage() {
             </div>
             
             <div className="shrink-0 space-y-4">
-                <InventoryFilters 
-                    initialFilters={filters}
-                    onApplyFilters={setFilters}
-                />
-
                 <Accordion type="multiple" className="w-full space-y-4">
                     <AccordionItem value="inventory-transfers">
                         <AccordionTrigger className={cn("text-lg font-semibold border rounded-lg p-4", pendingInventoryTransferRequestCount > 0 && "text-destructive border-destructive")}>
                             <div className="flex items-center gap-2">
-                            {pendingInventoryTransferRequestCount > 0 && <AlertTriangle />}
+                            {pendingInventoryTransferRequestCount > 0 && <AlertTriangle className="text-destructive h-5 w-5" />}
                                 Inventory Transfers
                                 {pendingInventoryTransferRequestCount > 0 && <Badge variant="destructive">{pendingInventoryTransferRequestCount}</Badge>}
                             </div>
@@ -257,7 +252,25 @@ export default function StoreInventoryPage() {
                             </AccordionContent>
                         </AccordionItem>
                     )}
+
+                    <AccordionItem value="action-required">
+                        <AccordionTrigger className={cn("text-lg font-semibold border rounded-lg p-4", actionRequiredNotifications.length > 0 && "text-destructive border-destructive")}>
+                            <div className="flex items-center gap-2">
+                                <AlertTriangle className={actionRequiredNotifications.length > 0 ? "text-destructive h-5 w-5" : "text-muted-foreground h-5 w-5"} />
+                                Action Required (Expiring Items)
+                                {actionRequiredNotifications.length > 0 && <Badge variant="destructive">{actionRequiredNotifications.length}</Badge>}
+                            </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="p-4 border border-t-0 rounded-b-lg">
+                            <ActionRequiredReport notifications={actionRequiredNotifications} />
+                        </AccordionContent>
+                    </AccordionItem>
                 </Accordion>
+                
+                <InventoryFilters 
+                    initialFilters={filters}
+                    onApplyFilters={setFilters}
+                />
             </div>
 
             <div className="flex-1 min-h-0">
