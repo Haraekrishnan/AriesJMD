@@ -24,7 +24,7 @@ import { PlusCircle, Trash2, CheckCircle, Save, ArrowUp, ArrowDown, Download, Ar
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { format, parseISO, isValid, formatDistanceToNow, parse } from 'date-fns';
+import { format, parseISO, isValid, formatDistanceToNow, parse, isPast } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import type { InventoryItem, InventoryItemStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
