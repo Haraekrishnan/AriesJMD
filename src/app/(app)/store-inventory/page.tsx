@@ -248,7 +248,7 @@ export default function StoreInventoryPage() {
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent className="p-4 border border-t-0 rounded-b-lg">
-                                InwardOutwardHistory records={inwardOutwardRecords} />
+                                <InwardOutwardHistory records={inwardOutwardRecords} />
                             </AccordionContent>
                         </AccordionItem>
                     )}
