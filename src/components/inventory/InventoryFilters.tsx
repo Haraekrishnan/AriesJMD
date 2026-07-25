@@ -4,15 +4,14 @@ import { useState, useEffect } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel, SelectSeparator } from '@/components/ui/select';
-import { X, FileDown, Search as SearchIcon } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { useInventory } from '@/contexts/inventory-provider';
 import type { InventoryItemStatus } from '@/lib/types';
 import { DateRangePicker } from '../ui/date-range-picker';
 import { Input } from '../ui/input';
-import { Card, CardContent } from '@/components/ui/card';
-import InventoryReportDownloads from './InventoryReportDownloads';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export interface InventoryFilterValues {
   name: string;
@@ -35,7 +34,7 @@ export default function InventoryFilters({ onApplyFilters, initialFilters }: Inv
     const { user, can } = useAuth();
     const [filters, setFilters] = useState<InventoryFilterValues>(initialFilters);
 
-    const itemNames = Array.from(new Set(inventoryItems.filter(item => item.category === 'General').map(item => item.name))).sort();
+    const itemNames = Array.from(new Set(inventoryItems.filter(item => item.category === 'General').map(item => item.name)));
 
     useEffect(() => {
         onApplyFilters(filters);
@@ -58,71 +57,56 @@ export default function InventoryFilters({ onApplyFilters, initialFilters }: Inv
     const canViewAllProjects = can.manage_equipment_status || user?.role === 'Admin' || user?.role === 'NDT Supervisor';
 
     return (
-        <Card className="border shadow-sm bg-card p-2">
-            <CardContent className="p-0 flex flex-col md:flex-row items-center justify-between gap-4">
-                <div className="flex flex-wrap items-center gap-3 flex-1">
-                    <div className="relative">
-                        <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                        <Input 
-                            placeholder="Search by serial, aries id..." 
-                            value={filters.search} 
-                            onChange={(e) => handleFilterChange('search', e.target.value)} 
-                            className="h-9 w-full sm:w-[200px] pl-8 text-[11px] font-black uppercase"
-                        />
-                    </div>
-
-                    <Select value={filters.name} onValueChange={(v) => handleFilterChange('name', v)}>
-                        <SelectTrigger className="h-9 w-full sm:w-[150px] text-[11px] font-black uppercase">
-                            <SelectValue placeholder="All Items" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Items</SelectItem>
-                            {itemNames.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    
-                    <Select value={filters.status} onValueChange={(v) => handleFilterChange('status', v)}>
-                        <SelectTrigger className="h-9 w-full sm:w-[150px] text-[11px] font-black uppercase">
-                            <SelectValue placeholder="All Statuses" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Statuses</SelectItem>
-                            <SelectSeparator />
+        <Card>
+            <CardHeader>
+                <CardTitle>Filters</CardTitle>
+                <CardDescription>Filter equipment across all categories by location and status.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-4 items-center">
+                <Input 
+                    placeholder="Search by serial, aries id, or croll no..." 
+                    value={filters.search} 
+                    onChange={(e) => handleFilterChange('search', e.target.value)} 
+                    className="w-full sm:w-auto"
+                />
+                <Select value={filters.name} onValueChange={(v) => handleFilterChange('name', v)}><SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filter by item..." /></SelectTrigger><SelectContent><SelectItem value="all">All Items</SelectItem>{itemNames.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent></Select>
+                
+                <Select value={filters.status} onValueChange={(v) => handleFilterChange('status', v)}>
+                    <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filter by status..." /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectSeparator />
+                        <SelectGroup>
+                            <SelectLabel>Overall</SelectLabel>
+                            <SelectItem value="Active">Active Items</SelectItem>
+                            <SelectItem value="Inactive">Inactive Items</SelectItem>
+                        </SelectGroup>
+                        <SelectSeparator />
+                        <SelectGroup>
+                            <SelectLabel>Detailed Status</SelectLabel>
                             {detailedStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
+                        </SelectGroup>
+                    </SelectContent>
+                </Select>
 
-                    <Select value={filters.projectId} onValueChange={(v) => handleFilterChange('projectId', v)}>
-                        <SelectTrigger className="h-9 w-full sm:w-[150px] text-[11px] font-black uppercase">
-                            <SelectValue placeholder="All Projects" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Projects</SelectItem>
-                            {projects.map(p => {
-                                const isAllowed = canViewAllProjects || user?.projectIds?.includes(p.id);
-                                return (
-                                    <SelectItem key={p.id} value={p.id} disabled={!isAllowed}>
-                                        {p.name}
-                                    </SelectItem>
-                                );
-                            })}
-                        </SelectContent>
-                    </Select>
+                <Select value={filters.projectId} onValueChange={(v) => handleFilterChange('projectId', v)}>
+                    <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filter by project..." /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Projects</SelectItem>
+                        {projects.map(p => {
+                            const isAllowed = canViewAllProjects || user?.projectIds?.includes(p.id);
+                            return (
+                                <SelectItem key={p.id} value={p.id} disabled={!isAllowed} className={!isAllowed ? 'text-muted-foreground' : ''}>
+                                    {p.name}
+                                </SelectItem>
+                            );
+                        })}
+                    </SelectContent>
+                </Select>
+                <DateRangePicker placeholder="Filter by updated date..." date={filters.updatedDateRange} onDateChange={(d) => handleFilterChange('updatedDateRange', d)} />
 
-                    <DateRangePicker 
-                        placeholder="Filter by updated date..." 
-                        date={filters.updatedDateRange} 
-                        onDateChange={(d) => handleFilterChange('updatedDateRange', d)}
-                        className="h-9 text-[11px] font-black uppercase"
-                    />
-
-                    <Button variant="ghost" size="sm" onClick={handleClear} className="h-9 text-[11px] font-black uppercase text-muted-foreground hover:text-foreground">
-                        <X className="mr-1.5 h-3.5 w-3.5" /> Clear
-                    </Button>
-                </div>
-
-                <div className="shrink-0 flex items-center gap-2">
-                    <InventoryReportDownloads items={inventoryItems} />
+                <div className="flex gap-2 ml-auto">
+                    <Button variant="ghost" onClick={handleClear}><X className="mr-2 h-4 w-4" /> Clear</Button>
                 </div>
             </CardContent>
         </Card>

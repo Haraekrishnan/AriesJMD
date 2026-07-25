@@ -15,10 +15,9 @@ interface DatePickerInputProps {
   onChange: (date: Date | undefined) => void;
   disabled?: boolean;
   onFocus?: () => void;
-  className?: string;
 }
 
-export function DatePickerInput({ value, onChange, disabled, onFocus, className }: DatePickerInputProps) {
+export function DatePickerInput({ value, onChange, disabled, onFocus }: DatePickerInputProps) {
   const [textValue, setTextValue] = React.useState('');
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
 
@@ -76,7 +75,7 @@ export function DatePickerInput({ value, onChange, disabled, onFocus, className 
   };
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative">
       <Input
         type="text"
         placeholder="DD-MM-YYYY"
@@ -85,12 +84,12 @@ export function DatePickerInput({ value, onChange, disabled, onFocus, className 
         onBlur={handleBlur}
         onFocus={onFocus}
         disabled={disabled}
-        className={cn("pr-10 h-full w-full", className)}
+        className="pr-16"
       />
       <div className="absolute right-1 top-1/2 -translate-y-1/2 h-8 flex items-center">
         {value && !disabled && (
-            <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={handleClear}>
-              <X className="h-3 w-3 text-muted-foreground" />
+            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={handleClear}>
+              <X className="h-4 w-4 text-muted-foreground" />
             </Button>
         )}
         <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
@@ -99,10 +98,10 @@ export function DatePickerInput({ value, onChange, disabled, onFocus, className 
                 type="button"
                 variant={'ghost'}
                 size="icon"
-                className={cn('h-6 w-6', disabled && 'hidden')}
+                className={cn('h-8 w-8', disabled && 'hidden')}
                 disabled={disabled}
             >
-                <CalendarIcon className="h-3 w-3 text-muted-foreground" />
+                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
             </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
