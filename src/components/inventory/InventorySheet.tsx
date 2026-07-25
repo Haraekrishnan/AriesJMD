@@ -51,12 +51,12 @@ function debounce<T extends (...args: any[]) => void>(func: T, delay: number): (
 const statusOptions: InventoryItemStatus[] = ['In Use', 'In Store', 'Damaged', 'Expired', 'Moved to another project', 'Quarantine'];
 
 const statusColorMap: Record<string, string> = {
-    'In Use': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200 font-bold',
-    'In Store': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200 font-bold',
-    'Expired': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200 font-bold',
-    'Damaged': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200 font-bold',
-    'Quarantine': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200 font-bold',
-    'Moved to another project': 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 font-bold',
+    'In Use': 'bg-emerald-500 text-white font-black',
+    'In Store': 'bg-blue-600 text-white font-black',
+    'Expired': 'bg-rose-600 text-white font-black',
+    'Damaged': 'bg-orange-600 text-white font-black',
+    'Quarantine': 'bg-purple-600 text-white font-black',
+    'Moved to another project': 'bg-slate-500 text-white font-black',
 };
 
 const EditableCell = React.memo(({ getValue, row, column, table }: any) => {
@@ -108,14 +108,14 @@ const SelectCell = React.memo(({ getValue, row, column, table, options, placehol
     };
   
     return (
-      <div onFocus={onFocus} className={cn("w-full h-full", status && statusColorMap[status])}>
+      <div onFocus={onFocus} className={cn("w-full h-full flex items-center", status && statusColorMap[status])}>
           <Select
               value={initialValue || ''}
               onValueChange={value => updateData(row.index, column.id, value)}
               disabled={!isEditable}
           >
               <SelectTrigger className={cn(
-                "border-transparent bg-transparent focus:ring-0 w-full h-full p-1 text-xs font-bold",
+                "border-transparent bg-transparent focus:ring-0 w-full h-full p-1 text-[11px] font-black uppercase text-inherit shadow-none",
                 !isEditable && "opacity-60 cursor-not-allowed"
               )}>
                   <SelectValue placeholder={placeholder} />
@@ -138,19 +138,23 @@ const DateCell = React.memo(({ getValue, row, column, table }: any) => {
     const dateValue = initialValue ? parseISO(initialValue) : undefined;
     const { setActiveCell, updateData } = table.options.meta;
   
-    const isExpired = dateValue && isPast(dateValue);
+    const isExpired = dateValue && isValid(dateValue) && isPast(dateValue);
     
     const onFocus = () => {
       setActiveCell({ row: row.index, columnId: column.id });
     };
   
     return (
-      <div className={cn("h-full", isExpired && "text-destructive font-bold")} onFocus={onFocus}>
+      <div onFocus={onFocus} className="h-full w-full">
         <DatePickerInput
           value={isValid(dateValue) ? dateValue : undefined}
           onChange={date => updateData(row.index, column.id, date ? date.toISOString() : null)}
           disabled={!isEditable}
-          className={cn("h-full border-none shadow-none focus-visible:ring-0", !isEditable && "opacity-60 cursor-not-allowed")}
+          className={cn(
+            "h-full border-none shadow-none focus-visible:ring-0 font-black text-[11px]",
+            isExpired ? "text-rose-600" : "text-foreground",
+            !isEditable && "opacity-60 cursor-not-allowed"
+          )}
         />
       </div>
     );
@@ -264,7 +268,7 @@ const InventorySheet = ({ category }: { category: string }) => {
             }[column.getIsSorted() as string] ?? <ArrowUpDown className="ml-1 h-3 w-3 opacity-30" />}
           </span>
           <Select value={(column.getFilterValue() as string) ?? 'all'} onValueChange={value => column.setFilterValue(value === 'all' ? undefined : value)}>
-            <SelectTrigger className="h-7 w-full text-[10px] px-2"><SelectValue placeholder="All" /></SelectTrigger>
+            <SelectTrigger className="h-7 w-full text-[10px] px-2 shadow-none"><SelectValue placeholder="All" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
               {options.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
@@ -590,7 +594,7 @@ const InventorySheet = ({ category }: { category: string }) => {
     setIsSelecting(false);
   };
 
-  const isCellSelected = (rowIndex: number, colIndex: number) => {
+  const isCellInSelection = (rowIndex: number, colIndex: number) => {
     if (!selection.start || !selection.end) return false;
     const minRow = Math.min(selection.start.row, selection.end.row);
     const maxRow = Math.max(selection.start.row, selection.end.row);
@@ -656,30 +660,43 @@ const InventorySheet = ({ category }: { category: string }) => {
                         ))}
                     </TableHeader>
                     <TableBody>
-                        {table.getRowModel().rows.map((row, rowIndex) => (
-                        <TableRow key={row.id} className={cn(rowIndex % 2 === 0 ? "bg-card" : "bg-muted/5", row.getIsSelected() && "bg-blue-100 dark:bg-blue-900/40")}>
-                            {row.getVisibleCells().map((cell, colIndex) => (
-                            <TableCell 
-                                key={cell.id}
-                                onMouseDown={() => handleMouseDown(row.index, colIndex)}
-                                onMouseEnter={() => handleMouseEnter(row.index, colIndex)}
-                                className={cn(
-                                    "p-0 h-10 border-r text-center transition-colors relative",
-                                    { 'sticky left-0 z-10': cell.column.id === 'select' },
-                                    { 'sticky left-[40px] z-10': cell.column.id === 'slNo' },
-                                    { 'sticky left-[90px] z-10': cell.column.id === 'serialNumber' },
-                                    ['select', 'slNo', 'serialNumber'].includes(cell.column.id) && (rowIndex % 2 === 0 ? 'bg-card' : 'bg-muted/5'),
-                                    row.getIsSelected() && (['select', 'slNo', 'serialNumber'].includes(cell.column.id) ? 'bg-blue-100 dark:bg-blue-900/40' : ''),
-                                    activeCell?.row === row.index && activeCell?.columnId === cell.column.id && "ring-2 ring-inset ring-primary/50 z-30",
-                                    isCellSelected(rowIndex, colIndex) && "bg-primary/5"
-                                )}
-                                style={{width: cell.column.getSize()}}
+                        {table.getRowModel().rows.map((row, rowIndex) => {
+                          const item = row.original;
+                          const isExpired = (item.inspectionDueDate && isPast(parseISO(item.inspectionDueDate))) || 
+                                          (item.tpInspectionDueDate && isPast(parseISO(item.tpInspectionDueDate)));
+
+                          return (
+                            <TableRow 
+                              key={row.id} 
+                              className={cn(
+                                rowIndex % 2 === 0 ? "bg-card" : "bg-muted/5", 
+                                row.getIsSelected() && "bg-blue-100 dark:bg-blue-900/40",
+                                isExpired && "bg-rose-50/50 dark:bg-rose-900/5"
+                              )}
                             >
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </TableCell>
-                            ))}
-                        </TableRow>
-                        ))}
+                                {row.getVisibleCells().map((cell, colIndex) => (
+                                <TableCell 
+                                    key={cell.id}
+                                    onMouseDown={() => handleMouseDown(row.index, colIndex)}
+                                    onMouseEnter={() => handleMouseEnter(row.index, colIndex)}
+                                    className={cn(
+                                        "p-0 h-10 border-r text-center transition-colors relative",
+                                        { 'sticky left-0 z-10': cell.column.id === 'select' },
+                                        { 'sticky left-[40px] z-10': cell.column.id === 'slNo' },
+                                        { 'sticky left-[90px] z-10': cell.column.id === 'serialNumber' },
+                                        ['select', 'slNo', 'serialNumber'].includes(cell.column.id) && (rowIndex % 2 === 0 ? 'bg-card' : 'bg-muted/5'),
+                                        row.getIsSelected() && (['select', 'slNo', 'serialNumber'].includes(cell.column.id) ? 'bg-blue-100 dark:bg-blue-900/40' : ''),
+                                        activeCell?.row === row.index && activeCell?.columnId === cell.column.id && "ring-2 ring-inset ring-primary/50 z-30",
+                                        isCellInSelection(rowIndex, colIndex) && "bg-primary/5"
+                                    )}
+                                    style={{width: cell.column.getSize()}}
+                                >
+                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                </TableCell>
+                                ))}
+                            </TableRow>
+                          );
+                        })}
                     </TableBody>
                     </Table>
                 </div>
