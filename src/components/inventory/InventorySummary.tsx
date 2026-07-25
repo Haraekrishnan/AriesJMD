@@ -6,6 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { useGeneral } from '@/contexts/general-provider';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Package, MapPin, Activity } from 'lucide-react';
+import { Badge } from '../ui/badge';
+import { cn } from '@/lib/utils';
+import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 
 interface InventorySummaryProps {
     items: InventoryItem[];

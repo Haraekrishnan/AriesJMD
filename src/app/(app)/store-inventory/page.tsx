@@ -248,7 +248,7 @@ export default function StoreInventoryPage() {
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent className="p-4 border border-t-0 rounded-b-lg">
-                                <InwardOutwardHistory records={inwardOutwardRecords} />
+                                InwardOutwardHistory records={inwardOutwardRecords} />
                             </AccordionContent>
                         </AccordionItem>
                     )}
@@ -279,11 +279,15 @@ export default function StoreInventoryPage() {
                         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
                             <ScrollArea className="w-full whitespace-nowrap rounded-md border bg-muted/30 p-1">
                                 <TabsList className="inline-flex h-10 bg-transparent gap-1">
-                                    {inventoryCategories.map(cat => (
-                                        <TabsTrigger key={cat} value={cat} className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider data-[state=active]:bg-background">
-                                            {cat}
-                                        </TabsTrigger>
-                                    ))}
+                                    {inventoryCategories.map(cat => {
+                                        const count = globalFilteredItems.filter(i => i.name === cat).length;
+                                        return (
+                                            <TabsTrigger key={cat} value={cat} className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider data-[state=active]:bg-background">
+                                                {cat}
+                                                <Badge variant="secondary" className="ml-2 h-5 px-1.5 min-w-[1.25rem] font-bold">{count}</Badge>
+                                            </TabsTrigger>
+                                        )
+                                    })}
                                 </TabsList>
                                 <ScrollBar orientation="horizontal" />
                             </ScrollArea>
