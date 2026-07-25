@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -191,11 +192,10 @@ const DebouncedInput = ({
   )
 }
 
-const InventorySheet = ({ category }: { category: string }) => {
+const InventorySheet = ({ category, items: itemsProp }: { category: string, items: InventoryItem[] }) => {
   const { can, user } = useAuth();
   const { projects } = useGeneral();
   const { 
-    inventoryItems: dataFromContext, 
     batchAddInventoryItems,
     batchUpdateInventoryItems,
     batchDeleteInventoryItems,
@@ -208,8 +208,8 @@ const InventorySheet = ({ category }: { category: string }) => {
   const [certRequestItem, setCertRequestItem] = useState<InventoryItem | null>(null);
 
   useEffect(() => {
-    setLocalData(dataFromContext.filter(i => i.name === category && !i.isArchived));
-  }, [dataFromContext, category]);
+    setLocalData(itemsProp);
+  }, [itemsProp]);
   
   const { toast } = useToast();
   const [rowSelection, setRowSelection] = useState({});
@@ -635,7 +635,10 @@ const InventorySheet = ({ category }: { category: string }) => {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                         <AlertDialogHeader><AlertDialogTitle>Delete Selected Items?</AlertDialogTitle><AlertDialogDescription>Permanently remove {table.getSelectedRowModel().rows.length} items from the database?</AlertDialogDescription></AlertDialogHeader>
-                        <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive">Confirm Delete</AlertDialogAction></AlertDialogFooter>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive">Confirm Delete</AlertDialogAction>
+                        </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
                 </>

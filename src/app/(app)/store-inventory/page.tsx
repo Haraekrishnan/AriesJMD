@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, Upload, ChevronsUpDown, FilePen, FilePlus, FileText, ArrowRightLeft, Package, Hammer, CheckCircle, Database, AlertTriangle, Truck, Inbox, Table as TableIcon } from 'lucide-react';
 import AddItemDialog from '@/components/inventory/AddItemDialog';
 import ImportItemsDialog from '@/components/inventory/ImportItemsDialog';
-import InventoryFilters from '@/components/inventory/InventoryFilters';
+import InventoryFilters, { type InventoryFilterValues } from '@/components/inventory/InventoryFilters';
 import type { InventoryItem, CertificateRequest, Role, InventoryTransferRequest, InventoryItemStatus, UTMachine, DftMachine, DigitalCamera, Anemometer, OtherEquipment, LaptopDesktop, MobileSim, WeldingMachine, WalkieTalkie } from '@/lib/types';
 import { isAfter, isBefore, addDays, parseISO, isWithinInterval, subDays, format, isValid, isPast } from 'date-fns';
 import ViewCertificateRequestDialog from '@/components/inventory/ViewCertificateRequestDialog';
@@ -49,6 +49,8 @@ export default function StoreInventoryPage() {
     const { inwardOutwardRecords, pendingFinalizationCount } = useInwardOutward();
     
     const [isAddItemOpen, setIsAddItemOpen] = useState(false);
+    const [isInwardOpen, setIsInwardOpen] = useState(false);
+    const [isOutwardOpen, setIsOutwardOpen] = useState(false);
     const [isImportOpen, setIsImportOpen] = useState(false);
     const [isUpdateItemsOpen, setIsUpdateItemsOpen] = useState(false);
     const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
@@ -59,25 +61,53 @@ export default function StoreInventoryPage() {
     const [isNewDamageReportOpen, setIsNewDamageReportOpen] = useState(false);
     const [viewingCertRequest, setViewingCertRequest] = useState<CertificateRequest | null>(null);
     const [view, setView] = useState<'list' | 'summary'>('list');
-    const [isInwardOpen, setIsInwardOpen] = useState(false);
-    const [isOutwardOpen, setIsOutwardOpen] = useState(false);
 
-    // Tab categories
+    const [filters, setFilters] = useState<InventoryFilterValues>({
+        name: 'all',
+        status: 'all',
+        projectId: 'all',
+        search: '',
+        updatedDateRange: undefined,
+    });
+
+    const globalFilteredItems = useMemo(() => {
+        return inventoryItems.filter(item => {
+            if (item.category !== 'General' || item.isArchived) return false;
+
+            const nameMatch = filters.name === 'all' || item.name === filters.name;
+            const statusMatch = filters.status === 'all' || item.status === filters.status;
+            const projectMatch = filters.projectId === 'all' || item.projectId === filters.projectId;
+            
+            const term = filters.search.toLowerCase();
+            const searchMatch = !filters.search || 
+                               item.serialNumber.toLowerCase().includes(term) || 
+                               (item.ariesId && item.ariesId.toLowerCase().includes(term)) ||
+                               (item.chestCrollNo && item.chestCrollNo.toLowerCase().includes(term));
+
+            let dateMatch = true;
+            if (filters.updatedDateRange?.from) {
+                const updated = parseISO(item.lastUpdated);
+                const start = startOfDay(filters.updatedDateRange.from);
+                const end = filters.updatedDateRange.to ? addDays(startOfDay(filters.updatedDateRange.to), 1) : addDays(start, 1);
+                dateMatch = isWithinInterval(updated, { start, end });
+            }
+
+            return nameMatch && statusMatch && projectMatch && searchMatch && dateMatch;
+        });
+    }, [inventoryItems, filters]);
+
     const inventoryCategories = useMemo(() => {
-        if (!inventoryItems) return [];
-        const categories = new Set(
-            inventoryItems
-                .filter(item => item.category === 'General' && !item.isArchived)
-                .map(item => item.name)
-        );
+        const categories = new Set(globalFilteredItems.map(item => item.name));
         return Array.from(categories).sort();
-    }, [inventoryItems]);
+    }, [globalFilteredItems]);
 
     const [activeTab, setActiveTab] = useState<string | undefined>();
 
     useEffect(() => {
         if (inventoryCategories.length > 0 && !activeTab) {
             setActiveTab(inventoryCategories[0]);
+        } else if (activeTab && !inventoryCategories.includes(activeTab)) {
+            setActiveTab(inventoryCategories[0] || undefined);
         }
     }, [inventoryCategories, activeTab]);
 
@@ -155,7 +185,7 @@ export default function StoreInventoryPage() {
     }
 
     return (
-        <div className="space-y-8 flex flex-col h-full">
+        <div className="space-y-6 flex flex-col h-full">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Store Inventory</h1>
@@ -164,8 +194,6 @@ export default function StoreInventoryPage() {
                 <div className="flex items-center flex-wrap gap-2">
                     <Button asChild variant="outline"><Link href="/consumables"><Package className="mr-2 h-4 w-4"/> Consumables</Link></Button>
                     <Button asChild variant="outline"><Link href="/ppe-stock"><Package className="mr-2 h-4 w-4"/> PPE Stock</Link></Button>
-                    <Button asChild variant="outline"><Link href="/igp-ogp"><ArrowRightLeft className="mr-2 h-4 w-4"/> IGP/OGP Register</Link></Button>
-                    <Button asChild variant="outline"><Link href="/delivery-notes"><Truck className="mr-2 h-4 w-4"/> Delivery Notes</Link></Button>
                     <Button asChild variant="outline"><Link href="/tp-certification"><FileText className="mr-2 h-4 w-4"/> TP Cert Lists</Link></Button>
                     
                     <Button onClick={() => setIsNewDamageReportOpen(true)} variant="destructive">
@@ -182,12 +210,8 @@ export default function StoreInventoryPage() {
 
                     {can.manage_inventory && (
                         <>
-                            {can.manage_inward_outward && (
-                                <>
-                                <Button onClick={() => setIsInwardOpen(true)} variant="outline"><Inbox className="mr-2 h-4 w-4"/>New Inward</Button>
-                                <Button onClick={() => setIsOutwardOpen(true)} variant="outline"><ArrowRightLeft className="mr-2 h-4 w-4"/>New Outward</Button>
-                                </>
-                            )}
+                            <Button onClick={() => setIsInwardOpen(true)} variant="outline"><Inbox className="mr-2 h-4 w-4"/>New Inward</Button>
+                            <Button onClick={() => setIsOutwardOpen(true)} variant="outline"><ArrowRightLeft className="mr-2 h-4 w-4"/>New Outward</Button>
                             <Button onClick={revalidateExpiredItems} variant="outline"><CheckCircle className="mr-2 h-4 w-4" />Check Validity</Button>
                             <Button onClick={() => setIsBulkInspectionUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4"/>Bulk Update Insp. Cert</Button>
                             <Button onClick={() => setIsBulkUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4" /> Bulk Update TP Cert</Button>
@@ -200,6 +224,11 @@ export default function StoreInventoryPage() {
             </div>
             
             <div className="shrink-0 space-y-4">
+                <InventoryFilters 
+                    initialFilters={filters}
+                    onApplyFilters={setFilters}
+                />
+
                 <Accordion type="multiple" className="w-full space-y-4">
                     <AccordionItem value="inventory-transfers">
                         <AccordionTrigger className={cn("text-lg font-semibold border rounded-lg p-4", pendingInventoryTransferRequestCount > 0 && "text-destructive border-destructive")}>
@@ -228,50 +257,6 @@ export default function StoreInventoryPage() {
                             </AccordionContent>
                         </AccordionItem>
                     )}
-                    
-                    {actionRequiredNotifications.length > 0 && (
-                        <AccordionItem value="action-required">
-                            <AccordionTrigger className="text-lg font-semibold text-destructive border rounded-lg p-4 border-destructive">
-                                <div className="flex items-center gap-2">
-                                    <AlertTriangle />
-                                    Action Required
-                                    <Badge variant="destructive">{actionRequiredNotifications.length}</Badge>
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="p-4 border border-t-0 rounded-b-lg border-destructive">
-                                <Card className="border-none shadow-none">
-                                    <CardHeader className="p-0 pb-4">
-                                        <div className="flex justify-between items-center">
-                                            <div>
-                                                <CardTitle>Items Requiring Attention</CardTitle>
-                                                <CardDescription>These items have certifications expiring soon or are already expired.</CardDescription>
-                                            </div>
-                                            <ActionRequiredReport notifications={actionRequiredNotifications} />
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="p-0">
-                                        <ScrollArea className="h-64">
-                                            <div className="space-y-2">
-                                                {actionRequiredNotifications.map(({item, message}, index) => {
-                                                    const projectName = projects.find(p => p.id === item.projectId)?.name;
-                                                    return (
-                                                    <div key={`${item.id}-${index}`} className="flex items-center justify-between p-2 rounded-md bg-muted">
-                                                        <div className="text-sm">
-                                                            <p className="font-semibold">
-                                                                {item.name} <span className="text-muted-foreground">(SN: {item.serialNumber})</span>
-                                                                {projectName && <span className="ml-2 font-normal text-muted-foreground">[{projectName}]</span>}
-                                                            </p>
-                                                            <p className="text-destructive">{message}</p>
-                                                        </div>
-                                                    </div>
-                                                )})}
-                                            </div>
-                                        </ScrollArea>
-                                    </CardContent>
-                                </Card>
-                            </AccordionContent>
-                        </AccordionItem>
-                    )}
                 </Accordion>
             </div>
 
@@ -291,19 +276,19 @@ export default function StoreInventoryPage() {
                             </ScrollArea>
                             {inventoryCategories.map(cat => (
                                 <TabsContent key={cat} value={cat} className="flex-1 mt-4">
-                                    <InventorySheet category={cat} />
+                                    <InventorySheet category={cat} items={globalFilteredItems.filter(i => i.name === cat)} />
                                 </TabsContent>
                             ))}
                             {inventoryCategories.length === 0 && (
                                 <div className="flex-1 flex items-center justify-center text-muted-foreground border-2 border-dashed rounded-lg p-20 bg-muted/10">
                                     <Database className="mr-2 h-10 w-10 opacity-20" />
-                                    <p className="text-lg font-semibold">No general inventory categories found.</p>
+                                    <p className="text-lg font-semibold">No items match the current filters.</p>
                                 </div>
                             )}
                         </Tabs>
                     </div>
                 ) : (
-                    <InventorySummary items={inventoryItems} />
+                    <InventorySummary items={globalFilteredItems} />
                 )}
             </div>
 
