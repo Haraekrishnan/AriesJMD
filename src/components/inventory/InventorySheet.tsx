@@ -86,10 +86,10 @@ const EditableCell = React.memo(({ getValue, row, column, table }: any) => {
         onChange={e => setValue(e.target.value)}
         onBlur={onBlur}
         onFocus={onFocus}
-        disabled={!isEditable}
+        readOnly={!isEditable}
         className={cn(
-            "w-full h-full border-transparent bg-transparent focus:bg-white dark:focus:bg-slate-800 focus:border focus:ring-1 focus:ring-ring p-1 text-sm font-medium",
-            !isEditable && "opacity-60 cursor-not-allowed"
+            "w-full h-full border-transparent bg-transparent focus:bg-white dark:focus:bg-slate-800 focus:border focus:ring-1 focus:ring-ring p-1 text-sm font-bold text-foreground",
+            !isEditable && "cursor-default"
         )}
       />
     );
@@ -115,8 +115,9 @@ const SelectCell = React.memo(({ getValue, row, column, table, options, placehol
               disabled={!isEditable}
           >
               <SelectTrigger className={cn(
-                "border-transparent bg-transparent focus:ring-0 w-full h-full p-1 text-[11px] font-black uppercase text-inherit shadow-none",
-                !isEditable && "opacity-60 cursor-not-allowed"
+                "border-transparent bg-transparent focus:ring-0 w-full h-full p-1 text-[11px] font-black uppercase shadow-none disabled:opacity-100",
+                status ? "text-inherit" : "text-foreground",
+                !isEditable && "cursor-default"
               )}>
                   <SelectValue placeholder={placeholder} />
               </SelectTrigger>
@@ -151,9 +152,8 @@ const DateCell = React.memo(({ getValue, row, column, table }: any) => {
           onChange={date => updateData(row.index, column.id, date ? date.toISOString() : null)}
           disabled={!isEditable}
           className={cn(
-            "h-full border-none shadow-none focus-visible:ring-0 font-black text-[11px]",
-            isExpired ? "text-rose-600" : "text-foreground",
-            !isEditable && "opacity-60 cursor-not-allowed"
+            "h-full border-none shadow-none focus-visible:ring-0 font-bold text-[11px] disabled:opacity-100",
+            isExpired ? "text-rose-600 font-black" : "text-foreground"
           )}
         />
       </div>
@@ -237,7 +237,7 @@ const InventorySheet = ({ category }: { category: string }) => {
     const FilterableHeader = ({ title, column }: { title: string, column: any }) => (
       <div className="flex flex-col gap-1 py-1">
         <span
-          className="cursor-pointer flex items-center text-[10px] uppercase font-black tracking-widest text-slate-500"
+          className="cursor-pointer flex items-center text-[10px] uppercase font-black tracking-widest text-slate-800"
           onClick={column.getToggleSortingHandler()}
         >
           {title}
@@ -250,7 +250,7 @@ const InventorySheet = ({ category }: { category: string }) => {
           value={(column.getFilterValue() as string) ?? ''}
           onChange={value => column.setFilterValue(String(value))}
           placeholder={`Filter...`}
-          className="h-7 text-[10px] px-2"
+          className="h-7 text-[10px] px-2 font-bold"
         />
       </div>
     );
@@ -258,7 +258,7 @@ const InventorySheet = ({ category }: { category: string }) => {
     const SelectFilterHeader = ({ title, column, options }: { title: string, column: any, options: {value: string, label: string}[]}) => (
        <div className="flex flex-col gap-1 py-1">
           <span
-            className="cursor-pointer flex items-center text-[10px] uppercase font-black tracking-widest text-slate-500"
+            className="cursor-pointer flex items-center text-[10px] uppercase font-black tracking-widest text-slate-800"
             onClick={column.getToggleSortingHandler()}
           >
             {title}
@@ -268,7 +268,7 @@ const InventorySheet = ({ category }: { category: string }) => {
             }[column.getIsSorted() as string] ?? <ArrowUpDown className="ml-1 h-3 w-3 opacity-30" />}
           </span>
           <Select value={(column.getFilterValue() as string) ?? 'all'} onValueChange={value => column.setFilterValue(value === 'all' ? undefined : value)}>
-            <SelectTrigger className="h-7 w-full text-[10px] px-2 shadow-none"><SelectValue placeholder="All" /></SelectTrigger>
+            <SelectTrigger className="h-7 w-full text-[10px] px-2 shadow-none font-bold"><SelectValue placeholder="All" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
               {options.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
@@ -304,8 +304,8 @@ const InventorySheet = ({ category }: { category: string }) => {
       },
       {
         id: 'slNo',
-        header: () => <div className="text-[10px] uppercase font-black tracking-widest text-slate-500 text-center">SL</div>,
-        cell: ({ row }) => <div className="text-center font-bold text-slate-400">{row.index + 1}</div>,
+        header: () => <div className="text-[10px] uppercase font-black tracking-widest text-slate-800 text-center">SL</div>,
+        cell: ({ row }) => <div className="text-center font-bold text-slate-600">{row.index + 1}</div>,
         size: 50,
       },
       { accessorKey: 'serialNumber', header: ({column}) => <FilterableHeader title="SERIAL NO." column={column} />, cell: EditableCell, size: 180 },
@@ -329,14 +329,14 @@ const InventorySheet = ({ category }: { category: string }) => {
           const value = getValue() as string;
           if (!value) return <span className="text-[10px] text-slate-400 italic">N/A</span>;
           try {
-              return <span className="text-[10px] font-medium text-slate-500">{format(parseISO(value), 'dd-MM-yy HH:mm')}</span>;
+              return <span className="text-[10px] font-bold text-slate-900">{format(parseISO(value), 'dd-MM-yy HH:mm')}</span>;
           } catch {
-              return <span className="text-[10px] text-rose-500">Error</span>;
+              return <span className="text-[10px] text-rose-500 font-bold">Error</span>;
           }
       }, size: 130 },
       { 
         id: 'tpCert',
-        header: () => <div className="text-[10px] uppercase font-black tracking-widest text-slate-500 text-center">TP CERT.</div>,
+        header: () => <div className="text-[10px] uppercase font-black tracking-widest text-slate-800 text-center">TP CERT.</div>,
         cell: ({ row }) => (
             <div className="flex justify-center">
                 {row.original.certificateUrl ? (
@@ -357,7 +357,7 @@ const InventorySheet = ({ category }: { category: string }) => {
       },
       { 
         id: 'inspCert',
-        header: () => <div className="text-[10px] uppercase font-black tracking-widest text-slate-500 text-center">INSP. CERT.</div>,
+        header: () => <div className="text-[10px] uppercase font-black tracking-widest text-slate-800 text-center">INSP. CERT.</div>,
         cell: ({ row }) => (
             <div className="flex justify-center">
                 {row.original.inspectionCertificateUrl ? (
@@ -378,7 +378,7 @@ const InventorySheet = ({ category }: { category: string }) => {
       },
       { 
         id: 'damageReport',
-        header: () => <div className="text-[10px] uppercase font-black tracking-widest text-slate-500 text-center">DAMAGE REPORT</div>,
+        header: () => <div className="text-[10px] uppercase font-black tracking-widest text-slate-800 text-center">DAMAGE REPORT</div>,
         cell: ({ row }) => {
             const report = damageReports.find(dr => dr.itemId === row.original.id);
             const link = report?.attachmentDownloadUrl || report?.attachmentOriginalUrl;
@@ -403,7 +403,7 @@ const InventorySheet = ({ category }: { category: string }) => {
       },
       {
         id: 'actions',
-        header: () => <div className="text-[10px] uppercase font-black tracking-widest text-slate-500 text-center">ACTIONS</div>,
+        header: () => <div className="text-[10px] uppercase font-black tracking-widest text-slate-800 text-center">ACTIONS</div>,
         cell: ({ row }) => (
             <div className="flex justify-center">
                 <DropdownMenu>
@@ -619,7 +619,7 @@ const InventorySheet = ({ category }: { category: string }) => {
     <div className="flex flex-col h-full overflow-hidden bg-card border rounded-lg">
       <div className="p-3 border-b flex flex-col sm:flex-row justify-between items-center gap-3 bg-muted/20">
         <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-800 flex items-center gap-2">
                 <Database className="h-4 w-4" /> 
                 {category} ({localData.length})
             </span>
@@ -647,11 +647,11 @@ const InventorySheet = ({ category }: { category: string }) => {
             <ScrollArea className="h-full w-full">
                 <div className="relative w-full">
                     <Table className="border-collapse border-spacing-0">
-                    <TableHeader className="sticky top-0 z-30 bg-muted/80 backdrop-blur-sm shadow-sm">
+                    <TableHeader className="sticky top-0 z-30 bg-muted/90 backdrop-blur-sm shadow-sm">
                         {table.getHeaderGroups().map(headerGroup => (
-                        <TableRow key={headerGroup.id} className="hover:bg-transparent">
+                        <TableRow key={headerGroup.id} className="hover:bg-transparent border-b-2 border-slate-300">
                             {headerGroup.headers.map(header => (
-                            <TableHead key={header.id} className={cn("relative p-0 h-auto align-top border-r bg-muted/40", header.column.id === 'select' && 'sticky left-0 z-40', header.column.id === 'slNo' && 'sticky left-[40px] z-40', header.column.id === 'serialNumber' && 'sticky left-[90px] z-40')} style={{width: header.getSize()}}>
+                            <TableHead key={header.id} className={cn("relative p-0 h-auto align-top border-r border-slate-200 bg-slate-100", header.column.id === 'select' && 'sticky left-0 z-40', header.column.id === 'slNo' && 'sticky left-[40px] z-40', header.column.id === 'serialNumber' && 'sticky left-[90px] z-40')} style={{width: header.getSize()}}>
                                 {flexRender(header.column.columnDef.header, header.getContext())}
                                 <div onMouseDown={header.getResizeHandler()} onTouchStart={header.getResizeHandler()} className="absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none hover:bg-primary/50" />
                             </TableHead>
@@ -680,10 +680,10 @@ const InventorySheet = ({ category }: { category: string }) => {
                                     onMouseDown={() => handleMouseDown(row.index, colIndex)}
                                     onMouseEnter={() => handleMouseEnter(row.index, colIndex)}
                                     className={cn(
-                                        "p-0 h-10 border-r text-center transition-colors relative",
-                                        { 'sticky left-0 z-10': cell.column.id === 'select' },
-                                        { 'sticky left-[40px] z-10': cell.column.id === 'slNo' },
-                                        { 'sticky left-[90px] z-10': cell.column.id === 'serialNumber' },
+                                        "p-0 h-10 border-r border-slate-200 text-center transition-colors relative",
+                                        { 'sticky left-0 z-10 shadow-[2px_0_rgba(0,0,0,0.1)]': cell.column.id === 'select' },
+                                        { 'sticky left-[40px] z-10 shadow-[2px_0_rgba(0,0,0,0.1)]': cell.column.id === 'slNo' },
+                                        { 'sticky left-[90px] z-10 shadow-[2px_0_rgba(0,0,0,0.1)]': cell.column.id === 'serialNumber' },
                                         ['select', 'slNo', 'serialNumber'].includes(cell.column.id) && (rowIndex % 2 === 0 ? 'bg-card' : 'bg-muted/5'),
                                         row.getIsSelected() && (['select', 'slNo', 'serialNumber'].includes(cell.column.id) ? 'bg-blue-100 dark:bg-blue-900/40' : ''),
                                         activeCell?.row === row.index && activeCell?.columnId === cell.column.id && "ring-2 ring-inset ring-primary/50 z-30",
