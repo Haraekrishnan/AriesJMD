@@ -13,7 +13,7 @@ import AddItemDialog from '@/components/inventory/AddItemDialog';
 import ImportItemsDialog from '@/components/inventory/ImportItemsDialog';
 import InventoryFilters, { type InventoryFilterValues } from '@/components/inventory/InventoryFilters';
 import type { InventoryItem, CertificateRequest, Role, InventoryTransferRequest, InventoryItemStatus, TpCertList } from '@/lib/types';
-import { isAfter, addDays, parseISO, isWithinInterval, format, isValid, isPast, startOfDay } from 'date-fns';
+import { isAfter, isBefore, addDays, parseISO, isWithinInterval, format, isValid, isPast, startOfDay } from 'date-fns';
 import ViewCertificateRequestDialog from '@/components/inventory/ViewCertificateRequestDialog';
 import InventorySummary from '@/components/inventory/InventorySummary';
 import { Badge } from '@/components/ui/badge';
@@ -121,11 +121,8 @@ export default function StoreInventoryPage() {
         const now = new Date();
         const thirtyDaysFromNow = addDays(now, 30);
         const notifications: { message: string, item: InventoryItem }[] = [];
-        const canViewAllProjects = user?.role === 'Admin' || user?.role === 'Manager';
 
-        const userVisibleItems = globalFilteredItems; // Use filtered items for the notification list to keep consistency
-
-        userVisibleItems.forEach(item => {
+        globalFilteredItems.forEach(item => {
             if (item.isArchived || item.status === 'Damaged' || item.status === 'Quarantine') return;
 
             if (item.inspectionDueDate) {
