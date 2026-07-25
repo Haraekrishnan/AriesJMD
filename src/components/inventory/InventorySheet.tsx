@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useMemo, useState, useCallback, useRef, MouseEvent } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { useInventory } from '@/contexts/inventory-provider';
@@ -20,17 +20,24 @@ import { Input } from '@/components/ui/input';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { PlusCircle, Trash2, CheckCircle, Save, ArrowUp, ArrowDown, Download, ArrowUpDown, Database } from 'lucide-react';
+import { 
+    PlusCircle, Trash2, CheckCircle, Save, ArrowUp, ArrowDown, Download, 
+    ArrowUpDown, Database, Link as LinkIcon, ExternalLink, Hammer, MoreHorizontal, Edit, ShieldQuestion 
+} from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { format, parseISO, isValid, formatDistanceToNow, parse, isPast } from 'date-fns';
+import { format, parseISO, isValid, parse, isPast } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import type { InventoryItem, InventoryItemStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { Label } from '../ui/label';
+import EditItemDialog from './EditItemDialog';
+import NewCertificateRequestDialog from './NewCertificateRequestDialog';
 
 // --- DEBOUNCE UTILITY ---
 function debounce<T extends (...args: any[]) => void>(func: T, delay: number): (...args: Parameters<T>) => void {
@@ -51,7 +58,6 @@ const statusColorMap: Record<string, string> = {
     'Quarantine': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200 font-bold',
     'Moved to another project': 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 font-bold',
 };
-
 
 const EditableCell = React.memo(({ getValue, row, column, table }: any) => {
     const initialValue = getValue() ?? '';
@@ -182,17 +188,20 @@ const DebouncedInput = ({
 }
 
 const InventorySheet = ({ category }: { category: string }) => {
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const { projects } = useGeneral();
   const { 
     inventoryItems: dataFromContext, 
     batchAddInventoryItems,
     batchUpdateInventoryItems,
     batchDeleteInventoryItems,
-    updateInventoryItem
+    updateInventoryItem,
+    damageReports
   } = useInventory();
 
   const [localData, setLocalData] = useState<InventoryItem[]>([]);
+  const [editingItem, setSelectedItemForEdit] = useState<InventoryItem | null>(null);
+  const [certRequestItem, setCertRequestItem] = useState<InventoryItem | null>(null);
 
   useEffect(() => {
     setLocalData(dataFromContext.filter(i => i.name === category && !i.isArchived));
@@ -292,33 +301,27 @@ const InventorySheet = ({ category }: { category: string }) => {
       {
         id: 'slNo',
         header: () => <div className="text-[10px] uppercase font-black tracking-widest text-slate-500 text-center">SL</div>,
-        cell: () => null, // Content rendered in the body mapping
+        cell: ({ row }) => <div className="text-center font-bold text-slate-400">{row.index + 1}</div>,
         size: 50,
       },
       { accessorKey: 'serialNumber', header: ({column}) => <FilterableHeader title="SERIAL NO." column={column} />, cell: EditableCell, size: 180 },
       { accessorKey: 'ariesId', header: ({column}) => <FilterableHeader title="ARIES ID" column={column} />, cell: EditableCell, size: 130 },
-      { accessorKey: 'erpId', header: ({column}) => <FilterableHeader title="ERP ID" column={column} />, cell: EditableCell, size: 130 },
-      { accessorKey: 'certification', header: ({column}) => <FilterableHeader title="CERTIFICATION" column={column} />, cell: EditableCell, size: 130 },
-      { 
-        accessorKey: 'projectId', 
-        header: ({column}) => <SelectFilterHeader title="LOCATION" column={column} options={projectOptions} />, 
-        cell: (props) => <SelectCell {...props} options={projectOptions} placeholder="Select Location" />,
-        size: 180,
-      },
-      { accessorKey: 'plantUnit', header: ({column}) => <FilterableHeader title="UNIT" column={column} />, cell: EditableCell, size: 120 },
       { 
         accessorKey: 'status', 
         header: ({column}) => <SelectFilterHeader title="STATUS" column={column} options={statusOptionsMapped} />, 
         cell: (props) => <SelectCell {...props} options={statusOptionsMapped} />,
         size: 160,
       },
-      { accessorKey: 'purchaseDate', header: ({column}) => <FilterableHeader title="PURCHASE" column={column} />, cell: DateCell, size: 140 },
+      { 
+        accessorKey: 'projectId', 
+        header: ({column}) => <SelectFilterHeader title="LOCATION" column={column} options={projectOptions} />, 
+        cell: (props) => <SelectCell {...props} options={projectOptions} placeholder="Select Location" />,
+        size: 180,
+      },
+      { accessorKey: 'transferDate', header: ({column}) => <FilterableHeader title="TRANSFER DATE" column={column} />, cell: DateCell, size: 140 },
       { accessorKey: 'inspectionDueDate', header: ({column}) => <FilterableHeader title="INSP. DUE" column={column} />, cell: DateCell, size: 140 },
-      { accessorKey: 'tpInspectionDueDate', header: ({column}) => <FilterableHeader title="TP DUE" column={column} />, cell: DateCell, size: 140 },
-      { accessorKey: 'certificateUrl', header: ({column}) => <FilterableHeader title="TP LINK" column={column} />, cell: EditableCell, size: 200 },
-      { accessorKey: 'inspectionCertificateUrl', header: ({column}) => <FilterableHeader title="INSP LINK" column={column} />, cell: EditableCell, size: 200 },
-      { accessorKey: 'remarks', header: ({column}) => <FilterableHeader title="REMARKS" column={column} />, cell: EditableCell, size: 250 },
-      { accessorKey: 'lastUpdated', header: ({column}) => <FilterableHeader title="UPDATED" column={column} />, cell: ({ getValue }) => {
+      { accessorKey: 'tpInspectionDueDate', header: ({column}) => <FilterableHeader title="TP INSP. DUE" column={column} />, cell: DateCell, size: 140 },
+      { accessorKey: 'lastUpdated', header: ({column}) => <FilterableHeader title="LAST UPDATED" column={column} />, cell: ({ getValue }) => {
           const value = getValue() as string;
           if (!value) return <span className="text-[10px] text-slate-400 italic">N/A</span>;
           try {
@@ -327,12 +330,117 @@ const InventorySheet = ({ category }: { category: string }) => {
               return <span className="text-[10px] text-rose-500">Error</span>;
           }
       }, size: 130 },
+      { 
+        id: 'tpCert',
+        header: () => <div className="text-[10px] uppercase font-black tracking-widest text-slate-500 text-center">TP CERT.</div>,
+        cell: ({ row }) => (
+            <div className="flex justify-center">
+                {row.original.certificateUrl ? (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button asChild variant="ghost" size="icon" className="h-7 w-7 text-blue-600">
+                                    <a href={row.original.certificateUrl} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-3.5 w-3.5" /></a>
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Open TP Cert</TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                ) : <span className="text-[10px] text-slate-300">-</span>}
+            </div>
+        ),
+        size: 80,
+      },
+      { 
+        id: 'inspCert',
+        header: () => <div className="text-[10px] uppercase font-black tracking-widest text-slate-500 text-center">INSP. CERT.</div>,
+        cell: ({ row }) => (
+            <div className="flex justify-center">
+                {row.original.inspectionCertificateUrl ? (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button asChild variant="ghost" size="icon" className="h-7 w-7 text-green-600">
+                                    <a href={row.original.inspectionCertificateUrl} target="_blank" rel="noopener noreferrer"><CheckCircle className="h-3.5 w-3.5" /></a>
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Open Inspection Cert</TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                ) : <span className="text-[10px] text-slate-300">-</span>}
+            </div>
+        ),
+        size: 80,
+      },
+      { 
+        id: 'damageReport',
+        header: () => <div className="text-[10px] uppercase font-black tracking-widest text-slate-500 text-center">DAMAGE REPORT</div>,
+        cell: ({ row }) => {
+            const report = damageReports.find(dr => dr.itemId === row.original.id);
+            const link = report?.attachmentDownloadUrl || report?.attachmentOriginalUrl;
+            return (
+                <div className="flex justify-center">
+                    {link ? (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button asChild variant="ghost" size="icon" className="h-7 w-7 text-red-500">
+                                        <a href={link} target="_blank" rel="noopener noreferrer"><Hammer className="h-3.5 w-3.5" /></a>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>View Damage Report</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    ) : <span className="text-[10px] text-slate-300">-</span>}
+                </div>
+            );
+        },
+        size: 100,
+      },
+      {
+        id: 'actions',
+        header: () => <div className="text-[10px] uppercase font-black tracking-widest text-slate-500 text-center">ACTIONS</div>,
+        cell: ({ row }) => (
+            <div className="flex justify-center">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        {can.manage_inventory && (
+                            <>
+                                <DropdownMenuItem onSelect={() => setSelectedItemForEdit(row.original)}><Edit className="mr-2 h-4 w-4"/>Edit Details</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => updateInventoryItem({ ...row.original, lastUpdated: new Date().toISOString() })}><CheckCircle className="mr-2 h-4 w-4"/>Verify Status</DropdownMenuItem>
+                            </>
+                        )}
+                        <DropdownMenuItem onSelect={() => setCertRequestItem(row.original)}><ShieldQuestion className="mr-2 h-4 w-4"/>Request Cert</DropdownMenuItem>
+                        {user?.role === 'Admin' && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive"><Trash2 className="mr-2 h-4 w-4"/>Delete Item</DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader><AlertDialogTitle>Confirm Deletion</AlertDialogTitle><AlertDialogDescription>Permanently remove item with SN: {row.original.serialNumber}?</AlertDialogDescription></AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => batchDeleteInventoryItems([row.original.id])} className="bg-destructive">Delete</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+        ),
+        size: 80,
+      }
     ];
+
     if (category.toLowerCase() === 'harness') {
-      baseColumns.splice(4, 0, { accessorKey: 'chestCrollNo', header: ({column}) => <FilterableHeader title="CROLL NO." column={column} />, cell: EditableCell, size: 130 });
+      baseColumns.splice(4, 0, { accessorKey: 'chestCrollNo', header: ({column}) => <FilterableHeader title="CHEST CROLL NO." column={column} />, cell: EditableCell, size: 130 });
     }
     return baseColumns;
-  }, [category, projects]);
+  }, [category, projects, damageReports, can.manage_inventory, user, updateInventoryItem, batchDeleteInventoryItems]);
 
   const table = useReactTable({
     data: localData,
@@ -402,10 +510,8 @@ const InventorySheet = ({ category }: { category: string }) => {
     setRowSelection({});
   };
   
-  const isEditable = can.manage_inventory_database;
-
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
-    if (!activeCell || !isEditable) return;
+    if (!activeCell || !can.manage_inventory_database) return;
     e.preventDefault();
     const pastedText = e.clipboardData.getData('text');
     const rows = pastedText.split(/\r?\n/).filter(r => r.trim() !== '');
@@ -436,15 +542,13 @@ const InventorySheet = ({ category }: { category: string }) => {
                     const column = allTableColumns[targetColumnIndex];
                     const columnId = column.id;
                     
-                    // Skip read-only columns
-                    if (columnId && !['select', 'slNo', 'lastUpdated'].includes(columnId)) {
+                    if (columnId && !['select', 'slNo', 'lastUpdated', 'actions', 'tpCert', 'inspCert', 'damageReport'].includes(columnId)) {
                         let processedValue: any = cellValue.trim();
                         
                         if (columnId === 'projectId') {
                             const project = projects.find(p => p.name.toLowerCase() === processedValue.toLowerCase());
                             processedValue = project ? project.id : processedValue;
-                        } else if (columnId.toLowerCase().includes('date')) {
-                             // Try common formats
+                        } else if (columnId.toLowerCase().includes('date') || columnId.toLowerCase().includes('due')) {
                              const formats = ['dd-MM-yyyy', 'dd/MM/yyyy', 'yyyy-MM-dd'];
                              let parsedDate: Date | null = null;
                              for (const fmt of formats) {
@@ -469,7 +573,7 @@ const InventorySheet = ({ category }: { category: string }) => {
         batchUpdateInventoryItems(batchUpdates);
         toast({ title: 'Paste Complete', description: `${batchUpdates.length} rows updated.` });
     }
-  }, [activeCell, table, batchUpdateInventoryItems, toast, projects, isEditable]);
+  }, [activeCell, table, batchUpdateInventoryItems, toast, projects, can.manage_inventory_database]);
 
   const handleMouseDown = (rowIndex: number, colIndex: number) => {
     setIsSelecting(true);
@@ -488,111 +592,46 @@ const InventorySheet = ({ category }: { category: string }) => {
 
   const isCellSelected = (rowIndex: number, colIndex: number) => {
     if (!selection.start || !selection.end) return false;
-    
     const minRow = Math.min(selection.start.row, selection.end.row);
     const maxRow = Math.max(selection.start.row, selection.end.row);
     const minCol = Math.min(selection.start.col, selection.end.col);
     const maxCol = Math.max(selection.start.col, selection.end.col);
-
     return rowIndex >= minRow && rowIndex <= maxRow && colIndex >= minCol && colIndex <= maxCol;
   };
 
   const handleExport = async () => {
     const rows = table.getRowModel().rows;
-    if (rows.length === 0) {
-      toast({ variant: "destructive", title: "No data to export" });
-      return;
-    }
-
+    if (rows.length === 0) return;
     const workbook = new ExcelJS.Workbook();
-    const sheetName = category.replace(/[\\/*?:]/g, "").substring(0, 31);
-    const worksheet = workbook.addWorksheet(sheetName);
-
-    const visibleColumns = table.getVisibleLeafColumns().filter((col) => !['select', 'lastUpdated'].includes(col.id));
-
-    worksheet.columns = visibleColumns.map((col) => {
-        let headerText = col.id
-          .replace(/([A-Z])/g, ' $1')
-          .replace(/_/g, ' ')
-          .replace(/^./, (str) => str.toUpperCase());
-        return { header: headerText.toUpperCase(), key: col.id, width: 20 };
-    });
-
-    const dataToExport = rows.map((row, rowIndex) => {
-        const rowData: {[key: string]: any} = {};
-        visibleColumns.forEach(col => {
-            const columnId = col.id as keyof InventoryItem;
-            let value = row.original[columnId];
-
-            if (col.id === 'slNo') {
-              rowData[col.id] = rowIndex + 1;
-              return;
-            }
-
-            if (columnId === 'projectId') {
-                value = projects.find(p => p.id === value)?.name || value;
-            } else if (String(columnId).toLowerCase().includes('date') && typeof value === 'string') {
-                try {
-                    const parsed = parseISO(value);
-                    value = isValid(parsed) ? format(parsed, 'dd-MM-yyyy') : value;
-                } catch (e) {}
-            }
-            
-            rowData[col.id] = value ?? '';
-        });
-        return rowData;
-    });
-
-    worksheet.addRows(dataToExport);
-
-    // Styling
-    worksheet.getRow(1).font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
-    worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF02B396' } };
-    worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
-
+    const worksheet = workbook.addWorksheet(category.substring(0, 31));
+    const visibleColumns = table.getVisibleLeafColumns().filter((col) => !['select', 'lastUpdated', 'actions', 'tpCert', 'inspCert', 'damageReport'].includes(col.id));
+    worksheet.columns = visibleColumns.map((col) => ({ header: col.id.toUpperCase(), key: col.id, width: 20 }));
+    worksheet.addRows(rows.map(row => row.original));
     const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `${category}_Inventory_${format(new Date(), 'dd-MM-yy')}.xlsx`);
-    toast({ title: "Export Complete" });
+    saveAs(new Blob([buffer]), `${category}_Inventory.xlsx`);
   };
   
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-card border rounded-lg shadow-sm">
+    <div className="flex flex-col h-full overflow-hidden bg-card border rounded-lg">
       <div className="p-3 border-b flex flex-col sm:flex-row justify-between items-center gap-3 bg-muted/20">
         <div className="flex items-center gap-2">
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
                 <Database className="h-4 w-4" /> 
-                {category} Database ({localData.length} entries)
+                {category} ({localData.length})
             </span>
         </div>
         <div className="flex items-center gap-2">
-            <span className="text-[10px] text-muted-foreground flex items-center gap-1.5 mr-2">
-                <CheckCircle className="h-3.5 w-3.5 text-green-500" /> Auto-Save Active
-            </span>
-            <Button size="sm" variant="outline" className="h-8 text-xs font-bold" onClick={handleExport}>
-                <Download className="mr-1.5 h-3.5 w-3.5"/> EXPORT
-            </Button>
-            {isEditable && (
+            <Button size="sm" variant="outline" className="h-8 text-xs font-bold" onClick={handleExport}><Download className="mr-1.5 h-3.5 w-3.5"/> EXPORT</Button>
+            {can.manage_inventory_database && (
                 <>
-                <Button size="sm" variant="default" className="h-8 text-xs font-bold" onClick={() => setIsAddRowsDialogOpen(true)}>
-                    <PlusCircle className="mr-1.5 h-3.5 w-3.5"/> ADD ROWS
-                </Button>
+                <Button size="sm" variant="default" className="h-8 text-xs font-bold" onClick={() => setIsAddRowsDialogOpen(true)}><PlusCircle className="mr-1.5 h-3.5 w-3.5"/> ADD ROWS</Button>
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
-                        <Button size="sm" variant="destructive" className="h-8 text-xs font-bold" disabled={table.getSelectedRowModel().rows.length === 0}>
-                            <Trash2 className="mr-1.5 h-3.5 w-3.5"/> DELETE ({table.getSelectedRowModel().rows.length})
-                        </Button>
+                        <Button size="sm" variant="destructive" className="h-8 text-xs font-bold" disabled={table.getSelectedRowModel().rows.length === 0}><Trash2 className="mr-1.5 h-3.5 w-3.5"/> DELETE ({table.getSelectedRowModel().rows.length})</Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                This will permanently remove {table.getSelectedRowModel().rows.length} serialized items from the inventory database. This action is final.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive text-white">Confirm Delete</AlertDialogAction>
-                        </AlertDialogFooter>
+                        <AlertDialogHeader><AlertDialogTitle>Delete Selected Items?</AlertDialogTitle><AlertDialogDescription>Permanently remove {table.getSelectedRowModel().rows.length} items from the database?</AlertDialogDescription></AlertDialogHeader>
+                        <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive">Confirm Delete</AlertDialogAction></AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
                 </>
@@ -609,12 +648,8 @@ const InventorySheet = ({ category }: { category: string }) => {
                         <TableRow key={headerGroup.id} className="hover:bg-transparent">
                             {headerGroup.headers.map(header => (
                             <TableHead key={header.id} className={cn("relative p-0 h-auto align-top border-r bg-muted/40", header.column.id === 'select' && 'sticky left-0 z-40', header.column.id === 'slNo' && 'sticky left-[40px] z-40', header.column.id === 'serialNumber' && 'sticky left-[90px] z-40')} style={{width: header.getSize()}}>
-                                {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                                <div
-                                    onMouseDown={header.getResizeHandler()}
-                                    onTouchStart={header.getResizeHandler()}
-                                    className="absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none hover:bg-primary/50 transition-colors"
-                                />
+                                {flexRender(header.column.columnDef.header, header.getContext())}
+                                <div onMouseDown={header.getResizeHandler()} onTouchStart={header.getResizeHandler()} className="absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none hover:bg-primary/50" />
                             </TableHead>
                             ))}
                         </TableRow>
@@ -622,11 +657,10 @@ const InventorySheet = ({ category }: { category: string }) => {
                     </TableHeader>
                     <TableBody>
                         {table.getRowModel().rows.map((row, rowIndex) => (
-                        <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className={cn(rowIndex % 2 === 0 ? "bg-card" : "bg-muted/5", row.getIsSelected() && "bg-blue-100 dark:bg-blue-900/40")}>
+                        <TableRow key={row.id} className={cn(rowIndex % 2 === 0 ? "bg-card" : "bg-muted/5", row.getIsSelected() && "bg-blue-100 dark:bg-blue-900/40")}>
                             {row.getVisibleCells().map((cell, colIndex) => (
                             <TableCell 
                                 key={cell.id}
-                                id={`cell-${row.id}-${cell.column.id}`}
                                 onMouseDown={() => handleMouseDown(row.index, colIndex)}
                                 onMouseEnter={() => handleMouseEnter(row.index, colIndex)}
                                 className={cn(
@@ -634,19 +668,14 @@ const InventorySheet = ({ category }: { category: string }) => {
                                     { 'sticky left-0 z-10': cell.column.id === 'select' },
                                     { 'sticky left-[40px] z-10': cell.column.id === 'slNo' },
                                     { 'sticky left-[90px] z-10': cell.column.id === 'serialNumber' },
-                                    cell.column.id === 'select' && (rowIndex % 2 === 0 ? 'bg-card' : 'bg-muted/5'),
-                                    cell.column.id === 'slNo' && (rowIndex % 2 === 0 ? 'bg-card' : 'bg-muted/5'),
-                                    cell.column.id === 'serialNumber' && (rowIndex % 2 === 0 ? 'bg-card' : 'bg-muted/5'),
+                                    ['select', 'slNo', 'serialNumber'].includes(cell.column.id) && (rowIndex % 2 === 0 ? 'bg-card' : 'bg-muted/5'),
                                     row.getIsSelected() && (['select', 'slNo', 'serialNumber'].includes(cell.column.id) ? 'bg-blue-100 dark:bg-blue-900/40' : ''),
                                     activeCell?.row === row.index && activeCell?.columnId === cell.column.id && "ring-2 ring-inset ring-primary/50 z-30",
                                     isCellSelected(rowIndex, colIndex) && "bg-primary/5"
                                 )}
                                 style={{width: cell.column.getSize()}}
                             >
-                                {cell.column.id === 'slNo' 
-                                    ? <span className="text-[10px] font-bold text-slate-400">{rowIndex + 1}</span> 
-                                    : flexRender(cell.column.columnDef.cell, cell.getContext())
-                                }
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
                             </TableCell>
                             ))}
                         </TableRow>
@@ -660,30 +689,17 @@ const InventorySheet = ({ category }: { category: string }) => {
         
         <AlertDialog open={isAddRowsDialogOpen} onOpenChange={setIsAddRowsDialogOpen}>
             <AlertDialogContent className="sm:max-w-md">
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Add New Spreadsheet Rows</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Insert multiple blank rows into the {category} database for rapid entry.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
+                <AlertDialogHeader><AlertDialogTitle>Add New Spreadsheet Rows</AlertDialogTitle><AlertDialogDescription>Insert multiple blank rows into the {category} database.</AlertDialogDescription></AlertDialogHeader>
                 <div className="py-6 space-y-3">
-                    <Label htmlFor="num-rows" className="font-bold text-xs uppercase tracking-widest text-slate-500">Number of Rows to Add</Label>
-                    <Input
-                        id="num-rows"
-                        type="number"
-                        value={numRowsToAdd}
-                        onChange={(e) => setNumRowsToAdd(Math.max(1, parseInt(e.target.value) || 1))}
-                        min="1"
-                        autoFocus
-                        className="text-lg font-bold h-12"
-                    />
+                    <Label htmlFor="num-rows" className="font-bold text-xs uppercase tracking-widest text-slate-500">Rows to Add</Label>
+                    <Input id="num-rows" type="number" value={numRowsToAdd} onChange={(e) => setNumRowsToAdd(Math.max(1, parseInt(e.target.value) || 1))} min="1" autoFocus className="text-lg font-bold h-12" />
                 </div>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleAddMultipleRows} className="bg-primary text-primary-foreground font-bold">ADD ROWS</AlertDialogAction>
-                </AlertDialogFooter>
+                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleAddMultipleRows}>ADD ROWS</AlertDialogAction></AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+
+        {editingItem && <EditItemDialog isOpen={!!editingItem} setIsOpen={() => setSelectedItemForEdit(null)} item={editingItem} />}
+        {certRequestItem && <NewCertificateRequestDialog isOpen={!!certRequestItem} setIsOpen={() => setCertRequestItem(null)} item={certRequestItem} />}
     </div>
   );
 };
