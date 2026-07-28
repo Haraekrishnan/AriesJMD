@@ -65,16 +65,15 @@ const RequestCard = ({ req, onEditRequest }: { req: PpeRequest; onEditRequest: (
     const [translate, setTranslate] = useState({ x: 0, y: 0 });
     const imageContainerRef = useRef<HTMLDivElement>(null);
 
-    const isManager = useMemo(() => {
+    const canApprove = useMemo(() => {
         if(!user) return false;
-        return user.role === 'Manager' || user.role === 'Admin';
-    }, [user]);
+        return can.manage_ppe_request || user.role === 'Admin' || user.role === 'Manager';
+    }, [user, can]);
 
     const canIssue = useMemo(() => {
         if (!user) return false;
-        const storeRoles = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Project Coordinator'];
-        return storeRoles.includes(user.role);
-    }, [user]);
+        return can.manage_ppe_stock || can.manage_store_requests || ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Project Coordinator'].includes(user.role);
+    }, [user, can]);
     
     const handleActionClick = (req: PpeRequest, act: 'Approved' | 'Rejected' | 'Issued' | 'Disputed' | 'Query') => {
         setSelectedRequest(req);
@@ -119,7 +118,7 @@ const RequestCard = ({ req, onEditRequest }: { req: PpeRequest; onEditRequest: (
     const manpower = manpowerProfiles.find(p => p.id === req.manpowerId);
     const isRequester = req.requesterId === user?.id;
     const hasUpdate = isRequester && !req.viewedByRequester;
-    const canApprove = isManager && req.status === 'Pending';
+    const canApproveAction = canApprove && req.status === 'Pending';
     const canMarkAsIssued = canIssue && req.status === 'Approved';
     const canDispute = isRequester && req.status === 'Issued';
     
@@ -231,7 +230,7 @@ const RequestCard = ({ req, onEditRequest }: { req: PpeRequest; onEditRequest: (
                 </Accordion>
             </CardContent>
             <CardFooter className="p-2 bg-muted/50 flex justify-end gap-2 mt-auto">
-                 {canApprove && req.status === 'Pending' && (
+                 {canApproveAction && (
                     <>
                         <TooltipProvider>
                             <Tooltip>
@@ -245,7 +244,7 @@ const RequestCard = ({ req, onEditRequest }: { req: PpeRequest; onEditRequest: (
                         <Button size="sm" onClick={() => handleActionClick(req, 'Approved')}><CheckCircle className="mr-2 h-4 w-4" /> Approve</Button>
                     </>
                  )}
-                 {canIssue && req.status === 'Approved' && (
+                 {canMarkAsIssued && (
                     <Button size="sm" onClick={() => handleActionClick(req, 'Issued')}><Check className="mr-2 h-4 w-4" /> Issue</Button>
                  )}
                  {canDispute && (
@@ -422,8 +421,7 @@ const RequestCard = ({ req, onEditRequest }: { req: PpeRequest; onEditRequest: (
 }
 
 export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
-  const { user } = useAuth();
-  const { markPpeRequestAsViewed } = useInventory();
+  const { user, markPpeRequestAsViewed } = useInventory();
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
   const [editingRequest, setEditingRequest] = useState<PpeRequest | null>(null);
 
@@ -444,7 +442,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
   useEffect(() => {
     if (isCompletedOpen && user) {
         completedRequests.forEach(req => {
-            const comments = Array.isArray(req.comments) ? req.comments : Object.values(req.comments || {});
+            const comments = req.comments ? (Array.isArray(req.comments) ? req.comments : Object.values(req.comments || {})) : [];
             const hasUnread = comments.some(c => c.userId !== user.id && !c.viewedBy?.[user.id]);
             if (req.requesterId === user.id && (!req.acknowledgedByRequester || hasUnread)) {
                 markPpeRequestAsViewed(req.id);
@@ -495,4 +493,3 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
   );
 }
 
-    

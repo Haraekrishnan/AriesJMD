@@ -19,11 +19,11 @@ export const ROLES: RoleDefinition[] = [
      permissions: [
       'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements',
       'manage_vehicles', 'manage_manpower', 'manage_manpower_list', 'manage_accommodation',
-      'approve_store_requests', 'manage_inventory', 'view_inventory',
+      'approve_store_requests', 'manage_store_requests', 'view_inventory',
       'manage_equipment_status',
       'manage_announcements', 'view_performance_reports', 'view_activity_logs',
       'log_manpower', 'manage_job_schedule', 'prepare_master_schedule', 'manage_vendors', 'manage_payments', 'view_ppe_requests',
-      'manage_job_record', 'manage_purchase_register', 'manage_igp_ogp', 'manage_delivery_notes'
+      'manage_job_record', 'manage_purchase_register', 'manage_igp_ogp', 'manage_delivery_notes', 'manage_ppe_request'
     ],
     isEditable: false,
   },
@@ -47,7 +47,7 @@ export const ROLES: RoleDefinition[] = [
     id: 'role-supervisor',
     name: 'Supervisor',
     permissions: [
-      'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements', 'view_performance_reports', 'manage_manpower', 'log_manpower', 'manage_job_schedule', 'manage_job_record', 'view_inventory', 'create_jms'
+      'manage_tasks', 'manage_planner', 'manage_incidents', 'manage_achievements', 'view_performance_reports', 'manage_manpower', 'log_manpower', 'manage_job_schedule', 'manage_job_record', 'view_inventory', 'create_jms', 'manage_ppe_request'
     ],
     isEditable: false,
   },
@@ -90,14 +90,14 @@ export const ROLES: RoleDefinition[] = [
       'manage_vehicles',
       'manage_igp_ogp', 'view_ppe_requests', 'manage_ppe_stock', 'manage_tp_certification',
       'view_internal_store_request', 'manage_store_requests', 'manage_logbook', 'manage_delivery_notes',
-      'manage_inward_outward'
+      'manage_inward_outward', 'manage_ppe_request'
     ],
     isEditable: false,
   },
   {
     id: 'role-asst-store-incharge',
     name: 'Assistant Store Incharge',
-    permissions: ['manage_inventory', 'view_inventory', 'view_performance_reports', 'manage_tasks', 'manage_equipment_status', 'manage_delivery_notes'],
+    permissions: ['manage_inventory', 'view_inventory', 'view_performance_reports', 'manage_tasks', 'manage_equipment_status', 'manage_delivery_notes', 'approve_store_requests'],
     isEditable: false,
   },
   {
@@ -160,7 +160,7 @@ export const USERS: User[] = [
   { id: '17', name: 'Amaldas M', email: 'amaldas@ariesmarine.com', password: 'password', role: 'Junior Supervisor', avatar: 'https://i.pravatar.cc/150?u=17', supervisorId: '6', projectId: 'proj-4', planningScore: 0, status: 'active' },
   { id: '18', name: 'Sajin Soman', email: 'sajin@ariesmarine.com', password: 'password', role: 'Junior Supervisor', avatar: 'https://i.pravatar.cc/150?u=18', supervisorId: '6', projectId: 'proj-4', planningScore: 0, status: 'active' },
   { id: '19', name: 'Aparna M R', email: 'aparna@ariesmarine.com', password: 'password', role: 'Team Member', avatar: 'https://i.pravatar.cc/150?u=19', supervisorId: '11', projectId: 'proj-1', planningScore: 0, status: 'active' },
-  { id: '20', name: 'John Safety', email: 'john.safety@ariesmarine.com', password: 'password', role: 'Senior Safety Supervisor', avatar: 'https://i.pravatar.cc/150?u=20', supervisorId: '2', projectId: 'proj-6', planningScore: 0, status: 'active' },
+  { id: '20', name: 'John Safety', email: 'john.safety@ariesmar.com', password: 'password', role: 'Senior Safety Supervisor', avatar: 'https://i.pravatar.cc/150?u=20', supervisorId: '2', projectId: 'proj-6', planningScore: 0, status: 'active' },
   { id: '21', name: 'Peter Hazard', email: 'peter.hazard@ariesmarine.com', password: 'password', role: 'Safety Supervisor', avatar: 'https://i.pravatar.cc/150?u=21', supervisorId: '20', projectId: 'proj-6', planningScore: 0, status: 'active' },
     { id: '22', name: 'Store Keeper', email: 'store@ariesmarine.com', password: 'password', role: 'Store in Charge', avatar: 'https://i.pravatar.cc/150?u=22', supervisorId: '2', projectId: 'proj-6', planningScore: 0, status: 'active' },
   { id: '23', name: 'Asst. Store Keeper', email: 'asst.store@ariesmarine.com', password: 'password', role: 'Assistant Store Incharge', avatar: 'https://i.pravatar.cc/150?u=23', supervisorId: '22', projectId: 'proj-6', planningScore: 0, status: 'active' },

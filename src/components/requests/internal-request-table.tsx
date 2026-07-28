@@ -58,7 +58,9 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false, showAckno
         addInternalRequestComment, 
         inventoryItems, 
         resolveInternalRequestDispute,
+        consumableItems: consumableInventoryItems
     } = useInventory();
+    const { consumableItems } = useConsumable();
     const [selectedRequest, setSelectedRequest] = useState<InternalRequest | null>(null);
     const [editingItem, setEditingItem] = useState<InternalRequestItem | null>(null);
     const [action, setAction] = useState<'Approved' | 'Rejected' | 'Issued' | 'Disputed' | 'Query' | null>(null);
@@ -70,8 +72,8 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false, showAckno
 
     const canApprove = useMemo(() => {
         if (!user) return false;
-        return user.canApproveTransfers || user.role === 'Admin';
-    }, [user]);
+        return can.approve_store_requests || can.manage_store_requests || user.role === 'Admin';
+    }, [user, can]);
 
     const isRequester = req.requesterId === user?.id;
     
@@ -91,14 +93,9 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false, showAckno
 
     const canMarkAsCompleted = useMemo(() => {
         if (!canApprove) return false;
-        // Check if there are NO items in 'Pending' or 'Approved' status
         return !req.items.some(item => item.status === 'Pending' || item.status === 'Approved');
     }, [canApprove, req.items]);
 
-    const canBulkApprove = canApprove && (req.status === 'Pending' || req.status === 'Partially Approved');
-    const canBulkIssue = canApprove && (req.status === 'Approved' || req.status === 'Partially Approved');
-    const canDispute = isRequester && req.status === 'Issued';
-    
     const handleItemActionClick = (item: InternalRequestItem, status: InternalRequestItemStatus) => {
         const needsComment = status === 'Rejected';
     
@@ -112,7 +109,7 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false, showAckno
     };
 
     const handleConfirmAction = () => {
-        if (itemAction) { // Single item action
+        if (itemAction) {
             if (!comment.trim() && itemAction.status === 'Rejected') {
                  toast({ title: 'Comment required', variant: 'destructive'});
                  return;
@@ -142,11 +139,10 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false, showAckno
         forceDeleteInternalRequest(requestId);
     };
 
-    const requester = users.find(u => u.id === req.requesterId);
+    const requesterProfile = users.find(u => u.id === req.requesterId);
     const isRejectedButActive = req.status === 'Rejected' && !req.acknowledgedByRequester;
     const needsAcknowledgement = user?.id === req.requesterId && (req.status === 'Issued' || req.status === 'Partially Issued' || isRejectedButActive) && !req.acknowledgedByRequester;
-    const canEdit = user?.role === 'Admin' || (isRequester && req.status === 'Pending');
-
+    
     const canAddComments = user?.role === 'Admin' || canApprove || isRequester;
 
     return (
@@ -156,7 +152,7 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false, showAckno
                 <CardHeader className="p-4">
                     <div className="flex justify-between items-start">
                         <div>
-                        <p className="font-semibold">{requester?.name || 'Unknown User'}</p>
+                        <p className="font-semibold">{requesterProfile?.name || 'Unknown User'}</p>
                         <p className="text-sm text-muted-foreground">ID: {req.id ? req.id.slice(-6) : 'N/A'} &middot; {req.date ? format(parseISO(req.date), 'dd MMM yyyy') : 'No date'}</p>
                         </div>
                         {showAcknowledge && needsAcknowledgement ? (
@@ -210,7 +206,7 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false, showAckno
                                             <div key={i} className="flex items-start gap-2">
                                                 <Avatar className="h-6 w-6"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
                                                 <div className="text-xs bg-background p-2 rounded-md w-full">
-                                                    <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{formatDistanceToNow(new Date(c.date), { addSuffix: true })}</p></div>
+                                                    <div className="flex justify-between items-baseline"><p className="font-semibold">{commentUser?.name}</p><p className="text-muted-foreground">{format(new Date(c.date), 'dd MMM, yyyy p')}</p></div>
                                                     <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{c.text}</p>
                                                 </div>
                                             </div>
@@ -245,8 +241,20 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false, showAckno
                         </div>
                     )}
                     <div className="flex flex-wrap justify-end gap-2 px-2">
-                        {canDispute && (
-                            <Button size="sm" variant="destructive" onClick={() => handleActionClick(req, 'Disputed')}><AlertTriangle className="mr-2 h-4 w-4" /> Dispute</Button>
+                        {isRequester && req.status === 'Issued' && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button size="sm" variant="destructive"><AlertTriangle className="mr-2 h-4 w-4" /> Dispute</Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader><AlertDialogTitle>Dispute Request?</AlertDialogTitle><AlertDialogDescription>If you haven't received all items, enter a comment below. The store will be notified.</AlertDialogDescription></AlertDialogHeader>
+                                    <Textarea placeholder="Enter details..." onChange={e => setComment(e.target.value)} />
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => { updateInternalRequestStatus(req.id, 'Disputed'); addInternalRequestComment(req.id, `Dispute: ${comment}`); setComment(''); }}>Confirm Dispute</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         )}
                         {canApprove && req.status === 'Disputed' && (
                             <div className="flex gap-2">
@@ -393,3 +401,4 @@ export default function InternalRequestTable({ requests, showAcknowledge = true,
     </div>
   );
 }
+
