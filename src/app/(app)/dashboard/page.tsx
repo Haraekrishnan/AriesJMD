@@ -7,10 +7,11 @@ import { useTask } from '@/contexts/task-provider';
 import { useManpower } from '@/contexts/manpower-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { usePlanner } from '@/contexts/planner-provider';
+import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
-import { format, formatDistanceToNow, parseISO, isPast } from 'date-fns';
+import { format, formatDistanceToNow, parseISO, isPast, addDays, isBefore, isValid } from 'date-fns';
 import StatCard from '@/components/dashboard/stat-card';
-import { Users, CheckCircle, ListTodo, ShieldAlert, Clock, ArrowRight, UserCheck, AlertCircle, TrendingUp, Layout } from 'lucide-react';
+import { Users, CheckCircle, ListTodo, ShieldAlert, Clock, ArrowRight, UserCheck, AlertCircle, TrendingUp, Layout, HardHat, Warehouse, ArrowRightLeft, ClipboardCheck, Hammer, MessageSquare } from 'lucide-react';
 import TasksCompletedChart from '@/components/dashboard/tasks-completed-chart';
 import TeamTaskDistributionChart from '@/components/dashboard/team-task-distribution-chart';
 import AnnouncementFeed from '@/components/announcements/AnnouncementFeed';
@@ -30,6 +31,7 @@ export default function DashboardPage() {
   const { lastManpowerUpdate, manpowerLogs } = useManpower();
   const { projects } = useGeneral();
   const { jobSchedules } = usePlanner();
+  const { ppeRequests, inventoryTransferRequests, inventoryItems, damageReports } = useInventory();
 
   const teamUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
   const teamUserIds = useMemo(() => new Set(teamUsers.map(u => u.id)), [teamUsers]);
@@ -72,6 +74,49 @@ export default function DashboardPage() {
           return { member, completed, overdue, total, score };
       }).sort((a,b) => b.score - a.score);
   }, [teamUsers, allTasks]);
+
+  // --- MANAGEMENT SUMMARY DATA ---
+  const managementData = useMemo(() => {
+    if (!user) return null;
+
+    const isManager = user.role === 'Admin' || user.role === 'Manager' || user.role === 'Project Coordinator';
+    const isStoreStaff = user.role === 'Store in Charge' || user.role === 'Assistant Store Incharge';
+    const hasTransferAuth = user.canApproveTransfers || can.approve_transfer_requests;
+
+    const pendingPpeApproval = ppeRequests.filter(r => r.status === 'Pending').length;
+    const pendingPpeIssuance = ppeRequests.filter(r => r.status === 'Approved').length;
+    const pendingPpeDisputes = ppeRequests.filter(r => r.status === 'Disputed').length;
+
+    const pendingTransfers = inventoryTransferRequests.filter(r => r.status === 'Pending' || r.status === 'Disputed').length;
+    const pendingDamageReports = damageReports.filter(r => r.status === 'Pending').length;
+
+    // Asset Action Required (Expiry)
+    const thirtyDaysFromNow = addDays(new Date(), 30);
+    const expiredCount = inventoryItems.filter(item => {
+        if (item.isArchived || item.status === 'Damaged' || item.status === 'Quarantine') return false;
+        const inspDue = item.inspectionDueDate ? parseISO(item.inspectionDueDate) : null;
+        const tpDue = item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : null;
+        return (inspDue && isPast(inspDue)) || (tpDue && isPast(tpDue));
+    }).length;
+
+    const expiringSoonCount = inventoryItems.filter(item => {
+        if (item.isArchived || item.status === 'Damaged' || item.status === 'Quarantine') return false;
+        const inspDue = item.inspectionDueDate ? parseISO(item.inspectionDueDate) : null;
+        const tpDue = item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : null;
+        
+        const inspSoon = inspDue && !isPast(inspDue) && isBefore(inspDue, thirtyDaysFromNow);
+        const tpSoon = tpDue && !isPast(tpDue) && isBefore(tpDue, thirtyDaysFromNow);
+        
+        return inspSoon || tpSoon;
+    }).length;
+
+    return {
+        show: isManager || isStoreStaff || hasTransferAuth,
+        ppe: { pending: pendingPpeApproval, ready: pendingPpeIssuance, disputes: pendingPpeDisputes },
+        store: { transfers: pendingTransfers, damage: pendingDamageReports },
+        compliance: { expired: expiredCount, soon: expiringSoonCount }
+    };
+  }, [user, can, ppeRequests, inventoryTransferRequests, inventoryItems, damageReports]);
 
   const { totalWorking, totalOnLeave } = useMemo(() => {
     const today = new Date();
@@ -143,6 +188,90 @@ export default function DashboardPage() {
       <DelegatedEventFeed />
       <AnnouncementFeed />
       <RecentPlannerActivity />
+
+      {/* --- MANAGEMENT CONTROL CENTER (CONDITIONAL) --- */}
+      {managementData?.show && (
+          <Card className="border-2 border-primary/20 shadow-sm bg-primary/[0.01]">
+              <CardHeader className="pb-3 border-b bg-muted/20">
+                  <div className="flex items-center gap-2">
+                      <ShieldCheck className="h-5 w-5 text-primary" />
+                      <div>
+                          <CardTitle className="text-lg">Management Control Center</CardTitle>
+                          <CardDescription className="text-xs uppercase font-bold tracking-wider">Operational Approvals & Action Items</CardDescription>
+                      </div>
+                  </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {/* PPE PILLAR */}
+                      <div className="space-y-3">
+                          <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                              <HardHat className="h-3 w-3" /> PPE Requests
+                          </h4>
+                          <div className="space-y-2">
+                              <Link href="/my-requests" className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors group">
+                                  <span className="text-sm font-medium">Awaiting Manager Approval</span>
+                                  <Badge variant={managementData.ppe.pending > 0 ? "destructive" : "secondary"} className="h-6 min-w-[2rem] justify-center">
+                                      {managementData.ppe.pending}
+                                  </Badge>
+                              </Link>
+                              <Link href="/ppe-stock" className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors group">
+                                  <span className="text-sm font-medium">Approved (Ready to Issue)</span>
+                                  <Badge variant={managementData.ppe.ready > 0 ? "default" : "secondary"} className="h-6 min-w-[2rem] justify-center">
+                                      {managementData.ppe.ready}
+                                  </Badge>
+                              </Link>
+                          </div>
+                      </div>
+
+                      {/* STORE PILLAR */}
+                      <div className="space-y-3">
+                          <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                              <Warehouse className="h-3 w-3" /> Store & Transfers
+                          </h4>
+                          <div className="space-y-2">
+                              <Link href="/store-inventory" className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors group">
+                                  <span className="text-sm font-medium">Pending Transfer Requests</span>
+                                  <Badge variant={managementData.store.transfers > 0 ? "destructive" : "secondary"} className="h-6 min-w-[2rem] justify-center">
+                                      {managementData.store.transfers}
+                                  </Badge>
+                              </Link>
+                              <Link href="/damage-reports" className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors group">
+                                  <span className="text-sm font-medium">Open Damage Reports</span>
+                                  <Badge variant={managementData.store.damage > 0 ? "destructive" : "secondary"} className="h-6 min-w-[2rem] justify-center">
+                                      {managementData.store.damage}
+                                  </Badge>
+                              </Link>
+                          </div>
+                      </div>
+
+                      {/* COMPLIANCE PILLAR */}
+                      <div className="space-y-3">
+                          <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                              <ClipboardCheck className="h-3 w-3" /> Asset Compliance
+                          </h4>
+                          <div className="space-y-2">
+                              <Link href="/store-inventory" className="flex items-center justify-between p-3 rounded-lg border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors group">
+                                  <div className="flex items-center gap-2">
+                                      <AlertTriangle className="h-4 w-4 text-destructive" />
+                                      <span className="text-sm font-black text-destructive">EXPIRED CERTIFICATIONS</span>
+                                  </div>
+                                  <Badge variant="destructive" className="h-6 min-w-[2rem] justify-center">
+                                      {managementData.compliance.expired}
+                                  </Badge>
+                              </Link>
+                              <Link href="/store-inventory" className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors group">
+                                  <span className="text-sm font-medium">Expiring Soon (30 Days)</span>
+                                  <Badge variant="warning" className="h-6 min-w-[2rem] justify-center">
+                                      {managementData.compliance.soon}
+                                  </Badge>
+                              </Link>
+                          </div>
+                      </div>
+                  </div>
+              </CardContent>
+          </Card>
+      )}
 
       {/* --- GLOBAL METRICS --- */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
