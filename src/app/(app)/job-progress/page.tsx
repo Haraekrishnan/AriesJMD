@@ -148,7 +148,6 @@ export default function JobProgressPage() {
   const filteredJobs = useMemo(() => {
     if (jmsSearchTerm) {
       const lowercasedTerm = jmsSearchTerm.toLowerCase();
-      // Search ignores all other filters including Month
       return visibleJobs.filter(job => {
         const project = projects.find(p => p.id === job.projectId);
         const amountStr = job.amount?.toString() || '';
@@ -199,7 +198,6 @@ export default function JobProgressPage() {
 
     if (timesheetSearchTerm) {
         const lowercasedTerm = timesheetSearchTerm.toLowerCase();
-        // Search ignores all other filters including Month
         return visibleTs.filter(ts => {
             const project = projects.find(p => p.id === ts.projectId);
             return (
@@ -291,8 +289,8 @@ export default function JobProgressPage() {
             <TabsContent value="jms" className="m-0 flex-1 overflow-hidden">
                 <div className="flex h-full flex-col rounded-lg border bg-card">
                     <div className="border-b shrink-0 p-3 space-y-3">
-                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                            <div className="flex items-center gap-2">
+                        <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+                            <div className="flex items-center justify-center gap-2">
                                 <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth || !!jmsSearchTerm}>
                                     <ChevronLeft className="h-4 w-4" />
                                 </Button>
@@ -303,10 +301,10 @@ export default function JobProgressPage() {
                                     <ChevronRight className="h-4 w-4" />
                                 </Button>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Button variant="outline" size="sm" onClick={() => setIsPendingDialogOpen(true)} className="relative h-8">
-                                    <Bell className="mr-1.5 h-3.5 w-3.5" />
-                                    Pending with Me
+                            <div className="flex flex-wrap items-center justify-center sm:justify-end gap-1.5">
+                                <Button variant="outline" size="sm" onClick={() => setIsPendingDialogOpen(true)} className="relative h-8 px-2">
+                                    <Bell className="sm:mr-1.5 h-3.5 w-3.5" />
+                                    <span className="hidden sm:inline">Pending with Me</span>
                                     {trackerNotificationCount > 0 && (
                                         <Badge variant="destructive" className="absolute -top-1.5 -right-1.5 h-4 min-w-[1rem] flex items-center justify-center p-0.5 rounded-full text-[9px] animate-pulse">
                                             {trackerNotificationCount}
@@ -314,20 +312,20 @@ export default function JobProgressPage() {
                                     )}
                                 </Button>
                                 {user && ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role) && (
-                                    <Button variant="outline" size="sm" onClick={() => setIsLongPendingDialogOpen(true)} className="h-8">
-                                        <Clock className="mr-1.5 h-3.5 w-3.5" />
-                                        Long Pending
+                                    <Button variant="outline" size="sm" onClick={() => setIsLongPendingDialogOpen(true)} className="h-8 px-2">
+                                        <Clock className="sm:mr-1.5 h-3.5 w-3.5" />
+                                        <span className="hidden sm:inline">Long Pending</span>
                                         {longPendingJobs.length > 0 && <Badge variant="destructive" className="ml-1.5 h-4 text-[9px]">{longPendingJobs.length}</Badge>}
                                     </Button>
                                 )}
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-8"
+                                    className="h-8 px-2"
                                     onClick={() => setIsCompletedDialogOpen(true)}
                                 >
-                                    <CheckCircle className="mr-1.5 h-3.5 w-3.5 text-green-600" />
-                                    Completed
+                                    <CheckCircle className="sm:mr-1.5 h-3.5 w-3.5 text-green-600" />
+                                    <span className="hidden sm:inline">Completed</span>
 
                                     {completedJobs.length > 0 && (
                                         <Badge
@@ -340,8 +338,9 @@ export default function JobProgressPage() {
                                 </Button>
                                 <OngoingJobsReport jobs={filteredJobs} />
                                 {can.create_jms && (
-                                    <Button onClick={() => setIsCreateJmsOpen(true)} size="sm" className="h-8">
-                                        <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> New JMS
+                                    <Button onClick={() => setIsCreateJmsOpen(true)} size="sm" className="h-8 px-2">
+                                        <PlusCircle className="sm:mr-1.5 h-3.5 w-3.5" /> 
+                                        <span className="hidden sm:inline">New JMS</span>
                                     </Button>
                                 )}
                             </div>
@@ -356,30 +355,32 @@ export default function JobProgressPage() {
                                     onChange={e => setJmsSearchTerm(e.target.value)}
                                 />
                             </div>
-                            <Select value={jmsProjectFilter} onValueChange={jmsProjectFilter => setJmsProjectFilter(jmsProjectFilter)} disabled={!!jmsSearchTerm}>
-                                <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Project" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Projects</SelectItem>
-                                    {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            <Select value={jmsUnitFilter} onValueChange={jmsUnitFilter => setJmsUnitFilter(jmsUnitFilter)} disabled={!!jmsSearchTerm}>
-                                <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Plant Unit" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Units</SelectItem>
-                                    {availableUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            <Select value={jmsAssigneeId} onValueChange={jmsAssigneeId => setJmsAssigneeId(jmsAssigneeId)} disabled={!!jmsSearchTerm}>
-                                <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Assignee" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Assignees</SelectItem>
-                                    {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            <div className="flex items-center gap-1.5 ml-auto">
-                                <Button variant={jmsView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setJmsView('board')}><LayoutGrid className="h-4 w-4" /></Button>
-                                <Button variant={jmsView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setJmsView('list')}><List className="h-4 w-4" /></Button>
+                            <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+                                <Select value={jmsProjectFilter} onValueChange={jmsProjectFilter => setJmsProjectFilter(jmsProjectFilter)} disabled={!!jmsSearchTerm}>
+                                    <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder="Project" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Projects</SelectItem>
+                                        {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <Select value={jmsUnitFilter} onValueChange={jmsUnitFilter => setJmsUnitFilter(jmsUnitFilter)} disabled={!!jmsSearchTerm}>
+                                    <SelectTrigger className="w-[110px] h-8 text-xs"><SelectValue placeholder="Plant Unit" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Units</SelectItem>
+                                        {availableUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <Select value={jmsAssigneeId} onValueChange={jmsAssigneeId => setJmsAssigneeId(jmsAssigneeId)} disabled={!!jmsSearchTerm}>
+                                    <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder="Assignee" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Assignees</SelectItem>
+                                        {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <div className="flex items-center gap-1.5 ml-auto">
+                                    <Button variant={jmsView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setJmsView('board')}><LayoutGrid className="h-4 w-4" /></Button>
+                                    <Button variant={jmsView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setJmsView('list')}><List className="h-4 w-4" /></Button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -396,8 +397,8 @@ export default function JobProgressPage() {
             <TabsContent value="timesheets" className="m-0 flex-1 overflow-hidden">
                 <div className="flex h-full flex-col rounded-lg border bg-card">
                     <div className="border-b shrink-0 p-3 space-y-3">
-                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                            <div className="flex items-center gap-2">
+                        <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+                            <div className="flex items-center justify-center gap-2">
                                 <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth || !!timesheetSearchTerm}>
                                     <ChevronLeft className="h-4 w-4" />
                                 </Button>
@@ -408,8 +409,10 @@ export default function JobProgressPage() {
                                     <ChevronRight className="h-4 w-4" />
                                 </Button>
                             </div>
-                            <Button onClick={() => setIsCreateTimesheetOpen(true)} size="sm" className="h-8">
-                                <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> New Timesheet
+                            <Button onClick={() => setIsCreateTimesheetOpen(true)} size="sm" className="h-8 px-3">
+                                <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> 
+                                <span className="hidden sm:inline">New Timesheet</span>
+                                <span className="sm:hidden">New</span>
                             </Button>
                         </div>
                         <div className="flex flex-wrap gap-2 items-center">
@@ -422,23 +425,25 @@ export default function JobProgressPage() {
                                     onChange={e => setTimesheetSearchTerm(e.target.value)}
                                 />
                             </div>
-                            <Select value={timesheetProjectFilter} onValueChange={setTimesheetProjectFilter} disabled={!!timesheetSearchTerm}>
-                                <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Project" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Projects</SelectItem>
-                                    {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            <Select value={timesheetSubmitterFilter} onValueChange={setTimesheetSubmitterFilter} disabled={!!timesheetSearchTerm}>
-                                <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Submitter" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Submitters</SelectItem>
-                                    {allSubmitters.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            <div className="flex items-center gap-1.5 ml-auto">
-                                <Button variant={timesheetView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setTimesheetView('board')}><LayoutGrid className="h-4 w-4" /></Button>
-                                <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setViewingTimesheet(null)}><List className="h-4 w-4" /></Button>
+                            <div className="flex flex-wrap items-center gap-2 flex-1">
+                                <Select value={timesheetProjectFilter} onValueChange={setTimesheetProjectFilter} disabled={!!timesheetSearchTerm}>
+                                    <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder="Project" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Projects</SelectItem>
+                                        {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <Select value={timesheetSubmitterFilter} onValueChange={setTimesheetSubmitterFilter} disabled={!!timesheetSearchTerm}>
+                                    <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder="Submitter" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Submitters</SelectItem>
+                                        {allSubmitters.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <div className="flex items-center gap-1.5 ml-auto">
+                                    <Button variant={timesheetView === 'board' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setTimesheetView('board')}><LayoutGrid className="h-4 w-4" /></Button>
+                                    <Button variant={timesheetView === 'list' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setViewingTimesheet(null)}><List className="h-4 w-4" /></Button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -454,8 +459,8 @@ export default function JobProgressPage() {
 
             <TabsContent value="documents" className="m-0 flex-1 overflow-hidden">
                 <div className="flex h-full flex-col rounded-lg border bg-card">
-                    <div className="border-b shrink-0 p-3 flex justify-between items-center">
-                        <div className="relative w-full sm:w-72">
+                    <div className="border-b shrink-0 p-3 flex justify-between items-center gap-2">
+                        <div className="relative flex-1 sm:max-w-md">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                             <Input
                                 placeholder="Search document title..."
@@ -464,8 +469,10 @@ export default function JobProgressPage() {
                                 onChange={e => setDocSearchTerm(e.target.value)}
                             />
                         </div>
-                        <Button onClick={() => setIsCreateDocumentOpen(true)} size="sm" className="h-8 px-3">
-                            <Folder className="mr-1.5 h-3.5 w-3.5" /> New Tracker
+                        <Button onClick={() => setIsCreateDocumentOpen(true)} size="sm" className="h-8 px-3 shrink-0">
+                            <Folder className="sm:mr-1.5 h-3.5 w-3.5" /> 
+                            <span className="hidden sm:inline">New Tracker</span>
+                            <span className="sm:hidden">New</span>
                         </Button>
                     </div>
                     <div className="flex-1 min-h-0 overflow-auto">
