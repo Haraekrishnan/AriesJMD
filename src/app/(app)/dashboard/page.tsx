@@ -254,13 +254,16 @@ export default function DashboardPage() {
                                         <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{member.role}</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-6 shrink-0">
+                                <div className="flex items-center gap-4 ml-auto shrink-0">
                                     <div className="text-right">
                                         <p className="text-sm font-black">{score}%</p>
-                                        <p className="text-[9px] uppercase font-bold text-muted-foreground">Done</p>
+                                        <p className="text-[9px] uppercase font-bold text-muted-foreground leading-none">Done</p>
                                     </div>
-                                    <div className="text-right w-16">
-                                        <Badge variant={overdue > 0 ? "destructive" : "secondary"} className="h-5 px-1.5 text-[10px] font-black">
+                                    <div className="w-[90px] flex justify-end">
+                                        <Badge 
+                                          variant={overdue > 0 ? "destructive" : "secondary"} 
+                                          className="h-5 px-2 text-[10px] font-black whitespace-nowrap"
+                                        >
                                             {overdue > 0 ? `${overdue} OVERDUE` : 'CLEAR'}
                                         </Badge>
                                     </div>
