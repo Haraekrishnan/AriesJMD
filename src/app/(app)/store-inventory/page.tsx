@@ -35,7 +35,6 @@ import NewOutwardDialog from '@/components/inventory/NewOutwardDialog';
 import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
 import PendingTransfers from '@/components/requests/PendingTransfers';
 import NewInventoryTransferRequestDialog from '@/components/requests/new-inventory-transfer-request-dialog';
-import InventorySheet from '@/components/inventory/InventorySheet';
 
 
 export default function StoreInventoryPage() {
@@ -368,35 +367,19 @@ export default function StoreInventoryPage() {
             )}
             </Accordion>
             
-            <div className="flex flex-col gap-4">
-                <InventoryFilters onApplyFilters={setFilters} initialFilters={filters} />
-                
-                {view === 'summary' ? (
-                     <Card>
-                        <CardHeader>
-                            <CardTitle>General Inventory Summary</CardTitle>
-                            <div className="flex justify-end">
-                                <InventoryReportDownloads items={filteredItems} isSummary={true} summaryData={summaryData} />
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <InventorySummary items={filteredItems} />
-                        </CardContent>
-                    </Card>
-                ) : (
-                    <div className="space-y-4">
-                         <div className="flex justify-between items-center">
-                            <h2 className="text-xl font-bold tracking-tight">Equipment Database</h2>
-                            <InventoryReportDownloads items={filteredItems} isSummary={false} />
-                        </div>
-                        <InventorySheet 
-                            items={filteredItems} 
-                            selectedItems={selectedItemsForTransfer} 
-                            onSelectionChange={setSelectedItemsForTransfer} 
-                        />
+            <Card>
+                <CardHeader>
+                    <div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-4'>
+                    {view === 'list' ? (
+                        <InventoryFilters onApplyFilters={setFilters} initialFilters={filters} />
+                    ) : <CardTitle>General Inventory Summary</CardTitle>}
+                    <InventoryReportDownloads items={filteredItems} isSummary={view === 'summary'} summaryData={summaryData} />
                     </div>
-                )}
-            </div>
+                </CardHeader>
+                <CardContent>
+                    {view === 'list' ? <InventoryTable items={filteredItems} selectedItems={selectedItemsForTransfer} onSelectionChange={setSelectedItemsForTransfer} /> : <InventorySummary items={filteredItems} />}
+                </CardContent>
+            </Card>
 
 
             <AddItemDialog isOpen={isAddItemOpen} setIsOpen={setIsAddItemOpen} />
@@ -419,4 +402,3 @@ export default function StoreInventoryPage() {
         </div>
     );
 }
-
