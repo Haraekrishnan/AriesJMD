@@ -11,7 +11,7 @@ import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
 import { format, formatDistanceToNow, parseISO, isPast, addDays, isBefore, isValid } from 'date-fns';
 import StatCard from '@/components/dashboard/stat-card';
-import { Users, CheckCircle, ListTodo, ShieldAlert, Clock, ArrowRight, UserCheck, AlertCircle, TrendingUp, Layout, HardHat, Warehouse, ArrowRightLeft, ClipboardCheck, Hammer, MessageSquare } from 'lucide-react';
+import { Users, CheckCircle, ListTodo, ShieldAlert, ShieldCheck, Clock, ArrowRight, UserCheck, AlertCircle, TrendingUp, Layout, HardHat, Warehouse, ArrowRightLeft, ClipboardCheck, Hammer, MessageSquare } from 'lucide-react';
 import TasksCompletedChart from '@/components/dashboard/tasks-completed-chart';
 import TeamTaskDistributionChart from '@/components/dashboard/team-task-distribution-chart';
 import AnnouncementFeed from '@/components/announcements/AnnouncementFeed';
