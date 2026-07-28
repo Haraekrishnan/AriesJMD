@@ -72,7 +72,18 @@ export default function DashboardPage() {
           const total = memberTasks.length;
           const score = total > 0 ? Math.round((completed / total) * 100) : 0;
           return { member, completed, overdue, total, score };
-      }).sort((a,b) => b.score - a.score);
+      }).sort((a, b) => {
+          // Sort by status first: active/unset first, then locked
+          const isALocked = a.member.status === 'locked';
+          const isBLocked = b.member.status === 'locked';
+          
+          if (isALocked !== isBLocked) {
+              return isALocked ? 1 : -1;
+          }
+          
+          // Then by score descending
+          return b.score - a.score;
+      });
   }, [teamUsers, allTasks]);
 
   // --- MANAGEMENT SUMMARY DATA ---
@@ -372,14 +383,22 @@ export default function DashboardPage() {
                 <ScrollArea className="h-[320px]">
                     <div className="divide-y">
                         {teamPerformance.length > 0 ? teamPerformance.map(({ member, score, overdue, total }) => (
-                            <div key={member.id} className="p-4 flex items-center justify-between hover:bg-muted/20 transition-colors">
+                            <div key={member.id} className={cn(
+                                "p-4 flex items-center justify-between hover:bg-muted/20 transition-colors",
+                                member.status === 'locked' && "opacity-40 grayscale pointer-events-none bg-muted/10"
+                            )}>
                                 <div className="flex items-center gap-3 min-w-0">
                                     <Avatar className="h-8 w-8 border">
                                         <AvatarImage src={member.avatar} />
                                         <AvatarFallback>{member.name[0]}</AvatarFallback>
                                     </Avatar>
                                     <div className="min-w-0">
-                                        <p className="text-sm font-bold truncate leading-tight">{member.name}</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-bold truncate leading-tight">{member.name}</p>
+                                            {member.status === 'locked' && (
+                                                <Badge variant="outline" className="text-[9px] font-black h-4 px-1 leading-none border-muted-foreground/30">LOCKED</Badge>
+                                            )}
+                                        </div>
                                         <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{member.role}</p>
                                     </div>
                                 </div>
