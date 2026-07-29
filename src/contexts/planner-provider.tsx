@@ -559,7 +559,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         if (!job) return;
         
         const stepIndex = job.steps.findIndex(s => s.id === stepId);
-        if (stepIndex === -1) return; cabinet;
+        if (stepIndex === -1) return;
     
         const updates: { [key:string]: any } = {};
         const now = new Date().toISOString();
