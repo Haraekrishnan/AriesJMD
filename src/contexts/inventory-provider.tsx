@@ -358,7 +358,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         let pendingConsumable = 0, updatedConsumable = 0;
         let pendingGeneral = 0, updatedGeneral = 0;
         
-        const isStoreApprover = user.canApproveTransfers || user.role === 'Admin' || can.approve_transfer_requests;
+        const isStoreApprover = user.canApproveTransfers || user.role === 'Admin' || can.approve_store_requests || can.manage_store_requests;
 
         internalRequests.forEach(r => {
             const isConsumable = r.items?.some(item => item.inventoryItemId && consumableItemIds.has(item.inventoryItemId));
@@ -380,17 +380,17 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         });
         
         return { pendingConsumableRequestCount: pendingConsumable, updatedConsumableRequestCount: updatedConsumable, pendingGeneralRequestCount: pendingGeneral, updatedGeneralRequestCount: updatedGeneral };
-    }, [user, internalRequests, can.approve_transfer_requests, consumableItemIds]);
+    }, [user, internalRequests, can.approve_store_requests, consumableItemIds, can.manage_store_requests]);
 
     const { pendingPpeRequestCount, updatedPpeRequestCount } = useMemo(() => {
         if (!user) return { pendingPpeRequestCount: 0, updatedPpeRequestCount: 0 };
     
-        const canApprove = ['Admin', 'Manager'].includes(user.role);
-        const canIssue = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Project Coordinator'].includes(user.role);
+        const canApproveAction = can.manage_ppe_request || user.role === 'Admin' || user.role === 'Manager';
+        const canIssuePpe = can.manage_ppe_stock || can.manage_store_requests || ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Project Coordinator'].includes(user.role);
     
-        const pendingApproval = canApprove ? ppeRequests.filter(r => r.status === 'Pending').length : 0;
-        const pendingIssuance = canIssue ? ppeRequests.filter(r => r.status === 'Approved').length : 0;
-        const pendingDisputes = (canApprove || canIssue) ? ppeRequests.filter(r => r.status === 'Disputed').length : 0;
+        const pendingApproval = canApproveAction ? ppeRequests.filter(r => r.status === 'Pending').length : 0;
+        const pendingIssuance = canIssuePpe ? ppeRequests.filter(r => r.status === 'Approved').length : 0;
+        const pendingDisputes = (canApproveAction || canIssuePpe) ? ppeRequests.filter(r => r.status === 'Disputed').length : 0;
         
         const myRequests = ppeRequests.filter(r => r.requesterId === user.id);
         const myUpdates = myRequests.filter(r => 
@@ -407,7 +407,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             pendingPpeRequestCount: pendingApproval + pendingIssuance + pendingDisputes,
             updatedPpeRequestCount: myUpdates + myQueries
         };
-    }, [user, ppeRequests]);
+    }, [user, ppeRequests, can.manage_ppe_request, can.manage_ppe_stock, can.manage_store_requests]);
     
     const addInternalRequestComment = useCallback((requestId: string, commentText: string, notify?: boolean, subject?: string) => {
         if (!user) return;
@@ -1256,12 +1256,16 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       }, [user]);
     
       const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus) => {
-        if (!user || !(user.canApproveTransfers || user.role === 'Admin')) return;
+        if (!user || !(user.canApproveTransfers || user.role === 'Admin' || can.approve_store_requests || can.manage_store_requests)) return;
         update(ref(rtdb, `internalRequests/${requestId}`), { status, approverId: user.id, acknowledgedByRequester: false });
-      }, [user]);
+      }, [user, can.approve_store_requests, can.manage_store_requests]);
     
       const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment?: string) => {
-        if (!user || !(user.canApproveTransfers || user.role === 'Admin')) return;
+        const isApprover = user?.canApproveTransfers || user?.role === 'Admin' || can.approve_store_requests || can.manage_store_requests;
+        if (!user || !isApprover) {
+            toast({ title: 'Permission Denied', variant: 'destructive' });
+            return;
+        }
         
         const request = internalRequestsById[requestId];
         if (!request) return;
@@ -1285,17 +1289,28 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             }
         }
 
-        const actionComment = `${requestedItem.description}: Status changed to ${status}.`;
-        const finalComment = comment ? `${actionComment} Comment: ${comment}` : actionComment;
+        const now = new Date().toISOString();
+        const updates: { [key: string]: any } = {};
+
+        const actionCommentText = `${requestedItem.description}: Status changed to ${status}.`;
+        const finalCommentText = comment ? `${actionCommentText} Comment: ${comment}` : actionCommentText;
         
-        _addInternalRequestComment(requestId, finalComment, user, internalRequestsById, users, notificationSettings, true, `Update on your request #${requestId.slice(-6)}`);
+        const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
+        updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = {
+            id: newCommentRef.key!,
+            userId: user.id,
+            text: finalCommentText,
+            date: now,
+            eventId: requestId,
+            viewedBy: { [user.id]: true }
+        };
     
         const updatedItems = [...request.items];
-        updatedItems[itemIndex].status = status;
-        
+        const newItem = { ...requestedItem, status };
         if (status === 'Issued') {
-            (updatedItems[itemIndex] as any).issuedDate = new Date().toISOString();
+            (newItem as any).issuedDate = now;
         }
+        updatedItems[itemIndex] = newItem;
         
         const allIssued = updatedItems.every(i => i.status === 'Issued' || i.status === 'Rejected');
         const someIssued = updatedItems.some(i => i.status === 'Issued' || i.status === 'Rejected');
@@ -1313,8 +1328,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
           newStatus = 'Partially Approved';
         }
         
-        const updates: { [key: string]: any } = {};
-        updates[`internalRequests/${requestId}/items/${itemIndex}`] = updatedItems[itemIndex];
+        updates[`internalRequests/${requestId}/items/${itemIndex}`] = newItem;
         updates[`internalRequests/${requestId}/acknowledgedByRequester`] = false;
 
         if(request.status !== newStatus) {
@@ -1325,28 +1339,52 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             const isConsumableReq = request.items.some(item => item.inventoryItemId && consumableItemIds.has(item.inventoryItemId));
             const stockItem = (isConsumableReq ? consumableItems : inventoryItems).find(i => i.id === requestedItem.inventoryItemId);
             if (stockItem && stockItem.quantity !== undefined) {
-                const newQuantity = Math.max(0, stockItem.quantity - requestedItem.quantity);
-                updates[`inventoryItems/${requestedItem.inventoryItemId}/quantity`] = newQuantity;
+                updates[`inventoryItems/${requestedItem.inventoryItemId}/quantity`] = Math.max(0, stockItem.quantity - requestedItem.quantity);
             }
         }
     
         update(ref(rtdb), updates);
-      }, [user, internalRequestsById, inventoryItems, toast, consumableItems, users, notificationSettings, consumableItemIds]);
+
+        const requester = users.find(u => u.id === request.requesterId);
+        if (requester?.email && requester.id !== user.id) {
+            const htmlBody = `
+                <p>Your request item "${requestedItem.description}" has been marked as <strong>${status}</strong> by ${user.name}.</p>
+                ${comment ? `<p><strong>Comment:</strong> ${comment}</p>` : ''}
+                <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/my-requests">View Request</a></p>
+            `;
+            sendNotificationEmail({
+                to: [requester.email],
+                subject: `Request Item Status Updated: ${requestedItem.description}`,
+                htmlBody,
+                notificationSettings,
+                event: 'onInternalRequestUpdate',
+                involvedUser: requester,
+                creatorUser: user
+            });
+        }
+      }, [user, internalRequestsById, inventoryItems, toast, consumableItems, users, notificationSettings, consumableItemIds, can]);
     
       const updateInternalRequestItem = useCallback((requestId: string, updatedItem: InternalRequestItem, originalItem: InternalRequestItem, reason?: string) => {
         if (!user) return;
         const request = internalRequestsById[requestId];
         if (!request) return;
     
-        const canEdit = (user.canApproveTransfers || user.role === 'Admin') || user.id === request.requesterId;
-        if (!canEdit) return;
+        const isStoreStaff = user.canApproveTransfers || user.role === 'Admin' || can.manage_store_requests || can.approve_store_requests;
+        const canEdit = isStoreStaff || user.id === request.requesterId;
+        if (!canEdit) {
+            toast({ title: 'Permission Denied', variant: 'destructive' });
+            return;
+        }
     
         const itemIndex = request.items.findIndex(i => i.id === updatedItem.id);
         if (itemIndex === -1) return;
     
+        const now = new Date().toISOString();
+        const updates: { [key: string]: any } = {};
+
         const sanitizedItem = sanitizeData({ ...updatedItem, inventoryItemId: updatedItem.inventoryItemId || null });
-        update(ref(rtdb, `internalRequests/${requestId}/items/${itemIndex}`), sanitizedItem);
-    
+        updates[`internalRequests/${requestId}/items/${itemIndex}`] = sanitizedItem;
+
         const commentParts: string[] = [];
         if (originalItem.description !== updatedItem.description) {
             commentParts.push(`Description changed from "${originalItem.description}" to "${updatedItem.description}".`);
@@ -1360,33 +1398,39 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
         if (commentParts.length > 0) {
             const commentText = `Item "${originalItem.description}" updated: ${commentParts.join(', ')}.`;
-            
-            // Add comment and notify if user is not the requester
-            const shouldNotify = user.id !== request.requesterId;
-            addInternalRequestComment(requestId, commentText, shouldNotify, `Update on Store Request #${requestId.slice(-6)}`);
-    
-            // Additionally, send an email for clarity
-            const requester = users.find(u => u.id === request.requesterId);
-            if (requester?.email && shouldNotify) {
-                 const htmlBody = `
-                    <p><strong>${user.name}</strong> updated your store request.</p>
-                    <ul>
-                        ${commentParts.map(c => `<li>${c}</li>`).join('')}
-                    </ul>
-                    <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/my-requests">View Request</a></p>
-                `;
-                sendNotificationEmail({
-                    to: [requester.email],
-                    subject: `Store Request Updated (#${requestId.slice(-6)})`,
-                    htmlBody,
-                    notificationSettings,
-                    event: 'onInternalRequestUpdate',
-                    involvedUser: requester,
-                    creatorUser: user,
-                });
+            const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
+            updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = {
+                id: newCommentRef.key!,
+                userId: user.id,
+                text: commentText,
+                date: now,
+                eventId: requestId,
+                viewedBy: { [user.id]: true }
+            };
+            updates[`internalRequests/${requestId}/acknowledgedByRequester`] = false;
+
+            if (user.id !== request.requesterId) {
+                const requester = users.find(u => u.id === request.requesterId);
+                if (requester?.email) {
+                    const htmlBody = `
+                        <p><strong>${user.name}</strong> updated an item in your store request.</p>
+                        <ul>${commentParts.map(c => `<li>${c}</li>`).join('')}</ul>
+                        <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/my-requests">View Request</a></p>
+                    `;
+                    sendNotificationEmail({
+                        to: [requester.email],
+                        subject: `Store Request Updated (#${requestId.slice(-6)})`,
+                        htmlBody,
+                        notificationSettings,
+                        event: 'onInternalRequestUpdate',
+                        involvedUser: requester,
+                        creatorUser: user,
+                    });
+                }
             }
         }
-      }, [user, internalRequestsById, addInternalRequestComment, users, notificationSettings]);
+        update(ref(rtdb), updates);
+      }, [user, internalRequestsById, users, notificationSettings, can, toast]);
       
     
       const markInternalRequestAsViewed = useCallback((requestId: string) => {
