@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter
 } from '@/components/ui/card';
@@ -11,25 +11,28 @@ import {
 import {
   eachDayOfInterval, endOfMonth, startOfMonth, format,
   isSameDay, getDate, isPast, isValid, parseISO, isToday,
-  isSameMonth, startOfWeek, endOfWeek, startOfDay, addMonths, subMonths
+  isSameMonth, startOfWeek, endOfWeek, startOfDay, addMonths, subMonths, getDay
 } from 'date-fns';
 import { ref, update } from "firebase/database";
 import { rtdb } from "@/lib/rtdb";
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
-import { Edit, Trash2, Send, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
+import { Edit, Trash2, Send, ChevronLeft, ChevronRight, MessageSquare, PlusCircle, Download, FileSpreadsheet, Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import type { PlannerEvent } from '@/lib/types';
+import type { PlannerEvent, Comment, User } from '@/lib/types';
 import EditEventDialog from './EditEventDialog';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 import { useAuth } from '@/contexts/auth-provider';
 import { usePlanner } from '@/contexts/planner-provider';
-import { useGeneral } from '@/contexts/general-provider';
-
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '../ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import * as ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 interface PlannerCalendarProps {
   selectedUserId: string;
@@ -39,19 +42,17 @@ interface PlannerCalendarProps {
   setCurrentMonth: (date: Date) => void;
 }
 
-const MAX_EVENTS_VISIBLE = 2;
-
 const eventColors = [
-    'bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200',
-    'bg-green-100 dark:bg-green-900/40 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200',
-    'bg-yellow-100 dark:bg-yellow-900/40 border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200',
-    'bg-purple-100 dark:bg-purple-900/40 border-purple-300 dark:border-purple-700 text-purple-800 dark:text-purple-200',
-    'bg-pink-100 dark:bg-pink-900/40 border-pink-300 dark:border-pink-700 text-pink-800 dark:text-pink-200',
-    'bg-indigo-100 dark:bg-indigo-900/40 border-indigo-300 dark:border-indigo-700 text-indigo-800 dark:text-indigo-200',
-    'bg-teal-100 dark:bg-teal-900/40 border-teal-300 dark:border-teal-700 text-teal-800 dark:text-teal-200',
+    'bg-blue-100 border-blue-300 text-blue-900',
+    'bg-green-100 border-green-300 text-green-900',
+    'bg-yellow-100 border-yellow-300 text-yellow-900',
+    'bg-purple-100 border-purple-300 text-purple-900',
+    'bg-pink-100 border-pink-300 text-pink-900',
+    'bg-indigo-100 border-indigo-300 text-indigo-900',
+    'bg-teal-100 border-teal-300 text-teal-900',
 ];
 
-const personalPlanningColor = 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600';
+const personalPlanningColor = 'bg-slate-100 border-slate-300 text-slate-900';
 
 const creatorColorMap = new Map<string, string>();
 let colorIndex = 0;
@@ -64,95 +65,44 @@ const getColorForCreator = (creatorId: string) => {
     return creatorColorMap.get(creatorId);
 };
 
-
 export default function PlannerCalendar({
   selectedUserId,
   selectedDate,
   setSelectedDate,
-  currentMonth: externalCurrentMonth,
-  setCurrentMonth: setExternalCurrentMonth
+  currentMonth,
+  setCurrentMonth
 }: PlannerCalendarProps) {
   const { user, users } = useAuth();
   const {
       getExpandedPlannerEvents, deletePlannerEvent,
-      addPlannerEventComment, dailyPlannerComments, markSinglePlannerCommentAsRead
+      addPlannerEventComment, dailyPlannerComments
   } = usePlanner();
 
   const { toast } = useToast();
-  const [internalCurrentMonth, setInternalCurrentMonth] = useState(externalCurrentMonth);
   const [editingEvent, setEditingEvent] = useState<PlannerEvent | null>(null);
   const [newComments, setNewComments] = useState<Record<string, string>>({});
-  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
-  // Sync month externally
-  useEffect(() => {
-    setInternalCurrentMonth(externalCurrentMonth);
-  }, [externalCurrentMonth]);
-
-  // When selectedDate changes (e.g., "Go to Event" clicked)
-  useEffect(() => {
-    if (selectedDate && !isSameMonth(selectedDate, internalCurrentMonth)) {
-      const newMonth = startOfMonth(selectedDate);
-      setInternalCurrentMonth(newMonth);
-      if(setExternalCurrentMonth) setExternalCurrentMonth(newMonth);
-    }
-    
-    // Smooth scroll to calendar
-    const calendarElement = document.getElementById("planner-calendar-section");
-    if (calendarElement && selectedDate) {
-      calendarElement.scrollIntoView({ behavior: "smooth" });
-
-      // Temporary highlight animation
-      const dayKey = format(selectedDate, 'yyyy-MM-dd');
-      const el = document.querySelector(`[data-date="${dayKey}"]`);
-      if (el) {
-        el.classList.add("animate-pulse", "bg-blue-100", "dark:bg-blue-900/50");
-        setTimeout(() => el.classList.remove("animate-pulse", "bg-blue-100", "dark:bg-blue-900/50"), 1500);
-      }
-    }
-  }, [selectedDate, setExternalCurrentMonth, internalCurrentMonth]);
+  const daysInMonth = useMemo(() => {
+    const start = startOfMonth(currentMonth);
+    const end = endOfMonth(currentMonth);
+    return eachDayOfInterval({ start, end });
+  }, [currentMonth]);
 
   const expandedEvents = useMemo(() => {
-    const monthStart = startOfMonth(internalCurrentMonth);
-    const monthEnd = endOfMonth(internalCurrentMonth);
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
     return getExpandedPlannerEvents(monthStart, monthEnd, selectedUserId);
-  }, [getExpandedPlannerEvents, internalCurrentMonth, selectedUserId]);
+  }, [getExpandedPlannerEvents, currentMonth, selectedUserId]);
 
   const viewingUser = useMemo(() => users.find(u => u.id === selectedUserId), [users, selectedUserId]);
 
-  const calendarGrid = useMemo(() => {
-    const monthStart = startOfMonth(internalCurrentMonth);
-    const monthEnd = endOfMonth(internalCurrentMonth);
-    const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
-    const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
-    return eachDayOfInterval({ start: startDate, end: endDate });
-  }, [internalCurrentMonth]);
-
-  const selectedDayEvents = useMemo(() => {
-    if (!selectedDate) return [];
-    return expandedEvents.filter(event => isSameDay(event.eventDate, selectedDate as Date));
-  }, [expandedEvents, selectedDate]);
-
-  const dayCommentsData = useMemo(() => {
-    if (!selectedDate) return null;
-    const dayStr = format(selectedDate, 'yyyy-MM-dd');
-    const dayCommentId = `${dayStr}_${selectedUserId}`;
-    return dailyPlannerComments.find(c => c.id === dayCommentId) || null;
-  }, [dailyPlannerComments, selectedDate, selectedUserId]);
-
-  const getCommentsForEvent = (eventId: string) => {
-    if (!dayCommentsData || !dayCommentsData.comments) return [];
-    const allComments = Array.isArray(dayCommentsData.comments)
-      ? dayCommentsData.comments
-      : Object.values(dayCommentsData.comments);
-    return allComments.filter(c => c && c.eventId === eventId);
-  };
-
-  const handleAddComment = (eventId: string) => {
-    const commentText = newComments[eventId];
-    if (!commentText || !commentText.trim() || !selectedDate) return;
-    addPlannerEventComment(selectedUserId, format(selectedDate, 'yyyy-MM-dd'), eventId, commentText);
-    setNewComments(prev => ({ ...prev, [eventId]: '' }));
+  const handleAddComment = (day: Date, eventId: string) => {
+    const dayStr = format(day, 'yyyy-MM-dd');
+    const commentText = newComments[`${dayStr}-${eventId}`];
+    if (!commentText || !commentText.trim()) return;
+    addPlannerEventComment(selectedUserId, dayStr, eventId, commentText);
+    setNewComments(prev => ({ ...prev, [`${dayStr}-${eventId}`]: '' }));
+    toast({ title: "Comment Added" });
   };
 
   const handleDeleteEvent = (event: PlannerEvent) => {
@@ -160,297 +110,241 @@ export default function PlannerCalendar({
     toast({ variant: 'destructive', title: 'Event Deleted' });
   };
 
-  const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const handleExportExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet(format(currentMonth, 'MMM yyyy'));
 
-  const changeMonth = (amount: number) => {
-    const newMonth = addMonths(internalCurrentMonth, amount);
-    setInternalCurrentMonth(newMonth);
-    setExternalCurrentMonth(newMonth);
-    setSelectedDate(startOfMonth(newMonth));
-  };
-   
+    sheet.columns = [
+      { header: 'DATE', key: 'date', width: 15 },
+      { header: 'DAY', key: 'day', width: 12 },
+      { header: 'PLANNED EVENTS', key: 'events', width: 40 },
+      { header: 'NOTES / NOTEPAD', key: 'notes', width: 50 },
+    ];
 
-  const handleTodayClick = () => {
-    const today = new Date();
-    setInternalCurrentMonth(today);
-    setExternalCurrentMonth(today);
-    setSelectedDate(today);
-  };
+    daysInMonth.forEach(day => {
+      const dayStr = format(day, 'yyyy-MM-dd');
+      const dayEvents = expandedEvents.filter(e => isSameDay(e.eventDate, day));
+      const dayCommentsData = dailyPlannerComments.find(c => c.id === `${dayStr}_${selectedUserId}`);
+      const comments = dayCommentsData?.comments ? Object.values(dayCommentsData.comments) : [];
 
-  const toggleExpandDay = (day: Date) => {
-    const dayKey = format(day, 'yyyy-MM-dd');
-    setExpandedDays(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(dayKey)) newSet.delete(dayKey);
-      else newSet.add(dayKey);
-      return newSet;
-    });
-  };
-  
-  const handleDateSelect = (day: Date) => {
-    setSelectedDate(day);
-    if (!user) return;
-  
-    const dayStr = format(day, 'yyyy-MM-dd');
-    const dayCommentId = `${dayStr}_${selectedUserId}`;
-    const commentsForDay = dailyPlannerComments.find(c => c.id === dayCommentId);
-  
-    if (commentsForDay && commentsForDay.comments) {
-      const updates: { [key: string]: any } = {};
-      Object.entries(commentsForDay.comments).forEach(([key, comment]) => {
-        if (comment && comment.userId !== user.id && !comment.viewedBy?.[user.id]) {
-          const path = `dailyPlannerComments/${dayCommentId}/comments/${key}/viewedBy/${user.id}`;
-          updates[path] = true;
-        }
+      const eventsText = dayEvents.map(e => `[${e.event.title}]`).join(', ');
+      const notesText = comments.map(c => `${users.find(u => u.id === c.userId)?.name}: ${c.text}`).join('\n');
+
+      const row = sheet.addRow({
+        date: format(day, 'dd-MMM-yyyy'),
+        day: format(day, 'EEEE'),
+        events: eventsText,
+        notes: notesText,
       });
-      if (Object.keys(updates).length > 0) {
-        update(ref(rtdb), updates);
+
+      const isWeekendDay = getDay(day) === 0;
+      if (isWeekendDay) {
+        row.eachCell(cell => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF2CC' } };
+        });
       }
-    }
+
+      row.eachCell(cell => {
+          cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+          cell.alignment = { vertical: 'middle', wrapText: true };
+          cell.font = { name: 'Calibri', size: 11 };
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `Planner_${viewingUser?.name}_${format(currentMonth, 'yyyy_MM')}.xlsx`);
   };
 
   return (
-    <>
-      <div id="planner-calendar-section" className="grid grid-cols-1 xl:grid-cols-[1fr,400px] gap-8 flex-1">
-        {/* MONTHLY VIEW */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" onClick={() => changeMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
-                <CardTitle className="text-2xl font-bold">{format(internalCurrentMonth, 'MMMM yyyy')}</CardTitle>
-                 <Button variant="outline" size="icon" onClick={() => changeMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
+    <Card className="flex-1 flex flex-col overflow-hidden border-2 shadow-sm">
+      <CardHeader className="bg-muted/30 border-b pb-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center bg-background border rounded-md p-1 shadow-sm">
+              <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="h-8 w-8">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="px-4 font-black text-lg uppercase tracking-tight min-w-[150px] text-center">
+                {format(currentMonth, 'MMMM yyyy')}
+              </span>
+              <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="h-8 w-8">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleTodayClick}>Today</Button>
-            </div>
-          </CardHeader>
-          <CardContent className="p-2">
-            <div className="grid grid-cols-7 border-t border-l">
-              {daysOfWeek.map(day => (
-                <div key={day} className="p-2 text-center font-semibold text-sm border-b border-r text-muted-foreground">{day}</div>
-              ))}
+            <Button variant="outline" size="sm" onClick={() => setCurrentMonth(new Date())} className="font-bold">Today</Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={handleExportExcel} className="font-bold border-2">
+              <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" /> Export to Excel
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
 
-              {calendarGrid.map((day, index) => {
-                const dayKey = format(day, 'yyyy-MM-dd');
-                const dayEvents = expandedEvents.filter(event => isSameDay(event.eventDate, day));
-                const isExpanded = expandedDays.has(dayKey);
-                const visibleEvents = isExpanded ? dayEvents : dayEvents.slice(0, MAX_EVENTS_VISIBLE);
+      <CardContent className="p-0 flex-1 overflow-hidden">
+        <TooltipProvider>
+          <div className="h-full flex flex-col">
+            <div className="overflow-x-auto flex-1 relative">
+              <Table className="border-collapse">
+                <TableHeader className="sticky top-0 z-20 bg-muted/90 backdrop-blur-sm shadow-sm">
+                  <TableRow className="border-b-2 border-black">
+                    <TableHead className="w-40 border-r border-black font-black text-black text-center uppercase tracking-wider text-[11px]">Date</TableHead>
+                    <TableHead className="w-32 border-r border-black font-black text-black text-center uppercase tracking-wider text-[11px]">Day</TableHead>
+                    <TableHead className="min-w-[300px] border-r border-black font-black text-black uppercase tracking-wider text-[11px] px-4">Planned Events & Activities</TableHead>
+                    <TableHead className="border-black font-black text-black uppercase tracking-wider text-[11px] px-4">Daily Notepad / Notes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {daysInMonth.map((day) => {
+                    const dayStr = format(day, 'yyyy-MM-dd');
+                    const dayEvents = expandedEvents.filter(e => isSameDay(e.eventDate, day));
+                    const dayCommentId = `${dayStr}_${selectedUserId}`;
+                    const dayCommentsData = dailyPlannerComments.find(c => c.id === dayCommentId);
+                    const isSunday = getDay(day) === 0;
+                    const isCurrentDay = isToday(day);
 
-                return (
-                  <div
-                    key={index}
-                    data-date={dayKey}
-                    className={cn(
-                      "relative min-h-[120px] p-1 border-b border-r flex flex-col transition-colors duration-200",
-                      !isSameMonth(day, internalCurrentMonth) && "bg-muted/50 text-muted-foreground",
-                      isToday(day) && "bg-blue-50 dark:bg-blue-900/20"
-                    )}
-                  >
-                    <button
-                      onClick={() => handleDateSelect(day)}
-                      className={cn(
-                        "absolute top-1 right-1 h-6 w-6 rounded-full text-xs flex items-center justify-center",
-                        selectedDate && isSameDay(day, selectedDate) && "bg-primary text-primary-foreground"
-                      )}
-                    >
-                      {format(day, 'd')}
-                    </button>
-
-                    <div className="space-y-1 mt-8 flex-1">
-                      {visibleEvents.map(event => {
-                        const creator = users.find(u => u.id === event.event.creatorId);
-                        const isDelegated = event.event.creatorId !== event.event.userId;
-                        const eventColor = isDelegated ? getColorForCreator(event.event.creatorId) : personalPlanningColor;
-
-                        return (
-                          <div
-                            key={event.event.id}
-                            onClick={() => {
-                              handleDateSelect(day);
-                              if (user && event?.event.id) {
-                                update(ref(rtdb, `plannerEvents/${event.event.id}/viewedBy`), {
-                                  [user.id]: true
-                                });
-                              }
-                            }}
-                            className={cn("p-1.5 rounded-sm text-xs cursor-pointer border-l-4", eventColor)}
-                          >
-                            <p className="font-semibold truncate">{event.event.title}</p>
-                            <p className="text-muted-foreground truncate">
-                              {isDelegated ? `Delegated by: ${creator?.name}` : 'My Planning'}
-                            </p>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {dayEvents.length > MAX_EVENTS_VISIBLE && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="h-auto p-0 text-xs mt-auto self-start"
-                        onClick={() => toggleExpandDay(day)}
-                      >
-                        {isExpanded ? "Show less" : `+${dayEvents.length - MAX_EVENTS_VISIBLE} more`}
-                      </Button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* DAILY NOTEPAD */}
-        <Card className="flex flex-col h-full">
-          <CardHeader>
-            <CardTitle>Daily Notepad</CardTitle>
-            <CardDescription>
-              {selectedDate ? format(selectedDate, 'PPP') : 'Select a date'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex-1 overflow-hidden">
-            <ScrollArea className="h-full pr-4">
-              <div className="space-y-4">
-                {selectedDayEvents.length > 0 ? selectedDayEvents.map(event => {
-                  const creator = users.find(u => u.id === event.event.creatorId);
-                  const canModifyEvent = user?.id === event.event.creatorId || user?.role === 'Admin';
-                  const eventDate = event.event.date ? parseISO(event.event.date) : null;
-                  const isEventInPast = eventDate ? isPast(startOfDay(eventDate)) && !isToday(eventDate) : true;
-                  const isDelegated = event.event.creatorId !== event.event.userId;
-                  const eventComments = getCommentsForEvent(event.event.id);
-                  const eventColor = isDelegated ? getColorForCreator(event.event.creatorId) : personalPlanningColor;
-
-                  return (
-                    <div key={event.event.id} className={cn("border rounded-lg p-3 space-y-2 border-l-4", eventColor)}>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-semibold">{event.event.title}</p>
-                          <p className="text-sm text-muted-foreground">{event.event.description}</p>
-                          <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                            {isDelegated ? `Delegated by:` : 'My Planning'}
-                            {isDelegated && creator && (
-                              <>
-                                <Avatar className="h-4 w-4">
-                                  <AvatarImage src={creator?.avatar} />
-                                  <AvatarFallback>{creator?.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                {creator?.name}
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        {canModifyEvent && (!isEventInPast || user?.role === 'Admin') && (
-                          <div className="flex">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={() => {
-                                setEditingEvent(event.event);
-                                if (user && event?.event.id) {
-                                  update(ref(rtdb, `plannerEvents/${event.event.id}/viewedBy`), {
-                                    [user.id]: true
-                                  });
-                                }
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Event?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete the event "{event.event.title}"?
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDeleteEvent(event.event)}>Delete</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
+                    return (
+                      <TableRow 
+                        key={dayStr} 
+                        className={cn(
+                          "border-b border-slate-300 hover:bg-blue-50/30 transition-colors group h-16",
+                          isSunday && "bg-yellow-50/50 dark:bg-yellow-900/10",
+                          isCurrentDay && "bg-blue-50/60 dark:bg-blue-900/20 ring-1 ring-inset ring-blue-500/20"
                         )}
-                      </div>
-
-                      <Accordion type="single" collapsible className="w-full">
-                        <AccordionItem value={event.event.id} className="border-none">
-                          <AccordionTrigger className="p-0 text-xs text-blue-600 hover:no-underline">
-                            <div className="flex items-center gap-1">
-                              <MessageSquare className="h-3 w-3" /> Comments ({eventComments.length})
-                            </div>
-                          </AccordionTrigger>
-                          <AccordionContent className="pt-2">
-                            <div className="space-y-2">
-                              {eventComments.map(comment => {
-                                const commentUser = users.find(u => u.id === comment.userId);
+                      >
+                        <TableCell className={cn("text-center border-r border-slate-300 p-0")}>
+                           <div className={cn(
+                             "w-full h-full flex flex-col items-center justify-center font-black text-sm",
+                             isCurrentDay ? "text-blue-700" : "text-black"
+                           )}>
+                             {format(day, 'dd-MMM-yyyy')}
+                           </div>
+                        </TableCell>
+                        <TableCell className="text-center border-r border-slate-300">
+                          <span className={cn(
+                            "font-black uppercase text-[10px] tracking-widest",
+                            isSunday ? "text-red-600" : "text-slate-600"
+                          )}>
+                            {format(day, 'EEEE')}
+                          </span>
+                        </TableCell>
+                        <TableCell className="border-r border-slate-300 p-2 align-top">
+                          <div className="flex flex-wrap gap-1.5">
+                            {dayEvents.map(eventInstance => {
+                                const isDelegated = eventInstance.event.creatorId !== eventInstance.event.userId;
+                                const eventColor = isDelegated ? getColorForCreator(eventInstance.event.creatorId) : personalPlanningColor;
+                                const creator = users.find(u => u.id === eventInstance.event.creatorId);
+                                
                                 return (
-                                  <div key={comment.id} className="flex items-start gap-2">
-                                    <Avatar className="h-6 w-6">
-                                      <AvatarImage src={commentUser?.avatar} />
-                                      <AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="text-xs bg-muted p-2 rounded-md w-full">
-                                      <div className="flex justify-between items-baseline">
-                                        <p className="font-semibold">{commentUser?.name}</p>
-                                        <p className="text-muted-foreground">
-                                          {formatDistanceToNow(parseISO(comment.date), { addSuffix: true })}
-                                        </p>
-                                      </div>
-                                      <p className="text-foreground/80 mt-1 whitespace-pre-wrap">{comment.text}</p>
-                                    </div>
+                                  <div key={eventInstance.event.id} className="relative">
+                                    <Badge 
+                                      variant="outline" 
+                                      className={cn(
+                                        "h-auto py-1 px-2 flex flex-col items-start border-2 cursor-pointer hover:shadow-sm transition-all",
+                                        eventColor
+                                      )}
+                                      onClick={() => setEditingEvent(eventInstance.event)}
+                                    >
+                                      <span className="font-black text-[11px] uppercase leading-none">{eventInstance.event.title}</span>
+                                      {isDelegated && (
+                                        <span className="text-[9px] font-bold opacity-70 mt-0.5">By: {creator?.name.split(' ')[0]}</span>
+                                      )}
+                                    </Badge>
                                   </div>
                                 );
-                              })}
-                              {eventComments.length === 0 && (
-                                <p className="text-xs text-muted-foreground text-center py-2">No comments for this event.</p>
-                              )}
-                              <div className="relative pt-2">
-                                <Textarea
-                                  value={newComments[event.event.id] || ''}
-                                  onChange={(e) => setNewComments(prev => ({ ...prev, [event.event.id]: e.target.value }))}
-                                  placeholder="Add a comment..."
-                                  className="pr-10 text-xs"
-                                  rows={1}
+                            })}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity border-2 border-dashed"
+                                  onClick={() => {
+                                      // Logic to trigger add event dialog pre-filled with this date would go here
+                                      toast({ title: "Quick Add", description: `Please use the "Add Planning" button at the top for ${format(day, 'PP')}.` });
+                                  }}
+                                >
+                                  <PlusCircle className="h-3 w-3 text-primary" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent><p>Add Event for {format(day, 'dd MMM')}</p></TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </TableCell>
+                        <TableCell className="p-2 align-top">
+                          <div className="space-y-2">
+                             {dayCommentsData?.comments && Object.values(dayCommentsData.comments).map((comment) => {
+                               const author = users.find(u => u.id === comment.userId);
+                               return (
+                                 <div key={comment.id} className="flex items-start gap-2 bg-white dark:bg-slate-800 p-2 rounded border border-slate-200 shadow-sm animate-in fade-in zoom-in-95">
+                                    <Avatar className="h-6 w-6 border">
+                                      <AvatarImage src={author?.avatar} />
+                                      <AvatarFallback className="text-[10px]">{author?.name?.[0]}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex justify-between items-baseline mb-0.5">
+                                        <span className="text-[10px] font-black uppercase text-slate-500 truncate">{author?.name}</span>
+                                        <span className="text-[9px] font-bold text-slate-400">{formatDistanceToNow(parseISO(comment.date), { addSuffix: true })}</span>
+                                      </div>
+                                      <p className="text-[11px] font-bold text-black dark:text-white leading-relaxed whitespace-pre-wrap">{comment.text}</p>
+                                    </div>
+                                 </div>
+                               );
+                             })}
+                             
+                             <div className="relative mt-2 opacity-0 group-hover:opacity-100 transition-all focus-within:opacity-100">
+                                <Textarea 
+                                  placeholder="Type daily note..." 
+                                  className="min-h-[40px] h-10 py-2 pr-10 text-[11px] font-bold bg-white/80 focus:bg-white resize-none border-2"
+                                  value={newComments[`${dayStr}-daily`] || ''}
+                                  onChange={(e) => setNewComments(prev => ({ ...prev, [`${dayStr}-daily`]: e.target.value }))}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                      e.preventDefault();
+                                      handleAddComment(day, 'daily');
+                                    }
+                                  }}
                                 />
-                                <Button
-                                  type="button"
-                                  size="icon"
-                                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                                  onClick={() => handleAddComment(event.event.id)}
-                                  disabled={!newComments[event.event.id] || !newComments[event.event.id].trim()}
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  className="absolute right-1 top-1 h-8 w-8 text-blue-600 hover:text-blue-700"
+                                  onClick={() => handleAddComment(day, 'daily')}
+                                  disabled={!newComments[`${dayStr}-daily`]?.trim()}
                                 >
                                   <Send className="h-4 w-4" />
                                 </Button>
-                              </div>
-                            </div>
-                          </AccordionContent>
-                        </AccordionItem>
-                      </Accordion>
-                    </div>
-                  );
-                }) : (
-                  <div className="flex items-center justify-center h-24">
-                    <p className="text-sm text-muted-foreground">No events or notes for this day.</p>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      </div>
+                             </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            
+            <div className="shrink-0 border-t bg-[#f8fafc] p-2 px-6 flex justify-between items-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+               <div className="flex gap-6">
+                 <span className="flex items-center gap-2"><div className="w-3 h-3 bg-blue-100 border border-blue-300 rounded-sm"></div> Delegated Tasks</span>
+                 <span className="flex items-center gap-2"><div className="w-3 h-3 bg-slate-100 border border-slate-300 rounded-sm"></div> Personal Planning</span>
+                 <span className="flex items-center gap-2"><div className="w-3 h-3 bg-yellow-50 border border-yellow-300 rounded-sm"></div> Non-Working / Holiday</span>
+               </div>
+               <div>
+                  WORKSPACE: {viewingUser?.name.toUpperCase()} &middot; {format(currentMonth, 'MMMM yyyy')}
+               </div>
+            </div>
+          </div>
+        </TooltipProvider>
+      </CardContent>
 
       {editingEvent && (
-        <EditEventDialog isOpen={!!editingEvent} setIsOpen={() => setEditingEvent(null)} event={editingEvent} />
+        <EditEventDialog 
+          isOpen={!!editingEvent} 
+          setIsOpen={() => setEditingEvent(null)} 
+          event={editingEvent} 
+        />
       )}
-    </>
+    </Card>
   );
 }

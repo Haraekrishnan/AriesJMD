@@ -6,7 +6,6 @@ import CreateEventDialog from '@/components/planner/create-event-dialog';
 import PlannerCalendar from '@/components/planner/planner-calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import RecentPlannerActivity from '@/components/planner/RecentActivity';
 import { startOfMonth, parseISO } from 'date-fns';
 import { useSearchParams, useRouter } from 'next/navigation';
 
@@ -49,30 +48,35 @@ export default function PlannerPage() {
     };
 
     return (
-        <div className="space-y-8 h-full flex flex-col">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div 
+          className="flex flex-col gap-6"
+          style={{ height: "calc(100vh - 165px)" }}
+        >
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Monthly Planning</h1>
-                    <p className="text-muted-foreground">Organize your team's schedule and events.</p>
+                    <p className="text-muted-foreground font-medium">Coordinate schedules, notes, and delegated events in a worksheet format.</p>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                     {canViewOthers && (
                         <div className="flex items-center gap-2">
-                            <Label htmlFor="user-select" className="text-sm font-medium">View Planning of:</Label>
+                            <Label htmlFor="user-select" className="text-xs font-black uppercase tracking-widest text-slate-500">View Planner of:</Label>
                             <Select value={selectedUserId} onValueChange={handleUserChange}>
-                                <SelectTrigger className="w-[200px]" id="user-select">
+                                <SelectTrigger className="w-[200px] h-9 font-bold" id="user-select">
                                     <SelectValue placeholder="Select an employee" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {visibleUsers.map((u, index) => (
-                                        <SelectItem key={`${u.id}-${index}`} value={u.id}>{u.name}</SelectItem>
+                                        <SelectItem key={`${u.id}-${index}`} value={u.id} className="font-bold">{u.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
                     )}
-                    <CreateEventDialog isPlanning={true} />
-                    <CreateEventDialog isDelegating={true} />
+                    <div className="flex gap-2">
+                      <CreateEventDialog isPlanning={true} />
+                      <CreateEventDialog isDelegating={true} />
+                    </div>
                 </div>
             </div>
             
