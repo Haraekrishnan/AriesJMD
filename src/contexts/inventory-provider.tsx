@@ -106,7 +106,7 @@ type InventoryContextType = {
   weldingMachines: WeldingMachine[];
   walkieTalkies: WalkieTalkie[];
   pneumaticDrillingMachines: PneumaticDrillingMachine[];
-  pneumaticAngleGrinder: PneumaticAngleGrinder[]; // legacy, to be removed if needed
+  pneumaticAngleGrinder: PneumaticAngleGrinder[];
   pneumaticAngleGrinders: PneumaticAngleGrinder[];
   wiredDrillingMachines: WiredDrillingMachine[];
   cordlessDrillingMachines: CordlessDrillingMachine[];
@@ -509,7 +509,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
         if (Object.keys(updates).length > 0) {
             update(ref(rtdb), updates);
-            addActivityLog(user.id, 'Inventory Batch Added', `Added ${items.length} new items.`);
+            addActivityLog(user.id, "Inventory Batch Added", `Added ${items.length} new items.`);
         }
     }, [user, addActivityLog]);
 
@@ -1896,7 +1896,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         pendingGeneralRequestCount, updatedGeneralRequestCount,
         pendingPpeRequestCount, updatedPpeRequestCount,
         resolveInternalRequestDispute,
-        resolvePpeDispute, // Exported correctly
+        resolvePpeDispute,
         deleteDamageReport,
         deleteAllDamageReportsAndFiles,
         addDeliveryNote,
