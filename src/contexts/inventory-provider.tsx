@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -1275,15 +1276,15 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         
         const requestedItem = request.items[itemIndex];
 
-        if (status === 'Issued') {
-            const isConsumableReq = request.items.some(item => item.inventoryItemId && consumableItemIds.has(item.inventoryItemId));
-            const itemsToCheck = isConsumableReq ? consumableItems : inventoryItems;
-            const stockItem = itemsToCheck.find(i => i.id === requestedItem.inventoryItemId);
+        // Stock check
+        if (status === 'Issued' && requestedItem.inventoryItemId) {
+            const stockItem = inventoryItemsById[requestedItem.inventoryItemId];
+            
             if (stockItem && stockItem.quantity !== undefined && stockItem.quantity < requestedItem.quantity) {
                 toast({
                     variant: 'destructive',
                     title: 'Insufficient Stock',
-                    description: `Cannot issue ${requestedItem.quantity} of ${requestedItem.description}. Only ${stockItem.quantity} available.`,
+                    description: `Cannot issue ${requestedItem.quantity} of ${requestedItem.description}. Only ${stockItem.quantity} available in store.`,
                 });
                 return;
             }
@@ -1336,14 +1337,19 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
 
         if (status === 'Issued' && requestedItem.inventoryItemId) {
-            const isConsumableReq = request.items.some(item => item.inventoryItemId && consumableItemIds.has(item.inventoryItemId));
-            const stockItem = (isConsumableReq ? consumableItems : inventoryItems).find(i => i.id === requestedItem.inventoryItemId);
+            const stockItem = inventoryItemsById[requestedItem.inventoryItemId];
             if (stockItem && stockItem.quantity !== undefined) {
                 updates[`inventoryItems/${requestedItem.inventoryItemId}/quantity`] = Math.max(0, stockItem.quantity - requestedItem.quantity);
+                updates[`inventoryItems/${requestedItem.inventoryItemId}/lastUpdated`] = now;
             }
         }
     
-        update(ref(rtdb), updates);
+        update(ref(rtdb), updates).then(() => {
+            toast({ title: `Item status updated to ${status}` });
+        }).catch(err => {
+            console.error("Update failed:", err);
+            toast({ title: 'Update Failed', variant: 'destructive' });
+        });
 
         const requester = users.find(u => u.id === request.requesterId);
         if (requester?.email && requester.id !== user.id) {
@@ -1362,7 +1368,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 creatorUser: user
             });
         }
-      }, [user, internalRequestsById, inventoryItems, toast, consumableItems, users, notificationSettings, consumableItemIds, can]);
+      }, [user, internalRequestsById, inventoryItemsById, toast, users, notificationSettings, can]);
     
       const updateInternalRequestItem = useCallback((requestId: string, updatedItem: InternalRequestItem, originalItem: InternalRequestItem, reason?: string) => {
         if (!user) return;
@@ -1429,7 +1435,9 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 }
             }
         }
-        update(ref(rtdb), updates);
+        update(ref(rtdb), updates).then(() => {
+            toast({ title: 'Item Updated Successfully' });
+        });
       }, [user, internalRequestsById, users, notificationSettings, can, toast]);
       
     

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
@@ -104,7 +105,7 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false, showAckno
             setIsActionConfirmOpen(true);
         } else {
             updateInternalRequestItemStatus(req.id, item.id, status, `Status changed to ${status}.`);
-            toast({ title: `Item status updated to ${status}` });
+            // Success toast is now handled within the provider after successful validation
         }
     };
 
@@ -115,7 +116,6 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false, showAckno
                  return;
             }
             updateInternalRequestItemStatus(req.id, itemAction.item.id, itemAction.status, comment);
-            toast({ title: `Item status updated to ${itemAction.status}` });
         }
         
         setIsActionConfirmOpen(false);
@@ -178,10 +178,18 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false, showAckno
                                                 <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6"><MoreHorizontal className="h-4 w-4"/></Button></DropdownMenuTrigger>
                                                 <DropdownMenuContent>
                                                     <DropdownMenuItem onSelect={() => onEditRequest(req, item)}><Edit className="mr-2 h-4 w-4" />Edit Item</DropdownMenuItem>
-                                                    <DropdownMenuItem onSelect={() => handleItemActionClick(item, 'Approved')} disabled={item.status === 'Approved'}><CheckCircle className="mr-2 h-4 w-4 text-green-600"/>Approve</DropdownMenuItem>
-                                                    <DropdownMenuItem onSelect={() => handleItemActionClick(item, 'Issued')} disabled={item.status !== 'Approved'}><Truck className="mr-2 h-4 w-4 text-blue-600"/>Issue</DropdownMenuItem>
-                                                    <DropdownMenuItem onSelect={() => handleItemActionClick(item, 'Rejected')} disabled={item.status === 'Rejected'} className="text-destructive focus:text-destructive"><XCircle className="mr-2 h-4 w-4"/>Reject</DropdownMenuItem>
-                                                    <DropdownMenuItem onSelect={() => handleItemActionClick(item, 'Pending')} disabled={item.status === 'Pending'}><Undo2 className="mr-2 h-4 w-4"/>Set to Pending</DropdownMenuItem>
+                                                    <DropdownMenuItem onSelect={() => handleItemActionClick(item, 'Approved')} disabled={item.status === 'Approved'}>
+                                                        <CheckCircle className="mr-2 h-4 w-4 text-green-600"/>Approve
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onSelect={() => handleItemActionClick(item, 'Issued')} disabled={item.status !== 'Approved'}>
+                                                        <Truck className="mr-2 h-4 w-4 text-blue-600"/>Issue
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onSelect={() => handleItemActionClick(item, 'Rejected')} disabled={item.status === 'Rejected'} className="text-destructive focus:text-destructive">
+                                                        <XCircle className="mr-2 h-4 w-4"/>Reject
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onSelect={() => handleItemActionClick(item, 'Pending')} disabled={item.status === 'Pending'}>
+                                                        <Undo2 className="mr-2 h-4 w-4"/>Set to Pending
+                                                    </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         )}
@@ -308,7 +316,7 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false, showAckno
                             <AlertDialogTitle>{action || itemAction?.status} {itemAction ? 'Item?' : 'All Items?'}</AlertDialogTitle>
                             <AlertDialogDescription>Please provide a comment for this action. This will apply to {itemAction ? 'this item' : 'all applicable items in the request'}.</AlertDialogDescription>
                         </AlertDialogHeader>
-                        <div>
+                        <div className="space-y-2">
                             <Label htmlFor="comment">Comment {action === 'Rejected' || itemAction?.status === 'Rejected' ? '(Required)' : '(Optional)'}</Label>
                             <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} />
                         </div>
@@ -401,4 +409,3 @@ export default function InternalRequestTable({ requests, showAcknowledge = true,
     </div>
   );
 }
-
