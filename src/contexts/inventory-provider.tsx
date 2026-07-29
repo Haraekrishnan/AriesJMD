@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
-import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, PpeRequestStatus, Role, ConsumableInwardRecord, DamageReport, User, NotificationSettings, DamageReportStatus, WeldingMachine, WalkieTalkie, PneumaticDrillingMachine, PneumaticAngleGrinder, WiredDrillingMachine, CordlessDrillingMachine, WiredAngleGrinder, CordlessAngleGrinder, CordlessReciprocatingSaw, DeliveryNote } from '@/lib/types';
+import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, PpeRequestStatus, Role, ConsumableInwardRecord, DamageReport, User, NotificationSettings, DamageReportStatus, WeldingMachine, WalkieTalkie, PneumaticDrillingMachine, PneumaticAngleGrinder, WiredDrillingMachine, CordlessDrillingMachine, WiredAngleGrinder, CordlessAngleGrinder, CordlessReciprocatingSaw, DeliveryNote, InventoryTransferRequestStatus } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get, runTransaction } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -106,7 +106,6 @@ type InventoryContextType = {
   weldingMachines: WeldingMachine[];
   walkieTalkies: WalkieTalkie[];
   pneumaticDrillingMachines: PneumaticDrillingMachine[];
-  pneumaticAngleGrinder: PneumaticAngleGrinder[];
   pneumaticAngleGrinders: PneumaticAngleGrinder[];
   wiredDrillingMachines: WiredDrillingMachine[];
   cordlessDrillingMachines: CordlessDrillingMachine[];
@@ -939,7 +938,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, [user, addActivityLog, addTpCertList, users, projects, notificationSettings, inventoryItems, can.approve_transfer_requests]);
     
     const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
-        const canApprove = user?.canApproveTransfers || user?.role === 'Admin' || can.approve_transfer_requests;
+        const canApprove = user?.role === 'Admin' || user?.canApproveTransfers || can.approve_transfer_requests;
         if (!user || !canApprove) return;
         const request = inventoryTransferRequestsById[requestId];
         if (!request) return;
@@ -1661,24 +1660,22 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const deletePpeAttachment = useCallback((requestId: string) => {
         update(ref(rtdb, `ppeRequests/${requestId}`), { attachmentUrl: null });
     }, []);
-    
-    const resolveInternalRequestDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
-        const canApprove = user?.canApproveTransfers || user?.role === 'Admin' || can.approve_transfer_requests;
-        if (!user || !canApprove) return;
 
+    const resolvePpeDisputeInternal = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
+        if (!user) return;
         const updates: { [key: string]: any } = {};
         const now = new Date().toISOString();
         
         if (resolution === 'reissue') {
-            updates[`inventoryTransferRequests/${requestId}/status`] = 'Pending';
-            updates[`inventoryTransferRequests/${requestId}/acknowledgedByRequester`] = false;
+            updates[`ppeRequests/${requestId}/status`] = 'Approved';
+            updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
         } else {
-            updates[`inventoryTransferRequests/${requestId}/status`] = 'Completed';
-            updates[`inventoryTransferRequests/${requestId}/acknowledgedByRequester`] = true;
+            updates[`ppeRequests/${requestId}/status`] = 'Issued';
+            updates[`ppeRequests/${requestId}/viewedByRequester`] = true;
         }
 
-        const newCommentRef = push(ref(rtdb, `inventoryTransferRequests/${requestId}/comments`));
-        updates[`inventoryTransferRequests/${requestId}/comments/${newCommentRef.key}`] = {
+        const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
+        updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = {
             id: newCommentRef.key,
             userId: user.id,
             text: `Dispute Resolved (${resolution}): ${comment}`,
@@ -1687,9 +1684,9 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         };
 
         update(ref(rtdb), updates);
-        toast({ title: 'Transfer Dispute Resolved' });
-    }, [user, can.approve_transfer_requests, toast]);
-    
+        toast({ title: 'PPE Dispute Resolved' });
+    }, [user, toast]);
+
     const addInspectionChecklist = useCallback(() => {}, []);
     const updateInspectionChecklist = useCallback(() => {}, []);
     const deleteInspectionChecklist = useCallback(() => {}, []);
@@ -1887,7 +1884,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         addCordlessReciprocatingSaw, updateCordlessReciprocatingSaw, deleteCordlessReciprocatingSaw,
         addMachineLog, deleteMachineLog, getMachineLogs,
         addInternalRequest, deleteInternalRequest, forceDeleteInternalRequest, addInternalRequestComment, updateInternalRequestStatus, updateInternalRequestItemStatus, updateInternalRequestItem, markInternalRequestAsViewed, acknowledgeInternalRequest,
-        addPpeRequest, updatePpeRequest, updatePpeRequestStatus, addPpeRequestComment, resolvePpeDispute, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed,
+        addPpeRequest, updatePpeRequest, updatePpeRequestStatus, addPpeRequestComment, resolvePpeDispute: resolvePpeDisputeInternal, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed,
         updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord,
         addTpCertList, updateTpCertList, deleteTpCertList,
         addInspectionChecklist, updateInspectionChecklist, deleteInspectionChecklist,
@@ -1896,7 +1893,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         pendingGeneralRequestCount, updatedGeneralRequestCount,
         pendingPpeRequestCount, updatedPpeRequestCount,
         resolveInternalRequestDispute,
-        resolvePpeDispute,
         deleteDamageReport,
         deleteAllDamageReportsAndFiles,
         addDeliveryNote,
