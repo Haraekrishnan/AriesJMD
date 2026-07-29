@@ -84,6 +84,27 @@ type PlannerContextType = {
   bulkMarkJmsAsNoted: (jobIds: string[]) => void;
 };
 
+const createDataListener = <T extends {}>(
+    path: string,
+    setData: Dispatch<SetStateAction<Record<string, T>>>,
+) => {
+    const dbRef = ref(rtdb, path);
+    const listener = onValue(dbRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        const processedData = Object.keys(data).reduce((acc, key) => {
+            acc[key] = { ...data[key], id: key };
+            return acc;
+        }, {} as Record<string, T>);
+        setData(currentData => {
+            if (JSON.stringify(currentData) === JSON.stringify(processedData)) {
+                return currentData;
+            }
+            return processedData;
+        });
+    });
+    return () => listener();
+};
+
 const PlannerContext = createContext<PlannerContextType | undefined>(undefined);
 
 export function PlannerProvider({ children }: { children: ReactNode }) {
@@ -538,7 +559,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         if (!job) return;
         
         const stepIndex = job.steps.findIndex(s => s.id === stepId);
-        if (stepIndex === -1) return;
+        if (stepIndex === -1) return; cabinet;
     
         const updates: { [key:string]: any } = {};
         const now = new Date().toISOString();
@@ -947,7 +968,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             sendNotificationEmail({
                 to: [recipient.email],
                 subject: `Timesheet for Acknowledgment: ${data.plantUnit}`,
-                htmlBody: htmlBody,
+                htmlBody,
                 notificationSettings,
                 event: 'onNewTask',
                 involvedUser: recipient,
