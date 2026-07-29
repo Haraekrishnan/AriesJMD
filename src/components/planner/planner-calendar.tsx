@@ -23,6 +23,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import type { PlannerEvent, Comment, User } from '@/lib/types';
 import EditEventDialog from './EditEventDialog';
+import EventInstanceDialog from './EventInstanceDialog';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import formatDistanceToNow from 'date-fns/formatDistanceToNow';
@@ -80,6 +81,7 @@ export default function PlannerCalendar({
 
   const { toast } = useToast();
   const [editingEvent, setEditingEvent] = useState<PlannerEvent | null>(null);
+  const [viewingInstance, setViewingInstance] = useState<{ event: PlannerEvent, date: Date } | null>(null);
   const [newComments, setNewComments] = useState<Record<string, string>>({});
 
   const daysInMonth = useMemo(() => {
@@ -103,11 +105,6 @@ export default function PlannerCalendar({
     addPlannerEventComment(selectedUserId, dayStr, eventId, commentText);
     setNewComments(prev => ({ ...prev, [`${dayStr}-${eventId}`]: '' }));
     toast({ title: "Comment Added" });
-  };
-
-  const handleDeleteEvent = (event: PlannerEvent) => {
-    deletePlannerEvent(event.id);
-    toast({ variant: 'destructive', title: 'Event Deleted' });
   };
 
   const handleExportExcel = async () => {
@@ -235,6 +232,9 @@ export default function PlannerCalendar({
                                 const eventColor = isDelegated ? getColorForCreator(eventInstance.event.creatorId) : personalPlanningColor;
                                 const creator = users.find(u => u.id === eventInstance.event.creatorId);
                                 
+                                const eventComments = Object.values(dayCommentsData?.comments || {}).filter(c => c.eventId === eventInstance.event.id);
+                                const commentCount = eventComments.length;
+
                                 return (
                                   <div key={eventInstance.event.id} className="relative">
                                     <Badge 
@@ -243,9 +243,17 @@ export default function PlannerCalendar({
                                         "h-auto py-1 px-2 flex flex-col items-start border-2 cursor-pointer hover:shadow-sm transition-all",
                                         eventColor
                                       )}
-                                      onClick={() => setEditingEvent(eventInstance.event)}
+                                      onClick={() => setViewingInstance({ event: eventInstance.event, date: day })}
                                     >
-                                      <span className="font-black text-[11px] uppercase leading-none">{eventInstance.event.title}</span>
+                                      <div className="flex items-center gap-1 w-full justify-between">
+                                        <span className="font-black text-[11px] uppercase leading-none">{eventInstance.event.title}</span>
+                                        {commentCount > 0 && (
+                                            <div className="flex items-center gap-0.5 ml-2 text-[9px] opacity-70">
+                                                <MessageSquare className="h-2.5 w-2.5" />
+                                                {commentCount}
+                                            </div>
+                                        )}
+                                      </div>
                                       {isDelegated && (
                                         <span className="text-[9px] font-bold opacity-70 mt-0.5">By: {creator?.name.split(' ')[0]}</span>
                                       )}
@@ -260,7 +268,6 @@ export default function PlannerCalendar({
                                   size="icon" 
                                   className="h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity border-2 border-dashed"
                                   onClick={() => {
-                                      // Logic to trigger add event dialog pre-filled with this date would go here
                                       toast({ title: "Quick Add", description: `Please use the "Add Planning" button at the top for ${format(day, 'PP')}.` });
                                   }}
                                 >
@@ -273,7 +280,7 @@ export default function PlannerCalendar({
                         </TableCell>
                         <TableCell className="p-2 align-top">
                           <div className="space-y-2">
-                             {dayCommentsData?.comments && Object.values(dayCommentsData.comments).map((comment) => {
+                             {dayCommentsData?.comments && Object.values(dayCommentsData.comments).filter(c => c.eventId === 'daily').map((comment) => {
                                const author = users.find(u => u.id === comment.userId);
                                return (
                                  <div key={comment.id} className="flex items-start gap-2 bg-white dark:bg-slate-800 p-2 rounded border border-slate-200 shadow-sm animate-in fade-in zoom-in-95">
@@ -344,6 +351,17 @@ export default function PlannerCalendar({
           setIsOpen={() => setEditingEvent(null)} 
           event={editingEvent} 
         />
+      )}
+
+      {viewingInstance && (
+          <EventInstanceDialog
+            isOpen={!!viewingInstance}
+            setIsOpen={() => setViewingInstance(null)}
+            event={viewingInstance.event}
+            date={viewingInstance.date}
+            plannerUserId={selectedUserId}
+            onEdit={setEditingEvent}
+          />
       )}
     </Card>
   );
