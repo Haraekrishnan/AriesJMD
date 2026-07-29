@@ -1,10 +1,9 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
 import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, PpeRequestStatus, Role, ConsumableInwardRecord, DamageReport, User, NotificationSettings, DamageReportStatus, WeldingMachine, WalkieTalkie, PneumaticDrillingMachine, PneumaticAngleGrinder, WiredDrillingMachine, CordlessDrillingMachine, WiredAngleGrinder, CordlessAngleGrinder, CordlessReciprocatingSaw, DeliveryNote } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
-import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
+import { ref, onValue, set, push, remove, update, get, runTransaction } from 'firebase/database';
 import { useAuth } from './auth-provider';
 import { useGeneral } from './general-provider';
 import { useToast } from '@/hooks/use-toast';
@@ -107,6 +106,7 @@ type InventoryContextType = {
   weldingMachines: WeldingMachine[];
   walkieTalkies: WalkieTalkie[];
   pneumaticDrillingMachines: PneumaticDrillingMachine[];
+  pneumaticAngleGrinder: PneumaticAngleGrinder[]; // legacy, to be removed if needed
   pneumaticAngleGrinders: PneumaticAngleGrinder[];
   wiredDrillingMachines: WiredDrillingMachine[];
   cordlessDrillingMachines: CordlessDrillingMachine[];
@@ -628,7 +628,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         toast({ title: 'Bulk Update Successful', description: `Updated ${itemsToUpdate.length} items.` });
     }, [inventoryItems, toast]);
 
-    const updateMultipleInventoryItems = useCallback((itemsData: any[]): number => {
+    const updateMultipleInventoryItems = useCallback((itemsData: any[]) => {
         let updatedCount = 0;
         const updates: { [key: string]: any } = {};
     
@@ -865,7 +865,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, [toast]);
     
     const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
-        if (!user) return;
+        const canApprove = user?.canApproveTransfers || user?.role === 'Admin' || can.approve_transfer_requests;
+        if (!user || !canApprove) return;
     
         const updates: { [key: string]: any } = {};
         updates[`inventoryTransferRequests/${request.id}/status`] = 'Completed';
@@ -935,10 +936,11 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 involvedUser: requester
             });
         }
-    }, [user, addActivityLog, addTpCertList, users, projects, notificationSettings, inventoryItems]);
+    }, [user, addActivityLog, addTpCertList, users, projects, notificationSettings, inventoryItems, can.approve_transfer_requests]);
     
     const rejectInventoryTransferRequest = useCallback((requestId: string, comment: string) => {
-        if (!user || !user.canApproveTransfers) return;
+        const canApprove = user?.canApproveTransfers || user?.role === 'Admin' || can.approve_transfer_requests;
+        if (!user || !canApprove) return;
         const request = inventoryTransferRequestsById[requestId];
         if (!request) return;
 
@@ -980,7 +982,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 creatorUser: user,
             });
         }
-    }, [user, addActivityLog, inventoryTransferRequestsById, users, notificationSettings]);
+    }, [user, addActivityLog, inventoryTransferRequestsById, users, notificationSettings, can.approve_transfer_requests]);
     
     const disputeInventoryTransfer = useCallback((requestId: string, comment: string) => {
         if (!user) return;
@@ -1034,6 +1036,34 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
     }, [inventoryTransferRequestsById]);
     
+    const resolveInternalRequestDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
+        const canApprove = user?.canApproveTransfers || user?.role === 'Admin' || can.approve_transfer_requests;
+        if (!user || !canApprove) return;
+
+        const updates: { [key: string]: any } = {};
+        const now = new Date().toISOString();
+        
+        if (resolution === 'reissue') {
+            updates[`inventoryTransferRequests/${requestId}/status`] = 'Pending';
+            updates[`inventoryTransferRequests/${requestId}/acknowledgedByRequester`] = false;
+        } else {
+            updates[`inventoryTransferRequests/${requestId}/status`] = 'Completed';
+            updates[`inventoryTransferRequests/${requestId}/acknowledgedByRequester`] = true;
+        }
+
+        const newCommentRef = push(ref(rtdb, `inventoryTransferRequests/${requestId}/comments`));
+        updates[`inventoryTransferRequests/${requestId}/comments/${newCommentRef.key}`] = {
+            id: newCommentRef.key,
+            userId: user.id,
+            text: `Dispute Resolved (${resolution}): ${comment}`,
+            date: now,
+            eventId: requestId
+        };
+
+        update(ref(rtdb), updates);
+        toast({ title: 'Transfer Dispute Resolved' });
+    }, [user, can.approve_transfer_requests, toast]);
+
     const addCertificateRequestComment = useCallback((requestId: string, comment: string) => {
         if (!user) return;
         const request = certificateRequestsById[requestId];
@@ -1257,7 +1287,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       }, [user]);
     
       const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus) => {
-        if (!user || !(user.canApproveTransfers || user.role === 'Admin' || can.approve_store_requests || can.manage_store_requests)) return;
+        const isApprover = user?.canApproveTransfers || user?.role === 'Admin' || can.approve_store_requests || can.manage_store_requests;
+        if (!user || !isApprover) return;
         update(ref(rtdb, `internalRequests/${requestId}`), { status, approverId: user.id, acknowledgedByRequester: false });
       }, [user, can.approve_store_requests, can.manage_store_requests]);
     
@@ -1510,7 +1541,31 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     }, [user, addActivityLog, ppeStock, manpowerProfiles]);
     
-    const resolvePpeDispute = useCallback(() => {}, []);
+    const resolvePpeDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
+        if (!user) return;
+        const updates: { [key: string]: any } = {};
+        const now = new Date().toISOString();
+        
+        if (resolution === 'reissue') {
+            updates[`ppeRequests/${requestId}/status`] = 'Approved';
+            updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
+        } else {
+            updates[`ppeRequests/${requestId}/status`] = 'Issued';
+            updates[`ppeRequests/${requestId}/viewedByRequester`] = true;
+        }
+
+        const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
+        updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = {
+            id: newCommentRef.key,
+            userId: user.id,
+            text: `Dispute Resolved (${resolution}): ${comment}`,
+            date: now,
+            eventId: requestId
+        };
+
+        update(ref(rtdb), updates);
+        toast({ title: 'PPE Dispute Resolved' });
+    }, [user, toast]);
 
     const markPpeRequestAsViewed = useCallback((requestId: string) => {
       update(ref(rtdb, `ppeRequests/${requestId}`), { viewedByRequester: true });
@@ -1607,8 +1662,33 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb, `ppeRequests/${requestId}`), { attachmentUrl: null });
     }, []);
     
-    
-    const resolveInternalRequestDispute = useCallback(() => {}, []);
+    const resolveInternalRequestDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
+        const canApprove = user?.canApproveTransfers || user?.role === 'Admin' || can.approve_transfer_requests;
+        if (!user || !canApprove) return;
+
+        const updates: { [key: string]: any } = {};
+        const now = new Date().toISOString();
+        
+        if (resolution === 'reissue') {
+            updates[`inventoryTransferRequests/${requestId}/status`] = 'Pending';
+            updates[`inventoryTransferRequests/${requestId}/acknowledgedByRequester`] = false;
+        } else {
+            updates[`inventoryTransferRequests/${requestId}/status`] = 'Completed';
+            updates[`inventoryTransferRequests/${requestId}/acknowledgedByRequester`] = true;
+        }
+
+        const newCommentRef = push(ref(rtdb, `inventoryTransferRequests/${requestId}/comments`));
+        updates[`inventoryTransferRequests/${requestId}/comments/${newCommentRef.key}`] = {
+            id: newCommentRef.key,
+            userId: user.id,
+            text: `Dispute Resolved (${resolution}): ${comment}`,
+            date: now,
+            eventId: requestId
+        };
+
+        update(ref(rtdb), updates);
+        toast({ title: 'Transfer Dispute Resolved' });
+    }, [user, can.approve_transfer_requests, toast]);
     
     const addInspectionChecklist = useCallback(() => {}, []);
     const updateInspectionChecklist = useCallback(() => {}, []);
@@ -1816,6 +1896,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         pendingGeneralRequestCount, updatedGeneralRequestCount,
         pendingPpeRequestCount, updatedPpeRequestCount,
         resolveInternalRequestDispute,
+        resolvePpeDispute, // Exported correctly
         deleteDamageReport,
         deleteAllDamageReportsAndFiles,
         addDeliveryNote,
