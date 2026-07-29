@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -41,6 +40,9 @@ type PlannerContextType = {
   deletePlannerEvent: (eventId: string) => void;
   getExpandedPlannerEvents: (start: Date, end: Date, userId: string) => { eventDate: Date, event: PlannerEvent }[];
   addPlannerEventComment: (plannerUserId: string, day: string, eventId: string, text: string) => void;
+  deletePlannerDailyNote: (plannerUserId: string, day: string, commentId: string) => void;
+  lockDailyPlanning: (plannerUserId: string, day: string) => void;
+  unlockDailyPlanning: (plannerUserId: string, day: string) => void;
   markSinglePlannerCommentAsRead: (plannerUserId: string, day: string, commentId: string) => void;
   dismissPendingUpdate: (eventId: string, day: string) => void;
   saveJobSchedule: (schedule: Omit<JobSchedule, 'id'> & { id?: string }) => void;
@@ -80,28 +82,6 @@ type PlannerContextType = {
   deleteDocumentMovement: (movementId: string) => void;
   markJmsAsNoted: (jobId: string) => void;
   bulkMarkJmsAsNoted: (jobIds: string[]) => void;
-  markJmsAsNoted: (jobId: string) => void;
-};
-
-const createDataListener = <T extends {}>(
-    path: string,
-    setData: Dispatch<SetStateAction<Record<string, T>>>,
-) => {
-    const dbRef = ref(rtdb, path);
-    const listener = onValue(dbRef, (snapshot) => {
-        const data = snapshot.val() || {};
-        const processedData = Object.keys(data).reduce((acc, key) => {
-            acc[key] = { ...data[key], id: key };
-            return acc;
-        }, {} as Record<string, T>);
-        setData(currentData => {
-            if (JSON.stringify(currentData) === JSON.stringify(processedData)) {
-                return currentData;
-            }
-            return processedData;
-        });
-    });
-    return () => listener();
 };
 
 const PlannerContext = createContext<PlannerContextType | undefined>(undefined);
@@ -191,6 +171,32 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb), updates);
 
     }, [user, plannerEvents]);
+
+    const deletePlannerDailyNote = useCallback((plannerUserId: string, day: string, commentId: string) => {
+        if (!user) return;
+        const dayCommentId = `${day}_${plannerUserId}`;
+        remove(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments/${commentId}`));
+    }, [user]);
+
+    const lockDailyPlanning = useCallback((plannerUserId: string, day: string) => {
+        if (!user) return;
+        const dayCommentId = `${day}_${plannerUserId}`;
+        update(ref(rtdb, `dailyPlannerComments/${dayCommentId}`), {
+            isLocked: true,
+            lockedAt: new Date().toISOString(),
+            lockedBy: user.id
+        });
+    }, [user]);
+
+    const unlockDailyPlanning = useCallback((plannerUserId: string, day: string) => {
+        if (!user) return;
+        const dayCommentId = `${day}_${plannerUserId}`;
+        update(ref(rtdb, `dailyPlannerComments/${dayCommentId}`), {
+            isLocked: false,
+            lockedAt: null,
+            lockedBy: null
+        });
+    }, [user]);
     
     const addJobStepComment = useCallback((jobId: string, stepId: string, commentText: string) => {
         if (!user) return;
@@ -1181,6 +1187,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         trackerNotificationCount,
         addPlannerEvent, updatePlannerEvent, deletePlannerEvent,
         getExpandedPlannerEvents, addPlannerEventComment,
+        deletePlannerDailyNote, lockDailyPlanning, unlockDailyPlanning,
         markSinglePlannerCommentAsRead, dismissPendingUpdate,
         saveJobSchedule, savePlantOrder, saveJobRecord,
         lockJobRecordSheet, unlockJobRecordSheet, addJobRecordPlant,

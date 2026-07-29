@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
@@ -17,11 +16,11 @@ import { ref, update } from "firebase/database";
 import { rtdb } from "@/lib/rtdb";
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
-import { Edit, Trash2, Send, ChevronLeft, ChevronRight, MessageSquare, PlusCircle, Download, FileSpreadsheet, Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { Edit, Trash2, Send, ChevronLeft, ChevronRight, MessageSquare, PlusCircle, Download, FileSpreadsheet, Calendar as CalendarIcon, Clock, Lock, Unlock } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import type { PlannerEvent, Comment, User } from '@/lib/types';
+import type { PlannerEvent, Comment, User, Role } from '@/lib/types';
 import EditEventDialog from './EditEventDialog';
 import EventInstanceDialog from './EventInstanceDialog';
 import { useToast } from '@/hooks/use-toast';
@@ -76,7 +75,8 @@ export default function PlannerCalendar({
   const { user, users } = useAuth();
   const {
       getExpandedPlannerEvents, deletePlannerEvent,
-      addPlannerEventComment, dailyPlannerComments
+      addPlannerEventComment, dailyPlannerComments,
+      deletePlannerDailyNote, lockDailyPlanning, unlockDailyPlanning
   } = usePlanner();
 
   const { toast } = useToast();
@@ -152,6 +152,15 @@ export default function PlannerCalendar({
     saveAs(new Blob([buffer]), `Planner_${viewingUser?.name}_${format(currentMonth, 'yyyy_MM')}.xlsx`);
   };
 
+  const canUnlock = (plannerUserId: string) => {
+    if (!user) return false;
+    if (user.role === 'Admin' || user.role === 'Project Coordinator') return true;
+    
+    // Check if the current user is the supervisor of the planner's owner
+    const owner = users.find(u => u.id === plannerUserId);
+    return owner?.supervisorId === user.id;
+  };
+
   return (
     <Card className="flex-1 flex flex-col overflow-hidden border-2 shadow-sm">
       <CardHeader className="bg-muted/30 border-b pb-4">
@@ -199,6 +208,7 @@ export default function PlannerCalendar({
                     const dayCommentsData = dailyPlannerComments.find(c => c.id === dayCommentId);
                     const isSunday = getDay(day) === 0;
                     const isCurrentDay = isToday(day);
+                    const isLocked = !!dayCommentsData?.isLocked;
 
                     return (
                       <TableRow 
@@ -261,29 +271,63 @@ export default function PlannerCalendar({
                                   </div>
                                 );
                             })}
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity border-2 border-dashed"
-                                  onClick={() => {
-                                      toast({ title: "Quick Add", description: `Please use the "Add Planning" button at the top for ${format(day, 'PP')}.` });
-                                  }}
-                                >
-                                  <PlusCircle className="h-3 w-3 text-primary" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent><p>Add Event for {format(day, 'dd MMM')}</p></TooltipContent>
-                            </Tooltip>
+                            {!isLocked && (
+                                <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity border-2 border-dashed"
+                                    onClick={() => {
+                                        toast({ title: "Quick Add", description: `Please use the "Add Planning" button at the top for ${format(day, 'PP')}.` });
+                                    }}
+                                    >
+                                    <PlusCircle className="h-3 w-3 text-primary" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Add Event for {format(day, 'dd MMM')}</p></TooltipContent>
+                                </Tooltip>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="p-2 align-top">
                           <div className="space-y-2">
+                             <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                    {isLocked && <Lock className="h-3 w-3 text-muted-foreground" />}
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                        Notes {isLocked && "(Locked)"}
+                                    </span>
+                                </div>
+                                <div className="flex gap-1">
+                                    {!isLocked && user?.id === selectedUserId && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 px-2 text-[9px] font-black uppercase tracking-widest"
+                                            onClick={() => lockDailyPlanning(selectedUserId, dayStr)}
+                                        >
+                                            <Lock className="mr-1 h-3 w-3" /> Lock
+                                        </Button>
+                                    )}
+                                    {isLocked && canUnlock(selectedUserId) && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 px-2 text-[9px] font-black uppercase tracking-widest text-orange-600 hover:text-orange-700"
+                                            onClick={() => unlockDailyPlanning(selectedUserId, dayStr)}
+                                        >
+                                            <Unlock className="mr-1 h-3 w-3" /> Unlock
+                                        </Button>
+                                    )}
+                                </div>
+                             </div>
+
                              {dayCommentsData?.comments && Object.values(dayCommentsData.comments).filter(c => c.eventId === 'daily').map((comment) => {
                                const author = users.find(u => u.id === comment.userId);
+                               const isAuthor = user?.id === comment.userId;
                                return (
-                                 <div key={comment.id} className="flex items-start gap-2 bg-white dark:bg-slate-800 p-2 rounded border border-slate-200 shadow-sm animate-in fade-in zoom-in-95">
+                                 <div key={comment.id} className="flex items-start gap-2 bg-white dark:bg-slate-800 p-2 rounded border border-slate-200 shadow-sm animate-in fade-in zoom-in-95 group/note">
                                     <Avatar className="h-6 w-6 border">
                                       <AvatarImage src={author?.avatar} />
                                       <AvatarFallback className="text-[10px]">{author?.name?.[0]}</AvatarFallback>
@@ -291,7 +335,19 @@ export default function PlannerCalendar({
                                     <div className="flex-1 min-w-0">
                                       <div className="flex justify-between items-baseline mb-0.5">
                                         <span className="text-[10px] font-black uppercase text-slate-500 truncate">{author?.name}</span>
-                                        <span className="text-[9px] font-bold text-slate-400">{formatDistanceToNow(parseISO(comment.date), { addSuffix: true })}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[9px] font-bold text-slate-400">{formatDistanceToNow(parseISO(comment.date), { addSuffix: true })}</span>
+                                            {!isLocked && isAuthor && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-4 w-4 text-destructive opacity-0 group-hover/note:opacity-100 transition-opacity"
+                                                    onClick={() => deletePlannerDailyNote(selectedUserId, dayStr, comment.id)}
+                                                >
+                                                    <Trash2 className="h-3 w-3" />
+                                                </Button>
+                                            )}
+                                        </div>
                                       </div>
                                       <p className="text-[11px] font-bold text-black dark:text-white leading-relaxed whitespace-pre-wrap">{comment.text}</p>
                                     </div>
@@ -299,29 +355,31 @@ export default function PlannerCalendar({
                                );
                              })}
                              
-                             <div className="relative mt-2 opacity-0 group-hover:opacity-100 transition-all focus-within:opacity-100">
-                                <Textarea 
-                                  placeholder="Type daily note..." 
-                                  className="min-h-[40px] h-10 py-2 pr-10 text-[11px] font-bold bg-white/80 focus:bg-white resize-none border-2"
-                                  value={newComments[`${dayStr}-daily`] || ''}
-                                  onChange={(e) => setNewComments(prev => ({ ...prev, [`${dayStr}-daily`]: e.target.value }))}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                      e.preventDefault();
-                                      handleAddComment(day, 'daily');
-                                    }
-                                  }}
-                                />
-                                <Button 
-                                  size="icon" 
-                                  variant="ghost" 
-                                  className="absolute right-1 top-1 h-8 w-8 text-blue-600 hover:text-blue-700"
-                                  onClick={() => handleAddComment(day, 'daily')}
-                                  disabled={!newComments[`${dayStr}-daily`]?.trim()}
-                                >
-                                  <Send className="h-4 w-4" />
-                                </Button>
-                             </div>
+                             {!isLocked && (
+                                <div className="relative mt-2 opacity-0 group-hover:opacity-100 transition-all focus-within:opacity-100">
+                                    <Textarea 
+                                    placeholder="Type daily note..." 
+                                    className="min-h-[40px] h-10 py-2 pr-10 text-[11px] font-bold bg-white/80 focus:bg-white resize-none border-2"
+                                    value={newComments[`${dayStr}-daily`] || ''}
+                                    onChange={(e) => setNewComments(prev => ({ ...prev, [`${dayStr}-daily`]: e.target.value }))}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleAddComment(day, 'daily');
+                                        }
+                                    }}
+                                    />
+                                    <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    className="absolute right-1 top-1 h-8 w-8 text-blue-600 hover:text-blue-700"
+                                    onClick={() => handleAddComment(day, 'daily')}
+                                    disabled={!newComments[`${dayStr}-daily`]?.trim()}
+                                    >
+                                    <Send className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                             )}
                           </div>
                         </TableCell>
                       </TableRow>

@@ -94,6 +94,9 @@ export type DailyPlannerComment = {
   day: string; // YYYY-MM-DD
   comments: { [key: string]: Comment };
   lastUpdated: string;
+  isLocked?: boolean;
+  lockedAt?: string;
+  lockedBy?: string;
 };
 
 export type AchievementStatus = 'pending' | 'approved' | 'rejected';
@@ -1171,7 +1174,7 @@ export type DeliveryNote = {
     creatorId: string;
     createdAt: string; // ISO
     deliveryDate: string; // ISO
-    deliveryNoteNumber: string;
+    deliveryDateNumber: string;
     ariesRefNo?: string;
     fromAddress: string;
     toAddress: string;
