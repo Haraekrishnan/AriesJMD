@@ -16,11 +16,11 @@ import { ref, update } from "firebase/database";
 import { rtdb } from "@/lib/rtdb";
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
-import { Edit, Trash2, Send, ChevronLeft, ChevronRight, MessageSquare, PlusCircle, Download, FileSpreadsheet, Calendar as CalendarIcon, Clock, Lock, Unlock } from 'lucide-react';
+import { Edit, Trash2, Send, ChevronLeft, ChevronRight, MessageSquare, PlusCircle, Download, FileSpreadsheet, Calendar as CalendarIcon, Clock, Lock, Unlock, X } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import type { PlannerEvent, Comment, User, Role } from '@/lib/types';
+import type { PlannerEvent, DailyPlannerComment, Comment, User, Role } from '@/lib/types';
 import EditEventDialog from './EditEventDialog';
 import EventInstanceDialog from './EventInstanceDialog';
 import { useToast } from '@/hooks/use-toast';
@@ -163,24 +163,24 @@ export default function PlannerCalendar({
 
   return (
     <Card className="flex-1 flex flex-col overflow-hidden border-2 shadow-sm">
-      <CardHeader className="bg-muted/30 border-b pb-4">
+      <CardHeader className="bg-muted/30 border-b py-3 px-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-3">
             <div className="flex items-center bg-background border rounded-md p-1 shadow-sm">
-              <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="h-8 w-8">
+              <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="h-7 w-7">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <span className="px-4 font-black text-lg uppercase tracking-tight min-w-[150px] text-center">
+              <span className="px-4 font-bold text-base uppercase tracking-tight min-w-[150px] text-center">
                 {format(currentMonth, 'MMMM yyyy')}
               </span>
-              <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="h-8 w-8">
+              <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="h-7 w-7">
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setCurrentMonth(new Date())} className="font-bold">Today</Button>
+            <Button variant="outline" size="sm" onClick={() => setCurrentMonth(new Date())} className="font-bold h-9">Today</Button>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleExportExcel} className="font-bold border-2">
+            <Button variant="outline" onClick={handleExportExcel} className="font-bold border-2 h-9">
               <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" /> Export to Excel
             </Button>
           </div>
@@ -194,10 +194,10 @@ export default function PlannerCalendar({
               <Table className="border-collapse">
                 <TableHeader className="sticky top-0 z-20 bg-muted/90 backdrop-blur-sm shadow-sm">
                   <TableRow className="border-b-2 border-black">
-                    <TableHead className="w-40 border-r border-black font-black text-black text-center uppercase tracking-wider text-[11px]">Date</TableHead>
-                    <TableHead className="w-32 border-r border-black font-black text-black text-center uppercase tracking-wider text-[11px]">Day</TableHead>
-                    <TableHead className="min-w-[300px] border-r border-black font-black text-black uppercase tracking-wider text-[11px] px-4">Planned Events & Activities</TableHead>
-                    <TableHead className="border-black font-black text-black uppercase tracking-wider text-[11px] px-4">Daily Notepad / Notes</TableHead>
+                    <TableHead className="w-36 border-r border-black font-black text-black text-center uppercase tracking-wider text-[10px] h-10">Date</TableHead>
+                    <TableHead className="w-28 border-r border-black font-black text-black text-center uppercase tracking-wider text-[10px] h-10">Day</TableHead>
+                    <TableHead className="min-w-[300px] border-r border-black font-black text-black uppercase tracking-wider text-[10px] px-4 h-10">Planned Events & Activities</TableHead>
+                    <TableHead className="border-black font-black text-black uppercase tracking-wider text-[10px] px-4 h-10">Daily Notepad / Notes</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -214,22 +214,22 @@ export default function PlannerCalendar({
                       <TableRow 
                         key={dayStr} 
                         className={cn(
-                          "border-b border-slate-300 hover:bg-blue-50/30 transition-colors group h-16",
+                          "border-b border-slate-300 hover:bg-blue-50/30 transition-colors group min-h-[48px]",
                           isSunday && "bg-yellow-50/50 dark:bg-yellow-900/10",
                           isCurrentDay && "bg-blue-50/60 dark:bg-blue-900/20 ring-1 ring-inset ring-blue-500/20"
                         )}
                       >
-                        <TableCell className={cn("text-center border-r border-slate-300 p-0")}>
+                        <TableCell className={cn("text-center border-r border-slate-300 p-2")}>
                            <div className={cn(
-                             "w-full h-full flex flex-col items-center justify-center font-black text-sm",
+                             "w-full h-full flex flex-col items-center justify-center font-bold text-[11px]",
                              isCurrentDay ? "text-blue-700" : "text-black"
                            )}>
                              {format(day, 'dd-MMM-yyyy')}
                            </div>
                         </TableCell>
-                        <TableCell className="text-center border-r border-slate-300">
+                        <TableCell className="text-center border-r border-slate-300 p-2">
                           <span className={cn(
-                            "font-black uppercase text-[10px] tracking-widest",
+                            "font-bold uppercase text-[9px] tracking-widest",
                             isSunday ? "text-red-600" : "text-slate-600"
                           )}>
                             {format(day, 'EEEE')}
@@ -256,7 +256,7 @@ export default function PlannerCalendar({
                                       onClick={() => setViewingInstance({ event: eventInstance.event, date: day })}
                                     >
                                       <div className="flex items-center gap-1 w-full justify-between">
-                                        <span className="font-black text-[11px] uppercase leading-none">{eventInstance.event.title}</span>
+                                        <span className="font-bold text-[10px] uppercase leading-none">{eventInstance.event.title}</span>
                                         {commentCount > 0 && (
                                             <div className="flex items-center gap-0.5 ml-2 text-[9px] opacity-70">
                                                 <MessageSquare className="h-2.5 w-2.5" />
@@ -265,7 +265,7 @@ export default function PlannerCalendar({
                                         )}
                                       </div>
                                       {isDelegated && (
-                                        <span className="text-[9px] font-bold opacity-70 mt-0.5">By: {creator?.name.split(' ')[0]}</span>
+                                        <span className="text-[8px] font-bold opacity-70 mt-0.5">By: {creator?.name.split(' ')[0]}</span>
                                       )}
                                     </Badge>
                                   </div>
@@ -277,7 +277,7 @@ export default function PlannerCalendar({
                                     <Button 
                                     variant="ghost" 
                                     size="icon" 
-                                    className="h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity border-2 border-dashed"
+                                    className="h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity border-2 border-dashed"
                                     onClick={() => {
                                         toast({ title: "Quick Add", description: `Please use the "Add Planning" button at the top for ${format(day, 'PP')}.` });
                                     }}
@@ -291,11 +291,11 @@ export default function PlannerCalendar({
                           </div>
                         </TableCell>
                         <TableCell className="p-2 align-top">
-                          <div className="space-y-2">
-                             <div className="flex items-center justify-between mb-2">
+                          <div className="space-y-1.5">
+                             <div className="flex items-center justify-between mb-1">
                                 <div className="flex items-center gap-2">
                                     {isLocked && <Lock className="h-3 w-3 text-muted-foreground" />}
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
                                         Notes {isLocked && "(Locked)"}
                                     </span>
                                 </div>
@@ -304,20 +304,20 @@ export default function PlannerCalendar({
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="h-6 px-2 text-[9px] font-black uppercase tracking-widest"
+                                            className="h-5 px-1.5 text-[8px] font-bold uppercase tracking-widest"
                                             onClick={() => lockDailyPlanning(selectedUserId, dayStr)}
                                         >
-                                            <Lock className="mr-1 h-3 w-3" /> Lock
+                                            <Lock className="mr-1 h-2.5 w-2.5" /> Lock
                                         </Button>
                                     )}
                                     {isLocked && canUnlock(selectedUserId) && (
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="h-6 px-2 text-[9px] font-black uppercase tracking-widest text-orange-600 hover:text-orange-700"
+                                            className="h-5 px-1.5 text-[8px] font-bold uppercase tracking-widest text-orange-600 hover:text-orange-700"
                                             onClick={() => unlockDailyPlanning(selectedUserId, dayStr)}
                                         >
-                                            <Unlock className="mr-1 h-3 w-3" /> Unlock
+                                            <Unlock className="mr-1 h-2.5 w-2.5" /> Unlock
                                         </Button>
                                     )}
                                 </div>
@@ -327,39 +327,39 @@ export default function PlannerCalendar({
                                const author = users.find(u => u.id === comment.userId);
                                const isAuthor = user?.id === comment.userId;
                                return (
-                                 <div key={comment.id} className="flex items-start gap-2 bg-white dark:bg-slate-800 p-2 rounded border border-slate-200 shadow-sm animate-in fade-in zoom-in-95 group/note">
-                                    <Avatar className="h-6 w-6 border">
+                                 <div key={comment.id} className="flex items-start gap-2 bg-white dark:bg-slate-800 p-1.5 rounded border border-slate-200 shadow-sm animate-in fade-in zoom-in-95 group/note">
+                                    <Avatar className="h-5 w-5 border">
                                       <AvatarImage src={author?.avatar} />
-                                      <AvatarFallback className="text-[10px]">{author?.name?.[0]}</AvatarFallback>
+                                      <AvatarFallback className="text-[8px]">{author?.name?.[0]}</AvatarFallback>
                                     </Avatar>
                                     <div className="flex-1 min-w-0">
                                       <div className="flex justify-between items-baseline mb-0.5">
-                                        <span className="text-[10px] font-black uppercase text-slate-500 truncate">{author?.name}</span>
+                                        <span className="text-[9px] font-bold uppercase text-slate-500 truncate">{author?.name}</span>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[9px] font-bold text-slate-400">{formatDistanceToNow(parseISO(comment.date), { addSuffix: true })}</span>
+                                            <span className="text-[8px] font-bold text-slate-400">{formatDistanceToNow(parseISO(comment.date), { addSuffix: true })}</span>
                                             {!isLocked && isAuthor && (
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-4 w-4 text-destructive opacity-0 group-hover/note:opacity-100 transition-opacity"
+                                                    className="h-3 w-3 text-destructive opacity-0 group-hover/note:opacity-100 transition-opacity"
                                                     onClick={() => deletePlannerDailyNote(selectedUserId, dayStr, comment.id)}
                                                 >
-                                                    <Trash2 className="h-3 w-3" />
+                                                    <Trash2 className="h-2.5 w-2.5" />
                                                 </Button>
                                             )}
                                         </div>
                                       </div>
-                                      <p className="text-[11px] font-bold text-black dark:text-white leading-relaxed whitespace-pre-wrap">{comment.text}</p>
+                                      <p className="text-[10px] font-bold text-black dark:text-white leading-tight whitespace-pre-wrap">{comment.text}</p>
                                     </div>
                                  </div>
                                );
                              })}
                              
                              {!isLocked && (
-                                <div className="relative mt-2 opacity-0 group-hover:opacity-100 transition-all focus-within:opacity-100">
+                                <div className="relative mt-1 opacity-0 group-hover:opacity-100 transition-all focus-within:opacity-100">
                                     <Textarea 
                                     placeholder="Type daily note..." 
-                                    className="min-h-[40px] h-10 py-2 pr-10 text-[11px] font-bold bg-white/80 focus:bg-white resize-none border-2"
+                                    className="min-h-[32px] h-8 py-1 pr-8 text-[10px] font-bold bg-white/80 focus:bg-white resize-none border"
                                     value={newComments[`${dayStr}-daily`] || ''}
                                     onChange={(e) => setNewComments(prev => ({ ...prev, [`${dayStr}-daily`]: e.target.value }))}
                                     onKeyDown={(e) => {
@@ -372,11 +372,11 @@ export default function PlannerCalendar({
                                     <Button 
                                     size="icon" 
                                     variant="ghost" 
-                                    className="absolute right-1 top-1 h-8 w-8 text-blue-600 hover:text-blue-700"
+                                    className="absolute right-0 top-0 h-8 w-8 text-blue-600 hover:text-blue-700"
                                     onClick={() => handleAddComment(day, 'daily')}
                                     disabled={!newComments[`${dayStr}-daily`]?.trim()}
                                     >
-                                    <Send className="h-4 w-4" />
+                                    <Send className="h-3 w-3" />
                                     </Button>
                                 </div>
                              )}
@@ -389,11 +389,11 @@ export default function PlannerCalendar({
               </Table>
             </div>
             
-            <div className="shrink-0 border-t bg-[#f8fafc] p-2 px-6 flex justify-between items-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+            <div className="shrink-0 border-t bg-[#f8fafc] p-2 px-6 flex justify-between items-center text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
                <div className="flex gap-6">
-                 <span className="flex items-center gap-2"><div className="w-3 h-3 bg-blue-100 border border-blue-300 rounded-sm"></div> Delegated Tasks</span>
-                 <span className="flex items-center gap-2"><div className="w-3 h-3 bg-slate-100 border border-slate-300 rounded-sm"></div> Personal Planning</span>
-                 <span className="flex items-center gap-2"><div className="w-3 h-3 bg-yellow-50 border border-yellow-300 rounded-sm"></div> Non-Working / Holiday</span>
+                 <span className="flex items-center gap-2"><div className="w-2.5 h-2.5 bg-blue-100 border border-blue-300 rounded-sm"></div> Delegated Tasks</span>
+                 <span className="flex items-center gap-2"><div className="w-2.5 h-2.5 bg-slate-100 border border-slate-300 rounded-sm"></div> Personal Planning</span>
+                 <span className="flex items-center gap-2"><div className="w-2.5 h-2.5 bg-yellow-50 border border-yellow-300 rounded-sm"></div> Non-Working / Holiday</span>
                </div>
                <div>
                   WORKSPACE: {viewingUser?.name.toUpperCase()} &middot; {format(currentMonth, 'MMMM yyyy')}
