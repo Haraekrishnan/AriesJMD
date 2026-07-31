@@ -6,7 +6,7 @@ import { KanbanBoard } from '@/components/tasks/kanban-board';
 import CreateTaskDialog from '@/components/tasks/create-task-dialog';
 import TaskFilters, { type TaskFilters as FiltersType } from '@/components/tasks/task-filters';
 import { Button } from '@/components/ui/button';
-import { Bell, History, Edit, LayoutGrid, List, Archive, CheckCircle2 } from 'lucide-react';
+import { Bell, History, Edit, LayoutGrid, List, Archive, CheckCircle2, FolderArchive, Search as SearchIcon } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -63,8 +63,7 @@ export default function TasksPage() {
       if (task.isArchived) return false;
       const isMySubmittedTask = task.statusRequest?.requestedBy === user.id && task.statusRequest?.status === 'Pending';
       const isReturnedToMe = task.assigneeIds?.includes(user.id) && task.approvalState === 'returned';
-      const isAwaitingCompletionApproval = task.statusRequest?.requestedBy === user.id && task.statusRequest?.status === 'Pending';
-      return isMySubmittedTask || isReturnedToMe || isAwaitingCompletionApproval;
+      return isMySubmittedTask || isReturnedToMe;
     });
   }, [tasks, user]);
 
@@ -77,24 +76,30 @@ export default function TasksPage() {
     const visibleUserIds = new Set(getVisibleUsers().map(u => u.id));
     
     return tasks.filter(task => {
-      // If "Include Archived" is false, we strictly hide archived records.
-      // If true, we show EVERYTHING (Active + Archived) to allow searching through all.
+      // Logic: If 'includeArchived' is false, only show active tasks.
+      // If 'includeArchived' is true, show BOTH active and archived.
       if (!filters.includeArchived && task.isArchived) {
           return false;
       }
 
       if (hasFullView) return true;
       
-      // Show a task if any of its assignees are visible to the current user
+      // Permission check
       return task.assigneeIds && task.assigneeIds.some(id => visibleUserIds.has(id));
     });
   }, [tasks, user, getVisibleUsers, filters.includeArchived]);
 
   const filteredTasks = useMemo(() => {
     return visibleTasks.filter(task => {
-      const { status, priority, dateRange, showMyTasksOnly, assigneeId, month, year, search } = filters;
+      const { status, priority, dateRange, showMyTasksOnly, assigneeId, month, year, search, includeArchived } = filters;
 
-      // 1. Search Filter (Title, Description, ID)
+      // 1. Archive Logic:
+      // If includeArchived is ON, but NO search term is present, we still only show active tasks on the board/main list
+      // unless we are in the Overview's archived section.
+      // Actually, to make searching work as requested:
+      if (task.isArchived && !includeArchived) return false;
+
+      // 2. Search Filter (Title, Description, ID)
       if (search) {
           const term = search.toLowerCase();
           const matchesTitle = (task.title || '').toLowerCase().includes(term);
@@ -139,9 +144,6 @@ export default function TasksPage() {
       let monthMatch = true;
       if(month !== 'all') {
         const taskDate = new Date(task.dueDate);
-        const taskMonth = getMonth(taskDate) + 1;
-        const taskYear = getYear(taskDate);
-
         if(task.status === 'Done') {
             if(task.completionDate) {
               const completionDate = parseISO(task.completionDate);
@@ -153,7 +155,7 @@ export default function TasksPage() {
         else if (!dateRange?.from) {
             monthMatch = true;
         } else {
-             monthMatch = (getMonth(taskDate) + 1).toString() === month && taskYear.toString() === year;
+             monthMatch = (getMonth(taskDate) + 1).toString() === month && getYear(taskDate).toString() === year;
         }
       }
 
@@ -164,7 +166,6 @@ export default function TasksPage() {
       }
       
       const yearMatch = year === 'all' || isSameYear(new Date(task.dueDate), new Date(parseInt(year), 0, 1));
-
 
       return statusMatch && priorityMatch && dateMatch && monthMatch && yearMatch;
     });
@@ -197,15 +198,17 @@ export default function TasksPage() {
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">
               {filters.includeArchived ? 'Task Archives' : 'Task Management'}
             </h1>
-            <p className="text-muted-foreground text-sm">
-              {filters.includeArchived ? 'Browse historical task records and closed workflows in list view.' : 'Monitor active workflows, track progress, and coordinate tasks.'}
+            <p className="text-muted-foreground text-sm font-medium">
+              {filters.includeArchived 
+                ? 'Searching through historical records and archived workflows.' 
+                : 'Monitor active workflows, track progress, and coordinate tasks.'}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
               <ReportDownloads tasks={filteredTasks} />
               
               {!filters.includeArchived && (
-                <div className="flex bg-muted p-1 rounded-lg border mr-2">
+                <div className="flex bg-muted p-1 rounded-lg border mr-2 shadow-sm">
                   <Button 
                       variant={effectiveViewMode === 'kanban' ? 'secondary' : 'ghost'} 
                       size="sm" 
@@ -225,9 +228,9 @@ export default function TasksPage() {
                 </div>
               )}
 
-              <div className="flex items-center gap-3 px-3 py-1.5 bg-muted/40 rounded-lg border border-dashed mr-2">
+              <div className="flex items-center gap-3 px-3 py-1.5 bg-muted/40 rounded-lg border border-dashed mr-2 shadow-sm">
                 <div className="flex items-center gap-2">
-                    <Archive className={cn("h-4 w-4", filters.includeArchived ? "text-primary" : "text-slate-400")} />
+                    <FolderArchive className={cn("h-4 w-4", filters.includeArchived ? "text-primary" : "text-slate-400")} />
                     <Label htmlFor="archive-view" className="text-[10px] font-black uppercase tracking-widest text-slate-500">Archived Tasks</Label>
                 </div>
                 <Switch 
@@ -237,14 +240,14 @@ export default function TasksPage() {
                 />
               </div>
 
-              <Button variant={myPendingTaskRequestCount > 0 ? "secondary" : "outline"} onClick={() => setIsMyRequestsDialogOpen(true)} className="h-9 font-bold text-xs">
+              <Button variant={myPendingTaskRequestCount > 0 ? "secondary" : "outline"} onClick={() => setIsMyRequestsDialogOpen(true)} className="h-9 font-bold text-xs shadow-sm">
                   <History className="mr-2 h-4 w-4" />
                   My Requests
                   {myPendingTaskRequestCount > 0 && (
                     <Badge variant="destructive" className="ml-2 h-5 min-w-[1.25rem] justify-center p-0">{myPendingTaskRequestCount}</Badge>
                   )}
               </Button>
-              <Button variant={pendingTaskApprovalCount > 0 ? "secondary" : "outline"} onClick={() => setIsPendingApprovalDialogOpen(true)} className="h-9 font-bold text-xs">
+              <Button variant={pendingTaskApprovalCount > 0 ? "secondary" : "outline"} onClick={() => setIsPendingApprovalDialogOpen(true)} className="h-9 font-bold text-xs shadow-sm">
                   <Bell className="mr-2 h-4 w-4" />
                   Pending Approvals
                   {pendingTaskApprovalCount > 0 && (

@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel, SelectSeparator } from '@/components/ui/select';
-import { X, Search, Archive } from 'lucide-react';
+import { X, Search, Archive, FolderArchive } from 'lucide-react';
 import { TaskStatus, User } from '@/lib/types';
 import { DateRangePicker } from '../ui/date-range-picker';
 import { Label } from '../ui/label';
@@ -48,6 +48,7 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
   const availableYears = useMemo(() => {
     const years = new Set<number>();
     tasks.forEach(t => {
+      if (!t.dueDate) return;
       const d = new Date(t.dueDate);
       if (isValid(d)) {
         const y = getYear(d);
@@ -104,10 +105,10 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
                     onChange={(e) => handleFilterChange('search', e.target.value)}
                 />
             </div>
-            <div className="flex items-center gap-3 px-3 py-2 bg-muted/40 rounded-lg border border-dashed shrink-0">
+            <div className="flex items-center gap-3 px-3 py-2 bg-muted/40 rounded-lg border border-dashed shrink-0 shadow-sm transition-all hover:bg-muted/60">
                 <div className="flex items-center gap-2">
-                    <Archive className={cn("h-4 w-4", filters.includeArchived ? "text-primary" : "text-slate-500")} />
-                    <Label htmlFor="include-archived" className="text-[10px] font-black uppercase tracking-widest text-slate-500">Archived Tasks</Label>
+                    <FolderArchive className={cn("h-4 w-4 transition-colors", filters.includeArchived ? "text-[#2563EB]" : "text-slate-500")} />
+                    <Label htmlFor="include-archived" className="text-[10px] font-black uppercase tracking-widest text-slate-500 cursor-pointer">Archived Tasks</Label>
                 </div>
                 <Switch 
                     id="include-archived" 
@@ -119,7 +120,7 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
 
         <div className="flex flex-wrap gap-4 items-center pt-2">
             <div className="space-y-1">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Period</Label>
+              <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Reporting Period</Label>
               <div className="flex gap-2">
                   <Select value={filters.year} onValueChange={(value) => handleFilterChange('year', value)}>
                     <SelectTrigger className="w-full sm:w-[100px] h-9 text-xs font-bold"><SelectValue placeholder="Year" /></SelectTrigger>
@@ -138,9 +139,9 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
             </div>
 
             <div className="space-y-1">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Assignee</Label>
+              <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Responsible User</Label>
               <Select value={filters.assigneeId} onValueChange={handleAssigneeChange}>
-                  <SelectTrigger className="w-full sm:w-[180px] h-9 text-xs font-bold"><SelectValue placeholder="All Users" /></SelectTrigger>
+                  <SelectTrigger className="w-full sm:w-[180px] h-9 text-xs font-bold"><SelectValue placeholder="All Personnel" /></SelectTrigger>
                   <SelectContent>
                       <SelectItem value="all">All Personnel</SelectItem>
                       {users.map((user, index) => (
@@ -153,7 +154,7 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
             </div>
 
             <div className="space-y-1">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Status</Label>
+              <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Workflow Status</Label>
               <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value as TaskFilters['status'])}>
                   <SelectTrigger className="w-full sm:w-[140px] h-9 text-xs font-bold"><SelectValue placeholder="All Status" /></SelectTrigger>
                   <SelectContent>
@@ -180,9 +181,9 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
             </div>
 
             <div className="space-y-1">
-              <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Specific Range</Label>
+              <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Custom Date Selection</Label>
               <DateRangePicker
-                  placeholder="Select dates..."
+                  placeholder="Select range..."
                   date={filters.dateRange}
                   onDateChange={(value: DateRange | undefined) => handleFilterChange('dateRange', value)}
                   className="h-9"
@@ -196,13 +197,13 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
                     checked={filters.showMyTasksOnly}
                     onCheckedChange={(checked) => handleFilterChange('showMyTasksOnly', checked)}
                     />
-                    <Label htmlFor="my-tasks-switch" className="text-xs font-bold text-slate-600">My Tasks</Label>
+                    <Label htmlFor="my-tasks-switch" className="text-[10px] font-black uppercase tracking-widest text-slate-600 cursor-pointer">My Tasks Only</Label>
                 </div>
             )}
 
             <div className="flex gap-2 ml-auto pt-5">
-                <Button variant="ghost" onClick={handleReset} size="sm" className="h-9 px-3 text-xs font-bold text-slate-500">
-                    <X className="mr-1.5 h-3.5 w-3.5" /> CLEAR
+                <Button variant="ghost" onClick={handleReset} size="sm" className="h-9 px-3 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-100">
+                    <X className="mr-1.5 h-3.5 w-3.5" /> CLEAR ALL
                 </Button>
             </div>
         </div>
