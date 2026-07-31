@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel, SelectSeparator } from '@/components/ui/select';
 import { X, Search, Archive } from 'lucide-react';
 import { TaskStatus, User } from '@/lib/types';
 import { DateRangePicker } from '../ui/date-range-picker';
@@ -106,8 +106,8 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
             </div>
             <div className="flex items-center gap-3 px-3 py-2 bg-muted/40 rounded-lg border border-dashed shrink-0">
                 <div className="flex items-center gap-2">
-                    <Archive className="h-4 w-4 text-slate-500" />
-                    <Label htmlFor="include-archived" className="text-[10px] font-black uppercase tracking-widest text-slate-500">View Archive</Label>
+                    <Archive className={cn("h-4 w-4", filters.includeArchived ? "text-primary" : "text-slate-500")} />
+                    <Label htmlFor="include-archived" className="text-[10px] font-black uppercase tracking-widest text-slate-500">Archived Tasks</Label>
                 </div>
                 <Switch 
                     id="include-archived" 
@@ -201,7 +201,7 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
             )}
 
             <div className="flex gap-2 ml-auto pt-5">
-                <Button variant="ghost" onClick={handleReset} size="sm" className="h-9 px-3 text-xs font-bold">
+                <Button variant="ghost" onClick={handleReset} size="sm" className="h-9 px-3 text-xs font-bold text-slate-500">
                     <X className="mr-1.5 h-3.5 w-3.5" /> CLEAR
                 </Button>
             </div>

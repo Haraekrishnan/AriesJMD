@@ -78,7 +78,7 @@ export default function TasksPage() {
     const visibleUserIds = new Set(getVisibleUsers().map(u => u.id));
     
     return tasks.filter(task => {
-      // Mode selector: Show Archived OR show Active. Not both in the same list unless searching.
+      // Mode selector: Show Archived OR show Active.
       if (filters.includeArchived) {
           if (!task.isArchived) return false;
       } else {
@@ -96,7 +96,7 @@ export default function TasksPage() {
     return visibleTasks.filter(task => {
       const { status, priority, dateRange, showMyTasksOnly, assigneeId, month, year, search } = filters;
 
-      // 1. Search Filter (Title, Description, ID) - Safe navigation
+      // 1. Search Filter (Title, Description, ID)
       if (search) {
           const term = search.toLowerCase();
           const matchesTitle = (task.title || '').toLowerCase().includes(term);
@@ -185,49 +185,53 @@ export default function TasksPage() {
     setEditingTask(task);
   };
 
+  const effectiveViewMode = filters.includeArchived ? 'overview' : viewMode;
+
   return (
     <>
       <div className="flex flex-col h-full space-y-6">
         <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">
               {filters.includeArchived ? 'Task Archives' : 'Task Management'}
             </h1>
-            <p className="text-muted-foreground">
-              {filters.includeArchived ? 'Browse historical task records and closed workflows.' : 'Monitor active workflows, track progress, and coordinate tasks.'}
+            <p className="text-muted-foreground text-sm">
+              {filters.includeArchived ? 'Browse historical task records and closed workflows in list view.' : 'Monitor active workflows, track progress, and coordinate tasks.'}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
               <ReportDownloads tasks={filteredTasks} />
               
-              <div className="flex bg-muted p-1 rounded-lg border mr-2">
-                <Button 
-                    variant={viewMode === 'kanban' ? 'secondary' : 'ghost'} 
-                    size="sm" 
-                    className="h-8 text-[10px] font-black uppercase tracking-widest"
-                    onClick={() => setViewMode('kanban')}
-                >
-                    <LayoutGrid className="mr-2 h-3.5 w-3.5" /> KANBAN
-                </Button>
-                <Button 
-                    variant={viewMode === 'overview' ? 'secondary' : 'ghost'} 
-                    size="sm" 
-                    className="h-8 text-[10px] font-black uppercase tracking-widest"
-                    onClick={() => setViewMode('overview')}
-                >
-                    <List className="mr-2 h-3.5 w-3.5" /> OVERVIEW
-                </Button>
-              </div>
+              {!filters.includeArchived && (
+                <div className="flex bg-muted p-1 rounded-lg border mr-2">
+                  <Button 
+                      variant={effectiveViewMode === 'kanban' ? 'secondary' : 'ghost'} 
+                      size="sm" 
+                      className="h-8 text-[10px] font-black uppercase tracking-widest"
+                      onClick={() => setViewMode('kanban')}
+                  >
+                      <LayoutGrid className="mr-2 h-3.5 w-3.5" /> KANBAN
+                  </Button>
+                  <Button 
+                      variant={effectiveViewMode === 'overview' ? 'secondary' : 'ghost'} 
+                      size="sm" 
+                      className="h-8 text-[10px] font-black uppercase tracking-widest"
+                      onClick={() => setViewMode('overview')}
+                  >
+                      <List className="mr-2 h-3.5 w-3.5" /> OVERVIEW
+                  </Button>
+                </div>
+              )}
 
               <div className="flex items-center gap-3 px-3 py-1.5 bg-muted/40 rounded-lg border border-dashed mr-2">
                 <div className="flex items-center gap-2">
                     <Archive className={cn("h-4 w-4", filters.includeArchived ? "text-primary" : "text-slate-400")} />
-                    <Label htmlFor="archive-view" className="text-[10px] font-black uppercase tracking-widest text-slate-500">View Archive</Label>
+                    <Label htmlFor="archive-view" className="text-[10px] font-black uppercase tracking-widest text-slate-500">Archived Tasks</Label>
                 </div>
                 <Switch 
                     id="archive-view" 
                     checked={filters.includeArchived} 
-                    onCheckedChange={(checked) => setFilters(prev => ({ ...prev, includeArchived: checked }))} 
+                    onCheckedChange={(checked) => handleFilterChange('includeArchived', checked)} 
                 />
               </div>
 
@@ -251,7 +255,7 @@ export default function TasksPage() {
 
         <TaskFilters onFiltersChange={setFilters} initialFilters={filters} />
 
-        {viewMode === 'kanban' ? (
+        {effectiveViewMode === 'kanban' ? (
             <KanbanBoard tasks={kanbanTasks.regular} overdueTasks={kanbanTasks.overdue} />
         ) : (
             <TaskOverviewTable tasks={filteredTasks} onEditTask={openEditDialog} />
@@ -335,4 +339,3 @@ export default function TasksPage() {
     </>
   );
 }
-
