@@ -147,6 +147,7 @@ type InventoryContextType = {
   acknowledgeTransfer: (requestId: string) => void;
   clearInventoryTransferHistory: () => void;
   resolveInternalRequestDispute: (requestId: string, resolution: 'reissue' | 'reverse', comment: string) => void;
+  resolvePpeDispute: (requestId: string, resolution: 'reissue' | 'reverse', comment: string) => void;
 
   addCertificateRequest: (requestData: Omit<CertificateRequest, 'id' | 'requesterId' | 'status' | 'requestDate' | 'comments' | 'viewedByRequester'>) => void;
   fulfillCertificateRequest: (requestId: string, comment: string) => void;
@@ -236,7 +237,6 @@ type InventoryContextType = {
   updatePpeRequest: (request: PpeRequest, reason?: string) => void;
   updatePpeRequestStatus: (requestId: string, status: PpeRequestStatus, comment: string) => void;
   addPpeRequestComment: (requestId: string, commentText: string, notify?: boolean) => void;
-  resolvePpeDispute: (requestId: string, resolution: 'reissue' | 'reverse', comment: string) => void;
   deletePpeRequest: (requestId: string) => void;
   deletePpeAttachment: (requestId: string) => void;
   markPpeRequestAsViewed: (requestId: string) => void;
@@ -665,7 +665,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             });
     
             if (row['PROJECT']) {
-                const project = projects.find(p => p.name === row['PROJECT']);
+                const project = projects.find(p => p.id === row['PROJECT']);
                 if (project) dataToSave.projectId = project.id;
             }
     
@@ -1004,6 +1004,21 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         addActivityLog(user.id, 'Inventory Transfer Acknowledged', `Request ID: ${requestId}`);
     }, [user, addActivityLog]);
 
+    const clearInventoryTransferHistory = useCallback(async () => {
+        if (!user || user.role !== 'Admin') {
+            toast({ title: 'Permission Denied', variant: 'destructive' });
+            return;
+        }
+        try {
+            await remove(ref(rtdb, 'inventoryTransferRequests'));
+            toast({ title: 'Success', description: 'Inventory transfer history cleared.' });
+            addActivityLog(user.id, 'Cleared Transfer History');
+        } catch (error) {
+            console.error("Failed to clear transfer history:", error);
+            toast({ title: 'Error', description: 'Failed to clear transfer history.', variant: 'destructive' });
+        }
+    }, [user, addActivityLog, toast]);
+
     const deleteInventoryTransferRequest = useCallback((requestId: string) => {
         if (!user || user.role !== 'Admin') {
         toast({
@@ -1021,19 +1036,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         });
         addActivityLog(user.id, 'Inventory Transfer Deleted', `Request ID: ${requestId}`);
     }, [user, toast, addActivityLog]);
-    
-    const clearInventoryTransferHistory = useCallback(() => {
-        const allRequests = Object.values(inventoryTransferRequestsById);
-        const updates: { [key: string]: null } = {};
-        allRequests.forEach(req => {
-            if (req.status === 'Completed' || req.status === 'Rejected') {
-                updates[`/inventoryTransferRequests/${req.id}`] = null;
-            }
-        });
-        if (Object.keys(updates).length > 0) {
-            update(ref(rtdb), updates);
-        }
-    }, [inventoryTransferRequestsById]);
     
     const resolveInternalRequestDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
         const canApprove = user?.canApproveTransfers || user?.role === 'Admin' || can.approve_transfer_requests;
@@ -1062,6 +1064,32 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb), updates);
         toast({ title: 'Transfer Dispute Resolved' });
     }, [user, can.approve_transfer_requests, toast]);
+
+    const resolvePpeDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
+        if (!user) return;
+        const updates: { [key: string]: any } = {};
+        const now = new Date().toISOString();
+        
+        if (resolution === 'reissue') {
+            updates[`ppeRequests/${requestId}/status`] = 'Approved';
+            updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
+        } else {
+            updates[`ppeRequests/${requestId}/status`] = 'Issued';
+            updates[`ppeRequests/${requestId}/viewedByRequester`] = true;
+        }
+
+        const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
+        updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = {
+            id: newCommentRef.key,
+            userId: user.id,
+            text: `Dispute Resolved (${resolution}): ${comment}`,
+            date: now,
+            eventId: requestId
+        };
+
+        update(ref(rtdb), updates);
+        toast({ title: 'PPE Dispute Resolved' });
+    }, [user, toast]);
 
     const addCertificateRequestComment = useCallback((requestId: string, comment: string) => {
         if (!user) return;
@@ -1539,32 +1567,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         sendPpeRequestEmail(emailData);
 
     }, [user, addActivityLog, ppeStock, manpowerProfiles]);
-    
-    const resolvePpeDisputeInternal = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
-        if (!user) return;
-        const updates: { [key: string]: any } = {};
-        const now = new Date().toISOString();
-        
-        if (resolution === 'reissue') {
-            updates[`ppeRequests/${requestId}/status`] = 'Approved';
-            updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
-        } else {
-            updates[`ppeRequests/${requestId}/status`] = 'Issued';
-            updates[`ppeRequests/${requestId}/viewedByRequester`] = true;
-        }
-
-        const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
-        updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = {
-            id: newCommentRef.key,
-            userId: user.id,
-            text: `Dispute Resolved (${resolution}): ${comment}`,
-            date: now,
-            eventId: requestId
-        };
-
-        update(ref(rtdb), updates);
-        toast({ title: 'PPE Dispute Resolved' });
-    }, [user, toast]);
 
     const markPpeRequestAsViewed = useCallback((requestId: string) => {
       update(ref(rtdb, `ppeRequests/${requestId}`), { viewedByRequester: true });
@@ -1665,7 +1667,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const updateInspectionChecklist = useCallback(() => {}, []);
     const deleteInspectionChecklist = useCallback(() => {}, []);
 
-    const addDamageReport = useCallback(async (reportData: Omit<DamageReport, 'id'|'reporterId'|'reportDate'|'status'|'attachmentDownloadUrl'>): Promise<{ success: boolean; error?: string }> => {
+    const addDamageReport = useCallback(async (reportData: Omit<DamageReport, 'id' | 'reporterId' | 'reportDate' | 'status' | 'attachmentDownloadUrl'>) => {
         if (!user) return { success: false, error: "User not authenticated." };
     
         try {
@@ -1858,7 +1860,33 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         addCordlessReciprocatingSaw, updateCordlessReciprocatingSaw, deleteCordlessReciprocatingSaw,
         addMachineLog, deleteMachineLog, getMachineLogs,
         addInternalRequest, deleteInternalRequest, forceDeleteInternalRequest, addInternalRequestComment, updateInternalRequestStatus, updateInternalRequestItemStatus, updateInternalRequestItem, markInternalRequestAsViewed, acknowledgeInternalRequest,
-        addPpeRequest, updatePpeRequest, updatePpeRequestStatus, addPpeRequestComment, resolvePpeDispute: resolvePpeDisputeInternal, deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed,
+        addPpeRequest, updatePpeRequest, updatePpeRequestStatus, addPpeRequestComment,
+        resolvePpeDispute: (requestId, resolution, comment) => {
+            if (!user) return;
+            const updates: { [key: string]: any } = {};
+            const now = new Date().toISOString();
+            
+            if (resolution === 'reissue') {
+                updates[`ppeRequests/${requestId}/status`] = 'Approved';
+                updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
+            } else {
+                updates[`ppeRequests/${requestId}/status`] = 'Issued';
+                updates[`ppeRequests/${requestId}/viewedByRequester`] = true;
+            }
+
+            const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
+            updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = {
+                id: newCommentRef.key,
+                userId: user.id,
+                text: `Dispute Resolved (${resolution}): ${comment}`,
+                date: now,
+                eventId: requestId
+            };
+
+            update(ref(rtdb), updates);
+            toast({ title: 'PPE Dispute Resolved' });
+        },
+        deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed,
         updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord,
         addTpCertList, updateTpCertList, deleteTpCertList,
         addInspectionChecklist, updateInspectionChecklist, deleteInspectionChecklist,

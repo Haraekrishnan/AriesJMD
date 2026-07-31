@@ -114,12 +114,6 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     }
   };
 
-  const handleAddComment = () => {
-    if (!newComment.trim() || !user) return;
-    addComment(taskToDisplay.id, newComment);
-    setNewComment('');
-  };
-  
   const handleRequestStatusChange = async (newStatus: TaskStatus) => {
     if (!user) return;
   
@@ -200,7 +194,6 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     }
     if (action === 'approve') {
         approveTaskStatusChange(taskToDisplay.id, newComment);
-        // Toast is handled in the context provider
     } else {
         returnTaskStatusChange(taskToDisplay.id, newComment);
         toast({ title: 'Task Returned', description: 'The task has been returned to the assignee.' });
@@ -283,16 +276,19 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     return null;
   };
 
-  const Wrapper = isOpen ? DialogContent : 'div';
-  const wrapperProps = isOpen ? { className: "sm:max-w-4xl flex flex-col max-h-[95vh]" } : {};
-  
   const commentsArray = Array.isArray(taskToDisplay.comments) 
     ? taskToDisplay.comments 
     : Object.values(taskToDisplay.comments || {});
 
+  const handleAddComment = () => {
+    if (!newComment.trim() || !user) return;
+    addComment(taskToDisplay.id, newComment);
+    setNewComment('');
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <Wrapper {...wrapperProps}>
+      <DialogContent className="sm:max-w-4xl flex flex-col max-h-[95vh]" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Task Details: {taskToDisplay.title}</DialogTitle>
           <DialogDescription>
@@ -568,7 +564,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
             </div>
             <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
         </DialogFooter>
-      </Wrapper>
+      </DialogContent>
     </Dialog>
   );
 }

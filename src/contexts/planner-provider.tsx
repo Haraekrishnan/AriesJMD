@@ -492,7 +492,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const canEditRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller', 'Supervisor', 'Senior Safety Supervisor'];
         const canEdit = canEditRoles.includes(user.role) || user.id === job.creatorId;
         if (!canEdit) {
-          toast({ title: 'Permission Denied', variant: 'destructive' });
+          toast({ title: 'Not authorized to edit this job.', variant: 'destructive' });
           return;
         }
     
@@ -519,11 +519,11 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
 
     const deleteJobProgress = useCallback((jobId: string) => {
         if (user?.role !== 'Admin') {
-            toast({ title: 'Permission Denied', variant: 'destructive' });
+            toast({ title: 'Only Administrators can delete JMS records.', variant: 'destructive' });
             return;
         }
         remove(ref(rtdb, `jobProgress/${jobId}`));
-        toast({ title: 'JMS Deleted', variant: 'destructive' });
+        toast({ title: 'JMS record permanently deleted.', variant: 'destructive' });
     }, [user, toast]);
     
     const updateJobStep = useCallback((jobId: string, stepId: string, newStepData: Partial<JobStep>) => {
@@ -540,7 +540,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const changes: string[] = [];
         Object.entries(newStepData).forEach(([key, value]) => {
             if (job.steps[stepIndex][key as keyof JobStep] !== value) {
-                changes.push(`${key} changed`);
+                changes.push(`${key} updated`);
             }
             updates[`${stepPath}/${key}`] = value;
         });
@@ -580,7 +580,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
           name: 'JMS Hard copy submitted',
           assigneeId: user.id,
           status: 'Completed',
-          description: 'Job finalized.',
+          description: 'Job successfully completed.',
           dueDate: null,
           completedAt: now,
           completedBy: user.id,
@@ -593,7 +593,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         updates[`jobProgress/${jobId}/lastUpdated`] = now;
     
         update(ref(rtdb), updates);
-        toast({ title: "Job Completed", description: "JMS has been successfully finalized." });
+        toast({ title: "Workflow Finalized", description: "JMS tracker updated to completed status." });
     }, [user, jobProgressById, toast, addJobStepComment]);
     
     const addAndCompleteStep = useCallback((jobId: string, currentStepId: string, completionComment: string | undefined, completionAttachment: { name: string; url: string; } | undefined, completionCustomFields: Record<string, any> | undefined, nextStepData: Omit<JobStep, 'id'|'status'>) => {
@@ -609,13 +609,13 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const canActOnUnassigned = !currentStep.assigneeId && isProjectMember;
     
         if (currentStep.assigneeId !== user.id && !canActOnUnassigned && user.role !== 'Admin' && !can.manage_job_progress) {
-            toast({ variant: 'destructive', title: 'Not authorized to complete this step.' });
+            toast({ variant: 'destructive', title: 'Action Denied', description: 'You are not the assignee for this step.' });
             return;
         }
     
         // Special handling for the final step
         if (nextStepData.name === 'JMS Hard copy submitted') {
-            finalizeJob(jobId, currentStepId, completionComment || 'Final step completed.');
+            finalizeJob(jobId, currentStepId, completionComment || 'Final submission completed.');
             return; 
         }
     
@@ -696,7 +696,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
 
         const canReassignRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
         if (!canReassignRoles.includes(user.role)) {
-            toast({ title: 'Not authorized', variant: 'destructive' });
+            toast({ title: 'Permission Denied', description: 'Unauthorized for reassignment.', variant: 'destructive' });
             return;
         }
 
@@ -726,7 +726,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     
         update(ref(rtdb), updates);
     
-        toast({ title: "Step Reassigned", description: `Assigned to ${newAssignee.name}.` });
+        toast({ title: "Step Reassigned", description: `Responsibility moved to ${newAssignee.name}.` });
     
         if (newAssignee.email && !isSelfReassign) {
             const htmlBody = `
@@ -740,7 +740,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             sendNotificationEmail({
                 to: [newAssignee.email],
                 subject: `Job Step Reassigned: ${job.title}`,
-                htmlBody,
+                htmlBody: htmlBody,
                 notificationSettings,
                 event: 'onNewTask',
                 involvedUser: newAssignee,
@@ -793,8 +793,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     const returnJobStep = useCallback((jobId: string, stepId: string, reason: string) => {
         if (!user) return;
         const job = jobProgressById[jobId];
-        if (!job) return;
-    
+        if (!job) return;    
         const stepIndex = job.steps.findIndex(s => s.id === stepId);
         if (stepIndex === -1) return;
     
@@ -828,7 +827,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     
         update(ref(rtdb), updates);
     
-        toast({ title: "Step Returned", description: `The step has been returned to ${users.find(u => u.id === newAssigneeId)?.name || 'the previous user'}.` });
+        toast({ title: "Workflow Step Returned", description: `Sent back to ${users.find(u => u.id === newAssigneeId)?.name || 'the previous user'}.` });
     
         const assignee = users.find(u => u.id === newAssigneeId);
         if (assignee?.email) {
@@ -842,7 +841,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             `;
             sendNotificationEmail({
                 to: [assignee.email],
-                subject: `Step Returned for Job: ${job.title}`,
+                subject: `Action Required: Step Returned for ${job.title}`,
                 htmlBody,
                 notificationSettings,
                 event: 'onTaskReturned', 
@@ -861,7 +860,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const canReopen = canReopenRoles.includes(user.role) || user.id === job.creatorId;
     
         if (!canReopen) {
-            toast({ title: "Permission Denied", variant: "destructive" });
+            toast({ title: "Authorization Denied", description: "You don't have permission to reopen this JMS.", variant: "destructive" });
             return;
         }
 
@@ -885,7 +884,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     
         update(ref(rtdb), updates);
     
-        toast({ title: "Job Reopened", description: "A new step has been added to the job." });
+        toast({ title: "JMS Reopened", description: "A new actionable step has been added." });
         
         const newAssignee = users.find(u => u.id === newStep.assigneeId);
         if (newAssignee?.email) {
@@ -899,7 +898,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             `;
             sendNotificationEmail({
                 to: [newAssignee.email],
-                subject: `Job Reopened & Step Assigned: ${job.title}`,
+                subject: `JMS Reopened & Action Assigned: ${job.title}`,
                 htmlBody,
                 notificationSettings,
                 event: 'onNewTask',
@@ -967,7 +966,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             `;
             sendNotificationEmail({
                 to: [recipient.email],
-                subject: `Timesheet for Acknowledgment: ${data.plantUnit}`,
+                subject: `Awaiting Acknowledgment: Timesheet for ${data.plantUnit}`,
                 htmlBody,
                 notificationSettings,
                 event: 'onNewTask',
@@ -1109,8 +1108,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     const returnDocumentMovement = useCallback((movementId: string, comment: string) => {
         if (!user) return;
         const movement = documentMovementsById[movementId];
-        if (!movement) return;
-    
+        if (!movement) return;    
         const comments = Array.isArray(movement.comments) ? movement.comments : (movement.comments ? Object.values(movement.comments) : []);
         // Find the last user who wasn't the current user
         const lastAssignee = comments.reverse().find(c => c.userId !== user.id);
@@ -1123,7 +1121,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             lastUpdated: new Date().toISOString(),
         });
         
-        const returnComment = `Returned by ${user.name}. Reason: ${comment}`;
+        const returnComment = `Tracking returned by ${user.name}. Reason: ${comment}`;
         addDocumentMovementComment(movementId, returnComment);
     }, [user, documentMovementsById, addDocumentMovementComment]);
 
@@ -1134,9 +1132,9 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   
       if (user.role === 'Admin' || user.id === movement.creatorId) {
           remove(ref(rtdb, `documentMovements/${movementId}`));
-          toast({ title: 'Document Tracker Deleted', variant: 'destructive'});
+          toast({ title: 'Tracking record deleted.', variant: 'destructive'});
       } else {
-          toast({ title: 'Permission Denied', variant: 'destructive'});
+          toast({ title: 'Access Denied', variant: 'destructive'});
       }
     }, [user, documentMovementsById, toast]);
     
@@ -1146,7 +1144,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             notedById: user.id,
             notedAt: new Date().toISOString(),
         });
-        toast({ title: 'JMS Marked as Noted' });
+        toast({ title: 'JMS status updated to Noted.' });
     }, [user, toast]);
 
     const bulkMarkJmsAsNoted = useCallback((jobIds: string[]) => {
@@ -1161,7 +1159,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         });
         
         update(ref(rtdb), updates);
-        toast({ title: `${jobIds.length} JMS entries marked as noted.` });
+        toast({ title: `${jobIds.length} JMS entries marked as verified/noted.` });
     }, [user, toast]);
 
     useEffect(() => {

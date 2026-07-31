@@ -64,10 +64,8 @@ export default function CreateTaskDialog() {
     let usersToDisplay: User[];
 
     if (privilegedRoles.includes(user.role)) {
-      // These roles can assign to anyone (except Manager)
       usersToDisplay = users.filter(u => u.role !== 'Manager');
     } else {
-      // Other roles can only assign to users they can see in their hierarchy, excluding themselves
       usersToDisplay = getVisibleUsers().filter(u => u.id !== user.id && u.role !== 'Manager');
     }
     
@@ -131,7 +129,7 @@ export default function CreateTaskDialog() {
                   render={({ field }) => (
                     <Popover modal={false}>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" role="combobox" className="w-full justify-between h-auto min-h-10 text-left">
+                        <Button variant="outline" role="combobox" className="w-full justify-start h-auto min-h-10 text-left">
                           <div className="flex flex-wrap gap-1">
                             {field.value.length > 0 ? (
                               field.value.map(id => {
