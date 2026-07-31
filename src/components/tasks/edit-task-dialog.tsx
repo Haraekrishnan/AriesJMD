@@ -1,4 +1,3 @@
-
 'use client';
 import * as React from "react";
 import { useEffect, useState, useMemo } from 'react';
@@ -7,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -16,16 +15,32 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import { CalendarIcon, Send, ThumbsUp, ThumbsDown, Paperclip, Upload, X, BellRing, CheckCircle, Clock, UserRoundCog, Trash2, ArrowRight, Check, ChevronsUpDown, Download, Archive, MessageSquare, Undo2 } from 'lucide-react';
+import { 
+  CalendarIcon, 
+  Send, 
+  ThumbsUp, 
+  ThumbsDown, 
+  Paperclip, 
+  Upload, 
+  X, 
+  CheckCircle, 
+  Clock, 
+  UserRoundCog, 
+  Trash2, 
+  ArrowRight, 
+  Check, 
+  ChevronsUpDown, 
+  Download, 
+  Archive, 
+  MessageSquare, 
+  Undo2 
+} from 'lucide-react';
 import type { Task, TaskStatus, Role, Comment, ApprovalState, Subtask } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
-import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import Link from 'next/link';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { uploadFile } from '@/lib/storage';
 
 const taskSchema = z.object({
@@ -48,6 +63,7 @@ interface EditTaskDialogProps {
 const urlRegex = /(https?:\/\/[^\s]+)/g;
 
 const LinkifiedText = ({ text }: { text: string }) => {
+  if (!text) return null;
   const parts = text.split(urlRegex);
   return (
     <>
@@ -65,7 +81,11 @@ const LinkifiedText = ({ text }: { text: string }) => {
 };
 
 export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDialogProps) {
-  const { user, users, tasks, updateTask, deleteTask, archiveTask, unarchiveTask, getAssignableUsers, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, requestTaskReassignment } = useAppContext();
+  const { 
+    user, users, tasks, updateTask, deleteTask, archiveTask, unarchiveTask, 
+    requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, 
+    addComment, markTaskAsViewed, requestTaskReassignment 
+  } = useAppContext();
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
@@ -74,7 +94,6 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
 
   const creator = useMemo(() => users.find(u => u.id === taskToDisplay.creatorId), [users, taskToDisplay.creatorId]);
   const assignees = useMemo(() => users.filter(u => taskToDisplay.assigneeIds?.includes(u.id)), [users, taskToDisplay.assigneeIds]);
-  const pendingAssignee = useMemo(() => users.find(u => u.id === taskToDisplay.pendingAssigneeId), [users, taskToDisplay.pendingAssigneeId]);
 
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
@@ -84,13 +103,9 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   const isArchived = !!taskToDisplay.isArchived;
   const isAdmin = user?.role === 'Admin';
   const isCreator = user?.id === taskToDisplay.creatorId;
+  const isApprover = isCreator || isAdmin;
   
   const canEditCoreFields = (isCreator || isAdmin) && !isArchived;
-  const canReassign = (user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Supervisor' || user?.role === 'Senior Safety Supervisor') && (!isCompleted || isAdmin) && !isArchived;
-  
-  const assignableUsers = useMemo(() => {
-    return getAssignableUsers().map(u => ({value: u.id, label: u.name}));
-  }, [getAssignableUsers]);
 
   useEffect(() => {
     if (taskToDisplay && isOpen) {
@@ -108,12 +123,6 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     }
   }, [taskToDisplay, form, isOpen, markTaskAsViewed]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setAttachment(e.target.files[0]);
-    }
-  };
-
   const handleAddComment = () => {
     if (!newComment.trim() || !user) return;
     addComment(taskToDisplay.id, newComment);
@@ -123,18 +132,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   const handleRequestStatusChange = async (newStatus: TaskStatus) => {
     if (!user) return;
   
-    const requiresAttachment = taskToDisplay.requiresAttachmentForCompletion;
-    const hasExistingAttachment = !!taskToDisplay.attachment;
     const hasNewAttachment = !!attachment;
-  
-    if (newStatus === 'Done' && requiresAttachment && !hasExistingAttachment && !hasNewAttachment) {
-      toast({
-        variant: 'destructive',
-        title: 'Attachment required',
-        description: 'Please upload a file before marking this task as completed.',
-      });
-      return;
-    }
   
     let uploadedAttachment: { name: string; url: string } | undefined = undefined;
   
@@ -148,8 +146,8 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   
       let commentText = newComment.trim();
       if (!commentText) {
-          if (newStatus === 'In Progress') commentText = 'Task started.';
-          else if (newStatus === 'Done') commentText = 'Task completed.';
+          if (newStatus === 'In Progress') commentText = 'Task session started.';
+          else if (newStatus === 'Done') commentText = 'Task submitted for completion.';
       }
   
       await requestTaskStatusChange(taskToDisplay.id, newStatus, commentText, uploadedAttachment || taskToDisplay.attachment || undefined);
@@ -158,7 +156,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
       setNewComment('');
       if (newStatus !== 'In Progress') setIsOpen(false);
   
-      toast({ title: 'Status Updated', description: `Task marked as "${newStatus}".` });
+      toast({ title: 'Status Requested', description: `Task submission logged as "${newStatus}".` });
     } catch (error) {
       toast({ variant: 'destructive', title: 'Update failed', description: 'Could not update task status.' });
     }
@@ -166,13 +164,15 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   
   const handleApprovalAction = (action: 'approve' | 'return') => {
     if (!newComment.trim()) {
-        toast({ variant: 'destructive', title: 'Comment required' });
+        toast({ variant: 'destructive', title: 'Comment required', description: 'Please provide feedback for the assignee.' });
         return;
     }
     if (action === 'approve') {
         approveTaskStatusChange(taskToDisplay.id, newComment);
+        toast({ title: 'Task Approved' });
     } else {
         returnTaskStatusChange(taskToDisplay.id, newComment);
+        toast({ title: 'Task Returned' });
     }
     setNewComment('');
     setIsOpen(false);
@@ -180,30 +180,25 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
 
   const onSubmit = (data: TaskFormValues) => {
     if (!user) return;
-    const hasAssigneeChanged = JSON.stringify(data.assigneeIds.sort()) !== JSON.stringify(taskToDisplay.assigneeIds.sort());
-
-    if (hasAssigneeChanged) {
-        if (!newComment.trim()) {
-            toast({ variant: 'destructive', title: 'Comment Required', description: 'Please provide a reason for reassignment.' });
-            return;
-        }
-        requestTaskReassignment(task.id, data.assigneeIds[0], newComment);
-        toast({ title: 'Reassignment Requested' });
-    } else { 
-        updateTask({ ...taskToDisplay, ...data, dueDate: data.dueDate.toISOString() });
-        toast({ title: 'Task Updated' });
-    }
-    setNewComment('');
+    updateTask({ ...taskToDisplay, ...data, dueDate: data.dueDate.toISOString() });
+    toast({ title: 'Task Metadata Updated' });
     setIsOpen(false);
   };
 
   const handleManualArchive = () => {
     archiveTask(taskToDisplay.id);
+    toast({ title: 'Task Moved to Archive' });
     setIsOpen(false);
   };
 
   const handleBringBack = () => {
     unarchiveTask(taskToDisplay.id);
+    toast({ title: 'Task Restored', description: 'Moved back to active board.' });
+    setIsOpen(false);
+  };
+
+  const handleDeleteTask = () => {
+    deleteTask(taskToDisplay.id);
     setIsOpen(false);
   };
 
@@ -233,7 +228,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
         </DialogHeader>
 
         <div className="grid md:grid-cols-2 gap-0 flex-1 overflow-hidden">
-            {/* LEFT COLUMN: FORM */}
+            {/* LEFT COLUMN: METADATA */}
             <ScrollArea className="h-full border-r">
                 <div className="p-6 space-y-6">
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -261,15 +256,6 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                                 </Button>
                             </div>
                         ) : <p className="text-xs font-bold text-muted-foreground italic px-2">No attachment provided.</p>}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Assignee(s)</Label>
-                      <div className="p-3 border-2 rounded-xl bg-muted/10 opacity-60">
-                        <div className="flex flex-wrap gap-1.5">
-                            {assignees.map(a => <Badge key={a.id} variant="secondary" className="font-bold">{a.name}</Badge>)}
-                        </div>
-                      </div>
                     </div>
 
                     <div className="space-y-3">
@@ -367,14 +353,14 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                     </ScrollArea>
 
                     <div className="pt-6 mt-auto">
-                        {taskToDisplay.approvalState === 'status_pending' && isApprover && (
+                        {taskToDisplay.status === 'Pending Approval' && isApprover && (
                             <div className='grid grid-cols-2 gap-3 mb-4'>
                                 <Button onClick={() => handleApprovalAction('approve')} className="bg-emerald-600 hover:bg-emerald-700 font-black h-11 text-[11px] tracking-widest"><ThumbsUp className="mr-2 h-4 w-4" /> APPROVE TASK</Button>
                                 <Button onClick={() => handleApprovalAction('return')} variant="destructive" className="font-black h-11 text-[11px] tracking-widest"><ThumbsDown className="mr-2 h-4 w-4" /> RETURN TO ASSIGNEE</Button>
                             </div>
                         )}
                         
-                        {!isArchived && isAssignee && !isCompleted && taskToDisplay.approvalState !== 'status_pending' && (
+                        {!isArchived && isAssignee && !isCompleted && taskToDisplay.status !== 'Pending Approval' && (
                              <div className="mb-4">
                                 <Button 
                                     onClick={() => handleRequestStatusChange(mySubtask?.status === 'To Do' ? 'In Progress' : 'Done')} 
@@ -419,7 +405,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Task Permanentely?</AlertDialogTitle>
+                      <AlertDialogTitle>Delete Task Permanently?</AlertDialogTitle>
                       <AlertDialogDescription>This action cannot be undone. All history and comments will be lost.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
