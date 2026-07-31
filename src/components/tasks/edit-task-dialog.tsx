@@ -21,12 +21,11 @@ import {
   ThumbsDown, 
   Trash2, 
   MessageSquare,
-  User,
-  Users,
   Paperclip,
-  CheckCircle2
+  History,
+  ArrowRight
 } from 'lucide-react';
-import type { Task, TaskStatus, Role } from '@/lib/types';
+import type { Task, TaskStatus, ApprovalState } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Label } from '../ui/label';
@@ -34,6 +33,16 @@ import { Badge } from '../ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { DatePickerInput } from "../ui/date-picker-input";
+
+const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline" | "success" | "warning"> = {
+  'To Do': 'secondary',
+  'In Progress': 'default',
+  'In Review': 'warning',
+  'Done': 'success',
+  'Pending Approval': 'warning',
+  'Overdue': 'destructive',
+  'Completed': 'success',
+};
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -159,7 +168,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
           <div className="flex justify-between items-start mb-2">
               <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-3">
-                      <div className="bg-[#E9F0FE] text-[#1E40AF] px-2 py-0.5 rounded font-mono font-bold text-xs border border-[#BFDBFE]">
+                      <div className="bg-[#E9F0FE] text-[#1E40AF] px-2 py-0.5 rounded font-mono font-bold text-[10px] border border-[#BFDBFE]">
                           ID: {shortId}
                       </div>
                       <DialogTitle className="text-2xl font-black text-slate-900 tracking-tight uppercase">
