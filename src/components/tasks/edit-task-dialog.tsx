@@ -4,12 +4,12 @@ import { useEffect, useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAppContext } from '@/contexts/app-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import { useTask } from '@/contexts/task-provider';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
@@ -20,8 +20,11 @@ import {
   ThumbsDown, 
   Trash2, 
   MessageSquare,
+  Archive,
+  History,
+  Link as LinkIcon
 } from 'lucide-react';
-import type { Task, TaskStatus, Comment } from '@/lib/types';
+import type { Task, TaskStatus, Role } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Label } from '../ui/label';
@@ -46,11 +49,12 @@ interface EditTaskDialogProps {
 }
 
 export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDialogProps) {
+  const { user, users } = useAuth();
   const { 
-    user, users, tasks, updateTask, deleteTask, 
+    tasks, updateTask, deleteTask, archiveTask, unarchiveTask,
     requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, 
     addComment, markTaskAsViewed 
-  } = useAppContext();
+  } = useTask();
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
 
@@ -67,6 +71,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   const isCreator = user?.id === taskToDisplay.creatorId;
   const isApprover = isCreator || isAdmin;
   const canEditCoreFields = (isCreator || isAdmin) && !taskToDisplay.isArchived;
+  const isCompleted = taskToDisplay.status === 'Done';
 
   useEffect(() => {
     if (taskToDisplay && isOpen) {
@@ -133,6 +138,16 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     setIsOpen(false);
   };
 
+  const handleArchiveTask = () => {
+    archiveTask(taskToDisplay.id);
+    setIsOpen(false);
+  };
+
+  const handleRestoreTask = () => {
+    unarchiveTask(taskToDisplay.id);
+    setIsOpen(false);
+  };
+
   const isAssignee = useMemo(() => user?.id && taskToDisplay.assigneeIds?.includes(user.id), [user, taskToDisplay]);
   const mySubtask = useMemo(() => user && taskToDisplay.subtasks?.[user.id], [user, taskToDisplay]);
   const commentsArray = useMemo(() => {
@@ -154,9 +169,9 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
         <DialogHeader className="p-6 pb-2 bg-[#F8FAFC] border-b">
           <div className="flex justify-between items-start">
             <div className="space-y-1">
-              <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900">
+              <DialogTitle className="text-2xl font-black uppercase tracking-tight text-slate-900">
                 TASK DETAILS: {taskToDisplay.title}
-              </h2>
+              </DialogTitle>
               <div className="flex items-center gap-2 text-sm text-[#64748B] font-medium">
                 Assigned by <span className="font-bold text-slate-700">{creator?.name}</span> to <span className="font-bold text-slate-700">{assignees.map(a => a.name).join(', ')}</span>.
                 <Badge variant="outline" className="font-mono text-[9px] font-bold px-2 py-0.5 bg-[#E9F0FE] text-[#2563EB] border-[#D1E1FF] rounded-md tracking-wider">
@@ -185,16 +200,16 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 </div>
 
                 <div>
-                  <SectionLabel>Attachment</SectionLabel>
+                  <SectionLabel>Reference Link</SectionLabel>
                   {taskToDisplay.link ? (
                     <div className="flex items-center justify-between p-3 rounded-lg border border-[#E2E8F0] bg-white text-xs font-medium">
                       <span className="truncate max-w-[200px] text-slate-500">{taskToDisplay.link}</span>
                       <Button asChild variant="link" size="sm" className="h-auto p-0 font-bold">
-                        <a href={taskToDisplay.link} target="_blank" rel="noopener noreferrer">Download</a>
+                        <a href={taskToDisplay.link} target="_blank" rel="noopener noreferrer">Open Link</a>
                       </Button>
                     </div>
                   ) : (
-                    <p className="text-xs font-medium text-slate-400 italic px-1">No attachment provided.</p>
+                    <p className="text-xs font-medium text-slate-400 italic px-1">No link provided.</p>
                   )}
                 </div>
 
@@ -209,7 +224,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                           <div className="flex items-center gap-2">
                             <Avatar className="h-7 w-7 border-2 border-white shadow-sm">
                               <AvatarImage src={assignee.avatar} />
-                              <AvatarFallback className="text-[10px] font-bold">{assignee.name[0]}</AvatarFallback>
+                              <AvatarFallback className="text-[8px] font-bold">{assignee.name[0]}</AvatarFallback>
                             </Avatar>
                             <span className="font-bold text-slate-700">{assignee.name}</span>
                           </div>
@@ -224,7 +239,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <SectionLabel>Due Date</SectionLabel>
+                    <SectionLabel>Deadline</SectionLabel>
                     <div className="flex items-center gap-2 p-2 border border-[#E2E8F0] rounded-lg bg-white text-sm font-bold text-slate-700 h-10 shadow-sm">
                       <CalendarIcon className="h-4 w-4 text-[#94A3B8]" />
                       {format(new Date(taskToDisplay.dueDate), 'dd-MM-yyyy')}
@@ -354,6 +369,28 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+            )}
+            
+            {taskToDisplay.status === 'Done' && !taskToDisplay.isArchived && (
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-[#64748B] font-black text-[10px] uppercase tracking-widest hover:bg-slate-100"
+                    onClick={handleArchiveTask}
+                >
+                    <Archive className="mr-2 h-4 w-4" /> MOVE TO ARCHIVE
+                </Button>
+            )}
+
+            {taskToDisplay.isArchived && (isCreator || isAdmin) && (
+                <Button 
+                    variant="default" 
+                    size="sm" 
+                    className="bg-[#2563EB] hover:bg-[#1D4ED8] font-black text-[10px] uppercase tracking-widest"
+                    onClick={handleRestoreTask}
+                >
+                    <History className="mr-2 h-4 w-4" /> RESTORE TO BOARD
+                </Button>
             )}
           </div>
           <Button variant="outline" onClick={() => setIsOpen(false)} className="font-black text-[10px] uppercase tracking-widest h-9 px-6 border-[#E2E8F0] text-slate-600 hover:bg-slate-50">
