@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/auth-provider';
 import type { Task, User } from '@/lib/types';
 import { format, parseISO, isPast } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Calendar, Users, Eye, Archive, ShieldCheck, Clock, CheckCircle2, History } from 'lucide-react';
+import { Calendar, Users, Eye, Archive, ShieldCheck, Clock, CheckCircle2, History, AlertTriangle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
