@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/auth-provider';
 import { useTask } from '@/contexts/task-provider';
 import { getMonth, format, getYear, isValid } from 'date-fns';
 import { Input } from '../ui/input';
+import { cn } from '@/lib/utils';
 
 export interface TaskFilters {
   status: 'all' | 'To Do' | 'In Progress' | 'Done' | 'Overdue';

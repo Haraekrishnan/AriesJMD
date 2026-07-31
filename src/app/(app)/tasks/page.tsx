@@ -185,6 +185,10 @@ export default function TasksPage() {
     setEditingTask(task);
   };
 
+  const handleFilterChange = (key: string, value: any) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
   const effectiveViewMode = filters.includeArchived ? 'overview' : viewMode;
 
   return (
