@@ -18,6 +18,12 @@ import { Calendar, Users, Eye, Archive, ShieldCheck, Clock, CheckCircle2, Histor
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface TaskOverviewTableProps {
   tasks: Task[];
