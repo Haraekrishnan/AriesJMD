@@ -47,7 +47,6 @@ export default function TasksPage() {
 
   const tasksAwaitingMyApproval = useMemo(() => {
     if (!user) return [];
-    // Show tasks where I am the creator/approver and there's a pending statusRequest
     return tasks.filter(task => 
       task.creatorId === user.id &&
       task.statusRequest?.status === 'Pending' &&
@@ -59,11 +58,8 @@ export default function TasksPage() {
     if (!user) return [];
     return tasks.filter(task => {
       if (task.isArchived) return false;
-      // A submission request by me that's still pending
       const isMySubmittedTask = task.statusRequest?.requestedBy === user.id && task.statusRequest?.status === 'Pending';
-      // Returned tasks to me (explicit returned state)
       const isReturnedToMe = task.assigneeIds?.includes(user.id) && task.approvalState === 'returned';
-      // Also include tasks where I requested completion and the statusRequest still present
       const isAwaitingCompletionApproval = task.statusRequest?.requestedBy === user.id && task.statusRequest?.status === 'Pending';
       return isMySubmittedTask || isReturnedToMe || isAwaitingCompletionApproval;
     });
@@ -106,7 +102,7 @@ export default function TasksPage() {
         const isApprover = task.creatorId === user?.id;
         const isRequester = task.statusRequest?.requestedBy === user?.id;
         if (isApprover || isRequester) {
-            return true; // Always show these tasks regardless of other filters
+            return true; 
         }
         return false;
       }
@@ -170,7 +166,6 @@ export default function TasksPage() {
 
 
   const kanbanTasks = useMemo(() => {
-      // Kanban usually doesn't show archived items
       const activeFiltered = filteredTasks.filter(t => !t.isArchived);
       const regularBoardTasks = activeFiltered.filter(t => t.status !== 'Pending Approval');
       const overdueTasks = regularBoardTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done');
