@@ -15,15 +15,15 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { 
-  Calendar as CalendarIcon, 
+  Bell,
   Send, 
   ThumbsUp, 
   ThumbsDown, 
   Trash2, 
   MessageSquare,
-  Archive,
   History,
-  Link as LinkIcon
+  User,
+  Users
 } from 'lucide-react';
 import type { Task, TaskStatus, Role } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
@@ -31,6 +31,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { DatePickerInput } from "../ui/date-picker-input";
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -52,7 +54,7 @@ interface EditTaskDialogProps {
 export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDialogProps) {
   const { user, users } = useAuth();
   const { 
-    tasks, updateTask, deleteTask, archiveTask, unarchiveTask,
+    tasks, updateTask, deleteTask,
     requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, 
     addComment, markTaskAsViewed 
   } = useTask();
@@ -71,8 +73,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   const isAdmin = user?.role === 'Admin';
   const isCreator = user?.id === taskToDisplay.creatorId;
   const isApprover = isCreator || isAdmin;
-  const canEditCoreFields = (isCreator || isAdmin) && !taskToDisplay.isArchived;
-  const isCompleted = taskToDisplay.status === 'Done';
+  const isCompleted = taskToDisplay.status === 'Done' || taskToDisplay.status === 'Completed';
 
   useEffect(() => {
     if (taskToDisplay && isOpen) {
@@ -101,12 +102,11 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
       let commentText = newComment.trim();
       if (!commentText) {
           if (newStatus === 'In Progress') commentText = 'Task started.';
-          else if (newStatus === 'Done') commentText = 'Task submitted for completion.';
+          else if (newStatus === 'Done') commentText = 'Task completed.';
       }
       await requestTaskStatusChange(taskToDisplay.id, newStatus, commentText);
       setNewComment('');
-      if (newStatus !== 'In Progress') setIsOpen(false);
-      toast({ title: 'Status Requested' });
+      toast({ title: 'Task Updated' });
     } catch (error) {
       toast({ variant: 'destructive', title: 'Update failed' });
     }
@@ -130,8 +130,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
 
   const onSubmit = (data: TaskFormValues) => {
     updateTask({ ...taskToDisplay, ...data, dueDate: data.dueDate.toISOString() });
-    toast({ title: 'Task Metadata Updated' });
-    setIsOpen(false);
+    toast({ title: 'Task Updated' });
   };
 
   const handleDeleteTask = () => {
@@ -139,18 +138,9 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     setIsOpen(false);
   };
 
-  const handleArchiveTask = () => {
-    archiveTask(taskToDisplay.id);
-    setIsOpen(false);
-  };
-
-  const handleRestoreTask = () => {
-    unarchiveTask(taskToDisplay.id);
-    setIsOpen(false);
-  };
-
   const isAssignee = useMemo(() => user?.id && taskToDisplay.assigneeIds?.includes(user.id), [user, taskToDisplay]);
   const mySubtask = useMemo(() => user && taskToDisplay.subtasks?.[user.id], [user, taskToDisplay]);
+  
   const commentsArray = useMemo(() => {
     const list = Array.isArray(taskToDisplay.comments) 
       ? taskToDisplay.comments 
@@ -158,256 +148,221 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     return list.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [taskToDisplay.comments]);
 
-  const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-    <Label className="text-[11px] font-black uppercase tracking-[0.2em] text-[#64748B] mb-2 block">
-      {children}
-    </Label>
-  );
-
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-4xl flex flex-col max-h-[98vh] p-0 overflow-hidden border-none shadow-2xl bg-white rounded-2xl">
-        <DialogHeader className="p-6 pb-5 bg-[#F8FAFC] border-b">
-          <div className="flex justify-between items-start">
-            <div className="space-y-1.5">
-              <DialogTitle className="text-2xl font-black uppercase tracking-tight text-slate-900 leading-tight">
-                {taskToDisplay.title}
-              </DialogTitle>
-              <div className="flex items-center gap-3 text-sm text-[#64748B] font-bold uppercase tracking-wide">
-                <span className="flex items-center gap-1.5">BY <span className="font-black text-slate-800">{creator?.name}</span></span>
-                <span className="text-slate-300">|</span>
-                <Badge variant="outline" className="font-mono text-[10px] font-black px-3 py-1 bg-[#E9F0FE] text-[#2563EB] border-[#D1E1FF] rounded-sm tracking-wider">
-                  ID: {taskToDisplay.id}
-                </Badge>
-              </div>
-            </div>
-          </div>
+      <DialogContent className="sm:max-w-4xl flex flex-col max-h-[95vh] p-0 overflow-hidden bg-[#F1F3F9]">
+        <DialogHeader className="p-6 pb-2 bg-white border-b relative">
+          <DialogTitle className="text-xl font-bold text-slate-800">
+            Task Details: {taskToDisplay.title}
+          </DialogTitle>
+          <DialogDescription className="text-xs font-medium text-slate-400 mt-1">
+            Assigned by <span className="font-bold text-slate-600">{creator?.name}</span> to <span className="font-bold text-slate-600">{assignees.map(a => a.name).join(', ')}</span>.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="grid md:grid-cols-2 gap-0 flex-1 overflow-hidden">
-          {/* LEFT COLUMN: Metadata */}
-          <ScrollArea className="h-full border-r bg-white">
-            <div className="p-6 space-y-8">
-              <form id="task-metadata-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <ScrollArea className="flex-1">
+          <div className="p-6 pt-4">
+            {/* Approval Banner */}
+            {taskToDisplay.status === 'Pending Approval' && (
+              <div className="bg-[#EBF5FF] border border-[#D1E9FF] rounded-lg p-4 mb-6 flex items-start gap-3 shadow-sm">
+                <div className="text-[#2563EB] mt-1"><Bell className="h-5 w-5" /></div>
                 <div>
-                  <SectionLabel>Description</SectionLabel>
-                  <div className="p-5 text-sm font-bold min-h-[9rem] border-2 border-[#F1F5F9] rounded-xl bg-[#F8FAFC] whitespace-pre-wrap leading-relaxed text-slate-800 shadow-inner">
-                    {taskToDisplay.description}
+                    <h4 className="font-bold text-[#1E40AF] text-sm leading-none">Approval Pending</h4>
+                    <p className="text-xs text-[#2563EB] mt-1 font-medium">This task is awaiting final approval from the creator.</p>
+                </div>
+              </div>
+            )}
+
+            <div className="grid md:grid-cols-2 gap-10">
+              {/* Left Column: Task Meta */}
+              <form id="task-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-semibold text-slate-700">Title</Label>
+                  <Input {...form.register('title')} className="bg-white border-slate-300 font-medium" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-semibold text-slate-700">Description</Label>
+                  <Textarea {...form.register('description')} rows={4} className="bg-white border-slate-300 font-medium min-h-[120px]" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-semibold text-slate-700">Attachment</Label>
+                  <Input {...form.register('link')} placeholder="None" className="bg-white border-slate-300" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-semibold text-slate-700">Assignee(s)</Label>
+                  <div className="p-2 border border-slate-300 rounded-md min-h-[42px] flex flex-wrap gap-2 bg-[#F8FAFC]">
+                    {assignees.map(a => (
+                      <Badge key={a.id} variant="secondary" className="h-6 px-3 bg-slate-200 text-slate-700 border-none rounded-sm font-bold text-[11px]">
+                        {a.name}
+                      </Badge>
+                    ))}
                   </div>
                 </div>
 
-                <div>
-                  <SectionLabel>Resource Attachments</SectionLabel>
-                  {taskToDisplay.link ? (
-                    <div className="flex items-center justify-between p-4 rounded-xl border-2 border-[#F1F5F9] bg-white text-sm font-black shadow-sm group hover:border-blue-200 transition-colors">
-                      <span className="truncate max-w-[200px] text-slate-600">{taskToDisplay.link}</span>
-                      <Button asChild variant="link" size="sm" className="h-auto p-0 font-black text-[#2563EB] hover:text-blue-800 uppercase text-xs tracking-widest">
-                        <a href={taskToDisplay.link} target="_blank" rel="noopener noreferrer">OPEN LINK</a>
-                      </Button>
-                    </div>
-                  ) : (
-                    <p className="text-[10px] font-bold text-slate-400 italic px-1 uppercase tracking-widest opacity-60">No attachments provided.</p>
-                  )}
-                </div>
-
-                <div>
-                  <SectionLabel>Assignment Tracker</SectionLabel>
-                  <div className="space-y-2 rounded-2xl border-2 border-[#F1F5F9] p-4 bg-[#F8FAFC]">
-                    {assignees.map(assignee => {
-                      const subtask = taskToDisplay.subtasks?.[assignee.id];
-                      const isDone = subtask?.status === 'Done';
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-semibold text-slate-700">Assignee Status</Label>
+                  <div className="space-y-2">
+                    {assignees.map(a => {
+                      const sub = taskToDisplay.subtasks?.[a.id];
+                      const status = sub?.status || 'To Do';
                       return (
-                        <div key={assignee.id} className="flex justify-between items-center text-sm p-3 rounded-xl bg-white border border-[#E2E8F0] shadow-sm">
+                        <div key={a.id} className="flex justify-between items-center p-2.5 border border-slate-300 rounded-md bg-white shadow-sm">
                           <div className="flex items-center gap-3">
-                            <Avatar className="h-9 w-9 border-2 border-white shadow-md ring-1 ring-slate-200">
-                              <AvatarImage src={assignee.avatar} />
-                              <AvatarFallback className="text-[8px] font-black">{assignee.name[0]}</AvatarFallback>
+                            <Avatar className="h-8 w-8 border-2 border-slate-100">
+                                <AvatarImage src={a.avatar} />
+                                <AvatarFallback>{a.name[0]}</AvatarFallback>
                             </Avatar>
-                            <div className="flex flex-col">
-                                <span className="font-black text-slate-900 tracking-tight text-sm">{assignee.name}</span>
-                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{assignee.role}</span>
-                            </div>
+                            <span className="text-sm font-bold text-slate-700">{a.name}</span>
                           </div>
-                          <Badge className={cn("text-[9px] font-black h-5 px-2 tracking-wider border-none rounded-sm", isDone ? "bg-[#10B981] text-white" : "bg-[#E2E8F0] text-[#64748B]")}>
-                            {(subtask?.status || 'To Do').toUpperCase()}
+                          <Badge className={cn(
+                              "h-6 px-3 rounded-full text-[11px] font-black tracking-tight",
+                              status === 'Done' ? "bg-[#10B981] hover:bg-[#10B981] text-white" : "bg-slate-100 text-slate-500"
+                          )}>
+                            {status.toUpperCase()}
                           </Badge>
                         </div>
                       )
                     })}
                   </div>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <SectionLabel>Target Deadline</SectionLabel>
-                    <div className="flex items-center gap-3 p-3 border-2 border-[#F1F5F9] rounded-xl bg-white text-xs font-black text-slate-800 h-11 shadow-sm">
-                      <CalendarIcon className="h-4 w-4 text-[#2563EB]" />
-                      {taskToDisplay.dueDate ? format(parseISO(taskToDisplay.dueDate), 'dd MMMM yyyy') : 'NOT SET'}
-                    </div>
-                  </div>
 
-                  <div>
-                    <SectionLabel>Criticality</SectionLabel>
-                    <div className="h-11 border-2 border-[#F1F5F9] rounded-xl bg-white flex items-center justify-center text-[10px] font-black uppercase tracking-[0.2em] shadow-sm">
-                      <div className={cn("w-2.5 h-2.5 rounded-full mr-2", 
-                        taskToDisplay.priority === 'High' ? "bg-rose-500 shadow-[0_0_5px_rgba(244,63,94,0.5)]" : 
-                        taskToDisplay.priority === 'Medium' ? "bg-orange-400" : "bg-emerald-400"
-                      )} />
-                      {taskToDisplay.priority}
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-semibold text-slate-700">Due Date</Label>
+                    <Controller
+                      name="dueDate"
+                      control={form.control}
+                      render={({ field }) => (
+                        <DatePickerInput value={field.value} onChange={field.onChange} />
+                      )}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-semibold text-slate-700">Priority</Label>
+                    <Controller
+                      name="priority"
+                      control={form.control}
+                      render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger className="bg-white border-slate-300"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Low">Low</SelectItem>
+                            <SelectItem value="Medium">Medium</SelectItem>
+                            <SelectItem value="High">High</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
                   </div>
                 </div>
-                
-                {canEditCoreFields && (
-                  <Button type="submit" form="task-metadata-form" className="w-full h-12 font-black uppercase tracking-[0.2em] bg-[#2563EB] hover:bg-[#1E40AF] rounded-xl shadow-lg shadow-blue-500/20 text-[10px] transition-all active:scale-[0.98]">
-                    UPDATE TASK METADATA
-                  </Button>
-                )}
-              </form>
-            </div>
-          </ScrollArea>
 
-          {/* RIGHT COLUMN: Interaction */}
-          <div className="flex flex-col h-full bg-[#F8FAFC]">
-            <div className="p-6 flex-1 flex flex-col min-h-0">
-              <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-[#64748B] flex items-center gap-2 mb-6">
-                <MessageSquare className="h-4 w-4" /> INTERACTION & LOGS
-              </h3>
-              
-              <ScrollArea className="flex-1 pr-4">
-                <div className="space-y-6">
-                  {commentsArray.map((comment, index) => {
-                    const author = users.find(u => u.id === comment.userId);
-                    return (
-                      <div key={index} className="flex items-start gap-3 group animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <Avatar className="h-9 w-9 border-2 border-white shadow-md shrink-0">
-                          <AvatarImage src={author?.avatar} />
-                          <AvatarFallback className="font-black text-xs">{author?.name[0]}</AvatarFallback>
-                        </Avatar>
-                        <div className="space-y-1 flex-1 min-w-0">
-                          <div className="flex justify-between items-center px-1">
-                            <p className="font-black text-[10px] uppercase text-[#2563EB] tracking-widest">{author?.name}</p>
-                            <p className="text-[9px] font-bold text-slate-400 italic">
-                              {formatDistanceToNow(new Date(comment.date), { addSuffix: true })}
-                            </p>
-                          </div>
-                          <div className="bg-white p-4 rounded-2xl rounded-tl-none border-2 border-[#F1F5F9] shadow-sm">
-                            <p className="text-sm font-bold text-slate-800 leading-relaxed">
-                              {comment.text}
-                            </p>
+                <Button type="submit" className="w-full bg-[#2563EB] hover:bg-blue-700 text-white font-bold h-11 rounded-lg shadow-lg shadow-blue-500/10">
+                  Save Changes
+                </Button>
+              </form>
+
+              {/* Right Column: Feed */}
+              <div className="flex flex-col h-full">
+                <h3 className="font-bold text-lg text-slate-800 mb-5">Comments & Activity</h3>
+                <ScrollArea className="flex-1 pr-4 min-h-[300px]">
+                  <div className="space-y-6">
+                    {commentsArray.map(c => {
+                      const author = users.find(u => u.id === c.userId);
+                      return (
+                        <div key={c.id} className="flex gap-4 group">
+                          <Avatar className="h-10 w-10 border-2 border-white shadow-sm shrink-0">
+                            <AvatarImage src={author?.avatar} />
+                            <AvatarFallback>{author?.name?.[0]}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 bg-white p-4 rounded-xl shadow-sm border border-slate-100 relative">
+                            <div className="flex justify-between items-baseline mb-1">
+                              <span className="font-black text-[#1E3A8A] text-[13px]">{author?.name}</span>
+                              <span className="text-[10px] text-slate-400 font-medium italic">
+                                {formatDistanceToNow(new Date(c.date), { addSuffix: true })}
+                              </span>
+                            </div>
+                            <p className="text-sm text-slate-600 font-medium leading-relaxed">{c.text}</p>
                           </div>
                         </div>
-                      </div>
-                    )
-                  })}
-                  {commentsArray.length === 0 && (
-                    <div className="h-full flex flex-col items-center justify-center opacity-20 pt-24 text-slate-400">
-                      <MessageSquare className="h-12 w-12 mb-4" />
-                      <p className="text-xs font-black uppercase tracking-[0.3em]">No activity logged</p>
+                      )
+                    })}
+                    {commentsArray.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-20 opacity-20 text-slate-500">
+                            <MessageSquare className="h-12 w-12 mb-2" />
+                            <p className="text-sm font-bold uppercase tracking-widest">No activity yet</p>
+                        </div>
+                    )}
+                  </div>
+                </ScrollArea>
+
+                <div className="mt-8 pt-6 border-t border-slate-200 space-y-4">
+                  <div className="relative">
+                    <Textarea 
+                      placeholder="Add a comment... (required for status changes)" 
+                      className="bg-white border-2 border-slate-100 pr-12 min-h-[90px] text-sm font-medium focus-visible:ring-blue-100 transition-all placeholder:text-slate-400" 
+                      value={newComment}
+                      onChange={e => setNewComment(e.target.value)}
+                    />
+                    <Button 
+                        size="icon" 
+                        className="absolute right-3 bottom-3 h-8 w-8 rounded-full bg-[#A5B4FC] hover:bg-blue-600 text-white shadow-md transition-all active:scale-95" 
+                        onClick={handleAddComment} 
+                        disabled={!newComment.trim()}
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {taskToDisplay.status === 'Pending Approval' && isApprover && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <Button className="bg-[#10B981] hover:bg-[#059669] text-white font-bold h-11 rounded-lg" onClick={() => handleApprovalAction('approve')}>
+                        <ThumbsUp className="mr-2 h-4 w-4" /> Approve
+                      </Button>
+                      <Button className="bg-[#EF4444] hover:bg-[#DC2626] text-white font-bold h-11 rounded-lg" onClick={() => handleApprovalAction('return')}>
+                        <ThumbsDown className="mr-2 h-4 w-4" /> Return
+                      </Button>
                     </div>
                   )}
-                </div>
-              </ScrollArea>
 
-              <div className="pt-6 mt-auto">
-                {taskToDisplay.status === 'Pending Approval' && isApprover && (
-                  <div className='grid grid-cols-2 gap-4 mb-5'>
-                    <Button onClick={() => handleApprovalAction('approve')} className="bg-[#10B981] hover:bg-[#059669] font-black h-11 text-[10px] tracking-[0.2em] text-white rounded-xl shadow-lg shadow-emerald-500/10">
-                      <ThumbsUp className="mr-2 h-4 w-4" /> APPROVE
+                  {isAssignee && !isCompleted && taskToDisplay.status !== 'Pending Approval' && (
+                    <Button className="w-full bg-[#2563EB] hover:bg-blue-700 text-white font-bold h-12 rounded-lg text-sm tracking-wide" onClick={() => handleRequestStatusChange(mySubtask?.status === 'To Do' ? 'In Progress' : 'Done')}>
+                      {mySubtask?.status === 'To Do' ? 'Start Task' : 'Submit for Final Approval'}
                     </Button>
-                    <Button onClick={() => handleApprovalAction('return')} className="bg-[#EF4444] hover:bg-[#DC2626] font-black h-11 text-[10px] tracking-[0.2em] text-white rounded-xl shadow-lg shadow-rose-500/10">
-                      <ThumbsDown className="mr-2 h-4 w-4" /> RETURN
-                    </Button>
-                  </div>
-                )}
-                
-                {isAssignee && !isCompleted && taskToDisplay.status !== 'Pending Approval' && !taskToDisplay.isArchived && (
-                  <div className="mb-5">
-                    <Button 
-                      onClick={() => handleRequestStatusChange(mySubtask?.status === 'To Do' ? 'In Progress' : 'Done')} 
-                      className="w-full h-12 font-black uppercase tracking-[0.2em] bg-[#2563EB] hover:bg-[#1E40AF] shadow-xl shadow-blue-500/20 text-[10px] rounded-xl transition-all active:scale-[0.98]"
-                    >
-                      {mySubtask?.status === 'To Do' ? 'INITIALIZE TASK SESSION' : 'SUBMIT WORK FOR APPROVAL'}
-                    </Button>
-                  </div>
-                )}
-
-                <div className="relative bg-white border-2 border-[#F1F5F9] rounded-2xl p-1.5 shadow-md focus-within:border-blue-200 transition-colors">
-                  <Textarea 
-                    value={newComment} 
-                    onChange={(e) => setNewComment(e.target.value)} 
-                    placeholder="Type update or comment..." 
-                    className="min-h-[80px] pr-14 border-none focus-visible:ring-0 font-bold text-sm bg-transparent placeholder:text-slate-400"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleAddComment();
-                      }
-                    }}
-                  />
-                  <Button 
-                    size="icon" 
-                    className="absolute right-3 bottom-3 h-10 w-10 rounded-full bg-[#2563EB] hover:bg-[#1E40AF] shadow-lg transition-transform active:scale-90" 
-                    onClick={handleAddComment} 
-                    disabled={!newComment.trim()}
-                  >
-                    <Send className="h-5 w-5" />
-                  </Button>
+                  )}
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        </ScrollArea>
 
-        <DialogFooter className="p-5 bg-[#F8FAFC] border-t flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex gap-4 w-full sm:w-auto">
-            {isAdmin && !taskToDisplay.isArchived && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-[#EF4444] font-black text-[10px] uppercase tracking-[0.2em] hover:bg-rose-50 px-5 h-10 transition-colors">
-                    <Trash2 className="mr-2 h-4 w-4" /> DELETE TASK
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="font-black uppercase tracking-tight">Delete Permanently?</AlertDialogTitle>
-                    <AlertDialogDescription className="font-medium text-slate-500">
-                      This action will wipe all history, comments, and attachments for this task. It cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel className="font-bold text-[10px] uppercase tracking-widest rounded-xl">KEEP TASK</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteTask} className="bg-destructive text-white font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-red-700">DELETE FOREVER</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-            
-            {taskToDisplay.status === 'Done' && !taskToDisplay.isArchived && (
-                <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="text-[#64748B] font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-100 px-6 h-10 border-2 border-[#E2E8F0] rounded-xl bg-white"
-                    onClick={handleArchiveTask}
-                >
-                    <Archive className="mr-2 h-4 w-4" /> MOVE TO ARCHIVE
-                </Button>
-            )}
-
-            {taskToDisplay.isArchived && (isCreator || isAdmin) && (
-                <Button 
-                    variant="default" 
-                    size="sm" 
-                    className="bg-[#2563EB] hover:bg-[#1E40AF] font-black text-[10px] uppercase tracking-[0.2em] h-10 px-7 rounded-xl shadow-lg shadow-blue-500/20"
-                    onClick={handleRestoreTask}
-                >
-                    <History className="mr-2 h-4 w-4" /> RESTORE TO BOARD
-                </Button>
-            )}
-          </div>
-          <Button variant="outline" onClick={() => setIsOpen(false)} className="font-black text-[10px] uppercase tracking-[0.2em] h-10 px-10 border-2 border-[#E2E8F0] text-slate-700 hover:bg-white bg-[#F8FAFC] w-full sm:w-auto shadow-sm rounded-xl">
-            CLOSE DETAILS
-          </Button>
+        <DialogFooter className="p-4 bg-white border-t flex flex-row justify-between items-center w-full">
+            <div className="flex gap-2">
+                {isAdmin && (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" className="bg-[#EF4444] hover:bg-red-700 h-10 px-5">
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete Task
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Permanently?</AlertDialogTitle>
+                                <AlertDialogDescription>This action will wipe all history and comments. It cannot be undone.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDeleteTask} className="bg-destructive text-white">Confirm Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
+            </div>
+            <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-8 font-bold border-2 hover:bg-slate-50 transition-colors">
+                Close
+            </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
