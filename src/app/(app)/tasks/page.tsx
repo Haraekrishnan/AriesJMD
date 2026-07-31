@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TaskOverviewTable from '@/components/tasks/task-overview-table';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 export default function TasksPage() {
   const { user, users, can, getVisibleUsers } = useAuth();
@@ -77,9 +78,12 @@ export default function TasksPage() {
     const visibleUserIds = new Set(getVisibleUsers().map(u => u.id));
     
     return tasks.filter(task => {
-      // Archive Filter: Only show archived if the global toggle is ON
-      if (task.isArchived && !filters.includeArchived) return false;
-      if (!task.isArchived && filters.includeArchived) return false;
+      // Mode selector: Show Archived OR show Active. Not both in the same list unless searching.
+      if (filters.includeArchived) {
+          if (!task.isArchived) return false;
+      } else {
+          if (task.isArchived) return false;
+      }
 
       if (hasFullView) return true;
       
@@ -331,3 +335,4 @@ export default function TasksPage() {
     </>
   );
 }
+

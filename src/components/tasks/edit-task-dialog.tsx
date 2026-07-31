@@ -402,3 +402,4 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     </Dialog>
   );
 }
+
