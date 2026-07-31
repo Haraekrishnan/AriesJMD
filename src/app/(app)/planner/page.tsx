@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -30,7 +29,8 @@ export default function PlannerPage() {
     });
     
     const visibleUsers = useMemo(() => {
-        return getVisibleUsers().filter(u => u.role !== 'Manager');
+        // Filter out Managers and Locked users from the 'View Planner' dropdown
+        return getVisibleUsers().filter(u => u.role !== 'Manager' && u.status !== 'locked');
     }, [getVisibleUsers]);
     
     const canViewOthers = can.manage_planner;

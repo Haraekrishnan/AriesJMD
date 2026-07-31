@@ -1,4 +1,3 @@
-
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -45,7 +44,8 @@ export default function EditEventDialog({ isOpen, setIsOpen, event }: EditEventD
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   
   const assignableUsers = useMemo(() => {
-    return getVisibleUsers().filter(u => u.role !== 'Manager');
+    // Exclude Managers and Locked users from the assignable list
+    return getVisibleUsers().filter(u => u.role !== 'Manager' && u.status !== 'locked');
   }, [getVisibleUsers]);
 
   const form = useForm<EventFormValues>({
@@ -92,8 +92,8 @@ export default function EditEventDialog({ isOpen, setIsOpen, event }: EditEventD
                   <SelectTrigger><SelectValue placeholder="Select an employee" /></SelectTrigger>
                   <SelectContent>
                     {assignableUsers.map(u => (
-                        <SelectItem key={u.id} value={u.id} disabled={u.status === 'locked'}>
-                            {u.name}{u.status === 'locked' && ' (Locked)'}
+                        <SelectItem key={u.id} value={u.id}>
+                            {u.name}
                         </SelectItem>
                     ))}
                   </SelectContent>

@@ -43,7 +43,8 @@ export default function CreateEventDialog({ isDelegating = false, isPlanning = f
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const assignableUsers = useMemo(() => {
-    return getVisibleUsers().filter(u => u.role !== 'Manager');
+    // Exclude Managers and Locked users from the delegation list
+    return getVisibleUsers().filter(u => u.role !== 'Manager' && u.status !== 'locked');
   }, [getVisibleUsers]);
 
   const form = useForm<EventFormValues>({
@@ -114,8 +115,8 @@ export default function CreateEventDialog({ isDelegating = false, isPlanning = f
                     <SelectTrigger><SelectValue placeholder="Select an employee" /></SelectTrigger>
                     <SelectContent>
                       {assignableUsers.map(u => (
-                        <SelectItem key={u.id} value={u.id} disabled={u.status === 'locked'}>
-                          {u.name}{u.status === 'locked' && ' (Locked)'}
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
