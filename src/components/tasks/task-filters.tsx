@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -123,7 +124,7 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
                   <Select value={filters.year} onValueChange={(value) => handleFilterChange('year', value)}>
                     <SelectTrigger className="w-full sm:w-[100px] h-9 text-xs font-bold"><SelectValue placeholder="Year" /></SelectTrigger>
                     <SelectContent>
-                        {availableYears.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
+                        {availableYears.map(y => <SelectItem key={y} value={y.toString()}>{y.toString()}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Select value={filters.month} onValueChange={(value) => handleFilterChange('month', value)}>

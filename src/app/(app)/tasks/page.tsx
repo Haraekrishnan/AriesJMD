@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -91,9 +92,9 @@ export default function TasksPage() {
       // 1. Search Filter (Title, Description, ID)
       if (search) {
           const term = search.toLowerCase();
-          const matchesTitle = task.title.toLowerCase().includes(term);
-          const matchesDesc = task.description.toLowerCase().includes(term);
-          const matchesId = task.id.toLowerCase().includes(term);
+          const matchesTitle = (task.title || '').toLowerCase().includes(term);
+          const matchesDesc = (task.description || '').toLowerCase().includes(term);
+          const matchesId = (task.id || '').toLowerCase().includes(term);
           if (!matchesTitle && !matchesDesc && !matchesId) return false;
       }
 

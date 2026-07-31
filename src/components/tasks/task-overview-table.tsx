@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo } from 'react';
@@ -97,7 +98,7 @@ const TableSection = ({ title, icon: Icon, tasks, users, onEdit, isArchivedSecti
                                     isArchivedSection ? "opacity-60 bg-slate-50/50" : "hover:bg-blue-50/30"
                                 )}>
                                     <TableCell className="border-r font-mono text-[10px] text-slate-500 font-bold uppercase text-center p-4">
-                                        {task.id.slice(-5).toUpperCase()}
+                                        {(task.id || '').slice(-5).toUpperCase()}
                                     </TableCell>
                                     <TableCell className="border-r p-4">
                                         <div className="flex flex-col gap-1">
@@ -112,7 +113,7 @@ const TableSection = ({ title, icon: Icon, tasks, users, onEdit, isArchivedSecti
                                     <TableCell className="border-r p-4">
                                         <div className="flex items-center gap-2 font-bold text-slate-700">
                                             <Calendar className={cn("h-3.5 w-3.5", isOverdue ? "text-rose-500" : "text-slate-400")} />
-                                            {format(parseISO(task.dueDate), 'dd MMM yyyy')}
+                                            {task.dueDate ? format(parseISO(task.dueDate), 'dd MMM yyyy') : 'N/A'}
                                         </div>
                                     </TableCell>
                                     <TableCell className="border-r p-4">
@@ -152,7 +153,7 @@ const TableSection = ({ title, icon: Icon, tasks, users, onEdit, isArchivedSecti
                                             "text-[9px] font-black uppercase tracking-[0.1em] h-6 px-3 min-w-[110px] justify-center", 
                                             getStatusColor(task.status)
                                         )}>
-                                            {task.status === 'Done' ? 'COMPLETED' : task.status.toUpperCase()}
+                                            {task.status === 'Done' ? 'COMPLETED' : (task.status || 'TO DO').toUpperCase()}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-right p-4">
