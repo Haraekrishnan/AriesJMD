@@ -1094,15 +1094,12 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const addCertificateRequestComment = useCallback((requestId: string, comment: string) => {
         if (!user) return;
         const request = certificateRequestsById[requestId];
-        if (!request) return;
-    
+        if (!request) return;    
         const newCommentRef = push(ref(rtdb, `certificateRequests/${requestId}/comments`));
         const newComment: Omit<Comment, 'id'> = { id: newCommentRef.key!, userId: user.id, text: comment, date: new Date().toISOString(), eventId: requestId };
-        
         const updates: { [key: string]: any } = {};
         updates[`certificateRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment };
         updates[`certificateRequests/${requestId}/viewedByRequester`] = false;
-    
         update(ref(rtdb), updates);
     }, [user, certificateRequestsById]);
 
@@ -1663,10 +1660,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb, `ppeRequests/${requestId}`), { attachmentUrl: null });
     }, []);
 
-    const addInspectionChecklist = useCallback(() => {}, []);
-    const updateInspectionChecklist = useCallback(() => {}, []);
-    const deleteInspectionChecklist = useCallback(() => {}, []);
-
     const addDamageReport = useCallback(async (reportData: Omit<DamageReport, 'id' | 'reporterId' | 'reportDate' | 'status' | 'attachmentDownloadUrl'>) => {
         if (!user) return { success: false, error: "User not authenticated." };
     
@@ -1800,6 +1793,64 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
         remove(ref(rtdb, `deliveryNotes/${noteId}`));
     }, [user, toast]);
+    
+    const resolveInternalRequestDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
+        const canApprove = user?.canApproveTransfers || user?.role === 'Admin' || can.approve_transfer_requests;
+        if (!user || !canApprove) return;
+
+        const updates: { [key: string]: any } = {};
+        const now = new Date().toISOString();
+        
+        if (resolution === 'reissue') {
+            updates[`inventoryTransferRequests/${requestId}/status`] = 'Pending';
+            updates[`inventoryTransferRequests/${requestId}/acknowledgedByRequester`] = false;
+        } else {
+            updates[`inventoryTransferRequests/${requestId}/status`] = 'Completed';
+            updates[`inventoryTransferRequests/${requestId}/acknowledgedByRequester`] = true;
+        }
+
+        const newCommentRef = push(ref(rtdb, `inventoryTransferRequests/${requestId}/comments`));
+        updates[`inventoryTransferRequests/${requestId}/comments/${newCommentRef.key}`] = {
+            id: newCommentRef.key,
+            userId: user.id,
+            text: `Dispute Resolved (${resolution}): ${comment}`,
+            date: now,
+            eventId: requestId
+        };
+
+        update(ref(rtdb), updates);
+        toast({ title: 'Transfer Dispute Resolved' });
+    }, [user, can.approve_transfer_requests, toast]);
+
+    const resolvePpeDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
+        if (!user) return;
+        const updates: { [key: string]: any } = {};
+        const now = new Date().toISOString();
+        
+        if (resolution === 'reissue') {
+            updates[`ppeRequests/${requestId}/status`] = 'Approved';
+            updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
+        } else {
+            updates[`ppeRequests/${requestId}/status`] = 'Issued';
+            updates[`ppeRequests/${requestId}/viewedByRequester`] = true;
+        }
+
+        const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
+        updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = {
+            id: newCommentRef.key,
+            userId: user.id,
+            text: `Dispute Resolved (${resolution}): ${comment}`,
+            date: now,
+            eventId: requestId
+        };
+
+        update(ref(rtdb), updates);
+        toast({ title: 'PPE Dispute Resolved' });
+    }, [user, toast]);
+
+    const addInspectionChecklist = useCallback(() => {}, []);
+    const updateInspectionChecklist = useCallback(() => {}, []);
+    const deleteInspectionChecklist = useCallback(() => {}, []);
 
     useEffect(() => {
         const unsubscribers = [
@@ -1861,31 +1912,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         addMachineLog, deleteMachineLog, getMachineLogs,
         addInternalRequest, deleteInternalRequest, forceDeleteInternalRequest, addInternalRequestComment, updateInternalRequestStatus, updateInternalRequestItemStatus, updateInternalRequestItem, markInternalRequestAsViewed, acknowledgeInternalRequest,
         addPpeRequest, updatePpeRequest, updatePpeRequestStatus, addPpeRequestComment,
-        resolvePpeDispute: (requestId, resolution, comment) => {
-            if (!user) return;
-            const updates: { [key: string]: any } = {};
-            const now = new Date().toISOString();
-            
-            if (resolution === 'reissue') {
-                updates[`ppeRequests/${requestId}/status`] = 'Approved';
-                updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
-            } else {
-                updates[`ppeRequests/${requestId}/status`] = 'Issued';
-                updates[`ppeRequests/${requestId}/viewedByRequester`] = true;
-            }
-
-            const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
-            updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = {
-                id: newCommentRef.key,
-                userId: user.id,
-                text: `Dispute Resolved (${resolution}): ${comment}`,
-                date: now,
-                eventId: requestId
-            };
-
-            update(ref(rtdb), updates);
-            toast({ title: 'PPE Dispute Resolved' });
-        },
+        resolvePpeDispute,
         deletePpeRequest, deletePpeAttachment, markPpeRequestAsViewed,
         updatePpeStock, addPpeInwardRecord, updatePpeInwardRecord, deletePpeInwardRecord,
         addTpCertList, updateTpCertList, deleteTpCertList,

@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -11,7 +10,7 @@ import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { useAuth } from '@/contexts/auth-provider';
 import { useTask } from '@/contexts/task-provider';
-import { getMonth, format, getYear } from 'date-fns';
+import { getMonth, format, getYear, isValid } from 'date-fns';
 
 export interface TaskFilters {
   status: 'all' | 'To Do' | 'In Progress' | 'Done' | 'Overdue';
@@ -43,7 +42,14 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
   }, [getVisibleUsers]);
   
   const availableYears = useMemo(() => {
-    const years = new Set(tasks.map(t => getYear(new Date(t.dueDate))));
+    const years = new Set<number>();
+    tasks.forEach(t => {
+      const d = new Date(t.dueDate);
+      const y = getYear(d);
+      if (!isNaN(y)) {
+        years.add(y);
+      }
+    });
     const currentYear = new Date().getFullYear();
     years.add(currentYear);
     return Array.from(years).sort((a,b) => b - a);

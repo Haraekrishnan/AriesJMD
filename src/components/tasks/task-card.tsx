@@ -53,7 +53,7 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                     {assignees.map(assignee => (
-                        <div key={assignee.id} className="flex items-center gap-1.5 bg-muted/50 pr-2.5 rounded-full border shadow-sm h-7">
+                        <div key={assignee.id} className="flex items-center gap-1.5 bg-muted/50 pr-2 rounded-full border shadow-sm h-7">
                             <Avatar className="h-6 w-6 border">
                                 <AvatarImage src={assignee.avatar} />
                                 <AvatarFallback className="text-[8px]">{assignee.name.charAt(0)}</AvatarFallback>
