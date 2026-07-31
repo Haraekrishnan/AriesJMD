@@ -14,7 +14,18 @@ import { useAuth } from '@/contexts/auth-provider';
 import type { Task, User } from '@/lib/types';
 import { format, parseISO, isPast } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Calendar, Users, Eye, Archive, ShieldCheck, Clock, CheckCircle2, History, AlertTriangle } from 'lucide-react';
+import { 
+  Calendar, 
+  Users, 
+  Eye, 
+  Archive, 
+  ShieldCheck, 
+  Clock, 
+  CheckCircle2, 
+  History, 
+  AlertTriangle,
+  ArrowRight
+} from 'lucide-react';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -30,20 +41,20 @@ interface TaskOverviewTableProps {
   onEditTask: (task: Task) => void;
 }
 
-const getPriorityColor = (p: string) => {
+const getPriorityStyles = (p: string) => {
     switch (p) {
         case 'High': return 'text-rose-600 bg-rose-50 border-rose-200';
-        case 'Medium': return 'text-amber-600 bg-amber-50 border-amber-200';
+        case 'Medium': return 'text-orange-600 bg-orange-50 border-orange-200';
         default: return 'text-emerald-600 bg-emerald-50 border-emerald-200';
     }
 }
 
 const getStatusColor = (s: string) => {
     switch (s) {
-        case 'Done': return 'bg-emerald-500 text-white';
-        case 'In Progress': return 'bg-amber-500 text-white';
-        case 'Pending Approval': return 'bg-blue-600 text-white';
-        default: return 'bg-slate-500 text-white';
+        case 'Done': return 'bg-emerald-500 hover:bg-emerald-600 text-white border-none';
+        case 'In Progress': return 'bg-orange-500 hover:bg-orange-600 text-white border-none';
+        case 'Pending Approval': return 'bg-blue-600 hover:bg-blue-700 text-white border-none';
+        default: return 'bg-slate-500 hover:bg-slate-600 text-white border-none';
     }
 }
 
@@ -52,73 +63,105 @@ const TableSection = ({ title, icon: Icon, tasks, users, onEdit, isArchivedSecti
 
     return (
         <div className="space-y-4 mb-10">
-            <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.3em] text-slate-500 px-4">
-                <Icon className="h-4 w-4" />
-                {title}
-                <Badge variant="secondary" className="ml-2 h-5 py-0 px-2 font-black text-[10px]">{tasks.length}</Badge>
-            </h3>
+            <div className="flex items-center gap-3 px-4">
+                <Icon className={cn("h-4 w-4", isArchivedSection ? "text-slate-400" : "text-slate-600")} />
+                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">
+                    {title}
+                </h3>
+                <Badge variant="secondary" className="h-5 py-0 px-2 font-black text-[10px] bg-slate-100 text-slate-600">
+                    {tasks.length}
+                </Badge>
+            </div>
             <div className="border rounded-xl bg-card overflow-hidden shadow-sm">
                 <Table className="text-xs">
-                    <TableHeader className="bg-muted/50">
-                        <TableRow className="hover:bg-transparent">
-                            <TableHead className="w-10 font-bold text-black border-r">ID</TableHead>
-                            <TableHead className="min-w-[250px] font-bold text-black border-r">TASK DESCRIPTION</TableHead>
-                            <TableHead className="w-[180px] font-bold text-black border-r">TIMELINE (DUE DATE)</TableHead>
-                            <TableHead className="w-[200px] font-bold text-black border-r">ASSIGNEE(S)</TableHead>
-                            <TableHead className="w-[120px] font-bold text-black border-r text-center">PRIORITY</TableHead>
-                            <TableHead className="w-[150px] font-bold text-black border-r text-center">STATUS</TableHead>
-                            <TableHead className="w-[100px] text-right">ACTION</TableHead>
+                    <TableHeader className="bg-muted/30">
+                        <TableRow className="hover:bg-transparent border-b-2 border-slate-200">
+                            <TableHead className="w-16 font-bold text-black border-r uppercase tracking-tighter text-center">ID</TableHead>
+                            <TableHead className="min-w-[300px] font-bold text-black border-r uppercase tracking-tighter">Task Description</TableHead>
+                            <TableHead className="w-[180px] font-bold text-black border-r uppercase tracking-tighter">Timeline (Due Date)</TableHead>
+                            <TableHead className="w-[160px] font-bold text-black border-r uppercase tracking-tighter">Assignee(s)</TableHead>
+                            <TableHead className="w-[120px] font-bold text-black border-r text-center uppercase tracking-tighter">Priority</TableHead>
+                            <TableHead className="w-[160px] font-bold text-black border-r text-center uppercase tracking-tighter">Status</TableHead>
+                            <TableHead className="w-[100px] text-right font-bold text-black uppercase tracking-tighter">Action</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {tasks.map(task => {
                             const assignees = users.filter(u => task.assigneeIds?.includes(u.id));
+                            const isOverdue = !task.isArchived && task.status !== 'Done' && isPast(parseISO(task.dueDate));
+                            
                             return (
-                                <TableRow key={task.id} className={cn(isArchivedSection && "opacity-60 bg-muted/10")}>
-                                    <TableCell className="border-r font-mono text-[10px] text-muted-foreground uppercase text-center">{task.id.slice(-4)}</TableCell>
-                                    <TableCell className="border-r">
-                                        <div className="flex flex-col gap-0.5">
-                                            <p className="font-bold text-sm uppercase tracking-tight">{task.title}</p>
-                                            <p className="text-[10px] text-muted-foreground line-clamp-1 italic">{task.description}</p>
+                                <TableRow key={task.id} className={cn(
+                                    "group transition-colors",
+                                    isArchivedSection ? "opacity-60 bg-slate-50/50" : "hover:bg-blue-50/30"
+                                )}>
+                                    <TableCell className="border-r font-mono text-[10px] text-muted-foreground uppercase text-center p-3">
+                                        {task.id.slice(-5).toUpperCase()}
+                                    </TableCell>
+                                    <TableCell className="border-r p-3">
+                                        <div className="flex flex-col gap-1">
+                                            <p className="font-black text-sm uppercase tracking-tight text-slate-800 leading-tight">
+                                                {task.title}
+                                            </p>
+                                            <p className="text-[10px] text-slate-500 line-clamp-1 italic font-medium">
+                                                {task.description}
+                                            </p>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="border-r font-bold text-slate-600">
-                                        <div className="flex items-center gap-2">
-                                            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <TableCell className="border-r p-3">
+                                        <div className="flex items-center gap-2 font-bold text-slate-600">
+                                            <Calendar className={cn("h-3.5 w-3.5", isOverdue ? "text-rose-500" : "text-slate-400")} />
                                             {format(parseISO(task.dueDate), 'dd MMM yyyy')}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="border-r">
+                                    <TableCell className="border-r p-3">
                                         <div className="flex -space-x-2">
-                                            {assignees.map(a => (
-                                                <TooltipProvider key={a.id}>
-                                                    <Tooltip>
+                                            <TooltipProvider>
+                                                {assignees.map(a => (
+                                                    <Tooltip key={a.id}>
                                                         <TooltipTrigger asChild>
-                                                            <Avatar className="h-7 w-7 border-2 border-background ring-1 ring-slate-200">
+                                                            <Avatar className="h-8 w-8 border-2 border-background ring-1 ring-slate-200">
                                                                 <AvatarImage src={a.avatar} />
                                                                 <AvatarFallback className="text-[10px] font-black">{a.name[0]}</AvatarFallback>
                                                             </Avatar>
                                                         </TooltipTrigger>
-                                                        <TooltipContent><p className="font-bold text-xs">{a.name}</p></TooltipContent>
+                                                        <TooltipContent>
+                                                            <p className="font-bold text-xs">{a.name}</p>
+                                                        </TooltipContent>
                                                     </Tooltip>
-                                                </TooltipProvider>
-                                            ))}
-                                            {assignees.length > 3 && <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-[10px] font-black border-2 border-background">+{assignees.length - 3}</div>}
+                                                ))}
+                                            </TooltipProvider>
+                                            {assignees.length > 3 && (
+                                                <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black border-2 border-background ring-1 ring-slate-200">
+                                                    +{assignees.length - 3}
+                                                </div>
+                                            )}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="border-r text-center">
-                                        <Badge variant="outline" className={cn("text-[9px] font-black uppercase tracking-widest h-5 px-2", getPriorityColor(task.priority))}>
+                                    <TableCell className="border-r text-center p-3">
+                                        <Badge variant="outline" className={cn(
+                                            "text-[9px] font-black uppercase tracking-[0.1em] h-6 px-3 border-2", 
+                                            getPriorityStyles(task.priority)
+                                        )}>
                                             {task.priority}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="border-r text-center">
-                                        <Badge className={cn("text-[9px] font-black uppercase tracking-widest h-5 px-2 border-none", getStatusColor(task.status))}>
+                                    <TableCell className="border-r text-center p-3">
+                                        <Badge className={cn(
+                                            "text-[9px] font-black uppercase tracking-[0.1em] h-6 px-3 min-w-[100px] justify-center", 
+                                            getStatusColor(task.status)
+                                        )}>
                                             {task.status === 'Done' ? 'COMPLETED' : task.status.toUpperCase()}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="ghost" size="sm" className="h-8 px-3 font-black text-[10px] uppercase tracking-wider text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => onEdit(task)}>
-                                            <Eye className="h-3.5 w-3.5 mr-1.5" /> DETAILS
+                                    <TableCell className="text-right p-3">
+                                        <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="h-8 px-3 font-black text-[10px] uppercase tracking-widest text-blue-600 hover:text-blue-700 hover:bg-blue-100/50" 
+                                            onClick={() => onEdit(task)}
+                                        >
+                                            <Eye className="h-3.5 w-3.5 mr-2" /> DETAILS
                                         </Button>
                                     </TableCell>
                                 </TableRow>
@@ -147,7 +190,7 @@ export default function TaskOverviewTable({ tasks, onEditTask }: TaskOverviewTab
   }, [tasks]);
 
   return (
-    <div className="flex-1 overflow-hidden flex flex-col">
+    <div className="flex-1 overflow-hidden flex flex-col pt-4">
       <ScrollArea className="flex-1 pr-4 -mr-4">
         <div className="py-2">
             <TableSection 
