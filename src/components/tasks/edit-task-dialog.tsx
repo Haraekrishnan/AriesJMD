@@ -1,4 +1,3 @@
-
 'use client';
 import * as React from "react";
 import { useEffect, useState, useMemo } from 'react';
@@ -159,7 +158,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   }, [taskToDisplay.comments]);
 
   const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-    <Label className="text-xs font-black uppercase tracking-[0.2em] text-[#64748B] mb-2 block">
+    <Label className="text-sm font-black uppercase tracking-[0.2em] text-[#64748B] mb-2 block">
       {children}
     </Label>
   );
@@ -170,13 +169,13 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
         <DialogHeader className="p-6 pb-4 bg-[#F8FAFC] border-b">
           <div className="flex justify-between items-start">
             <div className="space-y-1">
-              <DialogTitle className="text-lg font-black uppercase tracking-tight text-slate-900">
+              <DialogTitle className="text-2xl font-black uppercase tracking-tight text-slate-900">
                 TASK DETAILS: {taskToDisplay.title}
               </DialogTitle>
-              <div className="flex items-center gap-3 text-xs text-[#64748B] font-medium">
-                <span className="flex items-center gap-1">Assigned by <span className="font-bold text-slate-700">{creator?.name}</span></span>
+              <div className="flex items-center gap-3 text-sm text-[#64748B] font-bold">
+                <span className="flex items-center gap-1">Assigned by <span className="font-black text-slate-700">{creator?.name}</span></span>
                 <span className="text-slate-300">|</span>
-                <Badge variant="outline" className="font-mono text-[10px] font-bold px-2 py-0.5 bg-[#E9F0FE] text-[#2563EB] border-[#D1E1FF] rounded-sm tracking-wider">
+                <Badge variant="outline" className="font-mono text-xs font-black px-2 py-0.5 bg-[#E9F0FE] text-[#2563EB] border-[#D1E1FF] rounded-sm tracking-wider">
                   ID: {taskToDisplay.id}
                 </Badge>
               </div>
@@ -191,12 +190,12 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div>
                   <SectionLabel>Title</SectionLabel>
-                  <Input {...form.register('title')} disabled={!canEditCoreFields} className="font-bold text-sm h-10 border-[#E2E8F0] focus-visible:ring-primary/10" />
+                  <Input {...form.register('title')} disabled={!canEditCoreFields} className="font-black text-base h-11 border-[#E2E8F0] focus-visible:ring-primary/10" />
                 </div>
                 
                 <div>
                   <SectionLabel>Description</SectionLabel>
-                  <div className="p-4 text-sm min-h-[8rem] border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] whitespace-pre-wrap leading-relaxed text-slate-700 font-medium">
+                  <div className="p-4 text-sm font-semibold min-h-[8rem] border border-[#E2E8F0] rounded-lg bg-[#F8FAFC] whitespace-pre-wrap leading-relaxed text-slate-700">
                     {taskToDisplay.description}
                   </div>
                 </div>
@@ -204,14 +203,14 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 <div>
                   <SectionLabel>Reference Link</SectionLabel>
                   {taskToDisplay.link ? (
-                    <div className="flex items-center justify-between p-3 rounded-lg border border-[#E2E8F0] bg-white text-xs font-semibold">
+                    <div className="flex items-center justify-between p-3 rounded-lg border border-[#E2E8F0] bg-white text-sm font-bold">
                       <span className="truncate max-w-[220px] text-slate-500">{taskToDisplay.link}</span>
-                      <Button asChild variant="link" size="sm" className="h-auto p-0 font-bold text-blue-600 hover:text-blue-700">
+                      <Button asChild variant="link" size="sm" className="h-auto p-0 font-black text-blue-600 hover:text-blue-700 uppercase text-xs tracking-tighter">
                         <a href={taskToDisplay.link} target="_blank" rel="noopener noreferrer">Open Link</a>
                       </Button>
                     </div>
                   ) : (
-                    <p className="text-xs font-medium text-slate-400 italic px-1">No reference link provided.</p>
+                    <p className="text-sm font-bold text-slate-400 italic px-1">No reference link provided.</p>
                   )}
                 </div>
 
@@ -228,9 +227,9 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                               <AvatarImage src={assignee.avatar} />
                               <AvatarFallback className="text-[10px] font-black">{assignee.name[0]}</AvatarFallback>
                             </Avatar>
-                            <span className="font-bold text-slate-800">{assignee.name}</span>
+                            <span className="font-black text-slate-800">{assignee.name}</span>
                           </div>
-                          <Badge className={cn("text-[9px] font-black h-5 px-2 tracking-wider border-none rounded-sm", isDone ? "bg-[#10B981] text-white" : "bg-[#E2E8F0] text-[#64748B]")}>
+                          <Badge className={cn("text-[10px] font-black h-5 px-2 tracking-wider border-none rounded-sm", isDone ? "bg-[#10B981] text-white" : "bg-[#E2E8F0] text-[#64748B]")}>
                             {(subtask?.status || 'To Do').toUpperCase()}
                           </Badge>
                         </div>
@@ -242,7 +241,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <SectionLabel>Deadline</SectionLabel>
-                    <div className="flex items-center gap-3 p-3 border border-[#E2E8F0] rounded-lg bg-white text-xs font-bold text-slate-800 h-10 shadow-sm">
+                    <div className="flex items-center gap-3 p-3 border border-[#E2E8F0] rounded-lg bg-white text-xs font-black text-slate-800 h-10 shadow-sm">
                       <CalendarIcon className="h-4 w-4 text-[#94A3B8]" />
                       {taskToDisplay.dueDate ? format(parseISO(taskToDisplay.dueDate), 'dd MMMM yyyy') : 'N/A'}
                     </div>
@@ -268,7 +267,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
           {/* RIGHT COLUMN */}
           <div className="flex flex-col h-full bg-[#F8FAFC]">
             <div className="p-6 flex-1 flex flex-col min-h-0">
-              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[#64748B] flex items-center gap-2 mb-4">
+              <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[#64748B] flex items-center gap-2 mb-4">
                 <MessageSquare className="h-4 w-4" /> INTERACTION & HISTORY
               </h3>
               
@@ -284,13 +283,13 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                         </Avatar>
                         <div className="space-y-1 flex-1 min-w-0">
                           <div className="flex justify-between items-center px-1">
-                            <p className="font-black text-[10px] uppercase text-[#2563EB] tracking-tight">{author?.name}</p>
+                            <p className="font-black text-xs uppercase text-[#2563EB] tracking-tight">{author?.name}</p>
                             <p className="text-[10px] font-bold text-slate-400 italic">
                               {formatDistanceToNow(new Date(comment.date), { addSuffix: true })}
                             </p>
                           </div>
                           <div className="bg-white p-3 rounded-2xl rounded-tl-none border border-[#E2E8F0] shadow-sm">
-                            <p className="text-xs font-bold text-slate-700 leading-relaxed">
+                            <p className="text-sm font-bold text-slate-700 leading-relaxed">
                               {comment.text}
                             </p>
                           </div>
@@ -335,7 +334,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                     value={newComment} 
                     onChange={(e) => setNewComment(e.target.value)} 
                     placeholder="Add a comment or status update..." 
-                    className="min-h-[60px] pr-12 border-none focus-visible:ring-0 font-bold text-xs bg-transparent"
+                    className="min-h-[60px] pr-12 border-none focus-visible:ring-0 font-black text-sm bg-transparent"
                   />
                   <Button 
                     size="icon" 

@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -78,11 +77,10 @@ export default function TasksPage() {
     const visibleUserIds = new Set(getVisibleUsers().map(u => u.id));
     
     return tasks.filter(task => {
-      // Mode selector: Show Archived OR show Active.
-      if (filters.includeArchived) {
-          if (!task.isArchived) return false;
-      } else {
-          if (task.isArchived) return false;
+      // If "Include Archived" is false, we strictly hide archived records.
+      // If true, we show EVERYTHING (Active + Archived) to allow searching through all.
+      if (!filters.includeArchived && task.isArchived) {
+          return false;
       }
 
       if (hasFullView) return true;
