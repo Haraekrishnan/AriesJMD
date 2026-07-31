@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel, SelectSeparator } from '@/components/ui/select';
-import { X, Search, Archive, FolderArchive } from 'lucide-react';
+import { X, Search } from 'lucide-react';
 import { TaskStatus, User } from '@/lib/types';
 import { DateRangePicker } from '../ui/date-range-picker';
 import { Label } from '../ui/label';
@@ -99,21 +99,10 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
             <div className="relative flex-1 w-full">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
-                    placeholder="Search task title, description, or unique ID..." 
+                    placeholder="Search task title, description, or unique ID... (Includes Archives)" 
                     className="pl-9 h-10 text-sm font-medium focus-visible:ring-primary/20" 
                     value={filters.search}
                     onChange={(e) => handleFilterChange('search', e.target.value)}
-                />
-            </div>
-            <div className="flex items-center gap-3 px-3 py-2 bg-muted/40 rounded-lg border border-dashed shrink-0 shadow-sm transition-all hover:bg-muted/60">
-                <div className="flex items-center gap-2">
-                    <FolderArchive className={cn("h-4 w-4 transition-colors", filters.includeArchived ? "text-[#2563EB]" : "text-slate-500")} />
-                    <Label htmlFor="include-archived" className="text-[10px] font-black uppercase tracking-widest text-slate-500 cursor-pointer">Archived Tasks</Label>
-                </div>
-                <Switch 
-                    id="include-archived" 
-                    checked={filters.includeArchived} 
-                    onCheckedChange={(checked) => handleFilterChange('includeArchived', checked)} 
                 />
             </div>
         </div>
@@ -158,7 +147,7 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
               <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value as TaskFilters['status'])}>
                   <SelectTrigger className="w-full sm:w-[140px] h-9 text-xs font-bold"><SelectValue placeholder="All Status" /></SelectTrigger>
                   <SelectContent>
-                      <SelectItem value="all">All Active</SelectItem>
+                      <SelectItem value="all">All Statuses</SelectItem>
                       <SelectItem value="To Do">To Do</SelectItem>
                       <SelectItem value="In Progress">In Progress</SelectItem>
                       <SelectItem value="Done">Completed</SelectItem>

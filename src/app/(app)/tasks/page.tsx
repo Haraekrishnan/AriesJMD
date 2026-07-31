@@ -67,37 +67,27 @@ export default function TasksPage() {
     });
   }, [tasks, user]);
 
-  const visibleTasks = useMemo(() => {
+  const visibleTasksPool = useMemo(() => {
     if (!user) return [];
     
     const highLevelRoles: Role[] = ['Admin', 'Manager', 'Project Coordinator'];
     const hasFullView = highLevelRoles.includes(user.role);
-    
     const visibleUserIds = new Set(getVisibleUsers().map(u => u.id));
     
     return tasks.filter(task => {
-      // Logic: If 'includeArchived' is false, only show active tasks.
-      // If 'includeArchived' is true, show BOTH active and archived.
-      if (!filters.includeArchived && task.isArchived) {
-          return false;
-      }
-
       if (hasFullView) return true;
-      
-      // Permission check
       return task.assigneeIds && task.assigneeIds.some(id => visibleUserIds.has(id));
     });
-  }, [tasks, user, getVisibleUsers, filters.includeArchived]);
+  }, [tasks, user, getVisibleUsers]);
 
   const filteredTasks = useMemo(() => {
-    return visibleTasks.filter(task => {
-      const { status, priority, dateRange, showMyTasksOnly, assigneeId, month, year, search, includeArchived } = filters;
+    return visibleTasksPool.filter(task => {
+      const { status, priority, dateRange, showMyTasksOnly, assigneeId, month, year, search } = filters;
 
       // 1. Archive Logic:
-      // If includeArchived is ON, but NO search term is present, we still only show active tasks on the board/main list
-      // unless we are in the Overview's archived section.
-      // Actually, to make searching work as requested:
-      if (task.isArchived && !includeArchived) return false;
+      // If we are searching, include archived. If not, only show active.
+      const isSearching = !!search;
+      if (task.isArchived && !isSearching) return false;
 
       // 2. Search Filter (Title, Description, ID)
       if (search) {
@@ -169,11 +159,11 @@ export default function TasksPage() {
 
       return statusMatch && priorityMatch && dateMatch && monthMatch && yearMatch;
     });
-  }, [visibleTasks, filters, user]);
+  }, [visibleTasksPool, filters, user]);
 
 
   const kanbanTasks = useMemo(() => {
-      const regularBoardTasks = filteredTasks.filter(t => t.status !== 'Pending Approval');
+      const regularBoardTasks = filteredTasks.filter(t => t.status !== 'Pending Approval' && !t.isArchived);
       const overdueTasks = regularBoardTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done');
       const overdueTaskIds = new Set(overdueTasks.map(t => t.id));
       const regularTasks = regularBoardTasks.filter(t => !overdueTaskIds.has(t.id));
@@ -184,11 +174,8 @@ export default function TasksPage() {
     setEditingTask(task);
   };
 
-  const handleFilterChange = (key: string, value: any) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  };
-
-  const effectiveViewMode = filters.includeArchived ? 'overview' : viewMode;
+  const isSearching = !!filters.search;
+  const effectiveViewMode = isSearching ? 'overview' : viewMode;
 
   return (
     <>
@@ -196,18 +183,18 @@ export default function TasksPage() {
         <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-              {filters.includeArchived ? 'Task Archives' : 'Task Management'}
+              Task Management
             </h1>
             <p className="text-muted-foreground text-sm font-medium">
-              {filters.includeArchived 
-                ? 'Searching through historical records and archived workflows.' 
+              {isSearching 
+                ? 'Displaying filtered results across active and archived tasks.' 
                 : 'Monitor active workflows, track progress, and coordinate tasks.'}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
               <ReportDownloads tasks={filteredTasks} />
               
-              {!filters.includeArchived && (
+              {!isSearching && (
                 <div className="flex bg-muted p-1 rounded-lg border mr-2 shadow-sm">
                   <Button 
                       variant={effectiveViewMode === 'kanban' ? 'secondary' : 'ghost'} 
@@ -228,18 +215,6 @@ export default function TasksPage() {
                 </div>
               )}
 
-              <div className="flex items-center gap-3 px-3 py-1.5 bg-muted/40 rounded-lg border border-dashed mr-2 shadow-sm">
-                <div className="flex items-center gap-2">
-                    <FolderArchive className={cn("h-4 w-4", filters.includeArchived ? "text-primary" : "text-slate-400")} />
-                    <Label htmlFor="archive-view" className="text-[10px] font-black uppercase tracking-widest text-slate-500">Archived Tasks</Label>
-                </div>
-                <Switch 
-                    id="archive-view" 
-                    checked={filters.includeArchived} 
-                    onCheckedChange={(checked) => handleFilterChange('includeArchived', checked)} 
-                />
-              </div>
-
               <Button variant={myPendingTaskRequestCount > 0 ? "secondary" : "outline"} onClick={() => setIsMyRequestsDialogOpen(true)} className="h-9 font-bold text-xs shadow-sm">
                   <History className="mr-2 h-4 w-4" />
                   My Requests
@@ -254,7 +229,7 @@ export default function TasksPage() {
                     <Badge variant="destructive" className="ml-2 h-5 min-w-[1.25rem] justify-center p-0">{pendingTaskApprovalCount}</Badge>
                   )}
               </Button>
-              {can.manage_tasks && !filters.includeArchived && <CreateTaskDialog />}
+              {can.manage_tasks && <CreateTaskDialog />}
           </div>
         </div>
 
