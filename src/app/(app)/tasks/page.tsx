@@ -23,6 +23,8 @@ import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow, isWithinInterval, startOfMonth, endOfMonth, getMonth, getYear, parseISO, isSameYear } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TaskOverviewTable from '@/components/tasks/task-overview-table';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 export default function TasksPage() {
   const { user, users, can, getVisibleUsers } = useAuth();
@@ -75,8 +77,9 @@ export default function TasksPage() {
     const visibleUserIds = new Set(getVisibleUsers().map(u => u.id));
     
     return tasks.filter(task => {
-      // Archives logic: only show if includeArchived is true
+      // Archive Filter: Only show archived if the global toggle is ON
       if (task.isArchived && !filters.includeArchived) return false;
+      if (!task.isArchived && filters.includeArchived) return false;
 
       if (hasFullView) return true;
       
@@ -89,7 +92,7 @@ export default function TasksPage() {
     return visibleTasks.filter(task => {
       const { status, priority, dateRange, showMyTasksOnly, assigneeId, month, year, search } = filters;
 
-      // 1. Search Filter (Title, Description, ID)
+      // 1. Search Filter (Title, Description, ID) - Safe navigation
       if (search) {
           const term = search.toLowerCase();
           const matchesTitle = (task.title || '').toLowerCase().includes(term);
@@ -167,8 +170,7 @@ export default function TasksPage() {
 
 
   const kanbanTasks = useMemo(() => {
-      const activeFiltered = filteredTasks.filter(t => !t.isArchived);
-      const regularBoardTasks = activeFiltered.filter(t => t.status !== 'Pending Approval');
+      const regularBoardTasks = filteredTasks.filter(t => t.status !== 'Pending Approval');
       const overdueTasks = regularBoardTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done');
       const overdueTaskIds = new Set(overdueTasks.map(t => t.id));
       const regularTasks = regularBoardTasks.filter(t => !overdueTaskIds.has(t.id));
@@ -184,46 +186,62 @@ export default function TasksPage() {
       <div className="flex flex-col h-full space-y-6">
         <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Task Management</h1>
-            <p className="text-muted-foreground">Monitor workflows, track progress, and manage archived tasks.</p>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {filters.includeArchived ? 'Task Archives' : 'Task Management'}
+            </h1>
+            <p className="text-muted-foreground">
+              {filters.includeArchived ? 'Browse historical task records and closed workflows.' : 'Monitor active workflows, track progress, and coordinate tasks.'}
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
               <ReportDownloads tasks={filteredTasks} />
               
-              <div className="flex bg-muted p-1 rounded-lg border">
+              <div className="flex bg-muted p-1 rounded-lg border mr-2">
                 <Button 
                     variant={viewMode === 'kanban' ? 'secondary' : 'ghost'} 
                     size="sm" 
-                    className="h-8 text-xs font-bold"
+                    className="h-8 text-[10px] font-black uppercase tracking-widest"
                     onClick={() => setViewMode('kanban')}
                 >
-                    <LayoutGrid className="mr-2 h-4 w-4" /> KANBAN
+                    <LayoutGrid className="mr-2 h-3.5 w-3.5" /> KANBAN
                 </Button>
                 <Button 
                     variant={viewMode === 'overview' ? 'secondary' : 'ghost'} 
                     size="sm" 
-                    className="h-8 text-xs font-bold"
+                    className="h-8 text-[10px] font-black uppercase tracking-widest"
                     onClick={() => setViewMode('overview')}
                 >
-                    <List className="mr-2 h-4 w-4" /> OVERVIEW
+                    <List className="mr-2 h-3.5 w-3.5" /> OVERVIEW
                 </Button>
               </div>
 
-              <Button variant={myPendingTaskRequestCount > 0 ? "secondary" : "outline"} onClick={() => setIsMyRequestsDialogOpen(true)} className="h-9">
+              <div className="flex items-center gap-3 px-3 py-1.5 bg-muted/40 rounded-lg border border-dashed mr-2">
+                <div className="flex items-center gap-2">
+                    <Archive className={cn("h-4 w-4", filters.includeArchived ? "text-primary" : "text-slate-400")} />
+                    <Label htmlFor="archive-view" className="text-[10px] font-black uppercase tracking-widest text-slate-500">View Archive</Label>
+                </div>
+                <Switch 
+                    id="archive-view" 
+                    checked={filters.includeArchived} 
+                    onCheckedChange={(checked) => setFilters(prev => ({ ...prev, includeArchived: checked }))} 
+                />
+              </div>
+
+              <Button variant={myPendingTaskRequestCount > 0 ? "secondary" : "outline"} onClick={() => setIsMyRequestsDialogOpen(true)} className="h-9 font-bold text-xs">
                   <History className="mr-2 h-4 w-4" />
                   My Requests
                   {myPendingTaskRequestCount > 0 && (
                     <Badge variant="destructive" className="ml-2 h-5 min-w-[1.25rem] justify-center p-0">{myPendingTaskRequestCount}</Badge>
                   )}
               </Button>
-              <Button variant={pendingTaskApprovalCount > 0 ? "secondary" : "outline"} onClick={() => setIsPendingApprovalDialogOpen(true)} className="h-9">
+              <Button variant={pendingTaskApprovalCount > 0 ? "secondary" : "outline"} onClick={() => setIsPendingApprovalDialogOpen(true)} className="h-9 font-bold text-xs">
                   <Bell className="mr-2 h-4 w-4" />
                   Pending Approvals
                   {pendingTaskApprovalCount > 0 && (
                     <Badge variant="destructive" className="ml-2 h-5 min-w-[1.25rem] justify-center p-0">{pendingTaskApprovalCount}</Badge>
                   )}
               </Button>
-              {can.manage_tasks && <CreateTaskDialog />}
+              {can.manage_tasks && !filters.includeArchived && <CreateTaskDialog />}
           </div>
         </div>
 

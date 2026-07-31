@@ -25,7 +25,8 @@ import {
   CheckCircle2, 
   History, 
   AlertTriangle,
-  ArrowRight
+  ArrowRight,
+  FolderArchive
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
@@ -67,24 +68,24 @@ const TableSection = ({ title, icon: Icon, tasks, users, onEdit, isArchivedSecti
         <div className="space-y-4 mb-10">
             <div className="flex items-center gap-3 px-4">
                 <Icon className={cn("h-4 w-4", isArchivedSection ? "text-slate-400" : "text-slate-600")} />
-                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
                     {title}
                 </h3>
-                <Badge variant="secondary" className="h-5 py-0 px-2 font-black text-[10px] bg-slate-100 text-slate-600">
+                <Badge variant="secondary" className="h-5 py-0 px-2 font-black text-[9px] bg-slate-100 text-slate-600 rounded-sm">
                     {tasks.length}
                 </Badge>
             </div>
             <div className="border rounded-xl bg-card overflow-hidden shadow-sm">
                 <Table className="text-xs">
-                    <TableHeader className="bg-slate-50">
+                    <TableHeader className="bg-slate-50/50">
                         <TableRow className="hover:bg-transparent border-b-2 border-slate-200">
-                            <TableHead className="w-16 font-black text-slate-900 border-r uppercase tracking-wider text-center h-12">ID</TableHead>
-                            <TableHead className="min-w-[300px] font-black text-slate-900 border-r uppercase tracking-wider h-12">Task Description</TableHead>
-                            <TableHead className="w-[180px] font-black text-slate-900 border-r uppercase tracking-wider h-12">Timeline (Due Date)</TableHead>
-                            <TableHead className="w-[160px] font-black text-slate-900 border-r uppercase tracking-wider h-12">Assignee(s)</TableHead>
-                            <TableHead className="w-[120px] font-black text-slate-900 border-r text-center uppercase tracking-wider h-12">Priority</TableHead>
-                            <TableHead className="w-[160px] font-black text-slate-900 border-r text-center uppercase tracking-wider h-12">Status</TableHead>
-                            <TableHead className="w-[100px] text-right font-black text-slate-900 uppercase tracking-wider h-12">Action</TableHead>
+                            <TableHead className="w-16 font-black text-slate-900 border-r uppercase tracking-wider text-center h-11">ID</TableHead>
+                            <TableHead className="min-w-[300px] font-black text-slate-900 border-r uppercase tracking-wider h-11">Task Description</TableHead>
+                            <TableHead className="w-[180px] font-black text-slate-900 border-r uppercase tracking-wider h-11">Timeline (Due Date)</TableHead>
+                            <TableHead className="w-[160px] font-black text-slate-900 border-r uppercase tracking-wider h-11">Assignee(s)</TableHead>
+                            <TableHead className="w-[120px] font-black text-slate-900 border-r text-center uppercase tracking-wider h-11">Priority</TableHead>
+                            <TableHead className="w-[160px] font-black text-slate-900 border-r text-center uppercase tracking-wider h-11">Status</TableHead>
+                            <TableHead className="w-[100px] text-right font-black text-slate-900 uppercase tracking-wider h-11">Action</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -97,73 +98,73 @@ const TableSection = ({ title, icon: Icon, tasks, users, onEdit, isArchivedSecti
                                     "group transition-colors",
                                     isArchivedSection ? "opacity-60 bg-slate-50/50" : "hover:bg-blue-50/30"
                                 )}>
-                                    <TableCell className="border-r font-mono text-[10px] text-slate-500 font-bold uppercase text-center p-4">
+                                    <TableCell className="border-r font-mono text-[9px] text-slate-500 font-black uppercase text-center p-3">
                                         {(task.id || '').slice(-5).toUpperCase()}
                                     </TableCell>
-                                    <TableCell className="border-r p-4">
-                                        <div className="flex flex-col gap-1">
-                                            <p className="font-black text-sm uppercase tracking-tight text-slate-800 leading-tight">
+                                    <TableCell className="border-r p-3">
+                                        <div className="flex flex-col gap-0.5">
+                                            <p className="font-bold text-xs uppercase tracking-tight text-slate-800 leading-tight">
                                                 {task.title}
                                             </p>
-                                            <p className="text-[10px] text-slate-400 line-clamp-1 italic font-medium">
+                                            <p className="text-[9px] text-slate-400 line-clamp-1 italic font-medium">
                                                 {task.description}
                                             </p>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="border-r p-4">
-                                        <div className="flex items-center gap-2 font-bold text-slate-700">
-                                            <Calendar className={cn("h-3.5 w-3.5", isOverdue ? "text-rose-500" : "text-slate-400")} />
+                                    <TableCell className="border-r p-3">
+                                        <div className="flex items-center gap-2 font-bold text-slate-700 text-[10px]">
+                                            <Calendar className={cn("h-3 w-3", isOverdue ? "text-rose-500" : "text-slate-400")} />
                                             {task.dueDate ? format(parseISO(task.dueDate), 'dd MMM yyyy') : 'N/A'}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="border-r p-4">
-                                        <div className="flex -space-x-2">
+                                    <TableCell className="border-r p-3">
+                                        <div className="flex -space-x-1.5">
                                             <TooltipProvider>
                                                 {assignees.map(a => (
                                                     <Tooltip key={a.id}>
                                                         <TooltipTrigger asChild>
-                                                            <Avatar className="h-8 w-8 border-2 border-white shadow-sm ring-1 ring-slate-200">
+                                                            <Avatar className="h-7 w-7 border-2 border-white shadow-sm ring-1 ring-slate-200">
                                                                 <AvatarImage src={a.avatar} />
-                                                                <AvatarFallback className="text-[10px] font-black">{a.name[0]}</AvatarFallback>
+                                                                <AvatarFallback className="text-[8px] font-black">{a.name[0]}</AvatarFallback>
                                                             </Avatar>
                                                         </TooltipTrigger>
                                                         <TooltipContent>
-                                                            <p className="font-bold text-xs">{a.name}</p>
+                                                            <p className="font-bold text-[10px]">{a.name}</p>
                                                         </TooltipContent>
                                                     </Tooltip>
                                                 ))}
                                             </TooltipProvider>
                                             {assignees.length > 3 && (
-                                                <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black border-2 border-white ring-1 ring-slate-200">
+                                                <div className="h-7 w-7 rounded-full bg-slate-100 flex items-center justify-center text-[9px] font-black border-2 border-white ring-1 ring-slate-200">
                                                     +{assignees.length - 3}
                                                 </div>
                                             )}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="border-r text-center p-4">
+                                    <TableCell className="border-r text-center p-3">
                                         <Badge variant="outline" className={cn(
-                                            "text-[9px] font-black uppercase tracking-[0.1em] h-6 px-3 border-2", 
+                                            "text-[8px] font-black uppercase tracking-[0.1em] h-5 px-2 border-2", 
                                             getPriorityStyles(task.priority)
                                         )}>
                                             {task.priority}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="border-r text-center p-4">
+                                    <TableCell className="border-r text-center p-3">
                                         <Badge className={cn(
-                                            "text-[9px] font-black uppercase tracking-[0.1em] h-6 px-3 min-w-[110px] justify-center", 
+                                            "text-[8px] font-black uppercase tracking-[0.1em] h-5 px-2 min-w-[100px] justify-center rounded-sm", 
                                             getStatusColor(task.status)
                                         )}>
                                             {task.status === 'Done' ? 'COMPLETED' : (task.status || 'TO DO').toUpperCase()}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="text-right p-4">
+                                    <TableCell className="text-right p-3">
                                         <Button 
                                             variant="ghost" 
                                             size="sm" 
-                                            className="h-8 px-3 font-black text-[10px] uppercase tracking-widest text-blue-600 hover:text-blue-700 hover:bg-blue-100/50" 
+                                            className="h-7 px-2 font-black text-[9px] uppercase tracking-widest text-blue-600 hover:text-blue-700 hover:bg-blue-100/50" 
                                             onClick={() => onEdit(task)}
                                         >
-                                            <Eye className="h-3.5 w-3.5 mr-2" /> DETAILS
+                                            <Eye className="h-3 w-3 mr-1.5" /> DETAILS
                                         </Button>
                                     </TableCell>
                                 </TableRow>
@@ -192,7 +193,7 @@ export default function TaskOverviewTable({ tasks, onEditTask }: TaskOverviewTab
   }, [tasks]);
 
   return (
-    <div className="flex-1 overflow-hidden flex flex-col pt-4">
+    <div className="flex-1 overflow-hidden flex flex-col">
       <ScrollArea className="flex-1 pr-4 -mr-4">
         <div className="py-2">
             <TableSection 
@@ -218,7 +219,7 @@ export default function TaskOverviewTable({ tasks, onEditTask }: TaskOverviewTab
             />
             <TableSection 
                 title="Archived Task Records" 
-                icon={History} 
+                icon={FolderArchive} 
                 tasks={sections.archived} 
                 users={users} 
                 onEdit={onEditTask} 
