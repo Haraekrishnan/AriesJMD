@@ -45,9 +45,11 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
     const years = new Set<number>();
     tasks.forEach(t => {
       const d = new Date(t.dueDate);
-      const y = getYear(d);
-      if (!isNaN(y)) {
-        years.add(y);
+      if (isValid(d)) {
+        const y = getYear(d);
+        if (!isNaN(y)) {
+          years.add(y);
+        }
       }
     });
     const currentYear = new Date().getFullYear();
@@ -72,7 +74,7 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
   };
 
   const handleReset = () => {
-    const clearedFilters = {
+    const clearedFilters: TaskFilters = {
         status: 'all',
         priority: 'all',
         assigneeId: 'all',
@@ -80,7 +82,7 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
         showMyTasksOnly: false,
         month: 'all',
         year: new Date().getFullYear().toString(),
-    } as const;
+    };
     setFilters(clearedFilters);
   }
 

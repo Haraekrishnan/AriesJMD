@@ -1793,60 +1793,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
         remove(ref(rtdb, `deliveryNotes/${noteId}`));
     }, [user, toast]);
-    
-    const resolveInternalRequestDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
-        const canApprove = user?.canApproveTransfers || user?.role === 'Admin' || can.approve_transfer_requests;
-        if (!user || !canApprove) return;
-
-        const updates: { [key: string]: any } = {};
-        const now = new Date().toISOString();
-        
-        if (resolution === 'reissue') {
-            updates[`inventoryTransferRequests/${requestId}/status`] = 'Pending';
-            updates[`inventoryTransferRequests/${requestId}/acknowledgedByRequester`] = false;
-        } else {
-            updates[`inventoryTransferRequests/${requestId}/status`] = 'Completed';
-            updates[`inventoryTransferRequests/${requestId}/acknowledgedByRequester`] = true;
-        }
-
-        const newCommentRef = push(ref(rtdb, `inventoryTransferRequests/${requestId}/comments`));
-        updates[`inventoryTransferRequests/${requestId}/comments/${newCommentRef.key}`] = {
-            id: newCommentRef.key,
-            userId: user.id,
-            text: `Dispute Resolved (${resolution}): ${comment}`,
-            date: now,
-            eventId: requestId
-        };
-
-        update(ref(rtdb), updates);
-        toast({ title: 'Transfer Dispute Resolved' });
-    }, [user, can.approve_transfer_requests, toast]);
-
-    const resolvePpeDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
-        if (!user) return;
-        const updates: { [key: string]: any } = {};
-        const now = new Date().toISOString();
-        
-        if (resolution === 'reissue') {
-            updates[`ppeRequests/${requestId}/status`] = 'Approved';
-            updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
-        } else {
-            updates[`ppeRequests/${requestId}/status`] = 'Issued';
-            updates[`ppeRequests/${requestId}/viewedByRequester`] = true;
-        }
-
-        const newCommentRef = push(ref(rtdb, `ppeRequests/${requestId}/comments`));
-        updates[`ppeRequests/${requestId}/comments/${newCommentRef.key}`] = {
-            id: newCommentRef.key,
-            userId: user.id,
-            text: `Dispute Resolved (${resolution}): ${comment}`,
-            date: now,
-            eventId: requestId
-        };
-
-        update(ref(rtdb), updates);
-        toast({ title: 'PPE Dispute Resolved' });
-    }, [user, toast]);
 
     const addInspectionChecklist = useCallback(() => {}, []);
     const updateInspectionChecklist = useCallback(() => {}, []);

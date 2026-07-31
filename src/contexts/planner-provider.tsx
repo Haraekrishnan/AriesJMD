@@ -740,7 +740,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             sendNotificationEmail({
                 to: [newAssignee.email],
                 subject: `Job Step Reassigned: ${job.title}`,
-                htmlBody: htmlBody,
+                htmlBody,
                 notificationSettings,
                 event: 'onNewTask',
                 involvedUser: newAssignee,
