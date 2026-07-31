@@ -165,7 +165,7 @@ export default function EditEmployeeDialog({ isOpen, setIsOpen, user: userToEdit
 
               <div className="space-y-2">
                   <Label>Project / Location</Label>
-                  <Popover open={projectPopoverOpen} onOpenChange={setProjectPopoverOpen}>
+                  <Popover open={projectPopoverOpen} onOpenChange={setProjectPopoverOpen} modal={false}>
                       <PopoverTrigger asChild>
                           <Button variant="outline" role="combobox" className="w-full justify-between h-auto min-h-10">
                               <div className="flex flex-wrap gap-1">
@@ -176,10 +176,13 @@ export default function EditEmployeeDialog({ isOpen, setIsOpen, user: userToEdit
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                      <PopoverContent 
+                        className="w-[--radix-popover-trigger-width] p-0"
+                        onWheel={(e) => e.stopPropagation()}
+                      >
                           <Command>
                               <CommandInput placeholder="Search projects..." />
-                              <CommandList>
+                              <CommandList className="max-h-72 overflow-y-auto">
                                   <CommandEmpty>No projects found.</CommandEmpty>
                                   <CommandGroup>
                                       {projects.map(project => (

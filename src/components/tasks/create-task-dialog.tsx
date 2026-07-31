@@ -99,7 +99,7 @@ export default function CreateTaskDialog() {
           New Task
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Create New Task</DialogTitle>
           <DialogDescription>Fill in the details below to create a new task.</DialogDescription>
@@ -129,7 +129,7 @@ export default function CreateTaskDialog() {
                   control={form.control}
                   name="assigneeIds"
                   render={({ field }) => (
-                    <Popover>
+                    <Popover modal={false}>
                       <PopoverTrigger asChild>
                         <Button variant="outline" role="combobox" className="w-full justify-between h-auto min-h-10 text-left">
                           <div className="flex flex-wrap gap-1">
@@ -145,11 +145,14 @@ export default function CreateTaskDialog() {
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <PopoverContent 
+                        className="w-[--radix-popover-trigger-width] p-0" 
+                        align="start"
+                        onWheel={(e) => e.stopPropagation()}
+                      >
                         <Command>
                           <CommandInput placeholder="Search users..." />
-                          <CommandList className="max-h-none overflow-visible">
-                            <ScrollArea className="h-72">
+                          <CommandList className="max-h-72 overflow-y-auto">
                               <CommandEmpty>No users found.</CommandEmpty>
                               <CommandGroup>
                                 {assignableUsers.map(option => {
@@ -178,7 +181,6 @@ export default function CreateTaskDialog() {
                                   );
                                 })}
                               </CommandGroup>
-                            </ScrollArea>
                           </CommandList>
                         </Command>
                       </PopoverContent>

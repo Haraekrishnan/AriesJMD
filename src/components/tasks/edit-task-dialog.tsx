@@ -366,7 +366,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                         control={form.control}
                         name="assigneeIds"
                         render={({ field }) => (
-                            <Popover>
+                            <Popover modal={false}>
                             <PopoverTrigger asChild>
                                 <Button variant="outline" role="combobox" className="w-full justify-between h-auto min-h-10 text-left" disabled={!canReassign}>
                                 <div className="flex flex-wrap gap-1">
@@ -382,39 +382,41 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                            <PopoverContent 
+                              className="w-[--radix-popover-trigger-width] p-0" 
+                              align="start"
+                              onWheel={(e) => e.stopPropagation()}
+                            >
                                 <Command>
                                 <CommandInput placeholder="Search users..." />
-                                <CommandList className="max-h-none overflow-visible">
-                                    <ScrollArea className="h-72">
-                                        <CommandEmpty>No users found.</CommandEmpty>
-                                        <CommandGroup>
-                                        {assignableUsers.map(option => {
-                                            const isSelected = field.value.includes(option.value);
-                                            const userOption = users.find(u => u.id === option.value);
-                                            const isLocked = userOption?.status === 'locked';
-                                            return (
-                                            <CommandItem
-                                                key={option.value}
-                                                disabled={isLocked}
-                                                onSelect={() => {
-                                                if(isLocked) return;
-                                                if (isSelected) {
-                                                    field.onChange(field.value.filter(id => id !== option.value));
-                                                } else {
-                                                    field.onChange([...field.value, option.value]);
-                                                }
-                                                }}
-                                                className={cn(isLocked && "text-muted-foreground cursor-not-allowed")}
-                                            >
-                                                <Check className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100" : "opacity-0"}`} />
-                                                {option.label}
-                                                {isLocked && <Badge variant="destructive" className="ml-auto">Locked</Badge>}
-                                            </CommandItem>
-                                            );
-                                        })}
-                                        </CommandGroup>
-                                    </ScrollArea>
+                                <CommandList className="max-h-72 overflow-y-auto">
+                                    <CommandEmpty>No users found.</CommandEmpty>
+                                    <CommandGroup>
+                                    {assignableUsers.map(option => {
+                                        const isSelected = field.value.includes(option.value);
+                                        const userOption = users.find(u => u.id === option.value);
+                                        const isLocked = userOption?.status === 'locked';
+                                        return (
+                                        <CommandItem
+                                            key={option.value}
+                                            disabled={isLocked}
+                                            onSelect={() => {
+                                            if(isLocked) return;
+                                            if (isSelected) {
+                                                field.onChange(field.value.filter(id => id !== option.value));
+                                            } else {
+                                                field.onChange([...field.value, option.value]);
+                                            }
+                                            }}
+                                            className={cn(isLocked && "text-muted-foreground cursor-not-allowed")}
+                                        >
+                                            <Check className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100" : "opacity-0"}`} />
+                                            {option.label}
+                                            {isLocked && <Badge variant="destructive" className="ml-auto">Locked</Badge>}
+                                        </CommandItem>
+                                        );
+                                    })}
+                                    </CommandGroup>
                                 </CommandList>
                                 </Command>
                             </PopoverContent>
@@ -538,7 +540,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                   </div>
                 )}
                  <div className="relative">
-                    <Textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Add a comment... (required for status changes)" className="pr-12"/>
+                    <Textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Add a comment... (required for status changes)" className="pr-12" />
                     <Button type="button" size="icon" className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8" onClick={handleAddComment} disabled={!newComment.trim()}><Send className="h-4 w-4" /></Button>
                 </div>
                 {renderActionButtons()}
