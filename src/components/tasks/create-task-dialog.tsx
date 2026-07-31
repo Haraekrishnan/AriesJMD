@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -27,6 +26,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '../ui/scroll-area';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -131,7 +131,7 @@ export default function CreateTaskDialog() {
                   render={({ field }) => (
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" role="combobox" className="w-full justify-start h-auto min-h-10">
+                        <Button variant="outline" role="combobox" className="w-full justify-between h-auto min-h-10 text-left">
                           <div className="flex flex-wrap gap-1">
                             {field.value.length > 0 ? (
                               field.value.map(id => {
@@ -142,40 +142,43 @@ export default function CreateTaskDialog() {
                               <span className="text-muted-foreground">Select assignees...</span>
                             )}
                           </div>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                         <Command>
                           <CommandInput placeholder="Search users..." />
-                          <CommandList>
-                            <CommandEmpty>No users found.</CommandEmpty>
-                            <CommandGroup>
-                              {assignableUsers.map(option => {
-                                const isSelected = field.value.includes(option.value);
-                                const userOption = users.find(u => u.id === option.value);
-                                const isLocked = userOption?.status === 'locked';
+                          <CommandList className="max-h-none overflow-visible">
+                            <ScrollArea className="h-72">
+                              <CommandEmpty>No users found.</CommandEmpty>
+                              <CommandGroup>
+                                {assignableUsers.map(option => {
+                                  const isSelected = field.value.includes(option.value);
+                                  const userOption = users.find(u => u.id === option.value);
+                                  const isLocked = userOption?.status === 'locked';
 
-                                return (
-                                  <CommandItem
-                                      key={option.value}
-                                      disabled={isLocked}
-                                      onSelect={() => {
-                                        if (isLocked) return;
-                                        if (isSelected) {
-                                          field.onChange(field.value.filter(id => id !== option.value));
-                                        } else {
-                                          field.onChange([...field.value, option.value]);
-                                        }
-                                      }}
-                                      className={cn(isLocked && "text-muted-foreground cursor-not-allowed")}
-                                  >
-                                    <Check className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100" : "opacity-0"}`} />
-                                    {option.label}
-                                    {isLocked && <Badge variant="destructive" className="ml-auto">Locked</Badge>}
-                                  </CommandItem>
-                                );
-                              })}
-                            </CommandGroup>
+                                  return (
+                                    <CommandItem
+                                        key={option.value}
+                                        disabled={isLocked}
+                                        onSelect={() => {
+                                          if (isLocked) return;
+                                          if (isSelected) {
+                                            field.onChange(field.value.filter(id => id !== option.value));
+                                          } else {
+                                            field.onChange([...field.value, option.value]);
+                                          }
+                                        }}
+                                        className={cn(isLocked && "text-muted-foreground cursor-not-allowed")}
+                                    >
+                                      <Check className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100" : "opacity-0"}`} />
+                                      {option.label}
+                                      {isLocked && <Badge variant="destructive" className="ml-auto">Locked</Badge>}
+                                    </CommandItem>
+                                  );
+                                })}
+                              </CommandGroup>
+                            </ScrollArea>
                           </CommandList>
                         </Command>
                       </PopoverContent>
