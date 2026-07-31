@@ -406,7 +406,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
             )}
           </div>
           <Button variant="outline" onClick={() => setIsOpen(false)} className="font-black text-[10px] uppercase tracking-[0.2em] h-10 px-10 border-2 border-[#E2E8F0] text-slate-700 hover:bg-white bg-[#F8FAFC] w-full sm:w-auto shadow-sm rounded-xl">
-            CLOSE INTERFACE
+            CLOSE DETAILS
           </Button>
         </DialogFooter>
       </DialogContent>
