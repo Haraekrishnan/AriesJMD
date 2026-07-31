@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -9,7 +7,7 @@ import { ref, onValue, set, push, remove, update } from 'firebase/database';
 import { useAuth } from './auth-provider';
 import { useToast } from '@/hooks/use-toast';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
-import { format, isPast } from 'date-fns';
+import { format, isPast, parseISO, subDays, isBefore } from 'date-fns';
 import { useGeneral } from './general-provider';
 import { uploadFile } from '@/lib/storage';
 
@@ -21,6 +19,8 @@ type TaskContextType = {
   createTask: (taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'approvalState'>) => void;
   updateTask: (task: Task) => void;
   deleteTask: (taskId: string) => void;
+  archiveTask: (taskId: string) => void;
+  unarchiveTask: (taskId: string) => void;
   addComment: (taskId: string, commentText: string, notify?: boolean) => void;
   requestTaskStatusChange: (taskId: string, newStatus: TaskStatus, comment: string, attachment?: Task['attachment']) => void;
   approveTaskStatusChange: (taskId: string, comment: string) => void;
@@ -61,6 +61,28 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   
   const tasks = useMemo(() => Object.values(tasksById), [tasksById]);
 
+  // Auto-archiving logic
+  useEffect(() => {
+    if (tasks.length === 0) return;
+    const now = new Date();
+    const threshold = subDays(now, 7);
+    const updates: { [key: string]: any } = {};
+
+    tasks.forEach(task => {
+        if (task.status === 'Done' && !task.isArchived && task.completionDate) {
+            const completionDate = parseISO(task.completionDate);
+            if (isBefore(completionDate, threshold)) {
+                updates[`tasks/${task.id}/isArchived`] = true;
+                updates[`tasks/${task.id}/archivedAt`] = now.toISOString();
+            }
+        }
+    });
+
+    if (Object.keys(updates).length > 0) {
+        update(ref(rtdb), updates);
+    }
+  }, [tasks]);
+
   const { myNewTaskCount, pendingTaskApprovalCount, myPendingTaskRequestCount } = useMemo(() => {
     if (!user) return { myNewTaskCount: 0, pendingTaskApprovalCount: 0, myPendingTaskRequestCount: 0 };
     
@@ -69,6 +91,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     let myPending = 0;
 
     tasks.forEach(task => {
+        if (task.isArchived) return;
+
         // My new tasks
         if (task.assigneeIds?.includes(user.id) && !task.viewedBy?.[user.id] && task.status !== 'Done' && task.approvalState !== 'returned') {
             myNew++;
@@ -109,6 +133,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
             lastUpdated: new Date().toISOString(),
             viewedBy: { [user.id]: true },
             subtasks,
+            isArchived: false,
         };
         set(newRef, newTask);
         addActivityLog(user.id, 'Task Created', `Created task: "${taskData.title}"`);
@@ -155,6 +180,32 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         remove(ref(rtdb, `tasks/${taskId}`));
         toast({ variant: 'destructive', title: 'Task Deleted' });
     }, [user, toast]);
+
+    const archiveTask = useCallback((taskId: string) => {
+        const updates = {
+            isArchived: true,
+            archivedAt: new Date().toISOString(),
+            lastUpdated: new Date().toISOString()
+        };
+        update(ref(rtdb, `tasks/${taskId}`), updates);
+        toast({ title: 'Task Archived' });
+    }, [toast]);
+
+    const unarchiveTask = useCallback((taskId: string) => {
+        const task = tasksById[taskId];
+        if (!task) return;
+        
+        const updates = {
+            isArchived: false,
+            archivedAt: null,
+            status: 'To Do',
+            completionDate: null,
+            approvalState: 'none',
+            lastUpdated: new Date().toISOString()
+        };
+        update(ref(rtdb, `tasks/${taskId}`), updates);
+        toast({ title: 'Task Restored', description: 'Moved back to active list and status reset to To Do.' });
+    }, [tasksById, toast]);
 
     const addComment = useCallback((taskId: string, commentText: string, notify: boolean = true) => {
         if (!user) return;
@@ -373,6 +424,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         createTask,
         updateTask,
         deleteTask,
+        archiveTask,
+        unarchiveTask,
         addComment,
         requestTaskStatusChange,
         approveTaskStatusChange,

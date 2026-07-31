@@ -14,8 +14,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format, formatDistanceToNow, startOfDay } from 'date-fns';
-import { CalendarIcon, Send, ThumbsUp, ThumbsDown, Paperclip, Upload, X, BellRing, CheckCircle, Clock, UserRoundCog, Trash2, ArrowRight, Check, ChevronsUpDown, Download } from 'lucide-react';
+import { format, formatDistanceToNow, startOfDay, parseISO, isValid } from 'date-fns';
+import { CalendarIcon, Send, ThumbsUp, ThumbsDown, Paperclip, Upload, X, BellRing, CheckCircle, Clock, UserRoundCog, Trash2, ArrowRight, Check, ChevronsUpDown, Download, Archive, Undo2 } from 'lucide-react';
 import type { Task, Priority, TaskStatus, Role, Comment, ApprovalState, Subtask } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -64,7 +64,7 @@ const LinkifiedText = ({ text }: { text: string }) => {
 };
 
 export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDialogProps) {
-  const { user, users, tasks, updateTask, deleteTask, getAssignableUsers, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment } = useAppContext();
+  const { user, users, tasks, updateTask, deleteTask, archiveTask, unarchiveTask, getAssignableUsers, requestTaskStatusChange, approveTaskStatusChange, returnTaskStatusChange, addComment, markTaskAsViewed, acknowledgeReturnedTask, requestTaskReassignment } = useAppContext();
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
@@ -254,6 +254,17 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   const mySubtask = useMemo(() => user && taskToDisplay.subtasks?.[user.id], [user, taskToDisplay]);
 
   const renderActionButtons = () => {
+    if (taskToDisplay.isArchived) {
+        if (isAdmin || isCreator) {
+            return (
+                <Button onClick={() => { unarchiveTask(taskToDisplay.id); setIsOpen(false); }} variant="outline" className="w-full text-blue-600 border-blue-200">
+                    <Undo2 className="mr-2 h-4 w-4" /> BRING BACK TO REOPEN
+                </Button>
+            );
+        }
+        return <p className="text-center text-xs font-bold text-muted-foreground uppercase bg-muted p-2 rounded">Task Archived</p>;
+    }
+
     if (taskToDisplay.approvalState === 'status_pending') {
         if (isApprover) {
             return (
@@ -273,6 +284,15 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
             return <Button onClick={() => handleRequestStatusChange('Done')} className="w-full">Mark as Completed</Button>
         }
     }
+    
+    if (isCompleted && !taskToDisplay.isArchived) {
+        return (
+            <Button onClick={() => { archiveTask(taskToDisplay.id); setIsOpen(false); }} variant="outline" className="w-full">
+                <Archive className="mr-2 h-4 w-4" /> Move to Archive
+            </Button>
+        )
+    }
+
     return null;
   };
 
@@ -290,10 +310,21 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-4xl flex flex-col max-h-[95vh]" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>Task Details: {taskToDisplay.title}</DialogTitle>
-          <DialogDescription>
-            Assigned by <span className='font-semibold'>{creator?.name}</span> to <span className='font-semibold'>{assignees.map(a => a.name).join(', ')}</span>.
-          </DialogDescription>
+          <div className="flex justify-between items-start pr-8">
+            <div className="flex-1">
+                <DialogTitle className="text-xl font-black uppercase tracking-tight">
+                    {taskToDisplay.title}
+                    {taskToDisplay.isArchived && <Badge className="ml-3 bg-slate-900 text-white font-black text-[10px] h-5 py-0 px-2 tracking-[0.2em] border-none">ARCHIVED</Badge>}
+                </DialogTitle>
+                <DialogDescription className="mt-1">
+                    Created by <span className='font-semibold'>{creator?.name}</span> &middot; ID: <span className="font-mono text-xs text-blue-600 bg-blue-50 px-1 rounded">{taskToDisplay.id.slice(-8).toUpperCase()}</span>
+                </DialogDescription>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+                <Badge variant={taskToDisplay.status === 'Done' ? 'success' : 'secondary'}>{taskToDisplay.status.toUpperCase()}</Badge>
+                {taskToDisplay.completionDate && <span className="text-[9px] font-bold text-muted-foreground italic">DONE: {format(parseISO(taskToDisplay.completionDate), 'dd MMM')}</span>}
+            </div>
+          </div>
           {taskToDisplay.approvalState === 'status_pending' && (
              <Alert variant="default" className="mt-2 bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-700">
                 <BellRing className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -323,59 +354,67 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
           )}
         </DialogHeader>
         <div className="grid md:grid-cols-2 gap-8 flex-1 overflow-y-auto p-1">
-            <div className="pr-4">
+            <div className="pr-4 space-y-6">
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div>
-                  <Label>Title</Label>
-                  <Input {...form.register('title')} placeholder="Task title" disabled={!canEditCoreFields} />
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 block">Title</Label>
+                  <Input {...form.register('title')} placeholder="Task title" disabled={!canEditCoreFields} className="font-bold h-10 border-2" />
                 </div>
                 
                 <div>
-                  <Label>Description</Label>
-                  <div className="p-3 text-sm min-h-[6rem] border rounded-md bg-muted/50 whitespace-pre-wrap">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 block">Full Description</Label>
+                  <div className="p-4 text-sm min-h-[10rem] border-2 rounded-lg bg-slate-50 dark:bg-slate-900/50 whitespace-pre-wrap leading-relaxed">
                       <LinkifiedText text={taskToDisplay.description} />
                   </div>
                 </div>
 
                 <div>
-                    <Label htmlFor="link">Attachment</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 block" htmlFor="link">Reference Link / Folder</Label>
                     {canEditCoreFields ? (
-                        <Input id="link" {...form.register('link')} disabled={!canEditCoreFields}/>
+                        <Input id="link" {...form.register('link')} disabled={!canEditCoreFields} placeholder="https://drive.google.com/..." className="h-9 text-xs" />
                     ) : (
                         taskToDisplay.link ? (
                              <div className="mt-1">
-                                <Button asChild variant="default" size="sm">
+                                <Button asChild variant="secondary" size="sm" className="w-full justify-start h-10">
                                     <a href={taskToDisplay.link} target="_blank" rel="noopener noreferrer">
-                                        <Download className="mr-2 h-4 w-4" /> Download
+                                        <Download className="mr-2 h-4 w-4" /> OPEN REFERENCE FOLDER
                                     </a>
                                 </Button>
                             </div>
-                        ) : <p className="text-sm text-muted-foreground p-2">No attachment.</p>
+                        ) : <p className="text-xs text-muted-foreground italic px-2">No reference link provided.</p>
                     )}
                     {form.formState.errors.link && <p className="text-xs text-destructive">{form.formState.errors.link.message}</p>}
                 </div>
 
 
                 <div>
-                  <Label>Assignee(s)</Label>
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 block">Current Assignees</Label>
                     <Controller
                         control={form.control}
                         name="assigneeIds"
                         render={({ field }) => (
                             <Popover modal={false}>
                             <PopoverTrigger asChild>
-                                <Button variant="outline" role="combobox" className="w-full justify-between h-auto min-h-10 text-left" disabled={!canReassign}>
-                                <div className="flex flex-wrap gap-1">
+                                <Button variant="outline" role="combobox" className="w-full justify-start h-auto min-h-12 text-left p-2 border-2" disabled={!canReassign}>
+                                <div className="flex flex-wrap gap-1.5">
                                     {field.value.length > 0 ? (
                                     field.value.map(id => {
-                                        const user = assignableUsers.find(u => u.value === id);
-                                        return <Badge key={id} variant="secondary">{user?.label}</Badge>
+                                        const user = users.find(u => u.id === id);
+                                        return (
+                                            <Badge key={id} variant="secondary" className="h-7 px-2 font-bold flex items-center gap-1.5 border">
+                                                <Avatar className="h-4 w-4">
+                                                    <AvatarImage src={user?.avatar} />
+                                                    <AvatarFallback>{user?.name[0]}</AvatarFallback>
+                                                </Avatar>
+                                                {user?.name}
+                                            </Badge>
+                                        )
                                     })
                                     ) : (
-                                    <span className="text-muted-foreground">Select assignees...</span>
+                                    <span className="text-muted-foreground font-medium">Select staff...</span>
                                     )}
                                 </div>
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent 
@@ -384,9 +423,9 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                               onWheel={(e) => e.stopPropagation()}
                             >
                                 <Command>
-                                <CommandInput placeholder="Search users..." />
+                                <CommandInput placeholder="Search staff..." />
                                 <CommandList className="max-h-72 overflow-y-auto">
-                                    <CommandEmpty>No users found.</CommandEmpty>
+                                    <CommandEmpty>No results found.</CommandEmpty>
                                     <CommandGroup>
                                     {assignableUsers.map(option => {
                                         const isSelected = field.value.includes(option.value);
@@ -407,8 +446,8 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                                             className={cn(isLocked && "text-muted-foreground cursor-not-allowed")}
                                         >
                                             <Check className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100" : "opacity-0"}`} />
-                                            {option.label}
-                                            {isLocked && <Badge variant="destructive" className="ml-auto">Locked</Badge>}
+                                            <span className="font-bold">{option.label}</span>
+                                            {isLocked && <Badge variant="destructive" className="ml-auto h-4 py-0 text-[8px] font-black">LOCKED</Badge>}
                                         </CommandItem>
                                         );
                                     })}
@@ -421,34 +460,17 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                     />
                      {form.formState.errors.assigneeIds && <p className="text-xs text-destructive">{form.formState.errors.assigneeIds.message}</p>}
                 </div>
-                 <div className="space-y-2">
-                    <Label>Assignee Status</Label>
-                    <div className="space-y-2 rounded-md border p-2">
-                      {assignees.map(assignee => {
-                        const subtask = taskToDisplay.subtasks?.[assignee.id];
-                        return (
-                          <div key={assignee.id} className="flex justify-between items-center text-sm p-1">
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-6 w-6"><AvatarImage src={assignee.avatar} /><AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback></Avatar>
-                              <span>{assignee.name}</span>
-                            </div>
-                            <Badge variant={subtask?.status === 'Done' ? 'success' : 'secondary'}>{subtask?.status || 'To Do'}</Badge>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
                 
                 <div className='grid grid-cols-2 gap-4'>
                   <div>
-                    <Label>Due Date</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 block">Deadline</Label>
                     <Controller control={form.control} name="dueDate"
                         render={({ field }) => (
                         <Popover>
                             <PopoverTrigger asChild disabled={!canEditDueDate}>
-                            <Button variant="outline" className={cn('w-full justify-start text-left font-normal', !field.value && 'text-muted-foreground')}>
+                            <Button variant="outline" className={cn('w-full justify-start text-left h-10 border-2 font-bold', !field.value && 'text-muted-foreground')}>
                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                {field.value ? format(field.value, 'dd-MM-yyyy') : <span>Pick a date</span>}
+                                {field.value ? format(field.value, 'dd-MM-yyyy') : <span>Pick date</span>}
                             </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent>
@@ -458,15 +480,15 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                   </div>
 
                   <div>
-                    <Label>Priority</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 block">Priority</Label>
                     <Controller control={form.control} name="priority"
                         render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value} disabled={!canEditCoreFields}>
-                            <SelectTrigger><SelectValue placeholder="Set priority" /></SelectTrigger>
+                            <SelectTrigger className="h-10 border-2 font-bold uppercase tracking-tight"><SelectValue placeholder="Set priority" /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Low">Low</SelectItem>
-                              <SelectItem value="Medium">Medium</SelectItem>
-                              <SelectItem value="High">High</SelectItem>
+                              <SelectItem value="Low" className="font-bold">LOW</SelectItem>
+                              <SelectItem value="Medium" className="font-bold">MEDIUM</SelectItem>
+                              <SelectItem value="High" className="font-bold text-destructive">HIGH</SelectItem>
                             </SelectContent>
                         </Select>
                         )}
@@ -474,95 +496,125 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                   </div>
                 </div>
 
-                {taskToDisplay.completionDate && (
-                    <div>
-                        <Label>Completion Date</Label>
-                        <div className="flex items-center gap-2 text-sm p-2 border rounded-md bg-muted">
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                            <span>{format(new Date(taskToDisplay.completionDate), 'dd-MM-yyyy, p')}</span>
-                        </div>
-                    </div>
-                )}
-                
-                { (canEditCoreFields || canReassign) && <Button type="submit" className="w-full">Save Changes</Button> }
+                { (canEditCoreFields || canReassign) && <Button type="submit" className="w-full h-12 font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20">Update Task Metadata</Button> }
               </form>
             </div>
 
             <div className="flex flex-col gap-4">
-                <h3 className="text-lg font-semibold">Comments & Activity</h3>
-                <ScrollArea className="h-64 pr-4 border-b">
-                    <div className="space-y-4">
+                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" /> Interaction & History
+                </h3>
+                <ScrollArea className="flex-1 h-72 pr-4 border-2 rounded-xl bg-slate-50 dark:bg-slate-900/20 shadow-inner">
+                    <div className="space-y-4 p-4">
                         {commentsArray.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((comment, index) => {
                             const commentUser = users.find(u => u.id === comment.userId);
                             return (
-                                <div key={index} className={cn("flex items-start gap-3")}>
-                                    <Avatar className="h-8 w-8"><AvatarImage src={commentUser?.avatar} /><AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback></Avatar>
-                                    <div className="bg-muted p-3 rounded-lg w-full">
-                                        <div className="flex justify-between items-center"><p className="font-semibold text-sm">{commentUser?.name}</p><p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(comment.date), { addSuffix: true })}</p></div>
-                                        <p className="text-sm text-foreground/80 mt-1"><LinkifiedText text={comment.text} /></p>
+                                <div key={index} className={cn("flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2")}>
+                                    <Avatar className="h-8 w-8 border shadow-sm">
+                                        <AvatarImage src={commentUser?.avatar} />
+                                        <AvatarFallback>{commentUser?.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="bg-white dark:bg-slate-800 p-3 rounded-2xl rounded-tl-none border shadow-sm w-full">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <p className="font-black text-[10px] uppercase text-primary tracking-widest">{commentUser?.name}</p>
+                                            <p className="text-[9px] font-bold text-muted-foreground">{formatDistanceToNow(new Date(comment.date), { addSuffix: true })}</p>
+                                        </div>
+                                        <p className="text-xs font-bold text-foreground leading-relaxed"><LinkifiedText text={comment.text} /></p>
                                     </div>
                                 </div>
                             )
                         })}
-                        {commentsArray.length === 0 && <p className="text-sm text-center text-muted-foreground py-4">No comments yet.</p>}
+                        {commentsArray.length === 0 && <p className="text-xs font-bold text-center text-muted-foreground/50 py-12 italic uppercase tracking-widest">No conversation history.</p>}
                     </div>
                 </ScrollArea>
+                
                 {taskToDisplay.attachment && (
-                  <div>
-                    <Label>Attachment</Label>
-                    <div className="mt-1 flex items-center justify-between p-2 rounded-md border text-sm">
-                        <Link href={taskToDisplay.attachment.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:underline">
-                            <Paperclip className="h-4 w-4"/><span>{taskToDisplay.attachment.name}</span>
-                        </Link>
+                  <div className="p-3 border-2 border-dashed rounded-xl bg-blue-50/30 dark:bg-blue-900/10">
+                    <Label className="text-[9px] font-black uppercase tracking-widest text-blue-600 block mb-2">Final Deliverable</Label>
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-2 truncate">
+                            <Paperclip className="h-4 w-4 text-blue-500 shrink-0"/>
+                            <span className="text-xs font-bold truncate">{taskToDisplay.attachment.name}</span>
+                        </div>
+                        <Button asChild size="sm" variant="outline" className="h-8 text-[10px] font-black uppercase tracking-widest border-2 shrink-0">
+                             <a href={taskToDisplay.attachment.url} target="_blank" rel="noopener noreferrer">
+                                <Download className="mr-2 h-3.5 w-3.5" /> DOWNLOAD
+                            </a>
+                        </Button>
                     </div>
                   </div>
                 )}
                 
                 {taskToDisplay.requiresAttachmentForCompletion && isAssignee && taskToDisplay.status === 'In Progress' && (
-                  <div>
-                    <Label>Attachment for Completion</Label>
+                  <div className="p-4 border-2 rounded-xl bg-muted/20 border-dashed">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block">Upload Deliverable</Label>
                     {!attachment && !taskToDisplay.attachment &&
-                      <div className="relative mt-1">
-                        <Button asChild variant="outline" size="sm"><Label htmlFor="file-upload"><Upload className="mr-2"/>Upload File</Label></Button>
+                      <div className="relative">
+                        <Button asChild variant="outline" className="w-full h-14 border-2 border-dashed hover:bg-muted font-bold text-xs uppercase tracking-widest">
+                            <Label htmlFor="file-upload" className="cursor-pointer">
+                                <Upload className="mr-2 h-5 w-5"/> SELECT COMPLETION FILE
+                            </Label>
+                        </Button>
                         <Input id="file-upload" type="file" onChange={handleFileChange} className="hidden" accept=".jpg, .jpeg, .png, .pdf"/>
                       </div>
                     }
                     {attachment && (
-                      <div className="mt-1 flex items-center justify-between p-2 rounded-md border text-sm">
-                          <div className="flex items-center gap-2"><Paperclip className="h-4 w-4"/><span>{attachment.name}</span></div>
-                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAttachment(null)}><X className="h-4 w-4"/></Button>
+                      <div className="flex items-center justify-between p-3 rounded-lg border-2 bg-card text-sm font-bold shadow-sm">
+                          <div className="flex items-center gap-2 truncate">
+                              <Paperclip className="h-4 w-4 text-primary"/>
+                              <span className="truncate">{attachment.name}</span>
+                          </div>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setAttachment(null)}><X className="h-4 w-4"/></Button>
                       </div>
                     )}
                   </div>
                 )}
-                 <div className="relative">
-                    <Textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Add a comment... (required for status changes)" className="pr-12" />
-                    <Button type="button" size="icon" className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8" onClick={handleAddComment} disabled={!newComment.trim()}><Send className="h-4 w-4" /></Button>
+                 <div className="relative group">
+                    <Textarea 
+                        value={newComment} 
+                        onChange={(e) => setNewComment(e.target.value)} 
+                        placeholder={isCompleted ? "Discussion closed..." : "Add to the log..."} 
+                        className="pr-12 min-h-[80px] rounded-xl border-2 font-bold text-sm bg-muted/10 group-focus-within:bg-card transition-colors"
+                        disabled={isCompleted && !isAdmin}
+                    />
+                    <Button 
+                        type="button" 
+                        size="icon" 
+                        className="absolute right-2 bottom-2 h-9 w-9 bg-primary hover:bg-primary/90 shadow-lg active:scale-95 transition-all" 
+                        onClick={handleAddComment} 
+                        disabled={!newComment.trim()}
+                    >
+                        <Send className="h-4 w-4" />
+                    </Button>
                 </div>
-                {renderActionButtons()}
+                <div className="pt-2">
+                    {renderActionButtons()}
+                </div>
             </div>
         </div>
-        <DialogFooter className="justify-between pt-4 mt-auto">
-            <div>
+        <DialogFooter className="justify-between pt-4 mt-auto border-t">
+            <div className="flex gap-2">
               {isAdmin && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Task</Button>
+                    <Button variant="ghost" className="text-destructive font-black uppercase text-[10px] tracking-widest hover:bg-destructive/10">
+                        <Trash2 className="mr-2 h-4 w-4" /> DELETE TASK
+                    </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                      <AlertDialogDescription>This action cannot be undone. This will permanently delete the task "{taskToDisplay.title}".</AlertDialogDescription>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>This action will permanently delete the task and its entire history. This cannot be undone.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDeleteTask}>Delete Task</AlertDialogAction>
+                      <AlertDialogAction onClick={handleDeleteTask} className="bg-destructive text-white hover:bg-destructive/90">Delete Task</AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
               )}
             </div>
-            <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
+            <Button variant="outline" className="font-bold text-[10px] uppercase tracking-widest" onClick={() => setIsOpen(false)}>CLOSE DETAILS</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

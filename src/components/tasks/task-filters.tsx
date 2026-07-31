@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X } from 'lucide-react';
+import { X, Search } from 'lucide-react';
 import { TaskStatus, User } from '@/lib/types';
 import { DateRangePicker } from '../ui/date-range-picker';
 import { Label } from '../ui/label';
@@ -11,6 +11,7 @@ import { Switch } from '../ui/switch';
 import { useAuth } from '@/contexts/auth-provider';
 import { useTask } from '@/contexts/task-provider';
 import { getMonth, format, getYear, isValid } from 'date-fns';
+import { Input } from '../ui/input';
 
 export interface TaskFilters {
   status: 'all' | 'To Do' | 'In Progress' | 'Done' | 'Overdue';
@@ -20,6 +21,8 @@ export interface TaskFilters {
   showMyTasksOnly: boolean;
   month: string;
   year: string;
+  search: string;
+  includeArchived: boolean;
 }
 
 interface TaskFiltersProps {
@@ -82,12 +85,34 @@ export default function TaskFilters({ onFiltersChange, initialFilters }: TaskFil
         showMyTasksOnly: false,
         month: 'all',
         year: new Date().getFullYear().toString(),
+        search: '',
+        includeArchived: false,
     };
     setFilters(clearedFilters);
   }
 
   return (
-    <div className="p-4 border rounded-lg bg-card">
+    <div className="p-4 border rounded-lg bg-card space-y-4">
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <div className="relative flex-1 w-full">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                    placeholder="Search task title, description, or ID..." 
+                    className="pl-8" 
+                    value={filters.search}
+                    onChange={(e) => handleFilterChange('search', e.target.value)}
+                />
+            </div>
+            <div className="flex items-center space-x-2 shrink-0">
+                <Switch 
+                    id="include-archived" 
+                    checked={filters.includeArchived} 
+                    onCheckedChange={(checked) => handleFilterChange('includeArchived', checked)} 
+                />
+                <Label htmlFor="include-archived" className="text-xs font-bold uppercase tracking-wider">Include Archived</Label>
+            </div>
+        </div>
+
         <div className="flex flex-wrap gap-4 items-center">
             <Select value={filters.year} onValueChange={(value) => handleFilterChange('year', value)}>
                 <SelectTrigger className="w-full sm:w-[120px]"><SelectValue placeholder="All Years" /></SelectTrigger>

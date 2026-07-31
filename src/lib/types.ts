@@ -72,6 +72,8 @@ export type Task = {
   subtasks?: { [userId: string]: Subtask };
   link?: string;
   lastUpdated: string;
+  isArchived?: boolean;
+  archivedAt?: string;
 };
 
 export type Frequency = 'once' | 'daily' | 'weekly' | 'weekends' | 'monthly' | 'daily-except-sundays';
@@ -721,7 +723,7 @@ export type InventoryTransferRequest = {
 
 export type TransferReason = 'Temporary Use' | 'For TP certification' | 'Expired materials' | 'Not in use' | 'Damaged items' | 'Transfer to another project as requested by';
 
-export const TRANSFER_REASONS: TransferReason[] = ['Temporary Use', 'For TP certification', 'Expired materials', 'Not in use', 'Damaged items', 'Transfer to another project as requested by'];
+export const TRANSFER_REASONS: TransferReason[] = ['Temporary Use', 'For TP certification', 'Expired materials', 'Not in use' , 'Damaged items', 'Transfer to another project as requested by'];
 
 export type CertificateRequestType = 'Calibration Certificate' | 'TP Certificate' | 'Inspection Certificate';
 export type CertificateRequestStatus = 'Pending' | 'Completed' | 'Rejected';

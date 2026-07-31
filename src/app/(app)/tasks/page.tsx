@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -7,7 +6,7 @@ import { KanbanBoard } from '@/components/tasks/kanban-board';
 import CreateTaskDialog from '@/components/tasks/create-task-dialog';
 import TaskFilters, { type TaskFilters as FiltersType } from '@/components/tasks/task-filters';
 import { Button } from '@/components/ui/button';
-import { Bell, History, Edit } from 'lucide-react';
+import { Bell, History, Edit, LayoutGrid, List, Archive, CheckCircle2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -21,11 +20,15 @@ import type { Task, Role } from '@/lib/types';
 import ReportDownloads from '@/components/reports/report-downloads';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow, isWithinInterval, startOfMonth, endOfMonth, getMonth, getYear, parseISO, isSameYear } from 'date-fns';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import TaskOverviewTable from '@/components/tasks/task-overview-table';
 
 export default function TasksPage() {
   const { user, users, can, getVisibleUsers } = useAuth();
   const { tasks, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount } = useTask();
   
+  const [viewMode, setViewMode] = useState<'kanban' | 'overview'>('kanban');
+
   const [filters, setFilters] = useState<FiltersType>({
     status: 'all',
     priority: 'all',
@@ -34,6 +37,8 @@ export default function TasksPage() {
     month: 'all',
     showMyTasksOnly: false,
     year: new Date().getFullYear().toString(),
+    search: '',
+    includeArchived: false,
   });
 
   const [isPendingApprovalDialogOpen, setIsPendingApprovalDialogOpen] = useState(false);
@@ -45,13 +50,15 @@ export default function TasksPage() {
     // Show tasks where I am the creator/approver and there's a pending statusRequest
     return tasks.filter(task => 
       task.creatorId === user.id &&
-      task.statusRequest?.status === 'Pending'
+      task.statusRequest?.status === 'Pending' &&
+      !task.isArchived
     );
   }, [tasks, user]);
   
   const mySubmittedTasks = useMemo(() => {
     if (!user) return [];
     return tasks.filter(task => {
+      if (task.isArchived) return false;
       // A submission request by me that's still pending
       const isMySubmittedTask = task.statusRequest?.requestedBy === user.id && task.statusRequest?.status === 'Pending';
       // Returned tasks to me (explicit returned state)
@@ -64,18 +71,36 @@ export default function TasksPage() {
 
   const visibleTasks = useMemo(() => {
     if (!user) return [];
-    if (user.role === 'Manager' || user.role === 'Admin') {
-        return tasks;
-    }
+    
+    const highLevelRoles: Role[] = ['Admin', 'Manager', 'Project Coordinator'];
+    const hasFullView = highLevelRoles.includes(user.role);
+    
     const visibleUserIds = new Set(getVisibleUsers().map(u => u.id));
+    
     return tasks.filter(task => {
+      // Archives logic: only show if includeArchived is true
+      if (task.isArchived && !filters.includeArchived) return false;
+
+      if (hasFullView) return true;
+      
       // Show a task if any of its assignees are visible to the current user
       return task.assigneeIds && task.assigneeIds.some(id => visibleUserIds.has(id));
     });
-  }, [tasks, user, getVisibleUsers]);
+  }, [tasks, user, getVisibleUsers, filters.includeArchived]);
 
   const filteredTasks = useMemo(() => {
     return visibleTasks.filter(task => {
+      const { status, priority, dateRange, showMyTasksOnly, assigneeId, month, year, search } = filters;
+
+      // 1. Search Filter (Title, Description, ID)
+      if (search) {
+          const term = search.toLowerCase();
+          const matchesTitle = task.title.toLowerCase().includes(term);
+          const matchesDesc = task.description.toLowerCase().includes(term);
+          const matchesId = task.id.toLowerCase().includes(term);
+          if (!matchesTitle && !matchesDesc && !matchesId) return false;
+      }
+
       // If there's a pending statusRequest for completion, show it only to approver/requester.
       if (task.statusRequest?.status === 'Pending') {
         const isApprover = task.creatorId === user?.id;
@@ -85,8 +110,6 @@ export default function TasksPage() {
         }
         return false;
       }
-      
-      const { status, priority, dateRange, showMyTasksOnly, assigneeId, month, year } = filters;
 
       if (assigneeId !== 'all' && !task.assigneeIds?.includes(assigneeId)) {
         return false;
@@ -147,7 +170,9 @@ export default function TasksPage() {
 
 
   const kanbanTasks = useMemo(() => {
-      const regularBoardTasks = filteredTasks.filter(t => t.status !== 'Pending Approval');
+      // Kanban usually doesn't show archived items
+      const activeFiltered = filteredTasks.filter(t => !t.isArchived);
+      const regularBoardTasks = activeFiltered.filter(t => t.status !== 'Pending Approval');
       const overdueTasks = regularBoardTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done');
       const overdueTaskIds = new Set(overdueTasks.map(t => t.id));
       const regularTasks = regularBoardTasks.filter(t => !overdueTaskIds.has(t.id));
@@ -160,39 +185,59 @@ export default function TasksPage() {
 
   return (
     <>
-      <div className="flex flex-col h-full">
-        <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
+      <div className="flex flex-col h-full space-y-6">
+        <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Task Board</h1>
-            <p className="text-muted-foreground">Drag and drop tasks to change their status, or use filters to generate a report.</p>
+            <h1 className="text-3xl font-bold tracking-tight">Task Management</h1>
+            <p className="text-muted-foreground">Monitor workflows, track progress, and manage archived tasks.</p>
           </div>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
               <ReportDownloads tasks={filteredTasks} />
-              <Button variant={myPendingTaskRequestCount > 0 ? "secondary" : "outline"} onClick={() => setIsMyRequestsDialogOpen(true)}>
+              
+              <div className="flex bg-muted p-1 rounded-lg border">
+                <Button 
+                    variant={viewMode === 'kanban' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    className="h-8 text-xs font-bold"
+                    onClick={() => setViewMode('kanban')}
+                >
+                    <LayoutGrid className="mr-2 h-4 w-4" /> KANBAN
+                </Button>
+                <Button 
+                    variant={viewMode === 'overview' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    className="h-8 text-xs font-bold"
+                    onClick={() => setViewMode('overview')}
+                >
+                    <List className="mr-2 h-4 w-4" /> OVERVIEW
+                </Button>
+              </div>
+
+              <Button variant={myPendingTaskRequestCount > 0 ? "secondary" : "outline"} onClick={() => setIsMyRequestsDialogOpen(true)} className="h-9">
                   <History className="mr-2 h-4 w-4" />
                   My Requests
                   {myPendingTaskRequestCount > 0 && (
-                    <span className="ml-2 bg-primary text-primary-foreground h-6 w-6 rounded-full flex items-center justify-center text-xs">
-                        {myPendingTaskRequestCount}
-                    </span>
+                    <Badge variant="destructive" className="ml-2 h-5 min-w-[1.25rem] justify-center p-0">{myPendingTaskRequestCount}</Badge>
                   )}
               </Button>
-              <Button variant={pendingTaskApprovalCount > 0 ? "secondary" : "outline"} onClick={() => setIsPendingApprovalDialogOpen(true)}>
+              <Button variant={pendingTaskApprovalCount > 0 ? "secondary" : "outline"} onClick={() => setIsPendingApprovalDialogOpen(true)} className="h-9">
                   <Bell className="mr-2 h-4 w-4" />
                   Pending Approvals
                   {pendingTaskApprovalCount > 0 && (
-                    <span className="ml-2 bg-primary text-primary-foreground h-6 w-6 rounded-full flex items-center justify-center text-xs">
-                        {pendingTaskApprovalCount}
-                    </span>
+                    <Badge variant="destructive" className="ml-2 h-5 min-w-[1.25rem] justify-center p-0">{pendingTaskApprovalCount}</Badge>
                   )}
               </Button>
               {can.manage_tasks && <CreateTaskDialog />}
           </div>
         </div>
-        <div className='mb-4'>
-          <TaskFilters onFiltersChange={setFilters} initialFilters={filters} />
-        </div>
-        <KanbanBoard tasks={kanbanTasks.regular} overdueTasks={kanbanTasks.overdue} />
+
+        <TaskFilters onFiltersChange={setFilters} initialFilters={filters} />
+
+        {viewMode === 'kanban' ? (
+            <KanbanBoard tasks={kanbanTasks.regular} overdueTasks={kanbanTasks.overdue} />
+        ) : (
+            <TaskOverviewTable tasks={filteredTasks} onEditTask={openEditDialog} />
+        )}
       </div>
       
       <Dialog open={isPendingApprovalDialogOpen} onOpenChange={setIsPendingApprovalDialogOpen}>
@@ -209,17 +254,17 @@ export default function TasksPage() {
                        const assignee = users.find(u => u.id === task.statusRequest?.requestedBy);
                        const lastComment = task.comments && task.comments.length > 0 ? task.comments[task.comments.length - 1] : null;
                        return (
-                         <div key={task.id} className="border p-3 rounded-lg flex justify-between items-center">
+                         <div key={task.id} className="border p-3 rounded-lg flex justify-between items-center bg-card shadow-sm hover:bg-muted/30 transition-colors">
                            <div>
-                               <p className="font-semibold">{task.title}</p>
-                               <div className="text-sm text-muted-foreground flex items-center gap-2">
-                                <Badge>From: {assignee?.name}</Badge>
+                               <p className="font-bold text-sm uppercase tracking-tight">{task.title}</p>
+                               <div className="text-[10px] text-muted-foreground flex items-center gap-2 mt-1 uppercase font-black tracking-widest">
+                                <span className="bg-primary/10 text-primary px-1.5 rounded">FROM: {assignee?.name}</span>
                                 {lastComment && (
-                                   <span className='text-xs'>- {formatDistanceToNow(new Date(lastComment.date), { addSuffix: true })}</span>
+                                   <span>&middot; {formatDistanceToNow(new Date(lastComment.date), { addSuffix: true })}</span>
                                 )}
                                </div>
                            </div>
-                           <Button variant="secondary" size="sm" onClick={() => openEditDialog(task)}><Edit className="mr-2 h-3 w-3" />View</Button>
+                           <Button variant="secondary" size="sm" onClick={() => openEditDialog(task)} className="font-bold h-8 text-[11px]">VIEW</Button>
                          </div>
                        )
                     }) : <p className="text-muted-foreground text-center py-8">No tasks are awaiting your approval.</p>}
@@ -242,18 +287,18 @@ export default function TasksPage() {
                         const approver = users.find(u => u.id === task.creatorId);
                         const lastComment = task.comments && task.comments.length > 0 ? task.comments[task.comments.length - 1] : null;
                         return (
-                          <div key={task.id} className="border p-3 rounded-lg flex justify-between items-center">
+                          <div key={task.id} className="border p-3 rounded-lg flex justify-between items-center bg-card shadow-sm hover:bg-muted/30 transition-colors">
                             <div>
-                                <p className="font-semibold">{task.title}</p>
-                                <div className="text-sm text-muted-foreground flex items-center gap-2">
-                                {task.approvalState === 'returned' ? <Badge variant="destructive">Returned</Badge> : <Badge>Pending</Badge>}
-                                <span>with {approver?.name || 'approver'}</span>
+                                <p className="font-bold text-sm uppercase tracking-tight">{task.title}</p>
+                                <div className="text-[10px] text-muted-foreground flex items-center gap-2 mt-1 uppercase font-black tracking-widest">
+                                {task.approvalState === 'returned' ? <Badge variant="destructive" className="h-4 py-0 text-[9px] font-black">RETURNED</Badge> : <Badge className="h-4 py-0 text-[9px] font-black">PENDING</Badge>}
+                                <span className="bg-muted px-1.5 rounded">WITH: {approver?.name || 'approver'}</span>
                                 {lastComment && (
-                                    <span className='text-xs'>- {formatDistanceToNow(new Date(lastComment.date), { addSuffix: true })}</span>
+                                    <span>&middot; {formatDistanceToNow(new Date(lastComment.date), { addSuffix: true })}</span>
                                 )}
                                 </div>
                             </div>
-                            <Button variant="secondary" size="sm" onClick={() => openEditDialog(task)}><Edit className="mr-2 h-3 w-3" />View</Button>
+                            <Button variant="secondary" size="sm" onClick={() => openEditDialog(task)} className="font-bold h-8 text-[11px]">VIEW</Button>
                           </div>
                         )
                     }) : <p className="text-muted-foreground text-center py-8">You have no tasks awaiting approval.</p>}
