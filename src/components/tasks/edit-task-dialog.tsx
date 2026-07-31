@@ -1,3 +1,4 @@
+
 'use client';
 import * as React from "react";
 import { useEffect, useState, useMemo } from 'react';
@@ -158,7 +159,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   }, [taskToDisplay.comments]);
 
   const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-    <Label className="text-sm font-black uppercase tracking-[0.2em] text-[#64748B] mb-2 block">
+    <Label className="text-[11px] font-black uppercase tracking-[0.2em] text-[#64748B] mb-2 block">
       {children}
     </Label>
   );
@@ -169,13 +170,13 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
         <DialogHeader className="p-6 pb-5 bg-[#F8FAFC] border-b">
           <div className="flex justify-between items-start">
             <div className="space-y-1.5">
-              <DialogTitle className="text-3xl font-black uppercase tracking-tight text-slate-900 leading-tight">
+              <DialogTitle className="text-2xl font-black uppercase tracking-tight text-slate-900 leading-tight">
                 {taskToDisplay.title}
               </DialogTitle>
               <div className="flex items-center gap-3 text-sm text-[#64748B] font-bold uppercase tracking-wide">
                 <span className="flex items-center gap-1.5">BY <span className="font-black text-slate-800">{creator?.name}</span></span>
                 <span className="text-slate-300">|</span>
-                <Badge variant="outline" className="font-mono text-xs font-black px-3 py-1 bg-[#E9F0FE] text-[#2563EB] border-[#D1E1FF] rounded-sm tracking-wider">
+                <Badge variant="outline" className="font-mono text-[10px] font-black px-3 py-1 bg-[#E9F0FE] text-[#2563EB] border-[#D1E1FF] rounded-sm tracking-wider">
                   ID: {taskToDisplay.id}
                 </Badge>
               </div>
@@ -190,7 +191,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
               <form id="task-metadata-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                 <div>
                   <SectionLabel>Description</SectionLabel>
-                  <div className="p-5 text-base font-bold min-h-[9rem] border-2 border-[#F1F5F9] rounded-xl bg-[#F8FAFC] whitespace-pre-wrap leading-relaxed text-slate-800 shadow-inner">
+                  <div className="p-5 text-sm font-bold min-h-[9rem] border-2 border-[#F1F5F9] rounded-xl bg-[#F8FAFC] whitespace-pre-wrap leading-relaxed text-slate-800 shadow-inner">
                     {taskToDisplay.description}
                   </div>
                 </div>
@@ -205,7 +206,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                       </Button>
                     </div>
                   ) : (
-                    <p className="text-sm font-bold text-slate-400 italic px-1 uppercase tracking-widest opacity-60">No attachments provided.</p>
+                    <p className="text-[10px] font-bold text-slate-400 italic px-1 uppercase tracking-widest opacity-60">No attachments provided.</p>
                   )}
                 </div>
 
@@ -216,18 +217,18 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                       const subtask = taskToDisplay.subtasks?.[assignee.id];
                       const isDone = subtask?.status === 'Done';
                       return (
-                        <div key={assignee.id} className="flex justify-between items-center text-sm p-4 rounded-xl bg-white border border-[#E2E8F0] shadow-sm">
-                          <div className="flex items-center gap-4">
-                            <Avatar className="h-10 w-10 border-2 border-white shadow-md ring-1 ring-slate-200">
+                        <div key={assignee.id} className="flex justify-between items-center text-sm p-3 rounded-xl bg-white border border-[#E2E8F0] shadow-sm">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-9 w-9 border-2 border-white shadow-md ring-1 ring-slate-200">
                               <AvatarImage src={assignee.avatar} />
-                              <AvatarFallback className="text-xs font-black">{assignee.name[0]}</AvatarFallback>
+                              <AvatarFallback className="text-[8px] font-black">{assignee.name[0]}</AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col">
-                                <span className="font-black text-slate-900 tracking-tight text-base">{assignee.name}</span>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{assignee.role}</span>
+                                <span className="font-black text-slate-900 tracking-tight text-sm">{assignee.name}</span>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{assignee.role}</span>
                             </div>
                           </div>
-                          <Badge className={cn("text-xs font-black h-6 px-3 tracking-wider border-none rounded-sm", isDone ? "bg-[#10B981] text-white" : "bg-[#E2E8F0] text-[#64748B]")}>
+                          <Badge className={cn("text-[9px] font-black h-5 px-2 tracking-wider border-none rounded-sm", isDone ? "bg-[#10B981] text-white" : "bg-[#E2E8F0] text-[#64748B]")}>
                             {(subtask?.status || 'To Do').toUpperCase()}
                           </Badge>
                         </div>
@@ -239,16 +240,16 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <SectionLabel>Target Deadline</SectionLabel>
-                    <div className="flex items-center gap-3 p-3 border-2 border-[#F1F5F9] rounded-xl bg-white text-sm font-black text-slate-800 h-12 shadow-sm">
-                      <CalendarIcon className="h-5 w-5 text-[#2563EB]" />
+                    <div className="flex items-center gap-3 p-3 border-2 border-[#F1F5F9] rounded-xl bg-white text-xs font-black text-slate-800 h-11 shadow-sm">
+                      <CalendarIcon className="h-4 w-4 text-[#2563EB]" />
                       {taskToDisplay.dueDate ? format(parseISO(taskToDisplay.dueDate), 'dd MMMM yyyy') : 'NOT SET'}
                     </div>
                   </div>
 
                   <div>
                     <SectionLabel>Criticality</SectionLabel>
-                    <div className="h-12 border-2 border-[#F1F5F9] rounded-xl bg-white flex items-center justify-center text-xs font-black uppercase tracking-[0.2em] shadow-sm">
-                      <div className={cn("w-3 h-3 rounded-full mr-2", 
+                    <div className="h-11 border-2 border-[#F1F5F9] rounded-xl bg-white flex items-center justify-center text-[10px] font-black uppercase tracking-[0.2em] shadow-sm">
+                      <div className={cn("w-2.5 h-2.5 rounded-full mr-2", 
                         taskToDisplay.priority === 'High' ? "bg-rose-500 shadow-[0_0_5px_rgba(244,63,94,0.5)]" : 
                         taskToDisplay.priority === 'Medium' ? "bg-orange-400" : "bg-emerald-400"
                       )} />
@@ -258,7 +259,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 </div>
                 
                 {canEditCoreFields && (
-                  <Button type="submit" form="task-metadata-form" className="w-full h-14 font-black uppercase tracking-[0.2em] bg-[#2563EB] hover:bg-[#1E40AF] rounded-xl shadow-lg shadow-blue-500/20 text-xs transition-all active:scale-[0.98]">
+                  <Button type="submit" form="task-metadata-form" className="w-full h-12 font-black uppercase tracking-[0.2em] bg-[#2563EB] hover:bg-[#1E40AF] rounded-xl shadow-lg shadow-blue-500/20 text-[10px] transition-all active:scale-[0.98]">
                     UPDATE TASK METADATA
                   </Button>
                 )}
@@ -269,8 +270,8 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
           {/* RIGHT COLUMN: Interaction */}
           <div className="flex flex-col h-full bg-[#F8FAFC]">
             <div className="p-6 flex-1 flex flex-col min-h-0">
-              <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[#64748B] flex items-center gap-2 mb-6">
-                <MessageSquare className="h-5 w-5" /> INTERACTION & LOGS
+              <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-[#64748B] flex items-center gap-2 mb-6">
+                <MessageSquare className="h-4 w-4" /> INTERACTION & LOGS
               </h3>
               
               <ScrollArea className="flex-1 pr-4">
@@ -279,19 +280,19 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                     const author = users.find(u => u.id === comment.userId);
                     return (
                       <div key={index} className="flex items-start gap-3 group animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <Avatar className="h-10 w-10 border-2 border-white shadow-md shrink-0">
+                        <Avatar className="h-9 w-9 border-2 border-white shadow-md shrink-0">
                           <AvatarImage src={author?.avatar} />
-                          <AvatarFallback className="font-black text-sm">{author?.name[0]}</AvatarFallback>
+                          <AvatarFallback className="font-black text-xs">{author?.name[0]}</AvatarFallback>
                         </Avatar>
-                        <div className="space-y-1.5 flex-1 min-w-0">
+                        <div className="space-y-1 flex-1 min-w-0">
                           <div className="flex justify-between items-center px-1">
-                            <p className="font-black text-xs uppercase text-[#2563EB] tracking-widest">{author?.name}</p>
-                            <p className="text-[10px] font-bold text-slate-400 italic">
+                            <p className="font-black text-[10px] uppercase text-[#2563EB] tracking-widest">{author?.name}</p>
+                            <p className="text-[9px] font-bold text-slate-400 italic">
                               {formatDistanceToNow(new Date(comment.date), { addSuffix: true })}
                             </p>
                           </div>
-                          <div className="bg-white p-5 rounded-2xl rounded-tl-none border-2 border-[#F1F5F9] shadow-sm">
-                            <p className="text-base font-bold text-slate-800 leading-relaxed">
+                          <div className="bg-white p-4 rounded-2xl rounded-tl-none border-2 border-[#F1F5F9] shadow-sm">
+                            <p className="text-sm font-bold text-slate-800 leading-relaxed">
                               {comment.text}
                             </p>
                           </div>
@@ -301,8 +302,8 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                   })}
                   {commentsArray.length === 0 && (
                     <div className="h-full flex flex-col items-center justify-center opacity-20 pt-24 text-slate-400">
-                      <MessageSquare className="h-16 w-16 mb-4" />
-                      <p className="text-sm font-black uppercase tracking-[0.3em]">No activity logged</p>
+                      <MessageSquare className="h-12 w-12 mb-4" />
+                      <p className="text-xs font-black uppercase tracking-[0.3em]">No activity logged</p>
                     </div>
                   )}
                 </div>
@@ -311,10 +312,10 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
               <div className="pt-6 mt-auto">
                 {taskToDisplay.status === 'Pending Approval' && isApprover && (
                   <div className='grid grid-cols-2 gap-4 mb-5'>
-                    <Button onClick={() => handleApprovalAction('approve')} className="bg-[#10B981] hover:bg-[#059669] font-black h-12 text-xs tracking-[0.2em] text-white rounded-xl shadow-lg shadow-emerald-500/10">
+                    <Button onClick={() => handleApprovalAction('approve')} className="bg-[#10B981] hover:bg-[#059669] font-black h-11 text-[10px] tracking-[0.2em] text-white rounded-xl shadow-lg shadow-emerald-500/10">
                       <ThumbsUp className="mr-2 h-4 w-4" /> APPROVE
                     </Button>
-                    <Button onClick={() => handleApprovalAction('return')} className="bg-[#EF4444] hover:bg-[#DC2626] font-black h-12 text-xs tracking-[0.2em] text-white rounded-xl shadow-lg shadow-rose-500/10">
+                    <Button onClick={() => handleApprovalAction('return')} className="bg-[#EF4444] hover:bg-[#DC2626] font-black h-11 text-[10px] tracking-[0.2em] text-white rounded-xl shadow-lg shadow-rose-500/10">
                       <ThumbsDown className="mr-2 h-4 w-4" /> RETURN
                     </Button>
                   </div>
@@ -324,7 +325,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                   <div className="mb-5">
                     <Button 
                       onClick={() => handleRequestStatusChange(mySubtask?.status === 'To Do' ? 'In Progress' : 'Done')} 
-                      className="w-full h-14 font-black uppercase tracking-[0.2em] bg-[#2563EB] hover:bg-[#1E40AF] shadow-xl shadow-blue-500/20 text-xs rounded-xl transition-all active:scale-[0.98]"
+                      className="w-full h-12 font-black uppercase tracking-[0.2em] bg-[#2563EB] hover:bg-[#1E40AF] shadow-xl shadow-blue-500/20 text-[10px] rounded-xl transition-all active:scale-[0.98]"
                     >
                       {mySubtask?.status === 'To Do' ? 'INITIALIZE TASK SESSION' : 'SUBMIT WORK FOR APPROVAL'}
                     </Button>
@@ -336,7 +337,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                     value={newComment} 
                     onChange={(e) => setNewComment(e.target.value)} 
                     placeholder="Type update or comment..." 
-                    className="min-h-[80px] pr-14 border-none focus-visible:ring-0 font-bold text-base bg-transparent placeholder:text-slate-400"
+                    className="min-h-[80px] pr-14 border-none focus-visible:ring-0 font-bold text-sm bg-transparent placeholder:text-slate-400"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -346,11 +347,11 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                   />
                   <Button 
                     size="icon" 
-                    className="absolute right-3 bottom-3 h-11 w-11 rounded-full bg-[#2563EB] hover:bg-[#1E40AF] shadow-lg transition-transform active:scale-90" 
+                    className="absolute right-3 bottom-3 h-10 w-10 rounded-full bg-[#2563EB] hover:bg-[#1E40AF] shadow-lg transition-transform active:scale-90" 
                     onClick={handleAddComment} 
                     disabled={!newComment.trim()}
                   >
-                    <Send className="h-6 w-6" />
+                    <Send className="h-5 w-5" />
                   </Button>
                 </div>
               </div>
@@ -363,7 +364,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
             {isAdmin && !taskToDisplay.isArchived && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-[#EF4444] font-black text-xs uppercase tracking-[0.2em] hover:bg-rose-50 px-5 h-11 transition-colors">
+                  <Button variant="ghost" size="sm" className="text-[#EF4444] font-black text-[10px] uppercase tracking-[0.2em] hover:bg-rose-50 px-5 h-10 transition-colors">
                     <Trash2 className="mr-2 h-4 w-4" /> DELETE TASK
                   </Button>
                 </AlertDialogTrigger>
@@ -375,8 +376,8 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel className="font-bold text-xs uppercase tracking-widest rounded-xl">KEEP TASK</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteTask} className="bg-destructive text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-red-700">DELETE FOREVER</AlertDialogAction>
+                    <AlertDialogCancel className="font-bold text-[10px] uppercase tracking-widest rounded-xl">KEEP TASK</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteTask} className="bg-destructive text-white font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-red-700">DELETE FOREVER</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -386,7 +387,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 <Button 
                     variant="outline" 
                     size="sm" 
-                    className="text-[#64748B] font-black text-xs uppercase tracking-[0.2em] hover:bg-slate-100 px-6 h-11 border-2 border-[#E2E8F0] rounded-xl bg-white"
+                    className="text-[#64748B] font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-100 px-6 h-10 border-2 border-[#E2E8F0] rounded-xl bg-white"
                     onClick={handleArchiveTask}
                 >
                     <Archive className="mr-2 h-4 w-4" /> MOVE TO ARCHIVE
@@ -397,14 +398,14 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 <Button 
                     variant="default" 
                     size="sm" 
-                    className="bg-[#2563EB] hover:bg-[#1E40AF] font-black text-xs uppercase tracking-[0.2em] h-11 px-7 rounded-xl shadow-lg shadow-blue-500/20"
+                    className="bg-[#2563EB] hover:bg-[#1E40AF] font-black text-[10px] uppercase tracking-[0.2em] h-10 px-7 rounded-xl shadow-lg shadow-blue-500/20"
                     onClick={handleRestoreTask}
                 >
-                    <History className="mr-2 h-4 w-4" /> RESTORE TO ACTIVE BOARD
+                    <History className="mr-2 h-4 w-4" /> RESTORE TO BOARD
                 </Button>
             )}
           </div>
-          <Button variant="outline" onClick={() => setIsOpen(false)} className="font-black text-xs uppercase tracking-[0.2em] h-11 px-10 border-2 border-[#E2E8F0] text-slate-700 hover:bg-white bg-[#F8FAFC] w-full sm:w-auto shadow-sm rounded-xl">
+          <Button variant="outline" onClick={() => setIsOpen(false)} className="font-black text-[10px] uppercase tracking-[0.2em] h-10 px-10 border-2 border-[#E2E8F0] text-slate-700 hover:bg-white bg-[#F8FAFC] w-full sm:w-auto shadow-sm rounded-xl">
             CLOSE INTERFACE
           </Button>
         </DialogFooter>

@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -31,6 +32,7 @@ export default function TasksPage() {
   const { tasks, pendingTaskApprovalCount, myNewTaskCount, myPendingTaskRequestCount } = useTask();
   
   const [viewMode, setViewMode] = useState<'kanban' | 'overview'>('kanban');
+  const [isArchiveView, setIsArchiveView] = useState(false);
 
   const [filters, setFilters] = useState<FiltersType>({
     status: 'all',
@@ -85,9 +87,14 @@ export default function TasksPage() {
       const { status, priority, dateRange, showMyTasksOnly, assigneeId, month, year, search } = filters;
 
       // 1. Archive Logic:
-      // If we are searching, include archived. If not, only show active.
-      const isSearching = !!search;
-      if (task.isArchived && !isSearching) return false;
+      // If we are in Archive View, only show archived.
+      // If we are searching, include archived. 
+      // If none of above, only show active.
+      if (isArchiveView) {
+        if (!task.isArchived) return false;
+      } else {
+        if (task.isArchived && !search) return false;
+      }
 
       // 2. Search Filter (Title, Description, ID)
       if (search) {
@@ -159,7 +166,7 @@ export default function TasksPage() {
 
       return statusMatch && priorityMatch && dateMatch && monthMatch && yearMatch;
     });
-  }, [visibleTasksPool, filters, user]);
+  }, [visibleTasksPool, filters, user, isArchiveView]);
 
 
   const kanbanTasks = useMemo(() => {
@@ -175,7 +182,7 @@ export default function TasksPage() {
   };
 
   const isSearching = !!filters.search;
-  const effectiveViewMode = isSearching ? 'overview' : viewMode;
+  const effectiveViewMode = (isSearching || isArchiveView) ? 'overview' : viewMode;
 
   return (
     <>
@@ -183,10 +190,12 @@ export default function TasksPage() {
         <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-              Task Management
+              {isArchiveView ? 'Task Archives' : 'Task Management'}
             </h1>
             <p className="text-muted-foreground text-sm font-medium">
-              {isSearching 
+              {isArchiveView 
+                ? 'Reviewing historical records. This view is locked to list mode for efficiency.'
+                : isSearching 
                 ? 'Displaying filtered results across active and archived tasks.' 
                 : 'Monitor active workflows, track progress, and coordinate tasks.'}
             </p>
@@ -194,7 +203,7 @@ export default function TasksPage() {
           <div className="flex flex-wrap items-center gap-2">
               <ReportDownloads tasks={filteredTasks} />
               
-              {!isSearching && (
+              {!isSearching && !isArchiveView && (
                 <div className="flex bg-muted p-1 rounded-lg border mr-2 shadow-sm">
                   <Button 
                       variant={effectiveViewMode === 'kanban' ? 'secondary' : 'ghost'} 
@@ -215,6 +224,15 @@ export default function TasksPage() {
                 </div>
               )}
 
+              <Button 
+                variant={isArchiveView ? "secondary" : "outline"} 
+                onClick={() => setIsArchiveView(!isArchiveView)} 
+                className="h-9 font-bold text-xs shadow-sm"
+              >
+                  <Archive className="mr-2 h-4 w-4" />
+                  {isArchiveView ? 'Back to Board' : 'View Archive'}
+              </Button>
+
               <Button variant={myPendingTaskRequestCount > 0 ? "secondary" : "outline"} onClick={() => setIsMyRequestsDialogOpen(true)} className="h-9 font-bold text-xs shadow-sm">
                   <History className="mr-2 h-4 w-4" />
                   My Requests
@@ -229,7 +247,7 @@ export default function TasksPage() {
                     <Badge variant="destructive" className="ml-2 h-5 min-w-[1.25rem] justify-center p-0">{pendingTaskApprovalCount}</Badge>
                   )}
               </Button>
-              {can.manage_tasks && <CreateTaskDialog />}
+              {can.manage_tasks && !isArchiveView && <CreateTaskDialog />}
           </div>
         </div>
 
