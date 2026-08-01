@@ -82,8 +82,12 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
 
   const isAdmin = user?.role === 'Admin';
   const isCreator = user?.id === taskToDisplay.creatorId;
+  const isCoordinator = user?.role === 'Project Coordinator';
   const isApprover = isCreator || isAdmin;
   const isCompleted = taskToDisplay.status === 'Done' || taskToDisplay.status === 'Completed';
+
+  // Logic: Only creator or high-level management can edit task metadata
+  const canEditMetadata = isAdmin || isCreator || isCoordinator;
 
   useEffect(() => {
     if (taskToDisplay && isOpen) {
@@ -202,18 +206,18 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
             <form id="task-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Task Title</Label>
-                <Input {...form.register('title')} className="h-10 bg-slate-50 border-slate-200 font-bold text-slate-800 focus-visible:ring-primary/20" />
+                <Input {...form.register('title')} disabled={!canEditMetadata} className="h-10 bg-slate-50 border-slate-200 font-bold text-slate-800 focus-visible:ring-primary/20" />
               </div>
 
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Description</Label>
-                <Textarea {...form.register('description')} rows={5} className="bg-slate-50 border-slate-200 font-medium text-slate-700 leading-relaxed focus-visible:ring-primary/20" />
+                <Textarea {...form.register('description')} disabled={!canEditMetadata} rows={5} className="bg-slate-50 border-slate-200 font-medium text-slate-700 leading-relaxed focus-visible:ring-primary/20" />
               </div>
 
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Resource Attachments</Label>
                 <div className="flex items-center gap-2">
-                    <Input {...form.register('link')} placeholder="Add external link..." className="bg-slate-50 border-slate-200 text-xs italic" />
+                    <Input {...form.register('link')} disabled={!canEditMetadata} placeholder="Add external link..." className="bg-slate-50 border-slate-200 text-xs italic" />
                     {taskToDisplay.link && (
                         <Button asChild size="icon" variant="outline" className="shrink-0 h-10 w-10">
                             <a href={taskToDisplay.link} target="_blank" rel="noopener noreferrer"><Paperclip className="h-4 w-4"/></a>
@@ -259,7 +263,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                     name="dueDate"
                     control={form.control}
                     render={({ field }) => (
-                      <DatePickerInput value={field.value} onChange={field.onChange} />
+                      <DatePickerInput value={field.value} onChange={field.onChange} disabled={!canEditMetadata} />
                     )}
                   />
                 </div>
@@ -269,7 +273,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                     name="priority"
                     control={form.control}
                     render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={!canEditMetadata}>
                         <SelectTrigger className="h-10 bg-slate-50 border-slate-200 font-bold"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Low">Low</SelectItem>
@@ -282,9 +286,11 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 </div>
               </div>
 
-              <Button type="submit" className="w-full bg-[#2563EB] hover:bg-[#1E40AF] text-white font-black uppercase tracking-[0.2em] text-xs h-12 rounded-lg shadow-xl shadow-blue-500/20 mt-4">
-                Update Task Metadata
-              </Button>
+              {canEditMetadata && (
+                <Button type="submit" className="w-full bg-[#2563EB] hover:bg-[#1E40AF] text-white font-black uppercase tracking-[0.2em] text-xs h-12 rounded-lg shadow-xl shadow-blue-500/20 mt-4">
+                    Update Task Metadata
+                </Button>
+              )}
             </form>
           </div>
 
