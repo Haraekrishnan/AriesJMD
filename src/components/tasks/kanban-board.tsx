@@ -3,7 +3,6 @@
 
 import React, { useState } from 'react';
 import type { Task, TaskStatus } from '@/lib/types';
-import { useAuth } from '@/contexts/auth-provider';
 import { useTask } from '@/contexts/task-provider';
 import TaskCard from './task-card';
 import { cn } from '@/lib/utils';
@@ -81,16 +80,16 @@ export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTas
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, column)}
           >
-            <div className="p-4 shrink-0 flex items-center justify-between">
+            <div className="p-4 shrink-0 flex items-center justify-between border-b bg-[#EBEDF0]/50">
                 <h3 className="font-black text-[11px] uppercase tracking-[0.2em] text-slate-500">
                     {column}
                 </h3>
-                <Badge variant="secondary" className="h-5 px-2 font-black text-[9px] bg-slate-200 text-slate-600 rounded-sm">
+                <Badge variant="secondary" className="h-5 px-2 font-black text-[9px] bg-white text-slate-600 rounded-sm shadow-sm border-none">
                     {columnTasks.length}
                 </Badge>
             </div>
             <ScrollArea className="flex-1">
-                <div className="space-y-4 p-3 pt-0">
+                <div className="space-y-4 p-4 pt-4">
                 {columnTasks.length > 0 ? (
                     columnTasks.map(task => (
                         <div key={task.id} draggable={column !== 'Overdue'} onDragStart={(e) => handleDragStart(e, task.id)}>
@@ -98,8 +97,8 @@ export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTas
                         </div>
                     ))
                 ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-[10px] font-black uppercase tracking-widest pt-20 opacity-30">
-                        No Tasks
+                    <div className="flex flex-col items-center justify-center py-24 opacity-20">
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">No Tasks</p>
                     </div>
                 )}
                 </div>
