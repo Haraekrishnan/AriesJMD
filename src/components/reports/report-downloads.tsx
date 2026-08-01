@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, differenceInDays } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -25,10 +25,26 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
   };
 
   const getStartedDate = (task: Task) => {
-    // Attempt to find the earliest comment or action indicating a move to "In Progress"
     const comments = Array.isArray(task.comments) ? task.comments : Object.values(task.comments || {});
-    const startAction = comments.find(c => c.text.toLowerCase().includes('status changed to in progress') || c.text.toLowerCase().includes('task started'));
+    const startAction = comments.find(c => 
+      c.text.toLowerCase().includes('status changed to in progress') || 
+      c.text.toLowerCase().includes('task started')
+    );
     return startAction ? startAction.date : null;
+  };
+
+  const getEarliestTimestamp = (task: Task) => {
+    if (task.createdAt) return task.createdAt;
+    
+    // Fallback: If createdAt is missing (older tasks), find the earliest comment
+    const comments = Array.isArray(task.comments) ? task.comments : Object.values(task.comments || {});
+    if (comments.length > 0) {
+      const sorted = [...comments].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      return sorted[0].date;
+    }
+    
+    // Last resort
+    return null;
   };
 
   const processTaskData = (task: Task) => {
@@ -44,6 +60,21 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
       })
       .join('\n');
 
+    // Dates for calculation
+    const createdDate = getEarliestTimestamp(task);
+    const startedDate = getStartedDate(task);
+    const reviewDate = task.statusRequest?.date;
+    const completedDate = task.completionDate;
+
+    // Calculation logic
+    const calcDuration = (start?: string | null, end?: string | null) => {
+        if (!start || !end) return 'N/A';
+        const s = parseISO(start);
+        const e = parseISO(end);
+        if (!isValid(s) || !isValid(e)) return 'N/A';
+        return differenceInDays(e, s);
+    };
+
     return {
       'Task ID': (task.id || '').slice(-6).toUpperCase(),
       'Title': task.title,
@@ -51,10 +82,14 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
       'Assignees': assigneeNames,
       'Priority': task.priority,
       'Status': task.status,
-      'Created At': formatDateTime(task.createdAt),
-      'Started At': formatDateTime(getStartedDate(task)),
-      'Sent for Review At': formatDateTime(task.statusRequest?.date),
-      'Approved/Completed At': formatDateTime(task.completionDate),
+      'Created At': formatDateTime(createdDate),
+      'Started At': formatDateTime(startedDate),
+      'Sent for Review At': formatDateTime(reviewDate),
+      'Approved/Completed At': formatDateTime(completedDate),
+      'Days to Start': calcDuration(createdDate, startedDate),
+      'Days in Work': calcDuration(startedDate, reviewDate),
+      'Days to Finalize': calcDuration(reviewDate, completedDate),
+      'Total Days': calcDuration(createdDate, completedDate),
       'Target Due Date': formatDateTime(task.dueDate),
       'Description': task.description,
       'Interaction History': interactionHistory
@@ -67,7 +102,6 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Aries Task Report');
 
-    // Define columns with broad widths
     worksheet.columns = [
       { header: 'TASK ID', key: 'Task ID', width: 12 },
       { header: 'TITLE', key: 'Title', width: 35 },
@@ -79,19 +113,22 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
       { header: 'STARTED DATE/TIME', key: 'Started At', width: 22 },
       { header: 'REVIEW SENT DATE/TIME', key: 'Sent for Review At', width: 22 },
       { header: 'COMPLETED DATE/TIME', key: 'Approved/Completed At', width: 22 },
-      { header: 'DUE DATE/TIME', key: 'Target Due Date', width: 22 },
+      { header: 'DAYS TO START', key: 'Days to Start', width: 15 },
+      { header: 'DAYS IN WORK', key: 'Days in Work', width: 15 },
+      { header: 'DAYS TO FINALIZE', key: 'Days to Finalize', width: 15 },
+      { header: 'TOTAL DAYS', key: 'Total Days', width: 15 },
+      { header: 'DUE DATE', key: 'Target Due Date', width: 22 },
       { header: 'DESCRIPTION', key: 'Description', width: 50 },
-      { header: 'INTERACTION HISTORY (ALL COMMENTS)', key: 'Interaction History', width: 80 },
+      { header: 'INTERACTION HISTORY', key: 'Interaction History', width: 80 },
     ];
 
-    // Style the header
     const headerRow = worksheet.getRow(1);
     headerRow.height = 30;
     headerRow.eachCell((cell) => {
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FF1E40AF' } // Aries Navy Blue
+        fgColor: { argb: 'FF1E40AF' }
       };
       cell.font = {
         bold: true,
@@ -107,9 +144,9 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
       };
     });
 
-    // Add data
     tasks.forEach(task => {
-      const row = worksheet.addRow(processTaskData(task));
+      const rowData = processTaskData(task);
+      const row = worksheet.addRow(rowData);
       row.alignment = { vertical: 'top', wrapText: true };
       row.eachCell((cell) => {
         cell.border = {
@@ -144,17 +181,15 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
         return [
             data['Task ID'],
             data['Title'],
-            data['Creator'],
-            data['Assignees'],
             data['Status'],
             data['Created At'],
-            data['Approved/Completed At'],
+            data['Total Days'],
             data['Interaction History']
         ];
     });
 
     (doc as any).autoTable({
-      head: [['ID', 'TITLE', 'CREATOR', 'ASSIGNEES', 'STATUS', 'CREATED', 'COMPLETED', 'INTERACTION HISTORY']],
+      head: [['ID', 'TITLE', 'STATUS', 'CREATED', 'TOTAL DAYS', 'INTERACTION HISTORY']],
       body: tableData,
       startY: 80,
       theme: 'grid',
@@ -162,13 +197,11 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
       headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: 'bold' },
       columnStyles: {
         0: { cellWidth: 40 },
-        1: { cellWidth: 100 },
+        1: { cellWidth: 140 },
         2: { cellWidth: 70 },
-        3: { cellWidth: 80 },
+        3: { cellWidth: 100 },
         4: { cellWidth: 60 },
-        5: { cellWidth: 80 },
-        6: { cellWidth: 80 },
-        7: { cellWidth: 'auto' }
+        5: { cellWidth: 'auto' }
       },
       margin: { left: 40, right: 40, bottom: 60 },
       didDrawPage: (data: any) => {
