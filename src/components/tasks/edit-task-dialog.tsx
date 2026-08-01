@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { useAuth } from '@/contexts/auth-provider';
 import { useTask } from '@/contexts/task-provider';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -151,6 +151,16 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
 
   const shortId = useMemo(() => (taskToDisplay.id || '').slice(-6).toUpperCase(), [taskToDisplay.id]);
 
+  const statusVariantMap: Record<TaskStatus, 'default' | 'secondary' | 'destructive' | 'success' | 'warning' | 'outline'> = {
+    'To Do': 'secondary',
+    'In Progress': 'warning',
+    'In Review': 'default',
+    'Done': 'success',
+    'Completed': 'success',
+    'Pending Approval': 'warning',
+    'Overdue': 'destructive'
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-[95vw] md:max-w-6xl w-full h-auto max-h-[95vh] flex flex-col p-0 overflow-hidden bg-white shadow-2xl" onInteractOutside={(e) => e.preventDefault()}>
@@ -161,13 +171,13 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
               <div className="bg-[#E9F0FE] text-[#1E40AF] px-2 py-0.5 rounded font-mono font-bold text-[10px] border border-[#BFDBFE]">
                   ID: {shortId}
               </div>
-              <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
+              <DialogTitle className="text-2xl font-black text-slate-900 tracking-tight uppercase">
                   TASK DETAILS: {taskToDisplay.title}
-              </h2>
+              </DialogTitle>
           </div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          <DialogDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
             ASSIGNED BY <span className="text-slate-600">{creator?.name?.toUpperCase()}</span> TO <span className="text-slate-600">{assignees.map(a => a.name?.toUpperCase()).join(', ')}</span>
-          </p>
+          </DialogDescription>
           <div className="mt-4">
               <Badge className="h-8 px-6 rounded-md font-black text-[11px] uppercase tracking-[0.15em] shadow-sm pointer-events-none bg-[#2563EB] hover:bg-[#2563EB]">
                 {taskToDisplay.status}
