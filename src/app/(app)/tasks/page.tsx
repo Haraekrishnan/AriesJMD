@@ -47,7 +47,6 @@ export default function TasksPage() {
   });
 
   const [isPendingApprovalDialogOpen, setIsPendingApprovalDialogOpen] = useState(false);
-  const [isMyRequestsDialogOpen, setIsMyRequestsDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const tasksAwaitingMyApproval = useMemo(() => {
@@ -59,16 +58,6 @@ export default function TasksPage() {
     );
   }, [tasks, user]);
   
-  const mySubmittedTasks = useMemo(() => {
-    if (!user) return [];
-    return tasks.filter(task => {
-      if (task.isArchived) return false;
-      const isMySubmittedTask = task.statusRequest?.requestedBy === user.id && task.statusRequest?.status === 'Pending';
-      const isReturnedToMe = task.assigneeIds?.includes(user.id) && task.approvalState === 'returned';
-      return isMySubmittedTask || isReturnedToMe;
-    });
-  }, [tasks, user]);
-
   const visibleTasksPool = useMemo(() => {
     if (!user) return [];
     
@@ -78,7 +67,10 @@ export default function TasksPage() {
     
     return tasks.filter(task => {
       if (hasFullView) return true;
-      return task.assigneeIds && task.assigneeIds.some(id => visibleUserIds.has(id));
+      const isAssignee = task.assigneeIds && task.assigneeIds.some(id => visibleUserIds.has(id));
+      const isCreator = task.creatorId === user.id;
+      const isApprover = task.approverId === user.id;
+      return isAssignee || isCreator || isApprover;
     });
   }, [tasks, user, getVisibleUsers]);
 
@@ -87,9 +79,6 @@ export default function TasksPage() {
       const { status, priority, dateRange, showMyTasksOnly, assigneeId, month, year, search } = filters;
 
       // 1. Archive Logic:
-      // If we are in Archive View, only show archived.
-      // If we are searching, include archived. 
-      // If none of above, only show active.
       if (isArchiveView) {
         if (!task.isArchived) return false;
       } else {
@@ -103,16 +92,6 @@ export default function TasksPage() {
           const matchesDesc = (task.description || '').toLowerCase().includes(term);
           const matchesId = (task.id || '').toLowerCase().includes(term);
           if (!matchesTitle && !matchesDesc && !matchesId) return false;
-      }
-
-      // If there's a pending statusRequest for completion, show it only to approver/requester.
-      if (task.statusRequest?.status === 'Pending') {
-        const isApprover = task.creatorId === user?.id;
-        const isRequester = task.statusRequest?.requestedBy === user?.id;
-        if (isApprover || isRequester) {
-            return true; 
-        }
-        return false;
       }
 
       if (assigneeId !== 'all' && !task.assigneeIds?.includes(assigneeId)) {
@@ -170,8 +149,8 @@ export default function TasksPage() {
 
 
   const kanbanTasks = useMemo(() => {
-      const regularBoardTasks = filteredTasks.filter(t => t.status !== 'Pending Approval' && !t.isArchived);
-      const overdueTasks = regularBoardTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done');
+      const regularBoardTasks = filteredTasks.filter(t => !t.isArchived);
+      const overdueTasks = regularBoardTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done' && t.status !== 'Pending Approval');
       const overdueTaskIds = new Set(overdueTasks.map(t => t.id));
       const regularTasks = regularBoardTasks.filter(t => !overdueTaskIds.has(t.id));
       return { overdue: overdueTasks, regular: regularTasks };
@@ -233,13 +212,6 @@ export default function TasksPage() {
                   {isArchiveView ? 'Back to Board' : 'View Archive'}
               </Button>
 
-              <Button variant={myPendingTaskRequestCount > 0 ? "secondary" : "outline"} onClick={() => setIsMyRequestsDialogOpen(true)} className="h-9 font-bold text-xs shadow-sm">
-                  <History className="mr-2 h-4 w-4" />
-                  My Requests
-                  {myPendingTaskRequestCount > 0 && (
-                    <Badge variant="destructive" className="ml-2 h-5 min-w-[1.25rem] justify-center p-0">{myPendingTaskRequestCount}</Badge>
-                  )}
-              </Button>
               <Button variant={pendingTaskApprovalCount > 0 ? "secondary" : "outline"} onClick={() => setIsPendingApprovalDialogOpen(true)} className="h-9 font-bold text-xs shadow-sm">
                   <Bell className="mr-2 h-4 w-4" />
                   Pending Approvals
@@ -288,40 +260,6 @@ export default function TasksPage() {
                          </div>
                        )
                     }) : <p className="text-muted-foreground text-center py-8">No tasks are awaiting your approval.</p>}
-                </div>
-            </ScrollArea>
-        </DialogContent>
-      </Dialog>
-      
-      <Dialog open={isMyRequestsDialogOpen} onOpenChange={setIsMyRequestsDialogOpen}>
-        <DialogContent className="sm:max-w-xl">
-            <DialogHeader>
-                <DialogTitle>My Pending Requests</DialogTitle>
-                <DialogDescription>
-                    These are tasks you've submitted that are awaiting approval or have been returned for modification.
-                </DialogDescription>
-            </DialogHeader>
-            <ScrollArea className="max-h-[70vh] p-1">
-                <div className="p-4 space-y-4">
-                    {mySubmittedTasks.length > 0 ? mySubmittedTasks.map(task => {
-                        const approver = users.find(u => u.id === task.creatorId);
-                        const lastComment = task.comments && task.comments.length > 0 ? task.comments[task.comments.length - 1] : null;
-                        return (
-                          <div key={task.id} className="border p-3 rounded-lg flex justify-between items-center bg-card shadow-sm hover:bg-muted/30 transition-colors">
-                            <div>
-                                <p className="font-bold text-sm uppercase tracking-tight">{task.title}</p>
-                                <div className="text-[10px] text-muted-foreground flex items-center gap-2 mt-1 uppercase font-black tracking-widest">
-                                {task.approvalState === 'returned' ? <Badge variant="destructive" className="h-4 py-0 text-[9px] font-black">RETURNED</Badge> : <Badge className="h-4 py-0 text-[9px] font-black">PENDING</Badge>}
-                                <span className="bg-muted px-1.5 rounded">WITH: {approver?.name || 'approver'}</span>
-                                {lastComment && (
-                                    <span>&middot; {formatDistanceToNow(new Date(lastComment.date), { addSuffix: true })}</span>
-                                )}
-                                </div>
-                            </div>
-                            <Button variant="secondary" size="sm" onClick={() => openEditDialog(task)} className="font-bold h-8 text-[11px]">VIEW</Button>
-                          </div>
-                        )
-                    }) : <p className="text-muted-foreground text-center py-8">You have no tasks awaiting approval.</p>}
                 </div>
             </ScrollArea>
         </DialogContent>

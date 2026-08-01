@@ -11,13 +11,14 @@ import EditTaskDialog from './edit-task-dialog';
 import { isPast, parseISO } from 'date-fns';
 import { ScrollArea } from '../ui/scroll-area';
 
-type BoardColumn = 'To Do' | 'In Progress' | 'Completed' | 'Overdue';
+type BoardColumn = 'To Do' | 'In Progress' | 'In Review' | 'Completed' | 'Overdue';
 
-const columns: BoardColumn[] = ['To Do', 'In Progress', 'Completed', 'Overdue'];
+const columns: BoardColumn[] = ['To Do', 'In Progress', 'In Review', 'Completed', 'Overdue'];
 
 const statusMap: Record<BoardColumn, TaskStatus | null> = {
   'To Do': 'To Do',
   'In Progress': 'In Progress',
+  'In Review': 'Pending Approval',
   'Completed': 'Done',
   'Overdue': null, 
 };
@@ -48,6 +49,12 @@ export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTas
 
     const task = tasks.find(t => t.id === draggedTask) || overdueTasks.find(t => t.id === draggedTask);
     if (!task) return;
+
+    // Prevent dragging into In Review manually - it should happen via submission
+    if (newStatus === 'Pending Approval') {
+        setDraggedTask(null);
+        return;
+    }
     
     const comment = `Status changed to ${newStatus} via drag and drop.`;
     requestTaskStatusChange(task.id, newStatus, comment);
@@ -56,7 +63,8 @@ export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTas
   };
   
   const getTasksForColumn = (column: BoardColumn) => {
-      if (column === 'Overdue') return overdueTasks.filter(t => t.status !== 'Pending Approval');
+      if (column === 'Overdue') return overdueTasks.filter(t => t.status !== 'Pending Approval' && t.status !== 'Done');
+      
       const status = statusMap[column] as TaskStatus;
       if (column === 'To Do' || column === 'In Progress') {
         return tasks.filter(t => t.status === status && !isPast(parseISO(t.dueDate)));
@@ -70,7 +78,7 @@ export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTas
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 h-full flex-1">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 h-full flex-1">
         {columns.map(column => {
           const columnTasks = getTasksForColumn(column);
           return (
@@ -92,7 +100,7 @@ export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTas
                 <div className="space-y-4 p-4 pt-4">
                 {columnTasks.length > 0 ? (
                     columnTasks.map(task => (
-                        <div key={task.id} draggable={column !== 'Overdue'} onDragStart={(e) => handleDragStart(e, task.id)}>
+                        <div key={task.id} draggable={column !== 'Overdue' && column !== 'In Review'} onDragStart={(e) => handleDragStart(e, task.id)}>
                             <TaskCard task={task} onClick={() => openEditDialog(task)} />
                         </div>
                     ))
