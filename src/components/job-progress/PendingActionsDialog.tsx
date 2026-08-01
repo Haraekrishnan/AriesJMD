@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -10,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO, differenceInDays } from 'date-fns';
-import { Bell, CheckCircle, Clock, FileText } from 'lucide-react';
+import { Bell, CheckCircle, Clock, FileText, ChevronRight } from 'lucide-react';
 import type { JobProgress, Timesheet, Role, DocumentMovement } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -73,13 +72,13 @@ export default function PendingActionsDialog({ isOpen, setIsOpen, onViewJob, onV
           <Tabs defaultValue="jms" className="flex-1 flex flex-col overflow-hidden">
             <div className="px-6 shrink-0">
                 <TabsList className="flex w-full h-auto p-1 bg-muted/50 rounded-lg">
-                <TabsTrigger value="jms" className="flex-1 text-[11px] sm:text-xs py-2 px-1 font-bold uppercase tracking-tight data-[state=active]:shadow-sm">
+                <TabsTrigger value="jms" className="flex-1 text-[10px] sm:text-xs py-2 px-0.5 font-bold uppercase tracking-tight data-[state=active]:shadow-sm">
                     JMS ({pendingJms.length})
                 </TabsTrigger>
-                <TabsTrigger value="timesheets" className="flex-1 text-[11px] sm:text-xs py-2 px-1 font-bold uppercase tracking-tight data-[state=active]:shadow-sm">
+                <TabsTrigger value="timesheets" className="flex-1 text-[10px] sm:text-xs py-2 px-0.5 font-bold uppercase tracking-tight data-[state=active]:shadow-sm">
                     TS ({pendingTimesheets.length})
                 </TabsTrigger>
-                <TabsTrigger value="documents" className="flex-1 text-[11px] sm:text-xs py-2 px-1 font-bold uppercase tracking-tight data-[state=active]:shadow-sm">
+                <TabsTrigger value="documents" className="flex-1 text-[10px] sm:text-xs py-2 px-0.5 font-bold uppercase tracking-tight data-[state=active]:shadow-sm">
                     DOCS ({pendingDocuments.length})
                 </TabsTrigger>
                 </TabsList>
@@ -106,28 +105,26 @@ export default function PendingActionsDialog({ isOpen, setIsOpen, onViewJob, onV
                         onClick={() => onViewJob(job)}
                       >
                         <div className="min-w-0 pr-4 flex-1">
-                          <p className="font-bold text-xs sm:text-sm truncate uppercase text-slate-900">{locationText || 'N/A'}</p>
-                          <p className="text-[10px] text-slate-500 truncate font-bold mb-2 uppercase">{job.title}</p>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <p className="font-bold text-xs sm:text-sm truncate uppercase text-slate-900">{locationText || 'N/A'}</p>
                             {job.jmsNo && (
-                                <Badge variant="outline" className="h-5 py-0 px-2 text-[9px] font-black border-blue-200 text-blue-700 bg-blue-50 tracking-tighter">
+                                <Badge variant="outline" className="h-4 py-0 px-1.5 text-[8px] font-black border-blue-200 text-blue-700 bg-blue-50 tracking-tighter shrink-0">
                                     JMS: {job.jmsNo}
                                 </Badge>
                             )}
-                            <div className={cn("text-[10px] font-black uppercase flex items-center gap-1", dateColor)}>
-                                <Clock className="h-3 w-3" />
-                                {format(parseISO(job.lastUpdated), 'dd MMM')}
-                                {daysElapsed > 0 && <span className="opacity-70 ml-1">({daysElapsed}D)</span>}
-                            </div>
+                          </div>
+                          <p className="text-[10px] text-slate-500 truncate font-bold mb-2 uppercase">{job.title}</p>
+                          <div className={cn("text-[10px] font-black uppercase flex items-center gap-1", dateColor)}>
+                            <Clock className="h-3 w-3" />
+                            {format(parseISO(job.lastUpdated), 'dd MMM')}
+                            {daysElapsed > 0 && <span className="opacity-70 ml-1">({daysElapsed}D)</span>}
                           </div>
                         </div>
-                        <Button variant="ghost" size="icon" className="shrink-0 text-slate-300">
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
+                        <ChevronRight className="h-4 w-4 text-slate-300 shrink-0" />
                       </div>
                     )
                   }) : (
-                    <div className="flex flex-col items-center justify-center py-20 text-muted-foreground opacity-30">
+                    <div className="flex flex-col items-center justify-center py-20 text-muted-foreground opacity-30 text-center">
                         <CheckCircle className="h-10 w-10 mb-2" />
                         <p className="text-xs font-bold uppercase tracking-widest">No pending JMS steps</p>
                     </div>
@@ -142,6 +139,7 @@ export default function PendingActionsDialog({ isOpen, setIsOpen, onViewJob, onV
                   {pendingTimesheets.length > 0 ? pendingTimesheets.map(ts => {
                     const tsDays = differenceInDays(new Date(), parseISO(ts.submissionDate));
                     const borderColor = tsDays >= 3 ? "border-l-rose-500" : tsDays >= 2 ? "border-l-orange-400" : "border-l-blue-400";
+                    const dateColor = tsDays >= 3 ? "text-rose-600" : tsDays >= 2 ? "text-orange-600" : "text-blue-600";
                     
                     return (
                         <div 
@@ -161,16 +159,18 @@ export default function PendingActionsDialog({ isOpen, setIsOpen, onViewJob, onV
                             </p>
                             <div className="flex items-center gap-3 mt-2">
                                 <Badge variant="outline" className="h-4 text-[9px] font-black border-slate-200">QTY: {ts.numberOfTimesheets}</Badge>
-                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
-                                    Sub: {format(parseISO(ts.submissionDate), 'dd MMM')}
-                                </span>
+                                <div className={cn("text-[9px] font-bold uppercase flex items-center gap-1", dateColor)}>
+                                    <Clock className="h-2.5 w-2.5" />
+                                    {format(parseISO(ts.submissionDate), 'dd MMM')}
+                                    {tsDays > 0 && <span className="opacity-70 ml-1">({tsDays}D)</span>}
+                                </div>
                             </div>
                           </div>
                           <ChevronRight className="h-4 w-4 text-slate-300 shrink-0" />
                         </div>
                     );
                   }) : (
-                     <div className="flex flex-col items-center justify-center py-20 text-muted-foreground opacity-30">
+                     <div className="flex flex-col items-center justify-center py-20 text-muted-foreground opacity-30 text-center">
                         <CheckCircle className="h-10 w-10 mb-2" />
                         <p className="text-xs font-bold uppercase tracking-widest">No pending timesheets</p>
                     </div>
@@ -186,6 +186,7 @@ export default function PendingActionsDialog({ isOpen, setIsOpen, onViewJob, onV
                     const docDays = differenceInDays(new Date(), parseISO(doc.lastUpdated));
                     const isReturned = doc.status === 'Returned';
                     const borderColor = isReturned ? "border-l-rose-600" : (docDays >= 3 ? "border-l-rose-500" : "border-l-blue-400");
+                    const dateColor = isReturned || docDays >= 3 ? "text-rose-600" : (docDays >= 2 ? "text-orange-600" : "text-blue-600");
                     
                     return (
                         <div 
@@ -205,16 +206,18 @@ export default function PendingActionsDialog({ isOpen, setIsOpen, onViewJob, onV
                                 <Badge variant={isReturned ? 'destructive' : 'outline'} className="shrink-0 text-[9px] font-black tracking-widest h-4 py-0">
                                     {doc.status.toUpperCase()}
                                 </Badge>
-                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
+                                <div className={cn("text-[9px] font-bold uppercase flex items-center gap-1", dateColor)}>
+                                    <Clock className="h-2.5 w-2.5" />
                                     {format(parseISO(doc.lastUpdated), 'dd MMM')}
-                                </span>
+                                    {docDays > 0 && <span className="opacity-70 ml-1">({docDays}D)</span>}
+                                </div>
                             </div>
                           </div>
                           <ChevronRight className="h-4 w-4 text-slate-300 shrink-0" />
                         </div>
                     );
                   }) : (
-                    <div className="flex flex-col items-center justify-center py-20 text-muted-foreground opacity-30">
+                    <div className="flex flex-col items-center justify-center py-20 text-muted-foreground opacity-30 text-center">
                         <CheckCircle className="h-10 w-10 mb-2" />
                         <p className="text-xs font-bold uppercase tracking-widest">No pending documents</p>
                     </div>
@@ -233,7 +236,3 @@ export default function PendingActionsDialog({ isOpen, setIsOpen, onViewJob, onV
       </Dialog>
   );
 }
-
-const ChevronRight = ({ className }: { className?: string }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m9 18 6-6-6-6"/></svg>
-);
