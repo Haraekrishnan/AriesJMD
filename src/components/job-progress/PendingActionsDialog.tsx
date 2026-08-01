@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO } from 'date-fns';
+import { Bell, CheckCircle } from 'lucide-react';
 import type { JobProgress, Timesheet, Role, DocumentMovement } from '@/lib/types';
-import { JobProgressTable } from './JobProgressTable';
 
 interface PendingActionsDialogProps {
   isOpen: boolean;
@@ -70,6 +70,7 @@ export default function PendingActionsDialog({ isOpen, setIsOpen, onViewJob, onV
           <Tabs defaultValue="jms" className="flex-1 flex flex-col overflow-hidden">
             <TabsList className="flex w-full justify-start h-auto p-1 bg-muted/50 overflow-x-auto whitespace-nowrap">
               <TabsTrigger value="jms" className="flex-1 text-[10px] sm:text-xs py-2 px-3 font-bold uppercase tracking-wider">
+                <Bell className="mr-1.5 h-3 w-3 sm:h-3.5 sm:w-3.5" />
                 JMS ({pendingJms.length})
               </TabsTrigger>
               <TabsTrigger value="timesheets" className="flex-1 text-[10px] sm:text-xs py-2 px-3 font-bold uppercase tracking-wider">
