@@ -45,6 +45,7 @@ export type Task = {
   assigneeIds: string[]; // For potential future multiple assignees
   creatorId: string;
   approverId?: string;
+  createdAt: string; // ISO String
   dueDate: string; // ISO String
   priority: Priority;
   comments: Comment[];

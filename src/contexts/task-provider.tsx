@@ -16,7 +16,7 @@ type TaskContextType = {
   myNewTaskCount: number;
   pendingTaskApprovalCount: number;
   myPendingTaskRequestCount: number;
-  createTask: (taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'approvalState'>) => void;
+  createTask: (taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'approvalState' | 'createdAt'>) => void;
   updateTask: (task: Task) => void;
   deleteTask: (taskId: string) => void;
   archiveTask: (taskId: string) => void;
@@ -115,22 +115,24 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
   }, [tasks, user]);
 
-    const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'approvalState'>) => {
+    const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'approvalState' | 'createdAt'>) => {
         if (!user) return;
         const newRef = push(ref(rtdb, 'tasks'));
+        const now = new Date().toISOString();
         const subtasks: { [userId: string]: Subtask } = {};
         taskData.assigneeIds.forEach(id => {
-            subtasks[id] = { userId: id, status: 'To Do', updatedAt: new Date().toISOString() };
+            subtasks[id] = { userId: id, status: 'To Do', updatedAt: now };
         });
 
         const newTask = {
             ...taskData,
             id: newRef.key,
             creatorId: user.id,
+            createdAt: now,
             status: 'To Do' as TaskStatus,
             approvalState: 'none' as ApprovalState,
             comments: [],
-            lastUpdated: new Date().toISOString(),
+            lastUpdated: now,
             viewedBy: { [user.id]: true },
             subtasks,
             isArchived: false,

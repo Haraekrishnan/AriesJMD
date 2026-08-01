@@ -1,10 +1,15 @@
 'use client';
-import type { Task } from '@/lib/types';
+
+import * as React from 'react';
+import type { Task, Comment } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
-import * as XLSX from 'xlsx';
-import { format } from 'date-fns';
+import * as ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
+import { format, parseISO, isValid } from 'date-fns';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 interface ReportDownloadsProps {
   tasks: Task[];
@@ -13,54 +18,177 @@ interface ReportDownloadsProps {
 export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
   const { users } = useAuth();
 
-  const handleDownloadExcel = () => {
-    const dataToExport = tasks.map(task => ({
-      'Task Title': task.title,
-      'Assignee': task.assigneeIds && task.assigneeIds.length > 0 ? users.find(u => u.id === task.assigneeIds[0])?.name || 'N/A' : 'N/A',
-      'Status': task.status,
+  const formatDateTime = (isoString?: string | null) => {
+    if (!isoString) return 'N/A';
+    const date = parseISO(isoString);
+    return isValid(date) ? format(date, 'dd-MM-yyyy HH:mm:ss') : 'Invalid Date';
+  };
+
+  const getStartedDate = (task: Task) => {
+    // Attempt to find the earliest comment or action indicating a move to "In Progress"
+    const comments = Array.isArray(task.comments) ? task.comments : Object.values(task.comments || {});
+    const startAction = comments.find(c => c.text.toLowerCase().includes('status changed to in progress') || c.text.toLowerCase().includes('task started'));
+    return startAction ? startAction.date : null;
+  };
+
+  const processTaskData = (task: Task) => {
+    const creator = users.find(u => u.id === task.creatorId)?.name || 'Unknown';
+    const assigneeNames = task.assigneeIds?.map(id => users.find(u => u.id === id)?.name || id).join(', ') || 'Unassigned';
+    
+    const comments = Array.isArray(task.comments) ? task.comments : Object.values(task.comments || {});
+    const interactionHistory = comments
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .map(c => {
+        const author = users.find(u => u.id === c.userId)?.name || 'Unknown';
+        return `[${formatDateTime(c.date)}] ${author}: ${c.text}`;
+      })
+      .join('\n');
+
+    return {
+      'Task ID': (task.id || '').slice(-6).toUpperCase(),
+      'Title': task.title,
+      'Creator': creator,
+      'Assignees': assigneeNames,
       'Priority': task.priority,
-      'Due Date': task.dueDate ? format(new Date(task.dueDate), 'dd-MM-yyyy') : 'N/A',
+      'Status': task.status,
+      'Created At': formatDateTime(task.createdAt),
+      'Started At': formatDateTime(getStartedDate(task)),
+      'Sent for Review At': formatDateTime(task.statusRequest?.date),
+      'Approved/Completed At': formatDateTime(task.completionDate),
+      'Target Due Date': formatDateTime(task.dueDate),
       'Description': task.description,
-    }));
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Tasks Report');
-    XLSX.writeFile(workbook, 'AriesMarine_Report.xlsx');
+      'Interaction History': interactionHistory
+    };
+  };
+
+  const handleDownloadExcel = async () => {
+    if (tasks.length === 0) return;
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Aries Task Report');
+
+    // Define columns with broad widths
+    worksheet.columns = [
+      { header: 'TASK ID', key: 'Task ID', width: 12 },
+      { header: 'TITLE', key: 'Title', width: 35 },
+      { header: 'CREATOR', key: 'Creator', width: 25 },
+      { header: 'ASSIGNEES', key: 'Assignees', width: 35 },
+      { header: 'PRIORITY', key: 'Priority', width: 12 },
+      { header: 'STATUS', key: 'Status', width: 20 },
+      { header: 'CREATED DATE/TIME', key: 'Created At', width: 22 },
+      { header: 'STARTED DATE/TIME', key: 'Started At', width: 22 },
+      { header: 'REVIEW SENT DATE/TIME', key: 'Sent for Review At', width: 22 },
+      { header: 'COMPLETED DATE/TIME', key: 'Approved/Completed At', width: 22 },
+      { header: 'DUE DATE/TIME', key: 'Target Due Date', width: 22 },
+      { header: 'DESCRIPTION', key: 'Description', width: 50 },
+      { header: 'INTERACTION HISTORY (ALL COMMENTS)', key: 'Interaction History', width: 80 },
+    ];
+
+    // Style the header
+    const headerRow = worksheet.getRow(1);
+    headerRow.height = 30;
+    headerRow.eachCell((cell) => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF1E40AF' } // Aries Navy Blue
+      };
+      cell.font = {
+        bold: true,
+        color: { argb: 'FFFFFFFF' },
+        size: 10
+      };
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+      };
+    });
+
+    // Add data
+    tasks.forEach(task => {
+      const row = worksheet.addRow(processTaskData(task));
+      row.alignment = { vertical: 'top', wrapText: true };
+      row.eachCell((cell) => {
+        cell.border = {
+            top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+            left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+            bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+            right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+        };
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `Aries_Detailed_Task_Report_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
   };
 
   const handleDownloadPdf = async () => {
-    const jsPDF = (await import('jspdf')).default;
-    await import('jspdf-autotable');
+    if (tasks.length === 0) return;
 
-    const doc = new jsPDF();
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
     
-    doc.text('Aries Marine - Task Report', 14, 16);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Aries Marine - Detailed Task Management Report', 40, 40);
     
-    // This requires a type assertion because TypeScript doesn't know about the dynamically added method
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generated on: ${format(new Date(), 'PPP p')}`, 40, 60);
+
+    const tableData = tasks.map(task => {
+        const data = processTaskData(task);
+        return [
+            data['Task ID'],
+            data['Title'],
+            data['Creator'],
+            data['Assignees'],
+            data['Status'],
+            data['Created At'],
+            data['Approved/Completed At'],
+            data['Interaction History']
+        ];
+    });
+
     (doc as any).autoTable({
-      head: [['Task Title', 'Assignee', 'Status', 'Priority', 'Due Date']],
-      body: tasks.map(task => [
-        task.title,
-        task.assigneeIds && task.assigneeIds.length > 0 ? users.find(u => u.id === task.assigneeIds[0])?.name || 'N/A' : 'N/A',
-        task.status,
-        task.priority,
-        task.dueDate ? format(new Date(task.dueDate), 'dd-MM-yyyy') : 'N/A',
-      ]),
-      startY: 20,
+      head: [['ID', 'TITLE', 'CREATOR', 'ASSIGNEES', 'STATUS', 'CREATED', 'COMPLETED', 'INTERACTION HISTORY']],
+      body: tableData,
+      startY: 80,
+      theme: 'grid',
+      styles: { fontSize: 7, cellPadding: 5, overflow: 'linebreak' },
+      headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: 'bold' },
+      columnStyles: {
+        0: { cellWidth: 40 },
+        1: { cellWidth: 100 },
+        2: { cellWidth: 70 },
+        3: { cellWidth: 80 },
+        4: { cellWidth: 60 },
+        5: { cellWidth: 80 },
+        6: { cellWidth: 80 },
+        7: { cellWidth: 'auto' }
+      },
+      margin: { left: 40, right: 40, bottom: 60 },
+      didDrawPage: (data: any) => {
+          doc.setFontSize(8);
+          doc.text(`Page ${data.pageNumber}`, pageWidth - 60, doc.internal.pageSize.getHeight() - 30);
+      }
     });
     
-    doc.save('AriesMarine_Report.pdf');
+    doc.save(`Aries_Detailed_Task_Report_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
   };
 
   return (
     <div className="flex gap-2">
-      <Button variant="outline" onClick={handleDownloadExcel} disabled={tasks.length === 0}>
-        <FileDown className="mr-2 h-4 w-4" />
-        Excel
+      <Button variant="outline" onClick={handleDownloadExcel} disabled={tasks.length === 0} className="font-bold text-xs h-9">
+        <FileDown className="mr-2 h-4 w-4 text-green-600" />
+        Detailed Excel
       </Button>
-      <Button variant="outline" onClick={handleDownloadPdf} disabled={tasks.length === 0}>
-        <FileDown className="mr-2 h-4 w-4" />
-        PDF
+      <Button variant="outline" onClick={handleDownloadPdf} disabled={tasks.length === 0} className="font-bold text-xs h-9">
+        <FileDown className="mr-2 h-4 w-4 text-rose-600" />
+        Detailed PDF
       </Button>
     </div>
   );

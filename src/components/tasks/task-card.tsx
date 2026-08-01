@@ -1,15 +1,13 @@
-
 'use client';
 import { useAuth } from '@/contexts/auth-provider';
 import type { Task } from '@/lib/types';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { format, parseISO } from 'date-fns';
-import { MessageSquare, Paperclip, Clock } from 'lucide-react';
+import { format } from 'date-fns';
+import { Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMemo } from 'react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TaskCardProps {
   task: Task;
@@ -22,101 +20,55 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
   const assignees = useMemo(() => users.filter(u => task.assigneeIds?.includes(u.id)), [users, task.assigneeIds]);
   const creator = useMemo(() => users.find(u => u.id === task.creatorId), [users, task.creatorId]);
 
-  const priorityColors: Record<string, string> = {
-    High: 'bg-[#FF5E3A]',
-    Medium: 'bg-[#FFB900]',
-    Low: 'bg-[#10B981]',
+  const getPriorityVariant = (priority: string) => {
+    switch (priority) {
+      case 'High': return 'destructive';
+      case 'Medium': return 'secondary';
+      case 'Low': return 'default';
+      default: return 'outline';
+    }
   };
-
-  const commentsCount = useMemo(() => {
-    return Array.isArray(task.comments) ? task.comments.length : Object.values(task.comments || {}).length;
-  }, [task.comments]);
 
   const hasUnreadUpdate = user && task.participants?.includes(user.id) && !task.viewedBy?.[user.id];
 
-  // Specific visual header for high priority or approval pending like the reference image
-  const showVisualHeader = task.priority === 'High' || task.status === 'Pending Approval';
-  const headerClass = task.priority === 'High' ? 'bg-[#FF5E3A]' : task.status === 'Pending Approval' ? 'bg-[#2563EB]' : '';
-
   return (
-    <Card 
-      onClick={onClick} 
-      className="group cursor-pointer hover:shadow-lg transition-all duration-200 border-none overflow-hidden bg-white rounded-lg shadow-sm"
-    >
-      {showVisualHeader && (
-        <div className={cn("h-20 w-full flex items-center justify-center", headerClass)}>
-            <div className="bg-white/20 p-3 rounded-full border border-white/30 backdrop-blur-sm">
-                {task.priority === 'High' ? (
-                    <Clock className="h-8 w-8 text-white" />
-                ) : (
-                    <MessageSquare className="h-8 w-8 text-white" />
-                )}
-            </div>
-        </div>
-      )}
-
-      <CardContent className="p-4 space-y-3">
+    <Card onClick={onClick} className="cursor-pointer hover:shadow-md transition-shadow">
+      <CardContent className="p-4 space-y-4">
         <div className="flex justify-between items-start">
-            <div className={cn("w-6 h-1.5 rounded-full", priorityColors[task.priority] || 'bg-slate-300')} />
-            {hasUnreadUpdate && <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.8)]" />}
-        </div>
-
-        <div className="space-y-1">
-            <h4 className="text-sm font-black text-[#1E40AF] leading-tight uppercase tracking-tight group-hover:text-primary transition-colors">
-                {task.title}
-            </h4>
-            <p className="text-[11px] text-slate-500 font-medium line-clamp-2 leading-relaxed">
-                {task.description}
-            </p>
-        </div>
-
-        {/* Personnel Section */}
-        <div className="flex flex-col gap-1.5 py-1 text-[9px] font-black uppercase tracking-widest">
-            <p className="text-slate-400">
-                <span className="text-slate-500">FROM:</span> {creator?.name || 'N/A'}
-            </p>
-            <p className="text-slate-400 truncate" title={assignees.map(a => a.name).join(', ')}>
-                <span className="text-slate-500">TO:</span> {assignees.map(a => a.name).join(', ')}
-            </p>
-        </div>
-
-        <div className="flex justify-between items-center pt-3 border-t border-slate-100 mt-2">
-            <div className="flex items-center gap-3 text-slate-400">
-                {task.dueDate && (
-                    <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider">
-                        <Clock className="h-3 w-3" />
-                        {format(parseISO(task.dueDate), 'MMM dd')}
-                    </div>
-                )}
-                {commentsCount > 0 && (
-                    <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider">
-                        <MessageSquare className="h-3 w-3" />
-                        {commentsCount}
-                    </div>
-                )}
-                {task.link && (
-                    <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider">
-                        <Paperclip className="h-3 w-3" />
-                    </div>
-                )}
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg font-bold uppercase tracking-tight">{task.title}</CardTitle>
+              {hasUnreadUpdate && <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" title="Unread update"></div>}
             </div>
+            <Badge variant={getPriorityVariant(task.priority)}>{task.priority}</Badge>
+        </div>
+        <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
+        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+            Due: {format(new Date(task.dueDate), 'PPP')}
+        </div>
 
-            <div className="flex -space-x-2">
-                <TooltipProvider>
-                    {assignees.map((assignee) => (
-                        <Tooltip key={assignee.id}>
-                            <TooltipTrigger asChild>
-                                <Avatar className="h-6 w-6 border-2 border-white ring-1 ring-slate-100 shadow-sm">
-                                    <AvatarImage src={assignee.avatar} />
-                                    <AvatarFallback className="text-[8px] font-black bg-slate-200">{assignee.name[0]}</AvatarFallback>
-                                </Avatar>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p className="text-[10px] font-bold">{assignee.name}</p>
-                            </TooltipContent>
-                        </Tooltip>
+        <div className="space-y-3 pt-2 border-t">
+            <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">
+                    <Users className="h-3 w-3" /> Assigned Personnel
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                    {assignees.map(assignee => (
+                        <div key={assignee.id} className="flex items-center gap-1.5 bg-muted/50 pr-2 rounded-full border shadow-sm h-7">
+                            <Avatar className="h-6 w-6 border">
+                                <AvatarImage src={assignee.avatar} />
+                                <AvatarFallback className="text-[8px]">{assignee.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <span className="text-[10px] font-bold text-foreground truncate max-w-[120px]">{assignee.name}</span>
+                        </div>
                     ))}
-                </TooltipProvider>
+                </div>
+            </div>
+            
+            <div className="flex justify-between items-center text-[10px] pt-1">
+                 <div className="flex items-center gap-1.5">
+                    <span className="font-black text-slate-500 uppercase tracking-widest">Creator:</span>
+                    <span className="font-bold text-primary">{creator?.name || 'Unknown'}</span>
+                </div>
             </div>
         </div>
       </CardContent>
