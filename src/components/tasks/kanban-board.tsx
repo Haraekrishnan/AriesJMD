@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -8,7 +9,7 @@ import TaskCard from './task-card';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 import EditTaskDialog from './edit-task-dialog';
-import { isPast } from 'date-fns';
+import { isPast, parseISO } from 'date-fns';
 import { ScrollArea } from '../ui/scroll-area';
 
 type BoardColumn = 'To Do' | 'In Progress' | 'Completed' | 'Overdue';
@@ -22,15 +23,7 @@ const statusMap: Record<BoardColumn, TaskStatus | null> = {
   'Overdue': null, 
 };
 
-const columnColors: Record<BoardColumn, string> = {
-    'To Do': 'border-t-blue-500',
-    'In Progress': 'border-t-yellow-500',
-    'Completed': 'border-t-green-500',
-    'Overdue': 'border-t-red-500',
-}
-
 export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTasks: Task[] }) {
-  const { user } = useAuth();
   const { requestTaskStatusChange } = useTask();
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -64,11 +57,10 @@ export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTas
   };
   
   const getTasksForColumn = (column: BoardColumn) => {
-      if (column === 'Overdue') return overdueTasks.filter(t => t.status !== 'Pending Approval');;
+      if (column === 'Overdue') return overdueTasks.filter(t => t.status !== 'Pending Approval');
       const status = statusMap[column] as TaskStatus;
-      // Exclude overdue tasks from regular columns
       if (column === 'To Do' || column === 'In Progress') {
-        return tasks.filter(t => t.status === status && !isPast(new Date(t.dueDate)));
+        return tasks.filter(t => t.status === status && !isPast(parseISO(t.dueDate)));
       }
       return tasks.filter(t => t.status === status);
   }
@@ -85,18 +77,20 @@ export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTas
           return (
           <div
             key={column}
-            className="flex flex-col bg-card rounded-lg border overflow-hidden" // Added overflow-hidden
+            className="flex flex-col bg-[#EBEDF0] rounded-xl overflow-hidden border shadow-sm"
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, column)}
           >
-            <div className={cn("font-bold p-4 shrink-0 bg-card rounded-t-lg border-t-4", columnColors[column])}>
-                <h3 className="flex items-center gap-2 text-base">
-                    <span>{column}</span>
-                    <Badge variant="secondary" className="text-sm">{columnTasks.length}</Badge>
+            <div className="p-4 shrink-0 flex items-center justify-between">
+                <h3 className="font-black text-[11px] uppercase tracking-[0.2em] text-slate-500">
+                    {column}
                 </h3>
+                <Badge variant="secondary" className="h-5 px-2 font-black text-[9px] bg-slate-200 text-slate-600 rounded-sm">
+                    {columnTasks.length}
+                </Badge>
             </div>
             <ScrollArea className="flex-1">
-                <div className="space-y-4 p-4 pt-2">
+                <div className="space-y-4 p-3 pt-0">
                 {columnTasks.length > 0 ? (
                     columnTasks.map(task => (
                         <div key={task.id} draggable={column !== 'Overdue'} onDragStart={(e) => handleDragStart(e, task.id)}>
@@ -104,8 +98,8 @@ export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTas
                         </div>
                     ))
                 ) : (
-                    <div className="flex items-center justify-center h-full text-muted-foreground text-sm pt-20">
-                        No tasks here.
+                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-[10px] font-black uppercase tracking-widest pt-20 opacity-30">
+                        No Tasks
                     </div>
                 )}
                 </div>
