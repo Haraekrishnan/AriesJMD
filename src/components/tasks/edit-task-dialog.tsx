@@ -33,16 +33,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { DatePickerInput } from "../ui/date-picker-input";
 
-const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline" | "success" | "warning"> = {
-  'To Do': 'secondary',
-  'In Progress': 'default',
-  'In Review': 'warning',
-  'Done': 'success',
-  'Pending Approval': 'warning',
-  'Overdue': 'destructive',
-  'Completed': 'success',
-};
-
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().min(1, 'Description is required'),
@@ -165,23 +155,23 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-[95vw] md:max-w-6xl w-full h-auto max-h-[95vh] flex flex-col p-0 overflow-hidden bg-white shadow-2xl" onInteractOutside={(e) => e.preventDefault()}>
         
-        {/* --- HEADER (Matched to Screenshot) --- */}
-        <DialogHeader className="p-8 pb-4 bg-white border-b relative shrink-0 text-center flex flex-col items-center">
-          <div className="flex items-center justify-center gap-3 mb-2">
+        {/* --- HEADER (Left Aligned for Professional Look) --- */}
+        <DialogHeader className="p-8 pb-4 bg-white border-b relative shrink-0 flex flex-col items-start">
+          <div className="flex items-center justify-start gap-3 mb-2">
               <div className="bg-[#E9F0FE] text-[#1E40AF] px-2 py-0.5 rounded font-mono font-bold text-[10px] border border-[#BFDBFE]">
                   ID: {shortId}
               </div>
               <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
-                  Task Details: {taskToDisplay.title}
+                  TASK DETAILS: {taskToDisplay.title}
               </h2>
           </div>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-            Assigned by <span className="text-slate-600">{creator?.name}</span> to <span className="text-slate-600">{assignees.map(a => a.name).join(', ')}</span>
+            ASSIGNED BY <span className="text-slate-600">{creator?.name?.toUpperCase()}</span> TO <span className="text-slate-600">{assignees.map(a => a.name?.toUpperCase()).join(', ')}</span>
           </p>
           <div className="mt-4">
-              <Button size="sm" className="h-8 px-8 rounded-md font-black text-[11px] uppercase tracking-[0.15em] shadow-sm pointer-events-none bg-[#2563EB]">
+              <Badge className="h-8 px-6 rounded-md font-black text-[11px] uppercase tracking-[0.15em] shadow-sm pointer-events-none bg-[#2563EB] hover:bg-[#2563EB]">
                 {taskToDisplay.status}
-              </Button>
+              </Badge>
           </div>
         </DialogHeader>
 
@@ -304,7 +294,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                         </form>
                     </div>
 
-                    {/* RIGHT COLUMN: Interaction Log (Matched to Screenshot) */}
+                    {/* RIGHT COLUMN: Interaction Log */}
                     <div className="w-full md:w-1/2 p-6 rounded-2xl bg-[#F8FAFC] border-2 border-slate-100 flex flex-col min-h-[500px]">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-2">
