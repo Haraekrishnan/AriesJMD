@@ -165,7 +165,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-[95vw] md:max-w-6xl w-full h-auto max-h-[95vh] flex flex-col p-0 overflow-hidden bg-white shadow-2xl" onInteractOutside={(e) => e.preventDefault()}>
         
-        {/* --- HEADER (Left Aligned for Professional Look) --- */}
+        {/* --- HEADER --- */}
         <DialogHeader className="p-8 pb-4 bg-white border-b relative shrink-0 flex flex-col items-start">
           <div className="flex items-center justify-start gap-3 mb-2">
               <div className="bg-[#E9F0FE] text-[#1E40AF] px-2 py-0.5 rounded font-mono font-bold text-[10px] border border-[#BFDBFE]">
@@ -185,10 +185,9 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
           </div>
         </DialogHeader>
 
-        {/* --- BODY (Two Column Grid) --- */}
+        {/* --- BODY --- */}
         <div className="flex-1 overflow-y-auto visible-scrollbar">
             <div className="p-8">
-                {/* Status-specific Alerts or Top-Level Actions */}
                 {taskToDisplay.status === 'Pending Approval' && isApprover && (
                     <div className="grid grid-cols-2 gap-4 mb-8 animate-in fade-in slide-in-from-top-2">
                         <Button className="bg-[#10B981] hover:bg-[#059669] text-white font-black uppercase tracking-widest text-[10px] h-12 rounded-lg" onClick={() => handleApprovalAction('approve')}>
@@ -368,23 +367,27 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
 
         {/* --- FOOTER --- */}
         <DialogFooter className="p-4 bg-slate-50 border-t flex justify-between items-center w-full px-8 shrink-0">
-            <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <Button variant="ghost" className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 font-black uppercase tracking-widest text-[10px] h-10">
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete Forever
-                    </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Permanently?</AlertDialogTitle>
-                        <AlertDialogDescription>This action will wipe all history and comments for this task. It cannot be undone.</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteTask} className="bg-destructive text-white font-bold">Confirm Delete</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            {canEditMetadata ? (
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="ghost" className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 font-black uppercase tracking-widest text-[10px] h-10">
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete Forever
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Permanently?</AlertDialogTitle>
+                            <AlertDialogDescription>This action will wipe all history and comments for this task. It cannot be undone.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteTask} className="bg-destructive text-white font-bold">Confirm Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            ) : (
+                <div />
+            )}
             
             <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10 px-10 font-black uppercase tracking-[0.2em] border-2 text-[10px] hover:bg-white shadow-sm">
                 Close Interface
