@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from "react";
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -25,7 +25,8 @@ import {
   History,
   Activity,
   ArrowRight,
-  X
+  X,
+  Clock
 } from 'lucide-react';
 import type { Task, TaskStatus, Role } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
@@ -183,213 +184,211 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                   {mySubtask?.status === 'To Do' ? 'START WORK STREAM' : 'SUBMIT FOR FINAL APPROVAL'}
               </Button>
           )}
-
-          {taskToDisplay.status === 'Pending Approval' && (
-              <div className="bg-[#EFF6FF] border-2 border-[#DBEAFE] rounded-lg p-4 flex items-start gap-4 shadow-sm mb-6">
-                  <div className="bg-white p-2 rounded-full shadow-sm text-[#2563EB] shrink-0"><Bell className="h-5 w-5" /></div>
-                  <div>
-                      <h4 className="font-black text-[#1E3A8A] text-[13px] leading-tight uppercase tracking-tight">Approval Pending</h4>
-                      <p className="text-[11px] text-[#3B82F6] mt-1 font-bold">Awaiting final sign-off from the creator.</p>
-                  </div>
-              </div>
-          )}
       </div>
   );
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-[95vw] md:max-w-5xl w-full h-auto max-h-[95vh] flex flex-col p-0 overflow-hidden bg-white shadow-2xl">
-        {/* --- HEADER --- */}
-        <DialogHeader className="p-4 md:p-8 pb-4 bg-[#F8FAFC] border-b relative shrink-0">
-          <div className="flex flex-col gap-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-3">
-                  <div className="bg-[#E9F0FE] text-[#1E40AF] px-2 py-0.5 rounded font-mono font-bold text-[10px] border border-[#BFDBFE]">
-                      ID: {shortId}
-                  </div>
-                  <DialogTitle className="text-lg md:text-2xl font-black text-slate-900 tracking-tight uppercase truncate max-w-full">
-                      Task Details: {taskToDisplay.title}
-                  </DialogTitle>
+      <DialogContent className="max-w-[95vw] md:max-w-5xl w-full h-auto max-h-[95vh] flex flex-col p-0 overflow-hidden bg-white shadow-2xl" onInteractOutside={(e) => e.preventDefault()}>
+        {/* --- FIXED HEADER --- */}
+        <DialogHeader className="p-6 md:p-8 pb-4 bg-white border-b relative shrink-0 text-center flex flex-col items-center">
+          <div className="flex items-center justify-center gap-3 mb-2">
+              <div className="bg-[#E9F0FE] text-[#1E40AF] px-2 py-0.5 rounded font-mono font-bold text-[10px] border border-[#BFDBFE]">
+                  ID: {shortId}
               </div>
-              <DialogDescription className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">
-                Assigned by <span className="text-slate-600">{creator?.name}</span> to <span className="text-slate-600">{assignees.map(a => a.name).join(', ')}</span>
-              </DialogDescription>
+              <DialogTitle className="text-xl md:text-2xl font-black text-slate-900 tracking-tight uppercase">
+                  Task Details: {taskToDisplay.title}
+              </DialogTitle>
           </div>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            Assigned by <span className="text-slate-600">{creator?.name}</span> to <span className="text-slate-600">{assignees.map(a => a.name).join(', ')}</span>
+          </p>
           <div className="mt-4">
-              <Badge variant={statusVariant[taskToDisplay.status]} className="h-7 px-4 rounded-sm font-black text-[10px] uppercase tracking-widest shadow-sm">
+              <Badge variant={statusVariant[taskToDisplay.status]} className="h-8 px-6 rounded-md font-black text-[11px] uppercase tracking-[0.15em] shadow-sm">
                 {taskToDisplay.status}
               </Badge>
           </div>
         </DialogHeader>
 
-        {/* --- MAIN SCROLLABLE BODY --- */}
-        <div className="flex-1 overflow-hidden flex flex-col">
-            <ScrollArea className="flex-1">
-                <div className="p-4 md:p-8">
-                    {PrimaryActions}
+        {/* --- MAIN SCROLLABLE CONTENT --- */}
+        <div className="flex-1 overflow-y-auto visible-scrollbar">
+            <div className="p-4 md:p-8 space-y-8">
+                {PrimaryActions}
 
-                    <div className="flex flex-col md:flex-row gap-8 items-start">
-                        {/* LEFT COLUMN: Metadata */}
-                        <div className="w-full md:w-1/2 space-y-6">
-                            <form id="task-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Task Title</Label>
-                                    <Input {...form.register('title')} disabled={!canEditMetadata} className="h-10 bg-slate-50 border-slate-200 font-bold text-slate-800 focus-visible:ring-primary/20" />
+                {taskToDisplay.status === 'Pending Approval' && (
+                  <div className="bg-[#EFF6FF] border-2 border-[#DBEAFE] rounded-lg p-5 flex items-start gap-4 shadow-sm">
+                      <div className="bg-white p-2 rounded-full shadow-sm text-[#2563EB] shrink-0"><Bell className="h-5 w-5" /></div>
+                      <div>
+                          <h4 className="font-black text-[#1E3A8A] text-[13px] leading-tight uppercase tracking-tight">Approval Pending</h4>
+                          <p className="text-[11px] text-[#3B82F6] mt-1 font-bold">Awaiting final sign-off from the creator.</p>
+                      </div>
+                  </div>
+                )}
+
+                <div className="flex flex-col md:flex-row gap-8 items-start">
+                    {/* LEFT COLUMN: Metadata Form */}
+                    <div className="w-full md:w-1/2 space-y-6">
+                        <form id="task-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Task Title</Label>
+                                <Input {...form.register('title')} disabled={!canEditMetadata} className="h-10 bg-slate-50 border-slate-200 font-bold text-slate-800 focus-visible:ring-primary/20" />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Description</Label>
+                                <Textarea {...form.register('description')} disabled={!canEditMetadata} rows={5} className="bg-slate-50 border-slate-200 font-medium text-slate-700 leading-relaxed focus-visible:ring-primary/20" />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Resource Attachments</Label>
+                                <div className="flex items-center gap-2">
+                                    <Input {...form.register('link')} disabled={!canEditMetadata} placeholder="Add external link..." className="bg-slate-50 border-slate-200 text-xs italic" />
+                                    {taskToDisplay.link && (
+                                        <Button asChild size="icon" variant="outline" className="shrink-0 h-10 w-10">
+                                            <a href={taskToDisplay.link} target="_blank" rel="noopener noreferrer"><Paperclip className="h-4 w-4"/></a>
+                                        </Button>
+                                    )}
                                 </div>
+                            </div>
 
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Description</Label>
-                                    <Textarea {...form.register('description')} disabled={!canEditMetadata} rows={5} className="bg-slate-50 border-slate-200 font-medium text-slate-700 leading-relaxed focus-visible:ring-primary/20" />
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Resource Attachments</Label>
-                                    <div className="flex items-center gap-2">
-                                        <Input {...form.register('link')} disabled={!canEditMetadata} placeholder="Add external link..." className="bg-slate-50 border-slate-200 text-xs italic" />
-                                        {taskToDisplay.link && (
-                                            <Button asChild size="icon" variant="outline" className="shrink-0 h-10 w-10">
-                                                <a href={taskToDisplay.link} target="_blank" rel="noopener noreferrer"><Paperclip className="h-4 w-4"/></a>
-                                            </Button>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1.5 pt-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Assignee Status Tracker</Label>
-                                    <div className="space-y-2">
-                                        {assignees.map(a => {
-                                            const sub = taskToDisplay.subtasks?.[a.id];
-                                            const status = sub?.status || 'To Do';
-                                            return (
-                                                <div key={a.id} className="flex justify-between items-center p-3 border border-slate-200 rounded-lg bg-white shadow-sm transition-all hover:border-slate-300">
-                                                    <div className="flex items-center gap-3">
-                                                        <Avatar className="h-9 w-9 border-2 border-slate-100 shadow-inner">
-                                                            <AvatarImage src={a.avatar} />
-                                                            <AvatarFallback className="font-black text-[10px]">{a.name[0]}</AvatarFallback>
-                                                        </Avatar>
-                                                        <div className="flex flex-col min-w-0">
-                                                            <span className="text-xs font-black text-slate-800 uppercase tracking-tight truncate">{a.name}</span>
-                                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">{a.role}</span>
-                                                        </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Assignee Status Tracker</Label>
+                                <div className="space-y-2">
+                                    {assignees.map(a => {
+                                        const sub = taskToDisplay.subtasks?.[a.id];
+                                        const status = sub?.status || 'To Do';
+                                        return (
+                                            <div key={a.id} className="flex justify-between items-center p-3 border border-slate-200 rounded-lg bg-white shadow-sm hover:border-slate-300">
+                                                <div className="flex items-center gap-3">
+                                                    <Avatar className="h-9 w-9 border-2 border-slate-100 shadow-inner">
+                                                        <AvatarImage src={a.avatar} />
+                                                        <AvatarFallback className="font-black text-[10px]">{a.name[0]}</AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="flex flex-col min-w-0">
+                                                        <span className="text-xs font-black text-slate-800 uppercase tracking-tight truncate">{a.name}</span>
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">{a.role}</span>
                                                     </div>
-                                                    <Badge className={cn(
-                                                        "h-5 px-2 rounded-sm text-[9px] font-black tracking-widest uppercase border-none",
-                                                        status === 'Done' ? "bg-[#10B981] text-white" : "bg-slate-100 text-slate-500"
-                                                    )}>
-                                                        {status}
-                                                    </Badge>
                                                 </div>
-                                            )
-                                        })}
-                                    </div>
+                                                <Badge className={cn(
+                                                    "h-5 px-2 rounded-sm text-[9px] font-black tracking-widest uppercase border-none",
+                                                    status === 'Done' ? "bg-[#10B981] text-white" : "bg-slate-100 text-slate-500"
+                                                )}>
+                                                    {status}
+                                                </Badge>
+                                            </div>
+                                        )
+                                    })}
                                 </div>
+                            </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Target Deadline</Label>
-                                        <Controller
-                                            name="dueDate"
-                                            control={form.control}
-                                            render={({ field }) => (
-                                                <DatePickerInput value={field.value} onChange={field.onChange} disabled={!canEditMetadata} />
-                                            )}
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Priority Level</Label>
-                                        <Controller
-                                            name="priority"
-                                            control={form.control}
-                                            render={({ field }) => (
-                                                <Select onValueChange={field.onChange} value={field.value} disabled={!canEditMetadata}>
-                                                    <SelectTrigger className="h-10 bg-slate-50 border-slate-200 font-bold"><SelectValue /></SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="Low">Low</SelectItem>
-                                                        <SelectItem value="Medium">Medium</SelectItem>
-                                                        <SelectItem value="High">High</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            )}
-                                        />
-                                    </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Target Deadline</Label>
+                                    <Controller
+                                        name="dueDate"
+                                        control={form.control}
+                                        render={({ field }) => (
+                                            <DatePickerInput value={field.value} onChange={field.onChange} disabled={!canEditMetadata} />
+                                        )}
+                                    />
                                 </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Priority Level</Label>
+                                    <Controller
+                                        name="priority"
+                                        control={form.control}
+                                        render={({ field }) => (
+                                            <Select onValueChange={field.onChange} value={field.value} disabled={!canEditMetadata}>
+                                                <SelectTrigger className="h-10 bg-slate-50 border-slate-200 font-bold"><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Low">Low</SelectItem>
+                                                    <SelectItem value="Medium">Medium</SelectItem>
+                                                    <SelectItem value="High">High</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    />
+                                </div>
+                            </div>
 
-                                {canEditMetadata && (
-                                    <Button type="submit" className="w-full bg-[#2563EB] hover:bg-[#1E40AF] text-white font-black uppercase tracking-[0.2em] text-xs h-12 rounded-lg shadow-xl shadow-blue-500/20 mt-4">
-                                        Update Task Metadata
-                                    </Button>
-                                )}
-                            </form>
+                            {canEditMetadata && (
+                                <Button type="submit" className="w-full bg-[#2563EB] hover:bg-[#1E40AF] text-white font-black uppercase tracking-[0.2em] text-[11px] h-12 rounded-lg shadow-xl shadow-blue-500/20">
+                                    Update Task Metadata
+                                </Button>
+                            )}
+                        </form>
+                    </div>
+
+                    {/* RIGHT COLUMN: Interaction Log */}
+                    <div className="w-full md:w-1/2 p-6 rounded-2xl bg-[#F8FAFC] border-2 border-slate-100 flex flex-col min-h-[400px]">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="font-black text-[11px] uppercase tracking-[0.3em] text-slate-500 flex items-center gap-2">
+                                <MessageSquare className="h-4 w-4" /> Interaction Log
+                            </h3>
+                            <Badge variant="outline" className="font-black text-[9px] h-5 border-slate-200 text-slate-400 bg-white shadow-sm">
+                                {commentsArray.length} ENTRIES
+                            </Badge>
                         </div>
 
-                        {/* RIGHT COLUMN: Activity & Comments */}
-                        <div className="w-full md:w-1/2 p-6 rounded-2xl bg-[#F8FAFC] border border-slate-100 flex flex-col min-h-[500px]">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="font-black text-[11px] uppercase tracking-[0.3em] text-slate-500 flex items-center gap-2">
-                                    <MessageSquare className="h-4 w-4" /> Interaction Log
-                                </h3>
-                                <Badge variant="outline" className="font-black text-[9px] h-5 border-slate-200 text-slate-400">{commentsArray.length} ENTRIES</Badge>
-                            </div>
-
-                            <div className="flex-1 min-h-0 space-y-6 mb-6">
-                                {commentsArray.map((c, index) => {
-                                    const author = users.find(u => u.id === c.userId);
-                                    return (
-                                        <div key={c.id || `comment-${index}`} className="flex gap-4 group">
-                                            <Avatar className="h-10 w-10 border-2 border-white shadow-sm shrink-0">
-                                                <AvatarImage src={author?.avatar} />
-                                                <AvatarFallback className="font-black text-xs">{author?.name?.[0]}</AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex-1 space-y-1.5 min-w-0">
-                                                <div className="flex justify-between items-baseline gap-2">
-                                                    <span className="font-black text-[#2563EB] text-[11px] uppercase tracking-wider truncate">{author?.name}</span>
-                                                    <span className="text-[9px] text-slate-400 font-bold italic shrink-0">
-                                                        {formatDistanceToNow(new Date(c.date), { addSuffix: true })}
-                                                    </span>
-                                                </div>
-                                                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                                                    <p className="text-[13px] text-slate-700 font-medium leading-relaxed whitespace-pre-wrap break-words">{c.text}</p>
-                                                </div>
+                        <div className="space-y-6 mb-8">
+                            {commentsArray.map((c, index) => {
+                                const author = users.find(u => u.id === c.userId);
+                                return (
+                                    <div key={c.id || `comment-${index}`} className="flex gap-4 group animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                        <Avatar className="h-10 w-10 border-2 border-white shadow-sm shrink-0">
+                                            <AvatarImage src={author?.avatar} />
+                                            <AvatarFallback className="font-black text-xs">{author?.name?.[0]}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1 space-y-1.5 min-w-0">
+                                            <div className="flex justify-between items-baseline gap-2">
+                                                <span className="font-black text-[#2563EB] text-[11px] uppercase tracking-wider truncate">{author?.name}</span>
+                                                <span className="text-[9px] text-slate-400 font-bold italic shrink-0">
+                                                    {formatDistanceToNow(new Date(c.date), { addSuffix: true })}
+                                                </span>
+                                            </div>
+                                            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200/60">
+                                                <p className="text-[13px] text-slate-700 font-medium leading-relaxed whitespace-pre-wrap break-words">{c.text}</p>
                                             </div>
                                         </div>
-                                    )
-                                })}
-                                {commentsArray.length === 0 && (
-                                    <div className="flex flex-col items-center justify-center py-20 opacity-30 text-slate-400 text-center">
-                                        <History className="h-12 w-12 mb-3 stroke-[1px]" />
-                                        <p className="text-[10px] font-black uppercase tracking-[0.3em]">No interaction records found</p>
                                     </div>
-                                )}
-                            </div>
+                                )
+                            })}
+                            {commentsArray.length === 0 && (
+                                <div className="flex flex-col items-center justify-center py-16 opacity-30 text-slate-400 text-center">
+                                    <History className="h-12 w-12 mb-3 stroke-[1px]" />
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em]">No interaction records found</p>
+                                </div>
+                            )}
+                        </div>
 
-                            <div className="mt-auto relative group">
-                                <Textarea 
-                                    placeholder="Add an update or reply..." 
-                                    className="bg-white border-2 border-slate-200 pr-14 min-h-[100px] text-sm font-bold focus-visible:ring-blue-100 transition-all placeholder:text-slate-300 rounded-xl" 
-                                    value={newComment}
-                                    onChange={e => setNewComment(e.target.value)}
-                                />
-                                <Button 
-                                    size="icon" 
-                                    className="absolute right-3 bottom-3 h-9 w-9 rounded-full bg-[#2563EB] hover:bg-blue-700 text-white shadow-lg transition-all active:scale-95" 
-                                    onClick={handleAddComment} 
-                                    disabled={!newComment.trim()}
-                                >
-                                    <Send className="h-4 w-4" />
-                                </Button>
-                            </div>
+                        <div className="mt-auto relative">
+                            <Textarea 
+                                placeholder="Add an update or reply..." 
+                                className="bg-white border-2 border-slate-200 pr-14 min-h-[100px] text-sm font-bold focus-visible:ring-blue-100 transition-all placeholder:text-slate-300 rounded-xl shadow-sm" 
+                                value={newComment}
+                                onChange={e => setNewComment(e.target.value)}
+                            />
+                            <Button 
+                                size="icon" 
+                                className="absolute right-3 bottom-3 h-9 w-9 rounded-full bg-[#2563EB] hover:bg-blue-700 text-white shadow-lg transition-all active:scale-95 disabled:bg-slate-300" 
+                                onClick={handleAddComment} 
+                                disabled={!newComment.trim()}
+                            >
+                                <Send className="h-4 w-4" />
+                            </Button>
                         </div>
                     </div>
                 </div>
-            </ScrollArea>
+            </div>
         </div>
 
         {/* --- FIXED FOOTER --- */}
-        <DialogFooter className="p-4 bg-[#F8FAFC] border-t flex flex-col sm:flex-row justify-between items-center w-full gap-4 px-4 md:px-8 shrink-0">
+        <DialogFooter className="p-4 bg-slate-50 border-t flex flex-col sm:flex-row justify-between items-center w-full gap-4 px-6 md:px-8 shrink-0">
             <div className="flex gap-2 w-full sm:w-auto">
                 {isAdmin && (
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
-                            <Button variant="ghost" className="w-full sm:w-auto text-rose-500 hover:text-rose-700 hover:bg-rose-50 font-black uppercase tracking-widest text-[10px] h-10 px-6">
+                            <Button variant="ghost" className="w-full sm:w-auto text-rose-600 hover:text-rose-700 hover:bg-rose-50 font-black uppercase tracking-widest text-[10px] h-10 px-6">
                                 <Trash2 className="mr-2 h-4 w-4" /> Delete Forever
                             </Button>
                         </AlertDialogTrigger>
@@ -406,7 +405,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                     </AlertDialog>
                 )}
             </div>
-            <Button variant="outline" onClick={() => setIsOpen(false)} className="w-full sm:w-auto h-10 px-8 font-black uppercase tracking-[0.2em] border-2 text-[10px] hover:bg-white transition-all shadow-sm">
+            <Button variant="outline" onClick={() => setIsOpen(false)} className="w-full sm:w-auto h-10 px-10 font-black uppercase tracking-[0.2em] border-2 text-[10px] hover:bg-white transition-all shadow-sm">
                 Close Interface
             </Button>
         </DialogFooter>
