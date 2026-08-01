@@ -21,30 +21,17 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
   const formatDateTime = (isoString?: string | null) => {
     if (!isoString) return 'N/A';
     const date = parseISO(isoString);
-    return isValid(date) ? format(date, 'dd-MM-yyyy HH:mm:ss') : 'Invalid Date';
+    return isValid(date) ? format(date, 'dd-MM-yyyy HH:mm:ss') : 'N/A';
   };
 
   const getStartedDate = (task: Task) => {
     const comments = Array.isArray(task.comments) ? task.comments : Object.values(task.comments || {});
+    // Find the date when status first changed to In Progress
     const startAction = comments.find(c => 
       c.text.toLowerCase().includes('status changed to in progress') || 
       c.text.toLowerCase().includes('task started')
     );
     return startAction ? startAction.date : null;
-  };
-
-  const getEarliestTimestamp = (task: Task) => {
-    if (task.createdAt) return task.createdAt;
-    
-    // Fallback: If createdAt is missing (older tasks), find the earliest comment
-    const comments = Array.isArray(task.comments) ? task.comments : Object.values(task.comments || {});
-    if (comments.length > 0) {
-      const sorted = [...comments].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      return sorted[0].date;
-    }
-    
-    // Last resort
-    return null;
   };
 
   const processTaskData = (task: Task) => {
@@ -60,19 +47,22 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
       })
       .join('\n');
 
-    // Dates for calculation
-    const createdDate = getEarliestTimestamp(task);
+    // Milestones
+    const createdDate = task.createdAt || null;
     const startedDate = getStartedDate(task);
-    const reviewDate = task.statusRequest?.date;
-    const completedDate = task.completionDate;
+    const reviewDate = task.statusRequest?.date || null;
+    const completedDate = task.completionDate || null;
 
-    // Calculation logic
+    // Calculation logic for number of days
     const calcDuration = (start?: string | null, end?: string | null) => {
         if (!start || !end) return 'N/A';
         const s = parseISO(start);
         const e = parseISO(end);
         if (!isValid(s) || !isValid(e)) return 'N/A';
-        return differenceInDays(e, s);
+        
+        // differenceInDays returns 0 for same day, which is correct
+        const diff = differenceInDays(e, s);
+        return diff >= 0 ? diff : 0;
     };
 
     return {
@@ -90,7 +80,6 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
       'Days in Work': calcDuration(startedDate, reviewDate),
       'Days to Finalize': calcDuration(reviewDate, completedDate),
       'Total Days': calcDuration(createdDate, completedDate),
-      'Target Due Date': formatDateTime(task.dueDate),
       'Description': task.description,
       'Interaction History': interactionHistory
     };
@@ -100,11 +89,11 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
     if (tasks.length === 0) return;
 
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Aries Task Report');
+    const worksheet = workbook.addWorksheet('Task Workflow Report');
 
     worksheet.columns = [
       { header: 'TASK ID', key: 'Task ID', width: 12 },
-      { header: 'TITLE', key: 'Title', width: 35 },
+      { header: 'TITLE', key: 'Title', width: 40 },
       { header: 'CREATOR', key: 'Creator', width: 25 },
       { header: 'ASSIGNEES', key: 'Assignees', width: 35 },
       { header: 'PRIORITY', key: 'Priority', width: 12 },
@@ -117,7 +106,6 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
       { header: 'DAYS IN WORK', key: 'Days in Work', width: 15 },
       { header: 'DAYS TO FINALIZE', key: 'Days to Finalize', width: 15 },
       { header: 'TOTAL DAYS', key: 'Total Days', width: 15 },
-      { header: 'DUE DATE', key: 'Target Due Date', width: 22 },
       { header: 'DESCRIPTION', key: 'Description', width: 50 },
       { header: 'INTERACTION HISTORY', key: 'Interaction History', width: 80 },
     ];
@@ -155,11 +143,14 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
             bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
             right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
         };
+        if (cell.value === 'N/A') {
+            cell.font = { color: { argb: 'FF94A3B8' } };
+        }
       });
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `Aries_Detailed_Task_Report_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
+    saveAs(new Blob([buffer]), `Aries_Task_Analytics_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
   };
 
   const handleDownloadPdf = async () => {
@@ -170,11 +161,11 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
     
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text('Aries Marine - Detailed Task Management Report', 40, 40);
+    doc.text('Task Management Analytics Report', 40, 40);
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Generated on: ${format(new Date(), 'PPP p')}`, 40, 60);
+    doc.text(`Generated: ${format(new Date(), 'PPP p')}`, 40, 60);
 
     const tableData = tasks.map(task => {
         const data = processTaskData(task);
@@ -183,13 +174,14 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
             data['Title'],
             data['Status'],
             data['Created At'],
+            data['Started At'],
             data['Total Days'],
             data['Interaction History']
         ];
     });
 
     (doc as any).autoTable({
-      head: [['ID', 'TITLE', 'STATUS', 'CREATED', 'TOTAL DAYS', 'INTERACTION HISTORY']],
+      head: [['ID', 'TITLE', 'STATUS', 'CREATED', 'STARTED', 'TOTAL DAYS', 'HISTORY']],
       body: tableData,
       startY: 80,
       theme: 'grid',
@@ -198,10 +190,11 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
       columnStyles: {
         0: { cellWidth: 40 },
         1: { cellWidth: 140 },
-        2: { cellWidth: 70 },
-        3: { cellWidth: 100 },
-        4: { cellWidth: 60 },
-        5: { cellWidth: 'auto' }
+        2: { cellWidth: 60 },
+        3: { cellWidth: 90 },
+        4: { cellWidth: 90 },
+        5: { cellWidth: 40 },
+        6: { cellWidth: 'auto' }
       },
       margin: { left: 40, right: 40, bottom: 60 },
       didDrawPage: (data: any) => {
@@ -210,7 +203,7 @@ export default function ReportDownloads({ tasks }: ReportDownloadsProps) {
       }
     });
     
-    doc.save(`Aries_Detailed_Task_Report_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
+    doc.save(`Aries_Task_Analytics_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
   };
 
   return (
