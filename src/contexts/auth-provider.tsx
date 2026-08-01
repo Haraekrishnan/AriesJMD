@@ -265,7 +265,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         toast({
             variant: "destructive",
             title: "Update Failed",
-            description: (error as Error).message || "An error occurred while updating the profile."
+            description: "An error occurred while updating the profile."
         });
         return false;
     }
@@ -428,15 +428,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const getVisibleUsers = useCallback(() => {
     if (!user) return [];
     
-    const highLevelRoles: RoleDefinition['name'][] = ['Admin', 'Manager', 'Project Coordinator', 'Document Controller', 'Store in Charge', 'Assistant Store Incharge'];
-    const supervisorRoles: RoleDefinition['name'][] = ['Supervisor', 'Junior Supervisor', 'Senior Safety Supervisor', 'Safety Supervisor'];
+    // Admins, Managers, and Project Coordinators see everything/most things.
+    // Document Controllers and Store Personnel are now restricted to hierarchy-based visibility for operational focus.
+    const highLevelRoles: RoleDefinition['name'][] = ['Admin', 'Manager', 'Project Coordinator'];
+    const supervisorRoles: RoleDefinition['name'][] = [
+      'Supervisor', 
+      'Junior Supervisor', 
+      'Senior Safety Supervisor', 
+      'Safety Supervisor',
+      'Document Controller',
+      'Store in Charge',
+      'Assistant Store Incharge'
+    ];
   
     if (highLevelRoles.includes(user.role)) {
       if (user.role === 'Manager' || user.role === 'Admin') return users;
       if (user.role === 'Project Coordinator') return users.filter(u => u.role !== 'Manager');
-      if (['Store in Charge', 'Document Controller', 'Assistant Store Incharge'].includes(user.role)) {
-        return users.filter(u => u.role !== 'Admin' && u.role !== 'Project Coordinator');
-      }
     }
   
     let visibleUserIds = new Set<string>([user.id]);

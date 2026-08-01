@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -77,8 +76,15 @@ export default function TasksPage() {
     const visibleUserIds = new Set(getVisibleUsers().map(u => u.id));
     
     return tasks.filter(task => {
+      // Admins, Managers, and Coordinators see all tasks.
       if (hasFullView) return true;
-      return task.assigneeIds && task.assigneeIds.some(id => visibleUserIds.has(id));
+      
+      // Other roles (including Store and DC) see tasks created by them or their subordinates,
+      // or tasks assigned to them or their subordinates.
+      const isCreatorVisible = visibleUserIds.has(task.creatorId);
+      const isAssigneeVisible = task.assigneeIds && task.assigneeIds.some(id => visibleUserIds.has(id));
+      
+      return isCreatorVisible || isAssigneeVisible;
     });
   }, [tasks, user, getVisibleUsers]);
 
