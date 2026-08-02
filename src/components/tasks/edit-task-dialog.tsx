@@ -201,19 +201,19 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                     <div className="mb-8">
                         {(isCreator || isOverrideMode) ? (
                             <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
-                                <Button className="bg-[#10B981] hover:bg-[#059669] text-white font-black uppercase tracking-widest text-[10px] h-12 rounded-lg" onClick={() => handleApprovalAction('approve')}>
+                                <Button className="bg-[#10B981] hover:bg-[#059669] text-white font-black uppercase tracking-widest text-[10px] h-12 rounded-lg shadow-sm" onClick={() => handleApprovalAction('approve')}>
                                     <ThumbsUp className="mr-2 h-4 w-4" /> {isOverrideMode ? 'OVERRIDE & APPROVE' : 'FINAL APPROVE'}
                                 </Button>
-                                <Button className="bg-[#EF4444] hover:bg-[#DC2626] text-white font-black uppercase tracking-widest text-[10px] h-12 rounded-lg" onClick={() => handleApprovalAction('return')}>
+                                <Button className="bg-[#EF4444] hover:bg-[#DC2626] text-white font-black uppercase tracking-widest text-[10px] h-12 rounded-lg shadow-sm" onClick={() => handleApprovalAction('return')}>
                                     <ThumbsDown className="mr-2 h-4 w-4" /> {isOverrideMode ? 'OVERRIDE & RETURN' : 'RETURN BACK'}
                                 </Button>
                             </div>
                         ) : (
                             <Button 
-                                className="w-full bg-slate-900 hover:bg-slate-800 text-amber-400 border-2 border-amber-500/30 font-black uppercase tracking-[0.2em] text-[11px] h-14 rounded-lg shadow-xl transition-all active:scale-[0.98] group"
+                                className="w-full bg-[#E5A1AD] hover:bg-[#d491a0] text-slate-900 border-2 border-slate-900/10 font-black uppercase tracking-[0.2em] text-[11px] h-14 rounded-lg shadow-xl transition-all active:scale-[0.98] group"
                                 onClick={() => setIsOverrideMode(true)}
                             >
-                                <AlertTriangle className="mr-3 h-5 w-5 text-amber-500 group-hover:scale-110 transition-transform" /> 
+                                <AlertTriangle className="mr-3 h-5 w-5 text-slate-900 group-hover:scale-110 transition-transform" /> 
                                 <span>OVERTAKE APPROVAL (MANAGEMENT OVERRIDE)</span>
                             </Button>
                         )}
