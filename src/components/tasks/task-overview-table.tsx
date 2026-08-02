@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo } from 'react';
@@ -91,7 +90,7 @@ const TableSection = ({ title, icon: Icon, tasks, users, onEdit, isArchivedSecti
                     <TableBody>
                         {tasks.map(task => {
                             const assignees = users.filter(u => task.assigneeIds?.includes(u.id));
-                            const isOverdue = !task.isArchived && task.status !== 'Done' && isAfter(new Date(), endOfDay(parseISO(task.dueDate)));
+                            const isOverdue = !task.isArchived && task.status !== 'Done' && task.status !== 'Pending Approval' && isAfter(new Date(), endOfDay(parseISO(task.dueDate)));
                             
                             return (
                                 <TableRow key={task.id} className={cn(
@@ -190,7 +189,13 @@ export default function TaskOverviewTable({ tasks, onEditTask }: TaskOverviewTab
         return isAfter(new Date(), endOfDay(dueDate));
     };
 
-    const overdue = active.filter(t => t.status !== 'Done' && isOverdue(t.dueDate));
+    // A task is only calculated as overdue if it's NOT completed and NOT under review
+    const overdue = active.filter(t => 
+        t.status !== 'Done' && 
+        t.status !== 'Pending Approval' && 
+        isOverdue(t.dueDate)
+    );
+    
     const remaining = active.filter(t => !overdue.includes(t));
     const inProgress = remaining.filter(t => t.status !== 'Done');
     const completed = remaining.filter(t => t.status === 'Done');

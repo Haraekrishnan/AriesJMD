@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -20,7 +19,7 @@ import EditTaskDialog from '@/components/tasks/edit-task-dialog';
 import type { Task, Role } from '@/lib/types';
 import ReportDownloads from '@/components/reports/report-downloads';
 import { Badge } from '@/components/ui/badge';
-import { formatDistanceToNow, isWithinInterval, startOfMonth, endOfMonth, getMonth, getYear, parseISO, isSameYear, endOfDay, isAfter } from 'date-fns';
+import { formatDistanceToNow, isWithinInterval, startOfMonth, endOfMonth, getMonth, getYear, parseISO, isSameYear, endOfDay, isAfter, isValid } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TaskOverviewTable from '@/components/tasks/task-overview-table';
 import { Switch } from '@/components/ui/switch';
@@ -185,7 +184,13 @@ export default function TasksPage() {
         return isAfter(new Date(), endOfDay(dueDate));
       };
 
-      const overdueTasks = regularBoardTasks.filter(t => t.status !== 'Done' && isOverdue(t.dueDate));
+      // A task is only calculated as overdue if it's NOT completed and NOT under review
+      const overdueTasks = regularBoardTasks.filter(t => 
+        t.status !== 'Done' && 
+        t.status !== 'Pending Approval' && 
+        isOverdue(t.dueDate)
+      );
+      
       const overdueTaskIds = new Set(overdueTasks.map(t => t.id));
       const regularTasks = regularBoardTasks.filter(t => !overdueTaskIds.has(t.id));
       

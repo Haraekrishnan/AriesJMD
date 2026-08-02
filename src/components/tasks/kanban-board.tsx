@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -77,19 +76,18 @@ export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTas
   };
   
   const getTasksForColumn = (column: BoardColumn) => {
+      // The parent component (TasksPage) already separates tasks into 'regular' and 'overdue' lists.
+      // Overdue tasks are those that are NOT Done, NOT Pending Approval, and have passed their deadline.
       if (column === 'Overdue') {
-          return overdueTasks.filter(t => t.status !== 'Pending Approval');
+          return overdueTasks;
       }
       
       const status = statusMap[column] as TaskStatus;
       
       if (column === 'In Progress') {
-          // Include In Progress and Pending Approval (Under Review) tasks in this column
-          return tasks.filter(t => (t.status === 'In Progress' || t.status === 'Pending Approval') && !isOverdue(t.dueDate));
-      }
-      
-      if (column === 'To Do') {
-        return tasks.filter(t => t.status === status && !isOverdue(t.dueDate));
+          // Include all In Progress tasks (already filtered by parent as non-overdue)
+          // PLUS all Pending Approval (Under Review) tasks regardless of their date.
+          return tasks.filter(t => t.status === 'In Progress' || t.status === 'Pending Approval');
       }
       
       return tasks.filter(t => t.status === status);
