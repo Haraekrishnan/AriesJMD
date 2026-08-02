@@ -23,8 +23,9 @@ import {
   MessageSquare,
   Paperclip,
   X,
+  AlertTriangle,
 } from 'lucide-react';
-import type { Task, TaskStatus } from '@/lib/types';
+import type { Task, TaskStatus, Role } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Label } from '../ui/label';
@@ -32,6 +33,7 @@ import { Badge } from '../ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { DatePickerInput } from "../ui/date-picker-input";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -59,6 +61,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   } = useTask();
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
+  const [isOverrideMode, setIsOverrideMode] = useState(false);
 
   const taskToDisplay = useMemo(() => tasks.find(t => t.id === task.id) || task, [tasks, task]);
 
@@ -71,7 +74,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
 
   const isAdmin = user?.role === 'Admin';
   const isCreator = user?.id === taskToDisplay.creatorId;
-  const isApprover = isCreator || isAdmin;
+  const isAuthorizedManager = isAdmin || user?.role === 'Project Coordinator' || user?.role === 'Manager';
   const isCompleted = taskToDisplay.status === 'Done' || taskToDisplay.status === 'Completed';
 
   const canEditMetadata = isAdmin || isCreator;
@@ -87,6 +90,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
         link: taskToDisplay.link || '',
       });
       setNewComment('');
+      setIsOverrideMode(false);
       markTaskAsViewed(taskToDisplay.id);
     }
   }, [taskToDisplay, form, isOpen, markTaskAsViewed]);
@@ -118,12 +122,19 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
         toast({ variant: 'destructive', title: 'Comment required for feedback.' });
         return;
     }
+
+    let finalComment = newComment;
+    if (!isCreator && isAuthorizedManager) {
+        const actionPast = action === 'approve' ? 'Approved' : 'Returned';
+        finalComment = `[MANAGEMENT OVERRIDE] ${actionPast} by ${user?.name}. Feedback: ${newComment}`;
+    }
+
     if (action === 'approve') {
-        approveTaskStatusChange(taskToDisplay.id, newComment);
-        toast({ title: 'Task Approved' });
+        approveTaskStatusChange(taskToDisplay.id, finalComment);
+        toast({ title: isOverrideMode ? 'Override Approved' : 'Task Approved' });
     } else {
-        returnTaskStatusChange(taskToDisplay.id, newComment);
-        toast({ title: 'Task Returned' });
+        returnTaskStatusChange(taskToDisplay.id, finalComment);
+        toast({ title: isOverrideMode ? 'Override Returned' : 'Task Returned' });
     }
     setNewComment('');
     setIsOpen(false);
@@ -151,21 +162,10 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
 
   const shortId = useMemo(() => (taskToDisplay.id || '').slice(-6).toUpperCase(), [taskToDisplay.id]);
 
-  const statusVariantMap: Record<TaskStatus, 'default' | 'secondary' | 'destructive' | 'success' | 'warning' | 'outline'> = {
-    'To Do': 'secondary',
-    'In Progress': 'warning',
-    'In Review': 'default',
-    'Done': 'success',
-    'Completed': 'success',
-    'Pending Approval': 'warning',
-    'Overdue': 'destructive'
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-[95vw] md:max-w-6xl w-full h-auto max-h-[95vh] flex flex-col p-0 overflow-hidden bg-white shadow-2xl" onInteractOutside={(e) => e.preventDefault()}>
         
-        {/* --- HEADER --- */}
         <DialogHeader className="p-8 pb-4 bg-white border-b relative shrink-0 flex flex-col items-start">
           <div className="flex items-center justify-start gap-3 mb-2">
               <div className="bg-[#E9F0FE] text-[#1E40AF] px-2 py-0.5 rounded font-mono font-bold text-[10px] border border-[#BFDBFE]">
@@ -185,17 +185,38 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
           </div>
         </DialogHeader>
 
-        {/* --- BODY --- */}
         <div className="flex-1 overflow-y-auto visible-scrollbar">
             <div className="p-8">
-                {taskToDisplay.status === 'Pending Approval' && isApprover && (
-                    <div className="grid grid-cols-2 gap-4 mb-8 animate-in fade-in slide-in-from-top-2">
-                        <Button className="bg-[#10B981] hover:bg-[#059669] text-white font-black uppercase tracking-widest text-[10px] h-12 rounded-lg" onClick={() => handleApprovalAction('approve')}>
-                            <ThumbsUp className="mr-2 h-4 w-4" /> Final Approve
-                        </Button>
-                        <Button className="bg-[#EF4444] hover:bg-[#DC2626] text-white font-black uppercase tracking-widest text-[10px] h-12 rounded-lg" onClick={() => handleApprovalAction('return')}>
-                            <ThumbsDown className="mr-2 h-4 w-4" /> Return Back
-                        </Button>
+                {taskToDisplay.status === 'Pending Approval' && (
+                    <Alert className="mb-6 bg-blue-50 border-blue-200">
+                        <Bell className="h-4 w-4 text-blue-600" />
+                        <AlertTitle className="text-[10px] font-black uppercase text-blue-800 tracking-widest">Approval Workflow Active</AlertTitle>
+                        <AlertDescription className="text-sm text-blue-700 font-medium">
+                            Submitted to <span className="font-black underline">{creator?.name}</span> on {taskToDisplay.statusRequest?.date ? format(parseISO(taskToDisplay.statusRequest.date), 'dd MMM') : 'N/A'}. Awaiting primary approval.
+                        </AlertDescription>
+                    </Alert>
+                )}
+
+                {taskToDisplay.status === 'Pending Approval' && (isCreator || isAuthorizedManager) && (
+                    <div className="mb-8">
+                        {(isCreator || isOverrideMode) ? (
+                            <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
+                                <Button className="bg-[#10B981] hover:bg-[#059669] text-white font-black uppercase tracking-widest text-[10px] h-12 rounded-lg" onClick={() => handleApprovalAction('approve')}>
+                                    <ThumbsUp className="mr-2 h-4 w-4" /> {isOverrideMode ? 'OVERRIDE & APPROVE' : 'FINAL APPROVE'}
+                                </Button>
+                                <Button className="bg-[#EF4444] hover:bg-[#DC2626] text-white font-black uppercase tracking-widest text-[10px] h-12 rounded-lg" onClick={() => handleApprovalAction('return')}>
+                                    <ThumbsDown className="mr-2 h-4 w-4" /> {isOverrideMode ? 'OVERRIDE & RETURN' : 'RETURN BACK'}
+                                </Button>
+                            </div>
+                        ) : (
+                            <Button 
+                                variant="outline" 
+                                className="w-full border-2 border-amber-200 bg-amber-50 text-amber-700 font-black uppercase tracking-[0.2em] text-[10px] h-12 hover:bg-amber-100"
+                                onClick={() => setIsOverrideMode(true)}
+                            >
+                                <AlertTriangle className="mr-2 h-4 w-4" /> OVERTAKE APPROVAL (MANAGEMENT OVERRIDE)
+                            </Button>
+                        )}
                     </div>
                 )}
 
@@ -206,7 +227,6 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                 )}
 
                 <div className="flex flex-col md:flex-row gap-10 items-start">
-                    {/* LEFT COLUMN: Metadata Form */}
                     <div className="w-full md:w-1/2 space-y-6">
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                             <div className="space-y-1.5">
@@ -303,7 +323,6 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                         </form>
                     </div>
 
-                    {/* RIGHT COLUMN: Interaction Log */}
                     <div className="w-full md:w-1/2 p-6 rounded-2xl bg-[#F8FAFC] border-2 border-slate-100 flex flex-col min-h-[500px]">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-2">
@@ -365,7 +384,6 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
             </div>
         </div>
 
-        {/* --- FOOTER --- */}
         <DialogFooter className="p-4 bg-slate-50 border-t flex justify-between items-center w-full px-8 shrink-0">
             {canEditMetadata ? (
                 <AlertDialog>
