@@ -175,7 +175,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                   TASK DETAILS: {taskToDisplay.title}
               </DialogTitle>
           </div>
-          <DialogDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          <DialogDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-left">
             ASSIGNED BY <span className="text-slate-600">{creator?.name?.toUpperCase()}</span> TO <span className="text-slate-600">{assignees.map(a => a.name?.toUpperCase()).join(', ')}</span>
           </DialogDescription>
           <div className="mt-4">
@@ -210,10 +210,11 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                             </div>
                         ) : (
                             <Button 
-                                className="w-full bg-amber-600 hover:bg-amber-700 text-white font-black uppercase tracking-[0.2em] text-[11px] h-14 rounded-lg shadow-md transition-all active:scale-[0.98]"
+                                className="w-full bg-slate-900 hover:bg-slate-800 text-amber-400 border-2 border-amber-500/30 font-black uppercase tracking-[0.2em] text-[11px] h-14 rounded-lg shadow-xl transition-all active:scale-[0.98] group"
                                 onClick={() => setIsOverrideMode(true)}
                             >
-                                <AlertTriangle className="mr-3 h-5 w-5" /> OVERTAKE APPROVAL (MANAGEMENT OVERRIDE)
+                                <AlertTriangle className="mr-3 h-5 w-5 text-amber-500 group-hover:scale-110 transition-transform" /> 
+                                <span>OVERTAKE APPROVAL (MANAGEMENT OVERRIDE)</span>
                             </Button>
                         )}
                     </div>
@@ -225,7 +226,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                     </Button>
                 )}
 
-                <div className="flex flex-col md:flex-row gap-10 items-start">
+                <div className="flex flex-col md:flex-row gap-10 items-start text-left">
                     <div className="w-full md:w-1/2 space-y-6">
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                             <div className="space-y-1.5">
@@ -384,7 +385,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
         </div>
 
         <DialogFooter className="p-4 bg-slate-50 border-t flex justify-between items-center w-full px-8 shrink-0">
-            {canEditMetadata ? (
+            {(isAdmin || isCreator) ? (
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="ghost" className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 font-black uppercase tracking-widest text-[10px] h-10">
