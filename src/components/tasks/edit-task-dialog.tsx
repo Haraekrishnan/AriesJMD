@@ -188,10 +188,10 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
         <div className="flex-1 overflow-y-auto visible-scrollbar">
             <div className="p-8">
                 {taskToDisplay.status === 'Pending Approval' && (
-                    <Alert className="mb-6 bg-blue-50 border-blue-200 shadow-sm">
-                        <Bell className="h-4 w-4 text-blue-600" />
-                        <AlertTitle className="text-[10px] font-black uppercase text-blue-800 tracking-widest">Approval Workflow Active</AlertTitle>
-                        <AlertDescription className="text-sm text-blue-700 font-medium">
+                    <Alert className="mb-6 bg-[#EFF6FF] border-[#DBEAFE] shadow-sm">
+                        <Bell className="h-4 w-4 text-[#1E40AF]" />
+                        <AlertTitle className="text-[10px] font-black uppercase text-[#1E40AF] tracking-widest">APPROVAL WORKFLOW ACTIVE</AlertTitle>
+                        <AlertDescription className="text-sm text-[#1E40AF] font-medium">
                             Submitted to <span className="font-black underline">{creator?.name}</span> on {taskToDisplay.statusRequest?.date ? format(parseISO(taskToDisplay.statusRequest.date), 'dd MMM') : 'N/A'}. Awaiting primary approval.
                         </AlertDescription>
                     </Alert>
@@ -210,10 +210,10 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                             </div>
                         ) : (
                             <Button 
-                                className="w-full bg-[#E5A1AD] hover:bg-[#d491a0] text-slate-900 border-2 border-slate-900/10 font-black uppercase tracking-[0.2em] text-[11px] h-14 rounded-lg shadow-xl transition-all active:scale-[0.98] group"
+                                className="w-full bg-[#FFF8E1] hover:bg-[#FEF3C7] text-[#7A5B3E] border border-[#FCE4A8] font-black uppercase tracking-[0.2em] text-[11px] h-14 rounded-lg shadow-sm transition-all active:scale-[0.98] group"
                                 onClick={() => setIsOverrideMode(true)}
                             >
-                                <AlertTriangle className="mr-3 h-5 w-5 text-slate-900 group-hover:scale-110 transition-transform" /> 
+                                <AlertTriangle className="mr-3 h-5 w-5 text-[#7A5B3E] group-hover:scale-110 transition-transform" /> 
                                 <span>OVERTAKE APPROVAL (MANAGEMENT OVERRIDE)</span>
                             </Button>
                         )}
