@@ -188,7 +188,7 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
         <div className="flex-1 overflow-y-auto visible-scrollbar">
             <div className="p-8">
                 {taskToDisplay.status === 'Pending Approval' && (
-                    <Alert className="mb-6 bg-blue-50 border-blue-200">
+                    <Alert className="mb-6 bg-blue-50 border-blue-200 shadow-sm">
                         <Bell className="h-4 w-4 text-blue-600" />
                         <AlertTitle className="text-[10px] font-black uppercase text-blue-800 tracking-widest">Approval Workflow Active</AlertTitle>
                         <AlertDescription className="text-sm text-blue-700 font-medium">
@@ -210,11 +210,10 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                             </div>
                         ) : (
                             <Button 
-                                variant="outline" 
-                                className="w-full border-2 border-amber-200 bg-amber-50 text-amber-700 font-black uppercase tracking-[0.2em] text-[10px] h-12 hover:bg-amber-100"
+                                className="w-full bg-amber-600 hover:bg-amber-700 text-white font-black uppercase tracking-[0.2em] text-[11px] h-14 rounded-lg shadow-md transition-all active:scale-[0.98]"
                                 onClick={() => setIsOverrideMode(true)}
                             >
-                                <AlertTriangle className="mr-2 h-4 w-4" /> OVERTAKE APPROVAL (MANAGEMENT OVERRIDE)
+                                <AlertTriangle className="mr-3 h-5 w-5" /> OVERTAKE APPROVAL (MANAGEMENT OVERRIDE)
                             </Button>
                         )}
                     </div>
