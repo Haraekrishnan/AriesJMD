@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -8,7 +9,7 @@ import TaskCard from './task-card';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 import EditTaskDialog from './edit-task-dialog';
-import { isPast } from 'date-fns';
+import { isPast, parseISO, endOfDay, isAfter, isValid } from 'date-fns';
 import { ScrollArea } from '../ui/scroll-area';
 
 type BoardColumn = 'To Do' | 'In Progress' | 'Completed' | 'Overdue';
@@ -35,6 +36,12 @@ export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTas
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
+  const isOverdue = (dueDateStr: string) => {
+    const dueDate = parseISO(dueDateStr);
+    if (!isValid(dueDate)) return false;
+    return isAfter(new Date(), endOfDay(dueDate));
+  };
+
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, taskId: string) => {
     setDraggedTask(taskId);
     e.dataTransfer.effectAllowed = 'move';
@@ -56,6 +63,12 @@ export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTas
 
     const task = tasks.find(t => t.id === draggedTask) || overdueTasks.find(t => t.id === draggedTask);
     if (!task) return;
+
+    // If task is under review, do not allow drag and drop actions
+    if (task.status === 'Pending Approval') {
+        setDraggedTask(null);
+        return;
+    }
     
     const comment = `Status changed to ${newStatus} via drag and drop.`;
     requestTaskStatusChange(task.id, newStatus, comment);
@@ -64,12 +77,21 @@ export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTas
   };
   
   const getTasksForColumn = (column: BoardColumn) => {
-      if (column === 'Overdue') return overdueTasks.filter(t => t.status !== 'Pending Approval');;
-      const status = statusMap[column] as TaskStatus;
-      // Exclude overdue tasks from regular columns
-      if (column === 'To Do' || column === 'In Progress') {
-        return tasks.filter(t => t.status === status && !isPast(new Date(t.dueDate)));
+      if (column === 'Overdue') {
+          return overdueTasks.filter(t => t.status !== 'Pending Approval');
       }
+      
+      const status = statusMap[column] as TaskStatus;
+      
+      if (column === 'In Progress') {
+          // Include In Progress and Pending Approval (Under Review) tasks in this column
+          return tasks.filter(t => (t.status === 'In Progress' || t.status === 'Pending Approval') && !isOverdue(t.dueDate));
+      }
+      
+      if (column === 'To Do') {
+        return tasks.filter(t => t.status === status && !isOverdue(t.dueDate));
+      }
+      
       return tasks.filter(t => t.status === status);
   }
 
@@ -85,7 +107,7 @@ export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTas
           return (
           <div
             key={column}
-            className="flex flex-col bg-card rounded-lg border overflow-hidden" // Added overflow-hidden
+            className="flex flex-col bg-card rounded-lg border overflow-hidden" 
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, column)}
           >
@@ -99,7 +121,7 @@ export function KanbanBoard({ tasks, overdueTasks }: { tasks: Task[], overdueTas
                 <div className="space-y-4 p-4 pt-2">
                 {columnTasks.length > 0 ? (
                     columnTasks.map(task => (
-                        <div key={task.id} draggable={column !== 'Overdue'} onDragStart={(e) => handleDragStart(e, task.id)}>
+                        <div key={task.id} draggable={column !== 'Overdue' && task.status !== 'Pending Approval'} onDragStart={(e) => handleDragStart(e, task.id)}>
                             <TaskCard task={task} onClick={() => openEditDialog(task)} />
                         </div>
                     ))

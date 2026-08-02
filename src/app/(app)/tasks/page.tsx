@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -19,7 +20,7 @@ import EditTaskDialog from '@/components/tasks/edit-task-dialog';
 import type { Task, Role } from '@/lib/types';
 import ReportDownloads from '@/components/reports/report-downloads';
 import { Badge } from '@/components/ui/badge';
-import { formatDistanceToNow, isWithinInterval, startOfMonth, endOfMonth, getMonth, getYear, parseISO, isSameYear } from 'date-fns';
+import { formatDistanceToNow, isWithinInterval, startOfMonth, endOfMonth, getMonth, getYear, parseISO, isSameYear, endOfDay, isAfter } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TaskOverviewTable from '@/components/tasks/task-overview-table';
 import { Switch } from '@/components/ui/switch';
@@ -111,14 +112,14 @@ export default function TasksPage() {
           if (!matchesTitle && !matchesDesc && !matchesId) return false;
       }
 
-      // If there's a pending statusRequest for completion, show it only to approver/requester.
+      // If there's a pending statusRequest for completion, show it to management/participants
       if (task.statusRequest?.status === 'Pending') {
-        const isApprover = task.creatorId === user?.id;
-        const isRequester = task.statusRequest?.requestedBy === user?.id;
-        if (isApprover || isRequester) {
-            return true; 
+        const isManagement = user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Manager';
+        const isParticipant = user && task.participants?.includes(user.id);
+        
+        if (!isManagement && !isParticipant) {
+            return false;
         }
-        return false;
       }
 
       if (assigneeId !== 'all' && !task.assigneeIds?.includes(assigneeId)) {
@@ -176,10 +177,18 @@ export default function TasksPage() {
 
 
   const kanbanTasks = useMemo(() => {
-      const regularBoardTasks = filteredTasks.filter(t => t.status !== 'Pending Approval' && !t.isArchived);
-      const overdueTasks = regularBoardTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done');
+      const regularBoardTasks = filteredTasks.filter(t => !t.isArchived);
+      
+      const isOverdue = (dueDateStr: string) => {
+        const dueDate = parseISO(dueDateStr);
+        if (!isValid(dueDate)) return false;
+        return isAfter(new Date(), endOfDay(dueDate));
+      };
+
+      const overdueTasks = regularBoardTasks.filter(t => t.status !== 'Done' && isOverdue(t.dueDate));
       const overdueTaskIds = new Set(overdueTasks.map(t => t.id));
       const regularTasks = regularBoardTasks.filter(t => !overdueTaskIds.has(t.id));
+      
       return { overdue: overdueTasks, regular: regularTasks };
   }, [filteredTasks]);
 

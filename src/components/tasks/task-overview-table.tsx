@@ -13,7 +13,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/auth-provider';
 import type { Task, User } from '@/lib/types';
-import { format, parseISO, isPast } from 'date-fns';
+import { format, parseISO, isPast, endOfDay, isAfter, isValid } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { 
   Calendar, 
@@ -91,7 +91,7 @@ const TableSection = ({ title, icon: Icon, tasks, users, onEdit, isArchivedSecti
                     <TableBody>
                         {tasks.map(task => {
                             const assignees = users.filter(u => task.assigneeIds?.includes(u.id));
-                            const isOverdue = !task.isArchived && task.status !== 'Done' && isPast(parseISO(task.dueDate));
+                            const isOverdue = !task.isArchived && task.status !== 'Done' && isAfter(new Date(), endOfDay(parseISO(task.dueDate)));
                             
                             return (
                                 <TableRow key={task.id} className={cn(
@@ -184,7 +184,13 @@ export default function TaskOverviewTable({ tasks, onEditTask }: TaskOverviewTab
     const archived = tasks.filter(t => t.isArchived);
     const active = tasks.filter(t => !t.isArchived);
     
-    const overdue = active.filter(t => t.status !== 'Done' && isPast(parseISO(t.dueDate)));
+    const isOverdue = (dueDateStr: string) => {
+        const dueDate = parseISO(dueDateStr);
+        if (!isValid(dueDate)) return false;
+        return isAfter(new Date(), endOfDay(dueDate));
+    };
+
+    const overdue = active.filter(t => t.status !== 'Done' && isOverdue(t.dueDate));
     const remaining = active.filter(t => !overdue.includes(t));
     const inProgress = remaining.filter(t => t.status !== 'Done');
     const completed = remaining.filter(t => t.status === 'Done');

@@ -1,3 +1,4 @@
+
 'use client';
 import { useAuth } from '@/contexts/auth-provider';
 import type { Task } from '@/lib/types';
@@ -5,7 +6,7 @@ import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { Users } from 'lucide-react';
+import { Users, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMemo } from 'react';
 
@@ -30,11 +31,20 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
   };
 
   const hasUnreadUpdate = user && task.participants?.includes(user.id) && !task.viewedBy?.[user.id];
+  const isUnderReview = task.status === 'Pending Approval';
 
   return (
-    <Card onClick={onClick} className="cursor-pointer hover:shadow-md transition-shadow">
+    <Card onClick={onClick} className={cn(
+        "cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden",
+        isUnderReview && "border-blue-500 bg-blue-50/10"
+    )}>
       <CardContent className="p-4 space-y-4">
-        <div className="flex justify-between items-start">
+        {isUnderReview && (
+          <div className="bg-blue-600 text-white text-[9px] font-black uppercase tracking-[0.2em] py-1 px-4 text-center absolute top-0 left-0 right-0 flex items-center justify-center gap-1.5 shadow-sm">
+             <Search className="h-2.5 w-2.5" /> Under Review
+          </div>
+        )}
+        <div className={cn("flex justify-between items-start", isUnderReview && "pt-4")}>
             <div className="flex items-center gap-2">
               <CardTitle className="text-lg font-bold uppercase tracking-tight">{task.title}</CardTitle>
               {hasUnreadUpdate && <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" title="Unread update"></div>}
