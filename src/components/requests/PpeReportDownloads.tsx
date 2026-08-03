@@ -148,6 +148,7 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
           'Incoming Qty': 0,
           'Outgoing Qty': 0,
           'Inventory Qty': runningStock,
+          'Issue Type': 'N/A'
         };
 
         // ISSUE / OUTGOING
@@ -167,6 +168,7 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
           );
 
           row['Outgoing Qty'] = qtyOut;
+          row['Issue Type'] = (t as any).requestType || 'New';
         }
 
         // MANUAL OUTWARD
@@ -184,6 +186,7 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
           );
 
           row['Outgoing Qty'] = qtyOut;
+          row['Issue Type'] = 'Manual Outward';
         }
 
         // INWARD
@@ -199,6 +202,7 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
           );
 
           row['Incoming Qty'] = qtyIn;
+          row['Issue Type'] = 'Inward Stock';
         }
 
         // RUNNING BALANCE
@@ -223,6 +227,7 @@ export default function PpeReportDownloads({ dateRange }: PpeReportDownloadsProp
         { wch: 12 },
         { wch: 12 },
         { wch: 14 },
+        { wch: 18 },
       ];
 
       // Add Sheet Title Like Image
