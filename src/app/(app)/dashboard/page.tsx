@@ -9,7 +9,7 @@ import { useGeneral } from '@/contexts/general-provider';
 import { usePlanner } from '@/contexts/planner-provider';
 import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
-import { format, formatDistanceToNow, parseISO, isPast, addDays, isBefore, isValid } from 'date-fns';
+import { format, formatDistanceToNow, parseISO, isPast, addDays, isBefore, isValid, isAfter, endOfDay } from 'date-fns';
 import StatCard from '@/components/dashboard/stat-card';
 import { 
     Users, 
@@ -102,7 +102,16 @@ export default function DashboardPage() {
       return teamUsers.map(member => {
           const memberTasks = allTasks.filter(t => t.assigneeIds?.includes(member.id));
           const completed = memberTasks.filter(t => t.status === 'Done').length;
-          const overdue = memberTasks.filter(t => t.status !== 'Done' && isPast(new Date(t.dueDate))).length;
+          
+          // Updated overdue logic: Only if status isn't done/pending and end of day has passed
+          const overdue = memberTasks.filter(t => {
+              if (t.status === 'Done' || t.status === 'Pending Approval') return false;
+              if (!t.dueDate) return false;
+              const dueDate = parseISO(t.dueDate);
+              if (!isValid(dueDate)) return false;
+              return isAfter(new Date(), endOfDay(dueDate));
+          }).length;
+
           const total = memberTasks.length;
           const score = total > 0 ? Math.round((completed / total) * 100) : 0;
           return { member, completed, overdue, total, score };
