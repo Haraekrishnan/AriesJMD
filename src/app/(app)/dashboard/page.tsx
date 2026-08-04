@@ -11,7 +11,31 @@ import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
 import { format, formatDistanceToNow, parseISO, isPast, addDays, isBefore, isValid } from 'date-fns';
 import StatCard from '@/components/dashboard/stat-card';
-import { Users, CheckCircle, ListTodo, ShieldAlert, ShieldCheck, Clock, ArrowRight, UserCheck, AlertCircle, AlertTriangle, TrendingUp, Layout, HardHat, Warehouse, ArrowRightLeft, ClipboardCheck, Hammer, MessageSquare } from 'lucide-react';
+import { 
+    Users, 
+    CheckCircle, 
+    ListTodo, 
+    ShieldAlert, 
+    ShieldCheck, 
+    Clock, 
+    ArrowRight, 
+    UserCheck, 
+    AlertCircle, 
+    AlertTriangle, 
+    TrendingUp, 
+    Layout, 
+    HardHat, 
+    Warehouse, 
+    ArrowRightLeft, 
+    ClipboardCheck, 
+    Hammer, 
+    MessageSquare,
+    Zap,
+    PlusCircle,
+    Send,
+    Bell,
+    Inbox
+} from 'lucide-react';
 import TasksCompletedChart from '@/components/dashboard/tasks-completed-chart';
 import TeamTaskDistributionChart from '@/components/dashboard/team-task-distribution-chart';
 import AnnouncementFeed from '@/components/announcements/AnnouncementFeed';
@@ -29,9 +53,9 @@ export default function DashboardPage() {
   const { user, getVisibleUsers, markFeatureAsViewed, can } = useAuth();
   const { tasks: allTasks } = useTask();
   const { lastManpowerUpdate, manpowerLogs } = useManpower();
-  const { projects } = useGeneral();
-  const { jobSchedules } = usePlanner();
-  const { ppeRequests, inventoryTransferRequests, inventoryItems, damageReports } = useInventory();
+  const { projects, managementRequests } = useGeneral();
+  const { jobSchedules, timesheets, jobProgress, documentMovements, trackerNotificationCount } = usePlanner();
+  const { ppeRequests, inventoryTransferRequests, inventoryItems, damageReports, internalRequests } = useInventory();
 
   const teamUsers = useMemo(() => getVisibleUsers(), [getVisibleUsers]);
   const teamUserIds = useMemo(() => new Set(teamUsers.map(u => u.id)), [teamUsers]);
@@ -43,26 +67,35 @@ export default function DashboardPage() {
     });
   }, [allTasks, teamUserIds]);
 
-  const myTasks = useMemo(() => {
-    if (!user) return [];
-    return allTasks.filter(t => t.assigneeIds?.includes(user.id));
-  }, [allTasks, user]);
+  // --- ACTION CENTER DATA ---
+  const actionCenterData = useMemo(() => {
+    if (!user) return null;
 
-  const myStats = useMemo(() => {
-    const completed = myTasks.filter(t => t.status === 'Done').length;
-    const total = myTasks.length;
-    const pending = myTasks.filter(t => t.status !== 'Done' && t.status !== 'Pending Approval').length;
-    const overdue = myTasks.filter(t => t.status !== 'Done' && isPast(new Date(t.dueDate))).length;
-    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
-    return { completed, total, pending, overdue, percent };
-  }, [myTasks]);
+    // 1. My Pending Tracker Actions (JMS, TS, Docs)
+    const pendingActions = trackerNotificationCount || 0;
 
-  const myPendingList = useMemo(() => {
-      return myTasks
-        .filter(t => t.status !== 'Done' && t.status !== 'Pending Approval')
-        .sort((a,b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
-        .slice(0, 3);
-  }, [myTasks]);
+    // 2. Unread Management Requests
+    const unreadDirectivesCount = (managementRequests || []).filter(d => {
+        const isRecipient = d.toUserId === user.id || (d.ccUserIds || []).includes(user.id);
+        return isRecipient && !d.readBy?.[user.id];
+    }).length;
+
+    // 3. Request Updates (PPE/Store)
+    const updatedInternalCount = (internalRequests || []).filter(r => {
+        if (r.requesterId !== user.id) return false;
+        return !r.acknowledgedByRequester && (r.status === 'Approved' || r.status === 'Issued' || r.status === 'Rejected');
+    }).length;
+
+    const myPpeRequests = (ppeRequests || []).filter(r => r.requesterId === user.id);
+    const updatedPpeCount = myPpeRequests.filter(r => (r.status === 'Approved' || r.status === 'Rejected' || r.status === 'Issued') && !r.viewedByRequester).length;
+
+    return {
+        pendingActions,
+        unreadDirectives: unreadDirectivesCount,
+        requestUpdates: updatedInternalCount + updatedPpeCount,
+        totalPersonalAlerts: pendingActions + unreadDirectivesCount + updatedInternalCount + updatedPpeCount
+    };
+  }, [user, trackerNotificationCount, managementRequests, internalRequests, ppeRequests]);
 
   const teamPerformance = useMemo(() => {
       return teamUsers.map(member => {
@@ -73,15 +106,9 @@ export default function DashboardPage() {
           const score = total > 0 ? Math.round((completed / total) * 100) : 0;
           return { member, completed, overdue, total, score };
       }).sort((a, b) => {
-          // Sort by status first: active/unset first, then locked
           const isALocked = a.member.status === 'locked';
           const isBLocked = b.member.status === 'locked';
-          
-          if (isALocked !== isBLocked) {
-              return isALocked ? 1 : -1;
-          }
-          
-          // Then by score descending
+          if (isALocked !== isBLocked) return isALocked ? 1 : -1;
           return b.score - a.score;
       });
   }, [teamUsers, allTasks]);
@@ -96,12 +123,10 @@ export default function DashboardPage() {
 
     const pendingPpeApproval = ppeRequests.filter(r => r.status === 'Pending').length;
     const pendingPpeIssuance = ppeRequests.filter(r => r.status === 'Approved').length;
-    const pendingPpeDisputes = ppeRequests.filter(r => r.status === 'Disputed').length;
 
     const pendingTransfers = inventoryTransferRequests.filter(r => r.status === 'Pending' || r.status === 'Disputed').length;
     const pendingDamageReports = damageReports.filter(r => r.status === 'Pending').length;
 
-    // Asset Action Required (Expiry)
     const thirtyDaysFromNow = addDays(new Date(), 30);
     const expiredCount = inventoryItems.filter(item => {
         if (item.isArchived || item.status === 'Damaged' || item.status === 'Quarantine') return false;
@@ -114,16 +139,14 @@ export default function DashboardPage() {
         if (item.isArchived || item.status === 'Damaged' || item.status === 'Quarantine') return false;
         const inspDue = item.inspectionDueDate ? parseISO(item.inspectionDueDate) : null;
         const tpDue = item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : null;
-        
         const inspSoon = inspDue && !isPast(inspDue) && isBefore(inspDue, thirtyDaysFromNow);
         const tpSoon = tpDue && !isPast(tpDue) && isBefore(tpDue, thirtyDaysFromNow);
-        
         return inspSoon || tpSoon;
     }).length;
 
     return {
         show: isManager || isStoreStaff || hasTransferAuth,
-        ppe: { pending: pendingPpeApproval, ready: pendingPpeIssuance, disputes: pendingPpeDisputes },
+        ppe: { pending: pendingPpeApproval, ready: pendingPpeIssuance },
         store: { transfers: pendingTransfers, damage: pendingDamageReports },
         compliance: { expired: expiredCount, soon: expiringSoonCount }
     };
@@ -146,12 +169,9 @@ export default function DashboardPage() {
           .reduce((sum, item) => sum + (item.manpowerIds?.length || 0), 0) || 0;
 
       const openingManpower = latestLogForDay?.openingManpower ?? scheduledCount;
-      
       const countIn = latestLogForDay?.countIn || 0;
       const countOut = latestLogForDay?.countOut || 0;
-      const dayTotal = openingManpower + countIn - countOut;
-
-      working += dayTotal;
+      working += (openingManpower + countIn - countOut);
       onLeave += (latestLogForDay?.countOnLeave || 0);
     });
     return { totalWorking: working, totalOnLeave: onLeave };
@@ -160,9 +180,7 @@ export default function DashboardPage() {
 
   const completedTeamTasks = useMemo(() => teamTasks.filter(t => t.status === 'Done').length, [teamTasks]);
   const openTeamTasks = useMemo(() => teamTasks.length - completedTeamTasks, [teamTasks]);
-  
   const activeManpowerToday = totalWorking - totalOnLeave;
-
   const showEhsNotice = can.access_ehs_portal && !user?.viewedFeatures?.ehs;
 
   return (
@@ -200,7 +218,7 @@ export default function DashboardPage() {
       <AnnouncementFeed />
       <RecentPlannerActivity />
 
-      {/* --- MANAGEMENT CONTROL CENTER (CONDITIONAL) --- */}
+      {/* --- MANAGEMENT CONTROL CENTER --- */}
       {managementData?.show && (
           <Card className="border-2 border-primary/20 shadow-sm bg-primary/[0.01]">
               <CardHeader className="pb-3 border-b bg-muted/20">
@@ -214,7 +232,6 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent className="p-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {/* PPE PILLAR */}
                       <div className="space-y-3">
                           <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
                               <HardHat className="h-3 w-3" /> PPE Requests
@@ -235,7 +252,6 @@ export default function DashboardPage() {
                           </div>
                       </div>
 
-                      {/* STORE PILLAR */}
                       <div className="space-y-3">
                           <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
                               <Warehouse className="h-3 w-3" /> Store & Transfers
@@ -256,7 +272,6 @@ export default function DashboardPage() {
                           </div>
                       </div>
 
-                      {/* COMPLIANCE PILLAR */}
                       <div className="space-y-3">
                           <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
                               <ClipboardCheck className="h-3 w-3" /> Asset Compliance
@@ -313,57 +328,93 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* --- MY WORKSPACE --- */}
-        <Card className="flex flex-col border-2 shadow-sm">
+        {/* --- MY ACTION CENTER --- */}
+        <Card className="flex flex-col border-2 shadow-sm bg-blue-50/5">
             <CardHeader className="bg-muted/30 border-b pb-4">
                 <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                        <Layout className="h-5 w-5 text-primary" />
-                        <CardTitle className="text-lg">My Productivity</CardTitle>
+                        <Zap className="h-5 w-5 text-primary animate-pulse" />
+                        <CardTitle className="text-lg font-black uppercase tracking-tight">My Action Center</CardTitle>
                     </div>
-                    <Badge variant={myStats.overdue > 0 ? "destructive" : "secondary"}>
-                        {myStats.overdue} Overdue
+                    <Badge variant={actionCenterData?.totalPersonalAlerts! > 0 ? "destructive" : "secondary"}>
+                        {actionCenterData?.totalPersonalAlerts} ALERTS
                     </Badge>
                 </div>
             </CardHeader>
             <CardContent className="p-6 space-y-6 flex-1">
-                <div className="space-y-2">
-                    <div className="flex justify-between text-sm font-medium">
-                        <span>Task Completion</span>
-                        <span>{myStats.percent}%</span>
-                    </div>
-                    <Progress value={myStats.percent} className="h-2" />
-                    <p className="text-xs text-muted-foreground">{myStats.completed} of {myStats.total} tasks completed</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <Link href="/job-progress" className="flex flex-col items-center justify-center p-3 rounded-xl border-2 bg-white hover:bg-blue-50 transition-all group">
+                        <Badge variant={actionCenterData?.pendingActions! > 0 ? "destructive" : "outline"} className="mb-2 h-7 min-w-[1.75rem] justify-center font-black">
+                            {actionCenterData?.pendingActions}
+                        </Badge>
+                        <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-center group-hover:text-primary transition-colors">Pending<br/>Signatures</span>
+                    </Link>
+                    <Link href="/management-requests" className="flex flex-col items-center justify-center p-3 rounded-xl border-2 bg-white hover:bg-blue-50 transition-all group">
+                        <Badge variant={actionCenterData?.unreadDirectives! > 0 ? "destructive" : "outline"} className="mb-2 h-7 min-w-[1.75rem] justify-center font-black">
+                            {actionCenterData?.unreadDirectives}
+                        </Badge>
+                        <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-center group-hover:text-primary transition-colors">Unread<br/>Messages</span>
+                    </Link>
+                    <Link href="/my-requests" className="flex flex-col items-center justify-center p-3 rounded-xl border-2 bg-white hover:bg-blue-50 transition-all group">
+                        <Badge variant={actionCenterData?.requestUpdates! > 0 ? "destructive" : "outline"} className="mb-2 h-7 min-w-[1.75rem] justify-center font-black">
+                            {actionCenterData?.requestUpdates}
+                        </Badge>
+                        <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-center group-hover:text-primary transition-colors">Request<br/>Updates</span>
+                    </Link>
                 </div>
 
-                <div className="space-y-3">
-                    <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                        <Clock className="h-4 w-4" /> Next Up
+                <div className="space-y-4">
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-2">
+                        <Layout className="h-3 w-3" /> Quick Access Hub
                     </h4>
-                    {myPendingList.length > 0 ? (
-                        <div className="space-y-2">
-                            {myPendingList.map(task => (
-                                <Link key={task.id} href="/tasks" className="block group">
-                                    <div className="p-3 border rounded-lg hover:bg-muted/50 transition-colors flex justify-between items-center">
-                                        <div className="min-w-0">
-                                            <p className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{task.title}</p>
-                                            <p className="text-xs text-muted-foreground">Due: {format(parseISO(task.dueDate), 'dd MMM')}</p>
-                                        </div>
-                                        <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                    <div className="grid grid-cols-2 gap-3">
+                        <Button asChild variant="outline" className="h-14 justify-start px-4 border-2 hover:bg-blue-50 hover:border-blue-200 transition-all group">
+                            <Link href="/my-requests">
+                                <Package className="mr-3 h-5 w-5 text-slate-400 group-hover:text-blue-600 transition-colors" />
+                                <div className="flex flex-col items-start leading-none">
+                                    <span className="text-[11px] font-black uppercase tracking-tight">New Store Req</span>
+                                    <span className="text-[9px] font-bold text-slate-400 mt-1">Tools & Materials</span>
+                                </div>
+                            </Link>
+                        </Button>
+                        <Button asChild variant="outline" className="h-14 justify-start px-4 border-2 hover:bg-blue-50 hover:border-blue-200 transition-all group">
+                            <Link href="/my-requests">
+                                <HardHat className="mr-3 h-5 w-5 text-slate-400 group-hover:text-blue-600 transition-colors" />
+                                <div className="flex flex-col items-start leading-none">
+                                    <span className="text-[11px] font-black uppercase tracking-tight">New PPE Req</span>
+                                    <span className="text-[9px] font-bold text-slate-400 mt-1">Safety Equipment</span>
+                                </div>
+                            </Link>
+                        </Button>
+                        {can.log_manpower && (
+                            <Button asChild variant="outline" className="h-14 justify-start px-4 border-2 hover:bg-emerald-50 hover:border-emerald-200 transition-all group">
+                                <Link href="/manpower">
+                                    <Users className="mr-3 h-5 w-5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+                                    <div className="flex flex-col items-start leading-none">
+                                        <span className="text-[11px] font-black uppercase tracking-tight">Log Manpower</span>
+                                        <span className="text-[9px] font-bold text-slate-400 mt-1">Daily Site Count</span>
                                     </div>
                                 </Link>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="py-8 text-center border-2 border-dashed rounded-xl bg-muted/20">
-                            <p className="text-sm text-muted-foreground">All clear! No pending tasks.</p>
-                        </div>
-                    )}
+                            </Button>
+                        )}
+                        <Button asChild variant="outline" className="h-14 justify-start px-4 border-2 hover:bg-rose-50 hover:border-rose-200 transition-all group">
+                            <Link href="/incident-reporting">
+                                <ShieldAlert className="mr-3 h-5 w-5 text-slate-400 group-hover:text-rose-600 transition-colors" />
+                                <div className="flex flex-col items-start leading-none">
+                                    <span className="text-[11px] font-black uppercase tracking-tight">Report Incident</span>
+                                    <span className="text-[9px] font-bold text-slate-400 mt-1">HSE Submission</span>
+                                </div>
+                            </Link>
+                        </Button>
+                    </div>
                 </div>
             </CardContent>
-            <CardFooter className="bg-muted/10 border-t p-4 flex justify-center">
-                <Button variant="link" asChild className="text-xs font-bold uppercase tracking-widest h-auto py-0">
-                    <Link href="/tasks">Open Task Board</Link>
+            <CardFooter className="bg-muted/10 border-t p-4 flex justify-between items-center">
+                 <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                    <Clock className="h-3 w-3" /> Live Operations Mode
+                 </div>
+                 <Button variant="link" asChild className="text-[10px] font-black uppercase tracking-[0.2em] h-auto py-0">
+                    <Link href="/tasks">All Tasks <ArrowRight className="ml-1 h-3 w-3"/></Link>
                 </Button>
             </CardFooter>
         </Card>
@@ -380,7 +431,7 @@ export default function DashboardPage() {
                 </div>
             </CardHeader>
             <CardContent className="p-0">
-                <ScrollArea className="h-[320px]">
+                <ScrollArea className="h-[355px]">
                     <div className="divide-y">
                         {teamPerformance.length > 0 ? teamPerformance.map(({ member, score, overdue, total }) => (
                             <div key={member.id} className={cn(
