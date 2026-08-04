@@ -34,7 +34,8 @@ import {
     PlusCircle,
     Send,
     Bell,
-    Inbox
+    Inbox,
+    Package
 } from 'lucide-react';
 import TasksCompletedChart from '@/components/dashboard/tasks-completed-chart';
 import TeamTaskDistributionChart from '@/components/dashboard/team-task-distribution-chart';
@@ -125,7 +126,7 @@ export default function DashboardPage() {
     const pendingPpeIssuance = ppeRequests.filter(r => r.status === 'Approved').length;
 
     const pendingTransfers = inventoryTransferRequests.filter(r => r.status === 'Pending' || r.status === 'Disputed').length;
-    const pendingDamageReports = damageReports.filter(r => r.status === 'Pending').length;
+    const pendingDamageReportCount = can.manage_inventory ? (damageReports || []).filter(r => r.status === 'Pending').length : 0;
 
     const thirtyDaysFromNow = addDays(new Date(), 30);
     const expiredCount = inventoryItems.filter(item => {
@@ -147,7 +148,7 @@ export default function DashboardPage() {
     return {
         show: isManager || isStoreStaff || hasTransferAuth,
         ppe: { pending: pendingPpeApproval, ready: pendingPpeIssuance },
-        store: { transfers: pendingTransfers, damage: pendingDamageReports },
+        store: { transfers: pendingTransfers, damage: pendingDamageReportCount },
         compliance: { expired: expiredCount, soon: expiringSoonCount }
     };
   }, [user, can, ppeRequests, inventoryTransferRequests, inventoryItems, damageReports]);
