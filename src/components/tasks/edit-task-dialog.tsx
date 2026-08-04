@@ -118,15 +118,17 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
   };
   
   const handleApprovalAction = (action: 'approve' | 'return') => {
-    if (!newComment.trim()) {
-        toast({ variant: 'destructive', title: 'Comment required for feedback.' });
-        return;
+    let commentText = newComment.trim();
+    
+    // Provide a default if empty to satisfy the log and context
+    if (!commentText) {
+        commentText = action === 'approve' ? 'Task finalized and approved.' : 'Task returned for modification.';
     }
 
-    let finalComment = newComment;
+    let finalComment = commentText;
     if (!isCreator && isAuthorizedManager) {
         const actionPast = action === 'approve' ? 'Approved' : 'Returned';
-        finalComment = `[MANAGEMENT OVERRIDE] ${actionPast} by ${user?.name}. Feedback: ${newComment}`;
+        finalComment = `[MANAGEMENT OVERRIDE] ${actionPast} by ${user?.name}. Feedback: ${commentText}`;
     }
 
     if (action === 'approve') {
