@@ -52,16 +52,11 @@ export default function TasksPage() {
   const tasksAwaitingMyApproval = useMemo(() => {
     if (!user) return [];
     return tasks.filter(task => {
+      // ONLY the creator gets the notification to approve
       if (task.isArchived || task.statusRequest?.status !== 'Pending') return false;
-      
-      const isMyTaskToApprove = task.creatorId === user.id;
-      const requesterId = task.statusRequest?.requestedBy;
-      const requester = users.find(u => u.id === requesterId);
-      const isMySubordinateRequest = requester?.supervisorId === user.id;
-      
-      return isMyTaskToApprove || isMySubordinateRequest;
+      return task.creatorId === user.id;
     }).sort((a, b) => parseISO(b.lastUpdated).getTime() - parseISO(a.lastUpdated).getTime());
-  }, [tasks, user, users]);
+  }, [tasks, user]);
   
   const mySubmittedTasks = useMemo(() => {
     if (!user) return [];
@@ -113,19 +108,6 @@ export default function TasksPage() {
           if (!matchesTitle && !matchesDesc && !matchesId) return false;
       }
 
-      // Visibility based on statusRequest (Pending Approval)
-      if (task.statusRequest?.status === 'Pending') {
-        const isManagement = user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Manager';
-        const isParticipant = user && task.participants?.includes(user.id);
-        const requester = users.find(u => u.id === task.statusRequest?.requestedBy);
-        const isSupervisorOfRequester = requester?.supervisorId === user?.id;
-        
-        if (!isManagement && !isParticipant && !isSupervisorOfRequester && !isCreatorVisible(task.creatorId)) {
-            // Note: isCreatorVisible logic needs to be consistent here
-            // but the simplified check above covers most cases.
-        }
-      }
-
       if (assigneeId !== 'all' && !task.assigneeIds?.includes(assigneeId)) {
         return false;
       }
@@ -135,8 +117,10 @@ export default function TasksPage() {
       }
       
       let statusMatch = status === 'all' || task.status === status;
-      if (status !== 'all' && task.status !== status) {
-          statusMatch = false;
+      
+      // Special case: If user selects 'In Progress', show 'Pending Approval' tasks too
+      if (status === 'In Progress' && task.status === 'Pending Approval') {
+          statusMatch = true;
       }
       
       const priorityMatch = priority === 'all' || task.priority === priority;
@@ -177,7 +161,7 @@ export default function TasksPage() {
 
       return statusMatch && priorityMatch && dateMatch && monthMatch && yearMatch;
     });
-  }, [visibleTasksPool, filters, user, isArchiveView, users]);
+  }, [visibleTasksPool, filters, user, isArchiveView]);
 
 
   const kanbanTasks = useMemo(() => {
@@ -296,7 +280,8 @@ export default function TasksPage() {
             <ScrollArea className="max-h-[70vh] p-1">
                  <div className="p-4 space-y-4">
                     {tasksAwaitingMyApproval.length > 0 ? tasksAwaitingMyApproval.map(task => {
-                       const requester = users.find(u => u.id === task.statusRequest?.requestedBy);
+                       const requesterId = task.statusRequest?.requestedBy;
+                       const requester = users.find(u => u.id === requesterId);
                        const lastComment = task.comments && task.comments.length > 0 ? task.comments[task.comments.length - 1] : null;
                        return (
                          <div key={task.id} className="border p-3 rounded-lg flex justify-between items-center bg-card shadow-sm hover:bg-muted/30 transition-colors">
