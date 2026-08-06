@@ -428,8 +428,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const getVisibleUsers = useCallback(() => {
     if (!user) return [];
     
-    // Admins, Managers, and Project Coordinators see everything/most things.
-    // Document Controllers and Store Personnel are now restricted to hierarchy-based visibility for operational focus.
     const highLevelRoles: RoleDefinition['name'][] = ['Admin', 'Manager', 'Project Coordinator'];
     const supervisorRoles: RoleDefinition['name'][] = [
       'Supervisor', 

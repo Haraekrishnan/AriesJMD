@@ -47,7 +47,15 @@ export default function EditEmployeeDialog({ isOpen, setIsOpen, user: userToEdit
   });
 
   const possibleSupervisors = useMemo(() => {
-    return users.filter(u => u.id !== userToEdit.id && (u.role === 'Admin' || u.role === 'Project Coordinator' || u.role === 'Supervisor' || u.role === 'Senior Safety Supervisor'));
+    return users.filter(u => 
+      u.id !== userToEdit.id && (
+        u.role === 'Admin' || 
+        u.role === 'Project Coordinator' || 
+        u.role === 'Supervisor' || 
+        u.role === 'Senior Safety Supervisor' ||
+        u.role === 'Store in Charge'
+      )
+    );
   }, [users, userToEdit]);
 
   useEffect(() => {
@@ -182,7 +190,7 @@ export default function EditEmployeeDialog({ isOpen, setIsOpen, user: userToEdit
                       >
                           <Command>
                               <CommandInput placeholder="Search projects..." />
-                              <CommandList className="max-h-72 overflow-y-auto">
+                              <CommandList>
                                   <CommandEmpty>No projects found.</CommandEmpty>
                                   <CommandGroup>
                                       {projects.map(project => (
