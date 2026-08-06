@@ -74,7 +74,13 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
 
   const isAdmin = user?.role === 'Admin';
   const isCreator = user?.id === taskToDisplay.creatorId;
-  const isAuthorizedManager = isAdmin || user?.role === 'Project Coordinator' || user?.role === 'Manager';
+  
+  const requesterId = taskToDisplay.statusRequest?.requestedBy;
+  const requester = users.find(u => u.id === requesterId);
+  const isSupervisorOfRequester = requester?.supervisorId === user?.id;
+
+  const isAuthorizedManager = isAdmin || user?.role === 'Project Coordinator' || user?.role === 'Manager' || isSupervisorOfRequester;
+  
   const isCompleted = taskToDisplay.status === 'Done' || taskToDisplay.status === 'Completed';
 
   const canEditMetadata = isAdmin || isCreator;
@@ -177,9 +183,14 @@ export default function EditTaskDialog({ isOpen, setIsOpen, task }: EditTaskDial
                   TASK DETAILS: {taskToDisplay.title}
               </DialogTitle>
           </div>
-          <DialogDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-left">
-            ASSIGNED BY <span className="text-slate-600">{creator?.name?.toUpperCase()}</span> TO <span className="text-slate-600">{assignees.map(a => a.name?.toUpperCase()).join(', ')}</span>
-          </DialogDescription>
+          <div className="flex flex-col items-start gap-1">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-left">
+                ASSIGNED BY <span className="text-slate-600">{creator?.name?.toUpperCase()}</span>
+              </p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-left">
+                TO <span className="text-slate-600">{assignees.map(a => a.name?.toUpperCase()).join(', ')}</span>
+              </p>
+          </div>
           <div className="mt-4">
               <Badge className="h-8 px-6 rounded-md font-black text-[11px] uppercase tracking-[0.15em] shadow-sm pointer-events-none bg-[#2563EB] hover:bg-[#2563EB]">
                 {taskToDisplay.status}

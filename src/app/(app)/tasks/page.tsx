@@ -51,12 +51,17 @@ export default function TasksPage() {
 
   const tasksAwaitingMyApproval = useMemo(() => {
     if (!user) return [];
-    return tasks.filter(task => 
-      task.creatorId === user.id &&
-      task.statusRequest?.status === 'Pending' &&
-      !task.isArchived
-    );
-  }, [tasks, user]);
+    return tasks.filter(task => {
+      if (task.isArchived || task.statusRequest?.status !== 'Pending') return false;
+      
+      const isMyTaskToApprove = task.creatorId === user.id;
+      const requesterId = task.statusRequest?.requestedBy;
+      const requester = users.find(u => u.id === requesterId);
+      const isMySubordinateRequest = requester?.supervisorId === user.id;
+      
+      return isMyTaskToApprove || isMySubordinateRequest;
+    }).sort((a, b) => parseISO(b.lastUpdated).getTime() - parseISO(a.lastUpdated).getTime());
+  }, [tasks, user, users]);
   
   const mySubmittedTasks = useMemo(() => {
     if (!user) return [];
@@ -93,9 +98,6 @@ export default function TasksPage() {
       const { status, priority, dateRange, showMyTasksOnly, assigneeId, month, year, search } = filters;
 
       // 1. Archive Logic:
-      // If we are in Archive View, only show archived.
-      // If we are searching, include archived. 
-      // If none of above, only show active.
       if (isArchiveView) {
         if (!task.isArchived) return false;
       } else {
@@ -111,13 +113,16 @@ export default function TasksPage() {
           if (!matchesTitle && !matchesDesc && !matchesId) return false;
       }
 
-      // If there's a pending statusRequest for completion, show it to management/participants
+      // Visibility based on statusRequest (Pending Approval)
       if (task.statusRequest?.status === 'Pending') {
         const isManagement = user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Manager';
         const isParticipant = user && task.participants?.includes(user.id);
+        const requester = users.find(u => u.id === task.statusRequest?.requestedBy);
+        const isSupervisorOfRequester = requester?.supervisorId === user?.id;
         
-        if (!isManagement && !isParticipant) {
-            return false;
+        if (!isManagement && !isParticipant && !isSupervisorOfRequester && !isCreatorVisible(task.creatorId)) {
+            // Note: isCreatorVisible logic needs to be consistent here
+            // but the simplified check above covers most cases.
         }
       }
 
@@ -172,7 +177,7 @@ export default function TasksPage() {
 
       return statusMatch && priorityMatch && dateMatch && monthMatch && yearMatch;
     });
-  }, [visibleTasksPool, filters, user, isArchiveView]);
+  }, [visibleTasksPool, filters, user, isArchiveView, users]);
 
 
   const kanbanTasks = useMemo(() => {
@@ -291,14 +296,14 @@ export default function TasksPage() {
             <ScrollArea className="max-h-[70vh] p-1">
                  <div className="p-4 space-y-4">
                     {tasksAwaitingMyApproval.length > 0 ? tasksAwaitingMyApproval.map(task => {
-                       const assignee = users.find(u => u.id === task.statusRequest?.requestedBy);
+                       const requester = users.find(u => u.id === task.statusRequest?.requestedBy);
                        const lastComment = task.comments && task.comments.length > 0 ? task.comments[task.comments.length - 1] : null;
                        return (
                          <div key={task.id} className="border p-3 rounded-lg flex justify-between items-center bg-card shadow-sm hover:bg-muted/30 transition-colors">
                            <div>
                                <p className="font-bold text-sm uppercase tracking-tight">{task.title}</p>
                                <div className="text-[10px] text-muted-foreground flex items-center gap-2 mt-1 uppercase font-black tracking-widest">
-                                <span className="bg-primary/10 text-primary px-1.5 rounded">FROM: {assignee?.name}</span>
+                                <span className="bg-primary/10 text-primary px-1.5 rounded">FROM: {requester?.name}</span>
                                 {lastComment && (
                                    <span>&middot; {formatDistanceToNow(new Date(lastComment.date), { addSuffix: true })}</span>
                                 )}

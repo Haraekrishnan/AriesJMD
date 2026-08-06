@@ -101,9 +101,16 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         if (task.assigneeIds?.includes(user.id) && task.approvalState === 'returned' && !task.viewedBy?.[user.id]){
             myNew++;
         }
-        // Tasks awaiting my approval
-        if (task.creatorId === user.id && task.statusRequest?.status === 'Pending') {
-            pendingApproval++;
+        // Tasks awaiting my approval (Creator OR Supervisor of the requester)
+        if (task.statusRequest?.status === 'Pending') {
+            const isCreator = task.creatorId === user.id;
+            const requesterId = task.statusRequest.requestedBy;
+            const requester = users.find(u => u.id === requesterId);
+            const isSupervisorOfRequester = requester?.supervisorId === user.id;
+
+            if (isCreator || isSupervisorOfRequester) {
+                pendingApproval++;
+            }
         }
         // My tasks awaiting someone else's approval
         if (task.statusRequest?.requestedBy === user.id && task.statusRequest?.status === 'Pending') {
@@ -113,7 +120,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
     return { myNewTaskCount: myNew, pendingTaskApprovalCount: pendingApproval, myPendingTaskRequestCount: myPending };
 
-  }, [tasks, user]);
+  }, [tasks, user, users]);
 
     const createTask = useCallback((taskData: Omit<Task, 'id' | 'creatorId' | 'status' | 'comments' | 'approvalState' | 'createdAt'>) => {
         if (!user) return;
@@ -251,8 +258,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     const requestTaskStatusChange = useCallback(async (taskId: string, newStatus: TaskStatus, comment: string, attachment?: Task['attachment']) => {
         if (!user) return;
         const task = tasksById[taskId];
-        if (!task) return;
-    
+        if (!task) return; presentations
+
         const updates: { [key: string]: any } = {};
         
         if (task.subtasks?.[user.id]) {
