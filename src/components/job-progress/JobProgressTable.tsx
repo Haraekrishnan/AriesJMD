@@ -15,9 +15,10 @@ import { useGeneral } from '@/contexts/general-provider';
 import type { JobProgress } from '@/lib/types';
 import { format, parseISO, isValid, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Check, Clock } from 'lucide-react';
+import { Check, Clock, Undo2, User } from 'lucide-react';
 import { JOB_PROGRESS_STEPS } from '@/lib/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 interface JobProgressTableProps {
   jobs: JobProgress[];
@@ -61,6 +62,12 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                   <TableHead className="w-36 border-r-2 border-black text-black font-bold md:sticky md:left-[584px] md:z-50 bg-[#D9E2F3] md:shadow-[2px_0_5px_-2px_rgba(0,0,0,0.2)]">JMS NO</TableHead>
                   
                   <TableHead className="w-28 border-r-2 border-black text-black font-bold text-right">VALUE (INR)</TableHead>
+                  
+                  {/* New Summary Column */}
+                  <TableHead className="w-48 border-r-2 border-black bg-[#FFF8E1] text-[#7A5B3E] font-black uppercase text-center tracking-tighter">
+                    Current Action / Responsibility
+                  </TableHead>
+
                   <TableHead className="w-24 border-r border-black text-black font-bold text-center">START</TableHead>
                   <TableHead className="w-24 border-r-2 border-black text-black font-bold text-center">END</TableHead>
                   
@@ -80,6 +87,14 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                   const isEven = index % 2 !== 0;
                   const rowBg = isEven ? "bg-slate-50 dark:bg-slate-800" : "bg-white dark:bg-slate-900";
                   
+                  // Logic to find current active step
+                  const currentStep = job.status === 'Completed' 
+                    ? job.steps[job.steps.length - 1] 
+                    : (job.steps.find(s => s.status !== 'Completed') || job.steps[job.steps.length - 1]);
+                  
+                  const activeAssignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
+                  const isJobReturned = job.steps.some(s => s.isReturned);
+
                   return (
                     <TableRow 
                       key={job.id} 
@@ -98,13 +113,41 @@ export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
                       <TableCell className="border-r-2 border-black text-right font-bold text-[11px] text-foreground">
                         {job.amount ? new Intl.NumberFormat('en-IN').format(job.amount) : '-'}
                       </TableCell>
+
+                      {/* Summary Cell Content */}
+                      <TableCell className="border-r-2 border-black bg-[#FFFBF0]/50 p-2 text-center">
+                        <div className="flex flex-col items-center gap-1">
+                           {isJobReturned ? (
+                               <Badge variant="destructive" className="h-4 py-0 text-[8px] font-black animate-pulse">
+                                   <Undo2 className="h-2 w-2 mr-1" /> RETURNED
+                               </Badge>
+                           ) : job.status === 'Completed' ? (
+                               <Badge variant="success" className="h-4 py-0 text-[8px] font-black">COMPLETED</Badge>
+                           ) : null}
+                           
+                           <span className="font-black uppercase text-[10px] text-slate-800 leading-none">
+                                {currentStep?.name || 'N/A'}
+                           </span>
+
+                           {activeAssignee && job.status !== 'Completed' && (
+                               <div className="flex items-center gap-1.5 mt-1">
+                                   <Avatar className="h-4 w-4 border border-slate-300">
+                                       <AvatarImage src={activeAssignee.avatar} />
+                                       <AvatarFallback className="text-[6px]">{activeAssignee.name[0]}</AvatarFallback>
+                                   </Avatar>
+                                   <span className="font-bold text-[9px] text-blue-700 truncate max-w-[80px]">
+                                       {activeAssignee.name}
+                                   </span>
+                               </div>
+                           )}
+                        </div>
+                      </TableCell>
+
                       <TableCell className="border-r border-slate-300 text-center text-[11px] text-foreground">{formatDate(job.dateFrom)}</TableCell>
                       <TableCell className="border-r-2 border-black text-center text-[11px] text-foreground">{formatDate(job.dateTo)}</TableCell>
 
                       {JOB_PROGRESS_STEPS.map((stepName) => {
                         const stepsWithThisName = job.steps.filter(s => s.name === stepName);
-                        // CRITICAL FIX: If a step name is repeated, find the first one that isn't completed. 
-                        // If all are completed, show the last completed one.
                         const step = stepsWithThisName.find(s => s.status !== 'Completed') || [...stepsWithThisName].reverse()[0];
                         
                         const isCompleted = step?.status === 'Completed';
