@@ -85,6 +85,27 @@ type PlannerContextType = {
   bulkMarkJmsAsNoted: (jobIds: string[]) => void;
 };
 
+const createDataListener = <T extends {}>(
+    path: string,
+    setData: Dispatch<SetStateAction<Record<string, T>>>,
+) => {
+    const dbRef = ref(rtdb, path);
+    const listener = onValue(dbRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        const processedData = Object.keys(data).reduce((acc, key) => {
+            acc[key] = { ...data[key], id: key };
+            return acc;
+        }, {} as Record<string, T>);
+        setData(currentData => {
+            if (JSON.stringify(currentData) === JSON.stringify(processedData)) {
+                return currentData;
+            }
+            return processedData;
+        });
+    });
+    return () => listener();
+};
+
 const PlannerContext = createContext<PlannerContextType | undefined>(undefined);
 
 export function PlannerProvider({ children }: { children: ReactNode }) {
@@ -850,8 +871,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     const reopenJob = useCallback((jobId: string, reason: string, newStepName: string, newStepAssigneeId: string) => {
         if (!user) return;
         const job = jobProgressById[jobId];
-        if (!job) return;
-    
+        if (!job) return;    
         const canReopenRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
         const canReopen = canReopenRoles.includes(user.role) || user.id === job.creatorId;
     
