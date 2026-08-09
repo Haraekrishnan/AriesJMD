@@ -31,7 +31,7 @@ import { generateJobWiseExcel } from './generateJobWiseReport';
 import { generateAuditReportExcel } from './generateAuditReport';
 
 
-const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
+const implementationStartDate = new Date(2025, 9, 1); // October 2025
 
 async function fetchImageAsArrayBuffer(url: string) {
     const response = await fetch(url);
@@ -884,8 +884,21 @@ export default function JobRecordSheet() {
         generateJobWiseExcel(currentMonth, jobRecords, manpowerProfiles, jobCodes);
     };
 
-    const handleAuditExport = () => {
-        generateAuditReportExcel(currentMonth, jobRecordAudit, manpowerProfiles);
+    const handleAuditExport = async () => {
+        const monthKey = format(currentMonth, 'yyyy-MM');
+        const filteredLogs = jobRecordAudit
+            .filter(log => log.month === monthKey);
+
+        if (filteredLogs.length === 0) {
+            toast({
+                title: "No History Data",
+                description: `No changes have been recorded for ${format(currentMonth, 'MMMM yyyy')}.`,
+                variant: "warning"
+            });
+            return;
+        }
+        
+        await generateAuditReportExcel(currentMonth, jobRecordAudit, manpowerProfiles);
     };
 
     const handleMoveRow = (profileId: string, direction: 'up' | 'down') => {
@@ -985,7 +998,10 @@ export default function JobRecordSheet() {
                                     <AlertDialogTrigger asChild><Button variant="destructive"><Lock className="mr-2 h-4 w-4" /> Lock</Button></AlertDialogTrigger>
                                     <AlertDialogContent>
                                         <AlertDialogHeader><AlertDialogTitle>Lock Job Record Sheet?</AlertDialogTitle><AlertDialogDescription>Locking this sheet will prevent further edits by non-admin users. This should only be done when the month's record is final.</AlertDialogDescription></AlertDialogHeader>
-                                        <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => lockJobRecordSheet(monthKey)}>Confirm Lock</AlertDialogAction></AlertDialogFooter>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => lockJobRecordSheet(monthKey)}>Confirm Lock</AlertDialogAction>
+                                        </AlertDialogFooter>
                                     </AlertDialogContent>
                                 </AlertDialog>
                             )}
