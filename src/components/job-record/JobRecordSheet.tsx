@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Settings, Search, MessageSquare, ArrowRightLeft, UserMinus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Clock, UserX, PlusCircle, ChevronsUpDown, ChevronDown, ChevronUp, MoreHorizontal, Info, Edit, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Settings, Search, MessageSquare, ArrowRightLeft, UserMinus, History } from 'lucide-react';
 import { eachDayOfInterval, endOfMonth, startOfMonth, format, getDay, getDaysInMonth, parseISO, isSameMonth, isAfter, isBefore, startOfToday, addMonths, subMonths, isValid } from 'date-fns';
 import { saveAs } from "file-saver";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28,6 +28,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { JOB_CODE_COLORS } from '@/lib/job-codes';
 import * as ExcelJS from 'exceljs';
 import { generateJobWiseExcel } from './generateJobWiseReport';
+import { generateAuditReportExcel } from './generateAuditReport';
 
 
 const implementationStartDate = new Date(2025, 9, 1); // October 2025 (Month is 0-indexed)
@@ -43,7 +44,7 @@ async function fetchImageAsArrayBuffer(url: string) {
 export default function JobRecordSheet() {
     const { user, can } = useAuth();
     const { manpowerProfiles } = useManpower();
-    const { jobRecords, saveJobRecord, savePlantOrder, jobRecordPlants, lockJobRecordSheet, unlockJobRecordSheet, deleteJobRecordPlant, carryForwardPlantAssignments } = usePlanner();
+    const { jobRecords, saveJobRecord, savePlantOrder, jobRecordPlants, lockJobRecordSheet, unlockJobRecordSheet, deleteJobRecordPlant, carryForwardPlantAssignments, jobRecordAudit } = usePlanner();
     const { projects, jobCodes, deleteJobCode } = useGeneral();
     const [currentMonth, setCurrentMonth] = useState(startOfToday());
     const [isAddPlantOpen, setIsAddPlantOpen] = useState(false);
@@ -883,6 +884,10 @@ export default function JobRecordSheet() {
         generateJobWiseExcel(currentMonth, jobRecords, manpowerProfiles, jobCodes);
     };
 
+    const handleAuditExport = () => {
+        generateAuditReportExcel(currentMonth, jobRecordAudit, manpowerProfiles);
+    };
+
     const handleMoveRow = (profileId: string, direction: 'up' | 'down') => {
         const currentProfiles = filteredAndGroupedProfiles[activeTab || ''] || [];
         if (!currentProfiles) return;
@@ -956,6 +961,9 @@ export default function JobRecordSheet() {
                                     <ArrowRightLeft className="mr-2 h-4 w-4"/> Carry Forward
                                 </Button>
                             )}
+                            <Button onClick={handleAuditExport} variant="outline" className="border-orange-200 text-orange-700 bg-orange-50 hover:bg-orange-100">
+                                <History className="mr-2 h-4 w-4"/> History Log
+                            </Button>
                             <Button onClick={exportToExcel}><Download className="mr-2 h-4 w-4"/>Export Sheet</Button>
                             <Button onClick={handleJobWiseExport} variant="outline"><Download className="mr-2 h-4 w-4"/>Export by Job</Button>
                             {user?.role === 'Admin' && (
@@ -1204,12 +1212,12 @@ export default function JobRecordSheet() {
                                                     onClick={() => handleRequestOverride(profile.id, 'sunday')}
                                                 />
                                             )}
-                                            <Input
+                                            <input
                                                 type="number"
                                                 value={sundayDutyStates[profile.id] ?? ''}
                                                 onChange={(e) => handleSundayDutyChange(profile.id, e.target.value)}
                                                 onBlur={(e) => handleSundayDutySave(profile.id, e.target.value)}
-                                                className={cn("w-16 h-8 text-center mx-auto", (isRowAway && !tempUnlockedCells.has(`${profile.id}-sunday`)) && "cursor-not-allowed opacity-50")}
+                                                className={cn("w-16 h-8 text-center mx-auto bg-transparent border-0 focus:ring-1", (isRowAway && !tempUnlockedCells.has(`${profile.id}-sunday`)) && "cursor-not-allowed opacity-50")}
                                                 placeholder="0"
                                                 disabled={!canEditSheet || (isRowAway && !tempUnlockedCells.has(`${profile.id}-sunday`))}
                                             />
@@ -1310,7 +1318,7 @@ export default function JobRecordSheet() {
                 <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="item-1">
                         <AccordionTrigger className="p-3 text-sm font-semibold hover:no-underline">
-                            <div className="flex items-center gap-2"><Info className="h-4 w-4"/>Job Code Legend & Man-Days Count for {searchTerm ? "All Plants" : activeTab || ''}</div>
+                            <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-blue-400" />{manpowerProfiles.filter(p => p.reportedOnLeave).length} Personnel Away &middot; <Info className="h-4 w-4"/>Job Code Legend & Man-Days Count for {searchTerm ? "All Plants" : activeTab || ''}</div>
                         </AccordionTrigger>
                         <AccordionContent>
                             <div className="p-4 pt-0">

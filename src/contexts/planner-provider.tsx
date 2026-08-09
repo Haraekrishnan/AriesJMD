@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo, Dispatch, SetStateAction } from 'react';
-import { PlannerEvent, DailyPlannerComment, Comment, JobSchedule, JobScheduleItem, JobRecord, JobRecordPlant, VehicleUsageRecord, User, Role, JobStep, JobProgress, JobStepStatus, Timesheet, TimesheetStatus, DocumentMovement, DocumentMovementStatus } from '@/lib/types';
+import { PlannerEvent, DailyPlannerComment, Comment, JobSchedule, JobScheduleItem, JobRecord, JobRecordPlant, VehicleUsageRecord, User, Role, JobStep, JobProgress, JobStepStatus, Timesheet, TimesheetStatus, DocumentMovement, DocumentMovementStatus, JobRecordAuditEntry } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, update, get, remove } from 'firebase/database';
 import { useAuth } from './auth-provider';
@@ -34,6 +34,7 @@ type PlannerContextType = {
   timesheets: Timesheet[];
   jobProgress: JobProgress[];
   documentMovements: DocumentMovement[];
+  jobRecordAudit: JobRecordAuditEntry[];
   trackerNotificationCount: number;
   addPlannerEvent: (eventData: Omit<PlannerEvent, 'id'>) => void;
   updatePlannerEvent: (event: PlannerEvent) => void;
@@ -84,27 +85,6 @@ type PlannerContextType = {
   bulkMarkJmsAsNoted: (jobIds: string[]) => void;
 };
 
-const createDataListener = <T extends {}>(
-    path: string,
-    setData: Dispatch<SetStateAction<Record<string, T>>>,
-) => {
-    const dbRef = ref(rtdb, path);
-    const listener = onValue(dbRef, (snapshot) => {
-        const data = snapshot.val() || {};
-        const processedData = Object.keys(data).reduce((acc, key) => {
-            acc[key] = { ...data[key], id: key };
-            return acc;
-        }, {} as Record<string, T>);
-        setData(currentData => {
-            if (JSON.stringify(currentData) === JSON.stringify(processedData)) {
-                return currentData;
-            }
-            return processedData;
-        });
-    });
-    return () => listener();
-};
-
 const PlannerContext = createContext<PlannerContextType | undefined>(undefined);
 
 export function PlannerProvider({ children }: { children: ReactNode }) {
@@ -120,6 +100,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     const [timesheetsById, setTimesheetsById] = useState<Record<string, Timesheet>>({});
     const [jobProgressById, setJobProgressById] = useState<Record<string, JobProgress>>({});
     const [documentMovementsById, setDocumentMovementsById] = useState<Record<string, DocumentMovement>>({});
+    const [jobRecordAuditById, setJobRecordAuditById] = useState<Record<string, JobRecordAuditEntry>>({});
 
     const plannerEvents = useMemo(() => Object.values(plannerEventsById), [plannerEventsById]);
     const dailyPlannerComments = useMemo(() => Object.values(dailyPlannerCommentsById), [dailyPlannerCommentsById]);
@@ -128,6 +109,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     const timesheets = useMemo(() => Object.values(timesheetsById), [timesheetsById]);
     const jobProgress = useMemo(() => Object.values(jobProgressById), [jobProgressById]);
     const documentMovements = useMemo(() => Object.values(documentMovementsById), [documentMovementsById]);
+    const jobRecordAudit = useMemo(() => Object.values(jobRecordAuditById), [jobRecordAuditById]);
 
     const trackerNotificationCount = useMemo(() => {
       if (!user) return 0;
@@ -347,7 +329,22 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             return;
         }
         set(ref(rtdb, path), value);
-    }, []);
+
+        // Audit Logging
+        if (user) {
+            const auditRef = push(ref(rtdb, 'jobRecordAudit'));
+            set(auditRef, {
+                month: monthKey,
+                profileId,
+                day,
+                field,
+                value,
+                userId: user.id,
+                userName: user.name,
+                timestamp: new Date().toISOString()
+            });
+        }
+    }, [user]);
     
     const lockJobRecordSheet = useCallback((monthKey: string) => {
         update(ref(rtdb, `jobRecords/${monthKey}`), { isLocked: true });
@@ -795,8 +792,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         const job = jobProgressById[jobId];
         if (!job) return;    
         const stepIndex = job.steps.findIndex(s => s.id === stepId);
-        if (stepIndex === -1) return;
-    
+        if (stepIndex === -1) return;    
         const currentStep = job.steps[stepIndex];
         
         let newAssigneeId: string | null = null;
@@ -1168,6 +1164,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             createDataListener('dailyPlannerComments', setDailyPlannerCommentsById),
             createDataListener('jobSchedules', setJobSchedulesById),
             createDataListener('jobRecordPlants', setJobRecordPlantsById),
+            createDataListener('jobRecordAudit', setJobRecordAuditById),
             onValue(ref(rtdb, 'jobRecords'), (snapshot) => {
                 const data = snapshot.val();
                 let monthRecords: { [key: string]: JobRecord } = {};
@@ -1202,7 +1199,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const contextValue: PlannerContextType = {
-        plannerEvents, dailyPlannerComments, jobSchedules, jobRecords, jobRecordPlants, vehicleUsageRecords, timesheets, jobProgress, documentMovements,
+        plannerEvents, dailyPlannerComments, jobSchedules, jobRecords, jobRecordPlants, vehicleUsageRecords, timesheets, jobProgress, documentMovements, jobRecordAudit,
         trackerNotificationCount,
         addPlannerEvent, updatePlannerEvent, deletePlannerEvent,
         getExpandedPlannerEvents, addPlannerEventComment,

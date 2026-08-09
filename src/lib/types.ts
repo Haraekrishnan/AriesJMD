@@ -993,6 +993,18 @@ export type JobCode = {
   jobNo?: string;
 };
 
+export type JobRecordAuditEntry = {
+    id: string;
+    month: string;
+    profileId: string;
+    day: number | null;
+    field: string;
+    value: any;
+    userId: string;
+    userName: string;
+    timestamp: string;
+};
+
 export type VehicleUsageRecord = {
   [month: string]: { // yyyy-MM
     records: {
