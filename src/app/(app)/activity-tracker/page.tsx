@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -44,8 +45,9 @@ export default function ActivityTrackerPage() {
                 { header: 'DATE & TIME', key: 'timestamp', width: 25 },
                 { header: 'USER NAME', key: 'userName', width: 25 },
                 { header: 'USER EMAIL', key: 'userEmail', width: 30 },
+                { header: 'USER ROLE', key: 'userRole', width: 20 },
                 { header: 'ACTION', key: 'action', width: 25 },
-                { header: 'MINUTE DETAILS', key: 'details', width: 60 },
+                { header: 'MINUTE DETAILS', key: 'details', width: 80 },
             ];
 
             // Style the header row
@@ -78,6 +80,7 @@ export default function ActivityTrackerPage() {
                     timestamp: format(parseISO(log.timestamp), 'dd MMM yyyy, HH:mm:ss'),
                     userName: logUser?.name || 'Unknown User',
                     userEmail: logUser?.email || 'N/A',
+                    userRole: logUser?.role || 'N/A',
                     action: log.action.toUpperCase(),
                     details: log.details || 'No additional details provided.'
                 });
@@ -97,11 +100,11 @@ export default function ActivityTrackerPage() {
 
             // Save the file
             const buffer = await workbook.xlsx.writeBuffer();
-            saveAs(new Blob([buffer]), `Activity_Log_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
+            saveAs(new Blob([buffer]), `System_Activity_Audit_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
             
             toast({
                 title: "Report Generated",
-                description: "Detailed activity log has been downloaded."
+                description: "Detailed system audit log has been downloaded."
             });
         } catch (error) {
             console.error("Excel Export Error:", error);
@@ -138,7 +141,7 @@ export default function ActivityTrackerPage() {
                     onClick={handleExportExcel} 
                     className="bg-[#2563EB] hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[10px] h-11 px-6 shadow-md shadow-blue-500/20"
                 >
-                    <FileDown className="mr-2 h-4 w-4" /> Export Full Activity Log
+                    <FileDown className="mr-2 h-4 w-4" /> Export Full Audit Log
                 </Button>
             </div>
 

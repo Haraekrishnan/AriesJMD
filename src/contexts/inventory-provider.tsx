@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -431,13 +432,15 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
     const updatePpeRequestStatus = useCallback((requestId: string, status: PpeRequestStatus, comment: string) => {
         if (!user) return;
+        const request = ppeRequestsById[requestId];
+        if (!request) return;
+
         const updates: { [key: string]: any } = {};
         updates[`ppeRequests/${requestId}/status`] = status;
         updates[`ppeRequests/${requestId}/approverId`] = user.id;
         updates[`ppeRequests/${requestId}/viewedByRequester`] = false;
         
         if (status === 'Issued') {
-            const request = ppeRequestsById[requestId];
             const stockPath = request.ppeType === 'Coverall' ? `ppeStock/coveralls/sizes/${request.size}` : `ppeStock/safetyShoes/quantity`;
             get(ref(rtdb, stockPath)).then(snapshot => {
                 const currentStock = snapshot.val() || 0;
@@ -459,13 +462,15 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 };
 
                 update(ref(rtdb), updates);
+                addActivityLog(user.id, 'PPE Issued', `Issued ${request.quantity} ${request.ppeType} (Size: ${request.size}) to employee.`);
             });
         } else {
             update(ref(rtdb), updates);
+            addActivityLog(user.id, `PPE Request ${status}`, `Request #${requestId.slice(-6)} marked as ${status}.`);
         }
 
         addPpeRequestComment(requestId, `Status changed to ${status}. ${comment}`, true);
-    }, [user, ppeRequestsById, addPpeRequestComment]);
+    }, [user, ppeRequestsById, addPpeRequestComment, addActivityLog]);
     
     // Functions
     const addInventoryItem = useCallback((itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
@@ -490,7 +495,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
         
         set(newRef, dataToSave);
-        addActivityLog(user.id, 'Inventory Item Added', `${itemData.name} (SN: ${itemData.serialNumber})`);
+        addActivityLog(user.id, 'Inventory Item Added', `${itemData.name} (SN: ${itemData.serialNumber}) at ${projects.find(p=>p.id === dataToSave.projectId)?.name}`);
     }, [user, addActivityLog, projects]);
 
     const batchAddInventoryItems = useCallback((items: Omit<InventoryItem, 'id' | 'lastUpdated'>[]) => {
@@ -508,11 +513,12 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
         if (Object.keys(updates).length > 0) {
             update(ref(rtdb), updates);
-            addActivityLog(user.id, "Inventory Batch Added", `Added ${items.length} new items.`);
+            addActivityLog(user.id, "Inventory Batch Added", `Created ${items.length} new items in current plant.`);
         }
     }, [user, addActivityLog]);
 
     const addMultipleInventoryItems = useCallback((itemsData: any[]): number => {
+        if (!user) return 0;
         let importedCount = 0;
         const updates: { [key: string]: any } = {};
 
@@ -553,11 +559,13 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
         if(Object.keys(updates).length > 0) {
             update(ref(rtdb), updates);
+            addActivityLog(user.id, 'Inventory Bulk Import', `Imported ${importedCount} items from Excel.`);
         }
         return importedCount;
-    }, [inventoryItems, projects]);
+    }, [inventoryItems, projects, user, addActivityLog]);
 
     const updateInventoryItem = useCallback((item: InventoryItem) => {
+        if (!user) return;
         const { id, ...data } = item;
         const updates = { 
             ...data, 
@@ -570,7 +578,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         };
         const sanitizedUpdates = sanitizeData(updates);
         update(ref(rtdb, `inventoryItems/${id}`), sanitizedUpdates);
-    }, []);
+        addActivityLog(user.id, 'Inventory Item Updated', `Updated details for ${item.name} (SN: ${item.serialNumber})`);
+    }, [user, addActivityLog]);
 
     const batchUpdateInventoryItems = useCallback((updates: { id: string, data: Partial<InventoryItem> }[]) => {
         if (!user) return;
@@ -590,11 +599,12 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         
         if (Object.keys(dbUpdates).length > 0) {
             update(ref(rtdb), dbUpdates);
-            addActivityLog(user.id, "Inventory Batch Updated", `Updated ${updates.length} items.`);
+            addActivityLog(user.id, "Inventory Batch Updated", `Updated ${updates.length} items in bulk.`);
         }
     }, [user, addActivityLog]);
     
     const updateInventoryItemGroup = useCallback((itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'tpInspectionDueDate' | 'certificateUrl'>>) => {
+        if (!user) return;
         const itemsToUpdate = inventoryItems.filter(item => item.name === itemName && item.tpInspectionDueDate === originalDueDate);
         if(itemsToUpdate.length === 0) return;
         const dbUpdates: { [key: string]: any } = {};
@@ -604,9 +614,11 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             dbUpdates[`/inventoryItems/${item.id}/certificateUrl`] = sanitizedUpdates.certificateUrl || item.certificateUrl;
         });
         update(ref(rtdb), dbUpdates);
-    }, [inventoryItems]);
+        addActivityLog(user.id, 'Inventory Bulk Update', `Updated TP validity for all "${itemName}" items previously due on ${originalDueDate}`);
+    }, [inventoryItems, user, addActivityLog]);
 
     const updateInspectionItemGroup = useCallback((itemName: string, originalDueDate: string, updates: Partial<Pick<InventoryItem, 'inspectionDate' | 'inspectionDueDate' | 'inspectionCertificateUrl'>>) => {
+        if (!user) return;
         const itemsToUpdate = inventoryItems.filter(item => item.name === itemName && item.inspectionDueDate === originalDueDate);
         if (itemsToUpdate.length === 0) {
             toast({ title: "No items found", description: `No items named "${itemName}" with the selected due date were found.`, variant: 'destructive' });
@@ -624,10 +636,12 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             dbUpdates[`${itemPath}/lastUpdated`] = timestamp;
         });
         update(ref(rtdb), dbUpdates);
+        addActivityLog(user.id, 'Inventory Bulk Update', `Updated Inspection validity for all "${itemName}" items previously due on ${originalDueDate}`);
         toast({ title: 'Bulk Update Successful', description: `Updated ${itemsToUpdate.length} items.` });
-    }, [inventoryItems, toast]);
+    }, [inventoryItems, toast, user, addActivityLog]);
 
     const updateMultipleInventoryItems = useCallback((itemsData: any[]) => {
+        if (!user) return 0;
         let updatedCount = 0;
         const updates: { [key: string]: any } = {};
     
@@ -692,9 +706,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
         if (Object.keys(updates).length > 0) {
             update(ref(rtdb), updates);
+            addActivityLog(user.id, 'Inventory Bulk Update', `Updated ${updatedCount} items from Excel.`);
         }
         return updatedCount;
-    }, [inventoryItems, projects]);
+    }, [inventoryItems, projects, user, addActivityLog]);
 
     const batchDeleteInventoryItems = useCallback((itemIds: string[]) => {
       if (!user) return;
@@ -703,28 +718,33 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         updates[`/inventoryItems/${id}`] = null;
       });
       update(ref(rtdb), updates);
-      addActivityLog(user.id, "Inventory Item(s) Deleted", `Permanently deleted ${itemIds.length} items.`);
+      addActivityLog(user.id, "Inventory Item(s) Deleted", `Permanently deleted ${itemIds.length} items from database.`);
     }, [user, addActivityLog]);
 
     const deleteInventoryItemGroup = useCallback((itemName: string) => {
+        if (!user) return;
         const itemsToDelete = inventoryItems.filter(item => item.name === itemName);
         const updates: { [key: string]: null } = {};
         itemsToDelete.forEach(item => {
             updates[`/inventoryItems/${item.id}`] = null;
         });
         update(ref(rtdb), updates);
-    }, [inventoryItems]);
+        addActivityLog(user.id, "Inventory Group Deleted", `Deleted all items named "${itemName}"`);
+    }, [inventoryItems, user, addActivityLog]);
     
     const renameInventoryItemGroup = useCallback((oldName: string, newName: string) => {
+        if (!user) return;
         const itemsToRename = inventoryItems.filter(item => item.name === oldName);
         const updates: { [key: string]: any } = {};
         itemsToRename.forEach(item => {
         updates[`/inventoryItems/${item.id}/name`] = newName;
         });
         update(ref(rtdb), updates);
-    }, [inventoryItems]);
+        addActivityLog(user.id, "Inventory Group Renamed", `Renamed all "${oldName}" items to "${newName}"`);
+    }, [inventoryItems, user, addActivityLog]);
 
     const revalidateExpiredItems = useCallback(() => {
+        if (!user) return;
         const updates: { [key: string]: any } = {};
         let revalidatedCount = 0;
         inventoryItems.forEach(item => {
@@ -743,13 +763,14 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 title: 'Revalidation Complete',
                 description: `${revalidatedCount} items have been revalidated and set to "In Store".`,
             });
+            addActivityLog(user.id, 'Inventory Revalidated', `Revalidated ${revalidatedCount} items based on current TP dates.`);
         } else {
             toast({
                 title: 'No Items to Revalidate',
                 description: 'No expired items with a valid future TP Inspection date were found.',
             });
         }
-    }, [inventoryItems, toast]);
+    }, [inventoryItems, toast, user, addActivityLog]);
     
     const addTpCertList = useCallback((listData: Omit<TpCertList, 'id' | 'creatorId' | 'createdAt'>) => {
         if (!user) return;
@@ -767,10 +788,11 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         };
         const finalData = sanitizeData(newList);
         set(newRef, finalData);
-        addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name}`);
+        addActivityLog(user.id, 'TP Certification List Saved', `List Name: ${listData.name} (${listData.items.length} items)`);
     }, [user, addActivityLog]);
 
     const updateTpCertList = useCallback((listData: TpCertList) => {
+        if (!user) return;
         const { id, ...data } = listData;
         const sanitizedItems = data.items.map(item => ({
         ...item,
@@ -779,11 +801,15 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }));
         const sanitizedData = sanitizeData({ ...data, items: sanitizedItems });
         update(ref(rtdb, `tpCertLists/${id}`), sanitizedData);
-    }, []);
+        addActivityLog(user.id, 'TP Certification List Updated', `Updated list: ${listData.name}`);
+    }, [user, addActivityLog]);
 
     const deleteTpCertList = useCallback((listId: string) => {
+        if (!user) return;
+        const list = tpCertLists.find(l => l.id === listId);
         remove(ref(rtdb, `tpCertLists/${listId}`));
-    }, []);
+        if (list) addActivityLog(user.id, 'TP Certification List Deleted', `Deleted list: ${list.name}`);
+    }, [user, addActivityLog, tpCertLists]);
     
     const addInventoryTransferRequest = useCallback(async (requestData: Omit<InventoryTransferRequest, 'id' | 'requesterId' | 'requestDate' | 'status'>): Promise<boolean> => {
         if (!user) return false;
@@ -805,11 +831,12 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             };
             const finalData = sanitizeData(newRequest);
             await set(newRequestRef, finalData);
-            addActivityLog(user.id, 'Inventory Transfer Request Created');
+
+            const fromName = projects.find(p=>p.id===requestData.fromProjectId)?.name;
+            const toName = projects.find(p=>p.id===requestData.toProjectId)?.name;
+            addActivityLog(user.id, 'Inventory Transfer Request Created', `Requested move of ${requestData.items.length} items from ${fromName} to ${toName}`);
     
             const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge', 'Admin'].includes(u.role));
-            const fromProjectName = projects.find(p => p.id === requestData.fromProjectId)?.name;
-            const toProjectName = projects.find(p => p.id === requestData.toProjectId)?.name;
             const itemsHtml = requestData.items.map(item => `<li>${item.name} (SN: ${item.serialNumber})</li>`).join('');
         
             storePersonnel.forEach(storeUser => {
@@ -818,8 +845,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                         <p>A new inventory transfer has been requested by ${user.name}.</p>
                         <h3>Details:</h3>
                         <ul>
-                            <li><strong>From:</strong> ${fromProjectName || 'Unknown'}</li>
-                            <li><strong>To:</strong> ${toProjectName || 'Unknown'}</li>
+                            <li><strong>From:</strong> ${fromName || 'Unknown'}</li>
+                            <li><strong>To:</strong> ${toName || 'Unknown'}</li>
                             <li><strong>Reason:</strong> ${requestData.reason}</li>
                         </ul>
                         <h3>Items (${requestData.items.length}):</h3>
@@ -847,6 +874,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     }, [user, addActivityLog, users, projects, notificationSettings, toast]);
     
     const updateInventoryTransferRequest = useCallback(async (request: InventoryTransferRequest): Promise<boolean> => {
+        if (!user) return false;
         try {
             const { id, ...data } = request;
             const sanitizedItems = data.items.map(item => ({
@@ -855,13 +883,14 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             }));
             const finalData = sanitizeData({ ...data, items: sanitizedItems });
             await update(ref(rtdb, `inventoryTransferRequests/${id}`), finalData);
+            addActivityLog(user.id, 'Inventory Transfer Request Updated', `Modified request #${id.slice(-6)}`);
             return true;
         } catch (error) {
             console.error("Failed to update inventory transfer request:", error);
             toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not save changes to the request.' });
             return false;
         }
-    }, [toast]);
+    }, [toast, user, addActivityLog]);
     
     const approveInventoryTransferRequest = useCallback((request: InventoryTransferRequest, createTpList: boolean) => {
         const canApprove = user?.canApproveTransfers || user?.role === 'Admin' || can.approve_transfer_requests;
@@ -889,6 +918,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 default: return;
             }
             updates[`${itemPath}/${item.itemId}/projectId`] = request.toProjectId;
+            updates[`${itemPath}/${item.itemId}/lastUpdated`] = new Date().toISOString();
         });
 
         if (createTpList && (request.reason === 'For TP certification' || request.reason === 'Expired materials')) {
@@ -908,13 +938,15 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
     
         update(ref(rtdb), updates);
-        addActivityLog(user.id, 'Inventory Transfer Approved & Completed', `Request ID: ${request.id}`);
+        const fromName = projects.find(p=>p.id===request.fromProjectId)?.name;
+        const toName = projects.find(p=>p.id===request.toProjectId)?.name;
+        addActivityLog(user.id, 'Inventory Transfer Approved', `Approved move of ${request.items.length} items from ${fromName} to ${toName}`);
 
         const requester = users.find(u => u.id === request.requesterId);
         
         if(requester && requester.email) {
-            const fromProjectName = projects.find(p => p.id === request.fromProjectId)?.name;
-            const toProjectName = projects.find(p => p.id === request.toProjectId)?.name;
+            const fromProjectName = fromName;
+            const toProjectName = toName;
             const itemsHtml = request.items.map(item => `<li>${item.name} (SN: ${item.serialNumber})</li>`).join('');
             const htmlBody = `
                 <p>Your inventory transfer request (ID: #${request.id.slice(-6)}) has been completed by ${user.name}.</p>
@@ -962,7 +994,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
 
         update(ref(rtdb), updates);
-        addActivityLog(user.id, 'Inventory Transfer Rejected', `Request ID: ${requestId}`);
+        addActivityLog(user.id, 'Inventory Transfer Rejected', `Rejected transfer request #${requestId.slice(-6)}. Reason: ${comment}`);
 
         const requester = users.find(u => u.id === request.requesterId);
         if (requester?.email) {
@@ -992,7 +1024,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         updates[`inventoryTransferRequests/${requestId}/status`] = 'Disputed';
         
         update(ref(rtdb), updates);
-        addActivityLog(user.id, 'Inventory Transfer Disputed', `Request ID: ${requestId}`);
+        addActivityLog(user.id, 'Inventory Transfer Disputed', `User disputed receipt of items in request #${requestId.slice(-6)}`);
     }, [user, inventoryTransferRequestsById, addActivityLog]);
     
     const acknowledgeTransfer = useCallback((requestId: string) => {
@@ -1001,7 +1033,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             acknowledgedByRequester: true,
             acknowledgedDate: new Date().toISOString(),
         });
-        addActivityLog(user.id, 'Inventory Transfer Acknowledged', `Request ID: ${requestId}`);
+        addActivityLog(user.id, 'Inventory Transfer Acknowledged', `User confirmed receipt of items in transfer #${requestId.slice(-6)}`);
     }, [user, addActivityLog]);
 
     const clearInventoryTransferHistory = useCallback(async () => {
@@ -1012,7 +1044,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         try {
             await remove(ref(rtdb, 'inventoryTransferRequests'));
             toast({ title: 'Success', description: 'Inventory transfer history cleared.' });
-            addActivityLog(user.id, 'Cleared Transfer History');
+            addActivityLog(user.id, 'Cleared Transfer History', 'Permanently wiped all transfer logs from the system.');
         } catch (error) {
             console.error("Failed to clear transfer history:", error);
             toast({ title: 'Error', description: 'Failed to clear transfer history.', variant: 'destructive' });
@@ -1063,7 +1095,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
         update(ref(rtdb), updates);
         toast({ title: 'Transfer Dispute Resolved' });
-    }, [user, can.approve_transfer_requests, toast]);
+        addActivityLog(user.id, 'Transfer Dispute Resolved', `Resolution: ${resolution}. Request: #${requestId.slice(-6)}`);
+    }, [user, can.approve_transfer_requests, toast, addActivityLog]);
 
     const resolvePpeDispute = useCallback((requestId: string, resolution: 'reissue' | 'reverse', comment: string) => {
         if (!user) return;
@@ -1089,7 +1122,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
 
         update(ref(rtdb), updates);
         toast({ title: 'PPE Dispute Resolved' });
-    }, [user, toast]);
+        addActivityLog(user.id, 'PPE Dispute Resolved', `Resolution: ${resolution}. Request: #${requestId.slice(-6)}`);
+    }, [user, toast, addActivityLog]);
 
     const addCertificateRequestComment = useCallback((requestId: string, comment: string) => {
         if (!user) return;
@@ -1116,7 +1150,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const finalData = sanitizeData(newRequest);
         set(newRequestRef, finalData);
         
-        addActivityLog(user.id, "Certificate Request Created");
+        const itemName = inventoryItems.find(i => i.id === requestData.itemId)?.name || utMachines.find(m => m.id === requestData.utMachineId)?.machineName || 'Item';
+        addActivityLog(user.id, "Certificate Request Created", `Requested ${requestData.requestType} for ${itemName}`);
 
         const storePersonnel = users.filter(u => ['Store in Charge', 'Document Controller', 'Admin'].includes(u.role));
         storePersonnel.forEach(manager => {
@@ -1138,7 +1173,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 });
             }
         });
-    }, [user, users, addActivityLog, notificationSettings]);
+    }, [user, users, addActivityLog, notificationSettings, inventoryItems, utMachines]);
 
     const fulfillCertificateRequest = useCallback((requestId: string, comment: string) => {
         if (!user) return;
@@ -1170,8 +1205,9 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
         
         update(ref(rtdb), updates);
+        addActivityLog(user.id, 'Certificate Request Fulfilled', `Authorized ${request.requestType} request for ID: ${request.itemId || request.utMachineId}`);
 
-    }, [user, certificateRequestsById, addCertificateRequestComment]);
+    }, [user, certificateRequestsById, addCertificateRequestComment, addActivityLog]);
     
     const markFulfilledRequestsAsViewed = useCallback((requestType: 'store' | 'equipment') => {
         if (!user) return;
@@ -1201,15 +1237,20 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
           if (!user) return;
           const newRef = push(ref(rtdb, pluralName));
           set(newRef, sanitizeData(item));
-          const activityDetail = (item as any).name || (item as any).equipmentName || (item as any).vehicleNumber || `ID: ${newRef.key}`;
+          const activityDetail = (item as any).name || (item as any).machineName || (item as any).equipmentName || (item as any).vehicleNumber || `ID: ${newRef.key}`;
           addActivityLog(user.id, `${pluralName.slice(0, -1)} Added`, activityDetail);
         };
         const updateFn = (item: T) => {
+          if (!user) return;
           const { id, ...data } = item;
           update(ref(rtdb, `${pluralName}/${id}`), sanitizeData(data));
+          const activityDetail = (item as any).name || (item as any).machineName || (item as any).equipmentName || (item as any).vehicleNumber || `ID: ${id}`;
+          addActivityLog(user.id, `${pluralName.slice(0, -1)} Updated`, activityDetail);
         };
         const deleteFn = (itemId: string) => {
+          if (!user) return;
           remove(ref(rtdb, `${pluralName}/${itemId}`));
+          addActivityLog(user.id, `${pluralName.slice(0, -1)} Deleted`, `Deleted item ID: ${itemId}`);
         };
         return [addFn, updateFn, deleteFn] as const;
     }, [user, addActivityLog]);
@@ -1236,11 +1277,14 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const newRef = push(ref(rtdb, 'machineLogs'));
         const newLog: Omit<MachineLog, 'id'> = { ...log, machineId, loggedByUserId: user.id };
         set(newRef, sanitizeData(newLog));
-    }, [user]);
+        addActivityLog(user.id, 'Usage Log Entry', `Logged ${log.status} usage for machine ID: ${machineId}`);
+    }, [user, addActivityLog]);
 
     const deleteMachineLog = useCallback((logId: string) => {
+        if(!user) return;
         remove(ref(rtdb, `machineLogs/${logId}`));
-    }, []);
+        addActivityLog(user.id, 'Usage Log Deleted', `Deleted log record ID: ${logId}`);
+    }, [user, addActivityLog]);
 
     const getMachineLogs = useCallback((machineId: string) => {
         return machineLogs.filter(log => log.machineId === machineId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -1261,7 +1305,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
           viewedByRequester: true,
         };
         set(newRequestRef, sanitizeData(newRequest));
-        addActivityLog(user.id, 'Internal Store Request Created');
+        addActivityLog(user.id, 'Store Request Created', `Created request with ${requestData.items.length} items.`);
 
         const storePersonnel = users.filter(u => ['Store in Charge', 'Assistant Store Incharge', 'Admin'].includes(u.role));
         const fromProjectName = projects.find(p => p.id === user.projectIds?.[0])?.name;
@@ -1300,21 +1344,24 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         if (canDelete) {
           remove(ref(rtdb, `internalRequests/${requestId}`));
           toast({ variant: 'destructive', title: 'Request Deleted' });
+          if(user) addActivityLog(user.id, 'Store Request Deleted', `Deleted request #${requestId.slice(-6)}`);
         } else {
           toast({ variant: 'destructive', title: 'Permission Denied' });
         }
-      }, [user, internalRequestsById, toast]);
+      }, [user, internalRequestsById, toast, addActivityLog]);
     
       const forceDeleteInternalRequest = useCallback((requestId: string) => {
         if(user?.role !== 'Admin') return;
         remove(ref(rtdb, `internalRequests/${requestId}`));
-      }, [user]);
+        addActivityLog(user.id, 'Force Deleted Request', `Admin force deleted request #${requestId.slice(-6)}`);
+      }, [user, addActivityLog]);
     
       const updateInternalRequestStatus = useCallback((requestId: string, status: InternalRequestStatus) => {
         const isApprover = user?.canApproveTransfers || user?.role === 'Admin' || can.approve_store_requests || can.manage_store_requests;
         if (!user || !isApprover) return;
         update(ref(rtdb, `internalRequests/${requestId}`), { status, approverId: user.id, acknowledgedByRequester: false });
-      }, [user, can.approve_store_requests, can.manage_store_requests]);
+        addActivityLog(user.id, 'Store Request Status Updated', `Set request #${requestId.slice(-6)} to ${status}`);
+      }, [user, can.approve_store_requests, can.manage_store_requests, addActivityLog]);
     
       const updateInternalRequestItemStatus = useCallback((requestId: string, itemId: string, status: InternalRequestItemStatus, comment?: string) => {
         const isApprover = user?.canApproveTransfers || user?.role === 'Admin' || can.approve_store_requests || can.manage_store_requests;
@@ -1401,6 +1448,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
         update(ref(rtdb), updates).then(() => {
             toast({ title: `Item status updated to ${status}` });
+            addActivityLog(user.id, 'Request Item Updated', `Marked ${requestedItem.description} as ${status} in request #${requestId.slice(-6)}`);
         }).catch(err => {
             console.error("Update failed:", err);
             toast({ title: 'Update Failed', variant: 'destructive' });
@@ -1423,7 +1471,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 creatorUser: user
             });
         }
-      }, [user, internalRequestsById, inventoryItemsById, toast, users, notificationSettings, can]);
+      }, [user, internalRequestsById, inventoryItemsById, toast, users, notificationSettings, can, addActivityLog]);
     
       const updateInternalRequestItem = useCallback((requestId: string, updatedItem: InternalRequestItem, originalItem: InternalRequestItem, reason?: string) => {
         if (!user) return;
@@ -1492,8 +1540,9 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
         update(ref(rtdb), updates).then(() => {
             toast({ title: 'Item Updated Successfully' });
+            addActivityLog(user.id, 'Request Item Modified', `Modified ${originalItem.description} in request #${requestId.slice(-6)}`);
         });
-      }, [user, internalRequestsById, users, notificationSettings, can, toast]);
+      }, [user, internalRequestsById, users, notificationSettings, can, toast, addActivityLog]);
       
     
       const markInternalRequestAsViewed = useCallback((requestId: string) => {
@@ -1516,7 +1565,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     
       const acknowledgeInternalRequest = useCallback((requestId: string) => {
           update(ref(rtdb, `internalRequests/${requestId}`), { acknowledgedByRequester: true });
-      }, []);
+          if(user) addActivityLog(user.id, 'Store Request Acknowledged', `User confirmed receipt/update of request #${requestId.slice(-6)}`);
+      }, [user, addActivityLog]);
 
     const addPpeRequest = useCallback((requestData: Omit<PpeRequest, 'id' | 'requesterId' | 'date' | 'status' | 'comments' | 'viewedByRequester'>) => {
         if (!user) return;
@@ -1572,7 +1622,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     const updatePpeStock = useCallback((stockId: 'coveralls' | 'safetyShoes', data: { [key: string]: number } | number) => {
         const path = stockId === 'coveralls' ? 'ppeStock/coveralls/sizes' : 'ppeStock/safetyShoes/quantity';
         set(ref(rtdb, path), data);
-    }, []);
+        if(user) addActivityLog(user.id, 'PPE Stock Adjusted', `Manual inventory adjustment for ${stockId}`);
+    }, [user, addActivityLog]);
 
     const addPpeInwardRecord = useCallback((record: Omit<PpeInwardRecord, 'id' | 'addedByUserId'>) => {
         if (!user) return;
@@ -1595,15 +1646,19 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 set(ref(rtdb, `${stockPath}/quantity`), (currentStock.quantity || 0) + (multiplier * record.quantity));
             }
         });
-    }, [user]);
+        addActivityLog(user.id, 'PPE Inward/Outward Logged', `${record.type} transaction for ${record.ppeType}`);
+    }, [user, addActivityLog]);
 
     const updatePpeInwardRecord = useCallback((record: PpeInwardRecord) => {
+        if (!user) return;
         const { id, ...data } = record;
         const sanitizedData = sanitizeData(data);
         update(ref(rtdb, `ppeInwardHistory/${id}`), sanitizedData);
-    }, []);
+        addActivityLog(user.id, 'PPE Transaction Updated', `Modified transaction record ID: ${id}`);
+    }, [user, addActivityLog]);
 
     const deletePpeInwardRecord = useCallback((record: PpeInwardRecord) => {
+        if (!user) return;
         remove(ref(rtdb, `ppeInwardHistory/${record.id}`));
         const stockPath = record.ppeType === 'Coverall' ? `ppeStock/coveralls/sizes` : `ppeStock/safetyShoes`;
         const stockRef = ref(rtdb, stockPath);
@@ -1621,7 +1676,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 set(ref(rtdb, `${stockPath}/quantity`), (currentStock.quantity || 0) + (multiplier * record.quantity));
             }
         });
-    }, []);
+        addActivityLog(user.id, 'PPE Transaction Deleted', `Removed record ID: ${record.id} and adjusted stock.`);
+    }, [user, addActivityLog]);
 
     const addIgpOgpRecord = useCallback((record: Omit<IgpOgpRecord, 'id' | 'creatorId'>) => {
         if (!user) return;
@@ -1632,7 +1688,8 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             date: record.date.toISOString(),
         };
         set(newRef, sanitizeData(newRecord));
-    }, [user]);
+        addActivityLog(user.id, 'IGP/OGP Logged', `${record.type} created for ${record.location} with ${record.items.length} line items.`);
+    }, [user, addActivityLog]);
 
     const deleteIgpOgpRecord = useCallback((mrnNumber: string) => {
         if (!user || user.role !== 'Admin') return;
@@ -1642,23 +1699,30 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             updates[`/igpOgpRecords/${record.id}`] = null;
         });
         update(ref(rtdb), updates);
-    }, [user, igpOgpRecordsById]);
+        addActivityLog(user.id, 'IGP/OGP Deleted', `Removed all records associated with MRN: ${mrnNumber}`);
+    }, [user, igpOgpRecordsById, addActivityLog]);
     
     const updatePpeRequest = useCallback((request: PpeRequest, reason?: string) => {
+        if (!user) return;
         const { id, ...data } = request;
         update(ref(rtdb, `ppeRequests/${id}`), sanitizeData({ ...data, attachmentUrl: data.attachmentUrl || null }));
         if (reason) {
             addPpeRequestComment(id, reason, true);
         }
-    }, [addPpeRequestComment]);
+        addActivityLog(user.id, 'PPE Request Modified', `Updated request #${id.slice(-6)}`);
+    }, [addPpeRequestComment, user, addActivityLog]);
     
     const deletePpeRequest = useCallback((requestId: string) => {
+        if(!user) return;
         remove(ref(rtdb, `ppeRequests/${requestId}`));
-    }, []);
+        addActivityLog(user.id, 'PPE Request Deleted', `Deleted request #${requestId.slice(-6)}`);
+    }, [user, addActivityLog]);
     
     const deletePpeAttachment = useCallback((requestId: string) => {
+        if(!user) return;
         update(ref(rtdb, `ppeRequests/${requestId}`), { attachmentUrl: null });
-    }, []);
+        addActivityLog(user.id, 'PPE Attachment Deleted', `Removed photo from request #${requestId.slice(-6)}`);
+    }, [user, addActivityLog]);
 
     const addDamageReport = useCallback(async (reportData: Omit<DamageReport, 'id' | 'reporterId' | 'reportDate' | 'status' | 'attachmentDownloadUrl'>) => {
         if (!user) return { success: false, error: "User not authenticated." };
@@ -1683,7 +1747,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             };
         
             await set(newReportRef, sanitizeData(finalReport));
-            addActivityLog(user.id, 'Damage Report Submitted');
+            addActivityLog(user.id, 'Damage Report Submitted', `Reported damage for item: ${reportData.otherItemName || reportData.itemId}`);
             return { success: true };
         } catch (error: any) {
             console.error("Failed to submit damage report:", error);
@@ -1703,16 +1767,14 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             const item = inventoryItems.find(i => i.id === report.itemId);
             if (item) {
                 updates[`inventoryItems/${report.itemId}/status`] = 'Damaged';
+                updates[`inventoryItems/${report.itemId}/lastUpdated`] = new Date().toISOString();
             }
         }
         
         update(ref(rtdb), updates);
+        addActivityLog(user.id, 'Damage Report Updated', `Marked report #${reportId.slice(-6)} as ${status}`);
 
-        if (comment) {
-            // Placeholder for adding comments to damage reports if needed later
-        }
-
-    }, [user, damageReportsById, inventoryItems]);
+    }, [user, damageReportsById, inventoryItems, addActivityLog]);
     
     const deleteDamageReport = useCallback((reportId: string) => {
         if (!user || user.role !== 'Admin') {
@@ -1723,19 +1785,17 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const report = damageReportsById[reportId];
         if (!report) return;
 
-        // Delete from DB first
         remove(ref(rtdb, `damageReports/${reportId}`)).then(() => {
-             // Then delete from storage if URL exists and is a Firebase URL
             if (report.attachmentUrl && report.attachmentUrl.includes('firebasestorage.googleapis.com')) {
                 const storage = getStorage();
                 const fileRef = storageRef(storage, report.attachmentUrl);
                 deleteObject(fileRef).catch(error => {
                     console.error("Failed to delete file from storage:", error);
-                    toast({ title: 'File Deletion Failed', description: 'Could not delete the file from storage. It may need to be removed manually.', variant: 'destructive'});
                 });
             }
+            addActivityLog(user.id, 'Damage Report Deleted', `Admin deleted damage report #${reportId.slice(-6)}`);
         });
-    }, [user, damageReportsById, toast]);
+    }, [user, damageReportsById, toast, addActivityLog]);
 
     const deleteAllDamageReportsAndFiles = useCallback(async () => {
         if (!user || user.role !== 'Admin') {
@@ -1764,12 +1824,12 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             await Promise.all(deleteFilePromises);
         } catch (error) {
             console.error('Some files could not be deleted from storage:', error);
-            toast({ title: 'File Deletion Warning', description: 'Could not delete all files from storage. Check console.', variant: 'destructive' });
         } finally {
             await update(ref(rtdb), updates);
-            toast({ title: 'Success', description: 'All damage report database entries have been deleted.' });
+            toast({ title: 'Success', description: 'All entries deleted.' });
+            addActivityLog(user.id, 'All Damage Reports Wiped');
         }
-    }, [user, damageReportsById, toast]);
+    }, [user, damageReportsById, toast, addActivityLog]);
     
     const addDeliveryNote = useCallback((noteData: Omit<DeliveryNote, 'id' | 'creatorId' | 'createdAt'>) => {
         if (!user) return;
@@ -1780,19 +1840,24 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             createdAt: new Date().toISOString(),
         };
         set(newRef, sanitizeData(newNote));
-    }, [user]);
+        addActivityLog(user.id, 'Delivery Note Created', `${noteData.type} note #${noteData.deliveryNoteNumber}`);
+    }, [user, addActivityLog]);
 
     const updateDeliveryNote = useCallback((noteId: string, updates: Partial<DeliveryNote>) => {
+        if(!user) return;
         update(ref(rtdb, `deliveryNotes/${noteId}`), sanitizeData(updates));
-    }, []);
+        addActivityLog(user.id, 'Delivery Note Updated', `Updated note ID: ${noteId}`);
+    }, [user, addActivityLog]);
 
     const deleteDeliveryNote = useCallback((noteId: string) => {
-        if (user?.role !== 'Admin') {
+        if(!user) return;
+        if (user.role !== 'Admin') {
             toast({ title: "Permission Denied", variant: "destructive" });
             return;
         }
         remove(ref(rtdb, `deliveryNotes/${noteId}`));
-    }, [user, toast]);
+        addActivityLog(user.id, 'Delivery Note Deleted', `Admin removed note ID: ${noteId}`);
+    }, [user, toast, addActivityLog]);
 
     const addInspectionChecklist = useCallback(() => {}, []);
     const updateInspectionChecklist = useCallback(() => {}, []);
