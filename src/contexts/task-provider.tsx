@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -141,7 +140,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
             isArchived: false,
         };
         set(newRef, newTask);
-        addActivityLog(user.id, 'Task Created', `Created task: "${taskData.title}" for ${taskData.assigneeIds.length} users.`);
+        addActivityLog(user.id, 'Task Created', `Created task: "${taskData.title}"`);
         
         const assignees = users.filter(u => taskData.assigneeIds.includes(u.id));
         assignees.forEach(assignee => {
@@ -172,27 +171,21 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     }, [user, addActivityLog, users, notificationSettings]);
 
     const updateTask = useCallback((task: Task) => {
-        if(!user) return;
         const { id, ...data } = task;
         const updateData = { ...data, lastUpdated: new Date().toISOString() };
         update(ref(rtdb, `tasks/${id}`), updateData);
-        addActivityLog(user.id, 'Task Meta Updated', `Updated core details for "${task.title}"`);
-    }, [user, addActivityLog]);
+    }, []);
 
     const deleteTask = useCallback((taskId: string) => {
         if (!user || user.role !== 'Admin') {
             toast({ variant: 'destructive', title: 'Permission Denied' });
             return;
         }
-        const task = tasksById[taskId];
         remove(ref(rtdb, `tasks/${taskId}`));
         toast({ variant: 'destructive', title: 'Task Deleted' });
-        if(task) addActivityLog(user.id, 'Task Deleted', `Admin permanently removed task: "${task.title}"`);
-    }, [user, toast, tasksById, addActivityLog]);
+    }, [user, toast]);
 
     const archiveTask = useCallback((taskId: string) => {
-        if(!user) return;
-        const task = tasksById[taskId];
         const updates = {
             isArchived: true,
             archivedAt: new Date().toISOString(),
@@ -200,11 +193,9 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         };
         update(ref(rtdb, `tasks/${taskId}`), updates);
         toast({ title: 'Task Archived' });
-        if(task) addActivityLog(user.id, 'Task Archived', `Moved task "${task.title}" to archives.`);
-    }, [toast, user, addActivityLog, tasksById]);
+    }, [toast]);
 
     const unarchiveTask = useCallback((taskId: string) => {
-        if(!user) return;
         const task = tasksById[taskId];
         if (!task) return;
         
@@ -218,8 +209,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         };
         update(ref(rtdb, `tasks/${taskId}`), updates);
         toast({ title: 'Task Restored', description: 'Moved back to active list and status reset to To Do.' });
-        addActivityLog(user.id, 'Task Unarchived', `Restored task "${task.title}" from archives.`);
-    }, [tasksById, toast, user, addActivityLog]);
+    }, [tasksById, toast]);
 
     const addComment = useCallback((taskId: string, commentText: string, notify: boolean = true) => {
         if (!user) return;
@@ -258,8 +248,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
                 }
             });
         }
-        addActivityLog(user.id, 'Task Comment Added', `Commented on "${task.title}": ${commentText.substring(0, 50)}${commentText.length > 50 ? '...' : ''}`);
-    }, [user, tasksById, users, notificationSettings, addActivityLog]);
+    }, [user, tasksById, users, notificationSettings]);
     
     const requestTaskStatusChange = useCallback(async (taskId: string, newStatus: TaskStatus, comment: string, attachment?: Task['attachment']) => {
         if (!user) return;
@@ -302,12 +291,10 @@ export function TaskProvider({ children }: { children: ReactNode }) {
                     involvedUser: user
                 });
             }
-            addActivityLog(user.id, 'Task Submitted', `Submitted task "${task.title}" for final approval.`);
 
         } else if (isAnyInProgress) {
             updates[`tasks/${taskId}/status`] = 'In Progress';
             updates[`tasks/${taskId}/approvalState`] = 'none';
-            addActivityLog(user.id, 'Task Started', `Began work on task "${task.title}"`);
         } else {
             updates[`tasks/${taskId}/status`] = 'To Do';
             updates[`tasks/${taskId}/approvalState`] = 'none';
@@ -321,7 +308,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         }
         
         update(ref(rtdb), updates);
-    }, [user, users, tasksById, notificationSettings, addActivityLog]);
+    }, [user, users, tasksById, notificationSettings]);
       
 
     const approveTaskStatusChange = useCallback((taskId: string, comment: string) => {
@@ -344,7 +331,6 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         
         update(ref(rtdb), updates);
         toast({ title: 'Task Approved' });
-        addActivityLog(user.id, 'Task Final Approved', `Approved and closed task "${task.title}"`);
 
         const requestor = users.find(u => u.id === task.statusRequest!.requestedBy);
         if (requestor?.email) {
@@ -359,7 +345,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
             });
         }
 
-    }, [user, users, tasksById, toast, notificationSettings, addActivityLog]);
+    }, [user, users, tasksById, toast, notificationSettings]);
 
     const returnTaskStatusChange = useCallback((taskId: string, comment: string) => {
         if (!user) return;
@@ -384,7 +370,6 @@ export function TaskProvider({ children }: { children: ReactNode }) {
             };
         }
         update(ref(rtdb), updates);
-        addActivityLog(user.id, 'Task Returned', `Sent task "${task.title}" back for modifications.`);
     
         const requestor = users.find(u => u.id === task.statusRequest!.requestedBy);
         if (requestor?.email) {
@@ -399,7 +384,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
             });
         }
     
-    }, [user, users, tasksById, notificationSettings, addActivityLog]);
+    }, [user, users, tasksById, notificationSettings]);
 
     const requestTaskReassignment = useCallback((taskId: string, newAssigneeId: string, comment: string) => {
         if (!user) return;
@@ -416,8 +401,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         }
     
         update(ref(rtdb), updates);
-        addActivityLog(user.id, 'Task Reassignment Requested', `Requested for task "${task.title}" to be moved to ${users.find(u=>u.id===newAssigneeId)?.name}`);
-    }, [user, tasksById, users, addComment, addActivityLog]);
+    }, [user, tasksById, users, addComment]);
 
     const markTaskAsViewed = useCallback((taskId: string) => {
         if (!user || tasksById[taskId]?.viewedBy?.[user.id]) return;

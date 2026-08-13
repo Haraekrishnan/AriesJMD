@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Announcement, ActivityLog, IncidentReport, Comment, DownloadableDocument, Project, JobCode, Vehicle, Driver, NotificationSettings, Broadcast, ManagementRequest, ManagementRequestStatus, ObservationReport, WorkOrder } from '@/lib/types';
 import { JOB_CODES as INITIAL_JOB_CODES, PROJECTS as INITIAL_PROJECTS } from '@/lib/mock-data';
 import { useAuth } from './auth-provider';
+import { format, parseISO, isValid, subDays, isBefore } from 'date-fns';
 
 
 // --- TYPE DEFINITIONS ---
@@ -107,6 +108,58 @@ const createDataListener = <T extends {}>(
     return () => listener();
 };
 
+const _addInternalRequestComment = (
+    requestId: string,
+    commentText: string,
+    user: User,
+    internalRequestsById: Record<string, InternalRequest>,
+    users: User[],
+    notificationSettings: NotificationSettings,
+    notify?: boolean,
+    subject?: string
+) => {
+    if (!user) return;
+    const request = internalRequestsById[requestId];
+    if (!request) return;
+
+    const newCommentRef = push(ref(rtdb, `internalRequests/${requestId}/comments`));
+    const newComment: Omit<Comment, 'id'> = {
+        id: newCommentRef.key!,
+        userId: user.id,
+        text: commentText,
+        date: new Date().toISOString(),
+        eventId: requestId,
+    };
+
+    const updates: { [key: string]: any } = {};
+    updates[`internalRequests/${requestId}/comments/${newCommentRef.key}`] = { ...newComment, viewedBy: { [user.id]: true } };
+    updates[`internalRequests/${requestId}/acknowledgedByRequester`] = false;
+
+    update(ref(rtdb), updates);
+
+    if (notify) {
+        const requester = users.find(u => u.id === request.requesterId);
+        if (requester?.email && requester.id !== user.id) {
+            const htmlBody = `
+                <p>There is an update on your store request (ID: #${requestId.slice(-6)}).</p>
+                <p><strong>From:</strong> ${user.name}</p>
+                <p><strong>Message:</strong></p>
+                <div style="padding: 10px; border-left: 3px solid #ccc;">${commentText}</div>
+                <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/my-requests">View Request</a></p>
+            `;
+            sendNotificationEmail({
+                to: [requester.email],
+                subject: subject || `Update on Store Request #${requestId.slice(-6)}`,
+                htmlBody: htmlBody,
+                notificationSettings,
+                event: 'onInternalRequestUpdate',
+                involvedUser: requester,
+                creatorUser: user
+            });
+        }
+    }
+};
+
 // --- CONTEXT ---
 
 const GeneralContext = createContext<GeneralContextType | undefined>(undefined);
@@ -143,6 +196,28 @@ export function GeneralProvider({ children }: { children: ReactNode }) {
   const drivers = useMemo(() => Object.values(driversById), [driversById]);
   const feedback = useMemo(() => Object.values(feedbackById), [feedbackById]);
   const managementRequests = useMemo(() => Object.values(managementRequestsById), [managementRequestsById]);
+
+  // --- ACTIVITY LOG PRUNING (1 MONTH RETENTION) ---
+  useEffect(() => {
+    if (user?.role === 'Admin' && activityLogs.length > 0) {
+      const thirtyDaysAgo = subDays(new Date(), 30);
+      const updates: { [key: string]: null } = {};
+      let hasDeletions = false;
+
+      activityLogs.forEach(log => {
+        if (log.timestamp && isBefore(parseISO(log.timestamp), thirtyDaysAgo)) {
+          updates[`/activityLogs/${log.id}`] = null;
+          hasDeletions = true;
+        }
+      });
+
+      if (hasDeletions) {
+        update(ref(rtdb), updates).then(() => {
+            console.log(`[GeneralProvider] Pruned activity logs older than 30 days.`);
+        });
+      }
+    }
+  }, [user, activityLogs]);
 
   // --- FUNCTION DEFINITIONS ---
 
