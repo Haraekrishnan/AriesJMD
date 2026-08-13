@@ -51,6 +51,7 @@ export default function JobProgressPage() {
   const [jmsAssigneeId, setJmsAssigneeId] = useState('all');
   const [jmsProjectFilter, setJmsProjectFilter] = useState('all');
   const [jmsUnitFilter, setJmsUnitFilter] = useState('all');
+  const [jmsStatusFilter, setJmsStatusFilter] = useState('all');
   
   const [timesheetSearchTerm, setTimesheetSearchTerm] = useState('');
   const [timesheetSubmitterFilter, setTimesheetSubmitterFilter] = useState('all');
@@ -146,9 +147,11 @@ export default function JobProgressPage() {
   }, [jobsInMonth]);
 
   const filteredJobs = useMemo(() => {
+    let jobs = visibleJobs;
+
     if (jmsSearchTerm) {
       const lowercasedTerm = jmsSearchTerm.toLowerCase();
-      return visibleJobs.filter(job => {
+      jobs = jobs.filter(job => {
         const project = projects.find(p => p.id === job.projectId);
         const amountStr = job.amount?.toString() || '';
         const formattedAmount = job.amount ? new Intl.NumberFormat('en-IN').format(job.amount) : '';
@@ -162,9 +165,9 @@ export default function JobProgressPage() {
             formattedAmount.includes(lowercasedTerm)
         );
       });
+    } else {
+      jobs = jobsInMonth;
     }
-
-    let jobs = jobsInMonth;
 
     if (jmsProjectFilter !== 'all') {
       jobs = jobs.filter(job => job.projectId === jmsProjectFilter);
@@ -183,9 +186,25 @@ export default function JobProgressPage() {
         }
       });
     }
+
+    if (jmsStatusFilter !== 'all') {
+      jobs = jobs.filter(job => {
+        const hasPending = job.steps.some(s => s.status === 'Pending');
+        const hasReturned = job.steps.some(s => s.isReturned);
+        const hasInProgress = job.steps.some(s => s.status === 'Acknowledged');
+
+        switch(jmsStatusFilter) {
+          case 'pending': return (hasPending || hasReturned) && job.status !== 'Completed';
+          case 'in_progress': return hasInProgress && !hasReturned && job.status !== 'Completed';
+          case 'completed': return job.status === 'Completed';
+          case 'not_completed': return job.status !== 'Completed';
+          default: return true;
+        }
+      });
+    }
     
     return jobs;
-  }, [visibleJobs, jobsInMonth, jmsSearchTerm, jmsAssigneeId, jmsProjectFilter, jmsUnitFilter, projects]);
+  }, [visibleJobs, jobsInMonth, jmsSearchTerm, jmsAssigneeId, jmsProjectFilter, jmsUnitFilter, jmsStatusFilter, projects]);
 
   const filteredTimesheets = useMemo(() => {
     let visibleTs = timesheets.filter(ts => {
@@ -375,6 +394,18 @@ export default function JobProgressPage() {
                                     <SelectContent>
                                         <SelectItem value="all">All Assignees</SelectItem>
                                         {assignableUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <Select value={jmsStatusFilter} onValueChange={setJmsStatusFilter} disabled={!!jmsSearchTerm}>
+                                    <SelectTrigger className="w-[140px] h-8 text-xs">
+                                        <SelectValue placeholder="Workflow Status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Status</SelectItem>
+                                        <SelectItem value="not_completed">Not Completed</SelectItem>
+                                        <SelectItem value="pending">Action Required</SelectItem>
+                                        <SelectItem value="in_progress">In Progress</SelectItem>
+                                        <SelectItem value="completed">Completed</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <div className="flex items-center gap-1.5 ml-auto">
