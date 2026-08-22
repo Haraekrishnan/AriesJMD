@@ -181,9 +181,15 @@ export default function StoreInventoryPage() {
             // Name filter
             if (name !== 'all' && item.name !== name) return false;
 
-            // Search filter
-            if (search && !(item.serialNumber?.toLowerCase().includes(search.toLowerCase()) || item.ariesId?.toLowerCase().includes(search.toLowerCase()) || item.chestCrollNo?.toLowerCase().includes(search.toLowerCase()))) {
-                return false;
+            // Search filter - FIX: Ensure values are strings before calling toLowerCase
+            if (search) {
+                const term = search.toLowerCase();
+                const serial = String(item.serialNumber || '').toLowerCase();
+                const aries = String(item.ariesId || '').toLowerCase();
+                const croll = String(item.chestCrollNo || '').toLowerCase();
+                if (!(serial.includes(term) || aries.includes(term) || croll.includes(term))) {
+                    return false;
+                }
             }
             
             // Status filter
