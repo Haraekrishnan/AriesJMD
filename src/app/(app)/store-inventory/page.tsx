@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -91,6 +92,12 @@ export default function StoreInventoryPage() {
     const pendingInventoryTransferRequestCount = hasTransferAuthority ? (inventoryTransferRequests || []).filter(r => r.status === 'Pending' || r.status === 'Disputed').length : 0;
     const pendingDamageReportCount = can.manage_inventory ? (damageReports || []).filter(r => r.status === 'Pending').length : 0;
 
+    const canViewAllProjects = useMemo(() => {
+        if (!user) return false;
+        const globalRoles: Role[] = ['Admin', 'Manager', 'Project Coordinator', 'Store in Charge', 'Assistant Store Incharge', 'Document Controller'];
+        return globalRoles.includes(user.role);
+    }, [user]);
+
     if (!can.view_inventory && !can.manage_inventory) {
         return (
              <Card className="w-full max-w-md mx-auto mt-20">
@@ -115,8 +122,6 @@ export default function StoreInventoryPage() {
         const thirtyDaysFromNow = addDays(now, 30);
         const notifications: { message: string, item: InventoryItem }[] = [];
 
-        const canViewAllProjects = user?.role === 'Admin' || user?.role === 'Manager';
-
         const userVisibleItems = inventoryItems.filter(item => {
             if (canViewAllProjects) return true;
             return user?.projectIds?.includes(item.projectId);
@@ -125,40 +130,33 @@ export default function StoreInventoryPage() {
         const inactiveStatuses: InventoryItemStatus[] = ['Damaged', 'Quarantine', 'Moved to another project'];
 
         userVisibleItems.forEach(item => {
-            // EXCLUDE INACTIVE ITEMS FROM ACTION REQUIRED
             if (item.isArchived || inactiveStatuses.includes(item.status)) return;
 
-            if (item.inspectionDueDate) {
-                const dueDate = parseISO(item.inspectionDueDate);
-                if (isValid(dueDate)) {
-                    if (isPast(dueDate)) {
-                        notifications.push({ message: `Inspection Expired: ${format(dueDate, 'dd-MM-yy')}`, item });
-                    } else if (isBefore(dueDate, thirtyDaysFromNow)) {
-                         notifications.push({ message: `Inspection Expires Soon: ${format(dueDate, 'dd-MM-yy')}`, item });
-                    }
-                }
+            let itemNotificationMessage = '';
+            
+            // Priority 1: Past Due (Expired)
+            if (item.inspectionDueDate && isPast(parseISO(item.inspectionDueDate))) {
+                itemNotificationMessage = `Inspection Expired: ${format(parseISO(item.inspectionDueDate), 'dd-MM-yy')}`;
+            } else if (item.tpInspectionDueDate && isPast(parseISO(item.tpInspectionDueDate))) {
+                itemNotificationMessage = `TP Cert. Expired: ${format(parseISO(item.tpInspectionDueDate), 'dd-MM-yy')}`;
             }
-            if (item.tpInspectionDueDate) {
-                const dueDate = parseISO(item.tpInspectionDueDate);
-                if (isValid(dueDate)) {
-                    if (isPast(dueDate)) {
-                        notifications.push({ message: `TP Cert. Expired: ${format(dueDate, 'dd-MM-yy')}`, item });
-                    } else if (isBefore(dueDate, thirtyDaysFromNow)) {
-                         notifications.push({ message: `TP Cert. Expires Soon: ${format(dueDate, 'dd-MM-yy')}`, item });
-                    }
-                }
+            // Priority 2: Expiring Soon
+            else if (item.inspectionDueDate && isBefore(parseISO(item.inspectionDueDate), thirtyDaysFromNow)) {
+                itemNotificationMessage = `Inspection Expires Soon: ${format(parseISO(item.inspectionDueDate), 'dd-MM-yy')}`;
+            } else if (item.tpInspectionDueDate && isBefore(parseISO(item.tpInspectionDueDate), thirtyDaysFromNow)) {
+                itemNotificationMessage = `TP Cert. Expires Soon: ${format(parseISO(item.tpInspectionDueDate), 'dd-MM-yy')}`;
+            }
+
+            if (itemNotificationMessage) {
+                notifications.push({ message: itemNotificationMessage, item });
             }
         });
 
-        return notifications.sort((a,b) => {
-            return 0; // Simple for now
-        });
-    }, [inventoryItems, user]);
+        return notifications;
+    }, [inventoryItems, user, canViewAllProjects]);
 
 
     const filteredItems = useMemo(() => {
-        const canViewAllProjects = user?.role === 'Admin' || user?.role === 'Manager';
-        
         return inventoryItems.filter(item => {
             if (item.isArchived) return false;
             if (item.category === 'Daily Consumable' || item.category === 'Job Consumable') {
@@ -184,7 +182,7 @@ export default function StoreInventoryPage() {
             // Name filter
             if (name !== 'all' && item.name !== name) return false;
 
-            // Search filter - FIX: Ensure values are strings before calling toLowerCase
+            // Search filter
             if (search) {
                 const term = search.toLowerCase();
                 const serial = String(item.serialNumber || '').toLowerCase();
@@ -224,7 +222,7 @@ export default function StoreInventoryPage() {
             
             return true;
         });
-    }, [inventoryItems, filters, user, projects]);
+    }, [inventoryItems, filters, user, projects, canViewAllProjects]);
 
     const summaryData = useMemo(() => {
         const data: {[itemName: string]: {[projectId: string]: number, total: number}} = {};

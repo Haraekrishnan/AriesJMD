@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -67,6 +68,12 @@ export default function DashboardPage() {
         return task.assigneeIds.some(id => teamUserIds.has(id));
     });
   }, [allTasks, teamUserIds]);
+
+  const canViewAllProjects = useMemo(() => {
+    if (!user) return false;
+    const globalRoles: Role[] = ['Admin', 'Manager', 'Project Coordinator', 'Store in Charge', 'Assistant Store Incharge', 'Document Controller'];
+    return globalRoles.includes(user.role);
+  }, [user]);
 
   // --- ACTION CENTER DATA ---
   const actionCenterData = useMemo(() => {
@@ -140,19 +147,31 @@ export default function DashboardPage() {
     const thirtyDaysFromNow = addDays(new Date(), 30);
     
     // EXCLUDE INACTIVE ITEMS FROM ASSET COMPLIANCE COUNTS
-    const expiredCount = inventoryItems.filter(item => {
+    const visibleItems = inventoryItems.filter(item => {
+        if (canViewAllProjects) return true;
+        return user.projectIds?.includes(item.projectId);
+    });
+
+    const activeItems = visibleItems.filter(item => {
         if (item.isArchived || item.status === 'Damaged' || item.status === 'Quarantine' || item.status === 'Moved to another project') return false;
+        return true;
+    });
+
+    const expiredCount = activeItems.filter(item => {
         const inspDue = item.inspectionDueDate ? parseISO(item.inspectionDueDate) : null;
         const tpDue = item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : null;
         return (inspDue && isPast(inspDue)) || (tpDue && isPast(tpDue));
     }).length;
 
-    const expiringSoonCount = inventoryItems.filter(item => {
-        if (item.isArchived || item.status === 'Damaged' || item.status === 'Quarantine' || item.status === 'Moved to another project') return false;
+    const expiringSoonCount = activeItems.filter(item => {
         const inspDue = item.inspectionDueDate ? parseISO(item.inspectionDueDate) : null;
         const tpDue = item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : null;
-        const inspSoon = inspDue && !isPast(inspDue) && isBefore(inspDue, thirtyDaysFromNow);
-        const tpSoon = tpDue && !isPast(tpDue) && isBefore(tpDue, thirtyDaysFromNow);
+        
+        const isExpired = (inspDue && isPast(inspDue)) || (tpDue && isPast(tpDue));
+        if (isExpired) return false;
+
+        const inspSoon = inspDue && isBefore(inspDue, thirtyDaysFromNow);
+        const tpSoon = tpDue && isBefore(tpDue, thirtyDaysFromNow);
         return inspSoon || tpSoon;
     }).length;
 
@@ -162,7 +181,7 @@ export default function DashboardPage() {
         store: { transfers: pendingTransfers, damage: pendingDamageReportCount },
         compliance: { expired: expiredCount, soon: expiringSoonCount }
     };
-  }, [user, can, ppeRequests, inventoryTransferRequests, inventoryItems, damageReports]);
+  }, [user, can, ppeRequests, inventoryTransferRequests, inventoryItems, damageReports, canViewAllProjects]);
 
   const { totalWorking, totalOnLeave } = useMemo(() => {
     const today = new Date();
