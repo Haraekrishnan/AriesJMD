@@ -13,7 +13,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Textarea } from '../ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -176,7 +176,7 @@ export default function ViewDocumentMovementDialog({ isOpen, setIsOpen, movement
               )}
             </div>
             <div className="flex gap-2">
-                {canTakeAction && movement.status === 'Acknowledged' && (
+                {canTakeAction && request.status === 'Acknowledged' && (
                     <>
                         <Button size="sm" onClick={() => setIsForwarding(true)}><Forward className="mr-2 h-4 w-4"/>Forward</Button>
                         <AlertDialog>
@@ -193,7 +193,7 @@ export default function ViewDocumentMovementDialog({ isOpen, setIsOpen, movement
                         <Button size="sm" onClick={handleComplete}><CheckCheck className="mr-2 h-4 w-4"/>Complete</Button>
                     </>
                 )}
-                {canTakeAction && (movement.status === 'Pending' || movement.status === 'Returned') && (
+                {canTakeAction && (request.status === 'Pending' || request.status === 'Returned') && (
                      <Button onClick={handleAcknowledge}><Check className="mr-2 h-4 w-4"/>Acknowledge</Button>
                 )}
                 <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
