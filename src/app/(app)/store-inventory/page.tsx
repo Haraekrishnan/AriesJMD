@@ -122,8 +122,11 @@ export default function StoreInventoryPage() {
             return user?.projectIds?.includes(item.projectId);
         });
 
+        const inactiveStatuses: InventoryItemStatus[] = ['Damaged', 'Quarantine', 'Moved to another project'];
+
         userVisibleItems.forEach(item => {
-            if (item.isArchived || item.status === 'Damaged' || item.status === 'Quarantine') return;
+            // EXCLUDE INACTIVE ITEMS FROM ACTION REQUIRED
+            if (item.isArchived || inactiveStatuses.includes(item.status)) return;
 
             if (item.inspectionDueDate) {
                 const dueDate = parseISO(item.inspectionDueDate);
@@ -150,7 +153,7 @@ export default function StoreInventoryPage() {
         return notifications.sort((a,b) => {
             return 0; // Simple for now
         });
-    }, [inventoryItems, user, projects]);
+    }, [inventoryItems, user]);
 
 
     const filteredItems = useMemo(() => {
@@ -343,7 +346,7 @@ export default function StoreInventoryPage() {
                                 <div className="flex justify-between items-center">
                                     <div>
                                         <CardTitle>Items Requiring Attention</CardTitle>
-                                        <CardDescription>These items have certifications expiring soon or are already expired. Damaged or quarantined items are not shown here.</CardDescription>
+                                        <CardDescription>These items have certifications expiring soon or are already expired. Damaged, quarantined, or transferred items are not shown here.</CardDescription>
                                     </div>
                                     <ActionRequiredReport notifications={actionRequiredNotifications} />
                                 </div>

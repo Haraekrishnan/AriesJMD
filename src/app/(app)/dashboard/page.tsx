@@ -138,15 +138,17 @@ export default function DashboardPage() {
     const pendingDamageReportCount = can.manage_inventory ? (damageReports || []).filter(r => r.status === 'Pending').length : 0;
 
     const thirtyDaysFromNow = addDays(new Date(), 30);
+    
+    // EXCLUDE INACTIVE ITEMS FROM ASSET COMPLIANCE COUNTS
     const expiredCount = inventoryItems.filter(item => {
-        if (item.isArchived || item.status === 'Damaged' || item.status === 'Quarantine') return false;
+        if (item.isArchived || item.status === 'Damaged' || item.status === 'Quarantine' || item.status === 'Moved to another project') return false;
         const inspDue = item.inspectionDueDate ? parseISO(item.inspectionDueDate) : null;
         const tpDue = item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : null;
         return (inspDue && isPast(inspDue)) || (tpDue && isPast(tpDue));
     }).length;
 
     const expiringSoonCount = inventoryItems.filter(item => {
-        if (item.isArchived || item.status === 'Damaged' || item.status === 'Quarantine') return false;
+        if (item.isArchived || item.status === 'Damaged' || item.status === 'Quarantine' || item.status === 'Moved to another project') return false;
         const inspDue = item.inspectionDueDate ? parseISO(item.inspectionDueDate) : null;
         const tpDue = item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : null;
         const inspSoon = inspDue && !isPast(inspDue) && isBefore(inspDue, thirtyDaysFromNow);
