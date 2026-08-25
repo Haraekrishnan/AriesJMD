@@ -1,6 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
-import { useAppContext } from '@/contexts/app-provider';
+import React, { useMemo, useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO } from 'date-fns';
@@ -163,7 +162,10 @@ export default function InwardOutwardHistory({ records }: { records: InwardOutwa
                                                         </AlertDialogTrigger>
                                                         <AlertDialogContent>
                                                             <AlertDialogHeader><AlertDialogTitle>Unlock Record?</AlertDialogTitle><AlertDialogDescription>This will allow the record to be edited again.</AlertDialogDescription></AlertDialogHeader>
-                                                            <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => unlockInwardOutwardRecord(record.id)}>Unlock</AlertDialogAction></AlertDialogFooter>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => unlockInwardOutwardRecord(record.id)}>Unlock</AlertDialogAction>
+                                                            </AlertDialogFooter>
                                                         </AlertDialogContent>
                                                     </AlertDialog>
                                                 )
@@ -174,7 +176,10 @@ export default function InwardOutwardHistory({ records }: { records: InwardOutwa
                                                     </AlertDialogTrigger>
                                                     <AlertDialogContent>
                                                         <AlertDialogHeader><AlertDialogTitle>Lock Record?</AlertDialogTitle><AlertDialogDescription>Once locked, this record cannot be edited by regular users.</AlertDialogDescription></AlertDialogHeader>
-                                                        <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => lockInwardOutwardRecord(record.id)}>Lock</AlertDialogAction></AlertDialogFooter>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => lockInwardOutwardRecord(record.id)}>Lock</AlertDialogAction>
+                                                        </AlertDialogFooter>
                                                     </AlertDialogContent>
                                                 </AlertDialog>
                                             )}
@@ -262,4 +267,3 @@ export default function InwardOutwardHistory({ records }: { records: InwardOutwa
         </>
     )
 }
-
