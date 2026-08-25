@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, Dispatch, SetStateAction, useMemo, useRef } from 'react';
@@ -203,23 +204,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       dataToSave.supervisorId = null;
     }
     
-    // Explicitly handle Base64 fields to prevent them from being stripped
     if (updatedUser.signatureBase64) dataToSave.signatureBase64 = updatedUser.signatureBase64;
     if (updatedUser.avatar) dataToSave.avatar = updatedUser.avatar;
 
-    // Remove undefined values to prevent errors in update()
     Object.keys(dataToSave).forEach(key => {
         if (dataToSave[key] === undefined) {
             delete dataToSave[key];
         }
     });
 
-    console.log(`[AuthProvider] Writing to RTDB path users/${id} with data:`, JSON.stringify({ ...dataToSave, signatureBase64: dataToSave.signatureBase64 ? 'BASE64_STUB' : null }));
-
     try {
         await update(ref(rtdb, `users/${id}`), dataToSave);
-        console.log(`[AuthProvider] RTDB write completed successfully for user ${id}`);
-        
         if (user?.id === updatedUser.id) {
             setUser(updatedUser);
         }
@@ -235,30 +230,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false;
     }
 
-    console.log("[AuthProvider] Entering updateProfile. Avatar:", !!avatarFile, "Signature:", !!signatureFile);
-
     try {
         const updatedUser: User = { ...user, name, email };
         if (password) updatedUser.password = password;
 
-        // Handle Avatar as Base64 (to avoid Storage issues on Spark plan)
         if (avatarFile) {
-            console.log("[AuthProvider] Converting avatar to Base64...");
             const avatarBase64 = await fileToBase64(avatarFile);
             updatedUser.avatar = avatarBase64;
         }
 
-        // Handle Signature as Base64
         if (signatureFile) {
-            console.log("[AuthProvider] Converting signature to Base64...");
             const signatureBase64 = await fileToBase64(signatureFile);
             updatedUser.signatureBase64 = signatureBase64;
-            // Clear old URL if it exists
             updatedUser.signatureUrl = ""; 
         }
         
         const success = await updateUser(updatedUser);
-        console.log("[AuthProvider] updateProfile result:", success);
         return success;
     } catch (error) {
         console.error("[AuthProvider] updateProfile exception:", error);
@@ -373,10 +360,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, addActivityLog]);
   
   const deleteUser = useCallback((userId: string) => {
-    update(ref(rtdb, `users/${userId}`), { status: 'deactivated', password: 'REMOVED_BY_ADMIN' });
-    if (user) addActivityLog(user.id, 'User Deactivated (Soft Delete)', `Removed access for user ID: ${userId}`);
-    toast({ title: 'User Access Removed', description: 'Account deactivated. Historical data is preserved.' });
-  }, [user, addActivityLog, toast]);
+    const target = usersById[userId];
+    if (!target) return;
+    
+    // We "soft delete" by deactivating. 
+    // We also scramble/rename the email so the original email is freed for future reuse.
+    const archivedEmail = `deactivated_${Date.now()}_${target.email}`;
+    
+    update(ref(rtdb, `users/${userId}`), { 
+        status: 'deactivated', 
+        password: 'REMOVED_BY_ADMIN',
+        email: archivedEmail 
+    });
+    
+    if (user) addActivityLog(user.id, 'User Deactivated (Soft Delete)', `Removed access for user: ${target.name}. Email archived to allow reuse.`);
+    toast({ title: 'User Access Removed', description: 'Account deactivated. Historical data and names are preserved.' });
+  }, [user, usersById, addActivityLog, toast]);
 
   const addRole = useCallback((role: Omit<RoleDefinition, 'id' | 'isEditable'>) => {
     const newRef = push(ref(rtdb, 'roles'));
@@ -464,9 +463,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return users.filter(u => u.role !== 'Manager' && u.status !== 'deactivated');
   }, [user, users]);
   
-  const clearInventoryTransferHistory = useCallback(() => {
-    // Moved to useInventory
-  }, []);
+  const clearInventoryTransferHistory = useCallback(() => {}, []);
   
   const markPlannerEventAsViewed = useCallback((eventId: string) => {
     if (!user) return;
