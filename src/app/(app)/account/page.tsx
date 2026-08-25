@@ -24,9 +24,10 @@ import UnlockRequests from '@/components/account/UnlockRequests';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { DecorationTheme } from '@/lib/types';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function AccountPage() {
-  const { user, users, can, deleteUser, updateProfile, loading, getVisibleUsers, lockUser, unlockUser, appName, appLogo, updateBranding, clearInventoryTransferHistory, activeTheme, updateActiveTheme } = useAuth();
+  const { user, users, can, deleteUser, updateProfile, loading, getVisibleUsers, lockUser, unlockUser, appName, appLogo, updateBranding, activeTheme, updateActiveTheme } = useAuth();
   const { toast } = useToast();
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -93,7 +94,6 @@ export default function AccountPage() {
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    console.log("[Account] Starting profile save. Files:", { avatar: !!avatarFile, signature: !!signatureFile });
     
     try {
         const success = await updateProfile(name, email, avatarFile, password, signatureFile);
@@ -138,10 +138,8 @@ export default function AccountPage() {
       const reader = new FileReader();
       reader.onload = () => {
         setAvatarPreview(reader.result as string);
-        console.log("[Account] Avatar preview updated via FileReader.");
       };
       reader.readAsDataURL(file);
-      console.log("[Account] Avatar file selected:", file.name);
     }
   };
   
@@ -153,10 +151,8 @@ export default function AccountPage() {
       const reader = new FileReader();
       reader.onload = () => {
         setSignaturePreview(reader.result as string);
-        console.log("[Account] Signature preview updated via FileReader.");
       };
       reader.readAsDataURL(file);
-      console.log("[Account] Signature file selected:", file.name);
     }
   };
 
@@ -185,12 +181,12 @@ export default function AccountPage() {
     setIsEditEmployeeDialogOpen(true);
   };
   
-  const handleDelete = (userId: string) => {
+  const handleRemoveAccess = (userId: string) => {
     deleteUser(userId);
     toast({
         variant: 'destructive',
-        title: 'User Deleted',
-        description: 'The user has been removed from the system.',
+        title: 'User Access Removed',
+        description: 'The user account has been deactivated. Historical records remain preserved.',
     });
   };
 
@@ -204,14 +200,6 @@ export default function AccountPage() {
     }
   }
 
-  const handleClearTransferHistory = () => {
-    clearInventoryTransferHistory();
-    toast({
-      title: 'Action Complete',
-      description: 'Inventory transfer history has been cleared.',
-    });
-  };
-  
   const handleThemeSave = () => {
     updateActiveTheme(selectedTheme);
     toast({ title: 'Decorations Updated', description: 'The theme has been applied across the app.' });
@@ -325,34 +313,6 @@ export default function AccountPage() {
                 <FeedbackManagement />
               </ScrollArea>
             </CardContent>
-        </Card>
-      )}
-
-      {user.role === 'Admin' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Data Management</CardTitle>
-            <CardDescription>Perform administrative actions on application data.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive"><DatabaseZap className="mr-2 h-4 w-4" /> Clear Transfer History</Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete all inventory transfer requests from the database. This action cannot be undone and the data will be lost forever.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleClearTransferHistory}>Yes, Delete Everything</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </CardContent>
         </Card>
       )}
       
@@ -469,6 +429,7 @@ export default function AccountPage() {
                       </TableRow>
                   </TableHeader>
                   <TableBody>
+                    <TooltipProvider>
                       {visibleUsers.map(report => {
                           const supervisor = users.find(u => u.id === report.supervisorId);
                           const isLocked = report.status === 'locked';
@@ -493,16 +454,14 @@ export default function AccountPage() {
                                 <TableCell>{supervisor?.name || 'N/A'}</TableCell>
                                 <TableCell>
                                     {report.canApproveTransfers && (
-                                        <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <ShieldCheck className="h-5 w-5 text-green-600" />
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>Can Approve Transfers</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <ShieldCheck className="h-5 w-5 text-green-600" />
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>Can Approve Transfers</p>
+                                            </TooltipContent>
+                                        </Tooltip>
                                     )}
                                 </TableCell>
                                 {can.manage_users && (
@@ -524,18 +483,21 @@ export default function AccountPage() {
                                                         </DropdownMenuItem>
                                                     )}
                                                     <AlertDialogTrigger asChild>
-                                                        <DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                                                        <DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Remove Access</DropdownMenuItem>
                                                     </AlertDialogTrigger>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                             <AlertDialogContent>
                                                 <AlertDialogHeader>
-                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                    <AlertDialogDescription>This action cannot be undone. This will permanently delete the user account.</AlertDialogDescription>
+                                                    <AlertDialogTitle>Remove User Access?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        This will deactivate the account for <strong>{report.name}</strong>. 
+                                                        They will no longer be able to log in, but all historical logs, tasks, and data associated with their name will be preserved for auditing.
+                                                    </AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
                                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDelete(report.id)}>Delete</AlertDialogAction>
+                                                    <AlertDialogAction onClick={() => handleRemoveAccess(report.id)}>Confirm Removal</AlertDialogAction>
                                                 </AlertDialogFooter>
                                             </AlertDialogContent>
                                         </AlertDialog>
@@ -544,6 +506,7 @@ export default function AccountPage() {
                             </TableRow>
                           );
                       })}
+                    </TooltipProvider>
                   </TableBody>
               </Table>
               </ScrollArea>
