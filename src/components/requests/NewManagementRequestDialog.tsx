@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -52,12 +51,12 @@ export default function NewManagementRequestDialog({ isOpen, setIsOpen }: NewMan
 
   const possibleRecipients = useMemo(() => {
     if (!user) return [];
-    return users.filter(u => u.id !== user.id && SUPERVISORY_ROLES.includes(u.role));
+    return users.filter(u => u.id !== user.id && SUPERVISORY_ROLES.includes(u.role) && u.status !== 'deactivated');
   }, [users, user]);
   
   const ccRecipients = useMemo(() => {
     if (!user) return [];
-    return users.filter(u => u.id !== user.id && u.id !== toUserId && SUPERVISORY_ROLES.includes(u.role));
+    return users.filter(u => u.id !== user.id && u.id !== toUserId && SUPERVISORY_ROLES.includes(u.role) && u.status !== 'deactivated');
   }, [users, user, toUserId]);
 
   const onSubmit = (data: MgmtRequestFormValues) => {

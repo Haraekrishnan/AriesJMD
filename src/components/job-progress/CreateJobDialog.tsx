@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, Controller } from 'react-hook-form';
@@ -89,7 +88,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
   const watchedStepName = form.watch('steps.0.name');
 
   const assignableUsers = useMemo(() => {
-    return users.filter(u => u.role !== 'Manager');
+    return users.filter(u => u.role !== 'Manager' && u.status !== 'deactivated');
   }, [users]);
 
   const checkForDuplicates = (data: JobFormValues): string[] => {
@@ -294,7 +293,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
                         render={({ field }) => (
                             <Select value={field.value} onValueChange={field.onChange}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select WO..." />
+                                    <SelectValue placeholder="Select..." />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {workOrders.map((wo) => (
