@@ -109,17 +109,19 @@ export default function NewOutwardDialog({ isOpen, setIsOpen }: { isOpen: boolea
   const availableItems = useMemo(() => {
     if (!searchTerm) return [];
     
+    const term = searchTerm.toLowerCase();
+
     return allItems.filter(it =>
       it.status !== 'Moved to another project' && // only available items
       !selectedItems.some(s => s.itemId === it.id && s.itemType === (it as any).itemType) &&
       (
-        it.serialNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        it.ariesId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (it as any).chestCrollNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (it as any).name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (it as any).machineName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (it as any).equipmentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        `${(it as any).make} ${(it as any).model}`.toLowerCase().includes(searchTerm.toLowerCase())
+        String(it.serialNumber || '').toLowerCase().includes(term) ||
+        String(it.ariesId || '').toLowerCase().includes(term) ||
+        String((it as any).chestCrollNo || '').toLowerCase().includes(term) ||
+        String((it as any).name || '').toLowerCase().includes(term) ||
+        String((it as any).machineName || '').toLowerCase().includes(term) ||
+        String((it as any).equipmentName || '').toLowerCase().includes(term) ||
+        `${(it as any).make} ${(it as any).model}`.toLowerCase().includes(term)
       )
     );
   }, [allItems, selectedItems, searchTerm]);
@@ -135,7 +137,7 @@ export default function NewOutwardDialog({ isOpen, setIsOpen }: { isOpen: boolea
       itemId: item.id,
       itemType: item.itemType,
       name,
-      serialNumber: item.serialNumber,
+      serialNumber: String(item.serialNumber || ''),
     }]);
     setSearchTerm('');
   };

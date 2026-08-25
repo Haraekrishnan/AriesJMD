@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, Controller } from "react-hook-form";
@@ -241,6 +240,8 @@ export default function NewInventoryTransferRequestDialog({
   const availableItems = useMemo(() => {
     if (!fromProjectId || !searchTerm) return []; // Don't filter if no search term
 
+    const term = searchTerm.toLowerCase();
+
     const sourceItems = (fromProjectId === 'all' && canTransferFromAll)
       ? allItems
       : allItems.filter(it => it.projectId === fromProjectId);
@@ -251,12 +252,12 @@ export default function NewInventoryTransferRequestDialog({
           (s) => s.itemId === it.id && s.itemType === it.itemType
         ) &&
         (
-            it.serialNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            it.ariesId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (it as any).name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (it as any).machineName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (it as any).equipmentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            `${(it as any).make} ${(it as any).model}`.toLowerCase().includes(searchTerm.toLowerCase())
+            String(it.serialNumber || '').toLowerCase().includes(term) ||
+            String(it.ariesId || '').toLowerCase().includes(term) ||
+            String((it as any).name || '').toLowerCase().includes(term) ||
+            String((it as any).machineName || '').toLowerCase().includes(term) ||
+            String((it as any).equipmentName || '').toLowerCase().includes(term) ||
+            `${(it as any).make} ${(it as any).model}`.toLowerCase().includes(term)
         )
     );
   }, [allItems, fromProjectId, selectedItems, searchTerm, canTransferFromAll]);
@@ -274,8 +275,8 @@ export default function NewInventoryTransferRequestDialog({
         itemId: item.id,
         itemType: item.itemType,
         name: name,
-        serialNumber: item.serialNumber,
-        ariesId: item.ariesId,
+        serialNumber: String(item.serialNumber || ''),
+        ariesId: item.ariesId ? String(item.ariesId) : undefined,
       },
     ]);
     setSearchTerm('');
@@ -325,10 +326,7 @@ export default function NewInventoryTransferRequestDialog({
   return (
     <Dialog
       open={isOpen}
-      onOpenChange={(v) => {
-        if (!v) resetForm();
-        setIsOpen(v);
-      }}
+      onOpenChange={(v) => { if (!v) resetForm(); setIsOpen(v); }}
     >
       <FormProvider {...form}>
         <DialogContent 
@@ -438,7 +436,7 @@ export default function NewInventoryTransferRequestDialog({
                       </SelectTrigger>
                       <SelectContent>
                         {users
-                          .filter((u) => u.role !== "Manager")
+                          .filter((u) => u.role !== "Manager" && u.status !== 'deactivated')
                           .map((u) => (
                             <SelectItem key={u.id} value={u.id}>
                               {u.name}
