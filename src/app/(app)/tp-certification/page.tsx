@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -8,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { FileDown, Trash2, FileSpreadsheet, Edit, BookOpen, Search, Unlock, Lock, AlertTriangle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { generateTpCertExcel, generateTpCertPdf } from '@/components/tp-certification/generateTpCertReport';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -59,8 +58,8 @@ export default function TpCertificationPage() {
         const lowercasedSearchTerm = searchTerm.toLowerCase();
         return allLists.filter(list => 
             list.items.some(item => 
-                item.manufacturerSrNo?.toLowerCase().includes(lowercasedSearchTerm) ||
-                item.chestCrollNo?.toLowerCase().includes(lowercasedSearchTerm)
+                String(item.manufacturerSrNo || '').toLowerCase().includes(lowercasedSearchTerm) ||
+                String(item.chestCrollNo || '').toLowerCase().includes(lowercasedSearchTerm)
             )
         );
     }, [searchTerm, tpCertLists]);
@@ -372,5 +371,3 @@ export default function TpCertificationPage() {
         </>
     );
 }
-
-    
