@@ -23,8 +23,10 @@ export default function StatusPage() {
       return;
     }
 
-    // If the user is on this page but is NOT locked, send them away.
-    if (user.status !== 'locked') {
+    const isInactive = user.status === 'locked' || user.status === 'deactivated';
+
+    // If the user is on this page but is NOT inactive, send them away.
+    if (!isInactive) {
       router.replace('/dashboard');
     }
   }, [user, loading, router]);
@@ -41,7 +43,7 @@ export default function StatusPage() {
   };
   
   // Render loading state until the checks in useEffect are complete
-  if (loading || !user || user.status !== 'locked') {
+  if (loading || !user || (user.status !== 'locked' && user.status !== 'deactivated')) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="text-center space-y-2">
@@ -58,7 +60,9 @@ export default function StatusPage() {
     );
   }
 
-  // Only render the locked page content if we are sure the user is locked
+  const isDeactivated = user.status === 'deactivated';
+
+  // Only render the locked/deactivated page content if we are sure
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-full max-w-md text-center">
@@ -66,13 +70,15 @@ export default function StatusPage() {
           <div className="mx-auto bg-destructive/10 p-4 rounded-full w-fit mb-4">
             <ShieldAlert className="h-12 w-12 text-destructive" />
           </div>
-          <CardTitle>Account Locked</CardTitle>
+          <CardTitle>{isDeactivated ? 'Account Removed' : 'Account Locked'}</CardTitle>
           <CardDescription>
-            Your account has been temporarily locked by an administrator. Please contact support or request an unlock.
+            {isDeactivated 
+              ? 'Your account has been deactivated by an administrator. You can no longer access the system, but your historical activity remains on record.' 
+              : 'Your account has been temporarily locked by an administrator. Please contact support or request an unlock.'}
           </CardDescription>
         </CardHeader>
         <CardFooter className="flex flex-col gap-4">
-          <Button onClick={handleUnlockRequest} className="w-full">Request Unlock</Button>
+          {!isDeactivated && <Button onClick={handleUnlockRequest} className="w-full">Request Unlock</Button>}
           <Button variant="outline" onClick={logout} className="w-full">
             <LogOut className="mr-2 h-4 w-4" /> Log Out
           </Button>

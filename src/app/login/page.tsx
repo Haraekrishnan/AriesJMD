@@ -14,7 +14,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      if (user.status === 'locked') {
+      if (user.status === 'locked' || user.status === 'deactivated') {
         router.replace('/status');
       } else {
         router.replace('/dashboard');

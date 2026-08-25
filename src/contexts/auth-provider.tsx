@@ -373,9 +373,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, addActivityLog]);
   
   const deleteUser = useCallback((userId: string) => {
-    remove(ref(rtdb, `users/${userId}`));
-    if (user) addActivityLog(user.id, 'User Deleted', `Deleted user ID: ${userId}`);
-  }, [user, addActivityLog]);
+    update(ref(rtdb, `users/${userId}`), { status: 'deactivated', password: 'REMOVED_BY_ADMIN' });
+    if (user) addActivityLog(user.id, 'User Deactivated (Soft Delete)', `Removed access for user ID: ${userId}`);
+    toast({ title: 'User Access Removed', description: 'Account deactivated. Historical data is preserved.' });
+  }, [user, addActivityLog, toast]);
 
   const addRole = useCallback((role: Omit<RoleDefinition, 'id' | 'isEditable'>) => {
     const newRef = push(ref(rtdb, 'roles'));
@@ -440,12 +441,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ];
   
     if (highLevelRoles.includes(user.role)) {
-      if (user.role === 'Manager' || user.role === 'Admin') return users;
-      if (user.role === 'Project Coordinator') return users.filter(u => u.role !== 'Manager');
+      if (user.role === 'Manager' || user.role === 'Admin') return users.filter(u => u.status !== 'deactivated');
+      if (user.role === 'Project Coordinator') return users.filter(u => u.role !== 'Manager' && u.status !== 'deactivated');
     }
   
     let visibleUserIds = new Set<string>([user.id]);
-    const myDirectReports = users.filter(u => u.supervisorId === user.id);
+    const myDirectReports = users.filter(u => u.supervisorId === user.id && u.status !== 'deactivated');
     myDirectReports.forEach(u => visibleUserIds.add(u.id));
 
     if (supervisorRoles.includes(user.role) && user.supervisorId) {
@@ -455,12 +456,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
   
-    return users.filter(u => visibleUserIds.has(u.id) && u.id !== user.supervisorId);
+    return users.filter(u => visibleUserIds.has(u.id) && u.id !== user.supervisorId && u.status !== 'deactivated');
   }, [user, users, getSubordinateChain]);
 
   const getAssignableUsers = useCallback(() => {
     if (!user) return [];
-    return users.filter(u => u.role !== 'Manager');
+    return users.filter(u => u.role !== 'Manager' && u.status !== 'deactivated');
   }, [user, users]);
   
   const clearInventoryTransferHistory = useCallback(() => {

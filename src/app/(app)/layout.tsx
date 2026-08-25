@@ -23,16 +23,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (user.status === 'locked' && pathname !== '/status') {
+    const isInactive = user.status === 'locked' || user.status === 'deactivated';
+
+    if (isInactive && pathname !== '/status') {
       router.replace('/status');
-    } else if (user.status !== 'locked' && pathname === '/status') {
+    } else if (!isInactive && pathname === '/status') {
       router.replace('/dashboard');
     }
   }, [user, loading, router, pathname]);
 
-  if (loading || !user || user.status === 'locked') {
-    // If locked, we show a loading/redirecting state until the useEffect kicks in.
-    // This prevents a flash of the main layout for a locked user.
+  const isInactive = user?.status === 'locked' || user?.status === 'deactivated';
+
+  if (loading || !user || isInactive) {
+    // If locked or deactivated, we show a loading/redirecting state until the useEffect kicks in.
+    // This prevents a flash of the main layout for an unauthorized user.
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
