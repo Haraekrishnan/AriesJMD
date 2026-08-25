@@ -1272,6 +1272,11 @@ export type InwardOutwardRecord = {
     vendorId?: string;
     finalizedItemIds?: string[];
     isLocked?: boolean;
+    movedItemsDetails?: {
+        name: string;
+        serialNumber: string;
+        ariesId?: string | null;
+    }[];
 };
 
 export type JobScheduleItem = {

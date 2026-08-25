@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo } from 'react';
@@ -19,7 +18,7 @@ type InwardOutwardContextType = {
   deleteInwardOutwardRecord: (recordId: string) => Promise<void>;
   lockInwardOutwardRecord: (recordId: string) => Promise<void>;
   unlockInwardOutwardRecord: (recordId: string) => Promise<void>;
-  createOutwardRecord: (items: { itemId: string; itemType: string; name: string, serialNumber: string }[], destination: string, reason: string) => Promise<void>;
+  createOutwardRecord: (items: { itemId: string; itemType: string; name: string, serialNumber: string, ariesId?: string | null }[], destination: string, reason: string) => Promise<void>;
 };
 
 const InwardOutwardContext = createContext<InwardOutwardContextType | undefined>(undefined);
@@ -252,28 +251,33 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
       }
   }, [user, toast]);
 
-  const createOutwardRecord = useCallback(async (items: { itemId: string; itemType: string; name: string, serialNumber: string }[], destination: string, reason: string) => {
+  const createOutwardRecord = useCallback(async (items: { itemId: string; itemType: string; name: string, serialNumber: string, ariesId?: string | null }[], destination: string, reason: string) => {
     if (!user) return;
 
     const updates: { [key: string]: any } = {};
     const now = new Date().toISOString();
 
-    // 1. Create the outward record
+    // 1. Create the outward record with snapshots of item details
     const newRecordRef = push(ref(rtdb, 'inwardOutwardRecords'));
     const record: Omit<InwardOutwardRecord, 'id'> = {
         type: 'Outward',
         quantity: items.length,
         date: now,
-        source: `Moved to ${destination}`, // Using source to store destination
+        source: `Moved to ${destination}`,
         remarks: reason,
         userId: user.id,
         status: 'Completed',
         itemName: items.map(i => i.name).join(', '),
         finalizedItemIds: items.map(i => i.itemId),
+        movedItemsDetails: items.map(i => ({
+            name: i.name,
+            serialNumber: i.serialNumber,
+            ariesId: i.ariesId || null
+        })),
     };
     updates[`/inwardOutwardRecords/${newRecordRef.key}`] = record;
 
-    // 2. Update each inventory item
+    // 2. DELETE each inventory item from its collection as it's no longer part of THIS project fleet
     items.forEach(item => {
         let itemPathPrefix: string | null = null;
         switch (item.itemType) {
@@ -297,21 +301,17 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
         }
         
         if (itemPathPrefix) {
-            const itemPath = `/${itemPathPrefix}/${item.itemId}`;
-            updates[`${itemPath}/status`] = 'Moved to another project';
-            updates[`${itemPath}/projectId`] = null; // As requested "location blank"
-            updates[`${itemPath}/remarks`] = `Moved to ${destination}. Reason: ${reason}`;
-            updates[`${itemPath}/lastUpdated`] = now;
+            updates[`/${itemPathPrefix}/${item.itemId}`] = null;
         }
     });
 
     try {
         await update(ref(rtdb), updates);
-        addActivityLog(user.id, 'Created Outward Record', `Moved ${items.length} items to ${destination}`);
-        toast({ title: 'Outward Record Created', description: `${items.length} items have been moved.` });
+        addActivityLog(user.id, 'Created Outward Record & Removed Items', `Moved ${items.length} items to ${destination}. Items removed from active inventory.`);
+        toast({ title: 'Outward Record Created', description: `${items.length} items moved and removed from active inventory.` });
     } catch (error) {
         console.error("Error creating outward record:", error);
-        toast({ title: 'Error', description: 'Failed to create outward record.', variant: 'destructive' });
+        toast({ title: 'Error', description: 'Failed to complete outward transfer.', variant: 'destructive' });
     }
   }, [user, addActivityLog, toast]);
 
