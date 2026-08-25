@@ -120,7 +120,7 @@ export default function StoreInventoryPage() {
     const actionRequiredNotifications = useMemo(() => {
         const now = new Date();
         const thirtyDaysFromNow = addDays(now, 30);
-        const notifications: { message: string, item: InventoryItem }[] = [];
+        const notificationsMap = new Map<string, { message: string, item: InventoryItem }>();
 
         const userVisibleItems = inventoryItems.filter(item => {
             if (canViewAllProjects) return true;
@@ -148,17 +148,22 @@ export default function StoreInventoryPage() {
             }
 
             if (itemNotificationMessage) {
-                notifications.push({ message: itemNotificationMessage, item });
+                // Use itemId as key to ensure one notification per item
+                notificationsMap.set(item.id, { message: itemNotificationMessage, item });
             }
         });
 
-        return notifications;
+        return Array.from(notificationsMap.values());
     }, [inventoryItems, user, canViewAllProjects]);
 
 
     const filteredItems = useMemo(() => {
         return inventoryItems.filter(item => {
             if (item.isArchived) return false;
+
+            // CRITICAL: Items moved to other projects are filtered out of the main active table completely
+            if (item.status === 'Moved to another project') return false;
+
             if (item.category === 'Daily Consumable' || item.category === 'Job Consumable') {
                 return false;
             }
@@ -194,13 +199,15 @@ export default function StoreInventoryPage() {
             }
             
             // Status filter
+            const inactiveStatuses: InventoryItemStatus[] = ['Damaged', 'Quarantine', 'Moved to another project'];
             const inspectionDue = item.inspectionDueDate ? parseISO(item.inspectionDueDate) : null;
             const tpInspectionDue = item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : null;
 
             const isItemExpired = (inspectionDue && isPast(inspectionDue)) || (tpInspectionDue && isPast(tpInspectionDue));
-            const effectiveStatus: InventoryItemStatus = isItemExpired ? 'Expired' : item.status;
             
-            const inactiveStatuses: InventoryItemStatus[] = ['Damaged', 'Quarantine', 'Moved to another project'];
+            // Only consider an item 'Expired' if it's currently supposed to be active
+            const effectiveStatus: InventoryItemStatus = (isItemExpired && !inactiveStatuses.includes(item.status)) ? 'Expired' : item.status;
+            
             if (filterStatus === 'Active') {
                 if (inactiveStatuses.includes(effectiveStatus)) return false;
             } else if (filterStatus === 'Inactive') {

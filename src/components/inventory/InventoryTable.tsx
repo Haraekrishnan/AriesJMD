@@ -1,9 +1,10 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { useInventory } from '@/contexts/inventory-provider';
-import type { InventoryItem } from '@/lib/types';
+import type { InventoryItem, InventoryItemStatus } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -30,138 +31,13 @@ interface InventoryTableProps {
   onSelectionChange?: (items: InventoryItem[]) => void;
 }
 
-const ItemCard = ({ item, onEdit, onRequest, onDelete, onVerify }: { item: InventoryItem; onEdit: () => void; onRequest: () => void; onDelete: () => void; onVerify: () => void; }) => {
-    const { can, user } = useAuth();
-    const { projects } = useGeneral();
-    
-    const getProjectName = (item: InventoryItem) => {
-        if (item.status === 'Moved to another project') {
-            return item.movedToProjectId || 'N/A';
-        }
-        const project = projects.find(p => p.id === item.projectId);
-        if (!project) return 'N/A';
-        return item.plantUnit ? `${project.name} / ${item.plantUnit}` : project.name;
-    };
-
-    const formatDate = (dateString?: string | null) => {
-        if (!dateString) return 'N/A';
-        try {
-            return format(new Date(dateString), 'dd-MM-yyyy');
-        } catch (error) {
-            return 'Invalid Date';
-        }
-    };
-
-    const getDateStyles = (dateString?: string) => {
-        if (!dateString) return '';
-        const date = parseISO(dateString);
-        if (isPast(date)) return 'text-destructive font-bold';
-        if (differenceInDays(date, new Date()) <= 30) return 'text-orange-500 font-semibold';
-        return '';
-    };
-
-    const now = new Date();
-    const isExpired = (item.inspectionDueDate && isPast(parseISO(item.inspectionDueDate))) || (item.tpInspectionDueDate && isPast(parseISO(item.tpInspectionDueDate)));
-    const displayStatus = isExpired ? 'Expired' : item.status;
-    
-    const getStatusVariant = (status: string) => {
-        switch (status) {
-            case 'Damaged': return 'destructive';
-            case 'Expired': return 'yellow';
-            case 'Quarantine': return 'quarantine';
-            default: return 'secondary';
-        }
-    };
-
-
-    return (
-        <div className="border-t p-4 space-y-3">
-            <div className="flex justify-between items-start">
-                <div className="font-bold">{item.serialNumber}</div>
-                <Badge variant={getStatusVariant(displayStatus)}>{displayStatus}</Badge>
-            </div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                <div>
-                    <div className="text-muted-foreground">Aries ID</div>
-                    <div>{item.ariesId || 'N/A'}</div>
-                </div>
-                {item.chestCrollNo && (
-                    <div>
-                        <div className="text-muted-foreground">Chest Croll No</div>
-                        <div>{item.chestCrollNo}</div>
-                    </div>
-                )}
-                <div>
-                    <div className="text-muted-foreground">Location</div>
-                    <div>{getProjectName(item)}</div>
-                </div>
-                 {item.status === 'Moved to another project' && (
-                    <div>
-                        <div className="text-muted-foreground">Transfer Date</div>
-                        <div>{formatDate(item.transferDate)}</div>
-                    </div>
-                )}
-                 <div>
-                    <div className="text-muted-foreground">Insp. Due</div>
-                    <div className={cn(getDateStyles(item.inspectionDueDate))}>{formatDate(item.inspectionDueDate)}</div>
-                </div>
-                <div>
-                    <div className="text-muted-foreground">TP Insp. Due</div>
-                    <div className={cn(getDateStyles(item.tpInspectionDueDate))}>{formatDate(item.tpInspectionDueDate)}</div>
-                </div>
-                 <div>
-                    <div className="text-muted-foreground">Last Updated</div>
-                    <div>{item.lastUpdated ? formatDistanceToNow(parseISO(item.lastUpdated), { addSuffix: true }) : 'N/A'}</div>
-                </div>
-            </div>
-             <div className="flex justify-end gap-2 pt-2">
-                {item.certificateUrl && (
-                    <Tooltip>
-                        <TooltipTrigger asChild><Button asChild variant="secondary" size="icon" className="h-8 w-8"><a href={item.certificateUrl} target="_blank" rel="noopener noreferrer"><LinkIcon className="h-4 w-4" /></a></Button></TooltipTrigger>
-                        <TooltipContent><p>View Certificate</p></TooltipContent>
-                    </Tooltip>
-                )}
-                <Button variant="outline" size="sm" onClick={onRequest}><ShieldQuestion className="mr-2 h-4 w-4"/>Certificate</Button>
-                {can.manage_inventory && (
-                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onSelect={onEdit}>
-                            <Edit className="mr-2 h-4 w-4" /> Edit
-                          </DropdownMenuItem>
-                           <DropdownMenuItem onSelect={onVerify}>
-                            <CheckCircle className="mr-2 h-4 w-4" /> Mark as Verified
-                          </DropdownMenuItem>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                              </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action will permanently delete this item.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={onDelete}>Delete</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                )}
-            </div>
-        </div>
-    );
+const getStatusVariant = (status: string) => {
+    switch (status) {
+        case 'Damaged': return 'destructive';
+        case 'Expired': return 'yellow';
+        case 'Quarantine': return 'quarantine';
+        default: return 'secondary';
+    }
 };
 
 export default function InventoryTable({ items, selectedItems, onSelectionChange }: InventoryTableProps) {
@@ -305,15 +181,6 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
         onSelectionChange(items.filter(i => currentSelection.has(i.id)));
     };
 
-    const getStatusVariant = (status: string) => {
-        switch (status) {
-            case 'Damaged': return 'destructive';
-            case 'Expired': return 'yellow';
-            case 'Quarantine': return 'quarantine';
-            default: return 'secondary';
-        }
-    };
-
     if (items.length === 0) {
         return (
             <div className="flex items-center justify-center h-48 border-dashed border-2 rounded-lg">
@@ -413,8 +280,15 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
                                                 <TableBody>
                                                     {itemList.map(item => {
                                                         const now = new Date();
-                                                        const isExpired = (item.inspectionDueDate && isPast(parseISO(item.inspectionDueDate))) || (item.tpInspectionDueDate && isPast(parseISO(item.tpInspectionDueDate)));
-                                                        const displayStatus = isExpired ? 'Expired' : item.status;
+                                                        const inspectionDue = item.inspectionDueDate ? parseISO(item.inspectionDueDate) : null;
+                                                        const tpInspectionDue = item.tpInspectionDueDate ? parseISO(item.tpInspectionDueDate) : null;
+
+                                                        const isItemExpired = (inspectionDue && isPast(inspectionDue)) || (tpInspectionDue && isPast(tpInspectionDue));
+                                                        
+                                                        // INACTIVE items (Moved, Damaged, Quarantine) should NOT show as 'Expired'
+                                                        const inactiveStatuses: InventoryItemStatus[] = ['Damaged', 'Quarantine', 'Moved to another project'];
+                                                        const displayStatus: InventoryItemStatus = (isItemExpired && !inactiveStatuses.includes(item.status)) ? 'Expired' : item.status;
+
                                                         const damageReport = damageReports.find(dr => dr.itemId === item.id);
                                                         const attachmentUrl = damageReport?.attachmentDownloadUrl || damageReport?.attachmentOriginalUrl || (damageReport as any)?.attachmentUrl;
                                                         
@@ -485,7 +359,10 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
                                                                             </DropdownMenu>
                                                                             <AlertDialogContent>
                                                                                 <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This action will permanently delete the item. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
-                                                                                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(item.id)}>Delete</AlertDialogAction></AlertDialogFooter>
+                                                                                <AlertDialogFooter>
+                                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                                    <AlertDialogAction onClick={() => handleDelete(item.id)}>Delete</AlertDialogAction>
+                                                                                </AlertDialogFooter>
                                                                             </AlertDialogContent>
                                                                         </AlertDialog>
                                                                     </div>
