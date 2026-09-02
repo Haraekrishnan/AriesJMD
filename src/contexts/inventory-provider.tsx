@@ -472,8 +472,17 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         if (!user) return;
         const newRef = push(ref(rtdb, 'inventoryItems'));
         const storeProject = projects.find(p => p.name === 'Store');
+
+        // Logic: Respect the provided projectId if it exists. 
+        // Only default to "Store" or the first project if no projectId was supplied in the itemData.
+        let finalProjectId = itemData.projectId;
+        if (!finalProjectId) {
+            finalProjectId = storeProject?.id || projects[0]?.id || '';
+        }
+
         const dataToSave: Partial<InventoryItem> = {
             ...itemData,
+            projectId: finalProjectId,
             isArchived: false,
             chestCrollNo: itemData.chestCrollNo || null,
             lastUpdated: new Date().toISOString(),
@@ -482,12 +491,6 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             certification: itemData.certification || null,
             purchaseDate: itemData.purchaseDate || null,
         };
-        
-        if (dataToSave.status === 'In Store') {
-            dataToSave.projectId = storeProject?.id || projects[0]?.id;
-        } else if (!dataToSave.projectId) {
-            dataToSave.projectId = storeProject?.id || projects[0]?.id;
-        }
         
         set(newRef, dataToSave);
         addActivityLog(user.id, 'Inventory Item Added', `${itemData.name} (SN: ${itemData.serialNumber})`);
