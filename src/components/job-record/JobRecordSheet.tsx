@@ -528,14 +528,12 @@ export default function JobRecordSheet() {
     }, [user, isCurrentSheetLocked, currentMonth]);
 
     const handleRequestOverride = (profileId: string, day: number | 'sunday') => {
-        setOverrideRequest({ profileId, day });
+        handleConfirmOverride(profileId, day);
     };
 
-    const handleConfirmOverride = () => {
-        if (!overrideRequest) return;
-        const cellKey = `${overrideRequest.profileId}-${overrideRequest.day}`;
+    const handleConfirmOverride = (profileId: string, day: number | 'sunday') => {
+        const cellKey = `${profileId}-${day}`;
         setTempUnlockedCells(prev => new Set(prev).add(cellKey));
-        setOverrideRequest(null);
         toast({ title: "Override Activated", description: "Cell temporarily unlocked for this entry." });
     };
 
@@ -917,8 +915,10 @@ export default function JobRecordSheet() {
     }
 
     const handleDeletePlant = (plant: JobRecordPlant) => {
-        deleteJobRecordPlant(plant.id);
-        setActiveTab('Unassigned');
+        deleteJobRecordPlant(plant.id, monthKey);
+        if (activeTab === plant.name) {
+            setActiveTab('Unassigned');
+        }
         toast({title: 'Plant Deleted', variant: 'destructive'});
     }
 

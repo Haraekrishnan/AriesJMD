@@ -51,7 +51,7 @@ type PlannerContextType = {
   lockJobRecordSheet: (monthKey: string) => void;
   unlockJobRecordSheet: (monthKey: string) => void;
   addJobRecordPlant: (name: string) => void;
-  deleteJobRecordPlant: (id: string) => void;
+  deleteJobRecordPlant: (id: string, currentMonthKey?: string) => void;
   carryForwardPlantAssignments: (currentMonth: Date) => void;
   saveVehicleUsageRecord: (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => Promise<void>;
   lockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
@@ -82,27 +82,6 @@ type PlannerContextType = {
   deleteDocumentMovement: (movementId: string) => void;
   markJmsAsNoted: (jobId: string) => void;
   bulkMarkJmsAsNoted: (jobIds: string[]) => void;
-};
-
-const createDataListener = <T extends {}>(
-    path: string,
-    setData: Dispatch<SetStateAction<Record<string, T>>>,
-) => {
-    const dbRef = ref(rtdb, path);
-    const listener = onValue(dbRef, (snapshot) => {
-        const data = snapshot.val() || {};
-        const processedData = Object.keys(data).reduce((acc, key) => {
-            acc[key] = { ...data[key], id: key };
-            return acc;
-        }, {} as Record<string, T>);
-        setData(currentData => {
-            if (JSON.stringify(currentData) === JSON.stringify(processedData)) {
-                return currentData;
-            }
-            return processedData;
-        });
-    });
-    return () => listener();
 };
 
 const PlannerContext = createContext<PlannerContextType | undefined>(undefined);
@@ -362,9 +341,31 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         set(newRef, { id: newRef.key, name });
     }, []);
 
-    const deleteJobRecordPlant = useCallback((id: string) => {
+    const deleteJobRecordPlant = useCallback((id: string, currentMonthKey?: string) => {
+        const plant = jobRecordPlantsById[id];
+        if (!plant) return;
+        const plantName = plant.name;
+
+        // 1. Remove the global definition
         remove(ref(rtdb, `jobRecordPlants/${id}`));
-    }, []);
+
+        // 2. If a current month key is provided, reassign matching records in that month to 'Unassigned'
+        // This makes the tab disappear from the current month but keeps it in historical months.
+        if (currentMonthKey && jobRecords[currentMonthKey]?.records) {
+            const updates: Record<string, any> = {};
+            const monthRecords = jobRecords[currentMonthKey].records;
+            
+            for (const profileId in monthRecords) {
+                if (monthRecords[profileId].plant === plantName) {
+                    updates[`jobRecords/${currentMonthKey}/records/${profileId}/plant`] = 'Unassigned';
+                }
+            }
+
+            if (Object.keys(updates).length > 0) {
+                update(ref(rtdb), updates);
+            }
+        }
+    }, [jobRecordPlantsById, jobRecords]);
     
      const carryForwardPlantAssignments = useCallback(async (currentMonth: Date) => {
         const monthKey = format(currentMonth, 'yyyy-MM');
@@ -1059,7 +1060,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         eventId: movementId,
       };
       set(newCommentRef, newComment);
-      update(ref(rtdb, `documentMovements/${movementId}`), { lastUpdated: new Date().toISOString() });
+      update(ref(rtdb), { [`documentMovements/${movementId}/lastUpdated`]: new Date().toISOString() });
     }, [user]);
   
     const acknowledgeDocumentMovement = useCallback((movementId: string, comment?: string) => {
