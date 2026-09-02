@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo, Dispatch, SetStateAction } from 'react';
@@ -82,6 +83,27 @@ type PlannerContextType = {
   deleteDocumentMovement: (movementId: string) => void;
   markJmsAsNoted: (jobId: string) => void;
   bulkMarkJmsAsNoted: (jobIds: string[]) => void;
+};
+
+const createDataListener = <T extends {}>(
+    path: string,
+    setData: Dispatch<SetStateAction<Record<string, T>>>,
+) => {
+    const dbRef = ref(rtdb, path);
+    const listener = onValue(dbRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        const processedData = Object.keys(data).reduce((acc, key) => {
+            acc[key] = { ...data[key], id: key };
+            return acc;
+        }, {} as Record<string, T>);
+        setData(currentData => {
+            if (JSON.stringify(currentData) === JSON.stringify(processedData)) {
+                return currentData;
+            }
+            return processedData;
+        });
+    });
+    return () => listener();
 };
 
 const PlannerContext = createContext<PlannerContextType | undefined>(undefined);
@@ -1203,7 +1225,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const contextValue: PlannerContextType = {
-        plannerEvents, dailyPlannerComments, jobSchedules, jobRecords, jobRecordPlants, vehicleUsageRecords, timesheets, jobProgress, documentMovements,
+        plannerEvents, jobSchedules, dailyPlannerComments, jobRecords, jobRecordPlants, vehicleUsageRecords, timesheets, jobProgress, documentMovements,
         trackerNotificationCount,
         addPlannerEvent, updatePlannerEvent, deletePlannerEvent,
         getExpandedPlannerEvents, addPlannerEventComment,
