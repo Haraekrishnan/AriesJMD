@@ -125,6 +125,28 @@ export default function JobRecordSheet() {
         return user.role === 'Admin' || can.manage_job_record;
     }, [user, can.manage_job_record]);
 
+    const allTabs = useMemo(() => {
+        // Start with the current global list of plants
+        const tabsSet = new Set<string>(plantProjects.map(p => p.name));
+        
+        // CRITICAL FIX: To prevent historical data loss, scan the current month's records
+        // to find any plant names that were used but might have been deleted from the global list.
+        const monthData = jobRecords[monthKey]?.records;
+        if (monthData) {
+            Object.values(monthData).forEach((record: any) => {
+                if (record.plant && record.plant !== 'Unassigned') {
+                    tabsSet.add(record.plant);
+                }
+            });
+        }
+
+        const tabs = Array.from(tabsSet).sort();
+        if (canViewUnassigned) {
+            tabs.push('Unassigned');
+        }
+        return tabs;
+    }, [plantProjects, canViewUnassigned, jobRecords, monthKey]);
+
     const filteredAndGroupedProfiles = useMemo(() => {
         const filtered = searchTerm
             ? manpowerProfiles.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -136,28 +158,20 @@ export default function JobRecordSheet() {
 
         const groups: { [key: string]: ManpowerProfile[] } = {};
         
-        const orderedPlantNames = plantProjects.map(p => p.name);
-
-        orderedPlantNames.forEach(p => { groups[p] = []; });
-        if (canViewUnassigned) {
-            groups['Unassigned'] = [];
-        }
+        allTabs.forEach(p => { groups[p] = []; });
     
         filtered.forEach(profile => {
             const plantAssignment = getPlantForProfile(profile.id);
+            // If the assigned plant is in our tab list, add to that group
             if (groups[plantAssignment]) {
                 groups[plantAssignment].push(profile);
             } else if (canViewUnassigned) {
+                // Otherwise fallback to unassigned
                 groups['Unassigned'].push(profile);
             }
         });
     
-        const allGroupNames = [...orderedPlantNames];
-        if (canViewUnassigned) {
-            allGroupNames.push('Unassigned');
-        }
-
-        allGroupNames.forEach(plantName => {
+        allTabs.forEach(plantName => {
             const currentOrder = jobRecords[monthKey]?.plantsOrder?.[plantName];
             const prevOrder = jobRecords[prevMonthKey]?.plantsOrder?.[plantName];
             const order = currentOrder || prevOrder;
@@ -183,7 +197,7 @@ export default function JobRecordSheet() {
         
         return groups;
     
-    }, [manpowerProfiles, jobRecords, monthKey, prevMonthKey, searchTerm, plantProjects, canViewUnassigned]);
+    }, [manpowerProfiles, jobRecords, monthKey, prevMonthKey, searchTerm, allTabs, canViewUnassigned]);
 
     const batchUpdateJobRecords = useCallback((updates: { profileId: string; day: number; code: string }[]) => {
         updates.forEach(update => {
@@ -466,12 +480,6 @@ export default function JobRecordSheet() {
             return newSet;
         });
     };
-    
-    const allTabs = useMemo(() => {
-        const plantTabs = plantProjects.map(p => p.name);
-        const tabs = canViewUnassigned ? [...plantTabs, 'Unassigned'] : plantTabs;
-        return tabs;
-    }, [plantProjects, canViewUnassigned]);
     
     useEffect(() => {
         if (activeTab === undefined && allTabs.length > 0) {
