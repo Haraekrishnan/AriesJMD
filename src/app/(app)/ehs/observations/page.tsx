@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, MouseEvent } from 'react';
 import { useEhs } from '@/contexts/ehs-provider';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
   Plus, Search, MapPin, Calendar, Eye, Users, 
@@ -45,6 +45,7 @@ import type { EhsObservationStatus, EhsObservationSeverity, EhsObservation, Capa
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const severityConfig: Record<EhsObservationSeverity, { bg: string, text: string, border: string }> = {
   'Low': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
@@ -161,7 +162,7 @@ export default function EhsObservationsPage() {
         <div className="space-y-6 animate-in fade-in duration-300">
             {/* Nav Header */}
             <div className="flex items-center justify-between bg-white p-4 border border-slate-200 rounded-lg shadow-sm">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 text-left">
                     <Button variant="ghost" size="icon" onClick={() => setViewingObservationId(null)}>
                         <ChevronLeft className="h-5 w-5 text-slate-900" />
                     </Button>
@@ -583,7 +584,7 @@ export default function EhsObservationsPage() {
                                 </TableCell>
                                 <TableCell className="border-r border-slate-200 px-4 py-2 sticky left-20 z-20 bg-white group-hover:bg-slate-50 transition-colors">
                                     <div className="flex flex-col gap-0.5">
-                                        <p className="font-black text-slate-900 text-xs uppercase tracking-tight line-clamp-1">{obs.description}</p>
+                                        <p className="font-black text-xs uppercase tracking-tight text-slate-800 leading-tight line-clamp-1">{obs.description}</p>
                                         <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
                                             <MapPin className="h-2.5 w-2.5" /> {site?.name} &middot; {obs.location}
                                         </div>
