@@ -1169,6 +1169,28 @@ export type EhsObservationCategory = 'Unsafe Act' | 'Unsafe Condition' | 'Safe A
 export type EhsObservationSeverity = 'Low' | 'Medium' | 'High' | 'Critical';
 export type CapaStage = 'Initiation' | 'Resolution' | 'Investigation' | 'Implementation' | 'Effectiveness Review' | 'Reference' | 'Closure';
 
+export type CapaAttachment = {
+  id: string;
+  name: string;
+  url: string;
+  uploadedBy: string;
+  uploadedAt: string;
+};
+
+export type CapaStageRecord = {
+  status: 'Pending' | 'In Progress' | 'Completed' | 'Returned';
+  assigneeId?: string;
+  assignedById?: string;
+  assignedAt?: string;
+  actionedById?: string;
+  actionedAt?: string;
+  reviewedById?: string;
+  reviewedAt?: string;
+  comments?: { [key: string]: Comment };
+  attachments?: { [key: string]: CapaAttachment };
+  data?: any; // Stage-specific data (e.g., 5-Whys, Plan)
+};
+
 export type EhsObservation = {
   id: string;
   reporterId: string;
@@ -1178,37 +1200,13 @@ export type EhsObservation = {
   severity: EhsObservationSeverity;
   description: string;
   
-  // CAPA Data
+  // CAPA Data Structure
   currentStage: CapaStage;
-  
-  // Initiation & Resolution Data
-  immediateActionTaken?: string;
-  
-  // Investigation Data
-  rootCauseAnalysis?: {
-    method: '5-Whys';
-    whys: string[];
-    finalRootCause: string;
-  };
-  
-  // Implementation Data
-  correctiveActionPlan?: string;
-  actionOwnerId?: string;
-  dueDate?: string;
-  
-  // Effectiveness Data
-  effectivenessVerification?: {
-    verifiedBy: string;
-    verificationDate: string;
-    result: string;
-    successful: boolean;
-  };
+  stages: Record<CapaStage, CapaStageRecord>;
   
   status: EhsObservationStatus;
   createdAt: string;
   closedAt?: string;
-  evidenceUrl?: string;
-  comments?: { [key: string]: Comment };
   viewedBy?: { [userId: string]: boolean };
 };
 

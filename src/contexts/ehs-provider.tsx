@@ -16,6 +16,7 @@ import type {
   EhsContactInfo, 
   EhsObservation, 
   CapaStage,
+  CapaStageRecord,
   Comment 
 } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -34,10 +35,13 @@ type EhsContextType = {
   addIncident: (incident: Omit<EhsIncident, 'id'>) => void;
   addRiskAssessment: (ra: Omit<EhsRiskAssessment, 'id'>) => void;
   addTraining: (training: Omit<EhsTraining, 'id'>) => void;
-  addObservation: (observation: Omit<EhsObservation, 'id' | 'createdAt' | 'status' | 'currentStage'>) => void;
-  updateObservation: (observationId: string, updates: Partial<EhsObservation>) => void;
-  transitionCapaStage: (observationId: string, targetStage: CapaStage, updateData?: Partial<EhsObservation>) => void;
-  addObservationComment: (observationId: string, text: string) => void;
+  
+  // CAPA Management
+  addObservation: (observation: Omit<EhsObservation, 'id' | 'createdAt' | 'status' | 'currentStage' | 'stages'>) => void;
+  assignStageOwner: (observationId: string, stage: CapaStage, assigneeId: string) => void;
+  actionStage: (observationId: string, stage: CapaStage, data: any, attachmentUrl?: string) => void;
+  reviewStage: (observationId: string, stage: CapaStage, status: 'Completed' | 'Returned', comment: string) => void;
+  addStageAttachment: (observationId: string, stage: CapaStage, name: string, url: string) => void;
   deleteObservation: (observationId: string) => void;
   
   reviewAudit: (auditId: string, status: 'Approved' | 'Rejected', comment: string) => void;
@@ -59,6 +63,21 @@ type EhsContextType = {
 };
 
 const EhsContext = createContext<EhsContextType | undefined>(undefined);
+
+const CAPA_STAGES: CapaStage[] = ['Initiation', 'Resolution', 'Investigation', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];
+
+const generateInitialStages = (creatorId: string): Record<CapaStage, CapaStageRecord> => {
+    const stages: any = {};
+    CAPA_STAGES.forEach(stage => {
+        stages[stage] = {
+            status: 'Pending',
+            assignedAt: stage === 'Initiation' ? new Date().toISOString() : null,
+            assignedById: stage === 'Initiation' ? creatorId : null,
+            assigneeId: stage === 'Initiation' ? creatorId : null,
+        };
+    });
+    return stages;
+};
 
 export function EhsProvider({ children }: { children: ReactNode }) {
   const { user, users } = useAuth();
@@ -140,51 +159,137 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     push(ref(rtdb, 'ehs/trainings'), data);
   }, []);
 
-  const addObservation = useCallback((data: Omit<EhsObservation, 'id' | 'createdAt' | 'status' | 'currentStage'>) => {
+  // CAPA MANAGEMENT FUNCTIONS
+  const addObservation = useCallback((data: Omit<EhsObservation, 'id' | 'createdAt' | 'status' | 'currentStage' | 'stages'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'ehs/observations'));
-    set(newRef, {
+    const now = new Date().toISOString();
+    
+    const stages = generateInitialStages(user.id);
+    // Mark initiation as completed since it's just being created
+    stages['Initiation'].status = 'Completed';
+    stages['Initiation'].actionedById = user.id;
+    stages['Initiation'].actionedAt = now;
+    stages['Initiation'].reviewedById = user.id;
+    stages['Initiation'].reviewedAt = now;
+
+    // Auto-open next stage (Resolution)
+    stages['Resolution'].status = 'In Progress';
+    stages['Resolution'].assignedById = user.id;
+    stages['Resolution'].assignedAt = now;
+
+    const newObservation: Omit<EhsObservation, 'id'> = {
       ...data,
       reporterId: user.id,
-      createdAt: new Date().toISOString(),
-      currentStage: 'Initiation',
+      createdAt: now,
+      currentStage: 'Resolution',
       status: 'Open',
-    });
-    toast({ title: 'Observation Initiated', description: 'CAPA workflow has been started.' });
-  }, [user, toast]);
-
-  const updateObservation = useCallback((observationId: string, updates: Partial<EhsObservation>) => {
-    update(ref(rtdb, `ehs/observations/${observationId}`), updates);
-  }, []);
-
-  const transitionCapaStage = useCallback((observationId: string, targetStage: CapaStage, updateData: Partial<EhsObservation> = {}) => {
-    if (!user) return;
-    const updates = {
-      ...updateData,
-      currentStage: targetStage,
-      lastUpdated: new Date().toISOString(),
+      stages,
     };
     
-    if (targetStage === 'Closure') {
-      updates.status = 'Closed';
-      updates.closedAt = new Date().toISOString();
-    } else {
-      updates.status = 'In Progress';
-    }
-
-    update(ref(rtdb, `ehs/observations/${observationId}`), updates);
-    toast({ title: `Transitioned to ${targetStage}` });
+    set(newRef, JSON.parse(JSON.stringify(newObservation)));
+    toast({ title: 'Observation Initiated', description: 'Lifecycle case opened successfully.' });
   }, [user, toast]);
 
-  const addObservationComment = useCallback((observationId: string, text: string) => {
+  const assignStageOwner = useCallback((observationId: string, stage: CapaStage, assigneeId: string) => {
     if (!user) return;
-    const newCommentRef = push(ref(rtdb, `ehs/observations/${observationId}/comments`));
-    set(newCommentRef, {
-      id: newCommentRef.key,
-      userId: user.id,
-      text,
-      date: new Date().toISOString(),
-      eventId: observationId
+    const path = `ehs/observations/${observationId}/stages/${stage}`;
+    const updates = {
+      assigneeId,
+      assignedById: user.id,
+      assignedAt: new Date().toISOString(),
+      status: 'Pending'
+    };
+    update(ref(rtdb, path), updates);
+    toast({ title: 'Stage Assigned' });
+  }, [user, toast]);
+
+  const actionStage = useCallback((observationId: string, stage: CapaStage, data: any, attachmentUrl?: string) => {
+    if (!user) return;
+    const path = `ehs/observations/${observationId}/stages/${stage}`;
+    const now = new Date().toISOString();
+    
+    const updates: any = {
+      actionedById: user.id,
+      actionedAt: now,
+      status: 'In Progress', // Waiting for review
+      data: data || null
+    };
+
+    if (attachmentUrl) {
+       const attachmentRef = push(ref(rtdb, `${path}/attachments`));
+       updates[`attachments/${attachmentRef.key}`] = {
+           id: attachmentRef.key,
+           name: 'Evidence Attachment',
+           url: attachmentUrl,
+           uploadedBy: user.id,
+           uploadedAt: now
+       };
+    }
+
+    update(ref(rtdb, path), updates);
+    toast({ title: 'Action Recorded', description: 'Pending Higher Official review.' });
+  }, [user, toast]);
+
+  const reviewStage = useCallback((observationId: string, stage: CapaStage, status: 'Completed' | 'Returned', comment: string) => {
+    if (!user) return;
+    const now = new Date().toISOString();
+    const obsRef = ref(rtdb, `ehs/observations/${observationId}`);
+    
+    get(obsRef).then(snap => {
+        const obs = snap.val() as EhsObservation;
+        if (!obs) return;
+
+        const updates: any = {};
+        const stagePath = `stages/${stage}`;
+        
+        updates[`${stagePath}/status`] = status;
+        updates[`${stagePath}/reviewedById`] = user.id;
+        updates[`${stagePath}/reviewedAt`] = now;
+        
+        if (comment) {
+            const commentRef = push(ref(rtdb, `ehs/observations/${observationId}/${stagePath}/comments`));
+            updates[`${stagePath}/comments/${commentRef.key}`] = {
+                id: commentRef.key,
+                userId: user.id,
+                text: comment,
+                date: now
+            };
+        }
+
+        if (status === 'Completed') {
+            const currentIndex = CAPA_STAGES.indexOf(stage);
+            const nextStage = CAPA_STAGES[currentIndex + 1];
+            
+            if (nextStage) {
+                updates['currentStage'] = nextStage;
+                updates[`stages/${nextStage}/status`] = 'Pending';
+                updates[`stages/${nextStage}/assignedById`] = user.id;
+                updates[`stages/${nextStage}/assignedAt`] = now;
+            } else {
+                updates['status'] = 'Closed';
+                updates['closedAt'] = now;
+            }
+        } else {
+            // Returned - Reset action data to allow re-submission
+            updates[`${stagePath}/actionedAt`] = null;
+            updates[`${stagePath}/actionedById`] = null;
+        }
+
+        update(obsRef, updates);
+        toast({ title: `Stage ${status}` });
+    });
+  }, [user, toast]);
+
+  const addStageAttachment = useCallback((observationId: string, stage: CapaStage, name: string, url: string) => {
+    if (!user) return;
+    const attachmentRef = push(ref(rtdb, `ehs/observations/${observationId}/stages/${stage}/attachments`));
+    set(attachmentRef, {
+        id: attachmentRef.key,
+        name,
+        url,
+        uploadedBy: user.id,
+        uploadedAt: new Date().toISOString()
     });
   }, [user]);
 
@@ -249,7 +354,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
         <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/ehs/support">View in Portal</a></p>
       `;
       sendNotificationEmail({
-        to: [emails[0]], // Sending to primary for now
+        to: [emails[0]], 
         subject: `[EHS Support] New ${data.urgency} Ticket: ${data.category}`,
         htmlBody,
         notificationSettings,
@@ -304,7 +409,12 @@ export function EhsProvider({ children }: { children: ReactNode }) {
   }, [incidents, audits, trainings, observations]);
 
   return (
-    <EhsContext.Provider value={{ audits, incidents, riskAssessments, trainings, observations, supportTickets, contactInfo, addAudit, addIncident, addRiskAssessment, addTraining, addObservation, updateObservation, transitionCapaStage, addObservationComment, deleteObservation, reviewAudit, updateIncidentStatus, addSupportTicket, updateTicketStatus, addTicketComment, deleteSupportTicket, updateContactInfo, stats }}>
+    <EhsContext.Provider value={{ 
+        audits, incidents, riskAssessments, trainings, observations, supportTickets, contactInfo, 
+        addAudit, addIncident, addRiskAssessment, addTraining, 
+        addObservation, assignStageOwner, actionStage, reviewStage, addStageAttachment, deleteObservation,
+        reviewAudit, updateIncidentStatus, addSupportTicket, updateTicketStatus, addTicketComment, deleteSupportTicket, updateContactInfo, stats 
+    }}>
       {children}
     </EhsContext.Provider>
   );
