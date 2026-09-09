@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, MouseEvent } from 'react';
 import { useEhs } from '@/contexts/ehs-provider';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
@@ -41,28 +41,29 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import type { EhsObservationStatus, EhsObservationCategory, EhsObservationSeverity, EhsObservation, CapaStage } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const severityColors: Record<EhsObservationSeverity, string> = {
-  'Low': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  'Medium': 'bg-blue-100 text-blue-700 border-blue-200',
-  'High': 'bg-orange-100 text-orange-700 border-orange-200',
-  'Critical': 'bg-rose-100 text-rose-700 border-rose-200',
+  'Low': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  'Medium': 'bg-blue-100 text-blue-800 border-blue-200',
+  'High': 'bg-orange-100 text-orange-800 border-orange-200',
+  'Critical': 'bg-rose-100 text-rose-800 border-rose-200',
 };
 
 const stageConfig: Record<CapaStage, { label: string, icon: any, color: string, badge: string, description: string }> = {
-  'Initiation': { label: 'Initiation', icon: Plus, color: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-700', description: 'Initial recording of the site observation.' },
-  'Resolution': { label: 'Resolution', icon: FileCheck, color: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-700', description: 'Immediate correction and containment actions.' },
-  'Investigation': { label: 'Investigation', icon: Search, color: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-700', description: 'Root cause analysis using 5-Whys methodology.' },
-  'Implementation': { label: 'Implementation', icon: Target, color: 'text-blue-600', badge: 'bg-blue-100 text-blue-700', description: 'Long-term preventive action deployment.' },
-  'Effectiveness Review': { label: 'Effectiveness Review', icon: CheckCircle, color: 'text-indigo-600', badge: 'bg-indigo-100 text-indigo-700', description: 'Validation that actions prevented recurrence.' },
-  'Reference': { label: 'Reference', icon: FileSearch, color: 'text-blue-600', badge: 'bg-blue-100 text-blue-700', description: 'Technical archiving of documentation.' },
-  'Closure': { label: 'Closure', icon: Lock, color: 'text-slate-600', badge: 'bg-slate-100 text-slate-700', description: 'Final organizational sign-off.' },
+  'Initiation': { label: 'Initiation', icon: Plus, color: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-800 border-emerald-200', description: 'Initial recording of the site observation.' },
+  'Resolution': { label: 'Resolution', icon: FileCheck, color: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-800 border-emerald-200', description: 'Immediate correction and containment actions.' },
+  'Investigation': { label: 'Investigation', icon: Search, color: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-800 border-emerald-200', description: 'Root cause analysis using 5-Whys methodology.' },
+  'Implementation': { label: 'Implementation', icon: Target, color: 'text-blue-600', badge: 'bg-blue-100 text-blue-800 border-blue-200', description: 'Long-term preventive action deployment.' },
+  'Effectiveness Review': { label: 'Effectiveness Review', icon: CheckCircle, color: 'text-indigo-600', badge: 'bg-indigo-100 text-indigo-800 border-indigo-200', description: 'Validation that actions prevented recurrence.' },
+  'Reference': { label: 'Reference', icon: FileSearch, color: 'text-blue-600', badge: 'bg-blue-100 text-blue-800 border-blue-200', description: 'Technical archiving of documentation.' },
+  'Closure': { label: 'Closure', icon: Lock, color: 'text-slate-600', badge: 'bg-slate-100 text-slate-800 border-slate-200', description: 'Final organizational sign-off.' },
 };
 
 const observationSchema = z.object({
@@ -84,10 +85,8 @@ export default function EhsObservationsPage() {
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [viewingObservation, setViewingObservation] = useState<EhsObservation | null>(null);
   
-  // Interactive Nav State
   const [activeViewStage, setActiveViewStage] = useState<CapaStage | null>(null);
 
-  // Transition Form States
   const [rcaWhys, setRcaWhys] = useState<string[]>(['', '', '', '', '']);
   const [finalRootCause, setFinalRootCause] = useState('');
   const [actionPlan, setActionPlan] = useState('');
@@ -96,7 +95,6 @@ export default function EhsObservationsPage() {
   const [verificationResult, setVerificationResult] = useState('');
   const [isSuccess, setIsSuccess] = useState(true);
 
-  // Sync internal state with selected observation
   useEffect(() => {
     if (viewingObservation) {
       setActiveViewStage(viewingObservation.currentStage);
@@ -140,7 +138,6 @@ export default function EhsObservationsPage() {
     let targetStage: CapaStage = viewingObservation.currentStage;
 
     const stages = Object.keys(stageConfig) as CapaStage[];
-    const currentIndex = stages.indexOf(viewingObservation.currentStage);
 
     switch (viewingObservation.currentStage) {
       case 'Initiation':
@@ -182,6 +179,19 @@ export default function EhsObservationsPage() {
     const next = stages[currentIndex + 1];
     return next ? `MOVE TO ${next.toUpperCase()}` : 'CLOSE CASE';
   }, [viewingObservation]);
+
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+  const handleMouseDown = (e: MouseEvent<HTMLDivElement>) => {
+    if (zoom <= 1) return;
+    e.preventDefault();
+    setIsPanning(true);
+    setStartPosition({ x: e.clientX - translate.x, y: e.clientY - translate.y });
+  };
+  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+    if (!isPanning || !imageContainerRef.current) return;
+    e.preventDefault();
+    setTranslate({ x: e.clientX - startPosition.x, y: e.clientY - startPosition.y });
+  };
 
   if (viewingObservation && activeViewStage) {
     const activeStageIdx = Object.keys(stageConfig).indexOf(viewingObservation.currentStage);
@@ -225,7 +235,7 @@ export default function EhsObservationsPage() {
                                 <FileText className="h-4 w-4" /> Case Discovery Dossier
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-8 space-y-8 bg-white">
+                        <CardContent className="p-8 space-y-8 bg-white text-left">
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Initial Finding Narrative</Label>
                                 <p className="text-lg font-black text-slate-800 leading-tight uppercase tracking-tight italic border-l-4 border-slate-200 pl-4">"{viewingObservation.description}"</p>
@@ -254,7 +264,7 @@ export default function EhsObservationsPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-[2rem] border-2 border-slate-200 shadow-lg bg-white">
+                    <Card className="rounded-[2rem] border-2 border-slate-200 shadow-lg bg-white text-left">
                         <CardHeader className="p-6 pb-2">
                             <CardTitle className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-900">Lifecycle Navigation</CardTitle>
                             <p className="text-[10px] text-slate-500 font-bold uppercase">Click any stage below to review details</p>
@@ -303,7 +313,7 @@ export default function EhsObservationsPage() {
                 </div>
 
                 <div className="space-y-8">
-                    <Card className="rounded-[3rem] border-2 border-slate-200 shadow-2xl overflow-hidden min-h-[700px] flex flex-col bg-white">
+                    <Card className="rounded-[3rem] border-2 border-slate-200 shadow-2xl overflow-hidden min-h-[700px] flex flex-col bg-white text-left">
                         <div className="p-10 bg-slate-50 border-b-2 flex justify-between items-center">
                             <div className="flex items-center gap-5">
                                 <div className="p-4 bg-white rounded-2xl shadow-md border-2 border-slate-200">
@@ -337,7 +347,6 @@ export default function EhsObservationsPage() {
                         <ScrollArea className="flex-1">
                             <div className="p-12">
                                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                                    
                                     {activeViewStage === 'Initiation' && (
                                         <div className="p-10 border-4 border-dashed border-slate-100 rounded-[3rem] text-center space-y-6">
                                             <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center mx-auto shadow-inner">
@@ -520,7 +529,7 @@ export default function EhsObservationsPage() {
                                             <div className="w-28 h-24 bg-white rounded-full flex items-center justify-center mx-auto shadow-2xl border-8 border-emerald-500/20">
                                                 <CheckCircle2 className="h-16 w-16 text-emerald-600" />
                                             </div>
-                                            <div className="space-y-4 text-white">
+                                            <div className="space-y-4 text-white text-center">
                                                 <h3 className="text-5xl font-black uppercase tracking-tighter">CAPA CYCLE CLOSED</h3>
                                                 <p className="text-emerald-50 text-xl font-bold opacity-80 uppercase tracking-wide">Organizational Sign-off Completed</p>
                                                 <div className="pt-12 flex flex-col items-center gap-4">
@@ -543,11 +552,11 @@ export default function EhsObservationsPage() {
   }
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase leading-none">CAPA Central Registry</h1>
-          <p className="text-slate-700 text-lg font-bold mt-2">Enterprise-grade tracking for site observations and corrective actions.</p>
+    <div className="space-y-10 animate-in fade-in duration-500 flex flex-col h-full overflow-hidden">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shrink-0">
+        <div className="text-left">
+          <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase leading-none">CAPA Master Tracker</h1>
+          <p className="text-slate-700 text-lg font-bold mt-2">Industrial lifecycle registry for site safety findings.</p>
         </div>
         
         <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
@@ -559,7 +568,7 @@ export default function EhsObservationsPage() {
           <DialogContent className="sm:max-w-2xl bg-white border-2 border-slate-200 shadow-2xl rounded-[2.5rem]">
             <DialogHeader>
               <DialogTitle className="text-2xl font-black uppercase tracking-tight text-slate-900">Initiate Lifecycle Case</DialogTitle>
-              <DialogDescription className="text-slate-600 font-bold">Log a new site observation to trigger the organizational CAPA stream.</DialogDescription>
+              <DialogDescription className="text-slate-600 font-bold text-left">Log a new site observation to trigger the organizational CAPA stream.</DialogDescription>
             </DialogHeader>
             <form onSubmit={form.handleSubmit(onReportSubmit)} className="space-y-8 py-6 text-left">
                <div className="grid grid-cols-2 gap-8">
@@ -646,13 +655,13 @@ export default function EhsObservationsPage() {
         </Dialog>
       </div>
 
-      <Card className="bg-white border-2 border-slate-200 shadow-xl overflow-hidden rounded-[2.5rem]">
-        <div className="p-10 border-b-2 border-slate-100 flex flex-col md:flex-row justify-between items-center gap-10 bg-slate-50/50">
+      <Card className="bg-white border-2 border-slate-200 shadow-xl overflow-hidden rounded-[2rem] flex flex-col flex-1">
+        <div className="p-8 border-b-2 border-slate-100 flex flex-col md:flex-row justify-between items-center gap-8 bg-slate-50/50 shrink-0">
             <div className="relative w-full max-w-2xl">
                 <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-400" />
                 <Input 
-                    placeholder="Search CAPA Registry by Location, Case ID, or Narrative..." 
-                    className="pl-14 h-16 bg-white border-2 border-slate-200 rounded-[1.5rem] font-black text-slate-900 focus-visible:ring-emerald-500/20 shadow-sm text-base uppercase tracking-tight"
+                    placeholder="Search Tracker by Location, Case ID, or Narrative..." 
+                    className="pl-14 h-14 bg-white border-2 border-slate-200 rounded-2xl font-black text-slate-900 focus-visible:ring-emerald-500/20 shadow-sm text-sm uppercase tracking-tight"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -664,67 +673,101 @@ export default function EhsObservationsPage() {
             </div>
         </div>
         
-        <div className="overflow-x-auto">
-            <Table>
-                <TableHeader className="bg-slate-900">
+        <div className="flex-1 overflow-hidden relative">
+          <ScrollArea className="h-full w-full">
+            <Table className="border-collapse text-[11px] font-sans">
+                <TableHeader className="bg-slate-900 sticky top-0 z-40">
                     <TableRow className="hover:bg-transparent">
-                        <TableHead className="w-24 font-black uppercase text-[10px] tracking-widest text-white text-center h-16 border-r border-white/10">ID</TableHead>
-                        <TableHead className="min-w-[400px] font-black uppercase text-[10px] tracking-widest text-white h-16 border-r border-white/10 px-10">Safety Observation Summary</TableHead>
-                        <TableHead className="w-48 font-black uppercase text-[10px] tracking-widest text-white h-16 border-r border-white/10 text-center">Category</TableHead>
-                        <TableHead className="w-40 font-black uppercase text-[10px] tracking-widest text-white h-16 border-r border-white/10 text-center">Severity</TableHead>
-                        <TableHead className="w-72 font-black uppercase text-[10px] tracking-widest text-white h-16 border-r border-white/10 px-10 text-center">Active Stage</TableHead>
-                        <TableHead className="w-32 text-right font-black uppercase text-[10px] tracking-widest text-white h-16 px-10">Access</TableHead>
+                        <TableHead className="w-20 font-black uppercase text-[9px] tracking-widest text-white text-center h-12 border-r border-white/10 sticky left-0 z-50 bg-slate-900">ID</TableHead>
+                        <TableHead className="min-w-[250px] font-black uppercase text-[9px] tracking-widest text-white h-12 border-r border-white/10 px-4 sticky left-20 z-50 bg-slate-900 shadow-[2px_0_5px_rgba(0,0,0,0.2)]">Finding Narrative</TableHead>
+                        <TableHead className="w-32 font-black uppercase text-[9px] tracking-widest text-white h-12 border-r border-white/10 text-center">Category</TableHead>
+                        <TableHead className="w-28 font-black uppercase text-[9px] tracking-widest text-white h-12 border-r-2 border-white/20 text-center">Severity</TableHead>
+                        
+                        {/* LIFECYCLE COLUMNS */}
+                        {Object.values(stageConfig).map(cfg => (
+                           <TableHead key={cfg.label} className="w-32 font-black uppercase text-[9px] tracking-widest text-white h-12 border-r border-white/10 text-center leading-tight">
+                              {cfg.label.split(' ').join('\n')}
+                           </TableHead>
+                        ))}
+
+                        <TableHead className="w-24 text-right font-black uppercase text-[9px] tracking-widest text-white h-12 px-6 sticky right-0 z-50 bg-slate-900 shadow-[-2px_0_5px_rgba(0,0,0,0.2)]">Registry</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
+                    <TooltipProvider>
                     {filteredObservations.map((obs) => {
                         const site = projects.find(p => p.id === obs.projectId);
-                        const currentStageConfig = stageConfig[obs.currentStage];
+                        const stages = Object.keys(stageConfig) as CapaStage[];
+                        const currentStageIdx = stages.indexOf(obs.currentStage);
 
                         return (
-                            <TableRow key={obs.id} className="group hover:bg-blue-50/50 transition-colors border-b-2 border-slate-50">
-                                <TableCell className="text-center font-mono text-[10px] font-black text-slate-900 border-r border-slate-50 bg-slate-50/20">{obs.id.slice(-5).toUpperCase()}</TableCell>
-                                <TableCell className="border-r border-slate-50 px-10 py-8 text-left">
-                                    <div className="flex flex-col gap-2">
-                                        <p className="font-black text-slate-900 text-base leading-tight uppercase tracking-tight group-hover:text-blue-700 transition-colors">{obs.description}</p>
-                                        <div className="flex items-center gap-3 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                            <MapPin className="h-3.5 w-3.5 text-blue-600" /> {site?.name} &middot; {obs.location}
+                            <TableRow key={obs.id} className="group hover:bg-blue-50/50 transition-colors border-b border-slate-200">
+                                <TableCell className="text-center font-mono text-[9px] font-black text-slate-900 border-r border-slate-200 bg-slate-50/20 sticky left-0 z-20">
+                                  {obs.id.slice(-5).toUpperCase()}
+                                </TableCell>
+                                <TableCell className="border-r border-slate-200 px-4 py-4 text-left sticky left-20 z-20 bg-white group-hover:bg-blue-50/50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                    <div className="flex flex-col gap-1">
+                                        <p className="font-black text-slate-900 text-xs leading-tight uppercase tracking-tight line-clamp-1">{obs.description}</p>
+                                        <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                            <MapPin className="h-2.5 w-2.5 text-blue-600" /> {site?.name} &middot; {obs.location}
                                         </div>
                                     </div>
                                 </TableCell>
-                                <TableCell className="text-center border-r border-slate-50">
-                                    <Badge variant="outline" className="text-[10px] font-black uppercase tracking-tight h-7 px-4 bg-white border-2 border-slate-200 text-slate-900">
+                                <TableCell className="text-center border-r border-slate-200">
+                                    <Badge variant="outline" className="text-[9px] font-black uppercase tracking-tight h-5 px-2 bg-white border-2 border-slate-100 text-slate-700">
                                         {obs.category}
                                     </Badge>
                                 </TableCell>
-                                <TableCell className="text-center border-r border-slate-50">
-                                    <Badge variant="outline" className={cn("text-[10px] font-black uppercase tracking-widest h-7 px-4 border-2 shadow-sm", severityColors[obs.severity])}>
+                                <TableCell className="text-center border-r-2 border-slate-300">
+                                    <Badge variant="outline" className={cn("text-[9px] font-black uppercase tracking-widest h-5 px-2 border-2", severityColors[obs.severity])}>
                                         {obs.severity}
                                     </Badge>
                                 </TableCell>
-                                <TableCell className="border-r border-slate-50 px-10 text-center">
-                                    <div className={cn("inline-flex items-center gap-3 p-2 pr-6 rounded-2xl border-2 shadow-sm", currentStageConfig.badge)}>
-                                        <div className="p-2 bg-white rounded-xl">
-                                            {React.createElement(currentStageConfig.icon, { className: "h-4 w-4" })}
-                                        </div>
-                                        <span className="font-black text-[10px] uppercase tracking-widest">{currentStageConfig.label}</span>
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-right px-10">
+
+                                {/* LIFECYCLE CELLS */}
+                                {stages.map((stage, idx) => {
+                                  const isDone = idx < currentStageIdx || obs.status === 'Closed';
+                                  const isActive = idx === currentStageIdx && obs.status !== 'Closed';
+                                  
+                                  return (
+                                    <TableCell key={stage} className={cn(
+                                      "border-r border-slate-200 text-center p-0 h-full",
+                                      isActive && "bg-blue-50/30",
+                                      isDone && "bg-emerald-50/10"
+                                    )}>
+                                       <div className="flex flex-col items-center justify-center gap-1 py-2">
+                                          {isDone ? (
+                                            <div className="h-4 w-4 rounded-full bg-emerald-500 flex items-center justify-center text-white">
+                                              <Check className="h-2.5 w-2.5" />
+                                            </div>
+                                          ) : isActive ? (
+                                            <Badge className="bg-blue-600 text-white font-black text-[8px] h-4 py-0 px-1.5 animate-pulse">ACTION</Badge>
+                                          ) : (
+                                            <div className="h-1.5 w-1.5 rounded-full bg-slate-200" />
+                                          )}
+                                       </div>
+                                    </TableCell>
+                                  )
+                                })}
+
+                                <TableCell className="text-right px-4 sticky right-0 z-20 bg-white group-hover:bg-blue-50/50 shadow-[-2px_0_5px_rgba(0,0,0,0.05)] border-l border-slate-200">
                                     <Button 
                                         variant="outline" 
                                         size="sm" 
-                                        className="h-12 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest border-2 border-slate-200 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all shadow-md group-hover:-translate-y-1"
+                                        className="h-8 px-4 rounded-xl font-black text-[9px] uppercase tracking-widest border-2 border-slate-200 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
                                         onClick={() => setViewingObservation(obs)}
                                     >
-                                        MANAGE <ArrowRight className="ml-2 h-4 w-4" />
+                                        MANAGE <ArrowRight className="ml-1.5 h-3 w-3" />
                                     </Button>
                                 </TableCell>
                             </TableRow>
                         );
                     })}
+                    </TooltipProvider>
                 </TableBody>
             </Table>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
         </div>
         
         {filteredObservations.length === 0 && (
