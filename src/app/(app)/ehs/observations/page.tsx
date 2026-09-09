@@ -12,7 +12,7 @@ import {
   Clock, MessageSquare, Zap, Send, Target, ChevronRight, 
   FileCheck, HelpCircle, ArrowRight, Lock, FileSearch, 
   Archive, ChevronLeft, FileText, Download, UserRound, 
-  Check, XCircle, Trash2, ClipboardCheck, History, Upload, Paperclip
+  Check, XCircle, Trash2, ClipboardCheck, History, Upload, Paperclip, Undo2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, parseISO, isValid } from 'date-fns';
@@ -43,9 +43,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import type { EhsObservationStatus, EhsObservationSeverity, EhsObservation, CapaStage, CapaStageRecord } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const severityConfig: Record<EhsObservationSeverity, { bg: string, text: string, border: string }> = {
@@ -98,7 +96,7 @@ export default function EhsObservationsPage() {
     if (viewingObservation) {
       setActiveViewStage(viewingObservation.currentStage);
       // Initialize action data from stage data if available
-      const currentStageData = viewingObservation.stages[viewingObservation.currentStage];
+      const currentStageData = viewingObservation.stages?.[viewingObservation.currentStage];
       if (currentStageData?.data) {
           setActionData(currentStageData.data);
       } else {
@@ -143,7 +141,7 @@ export default function EhsObservationsPage() {
   };
 
   if (viewingObservation && activeViewStage) {
-    const stageData = viewingObservation.stages[activeViewStage];
+    const stageData = viewingObservation.stages?.[activeViewStage];
     const isCurrentStage = activeViewStage === viewingObservation.currentStage;
     const isActionPending = isCurrentStage && stageData?.status === 'Pending';
     const isReviewPending = isCurrentStage && stageData?.status === 'In Progress';
@@ -225,7 +223,7 @@ export default function EhsObservationsPage() {
                         </CardHeader>
                         <div className="p-2 space-y-1">
                             {Object.entries(stageConfig).map(([key, config], idx) => {
-                                const s = viewingObservation.stages[key as CapaStage];
+                                const s = viewingObservation.stages?.[key as CapaStage];
                                 const isDone = s?.status === 'Completed';
                                 const isActive = key === viewingObservation.currentStage;
                                 const isViewing = activeViewStage === key;
@@ -601,7 +599,7 @@ export default function EhsObservationsPage() {
                                 </TableCell>
 
                                 {stages.map((stage) => {
-                                  const sData = obs.stages[stage];
+                                  const sData = obs.stages?.[stage];
                                   const isDone = sData?.status === 'Completed';
                                   const isActive = stage === obs.currentStage && obs.status !== 'Closed';
                                   const isReturned = sData?.status === 'Returned';
@@ -617,7 +615,7 @@ export default function EhsObservationsPage() {
                                           {isDone ? (
                                             <div className="flex flex-col items-center">
                                                 <Check className="h-3 w-3 text-emerald-600" />
-                                                {sData.actionedAt && <span className="text-[8px] font-black text-emerald-700 mt-0.5">{format(parseISO(sData.actionedAt), 'dd/MM')}</span>}
+                                                {sData?.actionedAt && <span className="text-[8px] font-black text-emerald-700 mt-0.5">{format(parseISO(sData.actionedAt), 'dd/MM')}</span>}
                                             </div>
                                           ) : isReturned ? (
                                             <div className="flex flex-col items-center animate-pulse">
@@ -656,6 +654,16 @@ export default function EhsObservationsPage() {
           </ScrollArea>
         </div>
       </Card>
+
+      {filteredObservations.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-32 text-slate-400 bg-white border-2 border-dashed border-slate-200 rounded-[2.5rem]">
+          <div className="p-8 bg-slate-50 rounded-full mb-6 shadow-inner border border-slate-100">
+            <FileWarning className="h-14 w-14 opacity-40 text-rose-600" />
+          </div>
+          <p className="text-2xl font-black text-slate-900 tracking-tight uppercase">No records found</p>
+          <p className="text-slate-400 font-bold mt-2 uppercase text-sm">Waiting for first site observation report...</p>
+        </div>
+      )}
     </div>
   );
 }
