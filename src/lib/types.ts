@@ -1164,9 +1164,10 @@ export type ObservationReport = {
   comments?: Comment[];
 };
 
-export type EhsObservationStatus = 'Open' | 'In Progress' | 'Closed' | 'Resolved';
+export type EhsObservationStatus = 'Open' | 'In Progress' | 'Closed' | 'Resolved' | 'Under Investigation';
 export type EhsObservationCategory = 'Unsafe Act' | 'Unsafe Condition' | 'Safe Act' | 'Near Miss' | 'Environmental';
 export type EhsObservationSeverity = 'Low' | 'Medium' | 'High' | 'Critical';
+export type CapaStage = 'Initiation' | 'Resolution' | 'Investigation' | 'Implementation' | 'Effectiveness Review' | 'Reference' | 'Closure';
 
 export type EhsObservation = {
   id: string;
@@ -1176,10 +1177,33 @@ export type EhsObservation = {
   category: EhsObservationCategory;
   severity: EhsObservationSeverity;
   description: string;
+  
+  // CAPA Data
+  currentStage: CapaStage;
+  
+  // Initiation & Resolution Data
   immediateActionTaken?: string;
+  
+  // Investigation Data
+  rootCauseAnalysis?: {
+    method: '5-Whys';
+    whys: string[];
+    finalRootCause: string;
+  };
+  
+  // Implementation Data
   correctiveActionPlan?: string;
   actionOwnerId?: string;
   dueDate?: string;
+  
+  // Effectiveness Data
+  effectivenessVerification?: {
+    verifiedBy: string;
+    verificationDate: string;
+    result: string;
+    successful: boolean;
+  };
+  
   status: EhsObservationStatus;
   createdAt: string;
   closedAt?: string;

@@ -15,6 +15,7 @@ import type {
   EhsSupportTicket, 
   EhsContactInfo, 
   EhsObservation, 
+  CapaStage,
   Comment 
 } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -33,8 +34,9 @@ type EhsContextType = {
   addIncident: (incident: Omit<EhsIncident, 'id'>) => void;
   addRiskAssessment: (ra: Omit<EhsRiskAssessment, 'id'>) => void;
   addTraining: (training: Omit<EhsTraining, 'id'>) => void;
-  addObservation: (observation: Omit<EhsObservation, 'id' | 'createdAt' | 'status'>) => void;
+  addObservation: (observation: Omit<EhsObservation, 'id' | 'createdAt' | 'status' | 'currentStage'>) => void;
   updateObservation: (observationId: string, updates: Partial<EhsObservation>) => void;
+  transitionCapaStage: (observationId: string, targetStage: CapaStage, updateData?: Partial<EhsObservation>) => void;
   addObservationComment: (observationId: string, text: string) => void;
   deleteObservation: (observationId: string) => void;
   
@@ -138,21 +140,41 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     push(ref(rtdb, 'ehs/trainings'), data);
   }, []);
 
-  const addObservation = useCallback((data: Omit<EhsObservation, 'id' | 'createdAt' | 'status'>) => {
+  const addObservation = useCallback((data: Omit<EhsObservation, 'id' | 'createdAt' | 'status' | 'currentStage'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'ehs/observations'));
     set(newRef, {
       ...data,
       reporterId: user.id,
       createdAt: new Date().toISOString(),
+      currentStage: 'Initiation',
       status: 'Open',
     });
-    toast({ title: 'Observation Reported', description: 'CAPA workflow has been initiated.' });
+    toast({ title: 'Observation Initiated', description: 'CAPA workflow has been started.' });
   }, [user, toast]);
 
   const updateObservation = useCallback((observationId: string, updates: Partial<EhsObservation>) => {
     update(ref(rtdb, `ehs/observations/${observationId}`), updates);
   }, []);
+
+  const transitionCapaStage = useCallback((observationId: string, targetStage: CapaStage, updateData: Partial<EhsObservation> = {}) => {
+    if (!user) return;
+    const updates = {
+      ...updateData,
+      currentStage: targetStage,
+      lastUpdated: new Date().toISOString(),
+    };
+    
+    if (targetStage === 'Closure') {
+      updates.status = 'Closed';
+      updates.closedAt = new Date().toISOString();
+    } else {
+      updates.status = 'In Progress';
+    }
+
+    update(ref(rtdb, `ehs/observations/${observationId}`), updates);
+    toast({ title: `Transitioned to ${targetStage}` });
+  }, [user, toast]);
 
   const addObservationComment = useCallback((observationId: string, text: string) => {
     if (!user) return;
@@ -265,6 +287,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
   }, [user, toast]);
 
   const stats = useMemo(() => {
+    const totalIncidents = incidents.length;
     const totalLTIs = incidents.filter(i => i.type === 'LTI').length;
     const approvedAudits = audits.filter(a => a.status === 'Approved');
     const avgAuditScore = approvedAudits.length > 0 
@@ -272,7 +295,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
       : 0;
     
     return {
-      totalIncidents: incidents.length,
+      totalIncidents,
       totalLTIs,
       avgAuditScore,
       trainingHours: trainings.length * 2,
@@ -281,7 +304,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
   }, [incidents, audits, trainings, observations]);
 
   return (
-    <EhsContext.Provider value={{ audits, incidents, riskAssessments, trainings, observations, supportTickets, contactInfo, addAudit, addIncident, addRiskAssessment, addTraining, addObservation, updateObservation, addObservationComment, deleteObservation, reviewAudit, updateIncidentStatus, addSupportTicket, updateTicketStatus, addTicketComment, deleteSupportTicket, updateContactInfo, stats }}>
+    <EhsContext.Provider value={{ audits, incidents, riskAssessments, trainings, observations, supportTickets, contactInfo, addAudit, addIncident, addRiskAssessment, addTraining, addObservation, updateObservation, transitionCapaStage, addObservationComment, deleteObservation, reviewAudit, updateIncidentStatus, addSupportTicket, updateTicketStatus, addTicketComment, deleteSupportTicket, updateContactInfo, stats }}>
       {children}
     </EhsContext.Provider>
   );
