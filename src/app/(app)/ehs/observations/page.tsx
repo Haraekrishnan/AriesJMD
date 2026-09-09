@@ -43,10 +43,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { EhsObservationStatus, EhsObservationCategory, EhsObservationSeverity, EhsObservation, CapaStage } from '@/lib/types';
-import StatCard from '@/components/dashboard/stat-card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const severityColors: Record<EhsObservationSeverity, string> = {
   'Low': 'bg-emerald-100 text-emerald-700 border-emerald-200',
@@ -76,7 +76,7 @@ const observationSchema = z.object({
 type ObservationFormValues = z.infer<typeof observationSchema>;
 
 export default function EhsObservationsPage() {
-  const { observations, addObservation, transitionCapaStage, stats } = useEhs();
+  const { observations, addObservation, transitionCapaStage } = useEhs();
   const { user, users } = useAuth();
   const { projects } = useGeneral();
   const { toast } = useToast();
@@ -744,7 +744,6 @@ export default function EhsObservationsPage() {
                 <p className="text-slate-400 font-bold mt-2 uppercase text-sm">Waiting for first site observation report...</p>
             </div>
         )}
-      </Card>
     </div>
   );
 }
