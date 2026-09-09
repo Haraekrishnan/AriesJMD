@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useEhs } from '@/contexts/ehs-provider';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
@@ -12,7 +12,7 @@ import {
   Clock, MessageSquare, 
   AlertTriangle, CheckCircle2, TrendingUp, Inbox,
   Zap, Send, Target, ChevronRight, FileCheck, HelpCircle,
-  ArrowRight, Lock
+  ArrowRight, Lock, FileSearch, Archive
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, parseISO, isPast, formatDistanceToNow } from 'date-fns';
@@ -59,7 +59,7 @@ const stageConfig: Record<CapaStage, { label: string, icon: any, color: string }
   'Investigation': { label: 'Investigation', icon: Search, color: 'text-emerald-400' },
   'Implementation': { label: 'Implementation', icon: Target, color: 'text-blue-400' },
   'Effectiveness Review': { label: 'Effectiveness Review', icon: CheckCircle, color: 'text-indigo-400' },
-  'Reference': { label: 'Reference', icon: Inbox, color: 'text-blue-400' },
+  'Reference': { label: 'Reference', icon: FileSearch, color: 'text-blue-400' },
   'Closure': { label: 'Closure', icon: Lock, color: 'text-slate-300' },
 };
 
@@ -91,6 +91,19 @@ export default function EhsObservationsPage() {
   const [verificationResult, setVerificationResult] = useState('');
   const [isSuccess, setIsSuccess] = useState(true);
 
+  // Sync internal state with selected observation
+  useEffect(() => {
+    if (viewingObservation) {
+      setRcaWhys(viewingObservation.rootCauseAnalysis?.whys || ['', '', '', '', '']);
+      setFinalRootCause(viewingObservation.rootCauseAnalysis?.finalRootCause || '');
+      setActionPlan(viewingObservation.correctiveActionPlan || '');
+      setActionOwnerId(viewingObservation.actionOwnerId || '');
+      setDueDate(viewingObservation.dueDate || '');
+      setVerificationResult(viewingObservation.effectivenessVerification?.result || '');
+      setIsSuccess(viewingObservation.effectivenessVerification?.successful ?? true);
+    }
+  }, [viewingObservation]);
+
   const form = useForm<ObservationFormValues>({
     resolver: zodResolver(observationSchema),
     defaultValues: { category: 'Unsafe Act', severity: 'Medium', projectId: '' },
@@ -120,25 +133,30 @@ export default function EhsObservationsPage() {
     let updates: Partial<EhsObservation> = {};
     let targetStage: CapaStage = viewingObservation.currentStage;
 
+    const stages = Object.keys(stageConfig) as CapaStage[];
+    const currentIndex = stages.indexOf(viewingObservation.currentStage);
+
     switch (viewingObservation.currentStage) {
       case 'Initiation':
         targetStage = 'Resolution';
         break;
       case 'Resolution':
+        if (!actionPlan.trim()) return toast({ title: 'Correction Required', description: 'Specify immediate actions taken.', variant: 'destructive' });
+        updates = { immediateActionTaken: actionPlan };
         targetStage = 'Investigation';
         break;
       case 'Investigation':
-        if (!finalRootCause.trim()) return toast({ title: 'RCA Required', variant: 'destructive' });
+        if (!finalRootCause.trim()) return toast({ title: 'RCA Required', description: 'Complete the root cause analysis.', variant: 'destructive' });
         updates = { rootCauseAnalysis: { method: '5-Whys', whys: rcaWhys, finalRootCause } };
         targetStage = 'Implementation';
         break;
       case 'Implementation':
-        if (!actionPlan.trim() || !actionOwnerId) return toast({ title: 'Plan Required', variant: 'destructive' });
+        if (!actionPlan.trim() || !actionOwnerId) return toast({ title: 'Plan Required', description: 'Define the preventive plan and owner.', variant: 'destructive' });
         updates = { correctiveActionPlan: actionPlan, actionOwnerId, dueDate };
         targetStage = 'Effectiveness Review';
         break;
       case 'Effectiveness Review':
-        if (!verificationResult.trim()) return toast({ title: 'Verification Required', variant: 'destructive' });
+        if (!verificationResult.trim()) return toast({ title: 'Verification Required', description: 'Enter validation results.', variant: 'destructive' });
         updates = { effectivenessVerification: { verifiedBy: user!.id, verificationDate: new Date().toISOString(), result: verificationResult, successful: isSuccess } };
         targetStage = 'Reference';
         break;
@@ -150,6 +168,14 @@ export default function EhsObservationsPage() {
     transitionCapaStage(viewingObservation.id, targetStage, updates);
     setViewingObservation(prev => prev ? { ...prev, ...updates, currentStage: targetStage } : null);
   };
+
+  const nextStageLabel = useMemo(() => {
+    if (!viewingObservation) return '';
+    const stages = Object.keys(stageConfig) as CapaStage[];
+    const currentIndex = stages.indexOf(viewingObservation.currentStage);
+    const next = stages[currentIndex + 1];
+    return next ? `Move to ${next}` : 'Close Case';
+  }, [viewingObservation]);
 
   return (
     <div className="space-y-8">
@@ -165,7 +191,7 @@ export default function EhsObservationsPage() {
               <Plus className="mr-2 h-5 w-5" /> Initiate Case
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-2xl">
+          <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-2xl shadow-2xl">
             <DialogHeader>
               <DialogTitle className="text-2xl font-black uppercase tracking-tight text-white">Initiate CAPA</DialogTitle>
               <DialogDescription className="text-slate-300 font-medium">Capture initial findings to start the lifecycle.</DialogDescription>
@@ -329,49 +355,56 @@ export default function EhsObservationsPage() {
       {/* FULL LIFECYCLE DIALOG */}
       {viewingObservation && (
         <Dialog open={!!viewingObservation} onOpenChange={(o) => !o && setViewingObservation(null)}>
-          <DialogContent className="max-w-6xl h-[95vh] flex flex-col p-0 bg-slate-950 border-slate-800 text-white overflow-hidden">
-            <DialogHeader className="sr-only">
-              <DialogTitle>CAPA Lifecycle: {viewingObservation.description}</DialogTitle>
-              <DialogDescription>Full lifecycle management and tracking for safety observation.</DialogDescription>
-            </DialogHeader>
+          <DialogContent className="max-w-6xl h-[95vh] flex flex-col p-0 bg-slate-950 border-slate-800 text-white overflow-hidden shadow-2xl">
+            <DialogHeader className="p-10 pb-0 border-b border-slate-800 bg-slate-900/50">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                   <div className="flex items-center gap-3 mb-2">
+                     <Badge variant="outline" className={cn("font-black text-[10px] tracking-widest", severityColors[viewingObservation.severity])}>{viewingObservation.severity} SEVERITY</Badge>
+                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">ID: {viewingObservation.id.slice(-6).toUpperCase()}</span>
+                   </div>
+                   <DialogTitle className="text-3xl font-black uppercase tracking-tight text-white">{viewingObservation.description}</DialogTitle>
+                </div>
+              </div>
 
-            {/* STAGE STEPPER */}
-            <div className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-800 p-8 shrink-0">
-               <div className="flex items-center justify-between gap-4">
-                  {Object.entries(stageConfig).map(([key, config], idx) => {
-                    const stageKey = key as CapaStage;
-                    const stages = Object.keys(stageConfig) as CapaStage[];
-                    const currentIndex = stages.indexOf(viewingObservation.currentStage);
-                    const isCompleted = idx < currentIndex;
-                    const isActive = stageKey === viewingObservation.currentStage;
-                    
-                    return (
-                      <React.Fragment key={key}>
-                        <div className="flex flex-col items-center gap-3 relative group">
-                           <div className={cn(
-                             "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300",
-                             isCompleted ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" :
-                             isActive ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-110" :
-                             "bg-slate-800 text-slate-500"
-                           )}>
-                             {isCompleted ? <CheckCircle2 className="h-6 w-6" /> : <config.icon className="h-6 w-6" />}
-                           </div>
-                           <span className={cn(
-                             "text-[10px] font-black uppercase tracking-widest text-center",
-                             isActive ? "text-blue-400" : "text-slate-300"
-                           )}>{config.label}</span>
-                        </div>
-                        {idx < 6 && (
-                          <div className={cn(
-                            "flex-1 h-0.5 rounded-full mx-2",
-                            idx < currentIndex ? "bg-emerald-500" : "bg-slate-800"
-                          )} />
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
-               </div>
-            </div>
+              {/* STAGE STEPPER */}
+              <div className="pb-10">
+                 <div className="flex items-center justify-between gap-4">
+                    {Object.entries(stageConfig).map(([key, config], idx) => {
+                      const stageKey = key as CapaStage;
+                      const stages = Object.keys(stageConfig) as CapaStage[];
+                      const currentIndex = stages.indexOf(viewingObservation.currentStage);
+                      const isCompleted = idx < currentIndex;
+                      const isActive = stageKey === viewingObservation.currentStage;
+                      
+                      return (
+                        <React.Fragment key={key}>
+                          <div className="flex flex-col items-center gap-3 relative group">
+                             <div className={cn(
+                               "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300",
+                               isCompleted ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" :
+                               isActive ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-110" :
+                               "bg-slate-800 text-slate-500"
+                             )}>
+                               {isCompleted ? <CheckCircle2 className="h-6 w-6" /> : <config.icon className="h-6 w-6" />}
+                             </div>
+                             <span className={cn(
+                               "text-[10px] font-black uppercase tracking-widest text-center",
+                               isActive ? "text-blue-400" : "text-slate-300"
+                             )}>{config.label}</span>
+                          </div>
+                          {idx < 6 && (
+                            <div className={cn(
+                              "flex-1 h-0.5 rounded-full mx-2",
+                              idx < currentIndex ? "bg-emerald-500" : "bg-slate-800"
+                            )} />
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                 </div>
+              </div>
+            </DialogHeader>
 
             <ScrollArea className="flex-1 p-10">
               <div className="max-w-4xl mx-auto space-y-12 text-left">
@@ -417,8 +450,9 @@ export default function EhsObservationsPage() {
                           />
                        </div>
                     ) : (
-                      <div className="p-6 bg-slate-800/40 border border-slate-800 rounded-2xl">
-                         <p className="text-sm font-medium text-white">{viewingObservation.immediateActionTaken || 'Immediate action recorded.'}</p>
+                      <div className="p-8 bg-slate-800/40 border border-slate-800 rounded-[2rem] shadow-inner">
+                         <p className="text-sm font-bold text-white leading-relaxed">{viewingObservation.immediateActionTaken || 'Immediate action recorded.'}</p>
+                         <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mt-4">Correction Verified by Reporter</p>
                       </div>
                     )}
                   </section>
@@ -435,9 +469,9 @@ export default function EhsObservationsPage() {
                       <div className="space-y-4 p-8 bg-slate-900/40 rounded-[2rem] border border-slate-800">
                         {rcaWhys.map((why, i) => (
                           <div key={i} className="flex gap-4">
-                             <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center shrink-0 text-xs font-black text-slate-300">W{i+1}</div>
+                             <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center shrink-0 text-xs font-black text-slate-300 border border-slate-700">W{i+1}</div>
                              <Input 
-                               className="bg-slate-800 border-slate-700 h-10 rounded-xl text-white"
+                               className="bg-slate-800 border-slate-700 h-10 rounded-xl text-white focus:ring-emerald-500/20"
                                placeholder={`Why did this happen?`}
                                value={why}
                                onChange={(e) => {
@@ -458,18 +492,18 @@ export default function EhsObservationsPage() {
                         />
                       </div>
                     ) : (
-                      <div className="p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem] space-y-4">
+                      <div className="p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem] space-y-4 shadow-inner">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                           {viewingObservation.rootCauseAnalysis?.whys.map((why, i) => (
-                             <div key={i} className="flex items-center gap-3 text-sm text-slate-200 font-medium">
-                               <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-black shrink-0 text-slate-100">{i+1}</div>
+                           {viewingObservation.rootCauseAnalysis?.whys.filter(w => w.trim()).map((why, i) => (
+                             <div key={i} className="flex items-center gap-3 text-sm text-slate-200 font-bold">
+                               <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-black shrink-0 text-slate-100 border border-slate-700">{i+1}</div>
                                {why}
                              </div>
                            ))}
                         </div>
-                        <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
-                          <p className="text-[10px] font-black text-emerald-400 uppercase mb-1">Final Root Cause</p>
-                          <p className="text-sm font-bold text-white">{viewingObservation.rootCauseAnalysis?.finalRootCause}</p>
+                        <div className="p-6 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl mt-4">
+                          <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-2 flex items-center gap-2"><Target className="h-3 w-3" /> Investigation Outcome</p>
+                          <p className="text-base font-black text-white uppercase tracking-tight leading-snug">{viewingObservation.rootCauseAnalysis?.finalRootCause}</p>
                         </div>
                       </div>
                     )}
@@ -486,9 +520,9 @@ export default function EhsObservationsPage() {
                     {viewingObservation.currentStage === 'Implementation' ? (
                        <div className="space-y-6 p-8 bg-slate-900/40 rounded-[2rem] border border-slate-800">
                           <div className="space-y-2">
-                             <Label className="text-slate-100">Preventive Action Plan</Label>
+                             <Label className="text-slate-100 font-bold">Preventive Action Plan</Label>
                              <Textarea 
-                               className="bg-slate-800 border-slate-700 min-h-[120px] text-white" 
+                               className="bg-slate-800 border-slate-700 min-h-[120px] rounded-2xl text-white" 
                                placeholder="Specify actions to prevent recurrence..."
                                value={actionPlan}
                                onChange={(e) => setActionPlan(e.target.value)}
@@ -496,34 +530,34 @@ export default function EhsObservationsPage() {
                           </div>
                           <div className="grid grid-cols-2 gap-6">
                              <div className="space-y-2">
-                               <Label className="text-slate-100">Action Owner</Label>
+                               <Label className="text-slate-100 font-bold">Action Owner</Label>
                                <Select onValueChange={setActionOwnerId} value={actionOwnerId}>
-                                  <SelectTrigger className="bg-slate-800 border-slate-700 text-white"><SelectValue /></SelectTrigger>
+                                  <SelectTrigger className="bg-slate-800 border-slate-700 h-11 rounded-xl text-white"><SelectValue /></SelectTrigger>
                                   <SelectContent className="bg-slate-900 border-slate-800 text-white">
                                     {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
                                   </SelectContent>
                                </Select>
                              </div>
                              <div className="space-y-2">
-                               <Label className="text-slate-100">Target Date</Label>
-                               <Input type="date" className="bg-slate-800 border-slate-700 text-white" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                               <Label className="text-slate-100 font-bold">Target Date</Label>
+                               <Input type="date" className="bg-slate-800 border-slate-700 h-11 rounded-xl text-white" value={dueDate} onChange={e => setDueDate(e.target.value)} />
                              </div>
                           </div>
                        </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="md:col-span-2 p-6 bg-slate-900/40 border border-slate-800 rounded-2xl">
-                          <p className="text-[10px] font-black text-blue-400 uppercase mb-2">Preventive Action Plan</p>
-                          <p className="text-sm font-medium text-white">{viewingObservation.correctiveActionPlan}</p>
+                        <div className="md:col-span-2 p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem] shadow-inner">
+                          <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-3">Preventive Action Strategy</p>
+                          <p className="text-sm font-bold leading-relaxed text-white">{viewingObservation.correctiveActionPlan}</p>
                         </div>
-                        <div className="p-6 bg-slate-900/40 border border-slate-800 rounded-2xl space-y-4">
+                        <div className="p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem] space-y-6 shadow-inner">
                            <div>
-                             <p className="text-[10px] font-black text-slate-300 uppercase">Owner</p>
-                             <p className="text-sm font-bold text-white">{users.find(u => u.id === viewingObservation.actionOwnerId)?.name || 'N/A'}</p>
+                             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Owner</p>
+                             <p className="text-sm font-black text-white truncate">{users.find(u => u.id === viewingObservation.actionOwnerId)?.name || 'N/A'}</p>
                            </div>
                            <div>
-                             <p className="text-[10px] font-black text-slate-300 uppercase">Due Date</p>
-                             <p className="text-sm font-bold text-white">{viewingObservation.dueDate ? format(parseISO(viewingObservation.dueDate), 'dd MMM yyyy') : 'N/A'}</p>
+                             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Target Date</p>
+                             <p className="text-sm font-black text-white">{viewingObservation.dueDate ? format(parseISO(viewingObservation.dueDate), 'dd MMM yyyy') : 'N/A'}</p>
                            </div>
                         </div>
                       </div>
@@ -541,34 +575,35 @@ export default function EhsObservationsPage() {
                     {viewingObservation.currentStage === 'Effectiveness Review' ? (
                        <div className="space-y-6 p-8 bg-slate-900/40 rounded-[2rem] border border-slate-800">
                           <div className="space-y-2">
-                             <Label className="text-slate-100">Verification Result & Validation Evidence</Label>
+                             <Label className="text-slate-100 font-bold">Verification Result & Validation Evidence</Label>
                              <Textarea 
-                               className="bg-slate-800 border-slate-700 min-h-[120px] text-white" 
+                               className="bg-slate-800 border-slate-700 min-h-[120px] rounded-2xl text-white focus:ring-indigo-500/20" 
                                placeholder="Have the actions prevented recurrence? Provide details..."
                                value={verificationResult}
                                onChange={(e) => setVerificationResult(e.target.value)}
                              />
                           </div>
                           <div className="flex items-center gap-4">
-                             <Label className="text-slate-100">Has the action been successful?</Label>
+                             <Label className="text-slate-100 font-bold">Has the action been successful?</Label>
                              <div className="flex gap-2">
-                               <Button variant={isSuccess ? 'default' : 'outline'} size="sm" onClick={() => setIsSuccess(true)}>Yes, Successful</Button>
+                               <Button variant={isSuccess ? 'default' : 'outline'} className={cn(isSuccess && "bg-emerald-500 hover:bg-emerald-600")} size="sm" onClick={() => setIsSuccess(true)}>Yes, Successful</Button>
                                <Button variant={!isSuccess ? 'destructive' : 'outline'} size="sm" onClick={() => setIsSuccess(false)}>No, Requires Revision</Button>
                              </div>
                           </div>
                        </div>
                     ) : (
-                      <div className="p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem]">
+                      <div className="p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem] shadow-inner">
                         <div className="flex justify-between items-start mb-6">
                            <div className="space-y-1">
-                             <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Verification Result</p>
-                             <p className="text-sm font-medium leading-relaxed text-white">{viewingObservation.effectivenessVerification?.result}</p>
+                             <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Verification Status</p>
+                             <p className="text-sm font-bold leading-relaxed text-white">{viewingObservation.effectivenessVerification?.result}</p>
                            </div>
-                           <Badge variant={viewingObservation.effectivenessVerification?.successful ? 'success' : 'destructive'} className="uppercase font-black px-4">
+                           <Badge variant={viewingObservation.effectivenessVerification?.successful ? 'success' : 'destructive'} className="uppercase font-black px-4 h-6">
                              {viewingObservation.effectivenessVerification?.successful ? 'PASSED' : 'FAILED'}
                            </Badge>
                         </div>
-                        <div className="text-[10px] text-slate-300 font-bold uppercase tracking-widest border-t border-slate-800 pt-4">
+                        <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest border-t border-slate-800 pt-4 flex items-center gap-2">
+                           <Avatar className="h-5 w-5 border border-slate-700"><AvatarImage src={users.find(u => u.id === viewingObservation.effectivenessVerification?.verifiedBy)?.avatar} /></Avatar>
                            Verified By: {users.find(u => u.id === viewingObservation.effectivenessVerification?.verifiedBy)?.name} &middot; {format(parseISO(viewingObservation.effectivenessVerification!.verificationDate), 'PPP')}
                         </div>
                       </div>
@@ -576,33 +611,49 @@ export default function EhsObservationsPage() {
                    </section>
                 )}
 
-                {/* REFERENCE / SIGN OFF */}
+                {/* REFERENCE STAGE */}
+                {['Reference', 'Closure'].includes(viewingObservation.currentStage) && (
+                   <section className="space-y-6">
+                    <div className="flex items-center gap-3">
+                      <FileSearch className="h-5 w-5 text-blue-400" />
+                      <h4 className="text-xl font-black uppercase tracking-tight text-white">Stage 6: Final Documentation & Archiving</h4>
+                    </div>
+                    <div className="p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem] shadow-inner text-center">
+                       <Archive className="h-10 w-10 text-slate-600 mx-auto mb-4" />
+                       <p className="text-sm font-bold text-slate-200">The CAPA case is ready for final archiving.</p>
+                       <p className="text-[11px] text-slate-500 mt-1 uppercase font-bold tracking-widest">Ensure all method statements and evidence are linked in the document library.</p>
+                    </div>
+                   </section>
+                )}
+
+                {/* CLOSURE SIGN OFF */}
                 {viewingObservation.currentStage === 'Closure' && (
-                  <div className="p-12 bg-emerald-500/10 border-2 border-emerald-500/20 rounded-[3rem] text-center space-y-6">
-                     <div className="w-20 h-20 rounded-full bg-emerald-500 mx-auto flex items-center justify-center shadow-xl shadow-emerald-500/20">
+                  <div className="p-12 bg-emerald-500/10 border-2 border-emerald-500/20 rounded-[3rem] text-center space-y-6 animate-in zoom-in-95 duration-500">
+                     <div className="w-20 h-20 rounded-full bg-emerald-500 mx-auto flex items-center justify-center shadow-2xl shadow-emerald-500/20 border-4 border-white/20">
                         <CheckCircle2 className="h-10 w-10 text-white" />
                      </div>
                      <div className="space-y-2">
-                        <h4 className="text-3xl font-black uppercase tracking-tight text-emerald-400">CAPA Case Closed</h4>
-                        <p className="text-slate-200 text-lg font-medium">All stages have been completed and verified by the Senior Safety Supervisor.</p>
+                        <h4 className="text-3xl font-black uppercase tracking-tighter text-emerald-400">CAPA Case Closed</h4>
+                        <p className="text-slate-200 text-lg font-bold">This safety lifecycle is complete. Resolution verified by HQ.</p>
+                        <p className="text-[11px] text-slate-500 font-black uppercase tracking-[0.3em] mt-4">Closed on {viewingObservation.closedAt ? format(parseISO(viewingObservation.closedAt), 'PPP p') : 'N/A'}</p>
                      </div>
                   </div>
                 )}
               </div>
             </ScrollArea>
 
-            <DialogFooter className="p-8 border-t border-slate-800 bg-slate-900/40 flex sm:justify-between items-center w-full shrink-0">
+            <DialogFooter className="p-8 border-t border-slate-800 bg-slate-950 flex sm:justify-between items-center w-full shrink-0 shadow-[0_-10px_50px_rgba(0,0,0,0.5)]">
                <div className="flex gap-4">
                   {viewingObservation.currentStage !== 'Closure' && (user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor') && (
                     <Button 
-                      className="bg-blue-600 hover:bg-blue-700 h-14 rounded-2xl px-10 font-black uppercase tracking-widest shadow-xl shadow-blue-500/20"
+                      className="bg-blue-600 hover:bg-blue-700 h-14 rounded-2xl px-10 font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 text-xs active:scale-95 transition-all"
                       onClick={handleNextStage}
                     >
-                      Process Next Stage <ArrowRight className="ml-2 h-5 w-5" />
+                      {nextStageLabel} <ArrowRight className="ml-3 h-5 w-5" />
                     </Button>
                   )}
                </div>
-               <Button variant="ghost" className="text-slate-300 hover:text-white font-bold h-12" onClick={() => setViewingObservation(null)}>Close Management View</Button>
+               <Button variant="ghost" className="text-slate-400 hover:text-white font-bold h-12 rounded-xl text-[11px] uppercase tracking-widest" onClick={() => setViewingObservation(null)}>Exit Management View</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
