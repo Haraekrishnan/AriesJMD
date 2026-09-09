@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ClipboardCheck,
   Zap,
+  Eye,
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -23,6 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const ehsNavItems = [
   { href: '/ehs', icon: LayoutDashboard, label: 'Safety Overview' },
+  { href: '/ehs/observations', icon: Eye, label: 'Safety Observations' },
   { href: '/ehs/audits', icon: ClipboardCheck, label: 'Audits & Inspections' },
   { href: '/ehs/incidents', icon: AlertTriangle, label: 'Incident Management' },
   { href: '/ehs/risk-assessments', icon: Zap, label: 'Risk Assessments' },

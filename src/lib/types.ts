@@ -1164,6 +1164,30 @@ export type ObservationReport = {
   comments?: Comment[];
 };
 
+export type EhsObservationStatus = 'Open' | 'In Progress' | 'Closed' | 'Resolved';
+export type EhsObservationCategory = 'Unsafe Act' | 'Unsafe Condition' | 'Safe Act' | 'Near Miss' | 'Environmental';
+export type EhsObservationSeverity = 'Low' | 'Medium' | 'High' | 'Critical';
+
+export type EhsObservation = {
+  id: string;
+  reporterId: string;
+  projectId: string;
+  location: string;
+  category: EhsObservationCategory;
+  severity: EhsObservationSeverity;
+  description: string;
+  immediateActionTaken?: string;
+  correctiveActionPlan?: string;
+  actionOwnerId?: string;
+  dueDate?: string;
+  status: EhsObservationStatus;
+  createdAt: string;
+  closedAt?: string;
+  evidenceUrl?: string;
+  comments?: { [key: string]: Comment };
+  viewedBy?: { [userId: string]: boolean };
+};
+
 export type DeliveryNoteItem = {
     id: string; // Could be inventory item id or just a random id for manual entries
     description: string;

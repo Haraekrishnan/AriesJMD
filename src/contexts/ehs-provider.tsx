@@ -1,11 +1,22 @@
 'use client';
 
-import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo } from 'react';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
 import { useAuth } from './auth-provider';
 import { useGeneral } from './general-provider';
-import type { EhsAudit, EhsIncident, EhsRiskAssessment, EhsTraining, EhsAuditStatus, EhsIncidentStatus, EhsSupportTicket, EhsContactInfo, Comment } from '@/lib/types';
+import type { 
+  EhsAudit, 
+  EhsIncident, 
+  EhsRiskAssessment, 
+  EhsTraining, 
+  EhsAuditStatus, 
+  EhsIncidentStatus, 
+  EhsSupportTicket, 
+  EhsContactInfo, 
+  EhsObservation, 
+  Comment 
+} from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 
@@ -14,6 +25,7 @@ type EhsContextType = {
   incidents: EhsIncident[];
   riskAssessments: EhsRiskAssessment[];
   trainings: EhsTraining[];
+  observations: EhsObservation[];
   supportTickets: EhsSupportTicket[];
   contactInfo: EhsContactInfo;
   
@@ -21,6 +33,10 @@ type EhsContextType = {
   addIncident: (incident: Omit<EhsIncident, 'id'>) => void;
   addRiskAssessment: (ra: Omit<EhsRiskAssessment, 'id'>) => void;
   addTraining: (training: Omit<EhsTraining, 'id'>) => void;
+  addObservation: (observation: Omit<EhsObservation, 'id' | 'createdAt' | 'status'>) => void;
+  updateObservation: (observationId: string, updates: Partial<EhsObservation>) => void;
+  addObservationComment: (observationId: string, text: string) => void;
+  deleteObservation: (observationId: string) => void;
   
   reviewAudit: (auditId: string, status: 'Approved' | 'Rejected', comment: string) => void;
   updateIncidentStatus: (incidentId: string, status: EhsIncidentStatus, notes: string) => void;
@@ -36,6 +52,7 @@ type EhsContextType = {
     totalLTIs: number;
     avgAuditScore: number;
     trainingHours: number;
+    openObservations: number;
   };
 };
 
@@ -50,6 +67,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
   const [incidents, setIncidents] = useState<EhsIncident[]>([]);
   const [riskAssessments, setRiskAssessments] = useState<EhsRiskAssessment[]>([]);
   const [trainings, setTrainings] = useState<EhsTraining[]>([]);
+  const [observations, setObservations] = useState<EhsObservation[]>([]);
   const [supportTickets, setSupportTickets] = useState<EhsSupportTicket[]>([]);
   const [contactInfo, setContactInfo] = useState<EhsContactInfo>({
     hotline: '+91 966 209 5558',
@@ -74,6 +92,10 @@ export function EhsProvider({ children }: { children: ReactNode }) {
       const val = snap.val() || {};
       setTrainings(Object.keys(val).map(k => ({ ...val[k], id: k })));
     });
+    const unsubObservations = onValue(ref(rtdb, 'ehs/observations'), (snap) => {
+      const val = snap.val() || {};
+      setObservations(Object.keys(val).map(k => ({ ...val[k], id: k })));
+    });
     const unsubTickets = onValue(ref(rtdb, 'ehs/supportTickets'), (snap) => {
       const val = snap.val() || {};
       setSupportTickets(Object.keys(val).map(k => ({ ...val[k], id: k })));
@@ -88,6 +110,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
       unsubIncidents();
       unsubRA();
       unsubTrainings();
+      unsubObservations();
       unsubTickets();
       unsubContact();
     };
@@ -114,6 +137,40 @@ export function EhsProvider({ children }: { children: ReactNode }) {
   const addTraining = useCallback((data: Omit<EhsTraining, 'id'>) => {
     push(ref(rtdb, 'ehs/trainings'), data);
   }, []);
+
+  const addObservation = useCallback((data: Omit<EhsObservation, 'id' | 'createdAt' | 'status'>) => {
+    if (!user) return;
+    const newRef = push(ref(rtdb, 'ehs/observations'));
+    set(newRef, {
+      ...data,
+      reporterId: user.id,
+      createdAt: new Date().toISOString(),
+      status: 'Open',
+    });
+    toast({ title: 'Observation Reported', description: 'CAPA workflow has been initiated.' });
+  }, [user, toast]);
+
+  const updateObservation = useCallback((observationId: string, updates: Partial<EhsObservation>) => {
+    update(ref(rtdb, `ehs/observations/${observationId}`), updates);
+  }, []);
+
+  const addObservationComment = useCallback((observationId: string, text: string) => {
+    if (!user) return;
+    const newCommentRef = push(ref(rtdb, `ehs/observations/${observationId}/comments`));
+    set(newCommentRef, {
+      id: newCommentRef.key,
+      userId: user.id,
+      text,
+      date: new Date().toISOString(),
+      eventId: observationId
+    });
+  }, [user]);
+
+  const deleteObservation = useCallback((observationId: string) => {
+    if (user?.role !== 'Admin') return;
+    remove(ref(rtdb, `ehs/observations/${observationId}`));
+    toast({ title: 'Record Deleted', variant: 'destructive' });
+  }, [user, toast]);
 
   const reviewAudit = useCallback((auditId: string, status: 'Approved' | 'Rejected', comment: string) => {
     if (user?.role !== 'Senior Safety Supervisor' && user?.role !== 'Admin') {
@@ -170,7 +227,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
         <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/ehs/support">View in Portal</a></p>
       `;
       sendNotificationEmail({
-        to: emails,
+        to: [emails[0]], // Sending to primary for now
         subject: `[EHS Support] New ${data.urgency} Ticket: ${data.category}`,
         htmlBody,
         notificationSettings,
@@ -219,11 +276,12 @@ export function EhsProvider({ children }: { children: ReactNode }) {
       totalLTIs,
       avgAuditScore,
       trainingHours: trainings.length * 2,
+      openObservations: observations.filter(o => o.status !== 'Closed').length,
     };
-  }, [incidents, audits, trainings]);
+  }, [incidents, audits, trainings, observations]);
 
   return (
-    <EhsContext.Provider value={{ audits, incidents, riskAssessments, trainings, supportTickets, contactInfo, addAudit, addIncident, addRiskAssessment, addTraining, reviewAudit, updateIncidentStatus, addSupportTicket, updateTicketStatus, addTicketComment, deleteSupportTicket, updateContactInfo, stats }}>
+    <EhsContext.Provider value={{ audits, incidents, riskAssessments, trainings, observations, supportTickets, contactInfo, addAudit, addIncident, addRiskAssessment, addTraining, addObservation, updateObservation, addObservationComment, deleteObservation, reviewAudit, updateIncidentStatus, addSupportTicket, updateTicketStatus, addTicketComment, deleteSupportTicket, updateContactInfo, stats }}>
       {children}
     </EhsContext.Provider>
   );
