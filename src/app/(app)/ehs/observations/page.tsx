@@ -16,7 +16,7 @@ import {
   FileText, Download, UserRound, Check, XCircle
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { format, parseISO, isPast, formatDistanceToNow } from 'date-fns';
+import { format, parseISO, isPast, formatDistanceToNow, isValid } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { 
@@ -172,7 +172,6 @@ export default function EhsObservationsPage() {
     }
 
     transitionCapaStage(viewingObservation.id, targetStage, updates);
-    // After transition, sync the view stage
     setActiveViewStage(targetStage);
   };
 
@@ -186,13 +185,11 @@ export default function EhsObservationsPage() {
 
   if (viewingObservation && activeViewStage) {
     const activeStageIdx = Object.keys(stageConfig).indexOf(viewingObservation.currentStage);
-    const viewingStageIdx = Object.keys(stageConfig).indexOf(activeViewStage);
     const reporter = users.find(u => u.id === viewingObservation.reporterId);
     const site = projects.find(p => p.id === viewingObservation.projectId);
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-            {/* Enterprise Header Bar */}
             <div className="flex justify-between items-center bg-white p-6 rounded-2xl border-2 border-slate-200 shadow-md">
                 <div className="flex items-center gap-6">
                     <Button variant="outline" onClick={() => setViewingObservation(null)} className="h-12 w-12 p-0 rounded-2xl border-2 border-slate-200 hover:bg-slate-100">
@@ -221,8 +218,6 @@ export default function EhsObservationsPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-[380px,1fr] gap-8 items-start">
-                
-                {/* Left Column: Dossier & Interactive Stepper */}
                 <div className="space-y-8">
                     <Card className="rounded-[2rem] border-2 border-slate-200 shadow-lg overflow-hidden">
                         <CardHeader className="bg-slate-900 text-white p-6">
@@ -307,7 +302,6 @@ export default function EhsObservationsPage() {
                     </Card>
                 </div>
 
-                {/* Right Column: Workflow Workspace */}
                 <div className="space-y-8">
                     <Card className="rounded-[3rem] border-2 border-slate-200 shadow-2xl overflow-hidden min-h-[700px] flex flex-col bg-white">
                         <div className="p-10 bg-slate-50 border-b-2 flex justify-between items-center">
@@ -342,7 +336,6 @@ export default function EhsObservationsPage() {
 
                         <ScrollArea className="flex-1">
                             <div className="p-12">
-                                {/* ACTIVE STAGE INTERFACE */}
                                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                                     
                                     {activeViewStage === 'Initiation' && (
@@ -653,7 +646,6 @@ export default function EhsObservationsPage() {
         </Dialog>
       </div>
 
-      {/* Modern High-Contrast Registry Table */}
       <Card className="bg-white border-2 border-slate-200 shadow-xl overflow-hidden rounded-[2.5rem]">
         <div className="p-10 border-b-2 border-slate-100 flex flex-col md:flex-row justify-between items-center gap-10 bg-slate-50/50">
             <div className="relative w-full max-w-2xl">
@@ -744,6 +736,7 @@ export default function EhsObservationsPage() {
                 <p className="text-slate-400 font-bold mt-2 uppercase text-sm">Waiting for first site observation report...</p>
             </div>
         )}
+      </Card>
     </div>
   );
 }
