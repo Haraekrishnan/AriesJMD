@@ -10,10 +10,11 @@ import {
   Plus, Search, MapPin, Calendar, Eye, Users, 
   FileWarning, AlertCircle, CheckCircle, ShieldCheck, 
   Clock, Filter, ArrowRight, MessageSquare, 
-  AlertTriangle, CheckCircle2, TrendingUp, Inbox
+  AlertTriangle, CheckCircle2, TrendingUp, Inbox,
+  Zap, Send
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isPast, formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { 
@@ -41,6 +42,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { EhsObservationStatus, EhsObservationCategory, EhsObservationSeverity, EhsObservation } from '@/lib/types';
 import StatCard from '@/components/dashboard/stat-card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const severityColors: Record<EhsObservationSeverity, string> = {
   'Low': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
@@ -484,7 +486,7 @@ export default function EhsObservationsPage() {
                  {viewingObservation.status === 'Open' && (user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor') && (
                    <Button 
                      variant="outline" 
-                     className="bg-transparent border-blue-500/30 text-blue-400 hover:bg-blue-500/10 h-12 rounded-xl font-black uppercase tracking-widest text-[11px] px-8"
+                     className="bg-transparent border-blue-500/30 text-blue-400 hover:bg-blue-50/10 h-12 rounded-xl font-black uppercase tracking-widest text-[11px] px-8"
                      onClick={() => handleUpdateStatus('In Progress')}
                    >
                      Assign To Investigation
