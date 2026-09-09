@@ -23,7 +23,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 const riskColors: Record<string, string> = {
   'Low': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
   'Medium': 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  'High': 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+  'High': 'bg-orange-500/10 text-orange-400 border-orange-200/20',
   'Critical': 'bg-rose-500/10 text-rose-400 border-rose-500/20',
 };
 
@@ -157,7 +157,7 @@ export default function EhsRiskAssessmentsPage() {
               </div>
 
               <DialogFooter className="pt-4">
-                <Button variant="outline" type="button" onClick={() => setIsOpen(false)} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800">Cancel</Button>
+                <Button variant="outline" type="button" onClick={() => setIsDialogOpen(false)} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800">Cancel</Button>
                 <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600 font-bold">Register Assessment</Button>
               </DialogFooter>
             </form>

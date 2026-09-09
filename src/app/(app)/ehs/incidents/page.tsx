@@ -183,7 +183,7 @@ export default function EhsIncidentsPage() {
                 </div>
 
                 <DialogFooter className="pt-2">
-                  <Button variant="outline" type="button" onClick={() => setIsOpen(false)} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white">Cancel</Button>
+                  <Button variant="outline" type="button" onClick={() => setIsDialogOpen(false)} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white">Cancel</Button>
                   <Button type="submit" className="bg-rose-500 hover:bg-rose-600 font-bold">Submit for Review</Button>
                 </DialogFooter>
               </form>
