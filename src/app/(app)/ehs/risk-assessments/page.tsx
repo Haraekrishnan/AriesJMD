@@ -78,39 +78,39 @@ export default function EhsRiskAssessmentsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center text-left">
         <div>
           <h1 className="text-3xl font-bold text-white tracking-tight">Risk Assessments</h1>
-          <p className="text-slate-400">Identify hazards and establish control measures for organizational safety.</p>
+          <p className="text-slate-200 text-lg font-medium">Identify hazards and establish control measures for organizational safety.</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-500/20 px-6">
+            <Button className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-500/20 px-6 h-12 uppercase tracking-widest text-xs">
               <PlusCircle className="mr-2 h-4 w-4" /> New Risk Assessment
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-xl">
+          <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-xl shadow-2xl">
             <DialogHeader>
-              <DialogTitle className="text-white">Create New Assessment</DialogTitle>
-              <DialogDescription className="text-slate-400">Document hazard identification and mitigation strategies for site activities.</DialogDescription>
+              <DialogTitle className="text-white uppercase font-black tracking-tight">Create New Assessment</DialogTitle>
+              <DialogDescription className="text-slate-300 font-medium">Document hazard identification and mitigation strategies for site activities.</DialogDescription>
             </DialogHeader>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 text-left">
               <div className="space-y-2">
-                <Label className="text-slate-400">Activity / Task Name</Label>
+                <Label className="text-slate-100 font-bold uppercase text-[10px] tracking-widest">Activity / Task Name</Label>
                 <Input {...form.register('activityName')} className="bg-slate-800 border-slate-700 text-white focus:ring-emerald-500/20" placeholder="e.g., Working at Heights - Site Tower" />
-                {form.formState.errors.activityName && <p className="text-xs text-rose-400">{form.formState.errors.activityName.message}</p>}
+                {form.formState.errors.activityName && <p className="text-xs text-rose-400 font-bold">{form.formState.errors.activityName.message}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-slate-400">Site Location</Label>
+                  <Label className="text-slate-100 font-bold uppercase text-[10px] tracking-widest">Site Location</Label>
                   <Controller
                     control={form.control}
                     name="projectId"
                     render={({ field }) => (
                       <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger className="bg-slate-800 border-slate-700">
+                        <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
                           <SelectValue placeholder="Select site..." />
                         </SelectTrigger>
                         <SelectContent className="bg-slate-900 border-slate-800 text-white">
@@ -123,13 +123,13 @@ export default function EhsRiskAssessmentsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-slate-400">Residual Risk Level</Label>
+                  <Label className="text-slate-100 font-bold uppercase text-[10px] tracking-widest">Residual Risk Level</Label>
                   <Controller
                     control={form.control}
                     name="riskLevel"
                     render={({ field }) => (
                       <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger className="bg-slate-800 border-slate-700">
+                        <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-slate-900 border-slate-800 text-white">
@@ -145,20 +145,20 @@ export default function EhsRiskAssessmentsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-slate-400">Identified Hazards</Label>
+                <Label className="text-slate-100 font-bold uppercase text-[10px] tracking-widest">Identified Hazards</Label>
                 <Input {...form.register('hazards')} className="bg-slate-800 border-slate-700 text-white" placeholder="Hazard 1, Hazard 2, ..." />
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Separate multiple items with commas</p>
+                <p className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em]">Separate multiple items with commas</p>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-slate-400">Control Measures</Label>
+                <Label className="text-slate-100 font-bold uppercase text-[10px] tracking-widest">Control Measures</Label>
                 <Input {...form.register('controls')} className="bg-slate-800 border-slate-700 text-white" placeholder="Control 1, Control 2, ..." />
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Separate multiple items with commas</p>
+                <p className="text-[9px] text-slate-400 font-black uppercase tracking-[0.15em]">Separate multiple items with commas</p>
               </div>
 
               <DialogFooter className="pt-4">
-                <Button variant="outline" type="button" onClick={() => setIsDialogOpen(false)} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800">Cancel</Button>
-                <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600 font-bold">Register Assessment</Button>
+                <Button variant="outline" type="button" onClick={() => setIsDialogOpen(false)} className="bg-transparent border-slate-700 text-slate-200">Cancel</Button>
+                <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600 font-bold px-8 uppercase text-xs tracking-widest h-11">Register Assessment</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -166,52 +166,52 @@ export default function EhsRiskAssessmentsPage() {
       </div>
 
       <div className="relative mb-6">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
         <Input 
           placeholder="Search assessments by activity name or site location..." 
-          className="pl-12 h-14 bg-slate-900/40 border-slate-800 text-slate-200 rounded-2xl focus:ring-emerald-500/20 transition-all"
+          className="pl-12 h-14 bg-slate-900/60 border-slate-800 text-white rounded-2xl focus:ring-emerald-500/20 transition-all"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-6 text-left">
         {filteredAssessments.map((ra) => {
           const site = projects.find(p => p.id === ra.projectId);
           return (
-            <Card key={ra.id} className="bg-slate-900 border-slate-800 overflow-hidden group shadow-xl">
+            <Card key={ra.id} className="bg-slate-900/60 border-slate-800 overflow-hidden group shadow-2xl hover:border-emerald-500/20 transition-all duration-300">
               <div className="flex items-stretch h-full">
-                <div className={cn("w-2", riskColors[ra.riskLevel]?.split(' ')[0] || 'bg-slate-800')} />
+                <div className={cn("w-2", riskColors[ra.riskLevel]?.split(' ')[0] || 'bg-slate-700')} />
                 <div className="flex-1 p-8">
                   <div className="flex justify-between items-start mb-6">
                     <div>
-                      <h3 className="text-2xl font-bold text-white group-hover:text-emerald-400 transition-colors tracking-tight">{ra.activityName}</h3>
-                      <div className="flex items-center gap-6 mt-3 text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
-                         <span className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5" /> {site?.name || 'Unknown Site'}</span>
-                         <span className="flex items-center gap-2"><Calendar className="h-3.5 w-3.5" /> Valid From: {format(parseISO(ra.reviewDate), 'dd MMM yyyy')}</span>
+                      <h3 className="text-2xl font-black text-white group-hover:text-emerald-400 transition-colors tracking-tight uppercase">{ra.activityName}</h3>
+                      <div className="flex items-center gap-6 mt-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">
+                         <span className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-emerald-400" /> {site?.name || 'Unknown Site'}</span>
+                         <span className="flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-emerald-400" /> Valid From: {format(parseISO(ra.reviewDate), 'dd MMM yyyy')}</span>
                       </div>
                     </div>
-                    <Badge variant="outline" className={cn("px-4 py-1.5 font-black uppercase text-[10px] tracking-widest", riskColors[ra.riskLevel])}>
+                    <Badge variant="outline" className={cn("px-4 py-1.5 font-black uppercase text-[10px] tracking-widest bg-slate-900 border-2", riskColors[ra.riskLevel])}>
                       {ra.riskLevel} RESIDUAL RISK
                     </Badge>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                     <div>
-                      <h4 className="text-[10px] uppercase font-black text-slate-500 tracking-[0.2em] mb-4">Identified Hazards</h4>
+                      <h4 className="text-[10px] uppercase font-black text-emerald-400 tracking-[0.25em] mb-4 border-b border-emerald-500/20 pb-2">Identified Hazards</h4>
                       <div className="flex flex-wrap gap-2">
                         {ra.hazards.map((h, i) => (
-                          <span key={i} className="text-xs bg-slate-800/80 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-xl font-semibold">
+                          <span key={i} className="text-xs bg-slate-800 border border-slate-700 text-slate-100 px-3 py-1.5 rounded-xl font-bold tracking-tight">
                             {h}
                           </span>
                         ))}
                       </div>
                     </div>
                     <div>
-                      <h4 className="text-[10px] uppercase font-black text-slate-500 tracking-[0.2em] mb-4">Mitigation & Controls</h4>
+                      <h4 className="text-[10px] uppercase font-black text-blue-400 tracking-[0.25em] mb-4 border-b border-blue-500/20 pb-2">Mitigation & Controls</h4>
                       <div className="flex flex-wrap gap-2">
                         {ra.controls.map((c, i) => (
-                          <span key={i} className="text-xs bg-emerald-500/5 border border-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-xl font-semibold">
+                          <span key={i} className="text-xs bg-blue-500/10 border border-blue-500/30 text-blue-200 px-3 py-1.5 rounded-xl font-bold tracking-tight">
                             {c}
                           </span>
                         ))}
@@ -220,13 +220,13 @@ export default function EhsRiskAssessmentsPage() {
                   </div>
                   
                   <div className="mt-8 pt-6 border-t border-slate-800/60 flex justify-between items-center">
-                    <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">Reviewed By: {ra.reviewedBy}</p>
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Reviewed By: <span className="text-white">{ra.reviewedBy}</span></p>
                     <div className="flex gap-2">
-                      <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-full">
+                      <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-full">
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" className="text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl px-6 font-bold text-xs uppercase tracking-widest">
-                        Access Method Statement <ChevronRight className="ml-2 h-4 w-4" />
+                      <Button variant="ghost" className="text-slate-200 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl px-6 font-black text-[10px] uppercase tracking-[0.2em]">
+                        Access Method Statement <ChevronRight className="ml-2 h-4 w-4 text-emerald-400" />
                       </Button>
                     </div>
                   </div>
@@ -238,10 +238,10 @@ export default function EhsRiskAssessmentsPage() {
       </div>
       
       {filteredAssessments.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-32 text-slate-500 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[3rem]">
-           <ShieldCheck className="h-20 w-20 mb-8 opacity-10 text-emerald-500" />
-           <p className="text-2xl font-black text-slate-400 tracking-tight">No assessments in library</p>
-           <p className="text-sm opacity-60 mt-2">Create assessments to standardize safety protocols for tasks.</p>
+        <div className="flex flex-col items-center justify-center py-32 text-slate-300 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[3rem]">
+           <ShieldCheck className="h-20 w-20 mb-8 opacity-20 text-emerald-400" />
+           <p className="text-2xl font-black text-white tracking-tight uppercase">No assessments in library</p>
+           <p className="text-sm opacity-80 mt-2 font-medium">Create assessments to standardize safety protocols for site tasks.</p>
         </div>
       )}
     </div>

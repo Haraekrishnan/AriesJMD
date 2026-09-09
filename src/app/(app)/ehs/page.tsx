@@ -26,26 +26,17 @@ import {
 } from 'recharts';
 import { cn } from '@/lib/utils';
 
-const dummyData = [
-  { name: 'Jan', incidents: 4, audits: 85 },
-  { name: 'Feb', incidents: 3, audits: 88 },
-  { name: 'Mar', incidents: 5, audits: 82 },
-  { name: 'Apr', incidents: 2, audits: 91 },
-  { name: 'May', incidents: 1, audits: 94 },
-  { name: 'Jun', incidents: 0, audits: 96 },
-];
-
 export default function EhsDashboard() {
   const { stats } = useEhs();
 
   return (
-    <div className="space-y-8 text-slate-200">
+    <div className="space-y-8 text-slate-100">
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight text-white">Safety Command Center</h1>
-          <p className="text-slate-400 mt-1">Holistic view of organizational safety performance.</p>
+          <p className="text-slate-200 text-lg mt-1 font-medium">Holistic view of organizational safety performance.</p>
         </div>
-        <div className="bg-slate-800 border border-slate-700 px-4 py-2 rounded-full text-xs font-semibold text-emerald-400">
+        <div className="bg-slate-800 border border-slate-700 px-4 py-2 rounded-full text-xs font-bold text-emerald-400 tracking-widest uppercase">
           SYSTEM STATUS: OPTIMAL
         </div>
       </div>
@@ -58,21 +49,21 @@ export default function EhsDashboard() {
           { label: 'Avg Audit Score', value: `${stats.avgAuditScore.toFixed(1)}%`, icon: ClipboardCheck, color: 'text-emerald-400', bg: 'bg-emerald-500/10', trend: 5.2 },
           { label: 'Training Hours', value: stats.trainingHours, icon: Users, color: 'text-indigo-400', bg: 'bg-indigo-500/10', trend: 8 },
         ].map((kpi, i) => (
-          <Card key={i} className="bg-slate-900 border-slate-800 text-slate-200 overflow-hidden relative">
+          <Card key={i} className="bg-slate-900/60 border-slate-800 text-slate-100 overflow-hidden relative shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500">{kpi.label}</CardTitle>
+              <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">{kpi.label}</CardTitle>
               <div className={cn("p-2 rounded-lg", kpi.bg)}>
                 <kpi.icon className={cn("h-4 w-4", kpi.color)} />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-white">{kpi.value}</div>
+              <div className="text-3xl font-black text-white">{kpi.value}</div>
               <div className="mt-2 flex items-center gap-1">
                 {kpi.trend !== 0 && (
                   <>
                     {kpi.trend > 0 ? <ArrowUpRight className="h-3 w-3 text-emerald-400" /> : <ArrowDownRight className="h-3 w-3 text-rose-400" />}
-                    <span className={cn("text-[10px] font-bold", kpi.trend > 0 ? "text-emerald-400" : "text-rose-400")}>
-                      {Math.abs(kpi.trend)}% vs last month
+                    <span className={cn("text-[10px] font-black uppercase", kpi.trend > 0 ? "text-emerald-400" : "text-rose-400")}>
+                      {Math.abs(kpi.trend)}% VS LAST MONTH
                     </span>
                   </>
                 )}
@@ -85,13 +76,13 @@ export default function EhsDashboard() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-slate-900/60 border-slate-800 shadow-xl">
           <CardHeader>
-            <CardTitle className="text-white text-lg">Incident Trend (6 Months)</CardTitle>
-            <CardDescription className="text-slate-500">Correlation between reports and time.</CardDescription>
+            <CardTitle className="text-white text-xl font-black uppercase tracking-tight">Incident Trend (6 Months)</CardTitle>
+            <CardDescription className="text-slate-300 font-medium">Correlation between reports and time.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] w-full">
+            <div className="h-[300px] w-full mt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={dummyData}>
                   <defs>
@@ -101,31 +92,31 @@ export default function EhsDashboard() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                  <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} />
+                  <YAxis stroke="#94a3b8" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', color: '#f8fafc' }}
-                    itemStyle={{ color: '#f43f5e' }}
+                    itemStyle={{ color: '#f43f5e', fontWeight: 'bold' }}
                   />
-                  <Area type="monotone" dataKey="incidents" stroke="#f43f5e" fillOpacity={1} fill="url(#colorInc)" strokeWidth={3} />
+                  <Area type="monotone" dataKey="incidents" stroke="#f43f5e" fillOpacity={1} fill="url(#colorInc)" strokeWidth={4} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-slate-900/60 border-slate-800 shadow-xl">
           <CardHeader>
-            <CardTitle className="text-white text-lg">Audit Performance</CardTitle>
-            <CardDescription className="text-slate-500">Compliance scores across inspection cycles.</CardDescription>
+            <CardTitle className="text-white text-xl font-black uppercase tracking-tight">Audit Performance</CardTitle>
+            <CardDescription className="text-slate-300 font-medium">Compliance scores across inspection cycles.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] w-full">
+            <div className="h-[300px] w-full mt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={dummyData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                  <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} />
+                  <YAxis stroke="#94a3b8" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', color: '#f8fafc' }}
                     cursor={{ fill: '#1e293b' }}
@@ -140,3 +131,12 @@ export default function EhsDashboard() {
     </div>
   );
 }
+
+const dummyData = [
+  { name: 'Jan', incidents: 4, audits: 85 },
+  { name: 'Feb', incidents: 3, audits: 88 },
+  { name: 'Mar', incidents: 5, audits: 82 },
+  { name: 'Apr', incidents: 2, audits: 91 },
+  { name: 'May', incidents: 1, audits: 94 },
+  { name: 'Jun', incidents: 0, audits: 96 },
+];

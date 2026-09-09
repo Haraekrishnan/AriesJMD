@@ -12,7 +12,7 @@ import {
   Clock, MessageSquare, 
   AlertTriangle, CheckCircle2, TrendingUp, Inbox,
   Zap, Send, Target, ChevronRight, FileCheck, HelpCircle,
-  ArrowRight
+  ArrowRight, Lock
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, parseISO, isPast, formatDistanceToNow } from 'date-fns';
@@ -60,7 +60,7 @@ const stageConfig: Record<CapaStage, { label: string, icon: any, color: string }
   'Implementation': { label: 'Implementation', icon: Target, color: 'text-blue-400' },
   'Effectiveness Review': { label: 'Effectiveness Review', icon: CheckCircle, color: 'text-indigo-400' },
   'Reference': { label: 'Reference', icon: Inbox, color: 'text-blue-400' },
-  'Closure': { label: 'Closure', icon: Lock, color: 'text-slate-400' },
+  'Closure': { label: 'Closure', icon: Lock, color: 'text-slate-300' },
 };
 
 const observationSchema = z.object({
@@ -156,7 +156,7 @@ export default function EhsObservationsPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-4xl font-black text-white tracking-tight">Full CAPA Lifecycle</h1>
-          <p className="text-slate-400 mt-2">Closed-loop management of safety observations and preventive measures.</p>
+          <p className="text-slate-200 mt-2 font-medium">Closed-loop management of safety observations and preventive measures.</p>
         </div>
         
         <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
@@ -167,19 +167,19 @@ export default function EhsObservationsPage() {
           </DialogTrigger>
           <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-2xl">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-black uppercase tracking-tight">Initiate CAPA</DialogTitle>
-              <DialogDescription className="text-slate-500">Capture initial findings to start the lifecycle.</DialogDescription>
+              <DialogTitle className="text-2xl font-black uppercase tracking-tight text-white">Initiate CAPA</DialogTitle>
+              <DialogDescription className="text-slate-300 font-medium">Capture initial findings to start the lifecycle.</DialogDescription>
             </DialogHeader>
             <form onSubmit={form.handleSubmit(onReportSubmit)} className="space-y-6 py-4">
                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-slate-400 font-bold text-xs uppercase tracking-widest">Category</Label>
+                    <Label className="text-slate-100 font-bold text-xs uppercase tracking-widest">Category</Label>
                     <Controller
                       control={form.control}
                       name="category"
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="bg-slate-800 border-slate-700 h-12 rounded-xl">
+                          <SelectTrigger className="bg-slate-800 border-slate-700 h-12 rounded-xl text-white">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="bg-slate-900 border-slate-800 text-white">
@@ -194,13 +194,13 @@ export default function EhsObservationsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-slate-400 font-bold text-xs uppercase tracking-widest">Severity</Label>
+                    <Label className="text-slate-100 font-bold text-xs uppercase tracking-widest">Severity</Label>
                     <Controller
                       control={form.control}
                       name="severity"
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="bg-slate-800 border-slate-700 h-12 rounded-xl">
+                          <SelectTrigger className="bg-slate-800 border-slate-700 h-12 rounded-xl text-white">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="bg-slate-900 border-slate-800 text-white">
@@ -217,13 +217,13 @@ export default function EhsObservationsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                    <div className="space-y-2">
-                    <Label className="text-slate-400 font-bold text-xs uppercase tracking-widest">Site Location</Label>
+                    <Label className="text-slate-100 font-bold text-xs uppercase tracking-widest">Site Location</Label>
                     <Controller
                       control={form.control}
                       name="projectId"
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="bg-slate-800 border-slate-700 h-12 rounded-xl">
+                          <SelectTrigger className="bg-slate-800 border-slate-700 h-12 rounded-xl text-white">
                             <SelectValue placeholder="Select site..." />
                           </SelectTrigger>
                           <SelectContent className="bg-slate-900 border-slate-800 text-white">
@@ -236,18 +236,18 @@ export default function EhsObservationsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-slate-400 font-bold text-xs uppercase tracking-widest">Specific Area</Label>
-                    <Input {...form.register('location')} className="bg-slate-800 border-slate-700 h-12 rounded-xl" placeholder="e.g., Boiler House" />
+                    <Label className="text-slate-100 font-bold text-xs uppercase tracking-widest">Specific Area</Label>
+                    <Input {...form.register('location')} className="bg-slate-800 border-slate-700 h-12 rounded-xl text-white" placeholder="e.g., Boiler House" />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-slate-400 font-bold text-xs uppercase tracking-widest">Observation Description</Label>
-                  <Textarea {...form.register('description')} className="bg-slate-800 border-slate-700 min-h-[100px] rounded-xl" placeholder="Provide factual details of the finding..." />
+                  <Label className="text-slate-100 font-bold text-xs uppercase tracking-widest">Observation Description</Label>
+                  <Textarea {...form.register('description')} className="bg-slate-800 border-slate-700 min-h-[100px] rounded-xl text-white" placeholder="Provide factual details of the finding..." />
                 </div>
 
                 <DialogFooter>
-                  <Button variant="outline" type="button" onClick={() => setIsReportDialogOpen(false)} className="bg-transparent border-slate-700 text-slate-300">Cancel</Button>
+                  <Button variant="outline" type="button" onClick={() => setIsReportDialogOpen(false)} className="bg-transparent border-slate-700 text-slate-200">Cancel</Button>
                   <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600 font-black h-12 rounded-xl px-10">Start Lifecycle</Button>
                 </DialogFooter>
             </form>
@@ -256,17 +256,17 @@ export default function EhsObservationsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <StatCard title="Open CAPAs" value={stats.openObservations} icon={TrendingUp} description="Active lifecycles" className="bg-slate-900/40 border-slate-800" />
-        <StatCard title="Total LTIs" value={stats.totalLTIs} icon={AlertCircle} description="Past 12 months" className="bg-slate-900/40 border-slate-800" />
-        <StatCard title="Audit Health" value={`${stats.avgAuditScore.toFixed(0)}%`} icon={FileCheck} description="Org compliance" className="bg-slate-900/40 border-slate-800" />
-        <StatCard title="Training Hrs" value={stats.trainingHours} icon={Users} description="Workforce competency" className="bg-slate-900/40 border-slate-800" />
+        <StatCard title="Open CAPAs" value={stats.openObservations} icon={TrendingUp} description={<span className="text-slate-300 font-medium">Active lifecycles</span>} className="bg-slate-900/60 border-slate-800 [&_div]:text-white [&_.text-sm]:text-slate-100" />
+        <StatCard title="Total LTIs" value={stats.totalLTIs} icon={AlertCircle} description={<span className="text-slate-300 font-medium">Past 12 months</span>} className="bg-slate-900/60 border-slate-800 [&_div]:text-white [&_.text-sm]:text-slate-100" />
+        <StatCard title="Audit Health" value={`${stats.avgAuditScore.toFixed(0)}%`} icon={FileCheck} description={<span className="text-slate-300 font-medium">Org compliance</span>} className="bg-slate-900/60 border-slate-800 [&_div]:text-white [&_.text-sm]:text-slate-100" />
+        <StatCard title="Training Hrs" value={stats.trainingHours} icon={Users} description={<span className="text-slate-300 font-medium">Workforce competency</span>} className="bg-slate-900/60 border-slate-800 [&_div]:text-white [&_.text-sm]:text-slate-100" />
       </div>
 
       <div className="relative mb-8">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
         <Input 
           placeholder="Search by ID, site, or findings..." 
-          className="pl-12 h-16 bg-slate-900/40 border-slate-800 text-slate-200 rounded-3xl"
+          className="pl-12 h-16 bg-slate-900/60 border-slate-800 text-white placeholder:text-slate-400 rounded-3xl"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -287,23 +287,23 @@ export default function EhsObservationsPage() {
                            {obs.severity} SEVERITY
                          </Badge>
                          <span className="text-slate-700 font-black">|</span>
-                         <span className="text-[11px] text-slate-500 font-black uppercase tracking-widest">{format(parseISO(obs.createdAt), 'PPP')}</span>
+                         <span className="text-[11px] text-slate-300 font-black uppercase tracking-widest">{format(parseISO(obs.createdAt), 'PPP')}</span>
                       </div>
                       
                       <h3 className="text-2xl font-bold text-white line-clamp-1">{obs.description}</h3>
 
-                      <div className="flex flex-wrap items-center gap-8 text-sm text-slate-400 pt-2">
-                        <div className="flex items-center gap-2.5">
+                      <div className="flex flex-wrap items-center gap-8 text-sm text-slate-200 pt-2">
+                        <div className="flex items-center gap-2.5 font-semibold">
                           <MapPin className="h-4 w-4 text-emerald-400" />
-                          <span className="font-bold">{site?.name || 'Unknown Site'} &middot; {obs.location}</span>
+                          <span>{site?.name || 'Unknown Site'} &middot; {obs.location}</span>
                         </div>
-                        <div className="flex items-center gap-2.5">
+                        <div className="flex items-center gap-2.5 font-semibold">
                           <currentStage.icon className={cn("h-4 w-4", currentStage.color)} />
-                          <span className="font-bold uppercase text-[11px] tracking-tight">{currentStage.label} Stage</span>
+                          <span className="uppercase text-[11px] tracking-tight">{currentStage.label} Stage</span>
                         </div>
                         <Badge variant="outline" className={cn(
                           "font-black text-[10px] uppercase px-3",
-                          obs.status === 'Open' ? "text-emerald-400 border-emerald-400/20" : "text-slate-400 border-slate-400/20"
+                          obs.status === 'Open' ? "text-emerald-400 border-emerald-400/20" : "text-slate-100 border-slate-700 bg-slate-800"
                         )}>
                           {obs.status}
                         </Badge>
@@ -313,7 +313,7 @@ export default function EhsObservationsPage() {
                    <div className="p-8 md:border-l border-slate-800 flex items-center gap-4 bg-slate-900/30">
                      <Button 
                        variant="outline" 
-                       className="border-slate-800 bg-slate-800/40 text-slate-300 hover:bg-slate-700 hover:text-white rounded-xl h-12 px-6"
+                       className="border-slate-700 bg-slate-800/40 text-white hover:bg-slate-700 hover:text-white rounded-xl h-12 px-6 font-bold"
                        onClick={() => setViewingObservation(obs)}
                      >
                        Manage Lifecycle <ChevronRight className="h-4 w-4 ml-2" />
@@ -353,7 +353,7 @@ export default function EhsObservationsPage() {
                            </div>
                            <span className={cn(
                              "text-[10px] font-black uppercase tracking-widest text-center",
-                             isActive ? "text-blue-400" : "text-slate-500"
+                             isActive ? "text-blue-400" : "text-slate-300"
                            )}>{config.label}</span>
                         </div>
                         {idx < 6 && (
@@ -369,26 +369,26 @@ export default function EhsObservationsPage() {
             </div>
 
             <ScrollArea className="flex-1 p-10">
-              <div className="max-w-4xl mx-auto space-y-12">
+              <div className="max-w-4xl mx-auto space-y-12 text-left">
                 {/* INITIATION DATA */}
                 <section className="space-y-6">
                   <div className="flex items-center gap-3">
                     <Plus className="h-5 w-5 text-emerald-400" />
-                    <h4 className="text-xl font-black uppercase tracking-tight">Stage 1: Initiation Details</h4>
+                    <h4 className="text-xl font-black uppercase tracking-tight text-white">Stage 1: Initiation Details</h4>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8 bg-slate-900/40 rounded-[2rem] border border-slate-800">
                     <div className="space-y-1">
-                      <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Findings Statement</Label>
-                      <p className="text-lg font-medium leading-relaxed italic text-slate-200">"{viewingObservation.description}"</p>
+                      <Label className="text-[10px] font-black uppercase text-slate-300 tracking-widest">Findings Statement</Label>
+                      <p className="text-lg font-medium leading-relaxed italic text-white">"{viewingObservation.description}"</p>
                     </div>
                     <div className="space-y-4">
                       <div className="flex justify-between border-b border-slate-800 pb-2">
-                        <span className="text-xs text-slate-500 font-bold uppercase">Reported By</span>
-                        <span className="text-xs font-black">{users.find(u => u.id === viewingObservation.reporterId)?.name}</span>
+                        <span className="text-xs text-slate-300 font-bold uppercase">Reported By</span>
+                        <span className="text-xs font-black text-white">{users.find(u => u.id === viewingObservation.reporterId)?.name}</span>
                       </div>
                       <div className="flex justify-between border-b border-slate-800 pb-2">
-                        <span className="text-xs text-slate-500 font-bold uppercase">Location</span>
-                        <span className="text-xs font-black">{projects.find(p => p.id === viewingObservation.projectId)?.name} &middot; {viewingObservation.location}</span>
+                        <span className="text-xs text-slate-300 font-bold uppercase">Location</span>
+                        <span className="text-xs font-black text-white">{projects.find(p => p.id === viewingObservation.projectId)?.name} &middot; {viewingObservation.location}</span>
                       </div>
                     </div>
                   </div>
@@ -399,13 +399,13 @@ export default function EhsObservationsPage() {
                   <section className="space-y-6">
                     <div className="flex items-center gap-3">
                       <FileCheck className="h-5 w-5 text-emerald-400" />
-                      <h4 className="text-xl font-black uppercase tracking-tight">Stage 2: Immediate Correction</h4>
+                      <h4 className="text-xl font-black uppercase tracking-tight text-white">Stage 2: Immediate Correction</h4>
                     </div>
                     {viewingObservation.currentStage === 'Resolution' ? (
                        <div className="p-8 bg-slate-900/40 rounded-[2rem] border border-slate-800">
-                          <Label className="mb-4 block text-slate-400 font-bold">Action taken to address the symptom immediately:</Label>
+                          <Label className="mb-4 block text-slate-100 font-bold">Action taken to address the symptom immediately:</Label>
                           <Textarea 
-                            className="bg-slate-800 border-slate-700 min-h-[120px] rounded-2xl" 
+                            className="bg-slate-800 border-slate-700 min-h-[120px] rounded-2xl text-white" 
                             placeholder="e.g., Cleaned up spill, quarantined faulty tool..."
                             value={actionPlan}
                             onChange={(e) => setActionPlan(e.target.value)}
@@ -413,7 +413,7 @@ export default function EhsObservationsPage() {
                        </div>
                     ) : (
                       <div className="p-6 bg-slate-800/40 border border-slate-800 rounded-2xl">
-                         <p className="text-sm font-medium">{viewingObservation.immediateActionTaken || 'Immediate action recorded.'}</p>
+                         <p className="text-sm font-medium text-white">{viewingObservation.immediateActionTaken || 'Immediate action recorded.'}</p>
                       </div>
                     )}
                   </section>
@@ -424,15 +424,15 @@ export default function EhsObservationsPage() {
                   <section className="space-y-6">
                     <div className="flex items-center gap-3">
                       <Search className="h-5 w-5 text-emerald-400" />
-                      <h4 className="text-xl font-black uppercase tracking-tight">Stage 3: Root Cause Analysis (5-Whys)</h4>
+                      <h4 className="text-xl font-black uppercase tracking-tight text-white">Stage 3: Root Cause Analysis (5-Whys)</h4>
                     </div>
                     {viewingObservation.currentStage === 'Investigation' ? (
                       <div className="space-y-4 p-8 bg-slate-900/40 rounded-[2rem] border border-slate-800">
                         {rcaWhys.map((why, i) => (
                           <div key={i} className="flex gap-4">
-                             <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center shrink-0 text-xs font-black text-slate-500">W{i+1}</div>
+                             <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center shrink-0 text-xs font-black text-slate-300">W{i+1}</div>
                              <Input 
-                               className="bg-slate-800 border-slate-700 h-10 rounded-xl"
+                               className="bg-slate-800 border-slate-700 h-10 rounded-xl text-white"
                                placeholder={`Why did this happen?`}
                                value={why}
                                onChange={(e) => {
@@ -446,7 +446,7 @@ export default function EhsObservationsPage() {
                         <Separator className="bg-slate-800 my-6" />
                         <Label className="text-emerald-400 font-black uppercase tracking-widest text-[10px]">Identified Root Cause</Label>
                         <Textarea 
-                          className="bg-slate-800 border-slate-700 rounded-xl mt-2" 
+                          className="bg-slate-800 border-slate-700 rounded-xl mt-2 text-white" 
                           placeholder="Final conclusion of the investigation..." 
                           value={finalRootCause}
                           onChange={(e) => setFinalRootCause(e.target.value)}
@@ -456,15 +456,15 @@ export default function EhsObservationsPage() {
                       <div className="p-8 bg-slate-900/40 border border-slate-800 rounded-[2rem] space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                            {viewingObservation.rootCauseAnalysis?.whys.map((why, i) => (
-                             <div key={i} className="flex items-center gap-3 text-sm text-slate-400">
-                               <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-black shrink-0">{i+1}</div>
+                             <div key={i} className="flex items-center gap-3 text-sm text-slate-200 font-medium">
+                               <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-black shrink-0 text-slate-100">{i+1}</div>
                                {why}
                              </div>
                            ))}
                         </div>
                         <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
                           <p className="text-[10px] font-black text-emerald-400 uppercase mb-1">Final Root Cause</p>
-                          <p className="text-sm font-bold text-slate-200">{viewingObservation.rootCauseAnalysis?.finalRootCause}</p>
+                          <p className="text-sm font-bold text-white">{viewingObservation.rootCauseAnalysis?.finalRootCause}</p>
                         </div>
                       </div>
                     )}
@@ -476,14 +476,14 @@ export default function EhsObservationsPage() {
                   <section className="space-y-6">
                     <div className="flex items-center gap-3">
                       <Target className="h-5 w-5 text-blue-400" />
-                      <h4 className="text-xl font-black uppercase tracking-tight">Stage 4: CAPA Implementation Plan</h4>
+                      <h4 className="text-xl font-black uppercase tracking-tight text-white">Stage 4: CAPA Implementation Plan</h4>
                     </div>
                     {viewingObservation.currentStage === 'Implementation' ? (
                        <div className="space-y-6 p-8 bg-slate-900/40 rounded-[2rem] border border-slate-800">
                           <div className="space-y-2">
-                             <Label className="text-slate-400">Preventive Action Plan</Label>
+                             <Label className="text-slate-100">Preventive Action Plan</Label>
                              <Textarea 
-                               className="bg-slate-800 border-slate-700 min-h-[120px]" 
+                               className="bg-slate-800 border-slate-700 min-h-[120px] text-white" 
                                placeholder="Specify actions to prevent recurrence..."
                                value={actionPlan}
                                onChange={(e) => setActionPlan(e.target.value)}
@@ -491,17 +491,17 @@ export default function EhsObservationsPage() {
                           </div>
                           <div className="grid grid-cols-2 gap-6">
                              <div className="space-y-2">
-                               <Label className="text-slate-400">Action Owner</Label>
+                               <Label className="text-slate-100">Action Owner</Label>
                                <Select onValueChange={setActionOwnerId} value={actionOwnerId}>
-                                  <SelectTrigger className="bg-slate-800 border-slate-700"><SelectValue /></SelectTrigger>
+                                  <SelectTrigger className="bg-slate-800 border-slate-700 text-white"><SelectValue /></SelectTrigger>
                                   <SelectContent className="bg-slate-900 border-slate-800 text-white">
                                     {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
                                   </SelectContent>
                                </Select>
                              </div>
                              <div className="space-y-2">
-                               <Label className="text-slate-400">Target Date</Label>
-                               <Input type="date" className="bg-slate-800 border-slate-700" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                               <Label className="text-slate-100">Target Date</Label>
+                               <Input type="date" className="bg-slate-800 border-slate-700 text-white" value={dueDate} onChange={e => setDueDate(e.target.value)} />
                              </div>
                           </div>
                        </div>
@@ -509,16 +509,16 @@ export default function EhsObservationsPage() {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="md:col-span-2 p-6 bg-slate-900/40 border border-slate-800 rounded-2xl">
                           <p className="text-[10px] font-black text-blue-400 uppercase mb-2">Preventive Action Plan</p>
-                          <p className="text-sm font-medium">{viewingObservation.correctiveActionPlan}</p>
+                          <p className="text-sm font-medium text-white">{viewingObservation.correctiveActionPlan}</p>
                         </div>
                         <div className="p-6 bg-slate-900/40 border border-slate-800 rounded-2xl space-y-4">
                            <div>
-                             <p className="text-[10px] font-black text-slate-500 uppercase">Owner</p>
-                             <p className="text-sm font-bold">{users.find(u => u.id === viewingObservation.actionOwnerId)?.name || 'N/A'}</p>
+                             <p className="text-[10px] font-black text-slate-300 uppercase">Owner</p>
+                             <p className="text-sm font-bold text-white">{users.find(u => u.id === viewingObservation.actionOwnerId)?.name || 'N/A'}</p>
                            </div>
                            <div>
-                             <p className="text-[10px] font-black text-slate-500 uppercase">Due Date</p>
-                             <p className="text-sm font-bold">{viewingObservation.dueDate ? format(parseISO(viewingObservation.dueDate), 'dd MMM yyyy') : 'N/A'}</p>
+                             <p className="text-[10px] font-black text-slate-300 uppercase">Due Date</p>
+                             <p className="text-sm font-bold text-white">{viewingObservation.dueDate ? format(parseISO(viewingObservation.dueDate), 'dd MMM yyyy') : 'N/A'}</p>
                            </div>
                         </div>
                       </div>
@@ -531,21 +531,21 @@ export default function EhsObservationsPage() {
                    <section className="space-y-6">
                     <div className="flex items-center gap-3">
                       <CheckCircle className="h-5 w-5 text-indigo-400" />
-                      <h4 className="text-xl font-black uppercase tracking-tight">Stage 5: Effectiveness Review</h4>
+                      <h4 className="text-xl font-black uppercase tracking-tight text-white">Stage 5: Effectiveness Review</h4>
                     </div>
                     {viewingObservation.currentStage === 'Effectiveness Review' ? (
                        <div className="space-y-6 p-8 bg-slate-900/40 rounded-[2rem] border border-slate-800">
                           <div className="space-y-2">
-                             <Label className="text-slate-400">Verification Result & Validation Evidence</Label>
+                             <Label className="text-slate-100">Verification Result & Validation Evidence</Label>
                              <Textarea 
-                               className="bg-slate-800 border-slate-700 min-h-[120px]" 
+                               className="bg-slate-800 border-slate-700 min-h-[120px] text-white" 
                                placeholder="Have the actions prevented recurrence? Provide details..."
                                value={verificationResult}
                                onChange={(e) => setVerificationResult(e.target.value)}
                              />
                           </div>
                           <div className="flex items-center gap-4">
-                             <Label className="text-slate-400">Has the action been successful?</Label>
+                             <Label className="text-slate-100">Has the action been successful?</Label>
                              <div className="flex gap-2">
                                <Button variant={isSuccess ? 'default' : 'outline'} size="sm" onClick={() => setIsSuccess(true)}>Yes, Successful</Button>
                                <Button variant={!isSuccess ? 'destructive' : 'outline'} size="sm" onClick={() => setIsSuccess(false)}>No, Requires Revision</Button>
@@ -557,13 +557,13 @@ export default function EhsObservationsPage() {
                         <div className="flex justify-between items-start mb-6">
                            <div className="space-y-1">
                              <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Verification Result</p>
-                             <p className="text-sm font-medium leading-relaxed">{viewingObservation.effectivenessVerification?.result}</p>
+                             <p className="text-sm font-medium leading-relaxed text-white">{viewingObservation.effectivenessVerification?.result}</p>
                            </div>
                            <Badge variant={viewingObservation.effectivenessVerification?.successful ? 'success' : 'destructive'} className="uppercase font-black px-4">
                              {viewingObservation.effectivenessVerification?.successful ? 'PASSED' : 'FAILED'}
                            </Badge>
                         </div>
-                        <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest border-t border-slate-800 pt-4">
+                        <div className="text-[10px] text-slate-300 font-bold uppercase tracking-widest border-t border-slate-800 pt-4">
                            Verified By: {users.find(u => u.id === viewingObservation.effectivenessVerification?.verifiedBy)?.name} &middot; {format(parseISO(viewingObservation.effectivenessVerification!.verificationDate), 'PPP')}
                         </div>
                       </div>
@@ -579,7 +579,7 @@ export default function EhsObservationsPage() {
                      </div>
                      <div className="space-y-2">
                         <h4 className="text-3xl font-black uppercase tracking-tight text-emerald-400">CAPA Case Closed</h4>
-                        <p className="text-slate-400 text-lg">All stages have been completed and verified by the Senior Safety Supervisor.</p>
+                        <p className="text-slate-200 text-lg font-medium">All stages have been completed and verified by the Senior Safety Supervisor.</p>
                      </div>
                   </div>
                 )}
@@ -597,20 +597,19 @@ export default function EhsObservationsPage() {
                     </Button>
                   )}
                </div>
-               <Button variant="ghost" className="text-slate-500 hover:text-white font-bold h-12" onClick={() => setViewingObservation(null)}>Close Management View</Button>
+               <Button variant="ghost" className="text-slate-300 hover:text-white font-bold h-12" onClick={() => setViewingObservation(null)}>Close Management View</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
 
       {filteredObservations.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-40 text-slate-500 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[3rem]">
-          <Inbox className="h-16 w-16 mb-6 opacity-10 text-emerald-500" />
-          <p className="text-2xl font-black text-slate-400 tracking-tight">No lifecycle records found</p>
-          <p className="text-sm mt-2 opacity-60">Systematic lifecycle management ensures safety permanence.</p>
+        <div className="flex flex-col items-center justify-center py-40 text-slate-300 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[3rem]">
+          <Inbox className="h-16 w-16 mb-6 opacity-20 text-emerald-500" />
+          <p className="text-2xl font-black text-slate-100 tracking-tight uppercase">No lifecycle records found</p>
+          <p className="text-sm mt-2 opacity-80 font-medium">Systematic lifecycle management ensures safety permanence.</p>
         </div>
       )}
     </div>
   );
 }
-

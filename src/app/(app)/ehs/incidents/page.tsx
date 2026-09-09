@@ -25,9 +25,9 @@ import type { EhsIncidentStatus } from '@/lib/types';
 const incidentTypeColors: Record<string, string> = {
   'Near Miss': 'bg-amber-500/10 text-amber-400 border-amber-500/20',
   'LTI': 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-  'Minor Injury': 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+  'Minor Injury': 'bg-orange-500/10 text-orange-400 border-orange-200/20',
   'Environmental': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  'Property Damage': 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+  'Property Damage': 'bg-slate-500/10 text-slate-300 border-slate-700',
 };
 
 const incidentSchema = z.object({
@@ -98,34 +98,34 @@ export default function EhsIncidentsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center text-left">
         <div>
           <h1 className="text-3xl font-bold text-white tracking-tight">Incident Management</h1>
-          <p className="text-slate-400">Track investigations led by the Senior Safety Supervisor.</p>
+          <p className="text-slate-200 text-lg font-medium">Track investigations led by the Senior Safety Supervisor.</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-rose-500 hover:bg-rose-600 text-white font-bold shadow-lg shadow-rose-500/20 px-6">
+            <Button className="bg-rose-500 hover:bg-rose-600 text-white font-bold shadow-lg shadow-rose-500/20 px-6 h-12 uppercase tracking-widest text-xs">
               <Plus className="mr-2 h-4 w-4" /> Report New Incident
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-xl">
+          <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-xl shadow-2xl">
             <DialogHeader>
-              <DialogTitle className="text-white text-xl">Report Safety Incident</DialogTitle>
-              <DialogDescription className="text-slate-400">Immediate reporting of unsafe incidents for official investigation.</DialogDescription>
+              <DialogTitle className="text-white text-xl font-black uppercase tracking-tight">Report Safety Incident</DialogTitle>
+              <DialogDescription className="text-slate-300 font-medium">Immediate reporting of unsafe incidents for official investigation.</DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[70vh] pr-4">
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4 text-left">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-slate-400">Incident Type</Label>
+                    <Label className="text-slate-100 font-bold uppercase text-[10px] tracking-widest">Incident Type</Label>
                     <Controller
                       control={form.control}
                       name="type"
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="bg-slate-800 border-slate-700">
+                          <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="bg-slate-900 border-slate-800 text-white">
@@ -141,20 +141,20 @@ export default function EhsIncidentsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-slate-400">Date of Incident</Label>
+                    <Label className="text-slate-100 font-bold uppercase text-[10px] tracking-widest">Date of Incident</Label>
                     <Input type="date" {...form.register('date')} className="bg-slate-800 border-slate-700 text-white" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                    <div className="space-y-2">
-                    <Label className="text-slate-400">Site/Project</Label>
+                    <Label className="text-slate-100 font-bold uppercase text-[10px] tracking-widest">Site/Project</Label>
                     <Controller
                       control={form.control}
                       name="projectId"
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="bg-slate-800 border-slate-700">
+                          <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
                             <SelectValue placeholder="Select site..." />
                           </SelectTrigger>
                           <SelectContent className="bg-slate-900 border-slate-800 text-white">
@@ -167,24 +167,24 @@ export default function EhsIncidentsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-slate-400">Specific Location</Label>
+                    <Label className="text-slate-100 font-bold uppercase text-[10px] tracking-widest">Specific Location</Label>
                     <Input {...form.register('location')} className="bg-slate-800 border-slate-700 text-white" placeholder="e.g., Workshop B" />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-slate-400">Detailed Description</Label>
+                  <Label className="text-slate-100 font-bold uppercase text-[10px] tracking-widest">Detailed Description</Label>
                   <Textarea {...form.register('description')} className="bg-slate-800 border-slate-700 text-white min-h-[120px] focus:ring-rose-500/20" placeholder="Explain the sequence of events..." />
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-slate-400">Immediate Actions Taken</Label>
+                  <Label className="text-slate-100 font-bold uppercase text-[10px] tracking-widest">Immediate Actions Taken</Label>
                   <Textarea {...form.register('immediateActions')} className="bg-slate-800 border-slate-700 text-white min-h-[100px] focus:ring-emerald-500/20" placeholder="Corrective measures taken to secure the area..." />
                 </div>
 
                 <DialogFooter className="pt-2">
-                  <Button variant="outline" type="button" onClick={() => setIsDialogOpen(false)} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white">Cancel</Button>
-                  <Button type="submit" className="bg-rose-500 hover:bg-rose-600 font-bold">Submit for Review</Button>
+                  <Button variant="outline" type="button" onClick={() => setIsDialogOpen(false)} className="bg-transparent border-slate-700 text-slate-200">Cancel</Button>
+                  <Button type="submit" className="bg-rose-500 hover:bg-rose-600 font-bold text-white uppercase tracking-widest text-xs px-8">Submit for Review</Button>
                 </DialogFooter>
               </form>
             </ScrollArea>
@@ -193,56 +193,56 @@ export default function EhsIncidentsPage() {
       </div>
 
       <div className="relative mb-8">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
         <Input 
           placeholder="Search incidents by location, site, type or details..." 
-          className="pl-12 h-14 bg-slate-900/50 border-slate-800 text-slate-200 rounded-2xl focus:ring-emerald-500/20"
+          className="pl-12 h-14 bg-slate-900/60 border-slate-800 text-white placeholder:text-slate-400 rounded-2xl focus:ring-emerald-500/20"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-6 text-left">
         {filteredIncidents.map((incident) => {
           const site = projects.find(p => p.id === incident.projectId);
           const reviewer = users.find(u => u.id === incident.reviewedById);
 
           return (
-            <Card key={incident.id} className="bg-slate-900 border-slate-800 hover:bg-slate-900/80 transition-all border-l-4 border-l-rose-500/50 overflow-hidden shadow-xl">
+            <Card key={incident.id} className="bg-slate-900/60 border-slate-800 hover:bg-slate-900/80 transition-all border-l-4 border-l-rose-500 overflow-hidden shadow-2xl">
               <CardContent className="p-0">
                  <div className="flex flex-col md:flex-row md:items-center">
                    <div className="p-8 flex-1 space-y-4">
                       <div className="flex items-center gap-3">
-                         <Badge variant="outline" className={cn("uppercase text-[10px] tracking-[0.2em] font-black px-3 py-1", incidentTypeColors[incident.type])}>
+                         <Badge variant="outline" className={cn("uppercase text-[10px] tracking-[0.2em] font-black px-3 py-1 bg-slate-900", incidentTypeColors[incident.type])}>
                            {incident.type}
                          </Badge>
                          <span className="text-slate-700 font-black">|</span>
-                         <span className="text-[11px] text-slate-500 font-black uppercase tracking-widest">{format(parseISO(incident.date), 'PPP')}</span>
+                         <span className="text-[11px] text-slate-200 font-black uppercase tracking-widest">{format(parseISO(incident.date), 'PPP')}</span>
                       </div>
                       
-                      <h3 className="text-2xl font-bold text-white line-clamp-2 leading-tight">{incident.description}</h3>
+                      <h3 className="text-2xl font-bold text-white line-clamp-2 leading-tight uppercase tracking-tight">{incident.description}</h3>
                       
                       {incident.resolutionNotes && (
-                        <div className="p-4 bg-slate-800/60 rounded-2xl border border-slate-700/50">
+                        <div className="p-4 bg-slate-800/60 rounded-2xl border border-slate-700 shadow-inner">
                            <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
-                             <ShieldCheck className="h-3 w-3" /> Official Investigation Resolution
+                             <ShieldCheck className="h-3 w-3" /> Official Resolution Findings
                            </p>
-                           <p className="text-xs text-slate-300 italic">"{incident.resolutionNotes}"</p>
-                           {reviewer && <p className="text-[9px] text-slate-500 mt-2">Closed by {reviewer.name} &middot; {format(parseISO(incident.reviewDate!), 'dd MMM')}</p>}
+                           <p className="text-sm text-slate-100 italic font-medium leading-relaxed">"{incident.resolutionNotes}"</p>
+                           {reviewer && <p className="text-[10px] text-slate-400 font-black uppercase mt-3 tracking-wider">Closed by {reviewer.name} &middot; {format(parseISO(incident.reviewDate!), 'dd MMM')}</p>}
                         </div>
                       )}
 
-                      <div className="flex flex-wrap items-center gap-8 text-sm text-slate-400 pt-2">
+                      <div className="flex flex-wrap items-center gap-8 text-sm text-slate-200 pt-2 font-bold uppercase tracking-tight">
                         <div className="flex items-center gap-2.5">
-                          <div className="bg-slate-800 p-2 rounded-lg">
+                          <div className="bg-slate-800 p-2 rounded-lg border border-slate-700">
                             <MapPin className="h-4 w-4 text-emerald-400" />
                           </div>
-                          <span className="font-bold">{site?.name || 'Unknown Site'} &middot; {incident.location}</span>
+                          <span>{site?.name || 'Unknown Site'} &middot; {incident.location}</span>
                         </div>
                         <Badge variant="outline" className={cn(
-                          "font-black text-[10px] uppercase px-3",
-                          incident.status === 'Open' ? "text-rose-400 border-rose-400/20" : 
-                          incident.status === 'Closed' ? "text-emerald-400 border-emerald-400/20" : "text-amber-400 border-amber-400/20"
+                          "font-black text-[10px] uppercase px-3 bg-slate-900 border-2",
+                          incident.status === 'Open' ? "text-rose-400 border-rose-900" : 
+                          incident.status === 'Closed' ? "text-emerald-400 border-emerald-900" : "text-amber-400 border-amber-900"
                         )}>
                           {incident.status}
                         </Badge>
@@ -252,13 +252,13 @@ export default function EhsIncidentsPage() {
                    <div className="p-8 md:border-l border-slate-800 flex items-center gap-4 bg-slate-900/30">
                      {isSupervisor && incident.status !== 'Closed' && (
                        <Button 
-                         className="bg-emerald-500 hover:bg-emerald-600 rounded-xl"
+                         className="bg-emerald-500 hover:bg-emerald-600 rounded-xl font-black uppercase text-[10px] tracking-widest h-12 px-6"
                          onClick={() => setActingIncidentId(incident.id)}
                        >
                          Investigate
                        </Button>
                      )}
-                     <Button variant="outline" className="border-slate-800 bg-slate-800/40 text-slate-300 hover:bg-slate-700 hover:text-white rounded-xl">
+                     <Button variant="outline" className="border-slate-700 bg-slate-800/40 text-white hover:bg-slate-700 hover:text-white rounded-xl h-12 px-6 font-bold">
                        <Eye className="h-4 w-4 mr-2" /> Details
                      </Button>
                    </div>
@@ -271,16 +271,16 @@ export default function EhsIncidentsPage() {
       
       {/* INVESTIGATION DIALOG */}
       <Dialog open={!!actingIncidentId} onOpenChange={(o) => !o && setActingIncidentId(null)}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-lg">
+        <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-lg shadow-2xl">
           <DialogHeader>
-            <DialogTitle>Incident Investigation & Resolution</DialogTitle>
-            <DialogDescription className="text-slate-400">Formal review and close-out of site incidents by the higher official.</DialogDescription>
+            <DialogTitle className="font-black uppercase tracking-tight">Incident Investigation & Resolution</DialogTitle>
+            <DialogDescription className="text-slate-300 font-medium">Formal review and close-out of site incidents by the higher official.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 text-left">
              <div className="space-y-2">
-               <Label className="text-slate-400">Resolution Notes / Root Cause Findings</Label>
+               <Label className="text-slate-100 font-bold uppercase text-[10px] tracking-widest">Resolution Notes / Root Cause Findings</Label>
                <Textarea 
-                 className="bg-slate-800 border-slate-700 text-white min-h-[150px]" 
+                 className="bg-slate-800 border-slate-700 text-white min-h-[150px] focus:ring-emerald-500/20" 
                  placeholder="Enter investigation details and formal resolution..."
                  value={resolutionNotes}
                  onChange={(e) => setResolutionNotes(e.target.value)}
@@ -288,10 +288,10 @@ export default function EhsIncidentsPage() {
              </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" className="bg-transparent border-slate-700 text-slate-300" onClick={() => handleResolveAction('Under Investigation')}>
+            <Button variant="outline" className="bg-transparent border-slate-700 text-slate-200" onClick={() => handleResolveAction('Under Investigation')}>
                <Clock className="mr-2 h-4 w-4" /> Move to Investigation
             </Button>
-            <Button className="bg-emerald-500 hover:bg-emerald-600" onClick={() => handleResolveAction('Closed')}>
+            <Button className="bg-emerald-500 hover:bg-emerald-600 font-bold" onClick={() => handleResolveAction('Closed')}>
                <CheckCircle className="mr-2 h-4 w-4" /> Resolve & Close
             </Button>
           </DialogFooter>
@@ -299,12 +299,12 @@ export default function EhsIncidentsPage() {
       </Dialog>
 
       {filteredIncidents.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-32 text-slate-500 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[2.5rem]">
-          <div className="p-6 bg-slate-900 rounded-3xl mb-6 shadow-2xl">
-            <FileWarning className="h-12 w-12 opacity-30 text-rose-500" />
+        <div className="flex flex-col items-center justify-center py-32 text-slate-300 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[2.5rem]">
+          <div className="p-6 bg-slate-900 rounded-3xl mb-6 shadow-2xl border border-slate-800">
+            <FileWarning className="h-12 w-12 opacity-40 text-rose-500" />
           </div>
-          <p className="text-2xl font-black text-slate-400 tracking-tight">No incident logs found</p>
-          <p className="text-sm mt-2 opacity-60">Reporting unsafe conditions prevents actual accidents.</p>
+          <p className="text-2xl font-black text-white tracking-tight uppercase">No incident logs found</p>
+          <p className="text-sm mt-2 opacity-80 font-medium">Reporting unsafe conditions prevents actual accidents.</p>
         </div>
       )}
     </div>
