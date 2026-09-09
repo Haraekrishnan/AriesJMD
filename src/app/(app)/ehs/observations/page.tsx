@@ -330,6 +330,11 @@ export default function EhsObservationsPage() {
       {viewingObservation && (
         <Dialog open={!!viewingObservation} onOpenChange={(o) => !o && setViewingObservation(null)}>
           <DialogContent className="max-w-6xl h-[95vh] flex flex-col p-0 bg-slate-950 border-slate-800 text-white overflow-hidden">
+            <DialogHeader className="sr-only">
+              <DialogTitle>CAPA Lifecycle: {viewingObservation.description}</DialogTitle>
+              <DialogDescription>Full lifecycle management and tracking for safety observation.</DialogDescription>
+            </DialogHeader>
+
             {/* STAGE STEPPER */}
             <div className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-800 p-8 shrink-0">
                <div className="flex items-center justify-between gap-4">
