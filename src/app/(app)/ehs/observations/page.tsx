@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef, MouseEvent } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useEhs } from '@/contexts/ehs-provider';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
@@ -16,7 +16,7 @@ import {
   FileText, Download, UserRound, Check, XCircle
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { format, parseISO, isPast, formatDistanceToNow, isValid } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { 
@@ -42,28 +42,28 @@ import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import type { EhsObservationStatus, EhsObservationCategory, EhsObservationSeverity, EhsObservation, CapaStage } from '@/lib/types';
+import type { EhsObservationStatus, EhsObservationSeverity, EhsObservation, CapaStage } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-const severityColors: Record<EhsObservationSeverity, string> = {
-  'Low': 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  'Medium': 'bg-blue-100 text-blue-800 border-blue-200',
-  'High': 'bg-orange-100 text-orange-800 border-orange-200',
-  'Critical': 'bg-rose-100 text-rose-800 border-rose-200',
+const severityConfig: Record<EhsObservationSeverity, { bg: string, text: string, border: string }> = {
+  'Low': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+  'Medium': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
+  'High': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
+  'Critical': { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
 };
 
 const stageConfig: Record<CapaStage, { label: string, icon: any, color: string, badge: string, description: string }> = {
-  'Initiation': { label: 'Initiation', icon: Plus, color: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-800 border-emerald-200', description: 'Initial recording of the site observation.' },
-  'Resolution': { label: 'Resolution', icon: FileCheck, color: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-800 border-emerald-200', description: 'Immediate correction and containment actions.' },
-  'Investigation': { label: 'Investigation', icon: Search, color: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-800 border-emerald-200', description: 'Root cause analysis using 5-Whys methodology.' },
-  'Implementation': { label: 'Implementation', icon: Target, color: 'text-blue-600', badge: 'bg-blue-100 text-blue-800 border-blue-200', description: 'Long-term preventive action deployment.' },
-  'Effectiveness Review': { label: 'Effectiveness Review', icon: CheckCircle, color: 'text-indigo-600', badge: 'bg-indigo-100 text-indigo-800 border-indigo-200', description: 'Validation that actions prevented recurrence.' },
-  'Reference': { label: 'Reference', icon: FileSearch, color: 'text-blue-600', badge: 'bg-blue-100 text-blue-800 border-blue-200', description: 'Technical archiving of documentation.' },
-  'Closure': { label: 'Closure', icon: Lock, color: 'text-slate-600', badge: 'bg-slate-100 text-slate-800 border-slate-200', description: 'Final organizational sign-off.' },
+  'Initiation': { label: 'Initiation', icon: Plus, color: 'text-slate-600', badge: 'bg-slate-100 text-slate-700', description: 'Initial recording of the site observation.' },
+  'Resolution': { label: 'Resolution', icon: FileCheck, color: 'text-emerald-600', badge: 'bg-emerald-50 text-emerald-700', description: 'Immediate correction and containment actions.' },
+  'Investigation': { label: 'Investigation', icon: Search, color: 'text-blue-600', badge: 'bg-blue-50 text-blue-700', description: 'Root cause analysis using 5-Whys methodology.' },
+  'Implementation': { label: 'Implementation', icon: Target, color: 'text-indigo-600', badge: 'bg-indigo-50 text-indigo-700', description: 'Long-term preventive action deployment.' },
+  'Effectiveness Review': { label: 'Effectiveness Review', icon: CheckCircle, color: 'text-amber-600', badge: 'bg-amber-50 text-amber-700', description: 'Validation that actions prevented recurrence.' },
+  'Reference': { label: 'Reference', icon: FileSearch, color: 'text-slate-600', badge: 'bg-slate-50 text-slate-700', description: 'Technical archiving of documentation.' },
+  'Closure': { label: 'Closure', icon: Lock, color: 'text-slate-900', badge: 'bg-slate-900 text-white', description: 'Final organizational sign-off and closure.' },
 };
 
 const observationSchema = z.object({
@@ -177,21 +177,8 @@ export default function EhsObservationsPage() {
     const stages = Object.keys(stageConfig) as CapaStage[];
     const currentIndex = stages.indexOf(viewingObservation.currentStage);
     const next = stages[currentIndex + 1];
-    return next ? `MOVE TO ${next.toUpperCase()}` : 'CLOSE CASE';
+    return next ? `PROCEED TO ${next.toUpperCase()}` : 'CLOSE CAPA CYCLE';
   }, [viewingObservation]);
-
-  const imageContainerRef = useRef<HTMLDivElement>(null);
-  const handleMouseDown = (e: MouseEvent<HTMLDivElement>) => {
-    if (zoom <= 1) return;
-    e.preventDefault();
-    setIsPanning(true);
-    setStartPosition({ x: e.clientX - translate.x, y: e.clientY - translate.y });
-  };
-  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
-    if (!isPanning || !imageContainerRef.current) return;
-    e.preventDefault();
-    setTranslate({ x: e.clientX - startPosition.x, y: e.clientY - startPosition.y });
-  };
 
   if (viewingObservation && activeViewStage) {
     const activeStageIdx = Object.keys(stageConfig).indexOf(viewingObservation.currentStage);
@@ -200,77 +187,77 @@ export default function EhsObservationsPage() {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="flex justify-between items-center bg-white p-6 rounded-2xl border-2 border-slate-200 shadow-md">
-                <div className="flex items-center gap-6">
-                    <Button variant="outline" onClick={() => setViewingObservation(null)} className="h-12 w-12 p-0 rounded-2xl border-2 border-slate-200 hover:bg-slate-100">
-                        <ChevronLeft className="h-6 w-6 text-slate-900" />
+            {/* Action Bar */}
+            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" onClick={() => setViewingObservation(null)} className="h-10 w-10 p-0 rounded-lg hover:bg-slate-100">
+                        <ChevronLeft className="h-5 w-5 text-slate-600" />
                     </Button>
                     <div>
-                        <div className="flex items-center gap-3 mb-1">
-                            <span className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em] bg-slate-100 px-2 py-0.5 rounded">
+                        <div className="flex items-center gap-3">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                                 CASE ID: {viewingObservation.id.slice(-8).toUpperCase()}
                             </span>
-                            <Badge variant="outline" className={cn("font-black text-[10px] h-5 px-3 border-2 uppercase tracking-widest", severityColors[viewingObservation.severity])}>
-                                {viewingObservation.severity} SEVERITY
+                            <Badge variant="outline" className={cn("text-[9px] font-bold h-4 px-2 uppercase border-2", severityConfig[viewingObservation.severity].border, severityConfig[viewingObservation.severity].text)}>
+                                {viewingObservation.severity}
                             </Badge>
                         </div>
-                        <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight leading-none">{viewingObservation.description}</h1>
+                        <h1 className="text-xl font-bold text-slate-900 tracking-tight mt-0.5">{viewingObservation.description}</h1>
                     </div>
                 </div>
-                <div className="flex items-center gap-3">
-                    <Button variant="outline" className="h-12 rounded-2xl border-2 border-slate-200 font-black text-[10px] uppercase tracking-widest px-6 shadow-sm">
-                        <Download className="mr-2 h-4 w-4" /> Export Report
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" className="font-bold text-xs">
+                        <Download className="mr-2 h-4 w-4" /> PDF Report
                     </Button>
-                    <div className={cn("h-12 px-6 rounded-2xl font-black uppercase tracking-widest text-[11px] border-2 flex items-center shadow-md", stageConfig[viewingObservation.currentStage].badge)}>
-                        CURRENT STAGE: {viewingObservation.currentStage}
-                    </div>
+                    <Badge className={cn("h-8 px-4 rounded-lg font-bold uppercase text-[10px] tracking-widest", stageConfig[viewingObservation.currentStage].badge)}>
+                        {viewingObservation.currentStage}
+                    </Badge>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-[380px,1fr] gap-8 items-start">
-                <div className="space-y-8">
-                    <Card className="rounded-[2rem] border-2 border-slate-200 shadow-lg overflow-hidden">
-                        <CardHeader className="bg-slate-900 text-white p-6">
-                            <CardTitle className="text-[11px] font-black uppercase tracking-[0.3em] flex items-center gap-3">
-                                <FileText className="h-4 w-4" /> Case Discovery Dossier
+            <div className="grid grid-cols-1 lg:grid-cols-[340px,1fr] gap-6 items-start">
+                {/* Left Sidebar: Dossier & Nav */}
+                <div className="space-y-6">
+                    <Card className="rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <CardHeader className="bg-slate-50 border-b p-4">
+                            <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-900 flex items-center gap-2">
+                                <FileText className="h-3.5 w-3.5 text-slate-500" /> Finding Dossier
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-8 space-y-8 bg-white text-left">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Initial Finding Narrative</Label>
-                                <p className="text-lg font-black text-slate-800 leading-tight uppercase tracking-tight italic border-l-4 border-slate-200 pl-4">"{viewingObservation.description}"</p>
+                        <CardContent className="p-5 space-y-6 bg-white text-left">
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-bold uppercase text-slate-400 tracking-widest">Initial Finding</Label>
+                                <p className="text-sm font-semibold text-slate-800 leading-snug border-l-2 border-slate-200 pl-3">"{viewingObservation.description}"</p>
                             </div>
-                            <Separator className="bg-slate-100" />
-                            <div className="space-y-6">
+                            <div className="grid grid-cols-1 gap-4 pt-2">
                                 <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Reporting Officer</span>
-                                    <div className="flex items-center gap-3">
-                                        <Avatar className="h-8 w-8 border-2 border-slate-200">
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Reporter</span>
+                                    <div className="flex items-center gap-2">
+                                        <Avatar className="h-6 w-6 border">
                                             <AvatarImage src={reporter?.avatar} />
-                                            <AvatarFallback className="text-[10px] font-black bg-slate-100 text-slate-600">{reporter?.name?.[0]}</AvatarFallback>
+                                            <AvatarFallback className="text-[10px] font-bold bg-slate-50">{reporter?.name?.[0]}</AvatarFallback>
                                         </Avatar>
-                                        <span className="text-sm font-black text-slate-900 uppercase">{reporter?.name}</span>
+                                        <span className="text-xs font-bold text-slate-900">{reporter?.name}</span>
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Site / Area</span>
-                                    <span className="text-sm font-black text-slate-900 uppercase">{site?.name} &middot; {viewingObservation.location}</span>
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Site Location</span>
+                                    <span className="text-xs font-bold text-slate-900">{site?.name} &middot; {viewingObservation.location}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Submission Date</span>
-                                    <span className="text-sm font-black text-slate-900 uppercase">{format(parseISO(viewingObservation.createdAt), 'dd MMM yyyy, p')}</span>
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Logged On</span>
+                                    <span className="text-xs font-bold text-slate-900">{format(parseISO(viewingObservation.createdAt), 'dd MMM yyyy, p')}</span>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-[2rem] border-2 border-slate-200 shadow-lg bg-white text-left">
-                        <CardHeader className="p-6 pb-2">
-                            <CardTitle className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-900">Lifecycle Navigation</CardTitle>
-                            <p className="text-[10px] text-slate-500 font-bold uppercase">Click any stage below to review details</p>
+                    <Card className="rounded-xl border border-slate-200 shadow-sm bg-white text-left">
+                        <CardHeader className="p-4 pb-2 border-b bg-slate-50">
+                            <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-900">CAPA Lifecycle Progress</CardTitle>
                         </CardHeader>
-                        <CardContent className="p-6">
-                            <nav className="space-y-4">
+                        <CardContent className="p-3">
+                            <nav className="space-y-1">
                                 {Object.entries(stageConfig).map(([key, config], idx) => {
                                     const isDone = idx < activeStageIdx;
                                     const isActive = idx === activeStageIdx;
@@ -283,27 +270,26 @@ export default function EhsObservationsPage() {
                                             disabled={isLocked}
                                             onClick={() => setActiveViewStage(key as CapaStage)}
                                             className={cn(
-                                                "w-full flex items-center gap-4 p-3 rounded-2xl border-2 transition-all group",
-                                                isCurrentView ? "bg-slate-900 border-slate-900 shadow-md translate-x-2" : "bg-white border-slate-100 hover:border-slate-300",
-                                                isLocked && "opacity-40 grayscale cursor-not-allowed border-dashed"
+                                                "w-full flex items-center gap-3 p-2.5 rounded-lg border transition-all group",
+                                                isCurrentView ? "bg-slate-900 border-slate-900 shadow-sm text-white" : "bg-white border-transparent hover:bg-slate-50",
+                                                isLocked && "opacity-40 grayscale cursor-not-allowed"
                                             )}
                                         >
                                             <div className={cn(
-                                                "w-8 h-8 rounded-xl flex items-center justify-center border-2 shrink-0 transition-colors",
+                                                "w-6 h-6 rounded-md flex items-center justify-center border shrink-0 transition-colors",
                                                 isDone ? "bg-emerald-500 border-emerald-500 text-white" :
                                                 isActive ? "bg-white border-blue-600 text-blue-600" :
                                                 "border-slate-200 text-slate-400",
                                                 isCurrentView && "bg-white border-white text-slate-900"
                                             )}>
-                                                {isDone ? <Check className="h-4 w-4" /> : <span className="text-[10px] font-black">{idx + 1}</span>}
+                                                {isDone ? <Check className="h-3.5 w-3.5" /> : <span className="text-[9px] font-bold">{idx + 1}</span>}
                                             </div>
                                             <div className="text-left flex-1 min-w-0">
                                                 <span className={cn(
-                                                    "block text-[10px] font-black uppercase tracking-widest",
+                                                    "block text-[10px] font-bold uppercase tracking-widest",
                                                     isCurrentView ? "text-white" : isDone ? "text-emerald-600" : isActive ? "text-blue-600" : "text-slate-400"
                                                 )}>{config.label}</span>
                                             </div>
-                                            {!isLocked && !isCurrentView && <ChevronRight className="h-4 w-4 text-slate-300 group-hover:translate-x-1 transition-transform" />}
                                         </button>
                                     )
                                 })}
@@ -312,17 +298,17 @@ export default function EhsObservationsPage() {
                     </Card>
                 </div>
 
-                <div className="space-y-8">
-                    <Card className="rounded-[3rem] border-2 border-slate-200 shadow-2xl overflow-hidden min-h-[700px] flex flex-col bg-white text-left">
-                        <div className="p-10 bg-slate-50 border-b-2 flex justify-between items-center">
-                            <div className="flex items-center gap-5">
-                                <div className="p-4 bg-white rounded-2xl shadow-md border-2 border-slate-200">
-                                    {React.createElement(stageConfig[activeViewStage].icon, { className: "h-8 w-8 text-blue-600" })}
+                {/* Right Workspace: Active Stage Content */}
+                <div className="space-y-6">
+                    <Card className="rounded-xl border border-slate-200 shadow-sm min-h-[600px] flex flex-col bg-white text-left">
+                        <div className="p-6 bg-slate-50 border-b flex justify-between items-center">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-white rounded-lg shadow-sm border">
+                                    {React.createElement(stageConfig[activeViewStage].icon, { className: "h-6 w-6 text-blue-600" })}
                                 </div>
                                 <div>
-                                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Active Lifecycle Workspace</h3>
-                                    <p className="text-2xl font-black text-slate-900 uppercase tracking-tight">{activeViewStage}</p>
-                                    <p className="text-sm text-slate-600 font-bold mt-1">{stageConfig[activeViewStage].description}</p>
+                                    <p className="text-2xl font-bold text-slate-900 tracking-tight">{activeViewStage}</p>
+                                    <p className="text-xs text-slate-500 font-medium">{stageConfig[activeViewStage].description}</p>
                                 </div>
                             </div>
                             
@@ -330,39 +316,37 @@ export default function EhsObservationsPage() {
                              activeViewStage === viewingObservation.currentStage && 
                              viewingObservation.status !== 'Closed' && (
                                 <Button 
-                                    className="bg-blue-600 hover:bg-blue-700 text-white h-14 rounded-2xl px-10 font-black uppercase tracking-widest text-[11px] shadow-xl shadow-blue-600/20 active:scale-95 transition-all"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white h-11 rounded-lg px-8 font-bold uppercase tracking-wider text-[10px] shadow-md shadow-blue-600/10 active:scale-95 transition-all"
                                     onClick={handleNextStage}
                                 >
-                                    {nextStageLabel} <ArrowRight className="ml-3 h-5 w-5" />
+                                    {nextStageLabel} <ArrowRight className="ml-2 h-4 w-4" />
                                 </Button>
                             )}
 
                             {activeViewStage !== viewingObservation.currentStage && (
-                                <Badge className="h-10 px-6 bg-slate-200 text-slate-600 font-black text-[10px] uppercase tracking-widest rounded-xl">
-                                    READ-ONLY ARCHIVE VIEW
+                                <Badge variant="secondary" className="h-8 px-4 font-bold text-[9px] uppercase tracking-widest rounded-lg border-2">
+                                    ARCHIVE VIEW
                                 </Badge>
                             )}
                         </div>
 
                         <ScrollArea className="flex-1">
-                            <div className="p-12">
+                            <div className="p-8">
                                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                                     {activeViewStage === 'Initiation' && (
-                                        <div className="p-10 border-4 border-dashed border-slate-100 rounded-[3rem] text-center space-y-6">
-                                            <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center mx-auto shadow-inner">
-                                                <Plus className="h-12 w-12 text-emerald-600" />
-                                            </div>
-                                            <div className="space-y-4 max-w-xl mx-auto">
-                                                <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Stage 1: Observation Logged</h3>
-                                                <p className="text-slate-700 text-base font-bold leading-relaxed">This case was initiated by the reporting officer. The original findings have been permanently locked in the dossier on the left for legal and organizational integrity.</p>
-                                                <div className="pt-8 grid grid-cols-2 gap-4">
-                                                    <div className="p-4 bg-slate-50 rounded-2xl">
-                                                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-1">Severity</span>
-                                                        <Badge variant="outline" className={cn("font-black text-[10px] border-2", severityColors[viewingObservation.severity])}>{viewingObservation.severity}</Badge>
+                                        <div className="space-y-8">
+                                            <div className="p-6 border rounded-xl bg-slate-50/50">
+                                                <h3 className="text-sm font-bold uppercase tracking-widest text-slate-900 mb-4">Original Site Report</h3>
+                                                <div className="grid grid-cols-2 gap-8">
+                                                    <div className="space-y-1">
+                                                        <Label className="text-[9px] font-bold uppercase text-slate-400">Risk Severity</Label>
+                                                        <Badge variant="outline" className={cn("font-bold text-[10px] border-2", severityConfig[viewingObservation.severity].border, severityConfig[viewingObservation.severity].text)}>
+                                                            {viewingObservation.severity}
+                                                        </Badge>
                                                     </div>
-                                                    <div className="p-4 bg-slate-50 rounded-2xl">
-                                                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-1">Category</span>
-                                                        <Badge variant="outline" className="font-black text-[10px] border-2 border-slate-200">{viewingObservation.category}</Badge>
+                                                    <div className="space-y-1">
+                                                        <Label className="text-[9px] font-bold uppercase text-slate-400">Finding Category</Label>
+                                                        <p className="text-xs font-bold text-slate-900">{viewingObservation.category}</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -370,41 +354,40 @@ export default function EhsObservationsPage() {
                                     )}
 
                                     {activeViewStage === 'Resolution' && (
-                                        <div className="space-y-8">
-                                            <div className="space-y-4">
-                                                <Label className="text-sm font-black text-slate-900 uppercase tracking-[0.2em] ml-2">Documented Immediate Correction:</Label>
+                                        <div className="space-y-6">
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-bold text-slate-900 uppercase tracking-widest ml-1">Documented Correction Action</Label>
                                                 <Textarea 
-                                                    className="min-h-[180px] rounded-[2rem] p-8 text-xl font-black text-slate-900 border-4 border-slate-100 focus-visible:ring-emerald-500/20 bg-slate-50/50 shadow-inner" 
+                                                    className="min-h-[140px] rounded-xl p-4 text-sm font-bold text-slate-900 border-2 border-slate-100 focus-visible:ring-emerald-500/20 bg-slate-50/50" 
                                                     placeholder="Specify the exact steps taken to contain the hazard immediately..."
                                                     value={actionPlan}
                                                     onChange={(e) => setActionPlan(e.target.value)}
                                                     disabled={activeViewStage !== viewingObservation.currentStage}
                                                 />
                                             </div>
-                                            <Alert className="bg-emerald-50 border-emerald-100 rounded-2xl py-6">
-                                                <AlertCircle className="h-5 w-5 text-emerald-600" />
-                                                <AlertTitle className="text-emerald-900 font-black uppercase text-xs tracking-widest">Correction Standards</AlertTitle>
-                                                <AlertDescription className="text-emerald-800 font-bold text-sm mt-1">Immediate actions should resolve the instant danger while the root cause investigation is pending.</AlertDescription>
+                                            <Alert className="bg-emerald-50 border-emerald-100 rounded-xl py-4">
+                                                <AlertCircle className="h-4 w-4 text-emerald-600" />
+                                                <AlertTitle className="text-[9px] font-bold uppercase text-emerald-900 tracking-widest">Correction Standards</AlertTitle>
+                                                <AlertDescription className="text-xs text-emerald-800 font-bold mt-0.5">Immediate actions should resolve the instant danger while the root cause investigation is pending.</AlertDescription>
                                             </Alert>
                                         </div>
                                     )}
 
                                     {activeViewStage === 'Investigation' && (
-                                        <div className="space-y-10">
-                                            <div className="flex items-center gap-4 mb-4 bg-slate-900 text-white p-4 rounded-2xl w-fit">
-                                                <Zap className="h-5 w-5 text-yellow-400 fill-yellow-400" />
-                                                <span className="font-black text-[11px] uppercase tracking-[0.2em]">Scientific Method: 5-Whys Deep Probe</span>
+                                        <div className="space-y-8">
+                                            <div className="flex items-center gap-2 mb-4 bg-slate-900 text-white px-3 py-1.5 rounded-lg w-fit">
+                                                <Zap className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400" />
+                                                <span className="font-bold text-[9px] uppercase tracking-widest">5-Whys Root Cause Analysis</span>
                                             </div>
-                                            <div className="space-y-6">
+                                            <div className="space-y-4">
                                                 {rcaWhys.map((why, i) => (
-                                                    <div key={i} className="flex gap-6 items-center">
-                                                        <div className="w-14 h-14 rounded-2xl bg-slate-100 border-2 border-slate-200 flex flex-col items-center justify-center shrink-0 shadow-sm">
-                                                            <span className="text-[9px] font-black text-slate-400 uppercase leading-none mb-0.5">LEVEL</span>
-                                                            <span className="text-xl font-black text-slate-900">0{i+1}</span>
+                                                    <div key={i} className="flex gap-4 items-center">
+                                                        <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex flex-col items-center justify-center shrink-0">
+                                                            <span className="text-[10px] font-bold text-slate-900">0{i+1}</span>
                                                         </div>
                                                         <Input 
-                                                            className="h-14 rounded-2xl text-lg font-black text-slate-900 border-2 border-slate-100 bg-white focus-visible:ring-blue-600/20 shadow-sm"
-                                                            placeholder={`Ask WHY did the level ${i} failure occur?`}
+                                                            className="h-10 rounded-lg text-sm font-bold text-slate-900 border-2 border-slate-50 bg-white focus-visible:ring-blue-600/20"
+                                                            placeholder={`Ask why did the level ${i} failure occur?`}
                                                             value={why}
                                                             onChange={(e) => {
                                                                 const next = [...rcaWhys];
@@ -416,10 +399,10 @@ export default function EhsObservationsPage() {
                                                     </div>
                                                 ))}
                                             </div>
-                                            <div className="mt-12 pt-10 border-t-4 border-slate-100">
-                                                <Label className="text-xs font-black uppercase text-rose-600 tracking-[0.3em] ml-4">Root Cause Identification</Label>
+                                            <div className="mt-8 pt-6 border-t border-slate-100">
+                                                <Label className="text-[10px] font-bold uppercase text-rose-600 tracking-widest ml-1">Root Cause Identification</Label>
                                                 <Textarea 
-                                                    className="mt-4 min-h-[140px] rounded-[2.5rem] p-10 text-2xl font-black text-slate-900 border-4 border-rose-500/10 shadow-2xl bg-rose-50/20" 
+                                                    className="mt-2 min-h-[100px] rounded-xl p-4 text-lg font-bold text-slate-900 border-2 border-rose-500/10 bg-rose-50/20" 
                                                     placeholder="Synthesize the findings into a single core failure..." 
                                                     value={finalRootCause}
                                                     onChange={(e) => setFinalRootCause(e.target.value)}
@@ -430,22 +413,22 @@ export default function EhsObservationsPage() {
                                     )}
 
                                     {activeViewStage === 'Implementation' && (
-                                        <div className="space-y-12">
-                                            <div className="space-y-4">
-                                                <Label className="text-sm font-black text-slate-900 uppercase tracking-[0.2em] ml-4">Long-Term Preventive Strategy</Label>
+                                        <div className="space-y-8">
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-bold text-slate-900 uppercase tracking-widest ml-1">Long-Term Preventive Strategy</Label>
                                                 <Textarea 
-                                                    className="min-h-[220px] rounded-[3rem] p-10 text-xl font-black text-slate-900 border-4 border-blue-100 shadow-inner bg-blue-50/10" 
+                                                    className="min-h-[180px] rounded-xl p-6 text-sm font-bold text-slate-900 border-2 border-blue-50 bg-slate-50/30" 
                                                     placeholder="Define systemic organizational changes to ensure this specific failure never recurs..."
                                                     value={actionPlan}
                                                     onChange={(e) => setActionPlan(e.target.value)}
                                                     disabled={activeViewStage !== viewingObservation.currentStage}
                                                 />
                                             </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                                <div className="space-y-3">
-                                                    <Label className="text-[11px] font-black uppercase text-slate-400 tracking-[0.3em] ml-6">Action Owner</Label>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="space-y-2">
+                                                    <Label className="text-[9px] font-bold uppercase text-slate-400 tracking-widest ml-1">Action Owner</Label>
                                                     <Select onValueChange={setActionOwnerId} value={actionOwnerId} disabled={activeViewStage !== viewingObservation.currentStage}>
-                                                        <SelectTrigger className="h-16 rounded-[1.5rem] font-black text-slate-900 border-2 border-slate-100 px-8 bg-white shadow-sm text-base uppercase">
+                                                        <SelectTrigger className="h-10 rounded-lg font-bold text-slate-900 border-2 border-slate-50 bg-white">
                                                             <SelectValue placeholder="Select stage manager" />
                                                         </SelectTrigger>
                                                         <SelectContent>
@@ -453,11 +436,11 @@ export default function EhsObservationsPage() {
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
-                                                <div className="space-y-3">
-                                                    <Label className="text-[11px] font-black uppercase text-slate-400 tracking-[0.3em] ml-6">Target Date</Label>
+                                                <div className="space-y-2">
+                                                    <Label className="text-[9px] font-bold uppercase text-slate-400 tracking-widest ml-1">Target Date</Label>
                                                     <Input 
                                                         type="date" 
-                                                        className="h-16 rounded-[1.5rem] font-black text-slate-900 border-2 border-slate-100 px-8 bg-white shadow-sm text-base" 
+                                                        className="h-10 rounded-lg font-bold text-slate-900 border-2 border-slate-50 bg-white" 
                                                         value={dueDate} 
                                                         onChange={e => setDueDate(e.target.value)} 
                                                         disabled={activeViewStage !== viewingObservation.currentStage}
@@ -468,44 +451,46 @@ export default function EhsObservationsPage() {
                                     )}
 
                                     {activeViewStage === 'Effectiveness Review' && (
-                                        <div className="space-y-10">
-                                            <div className="space-y-4">
-                                                <Label className="text-sm font-black text-slate-900 uppercase tracking-[0.2em] ml-4">Validation Audit Evidence</Label>
+                                        <div className="space-y-8">
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-bold text-slate-900 uppercase tracking-widest ml-1">Validation Audit Evidence</Label>
                                                 <Textarea 
-                                                    className="min-h-[200px] rounded-[3rem] p-10 text-xl font-bold text-slate-900 border-4 border-slate-100 bg-slate-50/30" 
-                                                    placeholder="Document objective evidence (Audit No., Photo Ref., etc.) that the preventive action is functioning as designed..."
+                                                    className="min-h-[140px] rounded-xl p-6 text-sm font-bold text-slate-900 border-2 border-slate-100 bg-slate-50/20" 
+                                                    placeholder="Document objective evidence that the preventive action is functioning as designed..."
                                                     value={verificationResult}
                                                     onChange={(e) => setVerificationResult(e.target.value)}
                                                     disabled={activeViewStage !== viewingObservation.currentStage}
                                                 />
                                             </div>
-                                            <div className="p-10 bg-slate-900 rounded-[3rem] border-2 border-slate-800 flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl">
+                                            <div className="p-6 bg-slate-900 rounded-xl border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-6">
                                                 <div className="text-center md:text-left">
-                                                    <h4 className="text-lg font-black text-white uppercase tracking-tight">Final Verification Verdict</h4>
-                                                    <p className="text-xs text-slate-400 font-bold uppercase mt-1">Has the organizational risk been structurally mitigated?</p>
+                                                    <h4 className="text-sm font-bold text-white uppercase tracking-wider">Final Verification Verdict</h4>
+                                                    <p className="text-[10px] text-slate-400 font-medium uppercase mt-0.5">Has the risk been mitigated?</p>
                                                 </div>
-                                                <div className="flex gap-4">
+                                                <div className="flex gap-2">
                                                     <Button 
+                                                        size="sm"
                                                         variant={isSuccess ? 'default' : 'outline'} 
                                                         className={cn(
-                                                            "h-14 px-10 rounded-2xl font-black uppercase tracking-widest text-[11px] border-2", 
-                                                            isSuccess ? "bg-emerald-600 border-emerald-600 text-white shadow-xl shadow-emerald-600/30" : "bg-transparent border-white/20 text-white hover:bg-white/10"
+                                                            "h-9 px-6 rounded-lg font-bold uppercase tracking-widest text-[9px] border-2", 
+                                                            isSuccess ? "bg-emerald-600 border-emerald-600 text-white" : "bg-transparent border-white/20 text-white hover:bg-white/10"
                                                         )} 
                                                         onClick={() => setIsSuccess(true)}
                                                         disabled={activeViewStage !== viewingObservation.currentStage}
                                                     >
-                                                        <CheckCircle2 className="mr-3 h-5 w-5" /> PASSED
+                                                        <CheckCircle2 className="mr-2 h-4 w-4" /> PASSED
                                                     </Button>
                                                     <Button 
+                                                        size="sm"
                                                         variant={!isSuccess ? 'destructive' : 'outline'} 
                                                         className={cn(
-                                                            "h-14 px-10 rounded-2xl font-black uppercase tracking-widest text-[11px] border-2",
+                                                            "h-9 px-6 rounded-lg font-bold uppercase tracking-widest text-[9px] border-2",
                                                             !isSuccess ? "bg-rose-600 border-rose-600 text-white" : "bg-transparent border-white/20 text-white hover:bg-white/10"
                                                         )} 
                                                         onClick={() => setIsSuccess(false)}
                                                         disabled={activeViewStage !== viewingObservation.currentStage}
                                                     >
-                                                        <XCircle className="mr-3 h-5 w-5" /> FAILED
+                                                        <XCircle className="mr-2 h-4 w-4" /> FAILED
                                                     </Button>
                                                 </div>
                                             </div>
@@ -513,29 +498,28 @@ export default function EhsObservationsPage() {
                                     )}
 
                                     {activeViewStage === 'Reference' && (
-                                        <div className="p-24 border-4 border-dashed border-slate-100 rounded-[4rem] text-center space-y-8 bg-slate-50/30">
-                                            <div className="w-24 h-24 bg-white rounded-[2rem] flex items-center justify-center mx-auto shadow-xl border-2 border-slate-100">
-                                                <Archive className="h-10 w-10 text-blue-600" />
+                                        <div className="py-20 border-2 border-dashed border-slate-100 rounded-xl text-center space-y-6 bg-slate-50/20">
+                                            <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center mx-auto shadow-sm border border-slate-100">
+                                                <Archive className="h-8 w-8 text-blue-600" />
                                             </div>
-                                            <div className="space-y-4 max-w-lg mx-auto">
-                                                <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Technical Archiving</h3>
-                                                <p className="text-sm text-slate-700 font-bold leading-relaxed uppercase">Ensure all relevant evidence, training records, and revised SOPs are attached to the digital dossier before organizational sign-off and closure.</p>
+                                            <div className="space-y-2 max-w-sm mx-auto px-4">
+                                                <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Technical Archiving</h3>
+                                                <p className="text-xs text-slate-500 font-bold leading-relaxed uppercase tracking-wider">Finalize documentation andrevised SOPs before organizational closure.</p>
                                             </div>
                                         </div>
                                     )}
 
                                     {activeViewStage === 'Closure' && (
-                                        <div className="p-24 bg-emerald-600 rounded-[5rem] text-center space-y-10 shadow-[0_30px_60px_-12px_rgba(5,150,105,0.4)] animate-in zoom-in-95 duration-700">
-                                            <div className="w-28 h-24 bg-white rounded-full flex items-center justify-center mx-auto shadow-2xl border-8 border-emerald-500/20">
-                                                <CheckCircle2 className="h-16 w-16 text-emerald-600" />
+                                        <div className="py-24 bg-slate-900 rounded-xl text-center space-y-8 animate-in zoom-in-95 duration-700">
+                                            <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
+                                                <CheckCircle2 className="h-10 w-10 text-white" />
                                             </div>
-                                            <div className="space-y-4 text-white text-center">
-                                                <h3 className="text-5xl font-black uppercase tracking-tighter">CAPA CYCLE CLOSED</h3>
-                                                <p className="text-emerald-50 text-xl font-bold opacity-80 uppercase tracking-wide">Organizational Sign-off Completed</p>
-                                                <div className="pt-12 flex flex-col items-center gap-4">
-                                                    <span className="text-[10px] font-black uppercase tracking-[0.5em] text-emerald-200">Final Verification Timestamp</span>
-                                                    <Badge className="bg-emerald-700 text-white font-black text-[10px] px-8 py-2 rounded-xl shadow-lg">
-                                                        {viewingObservation.closedAt ? format(parseISO(viewingObservation.closedAt), 'PPP p') : 'N/A'}
+                                            <div className="space-y-2 text-white">
+                                                <h3 className="text-3xl font-bold uppercase tracking-tight">CAPA CYCLE CLOSED</h3>
+                                                <p className="text-emerald-400 text-xs font-bold uppercase tracking-widest">Organizational Verification Complete</p>
+                                                <div className="pt-8">
+                                                    <Badge className="bg-slate-800 text-slate-400 font-bold text-[9px] px-4 py-1 rounded-md">
+                                                        {viewingObservation.closedAt ? format(parseISO(viewingObservation.closedAt), 'dd MMM yyyy p') : 'N/A'}
                                                     </Badge>
                                                 </div>
                                             </div>
@@ -552,34 +536,34 @@ export default function EhsObservationsPage() {
   }
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-500 flex flex-col h-full overflow-hidden">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shrink-0">
-        <div className="text-left">
-          <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase leading-none">CAPA Master Tracker</h1>
-          <p className="text-slate-700 text-lg font-bold mt-2">Industrial lifecycle registry for site safety findings.</p>
+    <div className="space-y-8 animate-in fade-in duration-500 flex flex-col h-full overflow-hidden">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0 text-left">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight uppercase leading-none">CAPA Master Tracker</h1>
+          <p className="text-slate-500 text-sm font-semibold mt-1.5 uppercase tracking-wide">Organizational Registry for Safety Lifecycle Management.</p>
         </div>
         
         <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-[0.15em] h-16 px-12 rounded-3xl shadow-2xl shadow-emerald-600/20 active:scale-95 transition-all text-xs">
-              <Plus className="mr-3 h-6 w-6" /> REGISTER NEW FINDING
+            <Button className="bg-slate-900 hover:bg-slate-800 text-white font-bold h-10 px-8 rounded-lg shadow-sm active:scale-95 transition-all text-xs tracking-wider">
+              <Plus className="mr-2 h-4 w-4" /> NEW FINDING
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-2xl bg-white border-2 border-slate-200 shadow-2xl rounded-[2.5rem]">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-black uppercase tracking-tight text-slate-900">Initiate Lifecycle Case</DialogTitle>
-              <DialogDescription className="text-slate-600 font-bold text-left">Log a new site observation to trigger the organizational CAPA stream.</DialogDescription>
+          <DialogContent className="sm:max-w-xl bg-white border border-slate-200 shadow-2xl rounded-xl">
+            <DialogHeader className="text-left">
+              <DialogTitle className="text-lg font-bold uppercase tracking-tight text-slate-900">Initiate Lifecycle Case</DialogTitle>
+              <DialogDescription className="text-slate-500 font-medium text-xs">Log a new site observation to trigger the CAPA workflow.</DialogDescription>
             </DialogHeader>
-            <form onSubmit={form.handleSubmit(onReportSubmit)} className="space-y-8 py-6 text-left">
-               <div className="grid grid-cols-2 gap-8">
-                  <div className="space-y-2">
-                    <Label className="text-slate-900 font-black text-[10px] uppercase tracking-widest ml-1">Finding Category</Label>
+            <form onSubmit={form.handleSubmit(onReportSubmit)} className="space-y-6 py-4 text-left">
+               <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest ml-0.5">Finding Category</Label>
                     <Controller
                       control={form.control}
                       name="category"
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="h-14 rounded-2xl font-black border-2 border-slate-100 shadow-sm text-slate-900 uppercase">
+                          <SelectTrigger className="h-10 rounded-lg font-bold border-slate-200 text-slate-900">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -593,21 +577,21 @@ export default function EhsObservationsPage() {
                       )}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-slate-900 font-black text-[10px] uppercase tracking-widest ml-1">Risk Severity Assessment</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest ml-0.5">Severity</Label>
                     <Controller
                       control={form.control}
                       name="severity"
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="h-14 rounded-2xl font-black border-2 border-slate-100 shadow-sm text-slate-900 uppercase">
+                          <SelectTrigger className="h-10 rounded-lg font-bold border-slate-200 text-slate-900">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Low">Low Priority</SelectItem>
-                            <SelectItem value="Medium">Medium Priority</SelectItem>
-                            <SelectItem value="High">High Priority</SelectItem>
-                            <SelectItem value="Critical">Critical Priority</SelectItem>
+                            <SelectItem value="Low">Low</SelectItem>
+                            <SelectItem value="Medium">Medium</SelectItem>
+                            <SelectItem value="High">High</SelectItem>
+                            <SelectItem value="Critical">Critical</SelectItem>
                           </SelectContent>
                         </Select>
                       )}
@@ -615,15 +599,15 @@ export default function EhsObservationsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-8">
-                   <div className="space-y-2">
-                    <Label className="text-slate-900 font-black text-[10px] uppercase tracking-widest ml-1">Assigned Site / Project</Label>
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest ml-0.5">Site / Project</Label>
                     <Controller
                       control={form.control}
                       name="projectId"
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="h-14 rounded-2xl font-black border-2 border-slate-100 shadow-sm text-slate-900 uppercase">
+                          <SelectTrigger className="h-10 rounded-lg font-bold border-slate-200 text-slate-900">
                             <SelectValue placeholder="Select site..." />
                           </SelectTrigger>
                           <SelectContent>
@@ -635,135 +619,129 @@ export default function EhsObservationsPage() {
                       )}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-slate-900 font-black text-[10px] uppercase tracking-widest ml-1">Unit / Exact Location</Label>
-                    <Input {...form.register('location')} className="h-14 rounded-2xl font-black border-2 border-slate-100 shadow-sm text-slate-900 uppercase" placeholder="e.g., Tank 42" />
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest ml-0.5">Specific Location</Label>
+                    <Input {...form.register('location')} className="h-10 rounded-lg font-bold border-slate-200" placeholder="e.g., Tank 42" />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-slate-900 font-black text-[10px] uppercase tracking-widest ml-1">Detailed Observation narrative</Label>
-                  <Textarea {...form.register('description')} className="min-h-[160px] rounded-3xl p-6 font-bold border-2 border-slate-100 shadow-sm focus-visible:ring-emerald-500/20 text-slate-900" placeholder="State exactly what was observed..." />
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest ml-0.5">Detailed Narrative</Label>
+                  <Textarea {...form.register('description')} className="min-h-[120px] rounded-lg p-3 font-medium border-slate-200 focus-visible:ring-slate-100 text-slate-900 text-sm" placeholder="State exactly what was observed..." />
                 </div>
 
-                <DialogFooter className="pt-4 gap-4">
-                  <Button variant="outline" type="button" onClick={() => setIsReportDialogOpen(false)} className="h-14 rounded-2xl font-black px-10 border-2 border-slate-100 text-[10px] uppercase tracking-widest">Cancel Initiation</Button>
-                  <Button type="submit" className="bg-slate-900 hover:bg-black text-white font-black h-14 rounded-2xl px-12 shadow-xl uppercase tracking-widest text-[10px]">Open CAPA Case</Button>
+                <DialogFooter className="pt-4 gap-2">
+                  <Button variant="outline" type="button" onClick={() => setIsReportDialogOpen(false)} className="h-10 rounded-lg font-bold px-6 text-xs">CANCEL</Button>
+                  <Button type="submit" className="bg-slate-900 hover:bg-black text-white font-bold h-10 px-8 rounded-lg shadow-sm text-xs">OPEN CASE</Button>
                 </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      <Card className="bg-white border-2 border-slate-200 shadow-xl overflow-hidden rounded-[2rem] flex flex-col flex-1">
-        <div className="p-8 border-b-2 border-slate-100 flex flex-col md:flex-row justify-between items-center gap-8 bg-slate-50/50 shrink-0">
-            <div className="relative w-full max-w-2xl">
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-400" />
+      <Card className="bg-white border border-slate-200 shadow-sm overflow-hidden rounded-xl flex flex-col flex-1">
+        <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-50/50 shrink-0">
+            <div className="relative w-full max-w-xl">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input 
-                    placeholder="Search Tracker by Location, Case ID, or Narrative..." 
-                    className="pl-14 h-14 bg-white border-2 border-slate-200 rounded-2xl font-black text-slate-900 focus-visible:ring-emerald-500/20 shadow-sm text-sm uppercase tracking-tight"
+                    placeholder="Search Tracker by Narrative, Location or ID..." 
+                    className="pl-9 h-10 bg-white border-slate-200 rounded-lg font-semibold text-slate-900 text-xs uppercase tracking-tight"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
-            <div className="flex gap-6 items-center shrink-0">
-                <Badge variant="secondary" className="h-10 px-6 font-black uppercase tracking-[0.2em] text-[10px] bg-white border-2 border-slate-100">
-                    {filteredObservations.length} Indexed Cases
-                </Badge>
+            <div className="flex gap-4 items-center shrink-0">
+                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                    {filteredObservations.length} REGISTERED CASES
+                </span>
             </div>
         </div>
         
         <div className="flex-1 overflow-hidden relative">
           <ScrollArea className="h-full w-full">
-            <Table className="border-collapse text-[11px] font-sans">
-                <TableHeader className="bg-slate-900 sticky top-0 z-40">
-                    <TableRow className="hover:bg-transparent">
-                        <TableHead className="w-20 font-black uppercase text-[9px] tracking-widest text-white text-center h-12 border-r border-white/10 sticky left-0 z-50 bg-slate-900">ID</TableHead>
-                        <TableHead className="min-w-[250px] font-black uppercase text-[9px] tracking-widest text-white h-12 border-r border-white/10 px-4 sticky left-20 z-50 bg-slate-900 shadow-[2px_0_5px_rgba(0,0,0,0.2)]">Finding Narrative</TableHead>
-                        <TableHead className="w-32 font-black uppercase text-[9px] tracking-widest text-white h-12 border-r border-white/10 text-center">Category</TableHead>
-                        <TableHead className="w-28 font-black uppercase text-[9px] tracking-widest text-white h-12 border-r-2 border-white/20 text-center">Severity</TableHead>
+            <Table className="border-collapse text-[11px]">
+                <TableHeader className="bg-slate-100 sticky top-0 z-40">
+                    <TableRow className="hover:bg-transparent border-b border-slate-300">
+                        <TableHead className="w-16 font-bold uppercase text-[9px] tracking-widest text-slate-900 text-center h-10 border-r border-slate-300 sticky left-0 z-50 bg-slate-100">ID</TableHead>
+                        <TableHead className="min-w-[280px] font-bold uppercase text-[9px] tracking-widest text-slate-900 h-10 border-r border-slate-300 px-4 sticky left-16 z-50 bg-slate-100 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Finding Narrative</TableHead>
+                        <TableHead className="w-28 font-bold uppercase text-[9px] tracking-widest text-slate-900 h-10 border-r border-slate-300 text-center">Category</TableHead>
+                        <TableHead className="w-24 font-bold uppercase text-[9px] tracking-widest text-slate-900 h-10 border-r-2 border-slate-300 text-center">Severity</TableHead>
                         
-                        {/* LIFECYCLE COLUMNS */}
                         {Object.values(stageConfig).map(cfg => (
-                           <TableHead key={cfg.label} className="w-32 font-black uppercase text-[9px] tracking-widest text-white h-12 border-r border-white/10 text-center leading-tight">
+                           <TableHead key={cfg.label} className="w-28 font-bold uppercase text-[8px] tracking-tighter text-slate-600 h-10 border-r border-slate-200 text-center leading-tight">
                               {cfg.label.split(' ').join('\n')}
                            </TableHead>
                         ))}
 
-                        <TableHead className="w-24 text-right font-black uppercase text-[9px] tracking-widest text-white h-12 px-6 sticky right-0 z-50 bg-slate-900 shadow-[-2px_0_5px_rgba(0,0,0,0.2)]">Registry</TableHead>
+                        <TableHead className="w-24 text-right font-bold uppercase text-[9px] tracking-widest text-slate-900 h-10 px-4 sticky right-0 z-50 bg-slate-100 shadow-[-2px_0_5px_rgba(0,0,0,0.05)]">Action</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    <TooltipProvider>
                     {filteredObservations.map((obs) => {
                         const site = projects.find(p => p.id === obs.projectId);
                         const stages = Object.keys(stageConfig) as CapaStage[];
                         const currentStageIdx = stages.indexOf(obs.currentStage);
 
                         return (
-                            <TableRow key={obs.id} className="group hover:bg-blue-50/50 transition-colors border-b border-slate-200">
-                                <TableCell className="text-center font-mono text-[9px] font-black text-slate-900 border-r border-slate-200 bg-slate-50/20 sticky left-0 z-20">
+                            <TableRow key={obs.id} className="group hover:bg-blue-50/30 transition-colors border-b border-slate-200">
+                                <TableCell className="text-center font-mono text-[10px] font-bold text-slate-600 border-r border-slate-200 sticky left-0 z-20 bg-slate-50/20">
                                   {obs.id.slice(-5).toUpperCase()}
                                 </TableCell>
-                                <TableCell className="border-r border-slate-200 px-4 py-4 text-left sticky left-20 z-20 bg-white group-hover:bg-blue-50/50 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                    <div className="flex flex-col gap-1">
-                                        <p className="font-black text-slate-900 text-xs leading-tight uppercase tracking-tight line-clamp-1">{obs.description}</p>
-                                        <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                                            <MapPin className="h-2.5 w-2.5 text-blue-600" /> {site?.name} &middot; {obs.location}
+                                <TableCell className="border-r border-slate-200 px-4 py-3 text-left sticky left-16 z-20 bg-white group-hover:bg-slate-50 transition-colors">
+                                    <div className="flex flex-col gap-0.5">
+                                        <p className="font-bold text-slate-900 text-xs leading-tight tracking-tight line-clamp-1">{obs.description}</p>
+                                        <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                            <MapPin className="h-2 w-2 text-slate-400" /> {site?.name} &middot; {obs.location}
                                         </div>
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-center border-r border-slate-200">
-                                    <Badge variant="outline" className="text-[9px] font-black uppercase tracking-tight h-5 px-2 bg-white border-2 border-slate-100 text-slate-700">
+                                    <span className="text-[9px] font-bold uppercase tracking-tight text-slate-600">
                                         {obs.category}
-                                    </Badge>
+                                    </span>
                                 </TableCell>
                                 <TableCell className="text-center border-r-2 border-slate-300">
-                                    <Badge variant="outline" className={cn("text-[9px] font-black uppercase tracking-widest h-5 px-2 border-2", severityColors[obs.severity])}>
+                                    <Badge variant="outline" className={cn("text-[9px] font-bold uppercase tracking-widest h-4 px-2 border", severityConfig[obs.severity].border, severityConfig[obs.severity].text)}>
                                         {obs.severity}
                                     </Badge>
                                 </TableCell>
 
-                                {/* LIFECYCLE CELLS */}
                                 {stages.map((stage, idx) => {
                                   const isDone = idx < currentStageIdx || obs.status === 'Closed';
                                   const isActive = idx === currentStageIdx && obs.status !== 'Closed';
                                   
                                   return (
                                     <TableCell key={stage} className={cn(
-                                      "border-r border-slate-200 text-center p-0 h-full",
-                                      isActive && "bg-blue-50/30",
+                                      "border-r border-slate-200 text-center p-0",
+                                      isActive && "bg-blue-50/10",
                                       isDone && "bg-emerald-50/10"
                                     )}>
-                                       <div className="flex flex-col items-center justify-center gap-1 py-2">
+                                       <div className="flex items-center justify-center py-2">
                                           {isDone ? (
-                                            <div className="h-4 w-4 rounded-full bg-emerald-500 flex items-center justify-center text-white">
-                                              <Check className="h-2.5 w-2.5" />
-                                            </div>
+                                            <Check className="h-3.5 w-3.5 text-emerald-600" />
                                           ) : isActive ? (
-                                            <Badge className="bg-blue-600 text-white font-black text-[8px] h-4 py-0 px-1.5 animate-pulse">ACTION</Badge>
+                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
                                           ) : (
-                                            <div className="h-1.5 w-1.5 rounded-full bg-slate-200" />
+                                            <div className="w-1 h-1 rounded-full bg-slate-200" />
                                           )}
                                        </div>
                                     </TableCell>
                                   )
                                 })}
 
-                                <TableCell className="text-right px-4 sticky right-0 z-20 bg-white group-hover:bg-blue-50/50 shadow-[-2px_0_5px_rgba(0,0,0,0.05)] border-l border-slate-200">
+                                <TableCell className="text-right px-4 sticky right-0 z-20 bg-white group-hover:bg-slate-50 border-l border-slate-200 transition-colors">
                                     <Button 
                                         variant="outline" 
                                         size="sm" 
-                                        className="h-8 px-4 rounded-xl font-black text-[9px] uppercase tracking-widest border-2 border-slate-200 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
+                                        className="h-7 px-3 rounded-lg font-bold text-[9px] uppercase tracking-widest border-slate-200 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
                                         onClick={() => setViewingObservation(obs)}
                                     >
-                                        MANAGE <ArrowRight className="ml-1.5 h-3 w-3" />
+                                        MANAGE
                                     </Button>
                                 </TableCell>
                             </TableRow>
                         );
                     })}
-                    </TooltipProvider>
                 </TableBody>
             </Table>
             <ScrollBar orientation="horizontal" />
@@ -771,12 +749,12 @@ export default function EhsObservationsPage() {
         </div>
         
         {filteredObservations.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-48 text-center bg-slate-50/30">
-                <div className="p-10 bg-white rounded-full shadow-inner mb-8 border-2 border-dashed border-slate-200">
-                    <Inbox className="h-20 w-20 text-slate-200" />
+            <div className="flex flex-col items-center justify-center py-32 text-center bg-slate-50/10">
+                <div className="p-8 bg-white rounded-xl shadow-sm mb-4 border border-dashed border-slate-200">
+                    <Inbox className="h-12 w-12 text-slate-200" />
                 </div>
-                <p className="font-black uppercase tracking-[0.4em] text-2xl text-slate-300">Empty Registry</p>
-                <p className="text-slate-400 font-bold mt-2 uppercase text-sm">Waiting for first site observation report...</p>
+                <p className="font-bold uppercase tracking-widest text-lg text-slate-300">Empty Registry</p>
+                <p className="text-slate-400 font-medium mt-1 uppercase text-[10px]">Waiting for first site observation report...</p>
             </div>
         )}
       </Card>
