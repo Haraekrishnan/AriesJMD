@@ -10,7 +10,6 @@ import { Plus, Search, Calendar, MapPin, ClipboardList, Clock, ThumbsUp, ThumbsD
 import { Input } from '@/components/ui/input';
 import { format, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -91,43 +90,43 @@ export default function EhsAuditsPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 text-slate-900">
       <div className="flex justify-between items-center text-left">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Audits & Inspections</h1>
-          <p className="text-slate-200 text-lg font-medium">Manage site walkthroughs and higher official reviews.</p>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Audits & Inspections</h1>
+          <p className="text-slate-600 text-lg font-medium">Manage site walkthroughs and higher official reviews.</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold shadow-lg shadow-emerald-500/20">
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest h-12 px-8 rounded-xl shadow-lg shadow-emerald-600/10">
               <Plus className="mr-2 h-4 w-4" /> New Audit Submission
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-lg">
+          <DialogContent className="bg-white border-slate-200 text-slate-900 sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle className="text-white">Register Site Audit</DialogTitle>
-              <DialogDescription className="text-slate-300 font-medium">Submit an inspection outcome for higher official verification.</DialogDescription>
+              <DialogTitle className="text-slate-900 font-black uppercase">Register Site Audit</DialogTitle>
+              <DialogDescription className="text-slate-500 font-medium">Submit an inspection outcome for higher official verification.</DialogDescription>
             </DialogHeader>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label className="text-slate-100 font-bold">Audit Title</Label>
-                <Input {...form.register('title')} className="bg-slate-800 border-slate-700 text-white focus:ring-emerald-500/20" placeholder="e.g., Weekly Site Walkthrough" />
-                {form.formState.errors.title && <p className="text-xs text-rose-400">{form.formState.errors.title.message}</p>}
+                <Label className="text-slate-900 font-black text-[10px] uppercase tracking-widest">Audit Title</Label>
+                <Input {...form.register('title')} className="h-12 rounded-xl font-bold" placeholder="e.g., Weekly Site Walkthrough" />
+                {form.formState.errors.title && <p className="text-xs text-rose-600">{form.formState.errors.title.message}</p>}
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-slate-100 font-bold">Audit Type</Label>
+                  <Label className="text-slate-900 font-black text-[10px] uppercase tracking-widest">Audit Type</Label>
                   <Controller
                     control={form.control}
                     name="type"
                     render={({ field }) => (
                       <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                        <SelectTrigger className="h-12 rounded-xl font-bold">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                        <SelectContent>
                           <SelectItem value="Safety">Safety</SelectItem>
                           <SelectItem value="Environmental">Environmental</SelectItem>
                           <SelectItem value="Health">Health</SelectItem>
@@ -138,16 +137,16 @@ export default function EhsAuditsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-slate-100 font-bold">Site Location</Label>
+                  <Label className="text-slate-900 font-black text-[10px] uppercase tracking-widest">Site Location</Label>
                   <Controller
                     control={form.control}
                     name="projectId"
                     render={({ field }) => (
                       <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                        <SelectTrigger className="h-12 rounded-xl font-bold">
                           <SelectValue placeholder="Select site..." />
                         </SelectTrigger>
-                        <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                        <SelectContent>
                           {projects.map(p => (
                             <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                           ))}
@@ -160,18 +159,18 @@ export default function EhsAuditsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-slate-100 font-bold">Date</Label>
-                  <Input type="date" {...form.register('date')} className="bg-slate-800 border-slate-700 text-white" />
+                  <Label className="text-slate-900 font-black text-[10px] uppercase tracking-widest">Date</Label>
+                  <Input type="date" {...form.register('date')} className="h-12 rounded-xl font-bold" />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-slate-100 font-bold">Score (%)</Label>
-                  <Input type="number" {...form.register('score')} className="bg-slate-800 border-slate-700 text-white" />
+                  <Label className="text-slate-900 font-black text-[10px] uppercase tracking-widest">Score (%)</Label>
+                  <Input type="number" {...form.register('score')} className="h-12 rounded-xl font-bold" />
                 </div>
               </div>
 
               <DialogFooter className="pt-4">
-                <Button variant="outline" type="button" onClick={() => setIsDialogOpen(false)} className="bg-transparent border-slate-700 text-slate-200">Cancel</Button>
-                <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600">Submit for Review</Button>
+                <Button variant="outline" type="button" onClick={() => setIsDialogOpen(false)} className="h-12 rounded-xl font-bold px-8">Cancel</Button>
+                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white h-12 rounded-xl font-black uppercase tracking-widest px-8">Submit for Review</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -180,10 +179,10 @@ export default function EhsAuditsPage() {
 
       <div className="flex items-center gap-4 mb-6">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-200" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input 
             placeholder="Search audits by title or site..." 
-            className="pl-10 bg-slate-900/60 border-slate-800 text-white placeholder:text-slate-400 h-12 rounded-xl"
+            className="pl-10 bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 h-12 rounded-xl font-medium focus-visible:ring-emerald-600/20"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -196,62 +195,62 @@ export default function EhsAuditsPage() {
           const reviewer = users.find(u => u.id === audit.reviewedById);
           
           return (
-            <Card key={audit.id} className="bg-slate-900/60 border-slate-800 hover:border-emerald-500/30 transition-all duration-300 group shadow-lg">
+            <Card key={audit.id} className="bg-white border-slate-200 hover:border-emerald-600/30 transition-all duration-300 group shadow-sm hover:shadow-md">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
                      <Badge variant="outline" className={cn(
-                       "border-emerald-500/20 text-emerald-400 mb-2 font-black uppercase text-[10px] tracking-widest bg-emerald-500/5",
-                       audit.status === 'Rejected' && "text-rose-400 border-rose-500/20 bg-rose-500/5"
+                       "border-emerald-600/20 text-emerald-600 mb-2 font-black uppercase text-[10px] tracking-widest bg-emerald-50",
+                       audit.status === 'Rejected' && "text-rose-600 border-rose-600/20 bg-rose-50"
                      )}>
                        {audit.type} &middot; {audit.status}
                      </Badge>
-                    <CardTitle className="text-white text-lg font-bold group-hover:text-emerald-400 transition-colors uppercase tracking-tight">{audit.title}</CardTitle>
+                    <CardTitle className="text-slate-900 text-lg font-bold group-hover:text-emerald-600 transition-colors uppercase tracking-tight">{audit.title}</CardTitle>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-black text-emerald-400">{audit.score}%</div>
-                    <p className="text-[9px] uppercase font-black text-slate-300 tracking-tighter">Site Score</p>
+                    <div className="text-2xl font-black text-emerald-600">{audit.score}%</div>
+                    <p className="text-[9px] uppercase font-black text-slate-400 tracking-tighter">Site Score</p>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6 pt-4">
-                <div className="grid grid-cols-2 gap-4 text-xs font-bold text-slate-200">
+                <div className="grid grid-cols-2 gap-4 text-xs font-bold text-slate-600">
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-3.5 w-3.5 text-emerald-400" />
+                    <Calendar className="h-3.5 w-3.5 text-emerald-600" />
                     {format(parseISO(audit.date), 'dd MMM yyyy')}
                   </div>
                   <div className="flex items-center gap-2">
-                    <MapPin className="h-3.5 w-3.5 text-emerald-400" />
+                    <MapPin className="h-3.5 w-3.5 text-emerald-600" />
                     {site?.name || 'Unknown Site'}
                   </div>
                 </div>
 
                 {audit.supervisorComment && (
-                  <div className="p-3 bg-slate-800/60 border border-slate-700 rounded-xl">
-                    <p className="text-[10px] uppercase font-black text-emerald-400 mb-1 flex items-center gap-1.5">
+                  <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                    <p className="text-[10px] uppercase font-black text-emerald-600 mb-1 flex items-center gap-1.5">
                       <MessageSquare className="h-3 w-3" /> Official Feedback
                     </p>
-                    <p className="text-xs text-slate-200 italic font-medium leading-relaxed">"{audit.supervisorComment}"</p>
+                    <p className="text-xs text-slate-700 italic font-medium leading-relaxed">"{audit.supervisorComment}"</p>
                     {reviewer && <p className="text-[9px] text-slate-400 font-bold mt-2 uppercase tracking-wide">Reviewed by {reviewer.name}</p>}
                   </div>
                 )}
 
-                <div className="pt-4 border-t border-slate-800/50 flex justify-between items-center">
-                  <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-300 uppercase tracking-widest">
-                    <Clock className="h-3 w-3 text-emerald-400" />
+                <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
+                  <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <Clock className="h-3 w-3 text-emerald-600" />
                     {audit.status}
                   </div>
                   <div className="flex gap-2">
                     {isSupervisor && audit.status === 'Pending Review' && (
                       <Button 
                         size="sm" 
-                        className="bg-emerald-500 hover:bg-emerald-600 h-8 font-black uppercase text-[10px] px-4"
+                        className="bg-emerald-600 hover:bg-emerald-700 h-8 font-black uppercase text-[10px] px-4 rounded-lg"
                         onClick={() => setReviewingAuditId(audit.id)}
                       >
                         Action
                       </Button>
                     )}
-                    <Button variant="ghost" size="sm" className="text-emerald-400 h-8 hover:bg-emerald-500/10 hover:text-emerald-300 text-[10px] font-black uppercase tracking-widest">
+                    <Button variant="ghost" size="sm" className="text-emerald-600 h-8 hover:bg-emerald-50 hover:text-emerald-700 text-[10px] font-black uppercase tracking-widest rounded-lg">
                       View Report
                     </Button>
                   </div>
@@ -264,16 +263,16 @@ export default function EhsAuditsPage() {
       
       {/* REVIEW DIALOG */}
       <Dialog open={!!reviewingAuditId} onOpenChange={(o) => !o && setReviewingAuditId(null)}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-white shadow-2xl">
+        <DialogContent className="bg-white border-slate-200 text-slate-900 shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-white uppercase font-black tracking-tight">Review Site Audit</DialogTitle>
-            <DialogDescription className="text-slate-300 font-medium">The Senior Safety Supervisor is the higher authority for all EHS findings.</DialogDescription>
+            <DialogTitle className="text-slate-900 uppercase font-black tracking-tight">Review Site Audit</DialogTitle>
+            <DialogDescription className="text-slate-500 font-medium">Validation of site EHS findings by the Senior Safety Supervisor.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
              <div className="space-y-2">
-               <Label className="text-slate-100 font-bold uppercase text-xs tracking-widest">Supervisor Feedback / Instructions</Label>
+               <Label className="text-slate-900 font-black uppercase text-xs tracking-widest">Supervisor Feedback / Instructions</Label>
                <Textarea 
-                 className="bg-slate-800 border-slate-700 text-white min-h-[120px] focus:ring-emerald-500/20" 
+                 className="bg-slate-50 border-slate-200 text-slate-900 min-h-[120px] rounded-xl font-bold p-4 focus-visible:ring-emerald-600/20" 
                  placeholder="Enter validation notes or required actions..."
                  value={supervisorComment}
                  onChange={(e) => setSupervisorComment(e.target.value)}
@@ -281,10 +280,10 @@ export default function EhsAuditsPage() {
              </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" className="bg-transparent border-slate-700 text-slate-200" onClick={() => handleReviewAction('Rejected')}>
+            <Button variant="outline" className="h-12 px-6 rounded-xl font-bold" onClick={() => handleReviewAction('Rejected')}>
                <ThumbsDown className="mr-2 h-4 w-4" /> Reject Findings
             </Button>
-            <Button className="bg-emerald-500 hover:bg-emerald-600 font-bold" onClick={() => handleReviewAction('Approved')}>
+            <Button className="bg-emerald-600 hover:bg-emerald-700 font-black uppercase text-[10px] h-12 px-8 rounded-xl shadow-lg shadow-emerald-600/10" onClick={() => handleReviewAction('Approved')}>
                <ThumbsUp className="mr-2 h-4 w-4" /> Approve Audit
             </Button>
           </DialogFooter>
@@ -292,9 +291,9 @@ export default function EhsAuditsPage() {
       </Dialog>
 
       {filteredAudits.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-24 text-slate-200 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-3xl">
-          <ClipboardList className="h-16 w-16 mb-6 opacity-20 text-emerald-400" />
-          <p className="text-xl font-black text-white uppercase tracking-widest">No audit records found</p>
+        <div className="flex flex-col items-center justify-center py-24 text-slate-400 bg-white border-2 border-dashed border-slate-200 rounded-3xl">
+          <ClipboardList className="h-16 w-16 mb-6 opacity-20 text-emerald-600" />
+          <p className="text-xl font-black text-slate-900 uppercase tracking-widest">No audit records found</p>
           <p className="text-sm mt-1 font-medium opacity-80">Refine your search or submit a new walkthrough report.</p>
         </div>
       )}

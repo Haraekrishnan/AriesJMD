@@ -52,19 +52,18 @@ export default function EhsLayout({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  // Changed z-index from 100 to 40 to ensure Radix/Shadcn dialogs (z-50) appear on top.
   return (
-    <div className="fixed inset-0 z-40 flex bg-[#0b1120] text-slate-200 overflow-hidden">
-      {/* EHS Side Navigation */}
-      <aside className="w-72 border-r border-slate-800/60 bg-[#0b1120] flex flex-col shrink-0 h-full shadow-2xl">
-        <div className="p-8 border-b border-slate-800/60">
+    <div className="fixed inset-0 z-40 flex bg-slate-50 text-slate-900 overflow-hidden font-sans">
+      {/* EHS Side Navigation - LIGHT THEME */}
+      <aside className="w-72 border-r border-slate-200 bg-slate-100 flex flex-col shrink-0 h-full shadow-lg">
+        <div className="p-8 border-b border-slate-200">
           <div className="flex items-center gap-4">
-            <div className="bg-emerald-500 p-2.5 rounded-xl shadow-lg shadow-emerald-500/20">
+            <div className="bg-emerald-600 p-2.5 rounded-xl shadow-lg shadow-emerald-600/20">
               <ShieldCheck className="h-7 w-7 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-black tracking-tighter text-white">EHS Portal</h2>
-              <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-400 font-bold">Safety Management</p>
+              <h2 className="text-2xl font-black tracking-tighter text-slate-900">EHS Portal</h2>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-600 font-bold">Safety Management</p>
             </div>
           </div>
         </div>
@@ -76,15 +75,15 @@ export default function EhsLayout({ children }: { children: React.ReactNode }) {
               return (
                 <Link key={item.href} href={item.href}>
                   <div className={cn(
-                    "flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-200 group relative",
+                    "flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-bold transition-all duration-200 group relative",
                     isActive 
-                      ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-inner" 
-                      : "text-slate-400 hover:bg-slate-800/40 hover:text-white"
+                      ? "bg-white text-emerald-600 border border-slate-200 shadow-sm" 
+                      : "text-slate-500 hover:bg-white/60 hover:text-slate-900"
                   )}>
                     {isActive && (
-                      <div className="absolute left-0 w-1 h-6 bg-emerald-500 rounded-r-full" />
+                      <div className="absolute left-0 w-1.5 h-6 bg-emerald-600 rounded-r-full" />
                     )}
-                    <item.icon className={cn("h-5 w-5 transition-transform group-hover:scale-110", isActive ? "text-emerald-400" : "text-slate-500 group-hover:text-slate-300")} />
+                    <item.icon className={cn("h-5 w-5 transition-transform group-hover:scale-110", isActive ? "text-emerald-600" : "text-slate-400 group-hover:text-slate-600")} />
                     {item.label}
                   </div>
                 </Link>
@@ -93,8 +92,8 @@ export default function EhsLayout({ children }: { children: React.ReactNode }) {
           </nav>
         </ScrollArea>
 
-        <div className="p-4 px-6 border-t border-slate-800/60">
-           <Button asChild variant="ghost" className="w-full justify-start text-slate-400 hover:text-white hover:bg-slate-800/60 h-12 rounded-xl">
+        <div className="p-4 px-6 border-t border-slate-200">
+           <Button asChild variant="ghost" className="w-full justify-start text-slate-500 hover:text-slate-900 hover:bg-white h-12 rounded-xl font-bold">
              <Link href="/dashboard">
                <ChevronLeft className="mr-3 h-4 w-4" />
                Exit Portal
@@ -102,14 +101,14 @@ export default function EhsLayout({ children }: { children: React.ReactNode }) {
            </Button>
         </div>
 
-        <div className="p-8 bg-slate-900/20 border-t border-slate-800/60">
+        <div className="p-8 bg-slate-200/50 border-t border-slate-200">
           <div className="flex items-center gap-4">
-            <Avatar className="h-12 w-12 border-2 border-emerald-500/30">
+            <Avatar className="h-12 w-12 border-2 border-emerald-600/30">
               <AvatarImage src={user?.avatar} />
-              <AvatarFallback className="bg-slate-800 text-slate-200 font-bold">{user?.name?.[0]}</AvatarFallback>
+              <AvatarFallback className="bg-slate-300 text-slate-700 font-bold">{user?.name?.[0]}</AvatarFallback>
             </Avatar>
             <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-bold text-white truncate">{user?.name}</p>
+              <p className="text-sm font-black text-slate-900 truncate">{user?.name}</p>
               <p className="text-[10px] uppercase font-black tracking-widest text-slate-500 truncate">{user?.role}</p>
             </div>
           </div>
@@ -117,11 +116,7 @@ export default function EhsLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto bg-[#0f172a] relative">
-        {/* Subtle background glow */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-blue-500/5 rounded-full blur-[100px] pointer-events-none" />
-        
+      <main className="flex-1 overflow-y-auto bg-[#f8fafc] relative">
         <div className="p-10 animate-in fade-in slide-in-from-bottom-4 duration-700 h-full">
           {children}
         </div>
