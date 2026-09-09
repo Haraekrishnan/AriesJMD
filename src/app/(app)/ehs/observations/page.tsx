@@ -13,7 +13,7 @@ import {
   AlertTriangle, CheckCircle2, TrendingUp, Inbox,
   Zap, Send, Target, ChevronRight, FileCheck, HelpCircle,
   ArrowRight, Lock, FileSearch, Archive, ChevronLeft,
-  FileText, Download, UserRound
+  FileText, Download, UserRound, Check, XCircle
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, parseISO, isPast, formatDistanceToNow } from 'date-fns';
