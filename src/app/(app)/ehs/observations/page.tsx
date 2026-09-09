@@ -61,7 +61,7 @@ const stageConfig: Record<CapaStage, { label: string, icon: any, color: string, 
   'Implementation': { label: 'Implementation', icon: Target, color: 'text-blue-600', badge: 'bg-blue-100 text-blue-700' },
   'Effectiveness Review': { label: 'Effectiveness Review', icon: CheckCircle, color: 'text-indigo-600', badge: 'bg-indigo-100 text-indigo-700' },
   'Reference': { label: 'Reference', icon: FileSearch, color: 'text-blue-600', badge: 'bg-blue-100 text-blue-700' },
-  'Closure': { label: 'Closure', icon: Lock, color: 'text-slate-500', badge: 'bg-slate-100 text-slate-700' },
+  'Closure': { label: 'Closure', icon: Lock, color: 'text-slate-600', badge: 'bg-slate-100 text-slate-700' },
 };
 
 const observationSchema = z.object({
@@ -191,7 +191,7 @@ export default function EhsObservationsPage() {
                             <Badge variant="outline" className={cn("font-black text-[10px] tracking-widest uppercase border-2", severityColors[viewingObservation.severity])}>
                                 {viewingObservation.severity} SEVERITY
                             </Badge>
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">CASE ID: {viewingObservation.id.slice(-8).toUpperCase()}</span>
+                            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">CASE ID: {viewingObservation.id.slice(-8).toUpperCase()}</span>
                         </div>
                         <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900">{viewingObservation.description}</h1>
                     </div>
@@ -227,7 +227,7 @@ export default function EhsObservationsPage() {
                                     </div>
                                     <span className={cn(
                                     "text-[10px] font-black uppercase tracking-widest text-center",
-                                    isActive ? "text-blue-600" : isCompleted ? "text-emerald-600" : "text-slate-400"
+                                    isActive ? "text-blue-600" : isCompleted ? "text-emerald-600" : "text-slate-500"
                                     )}>{config.label}</span>
                                 </div>
                                 {idx < 6 && (
@@ -252,20 +252,20 @@ export default function EhsObservationsPage() {
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 p-10 bg-slate-50 rounded-[2.5rem] border border-slate-200">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Findings Statement</Label>
+                                    <Label className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em]">Findings Statement</Label>
                                     <p className="text-xl font-bold leading-relaxed text-slate-800 italic">"{viewingObservation.description}"</p>
                                 </div>
                                 <div className="space-y-6">
                                     <div className="flex justify-between border-b border-slate-200 pb-3">
-                                        <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">Reported By</span>
+                                        <span className="text-xs text-slate-600 font-bold uppercase tracking-widest">Reported By</span>
                                         <span className="text-xs font-black text-slate-900">{users.find(u => u.id === viewingObservation.reporterId)?.name}</span>
                                     </div>
                                     <div className="flex justify-between border-b border-slate-200 pb-3">
-                                        <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">Location</span>
+                                        <span className="text-xs text-slate-600 font-bold uppercase tracking-widest">Location</span>
                                         <span className="text-xs font-black text-slate-900">{projects.find(p => p.id === viewingObservation.projectId)?.name} &middot; {viewingObservation.location}</span>
                                     </div>
                                     <div className="flex justify-between border-b border-slate-200 pb-3">
-                                        <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">Reported At</span>
+                                        <span className="text-xs text-slate-600 font-bold uppercase tracking-widest">Reported At</span>
                                         <span className="text-xs font-black text-slate-900">{format(parseISO(viewingObservation.createdAt), 'PPP p')}</span>
                                     </div>
                                 </div>
@@ -295,7 +295,7 @@ export default function EhsObservationsPage() {
                                             <CheckCircle2 className="h-5 w-5" />
                                         </div>
                                         <p className="text-lg font-bold text-slate-800 leading-relaxed">{viewingObservation.immediateActionTaken}</p>
-                                        <div className="mt-8 pt-6 border-t border-slate-100 flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        <div className="mt-8 pt-6 border-t border-slate-100 flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-slate-500">
                                             <ShieldCheck className="h-4 w-4 text-emerald-600" /> CORRECTION VERIFIED BY EHS OFFICIAL
                                         </div>
                                     </div>
@@ -340,7 +340,7 @@ export default function EhsObservationsPage() {
                                     <div className="p-10 bg-white border border-slate-200 rounded-[2.5rem] space-y-6 shadow-sm">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {viewingObservation.rootCauseAnalysis?.whys.filter(w => w.trim()).map((why, i) => (
-                                            <div key={i} className="flex items-center gap-4 text-sm text-slate-700 font-bold p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                                            <div key={i} className="flex items-center gap-4 text-sm text-slate-800 font-bold p-3 bg-slate-50 rounded-2xl border border-slate-100">
                                                 <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-[10px] font-black shrink-0 text-slate-900 border border-slate-200">{i+1}</div>
                                                 {why}
                                             </div>
@@ -403,11 +403,11 @@ export default function EhsObservationsPage() {
                                         </div>
                                         <div className="p-10 bg-slate-50 border border-slate-200 rounded-[2.5rem] space-y-8 flex flex-col justify-center">
                                             <div>
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Stage Owner</p>
+                                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Stage Owner</p>
                                                 <p className="text-base font-black text-slate-900 truncate">{users.find(u => u.id === viewingObservation.actionOwnerId)?.name || 'UNASSIGNED'}</p>
                                             </div>
                                             <div>
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Completion Target</p>
+                                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Completion Target</p>
                                                 <p className="text-base font-black text-slate-900">{viewingObservation.dueDate ? format(parseISO(viewingObservation.dueDate), 'dd MMM yyyy') : 'N/A'}</p>
                                             </div>
                                         </div>
@@ -465,7 +465,7 @@ export default function EhsObservationsPage() {
                                                 {viewingObservation.effectivenessVerification?.successful ? 'VALIDATED: PASSED' : 'REVISION REQUIRED'}
                                             </Badge>
                                         </div>
-                                        <div className="pt-6 border-t border-slate-100 flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                        <div className="pt-6 border-t border-slate-100 flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
                                             <Avatar className="h-8 w-8 border-2 border-slate-200">
                                                 <AvatarImage src={users.find(u => u.id === viewingObservation.effectivenessVerification?.verifiedBy)?.avatar} />
                                                 <AvatarFallback>{users.find(u => u.id === viewingObservation.effectivenessVerification?.verifiedBy)?.name?.[0]}</AvatarFallback>
@@ -487,7 +487,7 @@ export default function EhsObservationsPage() {
                                 <div className="p-12 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[3rem] text-center">
                                     <Archive className="h-16 w-16 text-slate-300 mx-auto mb-6" />
                                     <p className="text-lg font-black text-slate-900 uppercase tracking-widest">Ready for Organizational Archive</p>
-                                    <p className="text-sm text-slate-500 mt-2 font-medium">All technical evidence, method statements, and training records have been linked.</p>
+                                    <p className="text-sm text-slate-600 mt-2 font-bold">All technical evidence, method statements, and training records have been linked.</p>
                                 </div>
                             </section>
                         )}
@@ -522,7 +522,7 @@ export default function EhsObservationsPage() {
                             </Button>
                         )}
                     </div>
-                    <Button variant="ghost" className="text-slate-400 hover:text-slate-900 font-black uppercase tracking-widest text-[10px]" onClick={() => setViewingObservation(null)}>
+                    <Button variant="ghost" className="text-slate-500 hover:text-slate-900 font-black uppercase tracking-widest text-[10px]" onClick={() => setViewingObservation(null)}>
                         Exit Detailed Management View
                     </Button>
                 </div>
@@ -536,7 +536,7 @@ export default function EhsObservationsPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <h1 className="text-4xl font-black text-slate-900 tracking-tight">CAPA Management Registry</h1>
-          <p className="text-slate-600 text-lg mt-1 font-medium">Structured lifecycle tracking of safety observations and corrective actions.</p>
+          <p className="text-slate-700 text-lg mt-1 font-bold">Structured lifecycle tracking of safety observations and corrective actions.</p>
         </div>
         
         <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
@@ -548,7 +548,7 @@ export default function EhsObservationsPage() {
           <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle className="text-2xl font-black uppercase tracking-tight text-slate-900">Initiate CAPA Case</DialogTitle>
-              <DialogDescription className="text-slate-500 font-medium">Register an initial safety finding to begin the corrective action lifecycle.</DialogDescription>
+              <DialogDescription className="text-slate-600 font-bold">Register an initial safety finding to begin the corrective action lifecycle.</DialogDescription>
             </DialogHeader>
             <form onSubmit={form.handleSubmit(onReportSubmit)} className="space-y-6 py-6">
                <div className="grid grid-cols-2 gap-6">
@@ -637,26 +637,26 @@ export default function EhsObservationsPage() {
 
       {/* Stats Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <StatCard title="Open CAPAs" value={stats.openObservations} icon={TrendingUp} description="Active Lifecycles" className="bg-white border-slate-200" />
-        <StatCard title="Total LTIs" value={stats.totalLTIs} icon={AlertCircle} description="Past 12 Months" className="bg-white border-slate-200" />
-        <StatCard title="Audit Score" value={`${stats.avgAuditScore.toFixed(0)}%`} icon={FileCheck} description="Org Compliance" className="bg-white border-slate-200" />
-        <StatCard title="Training Hrs" value={stats.trainingHours} icon={Users} description="Staff Competency" className="bg-white border-slate-200" />
+        <StatCard title="Open CAPAs" value={stats.openObservations} icon={TrendingUp} description={<span className="text-slate-600 font-bold">Active Lifecycles</span>} className="bg-white border-slate-200" />
+        <StatCard title="Total LTIs" value={stats.totalLTIs} icon={AlertCircle} description={<span className="text-slate-600 font-bold">Past 12 Months</span>} className="bg-white border-slate-200" />
+        <StatCard title="Audit Score" value={`${stats.avgAuditScore.toFixed(0)}%`} icon={FileCheck} description={<span className="text-slate-600 font-bold">Org Compliance</span>} className="bg-white border-slate-200" />
+        <StatCard title="Training Hrs" value={stats.trainingHours} icon={Users} description={<span className="text-slate-600 font-bold">Staff Competency</span>} className="bg-white border-slate-200" />
       </div>
 
       {/* Excel-like Table View */}
       <Card className="bg-white border-slate-200 shadow-sm overflow-hidden rounded-2xl">
         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
             <div className="relative w-full max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
                 <Input 
                     placeholder="Quick search registry..." 
-                    className="pl-10 h-11 bg-white border-slate-200 rounded-xl font-medium focus-visible:ring-emerald-600/20 shadow-sm"
+                    className="pl-10 h-11 bg-white border-slate-200 rounded-xl font-bold text-slate-900 focus-visible:ring-emerald-600/20 shadow-sm"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
             <div className="flex gap-2">
-                <Badge variant="outline" className="h-9 px-4 font-black uppercase text-[10px] tracking-widest border-2 bg-white">
+                <Badge variant="outline" className="h-9 px-4 font-black uppercase text-[10px] tracking-widest border-2 bg-white text-slate-900 border-slate-200">
                     TOTAL RECORDS: {filteredObservations.length}
                 </Badge>
             </div>
@@ -664,15 +664,15 @@ export default function EhsObservationsPage() {
         
         <div className="overflow-x-auto">
             <Table>
-                <TableHeader className="bg-slate-100/50 border-b-2 border-slate-200">
+                <TableHeader className="bg-slate-100 border-b-2 border-slate-300">
                     <TableRow className="hover:bg-transparent">
-                        <TableHead className="w-20 font-black uppercase text-[10px] tracking-widest text-slate-600 text-center h-12 border-r">ID</TableHead>
-                        <TableHead className="min-w-[280px] font-black uppercase text-[10px] tracking-widest text-slate-600 h-12 border-r px-6">Observation Details</TableHead>
-                        <TableHead className="w-40 font-black uppercase text-[10px] tracking-widest text-slate-600 h-12 border-r text-center">Category</TableHead>
-                        <TableHead className="w-36 font-black uppercase text-[10px] tracking-widest text-slate-600 h-12 border-r text-center">Severity</TableHead>
-                        <TableHead className="w-56 font-black uppercase text-[10px] tracking-widest text-slate-600 h-12 border-r px-6">Lifecycle Stage</TableHead>
-                        <TableHead className="w-40 font-black uppercase text-[10px] tracking-widest text-slate-600 h-12 border-r text-center">Status</TableHead>
-                        <TableHead className="w-24 text-right font-black uppercase text-[10px] tracking-widest text-slate-600 h-12 px-6">Actions</TableHead>
+                        <TableHead className="w-20 font-black uppercase text-[10px] tracking-widest text-slate-900 text-center h-12 border-r border-slate-200">ID</TableHead>
+                        <TableHead className="min-w-[280px] font-black uppercase text-[10px] tracking-widest text-slate-900 h-12 border-r border-slate-200 px-6">Observation Details</TableHead>
+                        <TableHead className="w-40 font-black uppercase text-[10px] tracking-widest text-slate-900 h-12 border-r border-slate-200 text-center">Category</TableHead>
+                        <TableHead className="w-36 font-black uppercase text-[10px] tracking-widest text-slate-900 h-12 border-r border-slate-200 text-center">Severity</TableHead>
+                        <TableHead className="w-56 font-black uppercase text-[10px] tracking-widest text-slate-900 h-12 border-r border-slate-200 px-6">Lifecycle Stage</TableHead>
+                        <TableHead className="w-40 font-black uppercase text-[10px] tracking-widest text-slate-900 h-12 border-r border-slate-200 text-center">Status</TableHead>
+                        <TableHead className="w-24 text-right font-black uppercase text-[10px] tracking-widest text-slate-900 h-12 px-6">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -682,37 +682,37 @@ export default function EhsObservationsPage() {
                         const owner = users.find(u => u.id === obs.actionOwnerId);
 
                         return (
-                            <TableRow key={obs.id} className="group hover:bg-slate-50 transition-colors border-b border-slate-100">
-                                <TableCell className="text-center font-mono text-[10px] font-black text-slate-400 border-r">{obs.id.slice(-5).toUpperCase()}</TableCell>
-                                <TableCell className="border-r px-6 py-4">
+                            <TableRow key={obs.id} className="group hover:bg-slate-50 transition-colors border-b border-slate-200">
+                                <TableCell className="text-center font-mono text-[10px] font-black text-slate-700 border-r border-slate-100">{obs.id.slice(-5).toUpperCase()}</TableCell>
+                                <TableCell className="border-r border-slate-100 px-6 py-4">
                                     <div className="flex flex-col gap-1">
-                                        <p className="font-bold text-slate-900 leading-tight group-hover:text-emerald-600 transition-colors">{obs.description}</p>
-                                        <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                            <MapPin className="h-3 w-3" /> {site?.name} &middot; {obs.location}
+                                        <p className="font-bold text-slate-900 leading-tight group-hover:text-emerald-700 transition-colors">{obs.description}</p>
+                                        <div className="flex items-center gap-2 text-[10px] font-black text-slate-600 uppercase tracking-widest">
+                                            <MapPin className="h-3 w-3 text-emerald-600" /> {site?.name} &middot; {obs.location}
                                         </div>
                                     </div>
                                 </TableCell>
-                                <TableCell className="text-center border-r">
+                                <TableCell className="text-center border-r border-slate-100">
                                     <Badge variant="secondary" className="text-[9px] font-black uppercase tracking-tight h-5">
                                         {obs.category}
                                     </Badge>
                                 </TableCell>
-                                <TableCell className="text-center border-r">
+                                <TableCell className="text-center border-r border-slate-100">
                                     <Badge variant="outline" className={cn("text-[9px] font-black uppercase tracking-widest h-5 px-3 border-2", severityColors[obs.severity])}>
                                         {obs.severity}
                                     </Badge>
                                 </TableCell>
-                                <TableCell className="border-r px-6">
+                                <TableCell className="border-r border-slate-100 px-6">
                                     <div className="flex flex-col gap-1">
                                         <div className="flex items-center gap-2">
                                             <currentStage.icon className={cn("h-3.5 w-3.5", currentStage.color)} />
-                                            <span className="font-black text-[10px] uppercase tracking-tight text-slate-700">{currentStage.label}</span>
+                                            <span className="font-black text-[10px] uppercase tracking-tight text-slate-800">{currentStage.label}</span>
                                         </div>
-                                        {owner && <p className="text-[9px] font-bold text-slate-400 uppercase">Owner: {owner.name}</p>}
+                                        {owner && <p className="text-[9px] font-bold text-slate-600 uppercase">Owner: {owner.name}</p>}
                                     </div>
                                 </TableCell>
-                                <TableCell className="text-center border-r">
-                                    <Badge className={cn("text-[9px] font-black uppercase px-3 h-5", obs.status === 'Open' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600')}>
+                                <TableCell className="text-center border-r border-slate-100">
+                                    <Badge className={cn("text-[9px] font-black uppercase px-3 h-5", obs.status === 'Open' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-700 border border-slate-200')}>
                                         {obs.status}
                                     </Badge>
                                 </TableCell>
@@ -720,7 +720,7 @@ export default function EhsObservationsPage() {
                                     <Button 
                                         variant="ghost" 
                                         size="sm" 
-                                        className="h-8 w-8 p-0 rounded-full hover:bg-emerald-50 hover:text-emerald-600"
+                                        className="h-8 w-8 p-0 rounded-full hover:bg-emerald-100 hover:text-emerald-700"
                                         onClick={() => setViewingObservation(obs)}
                                     >
                                         <ArrowRight className="h-4 w-4" />
@@ -734,7 +734,7 @@ export default function EhsObservationsPage() {
         </div>
         
         {filteredObservations.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-32 opacity-20">
+            <div className="flex flex-col items-center justify-center py-32 opacity-30">
                 <Inbox className="h-16 w-16 mb-4" />
                 <p className="font-black uppercase tracking-[0.2em] text-sm">No Registry Entries Found</p>
             </div>
