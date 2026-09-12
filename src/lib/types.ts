@@ -1204,6 +1204,7 @@ export type EhsObservation = {
   // CAPA Data Structure
   currentStage: CapaStage;
   stages: Record<CapaStage, CapaStageRecord>;
+  ccUserIds?: string[];
   
   status: EhsObservationStatus;
   createdAt: string;

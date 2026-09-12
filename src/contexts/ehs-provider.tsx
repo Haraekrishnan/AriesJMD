@@ -41,6 +41,7 @@ type EhsContextType = {
   assignStageOwner: (observationId: string, stage: CapaStage, assigneeId: string) => void;
   actionStage: (observationId: string, stage: CapaStage, data: any, attachmentUrl?: string) => void;
   reviewStage: (observationId: string, stage: CapaStage, status: 'Completed' | 'Returned', comment: string) => void;
+  addCcToObservation: (observationId: string, userIds: string[]) => void;
   addStageAttachment: (observationId: string, stage: CapaStage, name: string, url: string) => void;
   deleteObservation: (observationId: string) => void;
   
@@ -165,32 +166,24 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     const newRef = push(ref(rtdb, 'ehs/observations'));
     const now = new Date().toISOString();
     
+    // Find Senior Safety Supervisor for direct routing
+    const seniorSafetySupervisor = users.find(u => u.role === 'Senior Safety Supervisor' && u.status !== 'deactivated');
+    const initialAssigneeId = seniorSafetySupervisor ? seniorSafetySupervisor.id : user.id;
+
     const stages = generateInitialStages(user.id);
-    // Mark initiation as completed since it's just being created
+    
+    // 1. Mark initiation as completed (Reported by Anyone)
     stages['Initiation'].status = 'Completed';
     stages['Initiation'].actionedById = user.id;
     stages['Initiation'].actionedAt = now;
     stages['Initiation'].reviewedById = user.id;
     stages['Initiation'].reviewedAt = now;
 
-    // Add discovery attachment to initiation if it exists
-    if (data.discoveryAttachmentUrl) {
-       const attachmentRefId = 'discovery-attachment';
-       stages['Initiation'].attachments = {
-           [attachmentRefId]: {
-               id: attachmentRefId,
-               name: 'Initial Finding Evidence',
-               url: data.discoveryAttachmentUrl,
-               uploadedBy: user.id,
-               uploadedAt: now
-           }
-       };
-    }
-
-    // Auto-open next stage (Resolution)
-    stages['Resolution'].status = 'In Progress';
+    // 2. Route directly to Senior Safety Supervisor for 'Resolution'
+    stages['Resolution'].status = 'Pending';
     stages['Resolution'].assignedById = user.id;
     stages['Resolution'].assignedAt = now;
+    stages['Resolution'].assigneeId = initialAssigneeId;
 
     const newObservation: Omit<EhsObservation, 'id'> = {
       ...data,
@@ -199,23 +192,30 @@ export function EhsProvider({ children }: { children: ReactNode }) {
       currentStage: 'Resolution',
       status: 'Open',
       stages,
+      ccUserIds: [],
     };
     
     set(newRef, JSON.parse(JSON.stringify(newObservation)));
-    toast({ title: 'Observation Initiated', description: 'Lifecycle case opened successfully.' });
-  }, [user, toast]);
+    toast({ title: 'Safety Case Opened', description: `Case routed to ${seniorSafetySupervisor?.name || 'Safety HQ'}.` });
+  }, [user, users, toast]);
 
   const assignStageOwner = useCallback((observationId: string, stage: CapaStage, assigneeId: string) => {
     if (!user) return;
     const path = `ehs/observations/${observationId}/stages/${stage}`;
+    const now = new Date().toISOString();
     const updates = {
       assigneeId,
       assignedById: user.id,
-      assignedAt: new Date().toISOString(),
-      status: 'Pending'
+      assignedAt: now,
+      status: 'Pending',
+      actionedById: null, // Clear any previous action data
+      actionedAt: null,
+      reviewedById: null,
+      reviewedAt: null,
     };
     update(ref(rtdb, path), updates);
-    toast({ title: 'Stage Assigned' });
+    update(ref(rtdb, `ehs/observations/${observationId}`), { lastUpdated: now });
+    toast({ title: 'Stage Responsibility Assigned' });
   }, [user, toast]);
 
   const actionStage = useCallback((observationId: string, stage: CapaStage, data: any, attachmentUrl?: string) => {
@@ -242,6 +242,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     }
 
     update(ref(rtdb, path), updates);
+    update(ref(rtdb, `ehs/observations/${observationId}`), { lastUpdated: now });
     toast({ title: 'Action Recorded', description: 'Pending Higher Official review.' });
   }, [user, toast]);
 
@@ -280,6 +281,8 @@ export function EhsProvider({ children }: { children: ReactNode }) {
                 updates[`stages/${nextStage}/status`] = 'Pending';
                 updates[`stages/${nextStage}/assignedById`] = user.id;
                 updates[`stages/${nextStage}/assignedAt`] = now;
+                // Inherit assignee if not already assigned or assigned to the higher official themselves
+                updates[`stages/${nextStage}/assigneeId`] = obs.stages[stage].assigneeId; 
             } else {
                 updates['status'] = 'Closed';
                 updates['closedAt'] = now;
@@ -288,10 +291,25 @@ export function EhsProvider({ children }: { children: ReactNode }) {
             // Returned - Reset action data to allow re-submission
             updates[`${stagePath}/actionedAt`] = null;
             updates[`${stagePath}/actionedById`] = null;
+            updates[`${stagePath}/status`] = 'Pending';
         }
 
+        updates['lastUpdated'] = now;
         update(obsRef, updates);
         toast({ title: `Stage ${status}` });
+    });
+  }, [user, toast]);
+
+  const addCcToObservation = useCallback((observationId: string, userIds: string[]) => {
+    if (!user) return;
+    const obsRef = ref(rtdb, `ehs/observations/${observationId}`);
+    get(obsRef).then(snap => {
+        const obs = snap.val() as EhsObservation;
+        if (!obs) return;
+        const currentCc = obs.ccUserIds || [];
+        const updatedCc = Array.from(new Set([...currentCc, ...userIds]));
+        update(obsRef, { ccUserIds: updatedCc, lastUpdated: new Date().toISOString() });
+        toast({ title: 'Personnel Informed', description: `${userIds.length} users added to information loop.` });
     });
   }, [user, toast]);
 
@@ -426,7 +444,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     <EhsContext.Provider value={{ 
         audits, incidents, riskAssessments, trainings, observations, supportTickets, contactInfo, 
         addAudit, addIncident, addRiskAssessment, addTraining, 
-        addObservation, assignStageOwner, actionStage, reviewStage, addStageAttachment, deleteObservation,
+        addObservation, assignStageOwner, actionStage, reviewStage, addStageAttachment, addCcToObservation, deleteObservation,
         reviewAudit, updateIncidentStatus, addSupportTicket, updateTicketStatus, addTicketComment, deleteSupportTicket, updateContactInfo, stats 
     }}>
       {children}

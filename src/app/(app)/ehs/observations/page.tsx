@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef, MouseEvent } from 'react';
@@ -14,7 +13,7 @@ import {
   FileCheck, HelpCircle, ArrowRight, Lock, FileSearch, 
   Archive, ChevronLeft, FileText, Download, UserRound, 
   Check, XCircle, Trash2, ClipboardCheck, History, Upload, Paperclip, Undo2, Image as ImageIcon, X,
-  Bold, Italic, Underline, List, ListOrdered, Heading1, Heading2, AlignLeft, AlignCenter
+  Bold, Italic, Underline, List, ListOrdered, Heading1, Heading2, AlignLeft, AlignCenter, UserPlus, ArrowRightLeft
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, parseISO, isValid } from 'date-fns';
@@ -49,6 +48,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 /* ------------------------------------------------------------------ */
 /* RICH TEXT EDITOR COMPONENT */
@@ -206,14 +207,19 @@ type ObservationFormValues = z.infer<typeof observationSchema>;
 /* ------------------------------------------------------------------ */
 
 export default function EhsObservationsPage() {
-  const { observations, addObservation, actionStage, reviewStage, assignStageOwner, deleteObservation } = useEhs();
-  const { user, users } = useAuth();
+  const { observations, addObservation, actionStage, reviewStage, assignStageOwner, addCcToObservation, deleteObservation } = useEhs();
+  const { user, users, getVisibleUsers } = useAuth();
   const { projects } = useGeneral();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [viewingObservationId, setViewingObservationId] = useState<string | null>(null);
   const [activeViewStage, setActiveViewStage] = useState<CapaStage | null>(null);
+
+  // Management Action States
+  const [isReassignPopoverOpen, setIsReassignPopoverOpen] = useState(false);
+  const [isCcPopoverOpen, setIsCcPopoverOpen] = useState(false);
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState<string | null>(null);
 
   // Form states for stage actions
   const [actionData, setActionData] = useState<any>({});
@@ -252,7 +258,7 @@ export default function EhsObservationsPage() {
   const onReportSubmit = async (data: ObservationFormValues) => {
     addObservation({
         ...data,
-        discoveryAttachmentUrl: null // Attachments are now embedded in HTML description
+        discoveryAttachmentUrl: null 
     });
     
     setIsReportDialogOpen(false);
@@ -269,6 +275,12 @@ export default function EhsObservationsPage() {
     if (!viewingObservationId || !activeViewStage) return;
     reviewStage(viewingObservationId, activeViewStage, status, reviewComment);
     setReviewComment('');
+  };
+
+  const handleCcSelectedUsers = (userIds: string[]) => {
+    if (!viewingObservationId) return;
+    addCcToObservation(viewingObservationId, userIds);
+    setIsCcPopoverOpen(false);
   };
 
   if (viewingObservation && activeViewStage) {
@@ -307,10 +319,69 @@ export default function EhsObservationsPage() {
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="font-bold text-xs"><Download className="mr-2 h-4 w-4" /> PDF Report</Button>
-                    <Badge className={cn("h-8 px-4 font-black uppercase text-[10px] tracking-widest", stageConfig[viewingObservation.currentStage].badge)}>
-                        {viewingObservation.currentStage}
-                    </Badge>
+                    {isSupervisor && (
+                        <>
+                            <Popover open={isCcPopoverOpen} onOpenChange={setIsCcPopoverOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" size="sm" className="font-black uppercase text-[10px] tracking-widest border-2 h-9 px-4">
+                                        <UserPlus className="mr-2 h-3.5 w-3.5" /> Inform Personnel
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[300px] p-0" align="end">
+                                    <Command>
+                                        <CommandInput placeholder="Search people..." />
+                                        <CommandList>
+                                            <CommandEmpty>No personnel found.</CommandEmpty>
+                                            <CommandGroup>
+                                                {users.filter(u => u.status !== 'deactivated' && u.id !== user?.id).map(u => (
+                                                    <CommandItem 
+                                                        key={u.id} 
+                                                        onSelect={() => handleCcSelectedUsers([u.id])}
+                                                        className="cursor-pointer font-bold text-xs"
+                                                    >
+                                                        <Check className={cn("mr-2 h-4 w-4", viewingObservation.ccUserIds?.includes(u.id) ? "opacity-100" : "opacity-0")} />
+                                                        {u.name} <span className="ml-1 text-[9px] text-slate-400">({u.role})</span>
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+
+                            <Popover open={isReassignPopoverOpen} onOpenChange={setIsReassignPopoverOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" size="sm" className="font-black uppercase text-[10px] tracking-widest border-2 h-9 px-4" disabled={!isCurrentStage}>
+                                        <ArrowRightLeft className="mr-2 h-3.5 w-3.5" /> Redirect Step
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[300px] p-0" align="end">
+                                    <Command>
+                                        <CommandInput placeholder="Search responsible user..." />
+                                        <CommandList>
+                                            <CommandEmpty>No personnel found.</CommandEmpty>
+                                            <CommandGroup>
+                                                {users.filter(u => u.status !== 'deactivated').map(u => (
+                                                    <CommandItem 
+                                                        key={u.id} 
+                                                        onSelect={() => {
+                                                            assignStageOwner(viewingObservation.id, viewingObservation.currentStage, u.id);
+                                                            setIsReassignPopoverOpen(false);
+                                                        }}
+                                                        className="cursor-pointer font-bold text-xs"
+                                                    >
+                                                        <Check className={cn("mr-2 h-4 w-4", stageData?.assigneeId === u.id ? "opacity-100" : "opacity-0")} />
+                                                        {u.name} <span className="ml-1 text-[9px] text-slate-400">({u.role})</span>
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                        </>
+                    )}
+                    <Button variant="outline" size="sm" className="font-black uppercase text-[10px] tracking-widest border-2 h-9 px-4"><Download className="mr-2 h-4 w-4" /> PDF Report</Button>
                 </div>
             </div>
 
@@ -342,6 +413,22 @@ export default function EhsObservationsPage() {
                                 </div>
                             </div>
                             
+                            {viewingObservation.ccUserIds && viewingObservation.ccUserIds.length > 0 && (
+                                <div className="space-y-2 pt-2">
+                                    <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Informed Stakeholders</Label>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {viewingObservation.ccUserIds.map(ccId => {
+                                            const ccUser = users.find(u => u.id === ccId);
+                                            return (
+                                                <Badge key={ccId} variant="secondary" className="text-[9px] font-black h-5 px-1.5 bg-slate-100 text-slate-600 border-none">
+                                                    {ccUser?.name || 'User'}
+                                                </Badge>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
                             <Separator />
 
                             <div className="space-y-1">
@@ -378,7 +465,6 @@ export default function EhsObservationsPage() {
                                     >
                                         <div className={cn(
                                             "w-6 h-6 rounded flex items-center justify-center border font-black text-[10px]",
-                                            isDone ? <Check className="h-3 w-3" /> : idx + 1,
                                             isDone ? "bg-emerald-500 border-emerald-500 text-white" :
                                             isActive ? "border-blue-600 text-blue-600" : "border-slate-300 text-slate-400",
                                             isViewing && "bg-white text-slate-900"
@@ -421,23 +507,26 @@ export default function EhsObservationsPage() {
                                 {/* Stage Ownership Audit */}
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-4 rounded-lg bg-slate-50 border border-slate-100">
                                     <div className="space-y-1">
-                                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Assigned To</Label>
+                                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Responsibility</Label>
                                         <div className="flex items-center gap-2">
                                             <Avatar className="h-5 w-5"><AvatarImage src={assignee?.avatar}/></Avatar>
                                             <span className="text-xs font-black text-slate-900">{assignee?.name || 'Unassigned'}</span>
                                         </div>
                                     </div>
                                     <div className="space-y-1">
-                                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Assigned By</Label>
-                                        <span className="block text-xs font-bold text-slate-700">{assignedBy?.name || 'N/A'}</span>
+                                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Delegated By</Label>
+                                        <span className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                                             <Avatar className="h-4 w-4"><AvatarImage src={assignedBy?.avatar}/></Avatar>
+                                             {assignedBy?.name || 'System'}
+                                        </span>
                                     </div>
                                     <div className="space-y-1">
                                         <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Action By</Label>
-                                        <span className="block text-xs font-bold text-slate-700">{actionedBy?.name || 'N/A'}</span>
+                                        <span className="block text-xs font-bold text-slate-700">{actionedBy?.name || 'Waiting...'}</span>
                                     </div>
                                     <div className="space-y-1">
-                                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Status</Label>
-                                        <Badge className="h-5 text-[9px] font-black uppercase" variant={stageData?.status === 'Completed' ? 'success' : 'secondary'}>
+                                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Stage Status</Label>
+                                        <Badge className="h-5 text-[9px] font-black uppercase tracking-wider" variant={stageData?.status === 'Completed' ? 'success' : 'secondary'}>
                                             {stageData?.status || 'Pending'}
                                         </Badge>
                                     </div>
@@ -452,11 +541,11 @@ export default function EhsObservationsPage() {
                                                 <div className="grid grid-cols-2 gap-8">
                                                     <div>
                                                         <Label className="text-[10px] font-bold uppercase text-slate-500">Risk Severity</Label>
-                                                        <p className="font-black text-slate-900 mt-1">{viewingObservation.severity}</p>
+                                                        <p className="font-black text-slate-900 mt-1 uppercase">{viewingObservation.severity}</p>
                                                     </div>
                                                     <div>
                                                         <Label className="text-[10px] font-bold uppercase text-slate-500">Category</Label>
-                                                        <p className="font-black text-slate-900 mt-1">{viewingObservation.category}</p>
+                                                        <p className="font-black text-slate-900 mt-1 uppercase">{viewingObservation.category}</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -468,12 +557,19 @@ export default function EhsObservationsPage() {
                                             <div className="space-y-2">
                                                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-900">Correction Documentation</Label>
                                                 {isActionPending && isAssignee ? (
-                                                    <Textarea 
-                                                        className="min-h-[120px] rounded-lg p-4 font-bold border-2 focus-visible:ring-blue-100" 
-                                                        placeholder="Log the immediate actions taken to contain the hazard..."
-                                                        value={actionData.notes || ''}
-                                                        onChange={(e) => setActionData({ ...actionData, notes: e.target.value })}
-                                                    />
+                                                    <div className="space-y-4">
+                                                        <Textarea 
+                                                            className="min-h-[120px] rounded-lg p-4 font-bold border-2 focus-visible:ring-blue-100" 
+                                                            placeholder="Log the immediate actions taken to contain the hazard..."
+                                                            value={actionData.notes || ''}
+                                                            onChange={(e) => setActionData({ ...actionData, notes: e.target.value })}
+                                                        />
+                                                        <Alert className="bg-emerald-50 border-emerald-100 rounded-2xl py-6">
+                                                            <AlertCircle className="h-5 w-5 text-emerald-600" />
+                                                            <AlertTitle className="text-emerald-900 font-black uppercase text-xs tracking-widest">Correction Standards</AlertTitle>
+                                                            <AlertDescription className="text-emerald-800 font-bold text-sm mt-1">Immediate actions should resolve the instant danger while the root cause investigation is pending.</AlertDescription>
+                                                        </Alert>
+                                                    </div>
                                                 ) : (
                                                     <p className="p-4 border rounded-lg bg-slate-50 text-sm font-bold text-slate-700 leading-relaxed">
                                                         {stageData?.data?.notes || 'No correction notes logged.'}
@@ -551,7 +647,7 @@ export default function EhsObservationsPage() {
                             </div>
                         </ScrollArea>
 
-                        <CardFooter className="p-6 border-t bg-slate-50/50 justify-between items-center">
+                        <CardFooter className="p-6 border-t bg-slate-50/50 justify-between items-center shrink-0">
                             <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                                 {stageData?.status === 'Completed' && `Stage Verified By ${reviewedBy?.name || 'System'}`}
                             </div>
