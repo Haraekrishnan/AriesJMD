@@ -48,6 +48,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
 
 /* ------------------------------------------------------------------ */
 /* RICH TEXT EDITOR COMPONENT */
@@ -377,6 +378,7 @@ export default function EhsObservationsPage() {
                                     >
                                         <div className={cn(
                                             "w-6 h-6 rounded flex items-center justify-center border font-black text-[10px]",
+                                            isDone ? <Check className="h-3 w-3" /> : idx + 1,
                                             isDone ? "bg-emerald-500 border-emerald-500 text-white" :
                                             isActive ? "border-blue-600 text-blue-600" : "border-slate-300 text-slate-400",
                                             isViewing && "bg-white text-slate-900"
@@ -818,4 +820,3 @@ export default function EhsObservationsPage() {
     </div>
   );
 }
-
