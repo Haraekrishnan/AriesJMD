@@ -209,7 +209,7 @@ type ObservationFormValues = z.infer<typeof observationSchema>;
 
 export default function EhsObservationsPage() {
   const { observations, addObservation, actionStage, reviewStage, assignStageOwner, addCcToObservation, deleteObservation } = useEhs();
-  const { user, users, getVisibleUsers } = useAuth();
+  const { user, users } = useAuth();
   const { projects } = useGeneral();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
@@ -955,9 +955,13 @@ export default function EhsObservationsPage() {
       {/* IMAGE LIGHTBOX */}
       <Dialog open={!!viewingImage} onOpenChange={() => { setViewingImage(null); setZoom(1); setTranslate({x: 0, y: 0}); }}>
         <DialogContent className="max-w-[95vw] max-h-[95vh] flex flex-col p-0 overflow-hidden border-none bg-transparent shadow-none">
+            <DialogHeader className="sr-only">
+                <DialogTitle>Evidence Image Viewer</DialogTitle>
+                <DialogDescription>Full-screen view of the selected evidence image.</DialogDescription>
+            </DialogHeader>
             <div className="absolute top-4 right-4 z-50 flex gap-2">
                 <Button variant="secondary" size="icon" className="bg-white/80 hover:bg-white text-slate-900 rounded-full" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4"/></Button>
-                <Button variant="secondary" size="icon" className="bg-white/80 hover:bg-white text-slate-900 rounded-full" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4"/></Button>
+                <Button variant="secondary" size="icon" className="bg-white/80 hover:bg-white text-slate-900 rounded-full" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
                 <a href={viewingImage || ''} download target="_blank" rel="noopener noreferrer">
                     <Button variant="secondary" size="icon" className="bg-white/80 hover:bg-white text-slate-900 rounded-full"><Download className="h-4 w-4" /></Button>
                 </a>
