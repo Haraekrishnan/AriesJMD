@@ -53,6 +53,17 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 /* ------------------------------------------------------------------ */
+/* UTILITIES */
+/* ------------------------------------------------------------------ */
+
+const Loader2 = ({ className }: { className?: string }) => (
+    <svg className={cn("animate-spin", className)} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+);
+
+/* ------------------------------------------------------------------ */
 /* RICH TEXT EDITOR COMPONENT */
 /* ------------------------------------------------------------------ */
 
@@ -68,7 +79,6 @@ const RichNarrativeEditor = ({ value, onChange, placeholder, disabled }: RichEdi
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
 
-  // Sync internal state with external value if needed
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value) {
       editorRef.current.innerHTML = value || '';
@@ -112,7 +122,6 @@ const RichNarrativeEditor = ({ value, onChange, placeholder, disabled }: RichEdi
 
       const data = await res.json();
       if (res.ok && data.success) {
-        // Insert image into editor
         const imgHtml = `<img src="${data.downloadLink}" alt="Pasted Evidence" style="max-width: 100%; border-radius: 8px; margin: 10px 0; border: 2px solid #e2e8f0; cursor: pointer;" />`;
         execCommand('insertHTML', imgHtml);
         toast({ title: 'Evidence Attached' });
@@ -128,7 +137,6 @@ const RichNarrativeEditor = ({ value, onChange, placeholder, disabled }: RichEdi
 
   return (
     <div className={cn("border-2 rounded-xl overflow-hidden bg-white shadow-inner", disabled && "opacity-50 pointer-events-none")}>
-      {/* TOOLBAR */}
       <div className="flex flex-wrap items-center gap-0.5 p-1 bg-slate-50 border-b border-slate-200">
         <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('bold')} title="Bold"><Bold className="h-4 w-4" /></Button>
         <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('italic')} title="Italic"><Italic className="h-4 w-4" /></Button>
@@ -151,8 +159,6 @@ const RichNarrativeEditor = ({ value, onChange, placeholder, disabled }: RichEdi
         </div>
         {isUploading && <Loader2 className="h-3 w-3 animate-spin text-primary ml-2" />}
       </div>
-
-      {/* EDITOR AREA */}
       <div
         ref={editorRef}
         contentEditable
@@ -164,13 +170,6 @@ const RichNarrativeEditor = ({ value, onChange, placeholder, disabled }: RichEdi
     </div>
   );
 };
-
-const Loader2 = ({ className }: { className?: string }) => (
-    <svg className={cn("animate-spin", className)} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-    </svg>
-);
 
 /* ------------------------------------------------------------------ */
 /* CONFIGS */
@@ -267,7 +266,6 @@ export default function EhsObservationsPage() {
         ...data,
         discoveryAttachmentUrl: null 
     });
-    
     setIsReportDialogOpen(false);
     form.reset();
   };
@@ -338,7 +336,6 @@ export default function EhsObservationsPage() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
-            {/* Nav Header */}
             <div className="flex items-center justify-between bg-white p-4 border border-slate-200 rounded-lg shadow-sm">
                 <div className="flex items-center gap-4 text-left">
                     <Button variant="ghost" size="icon" onClick={() => setViewingObservationId(null)}>
@@ -422,7 +419,6 @@ export default function EhsObservationsPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-[320px,1fr] gap-6 items-start">
-                {/* Side Dossier */}
                 <div className="space-y-4">
                     <Card className="rounded-lg shadow-sm overflow-hidden border-slate-200">
                         <CardHeader className="bg-slate-900 text-white p-4">
@@ -521,17 +517,16 @@ export default function EhsObservationsPage() {
                     </Card>
                 </div>
 
-                {/* Main Action Workspace */}
                 <div className="space-y-6">
                     <Card className="rounded-lg border-slate-200 shadow-sm min-h-[600px] flex flex-col bg-white text-left">
                         <div className="p-6 border-b bg-slate-50/50 flex justify-between items-center">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-white rounded-lg shadow-sm border border-slate-200">
-                                    {React.createElement(stageConfig[activeViewStage].icon, { className: "h-6 w-6 text-slate-900" })}
+                                    {activeViewStage && React.createElement(stageConfig[activeViewStage].icon, { className: "h-6 w-6 text-slate-900" })}
                                 </div>
                                 <div>
                                     <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase leading-none">{activeViewStage}</h2>
-                                    <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wide">{stageConfig[activeViewStage].description}</p>
+                                    <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wide">{activeViewStage && stageConfig[activeViewStage].description}</p>
                                 </div>
                             </div>
                             {!isCurrentStage && (
@@ -541,7 +536,6 @@ export default function EhsObservationsPage() {
 
                         <ScrollArea className="flex-1">
                             <div className="p-8 space-y-8">
-                                {/* Stage Ownership Audit */}
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-4 rounded-lg bg-slate-50 border border-slate-100">
                                     <div className="space-y-1">
                                         <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Responsibility</Label>
@@ -569,7 +563,6 @@ export default function EhsObservationsPage() {
                                     </div>
                                 </div>
 
-                                {/* Stage Content - Conditional by Stage Type */}
                                 <div className="space-y-6">
                                     {activeViewStage === 'Initiation' && (
                                         <div className="space-y-4">
@@ -640,7 +633,6 @@ export default function EhsObservationsPage() {
                                         </div>
                                     )}
 
-                                    {/* Attachment Section for the current stage */}
                                     {(isActionPending && isAssignee) && (
                                         <div className="pt-6 border-t border-dashed">
                                             <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest mb-2 block">Upload Evidence / Files</Label>
@@ -658,7 +650,6 @@ export default function EhsObservationsPage() {
                                         </div>
                                     )}
 
-                                    {/* REVIEWER WORKSPACE */}
                                     {isReviewPending && isSupervisor && (
                                         <div className="p-6 border-2 border-slate-900 rounded-lg bg-slate-50 space-y-4 animate-in zoom-in-95">
                                             <div className="flex items-center gap-3">
@@ -962,9 +953,11 @@ export default function EhsObservationsPage() {
             <div className="absolute top-4 right-4 z-50 flex gap-2">
                 <Button variant="secondary" size="icon" className="bg-white/80 hover:bg-white text-slate-900 rounded-full" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4"/></Button>
                 <Button variant="secondary" size="icon" className="bg-white/80 hover:bg-white text-slate-900 rounded-full" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
-                <a href={viewingImage || ''} download target="_blank" rel="noopener noreferrer">
-                    <Button variant="secondary" size="icon" className="bg-white/80 hover:bg-white text-slate-900 rounded-full"><Download className="h-4 w-4" /></Button>
-                </a>
+                {viewingImage && (
+                    <a href={viewingImage} download target="_blank" rel="noopener noreferrer">
+                        <Button variant="secondary" size="icon" className="bg-white/80 hover:bg-white text-slate-900 rounded-full"><Download className="h-4 w-4" /></Button>
+                    </a>
+                )}
                 <Button variant="destructive" size="icon" className="rounded-full shadow-lg" onClick={() => setViewingImage(null)}><X className="h-4 w-4" /></Button>
             </div>
             <div 
@@ -974,17 +967,19 @@ export default function EhsObservationsPage() {
               onMouseUp={handleMouseUpOrLeave}
               onMouseLeave={handleMouseUpOrLeave}
             >
-                <img 
-                    src={viewingImage || ''} 
-                    alt="Expanded Evidence" 
-                    className={cn("transition-transform duration-200 select-none", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
-                    style={{ 
-                        transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`, 
-                        maxWidth: zoom > 1 ? 'none' : '90%', 
-                        maxHeight: zoom > 1 ? 'none' : '90%',
-                        objectFit: 'contain'
-                    }}
-                />
+                {viewingImage && (
+                    <img 
+                        src={viewingImage} 
+                        alt="Expanded Evidence" 
+                        className={cn("transition-transform duration-200 select-none", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
+                        style={{ 
+                            transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`, 
+                            maxWidth: zoom > 1 ? 'none' : '90%', 
+                            maxHeight: zoom > 1 ? 'none' : '90%',
+                            objectFit: 'contain'
+                        }}
+                    />
+                )}
             </div>
         </DialogContent>
       </Dialog>
