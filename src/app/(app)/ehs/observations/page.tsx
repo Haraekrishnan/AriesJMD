@@ -4,17 +4,17 @@ import React, { useState, useMemo, useEffect, useRef, MouseEvent } from 'react';
 import { useEhs } from '@/contexts/ehs-provider';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
-  Plus, Search, MapPin, Calendar, Eye, Users, 
-  FileWarning, AlertCircle, CheckCircle, ShieldCheck, 
-  Clock, MessageSquare, Zap, Send, Target, ChevronRight, 
+  Plus, Search, MapPin, Calendar, Eye, 
+  AlertCircle, CheckCircle, ShieldCheck, 
+  Clock, MessageSquare, Target, 
   FileCheck, FileSearch, 
-  Archive, ChevronLeft, FileText, Download, 
+  ChevronLeft, FileText, Download, 
   Check, XCircle, Trash2, History, Upload, Paperclip, Undo2, Image as ImageIcon, X,
   Bold, Italic, Underline, List, ListOrdered, Heading1, AlignLeft, UserPlus, ArrowRightLeft,
-  ZoomIn, ZoomOut
+  ZoomIn, ZoomOut, Lock
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, parseISO, isValid } from 'date-fns';
@@ -26,7 +26,8 @@ import {
   DialogHeader, 
   DialogTitle, 
   DialogFooter, 
-  DialogDescription 
+  DialogDescription,
+  DialogTrigger
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { 
@@ -241,8 +242,6 @@ export default function EhsObservationsPage() {
         if (viewingImage) {
             e.preventDefault();
             setViewingImage(null);
-            // After closing, we might want to ensure we don't go back too far.
-            // This allows the browser back button to close the expanded view.
         }
     };
 
