@@ -10,10 +10,10 @@ import {
   Plus, Search, MapPin, Calendar, Eye, Users, 
   FileWarning, AlertCircle, CheckCircle, ShieldCheck, 
   Clock, MessageSquare, Zap, Send, Target, ChevronRight, 
-  FileCheck, HelpCircle, ArrowRight, Lock, FileSearch, 
-  Archive, ChevronLeft, FileText, Download, UserRound, 
-  Check, XCircle, Trash2, ClipboardCheck, History, Upload, Paperclip, Undo2, Image as ImageIcon, X,
-  Bold, Italic, Underline, List, ListOrdered, Heading1, Heading2, AlignLeft, AlignCenter, UserPlus, ArrowRightLeft,
+  FileCheck, FileSearch, 
+  Archive, ChevronLeft, FileText, Download, 
+  Check, XCircle, Trash2, History, Upload, Paperclip, Undo2, Image as ImageIcon, X,
+  Bold, Italic, Underline, List, ListOrdered, Heading1, AlignLeft, UserPlus, ArrowRightLeft,
   ZoomIn, ZoomOut
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -26,8 +26,7 @@ import {
   DialogHeader, 
   DialogTitle, 
   DialogFooter, 
-  DialogDescription, 
-  DialogTrigger 
+  DialogDescription 
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { 
@@ -43,7 +42,7 @@ import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import type { EhsObservationStatus, EhsObservationSeverity, EhsObservation, CapaStage, CapaStageRecord } from '@/lib/types';
+import type { CapaStage, EhsObservation } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -175,7 +174,7 @@ const RichNarrativeEditor = ({ value, onChange, placeholder, disabled }: RichEdi
 /* CONFIGS */
 /* ------------------------------------------------------------------ */
 
-const severityConfig: Record<EhsObservationSeverity, { bg: string, text: string, border: string }> = {
+const severityConfig: Record<string, { bg: string, text: string, border: string }> = {
   'Low': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
   'Medium': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
   'High': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
@@ -235,6 +234,25 @@ export default function EhsObservationsPage() {
   const viewingObservation = useMemo(() => 
     observations.find(o => o.id === viewingObservationId), 
   [observations, viewingObservationId]);
+
+  // NAVIGATION SYNC FOR LIGHTBOX
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+        if (viewingImage) {
+            e.preventDefault();
+            setViewingImage(null);
+            // After closing, we might want to ensure we don't go back too far.
+            // This allows the browser back button to close the expanded view.
+        }
+    };
+
+    if (viewingImage) {
+        window.history.pushState({ lightbox: true }, '');
+        window.addEventListener('popstate', handlePopState);
+    }
+
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [viewingImage]);
 
   useEffect(() => {
     if (viewingObservation) {
@@ -338,7 +356,7 @@ export default function EhsObservationsPage() {
         <div className="space-y-6 animate-in fade-in duration-300">
             <div className="flex items-center justify-between bg-white p-4 border border-slate-200 rounded-lg shadow-sm">
                 <div className="flex items-center gap-4 text-left">
-                    <Button variant="ghost" size="icon" onClick={() => setViewingObservationId(null)}>
+                    <Button variant="ghost" size="icon" onClick={() => viewingImage ? setViewingImage(null) : setViewingObservationId(null)}>
                         <ChevronLeft className="h-5 w-5 text-slate-900" />
                     </Button>
                     <div>
@@ -944,11 +962,11 @@ export default function EhsObservationsPage() {
       )}
 
       {/* IMAGE LIGHTBOX */}
-      <Dialog open={!!viewingImage} onOpenChange={() => { setViewingImage(null); setZoom(1); setTranslate({x: 0, y: 0}); }}>
+      <Dialog open={!!viewingImage} onOpenChange={(v) => { if(!v) { setViewingImage(null); setZoom(1); setTranslate({x: 0, y: 0}); } }}>
         <DialogContent className="max-w-[95vw] max-h-[95vh] flex flex-col p-0 overflow-hidden border-none bg-transparent shadow-none">
             <DialogHeader className="sr-only">
                 <DialogTitle>Evidence Image Viewer</DialogTitle>
-                <DialogDescription>Full-screen view of the selected evidence image.</DialogDescription>
+                <DialogDescription>High-fidelity inspection of safety case evidence.</DialogDescription>
             </DialogHeader>
             <div className="absolute top-4 right-4 z-50 flex gap-2">
                 <Button variant="secondary" size="icon" className="bg-white/80 hover:bg-white text-slate-900 rounded-full" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4"/></Button>
