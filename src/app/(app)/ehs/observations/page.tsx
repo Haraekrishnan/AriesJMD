@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef, MouseEvent } from 'react';
@@ -12,7 +13,8 @@ import {
   Clock, MessageSquare, Zap, Send, Target, ChevronRight, 
   FileCheck, HelpCircle, ArrowRight, Lock, FileSearch, 
   Archive, ChevronLeft, FileText, Download, UserRound, 
-  Check, XCircle, Trash2, ClipboardCheck, History, Upload, Paperclip, Undo2, Image as ImageIcon, X
+  Check, XCircle, Trash2, ClipboardCheck, History, Upload, Paperclip, Undo2, Image as ImageIcon, X,
+  Bold, Italic, Underline, List, ListOrdered, Heading1, Heading2, AlignLeft, AlignCenter
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, parseISO, isValid } from 'date-fns';
@@ -47,6 +49,130 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
+/* ------------------------------------------------------------------ */
+/* RICH TEXT EDITOR COMPONENT */
+/* ------------------------------------------------------------------ */
+
+interface RichEditorProps {
+  value: string;
+  onChange: (html: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+}
+
+const RichNarrativeEditor = ({ value, onChange, placeholder, disabled }: RichEditorProps) => {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Sync internal state with external value if needed
+  useEffect(() => {
+    if (editorRef.current && editorRef.current.innerHTML !== value) {
+      editorRef.current.innerHTML = value || '';
+    }
+  }, [value]);
+
+  const execCommand = (command: string, val: string | undefined = undefined) => {
+    document.execCommand(command, false, val);
+    if (editorRef.current) {
+      onChange(editorRef.current.innerHTML);
+    }
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    let hasImage = false;
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        hasImage = true;
+        const file = items[i].getAsFile();
+        if (file) {
+          e.preventDefault();
+          await handleImageUpload(file);
+        }
+      }
+    }
+  };
+
+  const handleImageUpload = async (file: File) => {
+    setIsUploading(true);
+    toast({ title: 'Processing Image...', description: 'Transmitting to Dropbox repository.' });
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload/dropbox', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        // Insert image into editor
+        const imgHtml = `<img src="${data.downloadLink}" alt="Pasted Evidence" style="max-width: 100%; border-radius: 8px; margin: 10px 0; border: 2px solid #e2e8f0;" />`;
+        execCommand('insertHTML', imgHtml);
+        toast({ title: 'Evidence Attached' });
+      } else {
+        throw new Error(data.error || 'Upload failed');
+      }
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className={cn("border-2 rounded-xl overflow-hidden bg-white", disabled && "opacity-50 pointer-events-none")}>
+      {/* TOOLBAR */}
+      <div className="flex flex-wrap items-center gap-0.5 p-1 bg-slate-50 border-b border-slate-200">
+        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('bold')} title="Bold"><Bold className="h-4 w-4" /></Button>
+        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('italic')} title="Italic"><Italic className="h-4 w-4" /></Button>
+        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('underline')} title="Underline"><Underline className="h-4 w-4" /></Button>
+        <div className="w-px h-4 bg-slate-300 mx-1" />
+        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('insertUnorderedList')} title="Bullet List"><List className="h-4 w-4" /></Button>
+        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('insertOrderedList')} title="Numbered List"><ListOrdered className="h-4 w-4" /></Button>
+        <div className="w-px h-4 bg-slate-300 mx-1" />
+        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('formatBlock', 'H3')} title="Heading"><Heading1 className="h-4 w-4" /></Button>
+        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('formatBlock', 'P')} title="Normal Text"><AlignLeft className="h-4 w-4" /></Button>
+        <div className="w-px h-4 bg-slate-300 mx-1" />
+        <div className="relative">
+           <input 
+             type="file" 
+             className="absolute inset-0 opacity-0 cursor-pointer" 
+             accept="image/*"
+             onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
+           />
+           <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Insert Image"><ImageIcon className="h-4 w-4" /></Button>
+        </div>
+        {isUploading && <Loader2 className="h-3 w-3 animate-spin text-primary ml-2" />}
+      </div>
+
+      {/* EDITOR AREA */}
+      <div
+        ref={editorRef}
+        contentEditable
+        onInput={(e) => onChange(e.currentTarget.innerHTML)}
+        onPaste={handlePaste}
+        className="min-h-[250px] p-4 focus:outline-none font-bold text-slate-900 text-sm leading-relaxed"
+        data-placeholder={placeholder}
+      />
+    </div>
+  );
+};
+
+const Loader2 = ({ className }: { className?: string }) => (
+    <svg className={cn("animate-spin", className)} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+);
+
+/* ------------------------------------------------------------------ */
+/* CONFIGS */
+/* ------------------------------------------------------------------ */
+
 const severityConfig: Record<EhsObservationSeverity, { bg: string, text: string, border: string }> = {
   'Low': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
   'Medium': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
@@ -70,10 +196,13 @@ const observationSchema = z.object({
   category: z.enum(['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']),
   severity: z.enum(['Low', 'Medium', 'High', 'Critical']),
   description: z.string().min(5, 'Detailed description is required'),
-  discoveryAttachmentUrl: z.string().optional(),
 });
 
 type ObservationFormValues = z.infer<typeof observationSchema>;
+
+/* ------------------------------------------------------------------ */
+/* MAIN PAGE */
+/* ------------------------------------------------------------------ */
 
 export default function EhsObservationsPage() {
   const { observations, addObservation, actionStage, reviewStage, assignStageOwner, deleteObservation } = useEhs();
@@ -90,11 +219,6 @@ export default function EhsObservationsPage() {
   const [reviewComment, setReviewComment] = useState('');
   const [tempAttachmentUrl, setTempAttachmentUrl] = useState('');
 
-  // Report Initiation Attachments
-  const [reportAttachmentFile, setReportAttachmentFile] = useState<File | null>(null);
-  const [reportAttachmentPreview, setReportAttachmentPreview] = useState<string | null>(null);
-  const [isUploadingReportImage, setIsUploadingReportImage] = useState(false);
-
   const viewingObservation = useMemo(() => 
     observations.find(o => o.id === viewingObservationId), 
   [observations, viewingObservationId]);
@@ -102,19 +226,14 @@ export default function EhsObservationsPage() {
   useEffect(() => {
     if (viewingObservation) {
       setActiveViewStage(viewingObservation.currentStage);
-      // Initialize action data from stage data if available
       const currentStageData = viewingObservation.stages?.[viewingObservation.currentStage];
-      if (currentStageData?.data) {
-          setActionData(currentStageData.data);
-      } else {
-          setActionData({});
-      }
+      setActionData(currentStageData?.data || {});
     }
   }, [viewingObservation]);
 
   const form = useForm<ObservationFormValues>({
     resolver: zodResolver(observationSchema),
-    defaultValues: { category: 'Unsafe Act', severity: 'Medium', projectId: '' },
+    defaultValues: { category: 'Unsafe Act', severity: 'Medium', projectId: '', description: '' },
   });
 
   const filteredObservations = useMemo(() => {
@@ -129,69 +248,14 @@ export default function EhsObservationsPage() {
     }).sort((a, b) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime());
   }, [observations, searchTerm, projects]);
 
-  const handleReportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-          setReportAttachmentFile(file);
-          const reader = new FileReader();
-          reader.onloadend = () => setReportAttachmentPreview(reader.result as string);
-          reader.readAsDataURL(file);
-      }
-  };
-
-  const handleReportPaste = (e: React.ClipboardEvent) => {
-      const items = e.clipboardData.items;
-      for (let i = 0; i < items.length; i++) {
-          if (items[i].type.indexOf('image') !== -1) {
-              const file = items[i].getAsFile();
-              if (file) {
-                  setReportAttachmentFile(file);
-                  const reader = new FileReader();
-                  reader.onloadend = () => setReportAttachmentPreview(reader.result as string);
-                  reader.readAsDataURL(file);
-              }
-          }
-      }
-  };
-
   const onReportSubmit = async (data: ObservationFormValues) => {
-    let finalAttachmentUrl = '';
-    
-    if (reportAttachmentFile) {
-        setIsUploadingReportImage(true);
-        toast({ title: 'Uploading Evidence', description: 'Storing photo to Dropbox...' });
-        
-        try {
-            const formData = new FormData();
-            formData.append('file', reportAttachmentFile);
-            
-            const res = await fetch('/api/upload/dropbox', {
-                method: 'POST',
-                body: formData,
-            });
-
-            const uploadData = await res.json();
-            if (res.ok && uploadData.success) {
-                finalAttachmentUrl = uploadData.downloadLink;
-            } else {
-                throw new Error(uploadData.error || 'Upload failed');
-            }
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Continuing without attachment.' });
-        } finally {
-            setIsUploadingReportImage(false);
-        }
-    }
-
     addObservation({
         ...data,
-        discoveryAttachmentUrl: finalAttachmentUrl || null
+        discoveryAttachmentUrl: null // Attachments are now embedded in HTML description
     });
     
     setIsReportDialogOpen(false);
     form.reset();
-    setReportAttachmentFile(null);
-    setReportAttachmentPreview(null);
   };
 
   const handleActionSubmit = () => {
@@ -233,12 +297,12 @@ export default function EhsObservationsPage() {
                     </Button>
                     <div>
                         <div className="flex items-center gap-3">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Case Dossier: {viewingObservation.id.slice(-6).toUpperCase()}</span>
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Case Dossier: {viewingObservation.id.slice(-6).toUpperCase()}</span>
                             <Badge variant="outline" className={cn("text-[9px] font-black h-4 px-2 uppercase border-2", severityConfig[viewingObservation.severity].border, severityConfig[viewingObservation.severity].text)}>
                                 {viewingObservation.severity}
                             </Badge>
                         </div>
-                        <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase mt-0.5">{viewingObservation.description}</h1>
+                        <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase mt-0.5">Observation Lifecycle Cockpit</h1>
                     </div>
                 </div>
                 <div className="flex gap-2">
@@ -249,54 +313,44 @@ export default function EhsObservationsPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-[300px,1fr] gap-6 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-[320px,1fr] gap-6 items-start">
                 {/* Side Dossier */}
                 <div className="space-y-4">
                     <Card className="rounded-lg shadow-sm overflow-hidden border-slate-200">
                         <CardHeader className="bg-slate-900 text-white p-4">
                             <CardTitle className="text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-2">
-                                <FileText className="h-3.5 w-3.5" /> Discovery Dossier
+                                <FileText className="h-3.5 w-3.5" /> Case Discovery Narrative
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-5 space-y-6 text-left">
-                            {viewingObservation.discoveryAttachmentUrl && (
-                                <div className="space-y-2 mb-4">
-                                    <Label className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">Discovery Evidence</Label>
-                                    <div className="aspect-video relative rounded-lg border-2 border-slate-100 overflow-hidden bg-slate-50 flex items-center justify-center group">
-                                        <img 
-                                            src={viewingObservation.discoveryAttachmentUrl} 
-                                            alt="Safety Finding" 
-                                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                                        />
-                                        <Button asChild variant="secondary" size="icon" className="absolute bottom-2 right-2 h-7 w-7 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <a href={viewingObservation.discoveryAttachmentUrl} target="_blank" rel="noopener noreferrer">
-                                                <Eye className="h-3.5 w-3.5" />
-                                            </a>
-                                        </Button>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="space-y-1">
-                                <Label className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">Initial Finding</Label>
-                                <p className="text-sm font-bold text-slate-900 leading-tight">"{viewingObservation.description}"</p>
-                            </div>
                             <div className="space-y-4 pt-2">
                                 <div className="flex justify-between">
-                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Site Location</span>
+                                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Site Location</span>
                                     <span className="text-xs font-black text-slate-900">{site?.name || 'N/A'} &middot; {viewingObservation.location}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Reporter</span>
+                                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Reporter</span>
                                     <div className="flex items-center gap-2">
                                         <Avatar className="h-5 w-5 border"><AvatarImage src={reporter?.avatar}/><AvatarFallback>{reporter?.name?.[0]}</AvatarFallback></Avatar>
                                         <span className="text-xs font-black text-slate-900">{reporter?.name}</span>
                                     </div>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Logged On</span>
+                                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Logged On</span>
                                     <span className="text-xs font-black text-slate-900">{format(parseISO(viewingObservation.createdAt), 'dd MMM yyyy, p')}</span>
                                 </div>
+                            </div>
+                            
+                            <Separator />
+
+                            <div className="space-y-1">
+                                <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Original Narrative Findings</Label>
+                                <ScrollArea className="max-h-[300px]">
+                                   <div 
+                                     className="text-sm font-bold text-slate-900 leading-relaxed rich-text-content" 
+                                     dangerouslySetInnerHTML={{ __html: viewingObservation.description }} 
+                                   />
+                                </ScrollArea>
                             </div>
                         </CardContent>
                     </Card>
@@ -344,7 +398,7 @@ export default function EhsObservationsPage() {
 
                 {/* Main Action Workspace */}
                 <div className="space-y-6">
-                    <Card className="rounded-lg border-slate-200 shadow-sm min-h-[500px] flex flex-col bg-white text-left">
+                    <Card className="rounded-lg border-slate-200 shadow-sm min-h-[600px] flex flex-col bg-white text-left">
                         <div className="p-6 border-b bg-slate-50/50 flex justify-between items-center">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-white rounded-lg shadow-sm border border-slate-200">
@@ -525,24 +579,19 @@ export default function EhsObservationsPage() {
           <p className="text-slate-500 text-sm font-bold mt-2 uppercase tracking-wide">Enterprise Registry for Safety Lifecycle Governance.</p>
         </div>
         
-        <Dialog open={isReportDialogOpen} onOpenChange={(o) => {
-            if(!o) {
-                setReportAttachmentFile(null);
-                setReportAttachmentPreview(null);
-            }
-            setIsReportDialogOpen(o);
-        }}>
+        <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-slate-900 hover:bg-black text-white font-black h-11 px-8 rounded-md shadow-lg active:scale-95 transition-all text-xs tracking-widest">
               <Plus className="mr-2 h-4 w-4" /> INITIATE CASE
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-xl" onPaste={handleReportPaste}>
+          <DialogContent className="sm:max-w-3xl max-h-[95vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
             <DialogHeader>
               <DialogTitle className="font-black uppercase tracking-tight text-slate-900">Initiate Safety Case</DialogTitle>
-              <DialogDescription className="font-medium text-slate-500">Log an observation to trigger the organizational CAPA cycle.</DialogDescription>
+              <DialogDescription className="font-medium text-slate-500">Log a professional observation report with rich narrative and evidence.</DialogDescription>
             </DialogHeader>
-            <form onSubmit={form.handleSubmit(onReportSubmit)} className="space-y-6 py-4">
+            <ScrollArea className="flex-1">
+            <form onSubmit={form.handleSubmit(onReportSubmit)} className="space-y-6 py-4 pr-4">
                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5 text-left">
                     <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest ml-0.5">Finding Category</Label>
@@ -607,52 +656,28 @@ export default function EhsObservationsPage() {
                   </div>
                 </div>
 
-                <div className="space-y-1.5 text-left">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest ml-0.5">Finding Narrative</Label>
-                  </div>
-                  <Textarea {...form.register('description')} className="min-h-[100px] p-3 font-bold border-2 text-slate-900 text-sm" placeholder="State exactly what was discovered..." />
-                </div>
-
-                <div className="space-y-1.5 text-left">
-                    <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest ml-0.5">Attached Discovery Evidence</Label>
-                    {reportAttachmentPreview ? (
-                        <div className="relative aspect-video rounded-xl border-2 border-slate-200 overflow-hidden bg-slate-50 group">
-                            <img src={reportAttachmentPreview} className="w-full h-full object-cover" alt="Preview" />
-                            <Button 
-                                type="button" 
-                                variant="destructive" 
-                                size="icon" 
-                                className="absolute top-2 right-2 h-8 w-8 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={() => {
-                                    setReportAttachmentFile(null);
-                                    setReportAttachmentPreview(null);
-                                }}
-                            >
-                                <X className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    ) : (
-                        <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-slate-50 transition-colors group cursor-pointer relative">
-                             <input 
-                                type="file" 
-                                className="absolute inset-0 opacity-0 cursor-pointer" 
-                                accept="image/*"
-                                onChange={handleReportFileChange}
-                            />
-                            <ImageIcon className="h-10 w-10 text-slate-300 group-hover:text-slate-400 mb-2" />
-                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Click to upload or <span className="text-primary underline">Paste Image</span></p>
-                        </div>
+                <div className="space-y-2 text-left">
+                  <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest ml-0.5">Finding Narrative & Visual Evidence</Label>
+                  <Controller
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <RichNarrativeEditor 
+                        value={field.value} 
+                        onChange={field.onChange} 
+                        placeholder="Narate the observation here. You can paste screenshots directly into this box..." 
+                      />
                     )}
+                  />
+                  {form.formState.errors.description && <p className="text-xs text-rose-600 font-bold">{form.formState.errors.description.message}</p>}
                 </div>
 
-                <DialogFooter className="pt-4">
+                <DialogFooter className="pt-4 border-t">
                   <Button variant="outline" type="button" onClick={() => setIsReportDialogOpen(false)} className="h-11 px-8 font-bold border-2">CANCEL</Button>
-                  <Button type="submit" disabled={isUploadingReportImage} className="bg-slate-900 hover:bg-black text-white h-11 px-10 font-black uppercase tracking-widest text-[10px]">
-                    {isUploadingReportImage ? 'UPLOADING...' : 'OPEN CASE'}
-                  </Button>
+                  <Button type="submit" className="bg-slate-900 hover:bg-black text-white h-11 px-10 font-black uppercase tracking-widest text-[10px]">OPEN CASE</Button>
                 </DialogFooter>
             </form>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
       </div>
@@ -709,7 +734,7 @@ export default function EhsObservationsPage() {
                                 </TableCell>
                                 <TableCell className="border-r border-slate-200 px-4 py-2 sticky left-20 z-20 bg-white group-hover:bg-slate-50 transition-colors">
                                     <div className="flex flex-col gap-0.5">
-                                        <p className="font-black text-xs uppercase tracking-tight text-slate-800 leading-tight line-clamp-1">{obs.description}</p>
+                                        <p className="font-black text-xs uppercase tracking-tight text-slate-800 leading-tight line-clamp-1" dangerouslySetInnerHTML={{ __html: obs.description }} />
                                         <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
                                             <MapPin className="h-2.5 w-2.5" /> {site?.name} &middot; {obs.location}
                                         </div>
@@ -793,3 +818,4 @@ export default function EhsObservationsPage() {
     </div>
   );
 }
+
