@@ -13,7 +13,8 @@ import {
   FileCheck, HelpCircle, ArrowRight, Lock, FileSearch, 
   Archive, ChevronLeft, FileText, Download, UserRound, 
   Check, XCircle, Trash2, ClipboardCheck, History, Upload, Paperclip, Undo2, Image as ImageIcon, X,
-  Bold, Italic, Underline, List, ListOrdered, Heading1, Heading2, AlignLeft, AlignCenter, UserPlus, ArrowRightLeft
+  Bold, Italic, Underline, List, ListOrdered, Heading1, Heading2, AlignLeft, AlignCenter, UserPlus, ArrowRightLeft,
+  ZoomIn, ZoomOut
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, parseISO, isValid } from 'date-fns';
@@ -112,7 +113,7 @@ const RichNarrativeEditor = ({ value, onChange, placeholder, disabled }: RichEdi
       const data = await res.json();
       if (res.ok && data.success) {
         // Insert image into editor
-        const imgHtml = `<img src="${data.downloadLink}" alt="Pasted Evidence" style="max-width: 100%; border-radius: 8px; margin: 10px 0; border: 2px solid #e2e8f0;" />`;
+        const imgHtml = `<img src="${data.downloadLink}" alt="Pasted Evidence" style="max-width: 100%; border-radius: 8px; margin: 10px 0; border: 2px solid #e2e8f0; cursor: pointer;" />`;
         execCommand('insertHTML', imgHtml);
         toast({ title: 'Evidence Attached' });
       } else {
@@ -126,7 +127,7 @@ const RichNarrativeEditor = ({ value, onChange, placeholder, disabled }: RichEdi
   };
 
   return (
-    <div className={cn("border-2 rounded-xl overflow-hidden bg-white", disabled && "opacity-50 pointer-events-none")}>
+    <div className={cn("border-2 rounded-xl overflow-hidden bg-white shadow-inner", disabled && "opacity-50 pointer-events-none")}>
       {/* TOOLBAR */}
       <div className="flex flex-wrap items-center gap-0.5 p-1 bg-slate-50 border-b border-slate-200">
         <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('bold')} title="Bold"><Bold className="h-4 w-4" /></Button>
@@ -157,7 +158,7 @@ const RichNarrativeEditor = ({ value, onChange, placeholder, disabled }: RichEdi
         contentEditable
         onInput={(e) => onChange(e.currentTarget.innerHTML)}
         onPaste={handlePaste}
-        className="min-h-[250px] p-4 focus:outline-none font-bold text-slate-900 text-sm leading-relaxed"
+        className="min-h-[200px] p-4 focus:outline-none font-bold text-slate-900 text-sm leading-relaxed"
         data-placeholder={placeholder}
       />
     </div>
@@ -193,7 +194,7 @@ const stageConfig: Record<CapaStage, { label: string, icon: any, color: string, 
 };
 
 const observationSchema = z.object({
-  projectId: z.string().min(1, 'Site is required'),
+  projectId: z.string().min(1, 'Project is required'),
   location: z.string().min(1, 'Specific location is required'),
   category: z.enum(['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']),
   severity: z.enum(['Low', 'Medium', 'High', 'Critical']),
@@ -216,10 +217,16 @@ export default function EhsObservationsPage() {
   const [viewingObservationId, setViewingObservationId] = useState<string | null>(null);
   const [activeViewStage, setActiveViewStage] = useState<CapaStage | null>(null);
 
+  // Lightbox State
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [isPanning, setIsPanning] = useState(false);
+  const [startPosition, setStartPosition] = useState({ x: 0, y: 0 });
+  const [translate, setTranslate] = useState({ x: 0, y: 0 });
+
   // Management Action States
   const [isReassignPopoverOpen, setIsReassignPopoverOpen] = useState(false);
   const [isCcPopoverOpen, setIsCcPopoverOpen] = useState(false);
-  const [selectedAssigneeId, setSelectedAssigneeId] = useState<string | null>(null);
 
   // Form states for stage actions
   const [actionData, setActionData] = useState<any>({});
@@ -283,6 +290,35 @@ export default function EhsObservationsPage() {
     setIsCcPopoverOpen(false);
   };
 
+  const handleImageClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'IMG') {
+        setViewingImage((target as HTMLImageElement).src);
+    }
+  };
+
+  const handleMouseDown = (e: MouseEvent<HTMLDivElement>) => {
+      if (zoom <= 1) return;
+      e.preventDefault();
+      setIsPanning(true);
+      setStartPosition({
+          x: e.clientX - translate.x,
+          y: e.clientY - translate.y,
+      });
+  };
+
+  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+      if (!isPanning) return;
+      e.preventDefault();
+      const x = e.clientX - startPosition.x;
+      const y = e.clientY - startPosition.y;
+      setTranslate({ x, y });
+  };
+  
+  const handleMouseUpOrLeave = () => {
+      setIsPanning(false);
+  };
+
   if (viewingObservation && activeViewStage) {
     const stageData = viewingObservation.stages?.[activeViewStage];
     const isCurrentStage = activeViewStage === viewingObservation.currentStage;
@@ -311,7 +347,7 @@ export default function EhsObservationsPage() {
                     <div>
                         <div className="flex items-center gap-3">
                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Case Dossier: {viewingObservation.id.slice(-6).toUpperCase()}</span>
-                            <Badge variant="outline" className={cn("text-[9px] font-black h-4 px-2 uppercase border-2", severityConfig[viewingObservation.severity].border, severityConfig[viewingObservation.severity].text)}>
+                            <Badge variant="outline" className={cn("text-[9px] font-black h-4 px-2 uppercase border-2", severityConfig[viewingObservation.severity]?.border, severityConfig[viewingObservation.severity]?.text)}>
                                 {viewingObservation.severity}
                             </Badge>
                         </div>
@@ -395,21 +431,21 @@ export default function EhsObservationsPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-5 space-y-6 text-left">
-                            <div className="space-y-4 pt-2">
+                            <div className="space-y-4 pt-2 text-slate-900">
                                 <div className="flex justify-between">
                                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Site Location</span>
-                                    <span className="text-xs font-black text-slate-900">{site?.name || 'N/A'} &middot; {viewingObservation.location}</span>
+                                    <span className="text-xs font-black">{site?.name || 'N/A'} &middot; {viewingObservation.location}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Reporter</span>
                                     <div className="flex items-center gap-2">
                                         <Avatar className="h-5 w-5 border"><AvatarImage src={reporter?.avatar}/><AvatarFallback>{reporter?.name?.[0]}</AvatarFallback></Avatar>
-                                        <span className="text-xs font-black text-slate-900">{reporter?.name}</span>
+                                        <span className="text-xs font-black">{reporter?.name}</span>
                                     </div>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Logged On</span>
-                                    <span className="text-xs font-black text-slate-900">{format(parseISO(viewingObservation.createdAt), 'dd MMM yyyy, p')}</span>
+                                    <span className="text-xs font-black">{format(parseISO(viewingObservation.createdAt), 'dd MMM yyyy, p')}</span>
                                 </div>
                             </div>
                             
@@ -433,9 +469,10 @@ export default function EhsObservationsPage() {
 
                             <div className="space-y-1">
                                 <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Original Narrative Findings</Label>
-                                <ScrollArea className="max-h-[300px]">
+                                <ScrollArea className="max-h-[400px]">
                                    <div 
-                                     className="text-sm font-bold text-slate-900 leading-relaxed rich-text-content" 
+                                     className="text-sm font-bold text-slate-900 leading-relaxed rich-text-content cursor-pointer" 
+                                     onClick={handleImageClick}
                                      dangerouslySetInnerHTML={{ __html: viewingObservation.description }} 
                                    />
                                 </ScrollArea>
@@ -509,14 +546,14 @@ export default function EhsObservationsPage() {
                                     <div className="space-y-1">
                                         <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Responsibility</Label>
                                         <div className="flex items-center gap-2">
-                                            <Avatar className="h-5 w-5"><AvatarImage src={assignee?.avatar}/></Avatar>
+                                            <Avatar className="h-5 w-5 border-slate-300"><AvatarImage src={assignee?.avatar}/><AvatarFallback className="font-bold text-[8px]">{assignee?.name?.[0]}</AvatarFallback></Avatar>
                                             <span className="text-xs font-black text-slate-900">{assignee?.name || 'Unassigned'}</span>
                                         </div>
                                     </div>
                                     <div className="space-y-1">
                                         <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Delegated By</Label>
                                         <span className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                                             <Avatar className="h-4 w-4"><AvatarImage src={assignedBy?.avatar}/></Avatar>
+                                             <Avatar className="h-4 w-4 border-slate-200"><AvatarImage src={assignedBy?.avatar}/><AvatarFallback className="text-[7px]">{assignedBy?.name?.[0]}</AvatarFallback></Avatar>
                                              {assignedBy?.name || 'System'}
                                         </span>
                                     </div>
@@ -558,11 +595,10 @@ export default function EhsObservationsPage() {
                                                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-900">Correction Documentation</Label>
                                                 {isActionPending && isAssignee ? (
                                                     <div className="space-y-4">
-                                                        <Textarea 
-                                                            className="min-h-[120px] rounded-lg p-4 font-bold border-2 focus-visible:ring-blue-100" 
+                                                        <RichNarrativeEditor 
+                                                            value={actionData.notes || ''} 
+                                                            onChange={(html) => setActionData({ ...actionData, notes: html })}
                                                             placeholder="Log the immediate actions taken to contain the hazard..."
-                                                            value={actionData.notes || ''}
-                                                            onChange={(e) => setActionData({ ...actionData, notes: e.target.value })}
                                                         />
                                                         <Alert className="bg-emerald-50 border-emerald-100 rounded-2xl py-6">
                                                             <AlertCircle className="h-5 w-5 text-emerald-600" />
@@ -571,9 +607,11 @@ export default function EhsObservationsPage() {
                                                         </Alert>
                                                     </div>
                                                 ) : (
-                                                    <p className="p-4 border rounded-lg bg-slate-50 text-sm font-bold text-slate-700 leading-relaxed">
-                                                        {stageData?.data?.notes || 'No correction notes logged.'}
-                                                    </p>
+                                                    <div 
+                                                        className="p-4 border rounded-lg bg-slate-50 text-sm font-bold text-slate-700 leading-relaxed rich-text-content cursor-pointer"
+                                                        onClick={handleImageClick}
+                                                        dangerouslySetInnerHTML={{ __html: stageData?.data?.notes || 'No correction notes logged.' }}
+                                                    />
                                                 )}
                                             </div>
                                         </div>
@@ -842,7 +880,7 @@ export default function EhsObservationsPage() {
                                     {obs.category}
                                 </TableCell>
                                 <TableCell className="text-center border-r-2 border-slate-300">
-                                    <Badge variant="outline" className={cn("text-[9px] font-black uppercase h-5 px-2 border-2", severityConfig[obs.severity].border, severityConfig[obs.severity].text)}>
+                                    <Badge variant="outline" className={cn("text-[9px] font-black uppercase h-5 px-2 border-2", severityConfig[obs.severity]?.border, severityConfig[obs.severity]?.text)}>
                                         {obs.severity}
                                     </Badge>
                                 </TableCell>
@@ -913,6 +951,39 @@ export default function EhsObservationsPage() {
           <p className="text-slate-400 font-bold mt-2 uppercase text-sm">Waiting for first site observation report...</p>
         </div>
       )}
+
+      {/* IMAGE LIGHTBOX */}
+      <Dialog open={!!viewingImage} onOpenChange={() => { setViewingImage(null); setZoom(1); setTranslate({x: 0, y: 0}); }}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] flex flex-col p-0 overflow-hidden border-none bg-transparent shadow-none">
+            <div className="absolute top-4 right-4 z-50 flex gap-2">
+                <Button variant="secondary" size="icon" className="bg-white/80 hover:bg-white text-slate-900 rounded-full" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4"/></Button>
+                <Button variant="secondary" size="icon" className="bg-white/80 hover:bg-white text-slate-900 rounded-full" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4"/></Button>
+                <a href={viewingImage || ''} download target="_blank" rel="noopener noreferrer">
+                    <Button variant="secondary" size="icon" className="bg-white/80 hover:bg-white text-slate-900 rounded-full"><Download className="h-4 w-4" /></Button>
+                </a>
+                <Button variant="destructive" size="icon" className="rounded-full shadow-lg" onClick={() => setViewingImage(null)}><X className="h-4 w-4" /></Button>
+            </div>
+            <div 
+              className="flex-1 overflow-auto flex items-center justify-center bg-black/90 backdrop-blur-xl"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUpOrLeave}
+              onMouseLeave={handleMouseUpOrLeave}
+            >
+                <img 
+                    src={viewingImage || ''} 
+                    alt="Expanded Evidence" 
+                    className={cn("transition-transform duration-200 select-none", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
+                    style={{ 
+                        transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`, 
+                        maxWidth: zoom > 1 ? 'none' : '90%', 
+                        maxHeight: zoom > 1 ? 'none' : '90%',
+                        objectFit: 'contain'
+                    }}
+                />
+            </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
