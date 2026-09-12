@@ -173,6 +173,20 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     stages['Initiation'].reviewedById = user.id;
     stages['Initiation'].reviewedAt = now;
 
+    // Add discovery attachment to initiation if it exists
+    if (data.discoveryAttachmentUrl) {
+       const attachmentRefId = 'discovery-attachment';
+       stages['Initiation'].attachments = {
+           [attachmentRefId]: {
+               id: attachmentRefId,
+               name: 'Initial Finding Evidence',
+               url: data.discoveryAttachmentUrl,
+               uploadedBy: user.id,
+               uploadedAt: now
+           }
+       };
+    }
+
     // Auto-open next stage (Resolution)
     stages['Resolution'].status = 'In Progress';
     stages['Resolution'].assignedById = user.id;

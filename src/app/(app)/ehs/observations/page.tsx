@@ -12,7 +12,7 @@ import {
   Clock, MessageSquare, Zap, Send, Target, ChevronRight, 
   FileCheck, HelpCircle, ArrowRight, Lock, FileSearch, 
   Archive, ChevronLeft, FileText, Download, UserRound, 
-  Check, XCircle, Trash2, ClipboardCheck, History, Upload, Paperclip, Undo2
+  Check, XCircle, Trash2, ClipboardCheck, History, Upload, Paperclip, Undo2, Image as ImageIcon, X
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, parseISO, isValid } from 'date-fns';
@@ -70,6 +70,7 @@ const observationSchema = z.object({
   category: z.enum(['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']),
   severity: z.enum(['Low', 'Medium', 'High', 'Critical']),
   description: z.string().min(5, 'Detailed description is required'),
+  discoveryAttachmentUrl: z.string().optional(),
 });
 
 type ObservationFormValues = z.infer<typeof observationSchema>;
@@ -88,6 +89,11 @@ export default function EhsObservationsPage() {
   const [actionData, setActionData] = useState<any>({});
   const [reviewComment, setReviewComment] = useState('');
   const [tempAttachmentUrl, setTempAttachmentUrl] = useState('');
+
+  // Report Initiation Attachments
+  const [reportAttachmentFile, setReportAttachmentFile] = useState<File | null>(null);
+  const [reportAttachmentPreview, setReportAttachmentPreview] = useState<string | null>(null);
+  const [isUploadingReportImage, setIsUploadingReportImage] = useState(false);
 
   const viewingObservation = useMemo(() => 
     observations.find(o => o.id === viewingObservationId), 
@@ -123,10 +129,69 @@ export default function EhsObservationsPage() {
     }).sort((a, b) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime());
   }, [observations, searchTerm, projects]);
 
-  const onReportSubmit = (data: ObservationFormValues) => {
-    addObservation(data);
+  const handleReportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          setReportAttachmentFile(file);
+          const reader = new FileReader();
+          reader.onloadend = () => setReportAttachmentPreview(reader.result as string);
+          reader.readAsDataURL(file);
+      }
+  };
+
+  const handleReportPaste = (e: React.ClipboardEvent) => {
+      const items = e.clipboardData.items;
+      for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf('image') !== -1) {
+              const file = items[i].getAsFile();
+              if (file) {
+                  setReportAttachmentFile(file);
+                  const reader = new FileReader();
+                  reader.onloadend = () => setReportAttachmentPreview(reader.result as string);
+                  reader.readAsDataURL(file);
+              }
+          }
+      }
+  };
+
+  const onReportSubmit = async (data: ObservationFormValues) => {
+    let finalAttachmentUrl = '';
+    
+    if (reportAttachmentFile) {
+        setIsUploadingReportImage(true);
+        toast({ title: 'Uploading Evidence', description: 'Storing photo to Dropbox...' });
+        
+        try {
+            const formData = new FormData();
+            formData.append('file', reportAttachmentFile);
+            
+            const res = await fetch('/api/upload/dropbox', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const uploadData = await res.json();
+            if (res.ok && uploadData.success) {
+                finalAttachmentUrl = uploadData.downloadLink;
+            } else {
+                throw new Error(uploadData.error || 'Upload failed');
+            }
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Continuing without attachment.' });
+        } finally {
+            setIsUploadingReportImage(false);
+        }
+    }
+
+    addObservation({
+        ...data,
+        discoveryAttachmentUrl: finalAttachmentUrl || null
+    });
+    
     setIsReportDialogOpen(false);
     form.reset();
+    setReportAttachmentFile(null);
+    setReportAttachmentPreview(null);
   };
 
   const handleActionSubmit = () => {
@@ -194,6 +259,24 @@ export default function EhsObservationsPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-5 space-y-6 text-left">
+                            {viewingObservation.discoveryAttachmentUrl && (
+                                <div className="space-y-2 mb-4">
+                                    <Label className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">Discovery Evidence</Label>
+                                    <div className="aspect-video relative rounded-lg border-2 border-slate-100 overflow-hidden bg-slate-50 flex items-center justify-center group">
+                                        <img 
+                                            src={viewingObservation.discoveryAttachmentUrl} 
+                                            alt="Safety Finding" 
+                                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                        />
+                                        <Button asChild variant="secondary" size="icon" className="absolute bottom-2 right-2 h-7 w-7 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <a href={viewingObservation.discoveryAttachmentUrl} target="_blank" rel="noopener noreferrer">
+                                                <Eye className="h-3.5 w-3.5" />
+                                            </a>
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="space-y-1">
                                 <Label className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">Initial Finding</Label>
                                 <p className="text-sm font-bold text-slate-900 leading-tight">"{viewingObservation.description}"</p>
@@ -442,13 +525,19 @@ export default function EhsObservationsPage() {
           <p className="text-slate-500 text-sm font-bold mt-2 uppercase tracking-wide">Enterprise Registry for Safety Lifecycle Governance.</p>
         </div>
         
-        <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
+        <Dialog open={isReportDialogOpen} onOpenChange={(o) => {
+            if(!o) {
+                setReportAttachmentFile(null);
+                setReportAttachmentPreview(null);
+            }
+            setIsReportDialogOpen(o);
+        }}>
           <DialogTrigger asChild>
             <Button className="bg-slate-900 hover:bg-black text-white font-black h-11 px-8 rounded-md shadow-lg active:scale-95 transition-all text-xs tracking-widest">
               <Plus className="mr-2 h-4 w-4" /> INITIATE CASE
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-xl">
+          <DialogContent className="sm:max-w-xl" onPaste={handleReportPaste}>
             <DialogHeader>
               <DialogTitle className="font-black uppercase tracking-tight text-slate-900">Initiate Safety Case</DialogTitle>
               <DialogDescription className="font-medium text-slate-500">Log an observation to trigger the organizational CAPA cycle.</DialogDescription>
@@ -519,13 +608,49 @@ export default function EhsObservationsPage() {
                 </div>
 
                 <div className="space-y-1.5 text-left">
-                  <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest ml-0.5">Finding Narrative</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest ml-0.5">Finding Narrative</Label>
+                  </div>
                   <Textarea {...form.register('description')} className="min-h-[100px] p-3 font-bold border-2 text-slate-900 text-sm" placeholder="State exactly what was discovered..." />
+                </div>
+
+                <div className="space-y-1.5 text-left">
+                    <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest ml-0.5">Attached Discovery Evidence</Label>
+                    {reportAttachmentPreview ? (
+                        <div className="relative aspect-video rounded-xl border-2 border-slate-200 overflow-hidden bg-slate-50 group">
+                            <img src={reportAttachmentPreview} className="w-full h-full object-cover" alt="Preview" />
+                            <Button 
+                                type="button" 
+                                variant="destructive" 
+                                size="icon" 
+                                className="absolute top-2 right-2 h-8 w-8 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => {
+                                    setReportAttachmentFile(null);
+                                    setReportAttachmentPreview(null);
+                                }}
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-slate-50 transition-colors group cursor-pointer relative">
+                             <input 
+                                type="file" 
+                                className="absolute inset-0 opacity-0 cursor-pointer" 
+                                accept="image/*"
+                                onChange={handleReportFileChange}
+                            />
+                            <ImageIcon className="h-10 w-10 text-slate-300 group-hover:text-slate-400 mb-2" />
+                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Click to upload or <span className="text-primary underline">Paste Image</span></p>
+                        </div>
+                    )}
                 </div>
 
                 <DialogFooter className="pt-4">
                   <Button variant="outline" type="button" onClick={() => setIsReportDialogOpen(false)} className="h-11 px-8 font-bold border-2">CANCEL</Button>
-                  <Button type="submit" className="bg-slate-900 hover:bg-black text-white h-11 px-10 font-black uppercase tracking-widest text-[10px]">OPEN CASE</Button>
+                  <Button type="submit" disabled={isUploadingReportImage} className="bg-slate-900 hover:bg-black text-white h-11 px-10 font-black uppercase tracking-widest text-[10px]">
+                    {isUploadingReportImage ? 'UPLOADING...' : 'OPEN CASE'}
+                  </Button>
                 </DialogFooter>
             </form>
           </DialogContent>
