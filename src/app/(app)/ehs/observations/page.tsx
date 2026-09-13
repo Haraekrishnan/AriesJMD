@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef, MouseEvent } from 'react';
@@ -203,8 +204,8 @@ const splitSchema = z.object({
     subObservations: z.array(z.object({
         category: z.enum(['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']),
         severity: z.enum(['Low', 'Medium', 'High', 'Critical']),
-        description: z.string().min(5, 'Detailed description is required'),
-    })).min(2, 'Define at least 2 sub-cases to split.'),
+        description: z.string().min(5, 'Description is required (Min 5 chars)'),
+    })).min(2, 'At least 2 sub-cases are required for a split.'),
 });
 
 type ObservationFormValues = z.infer<typeof observationSchema>;
@@ -921,7 +922,7 @@ export default function EhsObservationsPage() {
                                                 className="flex flex-col gap-0.5 cursor-pointer"
                                                 onClick={handleImageClick}
                                             >
-                                                <div className="font-black text-xs uppercase tracking-tight text-slate-800 leading-tight line-clamp-1 rich-text-content" dangerouslySetInnerHTML={{ __html: obs.description }} />
+                                                <div className="font-bold text-xs uppercase tracking-tight text-slate-800 leading-tight line-clamp-1 rich-text-content" dangerouslySetInnerHTML={{ __html: obs.description }} />
                                                 <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
                                                     <MapPin className="h-2.5 w-2.5" /> {site?.name} &middot; {obs.location}
                                                 </div>
@@ -1054,38 +1055,38 @@ export default function EhsObservationsPage() {
       <Dialog open={isSplitDialogOpen} onOpenChange={setIsSplitDialogOpen}>
         <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col">
             <DialogHeader>
-                <DialogTitle className="font-black uppercase tracking-tight">Split Observation Case</DialogTitle>
+                <DialogTitle className="font-black uppercase tracking-tight text-slate-900">Split Observation Case</DialogTitle>
                 <DialogDescription className="font-medium text-slate-500">
                     If this discovery contains multiple distinct issues, split them into sub-cases for individual CAPA tracking.
                 </DialogDescription>
             </DialogHeader>
             <ScrollArea className="flex-1 pr-4">
-                <form onSubmit={splitForm.handleSubmit(onSplitSubmit)} className="space-y-6 py-4">
+                <form onSubmit={splitForm.handleSubmit(onSplitSubmit)} className="space-y-6 py-4 text-left">
                     <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl mb-4">
                          <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-700 mb-2">Original Context</h4>
                          <div className="text-xs font-bold text-slate-700 line-clamp-3 rich-text-content" dangerouslySetInnerHTML={{ __html: viewingObservation?.description || '' }} />
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                         {splitFields.map((field, index) => (
-                            <div key={field.id} className="p-4 border-2 border-slate-200 rounded-xl bg-white space-y-4 relative group/split">
+                            <div key={field.id} className="p-5 border-2 border-slate-200 rounded-xl bg-white space-y-4 relative group/split shadow-sm">
                                 <div className="flex justify-between items-center border-b pb-2">
-                                    <span className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Sub-Observation #{index + 1}</span>
+                                    <span className="text-[11px] font-black uppercase text-slate-900 tracking-widest">Sub-Observation #{index + 1}</span>
                                     {splitFields.length > 2 && (
-                                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-rose-600 opacity-0 group-hover/split:opacity-100 transition-opacity" onClick={() => removeSplit(index)}>
+                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-rose-600 hover:bg-rose-50" onClick={() => removeSplit(index)}>
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
                                     )}
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
-                                        <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Category</Label>
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Category</Label>
                                         <Controller
                                             control={splitForm.control}
                                             name={`subObservations.${index}.category`}
                                             render={({ field: cField }) => (
                                                 <Select onValueChange={cField.onChange} value={cField.value}>
-                                                    <SelectTrigger className="h-9 font-bold"><SelectValue /></SelectTrigger>
+                                                    <SelectTrigger className="h-10 font-bold border-2"><SelectValue /></SelectTrigger>
                                                     <SelectContent>
                                                         <SelectItem value="Unsafe Act">Unsafe Act</SelectItem>
                                                         <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
@@ -1096,15 +1097,16 @@ export default function EhsObservationsPage() {
                                                 </Select>
                                             )}
                                         />
+                                        {splitForm.formState.errors.subObservations?.[index]?.category && <p className="text-[10px] text-rose-600 font-bold ml-1">{splitForm.formState.errors.subObservations[index].category.message}</p>}
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Severity</Label>
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Severity</Label>
                                         <Controller
                                             control={splitForm.control}
                                             name={`subObservations.${index}.severity`}
                                             render={({ field: sField }) => (
                                                 <Select onValueChange={sField.onChange} value={sField.value}>
-                                                    <SelectTrigger className="h-9 font-bold"><SelectValue /></SelectTrigger>
+                                                    <SelectTrigger className="h-10 font-bold border-2"><SelectValue /></SelectTrigger>
                                                     <SelectContent>
                                                         <SelectItem value="Low">Low</SelectItem>
                                                         <SelectItem value="Medium">Medium</SelectItem>
@@ -1114,10 +1116,11 @@ export default function EhsObservationsPage() {
                                                 </Select>
                                             )}
                                         />
+                                        {splitForm.formState.errors.subObservations?.[index]?.severity && <p className="text-[10px] text-rose-600 font-bold ml-1">{splitForm.formState.errors.subObservations[index].severity.message}</p>}
                                     </div>
                                 </div>
                                 <div className="space-y-1.5">
-                                    <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Specific Finding Narrative</Label>
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Specific Finding Narrative</Label>
                                     <Controller
                                         control={splitForm.control}
                                         name={`subObservations.${index}.description`}
@@ -1129,21 +1132,32 @@ export default function EhsObservationsPage() {
                                             />
                                         )}
                                     />
+                                    {splitForm.formState.errors.subObservations?.[index]?.description && <p className="text-[10px] text-rose-600 font-bold ml-1">{splitForm.formState.errors.subObservations[index].description.message}</p>}
                                 </div>
                             </div>
                         ))}
                     </div>
                     
-                    <Button type="button" variant="outline" className="w-full h-11 border-dashed border-2 font-black uppercase text-[10px] tracking-widest" onClick={() => appendSplit({ category: 'Unsafe Act', severity: 'Medium', description: '' })}>
+                    <Button type="button" variant="outline" className="w-full h-12 border-dashed border-2 font-black uppercase text-[10px] tracking-[0.2em] hover:bg-slate-50 mt-4" onClick={() => appendSplit({ category: 'Unsafe Act', severity: 'Medium', description: '' })}>
                         <Plus className="mr-2 h-4 w-4" /> Add Another Component
                     </Button>
                 </form>
             </ScrollArea>
-            <DialogFooter className="pt-4 border-t">
-                <Button variant="outline" onClick={() => setIsSplitDialogOpen(false)} className="h-11 px-8 font-bold">CANCEL</Button>
-                <Button type="button" className="bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest text-[10px] px-10 h-11" onClick={splitForm.handleSubmit(onSplitSubmit)}>
-                    EXECUTE SPLIT
-                </Button>
+            <DialogFooter className="pt-4 border-t flex items-center justify-between">
+                <div className="flex-1">
+                    {splitForm.formState.errors.subObservations?.root && (
+                        <p className="text-xs text-rose-600 font-black uppercase tracking-wide flex items-center gap-1.5">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            {splitForm.formState.errors.subObservations.root.message}
+                        </p>
+                    )}
+                </div>
+                <div className="flex gap-3">
+                    <Button variant="outline" onClick={() => setIsSplitDialogOpen(false)} className="h-11 px-8 font-bold border-2">CANCEL</Button>
+                    <Button type="button" className="bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest text-[10px] px-10 h-11 shadow-lg" onClick={splitForm.handleSubmit(onSplitSubmit)}>
+                        EXECUTE SPLIT
+                    </Button>
+                </div>
             </DialogFooter>
         </DialogContent>
       </Dialog>
