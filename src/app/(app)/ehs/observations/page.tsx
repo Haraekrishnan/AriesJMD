@@ -222,6 +222,7 @@ export default function EhsObservationsPage() {
   const [isPanning, setIsPanning] = useState(false);
   const [startPosition, setStartPosition] = useState({ x: 0, y: 0 });
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
+  const imageContainerRef = useRef<HTMLDivElement>(null);
 
   // Management Action States
   const [isReassignPopoverOpen, setIsReassignPopoverOpen] = useState(false);
@@ -238,7 +239,7 @@ export default function EhsObservationsPage() {
 
   // NAVIGATION SYNC FOR LIGHTBOX
   useEffect(() => {
-    const handlePopState = (e: PopStateEvent) => {
+    const handlePopState = (e: PopstateEvent) => {
         if (viewingImage) {
             e.preventDefault();
             setViewingImage(null);
@@ -307,8 +308,10 @@ export default function EhsObservationsPage() {
 
   const handleImageClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
+    // Walk up to find if an IMG was clicked inside the container
     if (target.tagName === 'IMG') {
         setViewingImage((target as HTMLImageElement).src);
+        e.stopPropagation();
     }
   };
 
@@ -355,7 +358,7 @@ export default function EhsObservationsPage() {
         <div className="space-y-6 animate-in fade-in duration-300">
             <div className="flex items-center justify-between bg-white p-4 border border-slate-200 rounded-lg shadow-sm">
                 <div className="flex items-center gap-4 text-left">
-                    <Button variant="ghost" size="icon" onClick={() => viewingImage ? setViewingImage(null) : setViewingObservationId(null)}>
+                    <Button variant="ghost" size="icon" onClick={() => setViewingObservationId(null)}>
                         <ChevronLeft className="h-5 w-5 text-slate-900" />
                     </Button>
                     <div>
@@ -563,7 +566,7 @@ export default function EhsObservationsPage() {
                                     </div>
                                     <div className="space-y-1">
                                         <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Delegated By</Label>
-                                        <span className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                                        <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
                                              <Avatar className="h-4 w-4 border-slate-200"><AvatarImage src={assignedBy?.avatar}/><AvatarFallback className="text-[7px]">{assignedBy?.name?.[0]}</AvatarFallback></Avatar>
                                              {assignedBy?.name || 'System'}
                                         </span>
@@ -877,7 +880,10 @@ export default function EhsObservationsPage() {
                                   {obs.id.slice(-6).toUpperCase()}
                                 </TableCell>
                                 <TableCell className="border-r border-slate-200 px-4 py-2 sticky left-20 z-20 bg-white group-hover:bg-slate-50 transition-colors">
-                                    <div className="flex flex-col gap-0.5">
+                                    <div 
+                                        className="flex flex-col gap-0.5 cursor-pointer"
+                                        onClick={handleImageClick}
+                                    >
                                         <p className="font-black text-xs uppercase tracking-tight text-slate-800 leading-tight line-clamp-1" dangerouslySetInnerHTML={{ __html: obs.description }} />
                                         <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
                                             <MapPin className="h-2.5 w-2.5" /> {site?.name} &middot; {obs.location}
