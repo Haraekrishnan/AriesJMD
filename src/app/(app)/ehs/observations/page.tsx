@@ -15,7 +15,7 @@ import {
   Check, XCircle, Trash2, History, Upload, Paperclip, Undo2, Image as ImageIcon, X,
   Bold, Italic, Underline, List, ListOrdered, Heading1, AlignLeft, UserPlus, ArrowRightLeft,
   ZoomIn, ZoomOut, Lock, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Split,
-  ChevronUp, Mic, ChevronsUpDown
+  ChevronUp, Mic, ChevronsUpDown, AlertTriangle
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, parseISO, isValid } from 'date-fns';
@@ -1070,7 +1070,7 @@ export default function EhsObservationsPage() {
                         {splitFields.map((field, index) => (
                             <div key={field.id} className="p-5 border-2 border-slate-200 rounded-xl bg-white space-y-4 relative group/split shadow-sm">
                                 <div className="flex justify-between items-center border-b pb-2">
-                                    <span className="text-[11px] font-black uppercase text-slate-900 tracking-widest">Sub-Observation #{index + 1}</span>
+                                    <span className="text-11px] font-black uppercase text-slate-900 tracking-widest">Sub-Observation #{index + 1}</span>
                                     {splitFields.length > 2 && (
                                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-rose-600 hover:bg-rose-50" onClick={() => removeSplit(index)}>
                                             <Trash2 className="h-4 w-4" />
@@ -1137,7 +1137,7 @@ export default function EhsObservationsPage() {
                         ))}
                     </div>
                     
-                    <Button type="button" variant="outline" className="w-full h-12 border-dashed border-2 font-black uppercase text-[10px] tracking-[0.2em] hover:bg-slate-50 mt-4" onClick={() => appendSplit({ category: 'Unsafe Act', severity: 'Medium', description: '' })}>
+                    <Button type="button" variant="outline" className="w-full h-12 border-dashed border-2 font-black uppercase text-[10px] tracking-[0.2em] hover:bg-slate-50 mt-4" onClick={() => append({ category: 'Unsafe Act', severity: 'Medium', description: '' })}>
                         <Plus className="mr-2 h-4 w-4" /> Add Another Component
                     </Button>
                 </form>
@@ -1160,16 +1160,6 @@ export default function EhsObservationsPage() {
             </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {filteredObservations.length === 0 && !viewingObservation && (
-        <div className="flex flex-col items-center justify-center py-32 text-slate-400 bg-white border-2 border-dashed border-slate-200 rounded-[2.5rem]">
-          <div className="p-8 bg-slate-50 rounded-full mb-6 shadow-inner border border-slate-100">
-            <AlertTriangle className="h-14 w-14 opacity-40 text-rose-600" />
-          </div>
-          <p className="text-2xl font-black text-slate-900 tracking-tight uppercase">No records found</p>
-          <p className="text-slate-400 font-bold mt-2 uppercase text-sm">Waiting for first site observation report...</p>
-        </div>
-      )}
 
       {/* IMAGE LIGHTBOX */}
       <Dialog open={!!viewingImage} onOpenChange={(v) => { if(!v) { setViewingImage(null); setZoom(1); setTranslate({x: 0, y: 0}); } }}>
