@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef, MouseEvent } from 'react';
@@ -16,7 +15,7 @@ import {
   Check, XCircle, Trash2, History, Upload, Paperclip, Undo2, Image as ImageIcon, X,
   Bold, Italic, Underline, List, ListOrdered, Heading1, AlignLeft, UserPlus, ArrowRightLeft,
   ZoomIn, ZoomOut, Lock, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Split,
-  ChevronUp
+  ChevronUp, Mic, ChevronsUpDown
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, parseISO, isValid } from 'date-fns';
@@ -873,7 +872,7 @@ export default function EhsObservationsPage() {
                             <History className="mr-2 h-3.5 w-3.5" /> AUDIT TRAIL
                         </Button>
                         <Button variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] border-2">
-                            <Download className="mr-2 h-3.5 w-3.5" /> EXPORT EXCEL
+                            <Download className="mr-2 h-4 w-4" /> EXPORT EXCEL
                         </Button>
                     </div>
                 </div>
@@ -1061,7 +1060,7 @@ export default function EhsObservationsPage() {
                 </DialogDescription>
             </DialogHeader>
             <ScrollArea className="flex-1 pr-4">
-                <form onSubmit={splitForm.handleSubmit(onSplitSubmit)} className="space-y-6 py-4 text-left">
+                <form id="split-observation-form" onSubmit={splitForm.handleSubmit(onSplitSubmit)} className="space-y-6 py-4 text-left">
                     <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl mb-4">
                          <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-700 mb-2">Original Context</h4>
                          <div className="text-xs font-bold text-slate-700 line-clamp-3 rich-text-content" dangerouslySetInnerHTML={{ __html: viewingObservation?.description || '' }} />
@@ -1145,16 +1144,16 @@ export default function EhsObservationsPage() {
             </ScrollArea>
             <DialogFooter className="pt-4 border-t flex items-center justify-between">
                 <div className="flex-1">
-                    {splitForm.formState.errors.subObservations?.root && (
+                    {(Object.keys(splitForm.formState.errors).length > 0) && (
                         <p className="text-xs text-rose-600 font-black uppercase tracking-wide flex items-center gap-1.5">
                             <AlertTriangle className="h-3.5 w-3.5" />
-                            {splitForm.formState.errors.subObservations.root.message}
+                            Validation Errors Present - Review sub-cases.
                         </p>
                     )}
                 </div>
                 <div className="flex gap-3">
                     <Button variant="outline" onClick={() => setIsSplitDialogOpen(false)} className="h-11 px-8 font-bold border-2">CANCEL</Button>
-                    <Button type="button" className="bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest text-[10px] px-10 h-11 shadow-lg" onClick={splitForm.handleSubmit(onSplitSubmit)}>
+                    <Button type="submit" form="split-observation-form" className="bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest text-[10px] px-10 h-11 shadow-lg">
                         EXECUTE SPLIT
                     </Button>
                 </div>
@@ -1190,6 +1189,7 @@ export default function EhsObservationsPage() {
                 <Button variant="destructive" size="icon" className="rounded-full shadow-lg" onClick={() => setViewingImage(null)}><X className="h-4 w-4" /></Button>
             </div>
             <div 
+              ref={imageContainerRef}
               className="flex-1 overflow-auto flex items-center justify-center bg-black/90 backdrop-blur-xl"
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
