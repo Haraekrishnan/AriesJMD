@@ -1200,6 +1200,7 @@ export type EhsObservation = {
   severity: EhsObservationSeverity;
   description: string;
   discoveryAttachmentUrl?: string | null;
+  parentId?: string | null;
   
   // CAPA Data Structure
   currentStage: CapaStage;

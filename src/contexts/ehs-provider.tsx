@@ -38,6 +38,7 @@ type EhsContextType = {
   
   // CAPA Management
   addObservation: (observation: Omit<EhsObservation, 'id' | 'createdAt' | 'status' | 'currentStage' | 'stages'>) => void;
+  splitObservation: (parentId: string, subObservations: { category: any, severity: any, description: string }[]) => void;
   assignStageOwner: (observationId: string, stage: CapaStage, assigneeId: string) => void;
   actionStage: (observationId: string, stage: CapaStage, data: any, attachmentUrl?: string) => void;
   reviewStage: (observationId: string, stage: CapaStage, status: 'Completed' | 'Returned', comment: string) => void;
@@ -198,6 +199,63 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     set(newRef, JSON.parse(JSON.stringify(newObservation)));
     toast({ title: 'Safety Case Opened', description: `Case routed to ${seniorSafetySupervisor?.name || 'Safety HQ'}.` });
   }, [user, users, toast]);
+
+  const splitObservation = useCallback((parentId: string, subObservations: { category: any, severity: any, description: string }[]) => {
+    if (!user) return;
+    const parent = observations.find(o => o.id === parentId);
+    if (!parent) return;
+
+    const seniorSafetySupervisor = users.find(u => u.role === 'Senior Safety Supervisor' && u.status !== 'deactivated');
+    const initialAssigneeId = seniorSafetySupervisor ? seniorSafetySupervisor.id : user.id;
+    const now = new Date().toISOString();
+
+    const updates: Record<string, any> = {};
+
+    subObservations.forEach((sub, index) => {
+        const newRef = push(ref(rtdb, 'ehs/observations'));
+        const newId = newRef.key!;
+
+        const stages = generateInitialStages(user.id);
+        stages['Initiation'].status = 'Completed';
+        stages['Initiation'].actionedById = user.id;
+        stages['Initiation'].actionedAt = now;
+        stages['Initiation'].reviewedById = user.id;
+        stages['Initiation'].reviewedAt = now;
+
+        stages['Resolution'].status = 'Pending';
+        stages['Resolution'].assignedById = user.id;
+        stages['Resolution'].assignedAt = now;
+        stages['Resolution'].assigneeId = initialAssigneeId;
+
+        const subObs: EhsObservation = {
+            ...parent,
+            id: newId,
+            parentId: parentId,
+            category: sub.category,
+            severity: sub.severity,
+            description: sub.description,
+            createdAt: now,
+            currentStage: 'Resolution',
+            status: 'Open',
+            stages,
+            ccUserIds: parent.ccUserIds || [],
+        };
+
+        updates[`ehs/observations/${newId}`] = JSON.parse(JSON.stringify(subObs));
+    });
+
+    // Add system comment to parent
+    const commentRef = push(ref(rtdb, `ehs/observations/${parentId}/stages/Initiation/comments`));
+    updates[`ehs/observations/${parentId}/stages/Initiation/comments/${commentRef.key}`] = {
+        id: commentRef.key,
+        userId: user.id,
+        text: `Observation split into ${subObservations.length} sub-cases for focused management.`,
+        date: now
+    };
+
+    update(ref(rtdb), updates);
+    toast({ title: 'Observation Split', description: `${subObservations.length} sub-cases created.` });
+  }, [user, observations, users, toast]);
 
   const assignStageOwner = useCallback((observationId: string, stage: CapaStage, assigneeId: string) => {
     if (!user) return;
@@ -444,7 +502,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     <EhsContext.Provider value={{ 
         audits, incidents, riskAssessments, trainings, observations, supportTickets, contactInfo, 
         addAudit, addIncident, addRiskAssessment, addTraining, 
-        addObservation, assignStageOwner, actionStage, reviewStage, addStageAttachment, addCcToObservation, deleteObservation,
+        addObservation, splitObservation, assignStageOwner, actionStage, reviewStage, addStageAttachment, addCcToObservation, deleteObservation,
         reviewAudit, updateIncidentStatus, addSupportTicket, updateTicketStatus, addTicketComment, deleteSupportTicket, updateContactInfo, stats 
     }}>
       {children}

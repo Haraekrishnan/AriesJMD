@@ -14,7 +14,8 @@ import {
   ChevronLeft, FileText, Download, 
   Check, XCircle, Trash2, History, Upload, Paperclip, Undo2, Image as ImageIcon, X,
   Bold, Italic, Underline, List, ListOrdered, Heading1, AlignLeft, UserPlus, ArrowRightLeft,
-  ZoomIn, ZoomOut, Lock, ArrowUp, ArrowDown, ChevronDown, ChevronRight
+  ZoomIn, ZoomOut, Lock, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Split,
+  ChevronUp
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, parseISO, isValid } from 'date-fns';
@@ -37,7 +38,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
@@ -94,11 +95,9 @@ const RichNarrativeEditor = ({ value, onChange, placeholder, disabled }: RichEdi
 
   const handlePaste = async (e: React.ClipboardEvent) => {
     const items = e.clipboardData.items;
-    let hasImage = false;
 
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.indexOf('image') !== -1) {
-        hasImage = true;
         const file = items[i].getAsFile();
         if (file) {
           e.preventDefault();
@@ -200,21 +199,32 @@ const observationSchema = z.object({
   description: z.string().min(5, 'Detailed description is required'),
 });
 
+const splitSchema = z.object({
+    subObservations: z.array(z.object({
+        category: z.enum(['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']),
+        severity: z.enum(['Low', 'Medium', 'High', 'Critical']),
+        description: z.string().min(5, 'Detailed description is required'),
+    })).min(2, 'Define at least 2 sub-cases to split.'),
+});
+
 type ObservationFormValues = z.infer<typeof observationSchema>;
+type SplitFormValues = z.infer<typeof splitSchema>;
 
 /* ------------------------------------------------------------------ */
 /* MAIN PAGE */
 /* ------------------------------------------------------------------ */
 
 export default function EhsObservationsPage() {
-  const { observations, addObservation, actionStage, reviewStage, assignStageOwner, addCcToObservation, deleteObservation } = useEhs();
+  const { audits, incidents, trainings, observations, addObservation, splitObservation, actionStage, reviewStage, assignStageOwner, addCcToObservation, deleteObservation } = useEhs();
   const { user, users } = useAuth();
   const { projects } = useGeneral();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [isSplitDialogOpen, setIsSplitDialogOpen] = useState(false);
   const [viewingObservationId, setViewingObservationId] = useState<string | null>(null);
   const [activeViewStage, setActiveViewStage] = useState<CapaStage | null>(null);
+  const [expandedMasterId, setExpandedMasterId] = useState<string | null>(null);
 
   // Lightbox State
   const [viewingImage, setViewingImage] = useState<string | null>(null);
@@ -236,6 +246,26 @@ export default function EhsObservationsPage() {
   const viewingObservation = useMemo(() => 
     observations.find(o => o.id === viewingObservationId), 
   [observations, viewingObservationId]);
+
+  const form = useForm<ObservationFormValues>({
+    resolver: zodResolver(observationSchema),
+    defaultValues: { category: 'Unsafe Act', severity: 'Medium', projectId: '', description: '' },
+  });
+
+  const splitForm = useForm<SplitFormValues>({
+      resolver: zodResolver(splitSchema),
+      defaultValues: {
+          subObservations: [
+              { category: 'Unsafe Act', severity: 'Medium', description: '' },
+              { category: 'Unsafe Act', severity: 'Medium', description: '' }
+          ]
+      }
+  });
+
+  const { fields: splitFields, append: appendSplit, remove: removeSplit } = useFieldArray({
+      control: splitForm.control,
+      name: "subObservations"
+  });
 
   // NAVIGATION SYNC FOR LIGHTBOX
   useEffect(() => {
@@ -262,13 +292,11 @@ export default function EhsObservationsPage() {
     }
   }, [viewingObservation]);
 
-  const form = useForm<ObservationFormValues>({
-    resolver: zodResolver(observationSchema),
-    defaultValues: { category: 'Unsafe Act', severity: 'Medium', projectId: '', description: '' },
-  });
-
   const filteredObservations = useMemo(() => {
     return observations.filter(o => {
+      // Only show master observations (no parent) in the main list
+      if (o.parentId) return false;
+
       const projectName = projects.find(p => p.id === o.projectId)?.name || '';
       return (
         o.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -286,6 +314,13 @@ export default function EhsObservationsPage() {
     });
     setIsReportDialogOpen(false);
     form.reset();
+  };
+
+  const onSplitSubmit = (data: SplitFormValues) => {
+      if (!viewingObservationId) return;
+      splitObservation(viewingObservationId, data.subObservations);
+      setIsSplitDialogOpen(false);
+      splitForm.reset();
   };
 
   const handleActionSubmit = () => {
@@ -360,6 +395,10 @@ export default function EhsObservationsPage() {
                 <div className="flex gap-2">
                     {isSupervisor && (
                         <>
+                             <Button variant="outline" size="sm" className="font-black uppercase text-[10px] tracking-widest border-2 h-9 px-4" onClick={() => setIsSplitDialogOpen(true)}>
+                                <Split className="mr-2 h-3.5 w-3.5" /> Split Case
+                            </Button>
+
                             <Popover open={isCcPopoverOpen} onOpenChange={setIsCcPopoverOpen}>
                                 <PopoverTrigger asChild>
                                     <Button variant="outline" size="sm" className="font-black uppercase text-[10px] tracking-widest border-2 h-9 px-4">
@@ -449,6 +488,11 @@ export default function EhsObservationsPage() {
                                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Logged On</span>
                                     <span className="text-xs font-black">{format(parseISO(viewingObservation.createdAt), 'dd MMM yyyy, p')}</span>
                                 </div>
+                                {viewingObservation.parentId && (
+                                    <div className="pt-2 border-t mt-2">
+                                        <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest bg-blue-50 text-blue-700">SUB-CASE OF {viewingObservation.parentId.slice(-6).toUpperCase()}</Badge>
+                                    </div>
+                                )}
                             </div>
                             
                             {viewingObservation.ccUserIds && viewingObservation.ccUserIds.length > 0 && (
@@ -498,22 +542,22 @@ export default function EhsObservationsPage() {
                                         key={key} 
                                         onClick={() => setActiveViewStage(key as CapaStage)}
                                         className={cn(
-                                            "w-full flex items-center gap-3 p-2.5 rounded-md transition-all group",
-                                            isViewing ? "bg-slate-900 text-white shadow-md" : "hover:bg-slate-100"
+                                            "w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-bold transition-all duration-200 group relative",
+                                            isViewing 
+                                              ? "bg-white text-slate-900 border border-slate-200 shadow-sm" 
+                                              : "text-slate-500 hover:bg-white/60 hover:text-slate-900"
                                         )}
                                     >
                                         <div className={cn(
                                             "w-6 h-6 rounded flex items-center justify-center border font-black text-[10px]",
-                                            isDone ? "bg-emerald-500 border-emerald-500 text-white" :
-                                            isActive ? "border-blue-600 text-blue-600" : "border-slate-300 text-slate-400",
-                                            isViewing && "bg-white text-slate-900"
+                                            isDone ? "border-emerald-500 bg-emerald-50 text-emerald-600" : "border-slate-300"
                                         )}>
                                             {isDone ? <Check className="h-3 w-3" /> : idx + 1}
                                         </div>
                                         <div className="flex-1 text-left overflow-hidden">
                                             <p className={cn(
                                                 "text-[9px] font-black uppercase tracking-widest truncate",
-                                                isViewing ? "text-white" : isDone ? "text-emerald-600" : isActive ? "text-blue-600" : "text-slate-500"
+                                                isViewing ? "text-slate-900" : isDone ? "text-emerald-600" : isActive ? "text-blue-600" : "text-slate-500"
                                             )}>{config.label}</p>
                                         </div>
                                     </button>
@@ -623,7 +667,7 @@ export default function EhsObservationsPage() {
                                                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-900">
                                                     {activeViewStage} Technical Narrative
                                                 </Label>
-                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
+                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage!]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId ? (
                                                     <div className="space-y-4">
                                                         <RichNarrativeEditor 
                                                             value={actionData.notes || ''} 
@@ -642,7 +686,7 @@ export default function EhsObservationsPage() {
                                         </div>
                                     )}
 
-                                    {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId && (
+                                    {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage!]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId && (
                                         <div className="pt-6 border-t border-dashed">
                                             <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest mb-2 block">Link External Evidence</Label>
                                             <div className="flex items-center gap-4">
@@ -656,7 +700,7 @@ export default function EhsObservationsPage() {
                                         </div>
                                     )}
 
-                                    {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status === 'In Progress' && isSupervisor && (
+                                    {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage!]?.status === 'In Progress' && isSupervisor && (
                                         <div className="p-6 border-2 border-slate-900 rounded-lg bg-slate-50 space-y-4 animate-in zoom-in-95">
                                             <div className="flex items-center gap-3">
                                                 <ShieldCheck className="h-5 w-5 text-slate-900" />
@@ -687,7 +731,7 @@ export default function EhsObservationsPage() {
                                 {viewingObservation.stages?.[activeViewStage!]?.status === 'Completed' && `Phase verified by ${users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.reviewedById)?.name || 'System'}`}
                             </div>
                             <div className="flex gap-2">
-                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId && (
+                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage!]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId && (
                                     <Button className="bg-slate-900 hover:bg-black text-white font-black uppercase tracking-[0.2em] h-11 px-10 text-[10px]" onClick={handleActionSubmit}>
                                         Submit Stage Data
                                     </Button>
@@ -856,21 +900,34 @@ export default function EhsObservationsPage() {
                             {filteredObservations.map((obs) => {
                                 const site = projects.find(p => p.id === obs.projectId);
                                 const stages = Object.keys(stageConfig) as CapaStage[];
+                                const childObservations = observations.filter(child => child.parentId === obs.id);
+                                const isExpanded = expandedMasterId === obs.id;
 
                                 return (
-                                    <TableRow key={obs.id} className="group hover:bg-blue-50/20 border-b border-slate-200 h-14">
-                                        <TableCell className="text-center font-mono text-[10px] font-black text-slate-500 border-r border-slate-200 sticky left-0 z-20 bg-white">
-                                          {obs.id.slice(-6).toUpperCase()}
+                                    <React.Fragment key={obs.id}>
+                                    <TableRow className={cn("group hover:bg-blue-50/20 border-b border-slate-200 h-14", isExpanded && "bg-slate-50")}>
+                                        <TableCell className={cn("text-center font-mono text-[10px] font-black text-slate-500 border-r border-slate-200 sticky left-0 z-20", isExpanded ? "bg-slate-50" : "bg-white")}>
+                                          <div className="flex flex-col items-center">
+                                              {obs.id.slice(-6).toUpperCase()}
+                                              {childObservations.length > 0 && (
+                                                  <Button variant="ghost" size="icon" className="h-5 w-5 mt-1" onClick={() => setExpandedMasterId(isExpanded ? null : obs.id)}>
+                                                      {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                                  </Button>
+                                              )}
+                                          </div>
                                         </TableCell>
-                                        <TableCell className="border-r border-slate-200 px-4 py-2 sticky left-20 z-20 bg-white group-hover:bg-slate-50 transition-colors">
+                                        <TableCell className={cn("border-r border-slate-200 px-4 py-2 sticky left-20 z-20 group-hover:bg-slate-50 transition-colors", isExpanded ? "bg-slate-50" : "bg-white")}>
                                             <div 
                                                 className="flex flex-col gap-0.5 cursor-pointer"
                                                 onClick={handleImageClick}
                                             >
-                                                <p className="font-black text-xs uppercase tracking-tight text-slate-800 leading-tight line-clamp-1" dangerouslySetInnerHTML={{ __html: obs.description }} />
+                                                <div className="font-black text-xs uppercase tracking-tight text-slate-800 leading-tight line-clamp-1 rich-text-content" dangerouslySetInnerHTML={{ __html: obs.description }} />
                                                 <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
                                                     <MapPin className="h-2.5 w-2.5" /> {site?.name} &middot; {obs.location}
                                                 </div>
+                                                {childObservations.length > 0 && (
+                                                    <Badge variant="secondary" className="w-fit text-[8px] h-4 mt-1 font-black">{childObservations.length} SUB-CASES</Badge>
+                                                )}
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-center border-r border-slate-200 font-bold uppercase text-[10px] text-slate-700">
@@ -919,7 +976,7 @@ export default function EhsObservationsPage() {
                                           )
                                         })}
 
-                                        <TableCell className="text-right px-4 sticky right-0 z-20 bg-white group-hover:bg-slate-50 border-l border-slate-300 transition-colors">
+                                        <TableCell className={cn("text-right px-4 sticky right-0 z-20 group-hover:bg-slate-50 border-l border-slate-300 transition-colors", isExpanded ? "bg-slate-50" : "bg-white")}>
                                             <Button 
                                                 variant="outline" 
                                                 size="sm" 
@@ -930,6 +987,58 @@ export default function EhsObservationsPage() {
                                             </Button>
                                         </TableCell>
                                     </TableRow>
+
+                                    {isExpanded && childObservations.map((child, cIdx) => (
+                                        <TableRow key={child.id} className="bg-slate-100/40 border-b border-slate-200 h-12">
+                                            <TableCell className="text-center font-mono text-[9px] font-bold text-slate-400 border-r border-slate-200 sticky left-0 z-20 bg-slate-100/40 pl-6">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-3 h-3 border-l-2 border-b-2 border-slate-300 rounded-bl-sm" />
+                                                    {child.id.slice(-6).toUpperCase()}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="border-r border-slate-200 px-4 py-1 sticky left-20 z-20 bg-slate-100/40">
+                                                 <div 
+                                                    className="flex flex-col gap-0.5 cursor-pointer"
+                                                    onClick={handleImageClick}
+                                                >
+                                                    <div className="font-bold text-[11px] uppercase tracking-tight text-slate-600 leading-tight line-clamp-1 italic rich-text-content" dangerouslySetInnerHTML={{ __html: child.description }} />
+                                                    <div className="flex items-center gap-1.5 text-[8px] font-bold text-slate-400 uppercase tracking-widest">
+                                                        SUB-CASE FOR FOCUSED REMEDIATION
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-center border-r border-slate-200 font-bold uppercase text-[9px] text-slate-500">{child.category}</TableCell>
+                                            <TableCell className="text-center border-r-2 border-slate-300">
+                                                <Badge variant="outline" className={cn("text-[8px] font-black uppercase h-4 px-1.5 border opacity-70", severityConfig[child.severity]?.border, severityConfig[child.severity]?.text)}>
+                                                    {child.severity}
+                                                </Badge>
+                                            </TableCell>
+                                            {stages.map((stage) => {
+                                                const sData = child.stages?.[stage];
+                                                const isDone = sData?.status === 'Completed';
+                                                const isActive = stage === child.currentStage && child.status !== 'Closed';
+                                                
+                                                return (
+                                                    <TableCell key={stage} className="border-r border-slate-200 text-center p-0">
+                                                        <div className="flex items-center justify-center h-full scale-75 opacity-60">
+                                                            {isDone ? <Check className="h-3 w-3 text-emerald-600" /> : isActive ? <div className="w-1 h-1 rounded-full bg-blue-600" /> : <div className="w-0.5 h-0.5 rounded-full bg-slate-300" />}
+                                                        </div>
+                                                    </TableCell>
+                                                )
+                                            })}
+                                            <TableCell className="text-right px-4 sticky right-0 z-20 bg-slate-100/40 border-l border-slate-300">
+                                                 <Button 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    className="h-6 px-2 font-black text-[8px] uppercase tracking-widest border border-slate-300 hover:bg-slate-900 hover:text-white"
+                                                    onClick={() => setViewingObservationId(child.id)}
+                                                >
+                                                    COCKPIT
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    </React.Fragment>
                                 );
                             })}
                         </TableBody>
@@ -941,6 +1050,104 @@ export default function EhsObservationsPage() {
         </div>
       )}
 
+      {/* SPLIT DIALOG */}
+      <Dialog open={isSplitDialogOpen} onOpenChange={setIsSplitDialogOpen}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col">
+            <DialogHeader>
+                <DialogTitle className="font-black uppercase tracking-tight">Split Observation Case</DialogTitle>
+                <DialogDescription className="font-medium text-slate-500">
+                    If this discovery contains multiple distinct issues, split them into sub-cases for individual CAPA tracking.
+                </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="flex-1 pr-4">
+                <form onSubmit={splitForm.handleSubmit(onSplitSubmit)} className="space-y-6 py-4">
+                    <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl mb-4">
+                         <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-700 mb-2">Original Context</h4>
+                         <div className="text-xs font-bold text-slate-700 line-clamp-3 rich-text-content" dangerouslySetInnerHTML={{ __html: viewingObservation?.description || '' }} />
+                    </div>
+
+                    <div className="space-y-4">
+                        {splitFields.map((field, index) => (
+                            <div key={field.id} className="p-4 border-2 border-slate-200 rounded-xl bg-white space-y-4 relative group/split">
+                                <div className="flex justify-between items-center border-b pb-2">
+                                    <span className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Sub-Observation #{index + 1}</span>
+                                    {splitFields.length > 2 && (
+                                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-rose-600 opacity-0 group-hover/split:opacity-100 transition-opacity" onClick={() => removeSplit(index)}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Category</Label>
+                                        <Controller
+                                            control={splitForm.control}
+                                            name={`subObservations.${index}.category`}
+                                            render={({ field: cField }) => (
+                                                <Select onValueChange={cField.onChange} value={cField.value}>
+                                                    <SelectTrigger className="h-9 font-bold"><SelectValue /></SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="Unsafe Act">Unsafe Act</SelectItem>
+                                                        <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
+                                                        <SelectItem value="Safe Act">Safe Act</SelectItem>
+                                                        <SelectItem value="Near Miss">Near Miss</SelectItem>
+                                                        <SelectItem value="Environmental">Environmental</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Severity</Label>
+                                        <Controller
+                                            control={splitForm.control}
+                                            name={`subObservations.${index}.severity`}
+                                            render={({ field: sField }) => (
+                                                <Select onValueChange={sField.onChange} value={sField.value}>
+                                                    <SelectTrigger className="h-9 font-bold"><SelectValue /></SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="Low">Low</SelectItem>
+                                                        <SelectItem value="Medium">Medium</SelectItem>
+                                                        <SelectItem value="High">High</SelectItem>
+                                                        <SelectItem value="Critical">Critical</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Specific Finding Narrative</Label>
+                                    <Controller
+                                        control={splitForm.control}
+                                        name={`subObservations.${index}.description`}
+                                        render={({ field: dField }) => (
+                                            <RichNarrativeEditor 
+                                                value={dField.value} 
+                                                onChange={dField.onChange} 
+                                                placeholder="Detail this specific issue..." 
+                                            />
+                                        )}
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    <Button type="button" variant="outline" className="w-full h-11 border-dashed border-2 font-black uppercase text-[10px] tracking-widest" onClick={() => appendSplit({ category: 'Unsafe Act', severity: 'Medium', description: '' })}>
+                        <Plus className="mr-2 h-4 w-4" /> Add Another Component
+                    </Button>
+                </form>
+            </ScrollArea>
+            <DialogFooter className="pt-4 border-t">
+                <Button variant="outline" onClick={() => setIsSplitDialogOpen(false)} className="h-11 px-8 font-bold">CANCEL</Button>
+                <Button type="button" className="bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest text-[10px] px-10 h-11" onClick={splitForm.handleSubmit(onSplitSubmit)}>
+                    EXECUTE SPLIT
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {filteredObservations.length === 0 && !viewingObservation && (
         <div className="flex flex-col items-center justify-center py-32 text-slate-400 bg-white border-2 border-dashed border-slate-200 rounded-[2.5rem]">
           <div className="p-8 bg-slate-50 rounded-full mb-6 shadow-inner border border-slate-100">
@@ -951,7 +1158,7 @@ export default function EhsObservationsPage() {
         </div>
       )}
 
-      {/* IMAGE LIGHTBOX - ALWAYS RENDERED FOR GLOBAL ACCESS */}
+      {/* IMAGE LIGHTBOX */}
       <Dialog open={!!viewingImage} onOpenChange={(v) => { if(!v) { setViewingImage(null); setZoom(1); setTranslate({x: 0, y: 0}); } }}>
         <DialogContent className="max-w-[95vw] max-h-[95vh] flex flex-col p-0 overflow-hidden border-none bg-transparent shadow-none">
             <DialogHeader className="sr-only">
