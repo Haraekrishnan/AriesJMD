@@ -14,7 +14,7 @@ import {
   ChevronLeft, FileText, Download, 
   Check, XCircle, Trash2, History, Upload, Paperclip, Undo2, Image as ImageIcon, X,
   Bold, Italic, Underline, List, ListOrdered, Heading1, AlignLeft, UserPlus, ArrowRightLeft,
-  ZoomIn, ZoomOut, Lock
+  ZoomIn, ZoomOut, Lock, ArrowUp, ArrowDown, ChevronDown, ChevronRight
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, parseISO, isValid } from 'date-fns';
@@ -43,12 +43,12 @@ import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type { CapaStage, EhsObservation } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
@@ -187,7 +187,7 @@ const stageConfig: Record<CapaStage, { label: string, icon: any, color: string, 
   'Resolution': { label: 'Resolution', icon: FileCheck, color: 'text-emerald-600', badge: 'bg-emerald-50 text-emerald-700', description: 'Immediate correction and containment actions.' },
   'Investigation': { label: 'Investigation', icon: Search, color: 'text-blue-600', badge: 'bg-blue-50 text-blue-700', description: 'Root cause analysis using 5-Whys methodology.' },
   'Implementation': { label: 'Implementation', icon: Target, color: 'text-indigo-600', badge: 'bg-indigo-50 text-indigo-700', description: 'Long-term preventive action deployment.' },
-  'Effectiveness Review': { label: 'Effectiveness Review', icon: CheckCircle, color: 'text-amber-600', badge: 'bg-amber-50 text-amber-700', description: 'Validation that actions prevented recurrence.' },
+  'Effectiveness Review': { label: 'Effectiveness Review', icon: CheckCircle, color: 'text-amber-600', badge: 'bg-emerald-50 text-amber-700', description: 'Validation that actions prevented recurrence.' },
   'Reference': { label: 'Reference', icon: FileSearch, color: 'text-slate-600', badge: 'bg-slate-50 text-slate-700', description: 'Technical archiving of documentation.' },
   'Closure': { label: 'Closure', icon: Lock, color: 'text-slate-900', badge: 'bg-slate-900 text-white', description: 'Final organizational sign-off and closure.' },
 };
@@ -308,7 +308,6 @@ export default function EhsObservationsPage() {
 
   const handleImageClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
-    // Walk up to find if an IMG was clicked inside the container
     if (target.tagName === 'IMG') {
         setViewingImage((target as HTMLImageElement).src);
         e.stopPropagation();
@@ -337,26 +336,13 @@ export default function EhsObservationsPage() {
       setIsPanning(false);
   };
 
-  if (viewingObservation && activeViewStage) {
-    const stageData = viewingObservation.stages?.[activeViewStage];
-    const isCurrentStage = activeViewStage === viewingObservation.currentStage;
-    const isActionPending = isCurrentStage && stageData?.status === 'Pending';
-    const isReviewPending = isCurrentStage && stageData?.status === 'In Progress';
-    
-    const assignee = users.find(u => u.id === stageData?.assigneeId);
-    const assignedBy = users.find(u => u.id === stageData?.assignedById);
-    const actionedBy = users.find(u => u.id === stageData?.actionedById);
-    const reviewedBy = users.find(u => u.id === stageData?.reviewedById);
+  const isSupervisor = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor';
 
-    const isSupervisor = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor';
-    const isAssignee = user?.id === stageData?.assigneeId;
-
-    const reporter = users.find(u => u.id === viewingObservation.reporterId);
-    const site = projects.find(p => p.id === viewingObservation.projectId);
-
-    return (
-        <div className="space-y-6 animate-in fade-in duration-300">
-            <div className="flex items-center justify-between bg-white p-4 border border-slate-200 rounded-lg shadow-sm">
+  return (
+    <div className="h-full flex flex-col overflow-hidden text-left bg-[#f8fafc]">
+      {viewingObservation && activeViewStage ? (
+        <div className="space-y-6 animate-in fade-in duration-300 flex-1 flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between bg-white p-4 border border-slate-200 rounded-lg shadow-sm shrink-0">
                 <div className="flex items-center gap-4 text-left">
                     <Button variant="ghost" size="icon" onClick={() => setViewingObservationId(null)}>
                         <ChevronLeft className="h-5 w-5 text-slate-900" />
@@ -404,7 +390,7 @@ export default function EhsObservationsPage() {
 
                             <Popover open={isReassignPopoverOpen} onOpenChange={setIsReassignPopoverOpen}>
                                 <PopoverTrigger asChild>
-                                    <Button variant="outline" size="sm" className="font-black uppercase text-[10px] tracking-widest border-2 h-9 px-4" disabled={!isCurrentStage}>
+                                    <Button variant="outline" size="sm" className="font-black uppercase text-[10px] tracking-widest border-2 h-9 px-4" disabled={viewingObservation.status === 'Closed'}>
                                         <ArrowRightLeft className="mr-2 h-3.5 w-3.5" /> Redirect Step
                                     </Button>
                                 </PopoverTrigger>
@@ -423,7 +409,7 @@ export default function EhsObservationsPage() {
                                                         }}
                                                         className="cursor-pointer font-bold text-xs"
                                                     >
-                                                        <Check className={cn("mr-2 h-4 w-4", stageData?.assigneeId === u.id ? "opacity-100" : "opacity-0")} />
+                                                        <Check className={cn("mr-2 h-4 w-4", viewingObservation.stages?.[viewingObservation.currentStage]?.assigneeId === u.id ? "opacity-100" : "opacity-0")} />
                                                         {u.name} <span className="ml-1 text-[9px] text-slate-400">({u.role})</span>
                                                     </CommandItem>
                                                 ))}
@@ -438,8 +424,8 @@ export default function EhsObservationsPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-[320px,1fr] gap-6 items-start">
-                <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-[320px,1fr] gap-6 items-start flex-1 overflow-hidden p-1">
+                <div className="space-y-4 overflow-y-auto h-full pr-1 visible-scrollbar">
                     <Card className="rounded-lg shadow-sm overflow-hidden border-slate-200">
                         <CardHeader className="bg-slate-900 text-white p-4">
                             <CardTitle className="text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-2">
@@ -450,13 +436,13 @@ export default function EhsObservationsPage() {
                             <div className="space-y-4 pt-2 text-slate-900">
                                 <div className="flex justify-between">
                                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Site Location</span>
-                                    <span className="text-xs font-black">{site?.name || 'N/A'} &middot; {viewingObservation.location}</span>
+                                    <span className="text-xs font-black">{projects.find(p => p.id === viewingObservation.projectId)?.name || 'N/A'} &middot; {viewingObservation.location}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Reporter</span>
                                     <div className="flex items-center gap-2">
-                                        <Avatar className="h-5 w-5 border"><AvatarImage src={reporter?.avatar}/><AvatarFallback>{reporter?.name?.[0]}</AvatarFallback></Avatar>
-                                        <span className="text-xs font-black">{reporter?.name}</span>
+                                        <Avatar className="h-5 w-5 border"><AvatarImage src={users.find(u => u.id === viewingObservation.reporterId)?.avatar}/><AvatarFallback>{users.find(u => u.id === viewingObservation.reporterId)?.name?.[0]}</AvatarFallback></Avatar>
+                                        <span className="text-xs font-black">{users.find(u => u.id === viewingObservation.reporterId)?.name}</span>
                                     </div>
                                 </div>
                                 <div className="flex justify-between">
@@ -504,7 +490,7 @@ export default function EhsObservationsPage() {
                             {Object.entries(stageConfig).map(([key, config], idx) => {
                                 const s = viewingObservation.stages?.[key as CapaStage];
                                 const isDone = s?.status === 'Completed';
-                                const isActive = key === viewingObservation.currentStage;
+                                const isActive = key === viewingObservation.currentStage && viewingObservation.status !== 'Closed';
                                 const isViewing = activeViewStage === key;
 
                                 return (
@@ -537,9 +523,9 @@ export default function EhsObservationsPage() {
                     </Card>
                 </div>
 
-                <div className="space-y-6">
-                    <Card className="rounded-lg border-slate-200 shadow-sm min-h-[600px] flex flex-col bg-white text-left">
-                        <div className="p-6 border-b bg-slate-50/50 flex justify-between items-center">
+                <div className="flex flex-col h-full overflow-hidden">
+                    <Card className="rounded-lg border-slate-200 shadow-sm flex flex-col bg-white text-left h-full overflow-hidden">
+                        <div className="p-6 border-b bg-slate-50/50 flex justify-between items-center shrink-0">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-white rounded-lg shadow-sm border border-slate-200">
                                     {activeViewStage && React.createElement(stageConfig[activeViewStage].icon, { className: "h-6 w-6 text-slate-900" })}
@@ -549,7 +535,7 @@ export default function EhsObservationsPage() {
                                     <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wide">{activeViewStage && stageConfig[activeViewStage].description}</p>
                                 </div>
                             </div>
-                            {!isCurrentStage && (
+                            {activeViewStage !== viewingObservation.currentStage && (
                                 <Badge variant="secondary" className="font-black text-[9px] uppercase tracking-widest px-4 h-7 border-2">ARCHIVE REVIEW</Badge>
                             )}
                         </div>
@@ -560,25 +546,31 @@ export default function EhsObservationsPage() {
                                     <div className="space-y-1">
                                         <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Responsibility</Label>
                                         <div className="flex items-center gap-2">
-                                            <Avatar className="h-5 w-5 border-slate-300"><AvatarImage src={assignee?.avatar}/><AvatarFallback className="font-bold text-[8px]">{assignee?.name?.[0]}</AvatarFallback></Avatar>
-                                            <span className="text-xs font-black text-slate-900">{assignee?.name || 'Unassigned'}</span>
+                                            <Avatar className="h-5 w-5 border-slate-300">
+                                                <AvatarImage src={users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId)?.avatar}/>
+                                                <AvatarFallback className="font-bold text-[8px]">{users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId)?.name?.[0]}</AvatarFallback>
+                                            </Avatar>
+                                            <span className="text-xs font-black text-slate-900">{users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId)?.name || 'Unassigned'}</span>
                                         </div>
                                     </div>
                                     <div className="space-y-1">
                                         <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Delegated By</Label>
                                         <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-                                             <Avatar className="h-4 w-4 border-slate-200"><AvatarImage src={assignedBy?.avatar}/><AvatarFallback className="text-[7px]">{assignedBy?.name?.[0]}</AvatarFallback></Avatar>
-                                             {assignedBy?.name || 'System'}
+                                             <Avatar className="h-4 w-4 border-slate-200">
+                                                <AvatarImage src={users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.assignedById)?.avatar}/>
+                                                <AvatarFallback className="text-[7px]">{users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.assignedById)?.name?.[0]}</AvatarFallback>
+                                             </Avatar>
+                                             {users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.assignedById)?.name || 'System'}
                                         </span>
                                     </div>
                                     <div className="space-y-1">
                                         <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Action By</Label>
-                                        <span className="block text-xs font-bold text-slate-700">{actionedBy?.name || 'Waiting...'}</span>
+                                        <span className="block text-xs font-bold text-slate-700">{users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.actionedById)?.name || 'Waiting...'}</span>
                                     </div>
                                     <div className="space-y-1">
                                         <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Stage Status</Label>
-                                        <Badge className="h-5 text-[9px] font-black uppercase tracking-wider" variant={stageData?.status === 'Completed' ? 'success' : 'secondary'}>
-                                            {stageData?.status || 'Pending'}
+                                        <Badge className="h-5 text-[9px] font-black uppercase tracking-wider" variant={viewingObservation.stages?.[activeViewStage!]?.status === 'Completed' ? 'success' : 'secondary'}>
+                                            {viewingObservation.stages?.[activeViewStage!]?.status || 'Pending'}
                                         </Badge>
                                     </div>
                                 </div>
@@ -587,7 +579,7 @@ export default function EhsObservationsPage() {
                                     {activeViewStage === 'Initiation' && (
                                         <div className="space-y-4">
                                             <div className="p-6 border rounded-lg bg-slate-50/30">
-                                                <h4 className="text-xs font-black uppercase tracking-widest text-slate-900 mb-4 border-b pb-2">Discovery Report</h4>
+                                                <h4 className="text-xs font-black uppercase tracking-widest text-slate-900 mb-4 border-b pb-2">Discovery Report Overview</h4>
                                                 <div className="grid grid-cols-2 gap-8">
                                                     <div>
                                                         <Label className="text-[10px] font-bold uppercase text-slate-500">Risk Severity</Label>
@@ -602,34 +594,6 @@ export default function EhsObservationsPage() {
                                         </div>
                                     )}
 
-                                    {activeViewStage === 'Resolution' && (
-                                        <div className="space-y-4">
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-900">Correction Documentation</Label>
-                                                {isActionPending && isAssignee ? (
-                                                    <div className="space-y-4">
-                                                        <RichNarrativeEditor 
-                                                            value={actionData.notes || ''} 
-                                                            onChange={(html) => setActionData({ ...actionData, notes: html })}
-                                                            placeholder="Log the immediate actions taken to contain the hazard..."
-                                                        />
-                                                        <Alert className="bg-emerald-50 border-emerald-100 rounded-2xl py-6">
-                                                            <AlertCircle className="h-5 w-5 text-emerald-600" />
-                                                            <AlertTitle className="text-emerald-900 font-black uppercase text-xs tracking-widest">Correction Standards</AlertTitle>
-                                                            <AlertDescription className="text-emerald-800 font-bold text-sm mt-1">Immediate actions should resolve the instant danger while the root cause investigation is pending.</AlertDescription>
-                                                        </Alert>
-                                                    </div>
-                                                ) : (
-                                                    <div 
-                                                        className="p-4 border rounded-lg bg-slate-50 text-sm font-bold text-slate-700 leading-relaxed rich-text-content cursor-pointer"
-                                                        onClick={handleImageClick}
-                                                        dangerouslySetInnerHTML={{ __html: stageData?.data?.notes || 'No correction notes logged.' }}
-                                                    />
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-
                                     {activeViewStage === 'Investigation' && (
                                         <div className="space-y-6">
                                             <div className="space-y-4">
@@ -637,7 +601,7 @@ export default function EhsObservationsPage() {
                                                 {[0, 1, 2, 3, 4].map(i => (
                                                     <div key={i} className="flex gap-4 items-center">
                                                         <div className="w-8 h-8 rounded bg-slate-900 text-white flex items-center justify-center font-black text-xs shrink-0">W{i+1}</div>
-                                                        {isActionPending && isAssignee ? (
+                                                        {activeViewStage === viewingObservation.currentStage && viewingObservation.stages[activeViewStage].status === 'Pending' && user?.id === viewingObservation.stages[activeViewStage].assigneeId ? (
                                                             <Input 
                                                                 className="h-10 font-bold" 
                                                                 placeholder="Ask why did the previous failure occur?" 
@@ -645,7 +609,7 @@ export default function EhsObservationsPage() {
                                                                 onChange={(e) => setActionData({ ...actionData, [`why${i}`]: e.target.value })}
                                                             />
                                                         ) : (
-                                                            <p className="flex-1 p-2 border-b font-bold text-slate-900 text-sm">{stageData?.data?.[`why${i}`] || '...'}</p>
+                                                            <p className="flex-1 p-2 border-b font-bold text-slate-900 text-sm">{viewingObservation.stages?.[activeViewStage!]?.data?.[`why${i}`] || '...'}</p>
                                                         )}
                                                     </div>
                                                 ))}
@@ -653,15 +617,37 @@ export default function EhsObservationsPage() {
                                         </div>
                                     )}
 
-                                    {(isActionPending && isAssignee) && (
+                                    {activeViewStage !== 'Initiation' && activeViewStage !== 'Investigation' && (
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-900">
+                                                    {activeViewStage} Technical Narrative
+                                                </Label>
+                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages[activeViewStage].status === 'Pending' && user?.id === viewingObservation.stages[activeViewStage].assigneeId ? (
+                                                    <div className="space-y-4">
+                                                        <RichNarrativeEditor 
+                                                            value={actionData.notes || ''} 
+                                                            onChange={(html) => setActionData({ ...actionData, notes: html })}
+                                                            placeholder={`Log details for the ${activeViewStage} phase...`}
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <div 
+                                                        className="p-4 border rounded-lg bg-slate-50 text-sm font-bold text-slate-700 leading-relaxed rich-text-content cursor-pointer"
+                                                        onClick={handleImageClick}
+                                                        dangerouslySetInnerHTML={{ __html: viewingObservation.stages?.[activeViewStage!]?.data?.notes || `No documentation logged for ${activeViewStage}.` }}
+                                                    />
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {activeViewStage === viewingObservation.currentStage && viewingObservation.stages[activeViewStage].status === 'Pending' && user?.id === viewingObservation.stages[activeViewStage].assigneeId && (
                                         <div className="pt-6 border-t border-dashed">
-                                            <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest mb-2 block">Upload Evidence / Files</Label>
+                                            <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest mb-2 block">Link External Evidence</Label>
                                             <div className="flex items-center gap-4">
-                                                <Button variant="outline" className="font-bold text-xs h-10 border-2">
-                                                    <Upload className="mr-2 h-4 w-4" /> Add Attachment
-                                                </Button>
                                                 <Input 
-                                                    placeholder="Or paste external link here..." 
+                                                    placeholder="Paste technical attachment URL or Dropbox link here..." 
                                                     className="h-10 text-xs font-bold"
                                                     value={tempAttachmentUrl}
                                                     onChange={(e) => setTempAttachmentUrl(e.target.value)}
@@ -670,15 +656,15 @@ export default function EhsObservationsPage() {
                                         </div>
                                     )}
 
-                                    {isReviewPending && isSupervisor && (
+                                    {activeViewStage === viewingObservation.currentStage && viewingObservation.stages[activeViewStage].status === 'In Progress' && isSupervisor && (
                                         <div className="p-6 border-2 border-slate-900 rounded-lg bg-slate-50 space-y-4 animate-in zoom-in-95">
                                             <div className="flex items-center gap-3">
                                                 <ShieldCheck className="h-5 w-5 text-slate-900" />
-                                                <h4 className="text-xs font-black uppercase tracking-widest text-slate-900">Verification Workspace</h4>
+                                                <h4 className="text-xs font-black uppercase tracking-widest text-slate-900">Official Verification Workspace</h4>
                                             </div>
                                             <Textarea 
                                                 className="bg-white border-slate-200 p-4 font-bold text-sm" 
-                                                placeholder="Provide technical feedback or instructions..."
+                                                placeholder="Provide technical feedback or official instructions..."
                                                 value={reviewComment}
                                                 onChange={(e) => setReviewComment(e.target.value)}
                                             />
@@ -698,16 +684,16 @@ export default function EhsObservationsPage() {
 
                         <CardFooter className="p-6 border-t bg-slate-50/50 justify-between items-center shrink-0">
                             <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                                {stageData?.status === 'Completed' && `Stage Verified By ${reviewedBy?.name || 'System'}`}
+                                {viewingObservation.stages?.[activeViewStage!]?.status === 'Completed' && `Phase verified by ${users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.reviewedById)?.name || 'System'}`}
                             </div>
                             <div className="flex gap-2">
-                                {isActionPending && isAssignee && (
+                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages[activeViewStage].status === 'Pending' && user?.id === viewingObservation.stages[activeViewStage].assigneeId && (
                                     <Button className="bg-slate-900 hover:bg-black text-white font-black uppercase tracking-[0.2em] h-11 px-10 text-[10px]" onClick={handleActionSubmit}>
                                         Submit Stage Data
                                     </Button>
                                 )}
                                 <Button variant="outline" className="font-black uppercase tracking-[0.2em] h-11 px-8 text-[10px] border-2" onClick={() => setViewingObservationId(null)}>
-                                    Exit Workspace
+                                    Exit Cockpit
                                 </Button>
                             </div>
                         </CardFooter>
@@ -715,265 +701,264 @@ export default function EhsObservationsPage() {
                 </div>
             </div>
         </div>
-    );
-  }
-
-  return (
-    <div className="space-y-8 flex flex-col h-full overflow-hidden text-left">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0 px-1">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase leading-none">CAPA Master Tracker</h1>
-          <p className="text-slate-500 text-sm font-bold mt-2 uppercase tracking-wide">Enterprise Registry for Safety Lifecycle Governance.</p>
-        </div>
-        
-        <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-slate-900 hover:bg-black text-white font-black h-11 px-8 rounded-md shadow-lg active:scale-95 transition-all text-xs tracking-widest">
-              <Plus className="mr-2 h-4 w-4" /> INITIATE CASE
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-3xl max-h-[95vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
-            <DialogHeader>
-              <DialogTitle className="font-black uppercase tracking-tight text-slate-900">Initiate Safety Case</DialogTitle>
-              <DialogDescription className="font-medium text-slate-500">Log a professional observation report with rich narrative and evidence.</DialogDescription>
-            </DialogHeader>
-            <ScrollArea className="flex-1">
-            <form onSubmit={form.handleSubmit(onReportSubmit)} className="space-y-6 py-4 pr-4">
-               <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5 text-left">
-                    <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest ml-0.5">Finding Category</Label>
-                    <Controller
-                      control={form.control}
-                      name="category"
-                      render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="font-bold border-2"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Unsafe Act">Unsafe Act</SelectItem>
-                            <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
-                            <SelectItem value="Safe Act">Safe Act</SelectItem>
-                            <SelectItem value="Near Miss">Near Miss</SelectItem>
-                            <SelectItem value="Environmental">Environmental</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
-                  <div className="space-y-1.5 text-left">
-                    <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest ml-0.5">Severity</Label>
-                    <Controller
-                      control={form.control}
-                      name="severity"
-                      render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="font-bold border-2"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Low">Low</SelectItem>
-                            <SelectItem value="Medium">Medium</SelectItem>
-                            <SelectItem value="High">High</SelectItem>
-                            <SelectItem value="Critical">Critical</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
+      ) : (
+        <div className="space-y-8 flex flex-col flex-1 overflow-hidden">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0 px-1">
+                <div>
+                  <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase leading-none">CAPA Master Tracker</h1>
+                  <p className="text-slate-500 text-sm font-bold mt-2 uppercase tracking-wide">Enterprise Registry for Safety Lifecycle Governance.</p>
                 </div>
+                
+                <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-slate-900 hover:bg-black text-white font-black h-11 px-8 rounded-md shadow-lg active:scale-95 transition-all text-xs tracking-widest">
+                      <Plus className="mr-2 h-4 w-4" /> INITIATE CASE
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-3xl max-h-[95vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
+                    <DialogHeader>
+                      <DialogTitle className="font-black uppercase tracking-tight text-slate-900">Initiate Safety Case</DialogTitle>
+                      <DialogDescription className="font-medium text-slate-500">Log a professional observation report with rich narrative and evidence.</DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="flex-1">
+                    <form onSubmit={form.handleSubmit(onReportSubmit)} className="space-y-6 py-4 pr-4">
+                       <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1.5 text-left">
+                            <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest ml-0.5">Finding Category</Label>
+                            <Controller
+                              control={form.control}
+                              name="category"
+                              render={({ field }) => (
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <SelectTrigger className="font-bold border-2"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Unsafe Act">Unsafe Act</SelectItem>
+                                    <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
+                                    <SelectItem value="Safe Act">Safe Act</SelectItem>
+                                    <SelectItem value="Near Miss">Near Miss</SelectItem>
+                                    <SelectItem value="Environmental">Environmental</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </div>
+                          <div className="space-y-1.5 text-left">
+                            <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest ml-0.5">Severity</Label>
+                            <Controller
+                              control={form.control}
+                              name="severity"
+                              render={({ field }) => (
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <SelectTrigger className="font-bold border-2"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Low">Low</SelectItem>
+                                    <SelectItem value="Medium">Medium</SelectItem>
+                                    <SelectItem value="High">High</SelectItem>
+                                    <SelectItem value="Critical">Critical</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </div>
+                        </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="space-y-1.5 text-left">
-                    <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest ml-0.5">Site / Project</Label>
-                    <Controller
-                      control={form.control}
-                      name="projectId"
-                      render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="font-bold border-2"><SelectValue placeholder="Select site..." /></SelectTrigger>
-                          <SelectContent>
-                            {projects.map(p => (
-                              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
-                  <div className="space-y-1.5 text-left">
-                    <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest ml-0.5">Specific Area</Label>
-                    <Input {...form.register('location')} className="font-bold border-2" placeholder="e.g., Tank 101" />
-                  </div>
-                </div>
+                        <div className="grid grid-cols-2 gap-4">
+                           <div className="space-y-1.5 text-left">
+                            <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest ml-0.5">Site / Project</Label>
+                            <Controller
+                              control={form.control}
+                              name="projectId"
+                              render={({ field }) => (
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <SelectTrigger className="font-bold border-2"><SelectValue placeholder="Select site..." /></SelectTrigger>
+                                  <SelectContent>
+                                    {projects.map(p => (
+                                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </div>
+                          <div className="space-y-1.5 text-left">
+                            <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest ml-0.5">Specific Area</Label>
+                            <Input {...form.register('location')} className="font-bold border-2" placeholder="e.g., Tank 101" />
+                          </div>
+                        </div>
 
-                <div className="space-y-2 text-left">
-                  <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest ml-0.5">Finding Narrative & Visual Evidence</Label>
-                  <Controller
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <RichNarrativeEditor 
-                        value={field.value} 
-                        onChange={field.onChange} 
-                        placeholder="Narate the observation here. You can paste screenshots directly into this box..." 
-                      />
-                    )}
-                  />
-                  {form.formState.errors.description && <p className="text-xs text-rose-600 font-bold">{form.formState.errors.description.message}</p>}
-                </div>
+                        <div className="space-y-2 text-left">
+                          <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest ml-0.5">Finding Narrative & Visual Evidence</Label>
+                          <Controller
+                            control={form.control}
+                            name="description"
+                            render={({ field }) => (
+                              <RichNarrativeEditor 
+                                value={field.value} 
+                                onChange={field.onChange} 
+                                placeholder="Narrate the observation here. You can paste screenshots directly into this box..." 
+                              />
+                            )}
+                          />
+                          {form.formState.errors.description && <p className="text-xs text-rose-600 font-bold">{form.formState.errors.description.message}</p>}
+                        </div>
 
-                <DialogFooter className="pt-4 border-t">
-                  <Button variant="outline" type="button" onClick={() => setIsReportDialogOpen(false)} className="h-11 px-8 font-bold border-2">CANCEL</Button>
-                  <Button type="submit" className="bg-slate-900 hover:bg-black text-white h-11 px-10 font-black uppercase tracking-widest text-[10px]">OPEN CASE</Button>
-                </DialogFooter>
-            </form>
-            </ScrollArea>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <Card className="bg-white border-slate-200 shadow-sm overflow-hidden flex flex-col flex-1">
-        <div className="p-4 border-b bg-slate-50/50 flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
-            <div className="relative w-full max-w-xl">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input 
-                    placeholder="Search Master Registry by Case ID, Narrative or Site..." 
-                    className="pl-9 h-10 border-slate-300 font-bold text-slate-900 text-xs uppercase tracking-tight"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
+                        <DialogFooter className="pt-4 border-t">
+                          <Button variant="outline" type="button" onClick={() => setIsReportDialogOpen(false)} className="h-11 px-8 font-bold border-2">CANCEL</Button>
+                          <Button type="submit" className="bg-slate-900 hover:bg-black text-white h-11 px-10 font-black uppercase tracking-widest text-[10px]">OPEN CASE</Button>
+                        </DialogFooter>
+                    </form>
+                    </ScrollArea>
+                  </DialogContent>
+                </Dialog>
             </div>
-            <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] border-2">
-                    <History className="mr-2 h-3.5 w-3.5" /> AUDIT TRAIL
-                </Button>
-                <Button variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] border-2">
-                    <Download className="mr-2 h-3.5 w-3.5" /> EXPORT EXCEL
-                </Button>
-            </div>
-        </div>
-        
-        <div className="flex-1 overflow-hidden relative">
-          <ScrollArea className="h-full w-full">
-            <Table className="border-collapse border-slate-300">
-                <TableHeader className="bg-slate-100 sticky top-0 z-40">
-                    <TableRow className="border-b-2 border-slate-300">
-                        <TableHead className="w-20 border-r border-slate-300 font-black uppercase text-[10px] text-slate-900 text-center sticky left-0 z-50 bg-slate-100">ID</TableHead>
-                        <TableHead className="min-w-[300px] border-r border-slate-300 font-black uppercase text-[10px] text-slate-900 px-4 sticky left-20 z-50 bg-slate-100 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Narrative Findings</TableHead>
-                        <TableHead className="w-32 border-r border-slate-300 font-black uppercase text-[10px] text-slate-900 text-center">Category</TableHead>
-                        <TableHead className="w-24 border-r-2 border-slate-400 font-black uppercase text-[10px] text-slate-900 text-center">Risk</TableHead>
-                        
-                        {Object.values(stageConfig).map(cfg => (
-                           <TableHead key={cfg.label} className="w-32 border-r border-slate-200 font-black uppercase text-[9px] text-slate-600 text-center leading-tight bg-slate-50/50">
-                              {cfg.label}
-                           </TableHead>
-                        ))}
 
-                        <TableHead className="w-24 text-right font-black uppercase text-[10px] text-slate-900 px-4 sticky right-0 z-50 bg-slate-100 shadow-[-2px_0_5px_rgba(0,0,0,0.05)] border-l border-slate-300">Action</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {filteredObservations.map((obs) => {
-                        const site = projects.find(p => p.id === obs.projectId);
-                        const stages = Object.keys(stageConfig) as CapaStage[];
+            <Card className="bg-white border-slate-200 shadow-sm overflow-hidden flex flex-col flex-1">
+                <div className="p-4 border-b bg-slate-50/50 flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
+                    <div className="relative w-full max-w-xl">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input 
+                            placeholder="Search Master Registry by Case ID, Narrative or Site..." 
+                            className="pl-9 h-10 border-slate-300 font-bold text-slate-900 text-xs uppercase tracking-tight"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] border-2">
+                            <History className="mr-2 h-3.5 w-3.5" /> AUDIT TRAIL
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-9 px-4 font-black uppercase tracking-widest text-[9px] border-2">
+                            <Download className="mr-2 h-3.5 w-3.5" /> EXPORT EXCEL
+                        </Button>
+                    </div>
+                </div>
+                
+                <div className="flex-1 overflow-hidden relative">
+                  <ScrollArea className="h-full w-full">
+                    <Table className="border-collapse border-slate-300">
+                        <TableHeader className="bg-slate-100 sticky top-0 z-40">
+                            <TableRow className="border-b-2 border-slate-300">
+                                <TableHead className="w-20 border-r border-slate-300 font-black uppercase text-[10px] text-slate-900 text-center sticky left-0 z-50 bg-slate-100">ID</TableHead>
+                                <TableHead className="min-w-[300px] border-r border-slate-300 font-black uppercase text-[10px] text-slate-900 px-4 sticky left-20 z-50 bg-slate-100 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Narrative Findings</TableHead>
+                                <TableHead className="w-32 border-r border-slate-300 font-black uppercase text-[10px] text-slate-900 text-center">Category</TableHead>
+                                <TableHead className="w-24 border-r-2 border-slate-400 font-black uppercase text-[10px] text-slate-900 text-center">Risk</TableHead>
+                                
+                                {Object.values(stageConfig).map(cfg => (
+                                   <TableHead key={cfg.label} className="w-32 border-r border-slate-200 font-black uppercase text-[9px] text-slate-600 text-center leading-tight bg-slate-50/50">
+                                      {cfg.label}
+                                   </TableHead>
+                                ))}
 
-                        return (
-                            <TableRow key={obs.id} className="group hover:bg-blue-50/20 border-b border-slate-200 h-14">
-                                <TableCell className="text-center font-mono text-[10px] font-black text-slate-500 border-r border-slate-200 sticky left-0 z-20 bg-white">
-                                  {obs.id.slice(-6).toUpperCase()}
-                                </TableCell>
-                                <TableCell className="border-r border-slate-200 px-4 py-2 sticky left-20 z-20 bg-white group-hover:bg-slate-50 transition-colors">
-                                    <div 
-                                        className="flex flex-col gap-0.5 cursor-pointer"
-                                        onClick={handleImageClick}
-                                    >
-                                        <p className="font-black text-xs uppercase tracking-tight text-slate-800 leading-tight line-clamp-1" dangerouslySetInnerHTML={{ __html: obs.description }} />
-                                        <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                                            <MapPin className="h-2.5 w-2.5" /> {site?.name} &middot; {obs.location}
-                                        </div>
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-center border-r border-slate-200 font-bold uppercase text-[10px] text-slate-700">
-                                    {obs.category}
-                                </TableCell>
-                                <TableCell className="text-center border-r-2 border-slate-300">
-                                    <Badge variant="outline" className={cn("text-[9px] font-black uppercase h-5 px-2 border-2", severityConfig[obs.severity]?.border, severityConfig[obs.severity]?.text)}>
-                                        {obs.severity}
-                                    </Badge>
-                                </TableCell>
-
-                                {stages.map((stage) => {
-                                  const sData = obs.stages?.[stage];
-                                  const isDone = sData?.status === 'Completed';
-                                  const isActive = stage === obs.currentStage && obs.status !== 'Closed';
-                                  const isReturned = sData?.status === 'Returned';
-                                  
-                                  return (
-                                    <TableCell key={stage} className={cn(
-                                      "border-r border-slate-200 text-center p-0",
-                                      isActive && "bg-blue-50/10",
-                                      isDone && "bg-emerald-50/10",
-                                      isReturned && "bg-rose-50/10"
-                                    )}>
-                                       <div className="flex flex-col items-center justify-center h-full">
-                                          {isDone ? (
-                                            <div className="flex flex-col items-center">
-                                                <Check className="h-3 w-3 text-emerald-600" />
-                                                {sData?.actionedAt && <span className="text-[8px] font-black text-emerald-700 mt-0.5">{format(parseISO(sData.actionedAt), 'dd/MM')}</span>}
-                                            </div>
-                                          ) : isReturned ? (
-                                            <div className="flex flex-col items-center animate-pulse">
-                                                <XCircle className="h-3 w-3 text-rose-600" />
-                                                <span className="text-[8px] font-black text-rose-700 uppercase">Return</span>
-                                            </div>
-                                          ) : isActive ? (
-                                            <div className="flex flex-col items-center">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse mb-1" />
-                                                <span className="text-[8px] font-black text-blue-700 uppercase">Active</span>
-                                            </div>
-                                          ) : (
-                                            <div className="w-1 h-1 rounded-full bg-slate-200" />
-                                          )}
-                                       </div>
-                                    </TableCell>
-                                  )
-                                })}
-
-                                <TableCell className="text-right px-4 sticky right-0 z-20 bg-white group-hover:bg-slate-50 border-l border-slate-300 transition-colors">
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        className="h-7 px-3 font-black text-[9px] uppercase tracking-widest border-2 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
-                                        onClick={() => setViewingObservationId(obs.id)}
-                                    >
-                                        COCKPIT
-                                    </Button>
-                                </TableCell>
+                                <TableHead className="w-24 text-right font-black uppercase text-[10px] text-slate-900 px-4 sticky right-0 z-50 bg-slate-100 shadow-[-2px_0_5px_rgba(0,0,0,0.05)] border-l border-slate-300">Action</TableHead>
                             </TableRow>
-                        );
-                    })}
-                </TableBody>
-            </Table>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        </div>
-      </Card>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredObservations.map((obs) => {
+                                const site = projects.find(p => p.id === obs.projectId);
+                                const stages = Object.keys(stageConfig) as CapaStage[];
 
-      {filteredObservations.length === 0 && (
+                                return (
+                                    <TableRow key={obs.id} className="group hover:bg-blue-50/20 border-b border-slate-200 h-14">
+                                        <TableCell className="text-center font-mono text-[10px] font-black text-slate-500 border-r border-slate-200 sticky left-0 z-20 bg-white">
+                                          {obs.id.slice(-6).toUpperCase()}
+                                        </TableCell>
+                                        <TableCell className="border-r border-slate-200 px-4 py-2 sticky left-20 z-20 bg-white group-hover:bg-slate-50 transition-colors">
+                                            <div 
+                                                className="flex flex-col gap-0.5 cursor-pointer"
+                                                onClick={handleImageClick}
+                                            >
+                                                <p className="font-black text-xs uppercase tracking-tight text-slate-800 leading-tight line-clamp-1" dangerouslySetInnerHTML={{ __html: obs.description }} />
+                                                <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                                                    <MapPin className="h-2.5 w-2.5" /> {site?.name} &middot; {obs.location}
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-center border-r border-slate-200 font-bold uppercase text-[10px] text-slate-700">
+                                            {obs.category}
+                                        </TableCell>
+                                        <TableCell className="text-center border-r-2 border-slate-300">
+                                            <Badge variant="outline" className={cn("text-[9px] font-black uppercase h-5 px-2 border-2", severityConfig[obs.severity]?.border, severityConfig[obs.severity]?.text)}>
+                                                {obs.severity}
+                                            </Badge>
+                                        </TableCell>
+
+                                        {stages.map((stage) => {
+                                          const sData = obs.stages?.[stage];
+                                          const isDone = sData?.status === 'Completed';
+                                          const isActive = stage === obs.currentStage && obs.status !== 'Closed';
+                                          const isReturned = sData?.status === 'Returned';
+                                          
+                                          return (
+                                            <TableCell key={stage} className={cn(
+                                              "border-r border-slate-200 text-center p-0",
+                                              isActive && "bg-blue-50/10",
+                                              isDone && "bg-emerald-50/10",
+                                              isReturned && "bg-rose-50/10"
+                                            )}>
+                                               <div className="flex flex-col items-center justify-center h-full">
+                                                  {isDone ? (
+                                                    <div className="flex flex-col items-center">
+                                                        <Check className="h-3 w-3 text-emerald-600" />
+                                                        {sData?.actionedAt && <span className="text-[8px] font-black text-emerald-700 mt-0.5">{format(parseISO(sData.actionedAt), 'dd/MM')}</span>}
+                                                    </div>
+                                                  ) : isReturned ? (
+                                                    <div className="flex flex-col items-center animate-pulse">
+                                                        <XCircle className="h-3 w-3 text-rose-600" />
+                                                        <span className="text-[8px] font-black text-rose-700 uppercase">Return</span>
+                                                    </div>
+                                                  ) : isActive ? (
+                                                    <div className="flex flex-col items-center">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse mb-1" />
+                                                        <span className="text-[8px] font-black text-blue-700 uppercase">Active</span>
+                                                    </div>
+                                                  ) : (
+                                                    <div className="w-1 h-1 rounded-full bg-slate-200" />
+                                                  )}
+                                               </div>
+                                            </TableCell>
+                                          )
+                                        })}
+
+                                        <TableCell className="text-right px-4 sticky right-0 z-20 bg-white group-hover:bg-slate-50 border-l border-slate-300 transition-colors">
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                className="h-7 px-3 font-black text-[9px] uppercase tracking-widest border-2 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
+                                                onClick={() => setViewingObservationId(obs.id)}
+                                            >
+                                                COCKPIT
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
+                    <ScrollBar orientation="horizontal" />
+                  </ScrollArea>
+                </div>
+            </Card>
+        </div>
+      )}
+
+      {filteredObservations.length === 0 && !viewingObservation && (
         <div className="flex flex-col items-center justify-center py-32 text-slate-400 bg-white border-2 border-dashed border-slate-200 rounded-[2.5rem]">
           <div className="p-8 bg-slate-50 rounded-full mb-6 shadow-inner border border-slate-100">
-            <FileWarning className="h-14 w-14 opacity-40 text-rose-600" />
+            <AlertTriangle className="h-14 w-14 opacity-40 text-rose-600" />
           </div>
           <p className="text-2xl font-black text-slate-900 tracking-tight uppercase">No records found</p>
           <p className="text-slate-400 font-bold mt-2 uppercase text-sm">Waiting for first site observation report...</p>
         </div>
       )}
 
-      {/* IMAGE LIGHTBOX */}
+      {/* IMAGE LIGHTBOX - ALWAYS RENDERED FOR GLOBAL ACCESS */}
       <Dialog open={!!viewingImage} onOpenChange={(v) => { if(!v) { setViewingImage(null); setZoom(1); setTranslate({x: 0, y: 0}); } }}>
         <DialogContent className="max-w-[95vw] max-h-[95vh] flex flex-col p-0 overflow-hidden border-none bg-transparent shadow-none">
             <DialogHeader className="sr-only">
                 <DialogTitle>Evidence Image Viewer</DialogTitle>
                 <DialogDescription>High-fidelity inspection of safety case evidence.</DialogDescription>
             </DialogHeader>
-            <div className="absolute top-4 right-4 z-50 flex gap-2">
+            <div className="absolute top-4 right-4 z-[60] flex gap-2">
                 <Button variant="secondary" size="icon" className="bg-white/80 hover:bg-white text-slate-900 rounded-full" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4"/></Button>
                 <Button variant="secondary" size="icon" className="bg-white/80 hover:bg-white text-slate-900 rounded-full" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
                 {viewingImage && (
