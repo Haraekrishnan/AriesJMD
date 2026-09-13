@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef, MouseEvent } from 'react';
@@ -28,7 +29,8 @@ import {
   DialogTitle, 
   DialogFooter, 
   DialogDescription,
-  DialogTrigger
+  DialogTrigger,
+  DialogClose
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { 
@@ -373,6 +375,16 @@ export default function EhsObservationsPage() {
 
   const isSupervisor = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor';
 
+  const openSplitDialog = () => {
+      splitForm.reset({
+          subObservations: [
+              { category: 'Unsafe Act', severity: 'Medium', description: '' },
+              { category: 'Unsafe Act', severity: 'Medium', description: '' }
+          ]
+      });
+      setIsSplitDialogOpen(true);
+  };
+
   return (
     <div className="h-full flex flex-col overflow-hidden text-left bg-[#f8fafc]">
       {viewingObservation && activeViewStage ? (
@@ -395,7 +407,7 @@ export default function EhsObservationsPage() {
                 <div className="flex gap-2">
                     {isSupervisor && (
                         <>
-                             <Button variant="outline" size="sm" className="font-black uppercase text-[10px] tracking-widest border-2 h-9 px-4" onClick={() => setIsSplitDialogOpen(true)}>
+                             <Button variant="outline" size="sm" className="font-black uppercase text-[10px] tracking-widest border-2 h-9 px-4" onClick={openSplitDialog}>
                                 <Split className="mr-2 h-3.5 w-3.5" /> Split Case
                             </Button>
 
@@ -1051,7 +1063,12 @@ export default function EhsObservationsPage() {
       )}
 
       {/* SPLIT DIALOG */}
-      <Dialog open={isSplitDialogOpen} onOpenChange={setIsSplitDialogOpen}>
+      <Dialog open={isSplitDialogOpen} onOpenChange={(open) => {
+          if (!open) {
+              splitForm.reset();
+          }
+          setIsSplitDialogOpen(open);
+      }}>
         <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col">
             <DialogHeader>
                 <DialogTitle className="font-black uppercase tracking-tight text-slate-900">Split Observation Case</DialogTitle>
@@ -1070,7 +1087,7 @@ export default function EhsObservationsPage() {
                         {splitFields.map((field, index) => (
                             <div key={field.id} className="p-5 border-2 border-slate-200 rounded-xl bg-white space-y-4 relative group/split shadow-sm">
                                 <div className="flex justify-between items-center border-b pb-2">
-                                    <span className="text-11px] font-black uppercase text-slate-900 tracking-widest">Sub-Observation #{index + 1}</span>
+                                    <span className="text-[11px] font-black uppercase text-slate-900 tracking-widest">Sub-Observation #{index + 1}</span>
                                     {splitFields.length > 2 && (
                                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-rose-600 hover:bg-rose-50" onClick={() => removeSplit(index)}>
                                             <Trash2 className="h-4 w-4" />
@@ -1137,14 +1154,20 @@ export default function EhsObservationsPage() {
                         ))}
                     </div>
                     
-                    <Button type="button" variant="outline" className="w-full h-12 border-dashed border-2 font-black uppercase text-[10px] tracking-[0.2em] hover:bg-slate-50 mt-4" onClick={() => append({ category: 'Unsafe Act', severity: 'Medium', description: '' })}>
+                    <Button type="button" variant="outline" className="w-full h-12 border-dashed border-2 font-black uppercase text-[10px] tracking-[0.2em] hover:bg-slate-50 mt-4" onClick={() => appendSplit({ category: 'Unsafe Act', severity: 'Medium', description: '' })}>
                         <Plus className="mr-2 h-4 w-4" /> Add Another Component
                     </Button>
                 </form>
             </ScrollArea>
             <DialogFooter className="pt-4 border-t flex items-center justify-between">
                 <div className="flex-1">
-                    {(Object.keys(splitForm.formState.errors).length > 0) && (
+                    {splitForm.formState.errors.subObservations?.root?.message && (
+                        <p className="text-xs text-rose-600 font-black uppercase tracking-wide flex items-center gap-1.5">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            {splitForm.formState.errors.subObservations.root.message}
+                        </p>
+                    )}
+                    {(!splitForm.formState.errors.subObservations?.root?.message && Object.keys(splitForm.formState.errors).length > 0) && (
                         <p className="text-xs text-rose-600 font-black uppercase tracking-wide flex items-center gap-1.5">
                             <AlertTriangle className="h-3.5 w-3.5" />
                             Validation Errors Present - Review sub-cases.
@@ -1152,7 +1175,9 @@ export default function EhsObservationsPage() {
                     )}
                 </div>
                 <div className="flex gap-3">
-                    <Button variant="outline" onClick={() => setIsSplitDialogOpen(false)} className="h-11 px-8 font-bold border-2">CANCEL</Button>
+                    <DialogClose asChild>
+                        <Button variant="outline" className="h-11 px-8 font-bold border-2">CANCEL</Button>
+                    </DialogClose>
                     <Button type="submit" form="split-observation-form" className="bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest text-[10px] px-10 h-11 shadow-lg">
                         EXECUTE SPLIT
                     </Button>
