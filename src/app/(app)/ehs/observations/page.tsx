@@ -601,7 +601,7 @@ export default function EhsObservationsPage() {
                                                 {[0, 1, 2, 3, 4].map(i => (
                                                     <div key={i} className="flex gap-4 items-center">
                                                         <div className="w-8 h-8 rounded bg-slate-900 text-white flex items-center justify-center font-black text-xs shrink-0">W{i+1}</div>
-                                                        {activeViewStage === viewingObservation.currentStage && viewingObservation.stages[activeViewStage].status === 'Pending' && user?.id === viewingObservation.stages[activeViewStage].assigneeId ? (
+                                                        {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
                                                             <Input 
                                                                 className="h-10 font-bold" 
                                                                 placeholder="Ask why did the previous failure occur?" 
@@ -623,7 +623,7 @@ export default function EhsObservationsPage() {
                                                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-900">
                                                     {activeViewStage} Technical Narrative
                                                 </Label>
-                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages[activeViewStage].status === 'Pending' && user?.id === viewingObservation.stages[activeViewStage].assigneeId ? (
+                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
                                                     <div className="space-y-4">
                                                         <RichNarrativeEditor 
                                                             value={actionData.notes || ''} 
@@ -642,7 +642,7 @@ export default function EhsObservationsPage() {
                                         </div>
                                     )}
 
-                                    {activeViewStage === viewingObservation.currentStage && viewingObservation.stages[activeViewStage].status === 'Pending' && user?.id === viewingObservation.stages[activeViewStage].assigneeId && (
+                                    {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId && (
                                         <div className="pt-6 border-t border-dashed">
                                             <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest mb-2 block">Link External Evidence</Label>
                                             <div className="flex items-center gap-4">
@@ -656,7 +656,7 @@ export default function EhsObservationsPage() {
                                         </div>
                                     )}
 
-                                    {activeViewStage === viewingObservation.currentStage && viewingObservation.stages[activeViewStage].status === 'In Progress' && isSupervisor && (
+                                    {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status === 'In Progress' && isSupervisor && (
                                         <div className="p-6 border-2 border-slate-900 rounded-lg bg-slate-50 space-y-4 animate-in zoom-in-95">
                                             <div className="flex items-center gap-3">
                                                 <ShieldCheck className="h-5 w-5 text-slate-900" />
@@ -687,7 +687,7 @@ export default function EhsObservationsPage() {
                                 {viewingObservation.stages?.[activeViewStage!]?.status === 'Completed' && `Phase verified by ${users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.reviewedById)?.name || 'System'}`}
                             </div>
                             <div className="flex gap-2">
-                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages[activeViewStage].status === 'Pending' && user?.id === viewingObservation.stages[activeViewStage].assigneeId && (
+                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId && (
                                     <Button className="bg-slate-900 hover:bg-black text-white font-black uppercase tracking-[0.2em] h-11 px-10 text-[10px]" onClick={handleActionSubmit}>
                                         Submit Stage Data
                                     </Button>
