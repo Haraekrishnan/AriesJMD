@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef, MouseEvent } from 'react';
@@ -292,6 +293,18 @@ export default function EhsObservationsPage() {
       setActionData(currentStageData?.data || {});
     }
   }, [viewingObservation]);
+
+  // Ensure split form is initialized with at least 2 items when dialog is opened
+  useEffect(() => {
+    if (isSplitDialogOpen) {
+      splitForm.reset({
+        subObservations: [
+            { category: 'Unsafe Act', severity: 'Medium', description: '' },
+            { category: 'Unsafe Act', severity: 'Medium', description: '' }
+        ]
+      });
+    }
+  }, [isSplitDialogOpen, splitForm]);
 
   const filteredObservations = useMemo(() => {
     return observations.filter(o => {
@@ -1082,11 +1095,18 @@ export default function EhsObservationsPage() {
                          <div className="text-xs font-bold text-slate-700 line-clamp-3 rich-text-content" dangerouslySetInnerHTML={{ __html: viewingObservation?.description || '' }} />
                     </div>
 
+                    <div className="flex justify-between items-center mb-2 px-1">
+                        <Label className="font-black uppercase text-xs text-slate-500 tracking-widest">Defined Sub-Cases ({splitFields.length})</Label>
+                        <Button type="button" variant="outline" size="sm" className="h-8 border-2 font-black uppercase text-[9px] tracking-widest" onClick={() => appendSplit({ category: 'Unsafe Act', severity: 'Medium', description: '' })}>
+                            <Plus className="mr-1 h-3 w-3" /> Add Sub-Case
+                        </Button>
+                    </div>
+
                     <div className="space-y-6">
                         {splitFields.map((field, index) => (
                             <div key={field.id} className="p-5 border-2 border-slate-200 rounded-xl bg-white space-y-4 relative group/split shadow-sm">
                                 <div className="flex justify-between items-center border-b pb-2">
-                                    <span className="text-11px] font-black uppercase text-slate-900 tracking-widest">Sub-Observation #{index + 1}</span>
+                                    <span className="text-[11px] font-black uppercase text-slate-900 tracking-widest">Sub-Observation #{index + 1}</span>
                                     {splitFields.length > 2 && (
                                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-rose-600 hover:bg-rose-50" onClick={() => removeSplit(index)}>
                                             <Trash2 className="h-4 w-4" />
@@ -1112,7 +1132,7 @@ export default function EhsObservationsPage() {
                                                 </Select>
                                             )}
                                         />
-                                        {splitForm.formState.errors.subObservations?.[index]?.category && <p className="text-[10px] text-rose-600 font-bold ml-1">{splitForm.formState.errors.subObservations[index].category.message}</p>}
+                                        {splitForm.formState.errors.subObservations?.[index]?.category && <p className="text-[10px] text-rose-600 font-bold ml-1">{splitForm.formState.errors.subObservations[index]?.category?.message}</p>}
                                     </div>
                                     <div className="space-y-1.5">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Severity</Label>
@@ -1131,7 +1151,7 @@ export default function EhsObservationsPage() {
                                                 </Select>
                                             )}
                                         />
-                                        {splitForm.formState.errors.subObservations?.[index]?.severity && <p className="text-[10px] text-rose-600 font-bold ml-1">{splitForm.formState.errors.subObservations[index].severity.message}</p>}
+                                        {splitForm.formState.errors.subObservations?.[index]?.severity && <p className="text-[10px] text-rose-600 font-bold ml-1">{splitForm.formState.errors.subObservations[index]?.severity?.message}</p>}
                                     </div>
                                 </div>
                                 <div className="space-y-1.5">
@@ -1147,27 +1167,27 @@ export default function EhsObservationsPage() {
                                             />
                                         )}
                                     />
-                                    {splitForm.formState.errors.subObservations?.[index]?.description && <p className="text-[10px] text-rose-600 font-bold ml-1">{splitForm.formState.errors.subObservations[index].description.message}</p>}
+                                    {splitForm.formState.errors.subObservations?.[index]?.description && <p className="text-[10px] text-rose-600 font-bold ml-1">{splitForm.formState.errors.subObservations[index]?.description?.message}</p>}
                                 </div>
                             </div>
                         ))}
                     </div>
                     
-                    <Button type="button" variant="outline" className="w-full h-12 border-dashed border-2 font-black uppercase text-[10px] tracking-[0.2em] hover:bg-slate-50 mt-4" onClick={() => appendSplit({ category: 'Unsafe Act', severity: 'Medium', description: '' })}>
-                        <Plus className="mr-2 h-4 w-4" /> Add Another Component
+                    <Button type="button" variant="outline" className="w-full h-14 border-dashed border-2 font-black uppercase text-[11px] tracking-[0.2em] bg-white hover:bg-slate-50 mt-6 shadow-sm" onClick={() => appendSplit({ category: 'Unsafe Act', severity: 'Medium', description: '' })}>
+                        <Plus className="mr-2 h-5 w-5 text-primary" /> Add Another Component
                     </Button>
                 </form>
             </ScrollArea>
-            <DialogFooter className="pt-4 border-t flex items-center justify-between">
+            <DialogFooter className="pt-4 border-t flex items-center justify-between shrink-0">
                 <div className="flex-1">
-                    {/* Primary error display for array-level validation (e.g. min 2 items) */}
+                    {/* Error display for array constraints (like min(2)) */}
                     {splitForm.formState.errors.subObservations?.message && (
                         <p className="text-xs text-rose-600 font-black uppercase tracking-wide flex items-center gap-1.5">
                             <AlertTriangle className="h-3.5 w-3.5" />
                             {splitForm.formState.errors.subObservations.message}
                         </p>
                     )}
-                    {/* Fallback display for field-level errors (e.g. description too short) */}
+                    {/* Fallback for general validation errors */}
                     {(!splitForm.formState.errors.subObservations?.message && Object.keys(splitForm.formState.errors).length > 0) && (
                         <p className="text-xs text-rose-600 font-black uppercase tracking-wide flex items-center gap-1.5">
                             <AlertTriangle className="h-3.5 w-3.5" />
