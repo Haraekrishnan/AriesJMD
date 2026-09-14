@@ -184,7 +184,7 @@ const severityConfig: Record<string, { bg: string, text: string, border: string 
 
 const stageConfig: Record<CapaStage, { label: string, icon: any, color: string, badge: string, description: string }> = {
   'Initiation': { label: 'Initiation', icon: Plus, color: 'text-slate-600', badge: 'bg-slate-100 text-slate-700', description: 'Initial recording of the site observation.' },
-  'Investigation': { label: 'Investigation', icon: Search, color: 'text-blue-600', badge: 'bg-blue-50 text-blue-700', description: 'Root cause analysis using 5-Whys methodology.' },
+  'Investigation': { label: 'Investigation', icon: Search, color: 'text-blue-600', badge: 'bg-blue-50 text-blue-700', description: 'Root cause analysis using Who, When, Where, How.' },
   'Resolution': { label: 'Resolution', icon: FileCheck, color: 'text-emerald-600', badge: 'bg-emerald-50 text-emerald-700', description: 'Immediate correction and containment actions.' },
   'Implementation': { label: 'Implementation', icon: Target, color: 'text-indigo-600', badge: 'bg-indigo-50 text-indigo-700', description: 'Long-term preventive action deployment.' },
   'Effectiveness Review': { label: 'Effectiveness Review', icon: CheckCircle, color: 'text-amber-600', badge: 'bg-emerald-50 text-amber-700', description: 'Validation that actions prevented recurrence.' },
@@ -782,22 +782,77 @@ export default function EhsObservationsPage() {
                                             {activeViewStage === 'Investigation' && (
                                                 <div className="space-y-6">
                                                     <div className="space-y-4">
-                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-900">5-Whys Methodology Audit</Label>
-                                                        {[0, 1, 2, 3, 4].map(i => (
-                                                            <div key={i} className="flex gap-4 items-center">
-                                                                <div className="w-8 h-8 rounded bg-slate-900 text-white flex items-center justify-center font-black text-xs shrink-0">W{i+1}</div>
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-900">Investigation Specifics</Label>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                            <div className="space-y-2">
+                                                                <Label className="text-[9px] font-bold uppercase text-slate-400">Who (Personnel involved)</Label>
                                                                 {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
                                                                     <Input 
                                                                         className="h-10 font-bold" 
-                                                                        placeholder="Ask why did the previous failure occur?" 
-                                                                        value={actionData[`why${i}`] || ''}
-                                                                        onChange={(e) => setActionData({ ...actionData, [`why${i}`]: e.target.value })}
+                                                                        placeholder="Name of personnel involved" 
+                                                                        value={actionData.who || ''}
+                                                                        onChange={(e) => setActionData({ ...actionData, who: e.target.value })}
                                                                     />
                                                                 ) : (
-                                                                    <p className="flex-1 p-2 border-b font-bold text-slate-900 text-sm">{viewingObservation.stages?.[activeViewStage!]?.data?.[`why${i}`] || '...'}</p>
+                                                                    <p className="p-2 border rounded-md font-bold text-slate-900 text-sm bg-slate-50/50">{viewingObservation.stages?.[activeViewStage!]?.data?.who || 'N/A'}</p>
                                                                 )}
                                                             </div>
-                                                        ))}
+                                                            <div className="space-y-2">
+                                                                <Label className="text-[9px] font-bold uppercase text-slate-400">When (Date/Time context)</Label>
+                                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
+                                                                    <Input 
+                                                                        className="h-10 font-bold" 
+                                                                        placeholder="Date and time of discovery details" 
+                                                                        value={actionData.when || ''}
+                                                                        onChange={(e) => setActionData({ ...actionData, when: e.target.value })}
+                                                                    />
+                                                                ) : (
+                                                                    <p className="p-2 border rounded-md font-bold text-slate-900 text-sm bg-slate-50/50">{viewingObservation.stages?.[activeViewStage!]?.data?.when || 'N/A'}</p>
+                                                                )}
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label className="text-[9px] font-bold uppercase text-slate-400">Where (Specific area/location)</Label>
+                                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
+                                                                    <Input 
+                                                                        className="h-10 font-bold" 
+                                                                        placeholder="Detailed location" 
+                                                                        value={actionData.where || ''}
+                                                                        onChange={(e) => setActionData({ ...actionData, where: e.target.value })}
+                                                                    />
+                                                                ) : (
+                                                                    <p className="p-2 border rounded-md font-bold text-slate-900 text-sm bg-slate-50/50">{viewingObservation.stages?.[activeViewStage!]?.data?.where || 'N/A'}</p>
+                                                                )}
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label className="text-[9px] font-bold uppercase text-slate-400">How (Sequence of events/method)</Label>
+                                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
+                                                                    <Input 
+                                                                        className="h-10 font-bold" 
+                                                                        placeholder="How did it occur?" 
+                                                                        value={actionData.how || ''}
+                                                                        onChange={(e) => setActionData({ ...actionData, how: e.target.value })}
+                                                                    />
+                                                                ) : (
+                                                                    <p className="p-2 border rounded-md font-bold text-slate-900 text-sm bg-slate-50/50">{viewingObservation.stages?.[activeViewStage!]?.data?.how || 'N/A'}</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-2 pt-2">
+                                                            <Label className="text-[9px] font-bold uppercase text-slate-400">Additional Investigation Details</Label>
+                                                            {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
+                                                                <RichNarrativeEditor 
+                                                                    value={actionData.notes || ''} 
+                                                                    onChange={(html) => setActionData({ ...actionData, notes: html })}
+                                                                    placeholder="Add further investigation findings, root causes, or context..."
+                                                                />
+                                                            ) : (
+                                                                <div 
+                                                                    className="p-4 border rounded-lg bg-slate-50 text-sm font-bold text-slate-700 leading-relaxed rich-text-content cursor-pointer"
+                                                                    onClick={handleImageClick}
+                                                                    dangerouslySetInnerHTML={{ __html: viewingObservation.stages?.[activeViewStage!]?.data?.notes || `No additional details logged.` }}
+                                                                />
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             )}
@@ -1422,7 +1477,7 @@ export default function EhsObservationsPage() {
                     <img 
                         src={viewingImage} 
                         alt="Expanded Evidence" 
-                        className={cn("transition-transform duration-200 select-none", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
+                        className={cn("transition-transform duration-200", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
                         style={{ 
                             transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`, 
                             maxWidth: zoom > 1 ? 'none' : '90%', 
