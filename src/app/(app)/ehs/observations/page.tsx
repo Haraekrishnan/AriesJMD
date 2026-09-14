@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef, MouseEvent } from 'react';
@@ -469,7 +470,7 @@ export default function EhsObservationsPage() {
                                         <CommandList>
                                             <CommandEmpty>No personnel found.</CommandEmpty>
                                             <CommandGroup>
-                                                {users.filter(u => u.status !== 'deactivated').map(u => (
+                                                {users.filter(u => u.role !== 'Manager' && u.status === 'active').map(u => (
                                                     <CommandItem 
                                                         key={u.id} 
                                                         onSelect={() => {
@@ -615,10 +616,12 @@ export default function EhsObservationsPage() {
                                 <div className="p-3 bg-white rounded-lg shadow-sm border border-slate-200">
                                     {activeViewStage && React.createElement(stageConfig[activeViewStage].icon, { className: "h-6 w-6 text-slate-900" })}
                                 </div>
-                                <div>
-                                    <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase leading-none">{activeViewStage}</h2>
-                                    <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wide">{activeViewStage && stageConfig[activeViewStage].description}</p>
-                                </div>
+                                {activeViewStage && (
+                                    <div>
+                                        <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase leading-none">{activeViewStage}</h2>
+                                        <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wide">{stageConfig[activeViewStage].description}</p>
+                                    </div>
+                                )}
                             </div>
                             {activeViewStage !== viewingObservation.currentStage && (
                                 <Badge variant="secondary" className="font-black text-[9px] uppercase tracking-widest px-4 h-7 border-2">ARCHIVE REVIEW</Badge>
@@ -928,7 +931,9 @@ export default function EhsObservationsPage() {
                               name="projectId"
                               render={({ field }) => (
                                 <Select onValueChange={field.onChange} value={field.value}>
-                                  <SelectTrigger className="font-bold border-2"><SelectValue placeholder="Select site..." /></SelectTrigger>
+                                  <SelectTrigger className="h-12 rounded-xl font-bold">
+                                    <SelectValue placeholder="Select site..." />
+                                  </SelectTrigger>
                                   <SelectContent>
                                     {projects.map(p => (
                                       <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
@@ -1272,7 +1277,7 @@ export default function EhsObservationsPage() {
                                                     <SelectContent>
                                                         <SelectItem value="unassigned">Unassigned (Safety HQ Default)</SelectItem>
                                                         {assignableUsers.map(u => (
-                                                            <SelectItem key={u.id} value={u.id} disabled={u.status === 'locked'}>
+                                                            <SelectItem key={u.id} value={u.id}>
                                                                 {u.name} ({u.role})
                                                             </SelectItem>
                                                         ))}

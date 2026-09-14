@@ -460,7 +460,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const getAssignableUsers = useCallback(() => {
     if (!user) return [];
-    return users.filter(u => u.role !== 'Manager' && u.status !== 'deactivated');
+    return users.filter(u => u.role !== 'Manager' && u.status === 'active');
   }, [user, users]);
   
   const clearInventoryTransferHistory = useCallback(() => {}, []);
