@@ -16,7 +16,7 @@ import {
   Check, XCircle, Trash2, History, Upload, Paperclip, Undo2, Image as ImageIcon, X,
   Bold, Italic, Underline, List, ListOrdered, Heading1, AlignLeft, UserPlus, ArrowRightLeft,
   ZoomIn, ZoomOut, Lock, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Split,
-  ChevronUp, Mic, ChevronsUpDown, AlertTriangle
+  ChevronUp, Mic, ChevronsUpDown, AlertTriangle, ArrowUpRight
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, parseISO, isValid } from 'date-fns';
@@ -206,7 +206,7 @@ const splitSchema = z.object({
         category: z.enum(['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']),
         severity: z.enum(['Low', 'Medium', 'High', 'Critical']),
         description: z.string().min(5, 'Description is required (Min 5 chars)'),
-        assigneeId: z.string().optional(),
+        assigneeId: z.string().min(1, 'Assignee is required'),
     })).min(2, 'At least 2 sub-cases are required for a split.'),
 });
 
@@ -249,6 +249,11 @@ export default function EhsObservationsPage() {
   const viewingObservation = useMemo(() => 
     observations.find(o => o.id === viewingObservationId), 
   [observations, viewingObservationId]);
+
+  const childObservationsForViewing = useMemo(() => {
+    if (!viewingObservationId) return [];
+    return observations.filter(o => o.parentId === viewingObservationId);
+  }, [observations, viewingObservationId]);
 
   const form = useForm<ObservationFormValues>({
     resolver: zodResolver(observationSchema),
@@ -455,7 +460,7 @@ export default function EhsObservationsPage() {
 
                             <Popover open={isReassignPopoverOpen} onOpenChange={setIsReassignPopoverOpen}>
                                 <PopoverTrigger asChild>
-                                    <Button variant="outline" size="sm" className="font-black uppercase text-[10px] tracking-widest border-2 h-9 px-4" disabled={viewingObservation.status === 'Closed'}>
+                                    <Button variant="outline" size="sm" className="font-black uppercase text-[10px] tracking-widest border-2 h-9 px-4" disabled={viewingObservation.status === 'Closed' || childObservationsForViewing.length > 0}>
                                         <ArrowRightLeft className="mr-2 h-3.5 w-3.5" /> Redirect Step
                                     </Button>
                                 </PopoverTrigger>
@@ -559,8 +564,16 @@ export default function EhsObservationsPage() {
                         <div className="p-2 space-y-1">
                             {Object.entries(stageConfig).map(([key, config], idx) => {
                                 const s = viewingObservation.stages?.[key as CapaStage];
-                                const isDone = s?.status === 'Completed';
-                                const isActive = key === viewingObservation.currentStage && viewingObservation.status !== 'Closed';
+                                
+                                // Hierarchical Progress Logic
+                                const isDone = childObservationsForViewing.length > 0
+                                  ? childObservationsForViewing.every(child => child.stages?.[key as CapaStage]?.status === 'Completed')
+                                  : s?.status === 'Completed';
+
+                                const isActive = childObservationsForViewing.length > 0
+                                  ? (!isDone && childObservationsForViewing.some(child => key === child.currentStage))
+                                  : (key === viewingObservation.currentStage && viewingObservation.status !== 'Closed');
+
                                 const isViewing = activeViewStage === key;
 
                                 return (
@@ -612,143 +625,216 @@ export default function EhsObservationsPage() {
 
                         <ScrollArea className="flex-1">
                             <div className="p-8 space-y-8">
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-4 rounded-lg bg-slate-50 border border-slate-100">
-                                    <div className="space-y-1">
-                                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Responsibility</Label>
-                                        <div className="flex items-center gap-2">
-                                            <Avatar className="h-5 w-5 border-slate-300">
-                                                <AvatarImage src={users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId)?.avatar}/>
-                                                <AvatarFallback className="font-bold text-[8px]">{users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId)?.name?.[0]}</AvatarFallback>
-                                            </Avatar>
-                                            <span className="text-xs font-black text-slate-900">{users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId)?.name || 'Unassigned'}</span>
+                                {childObservationsForViewing.length > 0 ? (
+                                    /* MASTER VIEW - SHOW SUB-CASE REGISTRY */
+                                    <div className="space-y-6">
+                                        <div className="flex items-center gap-3">
+                                            <Split className="h-5 w-5 text-blue-600" />
+                                            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-900">Sub-Case Remediation Registry</h3>
                                         </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Delegated By</Label>
-                                        <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-                                             <Avatar className="h-4 w-4 border-slate-200">
-                                                <AvatarImage src={users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.assignedById)?.avatar}/>
-                                                <AvatarFallback className="text-[7px]">{users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.assignedById)?.name?.[0]}</AvatarFallback>
-                                             </Avatar>
-                                             {users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.assignedById)?.name || 'System'}
-                                        </span>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Action By</Label>
-                                        <span className="block text-xs font-bold text-slate-700">{users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.actionedById)?.name || 'Waiting...'}</span>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Stage Status</Label>
-                                        <Badge className="h-5 text-[9px] font-black uppercase tracking-wider" variant={viewingObservation.stages?.[activeViewStage!]?.status === 'Completed' ? 'success' : 'secondary'}>
-                                            {viewingObservation.stages?.[activeViewStage!]?.status || 'Pending'}
-                                        </Badge>
-                                    </div>
-                                </div>
+                                        
+                                        <div className="border rounded-xl overflow-hidden shadow-sm">
+                                            <Table>
+                                                <TableHeader className="bg-slate-50">
+                                                    <TableRow>
+                                                        <TableHead className="font-black uppercase text-[9px] tracking-widest">Case ID</TableHead>
+                                                        <TableHead className="font-black uppercase text-[9px] tracking-widest">Finding Summary</TableHead>
+                                                        <TableHead className="font-black uppercase text-[9px] tracking-widest">Current Phase</TableHead>
+                                                        <TableHead className="font-black uppercase text-[9px] tracking-widest">Responsibility</TableHead>
+                                                        <TableHead className="text-right font-black uppercase text-[9px] tracking-widest">Action</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {childObservationsForViewing.map(child => {
+                                                        const currentAssignee = users.find(u => u.id === child.stages[child.currentStage]?.assigneeId);
+                                                        return (
+                                                            <TableRow key={child.id} className="hover:bg-slate-50/50">
+                                                                <TableCell className="font-mono font-black text-[10px] text-slate-500">
+                                                                    {child.id.slice(-6).toUpperCase()}
+                                                                </TableCell>
+                                                                <TableCell className="max-w-[200px]">
+                                                                    <div className="text-[11px] font-bold text-slate-800 line-clamp-1 rich-text-content" dangerouslySetInnerHTML={{ __html: child.description }} />
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest border-blue-200 text-blue-700 bg-blue-50">
+                                                                        {child.currentStage}
+                                                                    </Badge>
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Avatar className="h-5 w-5 border">
+                                                                            <AvatarImage src={currentAssignee?.avatar} />
+                                                                            <AvatarFallback className="text-[7px] font-black">{currentAssignee?.name?.[0]}</AvatarFallback>
+                                                                        </Avatar>
+                                                                        <span className="text-[10px] font-black text-slate-700">{currentAssignee?.name || 'Unassigned'}</span>
+                                                                    </div>
+                                                                </TableCell>
+                                                                <TableCell className="text-right">
+                                                                    <Button 
+                                                                      variant="ghost" 
+                                                                      size="sm" 
+                                                                      className="h-7 px-2 font-black text-[9px] uppercase tracking-widest text-blue-600 hover:text-blue-700"
+                                                                      onClick={() => setViewingObservationId(child.id)}
+                                                                    >
+                                                                        Navigate <ArrowUpRight className="ml-1 h-3 w-3" />
+                                                                    </Button>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        )
+                                                    })}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
 
-                                <div className="space-y-6">
-                                    {activeViewStage === 'Initiation' && (
-                                        <div className="space-y-4">
-                                            <div className="p-6 border rounded-lg bg-slate-50/30">
-                                                <h4 className="text-xs font-black uppercase tracking-widest text-slate-900 mb-4 border-b pb-2">Discovery Report Overview</h4>
-                                                <div className="grid grid-cols-2 gap-8">
-                                                    <div>
-                                                        <Label className="text-[10px] font-bold uppercase text-slate-500">Risk Severity</Label>
-                                                        <p className="font-black text-slate-900 mt-1 uppercase">{viewingObservation.severity}</p>
-                                                    </div>
-                                                    <div>
-                                                        <Label className="text-[10px] font-bold uppercase text-slate-500">Category</Label>
-                                                        <p className="font-black text-slate-900 mt-1 uppercase">{viewingObservation.category}</p>
-                                                    </div>
+                                        <Alert className="bg-blue-50 border-blue-100">
+                                            <Info className="h-4 w-4 text-blue-600" />
+                                            <AlertDescription className="text-xs font-bold text-blue-800">
+                                                This is a master discovery case. Actions and documentation are managed within the individual sub-cases above.
+                                            </AlertDescription>
+                                        </Alert>
+                                    </div>
+                                ) : (
+                                    /* INDIVIDUAL CHILD/CASE VIEW - SHOW ACTION WORKSPACE */
+                                    <>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-4 rounded-lg bg-slate-50 border border-slate-100">
+                                            <div className="space-y-1">
+                                                <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Responsibility</Label>
+                                                <div className="flex items-center gap-2">
+                                                    <Avatar className="h-5 w-5 border-slate-300">
+                                                        <AvatarImage src={users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId)?.avatar}/>
+                                                        <AvatarFallback className="font-bold text-[8px]">{users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId)?.name?.[0]}</AvatarFallback>
+                                                    </Avatar>
+                                                    <span className="text-xs font-black text-slate-900">{users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId)?.name || 'Unassigned'}</span>
                                                 </div>
                                             </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Delegated By</Label>
+                                                <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                                                    <Avatar className="h-4 w-4 border-slate-200">
+                                                        <AvatarImage src={users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.assignedById)?.avatar}/>
+                                                        <AvatarFallback className="text-[7px]">{users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.assignedById)?.name?.[0]}</AvatarFallback>
+                                                    </Avatar>
+                                                    {users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.assignedById)?.name || 'System'}
+                                                </span>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Action By</Label>
+                                                <span className="block text-xs font-bold text-slate-700">{users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.actionedById)?.name || 'Waiting...'}</span>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Stage Status</Label>
+                                                <Badge className="h-5 text-[9px] font-black uppercase tracking-wider" variant={viewingObservation.stages?.[activeViewStage!]?.status === 'Completed' ? 'success' : 'secondary'}>
+                                                    {viewingObservation.stages?.[activeViewStage!]?.status || 'Pending'}
+                                                </Badge>
+                                            </div>
                                         </div>
-                                    )}
 
-                                    {activeViewStage === 'Investigation' && (
                                         <div className="space-y-6">
-                                            <div className="space-y-4">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-900">5-Whys Methodology Audit</Label>
-                                                {[0, 1, 2, 3, 4].map(i => (
-                                                    <div key={i} className="flex gap-4 items-center">
-                                                        <div className="w-8 h-8 rounded bg-slate-900 text-white flex items-center justify-center font-black text-xs shrink-0">W{i+1}</div>
-                                                        {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
-                                                            <Input 
-                                                                className="h-10 font-bold" 
-                                                                placeholder="Ask why did the previous failure occur?" 
-                                                                value={actionData[`why${i}`] || ''}
-                                                                onChange={(e) => setActionData({ ...actionData, [`why${i}`]: e.target.value })}
-                                                            />
+                                            {activeViewStage === 'Initiation' && (
+                                                <div className="space-y-4">
+                                                    <div className="p-6 border rounded-lg bg-slate-50/30">
+                                                        <h4 className="text-xs font-black uppercase tracking-widest text-slate-900 mb-4 border-b pb-2">Discovery Report Overview</h4>
+                                                        <div className="grid grid-cols-2 gap-8">
+                                                            <div>
+                                                                <Label className="text-[10px] font-bold uppercase text-slate-500">Risk Severity</Label>
+                                                                <p className="font-black text-slate-900 mt-1 uppercase">{viewingObservation.severity}</p>
+                                                            </div>
+                                                            <div>
+                                                                <Label className="text-[10px] font-bold uppercase text-slate-500">Category</Label>
+                                                                <p className="font-black text-slate-900 mt-1 uppercase">{viewingObservation.category}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {activeViewStage === 'Investigation' && (
+                                                <div className="space-y-6">
+                                                    <div className="space-y-4">
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-900">5-Whys Methodology Audit</Label>
+                                                        {[0, 1, 2, 3, 4].map(i => (
+                                                            <div key={i} className="flex gap-4 items-center">
+                                                                <div className="w-8 h-8 rounded bg-slate-900 text-white flex items-center justify-center font-black text-xs shrink-0">W{i+1}</div>
+                                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
+                                                                    <Input 
+                                                                        className="h-10 font-bold" 
+                                                                        placeholder="Ask why did the previous failure occur?" 
+                                                                        value={actionData[`why${i}`] || ''}
+                                                                        onChange={(e) => setActionData({ ...actionData, [`why${i}`]: e.target.value })}
+                                                                    />
+                                                                ) : (
+                                                                    <p className="flex-1 p-2 border-b font-bold text-slate-900 text-sm">{viewingObservation.stages?.[activeViewStage!]?.data?.[`why${i}`] || '...'}</p>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {activeViewStage !== 'Initiation' && activeViewStage !== 'Investigation' && (
+                                                <div className="space-y-4">
+                                                    <div className="space-y-2">
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-900">
+                                                            {activeViewStage} Technical Narrative
+                                                        </Label>
+                                                        {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage!]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId ? (
+                                                            <div className="space-y-4">
+                                                                <RichNarrativeEditor 
+                                                                    value={actionData.notes || ''} 
+                                                                    onChange={(html) => setActionData({ ...actionData, notes: html })}
+                                                                    placeholder={`Log details for the ${activeViewStage} phase...`}
+                                                                />
+                                                            </div>
                                                         ) : (
-                                                            <p className="flex-1 p-2 border-b font-bold text-slate-900 text-sm">{viewingObservation.stages?.[activeViewStage!]?.data?.[`why${i}`] || '...'}</p>
+                                                            <div 
+                                                                className="p-4 border rounded-lg bg-slate-50 text-sm font-bold text-slate-700 leading-relaxed rich-text-content cursor-pointer"
+                                                                onClick={handleImageClick}
+                                                                dangerouslySetInnerHTML={{ __html: viewingObservation.stages?.[activeViewStage!]?.data?.notes || `No documentation logged for ${activeViewStage}.` }}
+                                                            />
                                                         )}
                                                     </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
+                                                </div>
+                                            )}
 
-                                    {activeViewStage !== 'Initiation' && activeViewStage !== 'Investigation' && (
-                                        <div className="space-y-4">
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-900">
-                                                    {activeViewStage} Technical Narrative
-                                                </Label>
-                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage!]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId ? (
-                                                    <div className="space-y-4">
-                                                        <RichNarrativeEditor 
-                                                            value={actionData.notes || ''} 
-                                                            onChange={(html) => setActionData({ ...actionData, notes: html })}
-                                                            placeholder={`Log details for the ${activeViewStage} phase...`}
+                                            {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage!]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId && (
+                                                <div className="pt-6 border-t border-dashed">
+                                                    <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest mb-2 block">Link External Evidence</Label>
+                                                    <div className="flex items-center gap-4">
+                                                        <Input 
+                                                            placeholder="Paste technical attachment URL or Dropbox link here..." 
+                                                            className="h-10 text-xs font-bold"
+                                                            value={tempAttachmentUrl}
+                                                            onChange={(e) => setTempAttachmentUrl(e.target.value)}
                                                         />
                                                     </div>
-                                                ) : (
-                                                    <div 
-                                                        className="p-4 border rounded-lg bg-slate-50 text-sm font-bold text-slate-700 leading-relaxed rich-text-content cursor-pointer"
-                                                        onClick={handleImageClick}
-                                                        dangerouslySetInnerHTML={{ __html: viewingObservation.stages?.[activeViewStage!]?.data?.notes || `No documentation logged for ${activeViewStage}.` }}
+                                                </div>
+                                            )}
+
+                                            {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage!]?.status === 'In Progress' && isSupervisor && (
+                                                <div className="p-6 border-2 border-slate-900 rounded-lg bg-slate-50 space-y-4 animate-in zoom-in-95">
+                                                    <div className="flex items-center gap-3">
+                                                        <ShieldCheck className="h-5 w-5 text-slate-900" />
+                                                        <h4 className="text-xs font-black uppercase tracking-widest text-slate-900">Official Verification Workspace</h4>
+                                                    </div>
+                                                    <Textarea 
+                                                        className="bg-white border-slate-200 p-4 font-bold text-sm" 
+                                                        placeholder="Provide technical feedback or official instructions..."
+                                                        value={reviewComment}
+                                                        onChange={(e) => setReviewComment(e.target.value)}
                                                     />
-                                                )}
-                                            </div>
+                                                    <div className="flex gap-3">
+                                                        <Button variant="outline" className="flex-1 font-bold h-11 border-2" onClick={() => handleReview('Returned')}>
+                                                            <Undo2 className="mr-2 h-4 w-4" /> Request Rework
+                                                        </Button>
+                                                        <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black h-11 uppercase tracking-wider" onClick={() => handleReview('Completed')}>
+                                                            <CheckCircle className="mr-2 h-4 w-4" /> Verify & Progress
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-
-                                    {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage!]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId && (
-                                        <div className="pt-6 border-t border-dashed">
-                                            <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest mb-2 block">Link External Evidence</Label>
-                                            <div className="flex items-center gap-4">
-                                                <Input 
-                                                    placeholder="Paste technical attachment URL or Dropbox link here..." 
-                                                    className="h-10 text-xs font-bold"
-                                                    value={tempAttachmentUrl}
-                                                    onChange={(e) => setTempAttachmentUrl(e.target.value)}
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage!]?.status === 'In Progress' && isSupervisor && (
-                                        <div className="p-6 border-2 border-slate-900 rounded-lg bg-slate-50 space-y-4 animate-in zoom-in-95">
-                                            <div className="flex items-center gap-3">
-                                                <ShieldCheck className="h-5 w-5 text-slate-900" />
-                                                <h4 className="text-xs font-black uppercase tracking-widest text-slate-900">Official Verification Workspace</h4>
-                                            </div>
-                                            <Textarea 
-                                                className="bg-white border-slate-200 p-4 font-bold text-sm" 
-                                                placeholder="Provide technical feedback or official instructions..."
-                                                value={reviewComment}
-                                                onChange={(e) => setReviewComment(e.target.value)}
-                                            />
-                                            <div className="flex gap-3">
-                                                <Button variant="outline" className="flex-1 font-bold h-11 border-2" onClick={() => handleReview('Returned')}>
-                                                    <Undo2 className="mr-2 h-4 w-4" /> Request Rework
-                                                </Button>
-                                                <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black h-11 uppercase tracking-wider" onClick={() => handleReview('Completed')}>
-                                                    <CheckCircle className="mr-2 h-4 w-4" /> Verify & Progress
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
+                                    </>
+                                )}
                             </div>
                         </ScrollArea>
 
@@ -1172,7 +1258,7 @@ export default function EhsObservationsPage() {
                                         </div>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Direct Assignee (Optional)</Label>
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Direct Assignee</Label>
                                         <Controller
                                             control={splitForm.control}
                                             name={`subObservations.${index}.assigneeId`}
