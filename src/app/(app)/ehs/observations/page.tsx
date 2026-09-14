@@ -1082,127 +1082,129 @@ export default function EhsObservationsPage() {
           }
           setIsSplitDialogOpen(open);
       }}>
-        <DialogContent className="sm:max-w-4xl h-full sm:h-auto sm:max-h-[95vh] flex flex-col">
-            <DialogHeader className="shrink-0">
+        <DialogContent className="sm:max-w-4xl h-[95vh] flex flex-col p-0 overflow-hidden">
+            <DialogHeader className="px-6 pt-6 shrink-0">
                 <DialogTitle className="font-black uppercase tracking-tight text-slate-900">Split Observation Case</DialogTitle>
                 <DialogDescription className="font-medium text-slate-500">
                     If this discovery contains multiple distinct issues, split them into sub-cases for individual CAPA tracking.
                 </DialogDescription>
             </DialogHeader>
-            <ScrollArea className="flex-1 pr-4">
-                <form id="split-observation-form" onSubmit={splitForm.handleSubmit(onSplitSubmit)} className="space-y-6 py-4 text-left">
-                    <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl mb-4">
-                         <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-700 mb-2">Original Context</h4>
-                         <div className="text-xs font-bold text-slate-700 line-clamp-3 rich-text-content" dangerouslySetInnerHTML={{ __html: viewingObservation?.description || '' }} />
-                    </div>
+            <div className="flex-1 overflow-hidden px-6">
+                <ScrollArea className="h-full w-full pr-4">
+                    <form id="split-observation-form" onSubmit={splitForm.handleSubmit(onSplitSubmit)} className="space-y-6 py-4 text-left">
+                        <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl mb-4">
+                             <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-700 mb-2">Original Context</h4>
+                             <div className="text-xs font-bold text-slate-700 line-clamp-3 rich-text-content" dangerouslySetInnerHTML={{ __html: viewingObservation?.description || '' }} />
+                        </div>
 
-                    <div className="flex justify-between items-center mb-2 px-1">
-                        <Label className="font-black uppercase text-xs text-slate-500 tracking-widest">Defined Sub-Cases ({splitFields.length})</Label>
-                        <Button type="button" variant="outline" size="sm" className="h-8 border-2 font-black uppercase text-[9px] tracking-widest" onClick={() => appendSplit({ category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: 'unassigned' })}>
-                            <Plus className="mr-1 h-3 w-3" /> Add Sub-Case
-                        </Button>
-                    </div>
+                        <div className="flex justify-between items-center mb-2 px-1">
+                            <Label className="font-black uppercase text-xs text-slate-500 tracking-widest">Defined Sub-Cases ({splitFields.length})</Label>
+                            <Button type="button" variant="outline" size="sm" className="h-8 border-2 font-black uppercase text-[9px] tracking-widest" onClick={() => appendSplit({ category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: 'unassigned' })}>
+                                <Plus className="mr-1 h-3 w-3" /> Add Sub-Case
+                            </Button>
+                        </div>
 
-                    <div className="space-y-6">
-                        {splitFields.map((field, index) => (
-                            <div key={field.id} className="p-5 border-2 border-slate-200 rounded-xl bg-white space-y-4 relative group/split shadow-sm">
-                                <div className="flex justify-between items-center border-b pb-2">
-                                    <span className="text-[11px] font-black uppercase text-slate-900 tracking-widest">Sub-Observation #{index + 1}</span>
-                                    {splitFields.length > 2 && (
-                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-rose-600 hover:bg-rose-50" onClick={() => removeSplit(index)}>
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    )}
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Category</Label>
-                                        <Controller
-                                            control={splitForm.control}
-                                            name={`subObservations.${index}.category`}
-                                            render={({ field: cField }) => (
-                                                <Select onValueChange={cField.onChange} value={cField.value}>
-                                                    <SelectTrigger className="h-10 font-bold border-2"><SelectValue /></SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="Unsafe Act">Unsafe Act</SelectItem>
-                                                        <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
-                                                        <SelectItem value="Safe Act">Safe Act</SelectItem>
-                                                        <SelectItem value="Near Miss">Near Miss</SelectItem>
-                                                        <SelectItem value="Environmental">Environmental</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            )}
-                                        />
-                                        {splitForm.formState.errors.subObservations?.[index]?.category && <p className="text-[10px] text-rose-600 font-bold ml-1">{splitForm.formState.errors.subObservations[index]?.category?.message}</p>}
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Severity</Label>
-                                        <Controller
-                                            control={splitForm.control}
-                                            name={`subObservations.${index}.severity`}
-                                            render={({ field: sField }) => (
-                                                <Select onValueChange={sField.onChange} value={sField.value}>
-                                                    <SelectTrigger className="h-10 font-bold border-2"><SelectValue /></SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="Low">Low</SelectItem>
-                                                        <SelectItem value="Medium">Medium</SelectItem>
-                                                        <SelectItem value="High">High</SelectItem>
-                                                        <SelectItem value="Critical">Critical</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            )}
-                                        />
-                                        {splitForm.formState.errors.subObservations?.[index]?.severity && <p className="text-[10px] text-rose-600 font-bold ml-1">{splitForm.formState.errors.subObservations[index]?.severity?.message}</p>}
-                                    </div>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Direct Assignee (Optional)</Label>
-                                    <Controller
-                                        control={splitForm.control}
-                                        name={`subObservations.${index}.assigneeId`}
-                                        render={({ field: aField }) => (
-                                            <Select onValueChange={aField.onChange} value={aField.value}>
-                                                <SelectTrigger className="h-10 font-bold border-2">
-                                                    <SelectValue placeholder="Select specialized personnel..." />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="unassigned">Unassigned (Safety HQ Default)</SelectItem>
-                                                    {assignableUsers.map(u => (
-                                                        <SelectItem key={u.id} value={u.id} disabled={u.status === 'locked'}>
-                                                            {u.name} ({u.role})
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                        <div className="space-y-6">
+                            {splitFields.map((field, index) => (
+                                <div key={field.id} className="p-5 border-2 border-slate-200 rounded-xl bg-white space-y-4 relative group/split shadow-sm">
+                                    <div className="flex justify-between items-center border-b pb-2">
+                                        <span className="text-[11px] font-black uppercase text-slate-900 tracking-widest">Sub-Observation #{index + 1}</span>
+                                        {splitFields.length > 2 && (
+                                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-rose-600 hover:bg-rose-50" onClick={() => removeSplit(index)}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
                                         )}
-                                    />
-                                    <p className="text-[9px] text-slate-400 italic ml-1">If left blank, the Senior Safety Supervisor will be assigned by default.</p>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Specific Finding Narrative</Label>
-                                    <Controller
-                                        control={splitForm.control}
-                                        name={`subObservations.${index}.description`}
-                                        render={({ field: dField }) => (
-                                            <RichNarrativeEditor 
-                                                value={dField.value} 
-                                                onChange={dField.onChange} 
-                                                placeholder="Detail this specific issue..." 
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Category</Label>
+                                            <Controller
+                                                control={splitForm.control}
+                                                name={`subObservations.${index}.category`}
+                                                render={({ field: cField }) => (
+                                                    <Select onValueChange={cField.onChange} value={cField.value}>
+                                                        <SelectTrigger className="h-10 font-bold border-2"><SelectValue /></SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="Unsafe Act">Unsafe Act</SelectItem>
+                                                            <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
+                                                            <SelectItem value="Safe Act">Safe Act</SelectItem>
+                                                            <SelectItem value="Near Miss">Near Miss</SelectItem>
+                                                            <SelectItem value="Environmental">Environmental</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}
                                             />
-                                        )}
-                                    />
-                                    {splitForm.formState.errors.subObservations?.[index]?.description && <p className="text-[10px] text-rose-600 font-bold ml-1">{splitForm.formState.errors.subObservations[index]?.description?.message}</p>}
+                                            {splitForm.formState.errors.subObservations?.[index]?.category && <p className="text-[10px] text-rose-600 font-bold ml-1">{splitForm.formState.errors.subObservations[index]?.category?.message}</p>}
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Severity</Label>
+                                            <Controller
+                                                control={splitForm.control}
+                                                name={`subObservations.${index}.severity`}
+                                                render={({ field: sField }) => (
+                                                    <Select onValueChange={sField.onChange} value={sField.value}>
+                                                        <SelectTrigger className="h-10 font-bold border-2"><SelectValue /></SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="Low">Low</SelectItem>
+                                                            <SelectItem value="Medium">Medium</SelectItem>
+                                                            <SelectItem value="High">High</SelectItem>
+                                                            <SelectItem value="Critical">Critical</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}
+                                            />
+                                            {splitForm.formState.errors.subObservations?.[index]?.severity && <p className="text-[10px] text-rose-600 font-bold ml-1">{splitForm.formState.errors.subObservations[index]?.severity?.message}</p>}
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Direct Assignee (Optional)</Label>
+                                        <Controller
+                                            control={splitForm.control}
+                                            name={`subObservations.${index}.assigneeId`}
+                                            render={({ field: aField }) => (
+                                                <Select onValueChange={aField.onChange} value={aField.value}>
+                                                    <SelectTrigger className="h-10 font-bold border-2">
+                                                        <SelectValue placeholder="Select specialized personnel..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="unassigned">Unassigned (Safety HQ Default)</SelectItem>
+                                                        {assignableUsers.map(u => (
+                                                            <SelectItem key={u.id} value={u.id} disabled={u.status === 'locked'}>
+                                                                {u.name} ({u.role})
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        />
+                                        <p className="text-[9px] text-slate-400 italic ml-1">If left blank, the Senior Safety Supervisor will be assigned by default.</p>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Specific Finding Narrative</Label>
+                                        <Controller
+                                            control={splitForm.control}
+                                            name={`subObservations.${index}.description`}
+                                            render={({ field: dField }) => (
+                                                <RichNarrativeEditor 
+                                                    value={dField.value} 
+                                                    onChange={dField.onChange} 
+                                                    placeholder="Detail this specific issue..." 
+                                                />
+                                            )}
+                                        />
+                                        {splitForm.formState.errors.subObservations?.[index]?.description && <p className="text-[10px] text-rose-600 font-bold ml-1">{splitForm.formState.errors.subObservations[index]?.description?.message}</p>}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
-                    
-                    <Button type="button" variant="outline" className="w-full h-14 border-dashed border-2 font-black uppercase text-[11px] tracking-[0.2em] bg-white hover:bg-slate-50 mt-6 shadow-sm" onClick={() => appendSplit({ category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: 'unassigned' })}>
-                        <Plus className="mr-2 h-5 w-5 text-primary" /> Add Another Component
-                    </Button>
-                </form>
-            </ScrollArea>
-            <DialogFooter className="pt-4 border-t flex items-center justify-between shrink-0">
+                            ))}
+                        </div>
+                        
+                        <Button type="button" variant="outline" className="w-full h-14 border-dashed border-2 font-black uppercase text-[11px] tracking-[0.2em] bg-white hover:bg-slate-50 mt-6 shadow-sm" onClick={() => appendSplit({ category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: 'unassigned' })}>
+                            <Plus className="mr-2 h-5 w-5 text-primary" /> Add Another Component
+                        </Button>
+                    </form>
+                </ScrollArea>
+            </div>
+            <DialogFooter className="px-6 py-4 border-t flex items-center justify-between shrink-0">
                 <div className="flex-1">
                     {splitForm.formState.errors.subObservations?.message && (
                         <p className="text-xs text-rose-600 font-black uppercase tracking-wide flex items-center gap-1.5">
