@@ -258,8 +258,8 @@ export default function EhsObservationsPage() {
       resolver: zodResolver(splitSchema),
       defaultValues: {
           subObservations: [
-              { category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: '' },
-              { category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: '' }
+              { category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: 'unassigned' },
+              { category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: 'unassigned' }
           ]
       }
   });
@@ -299,8 +299,8 @@ export default function EhsObservationsPage() {
     if (isSplitDialogOpen) {
       splitForm.reset({
         subObservations: [
-            { category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: '' },
-            { category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: '' }
+            { category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: 'unassigned' },
+            { category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: 'unassigned' }
         ]
       });
     }
@@ -391,8 +391,8 @@ export default function EhsObservationsPage() {
   const openSplitDialog = () => {
       splitForm.reset({
           subObservations: [
-              { category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: '' },
-              { category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: '' }
+              { category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: 'unassigned' },
+              { category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: 'unassigned' }
           ]
       });
       setIsSplitDialogOpen(true);
@@ -1098,7 +1098,7 @@ export default function EhsObservationsPage() {
 
                     <div className="flex justify-between items-center mb-2 px-1">
                         <Label className="font-black uppercase text-xs text-slate-500 tracking-widest">Defined Sub-Cases ({splitFields.length})</Label>
-                        <Button type="button" variant="outline" size="sm" className="h-8 border-2 font-black uppercase text-[9px] tracking-widest" onClick={() => appendSplit({ category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: '' })}>
+                        <Button type="button" variant="outline" size="sm" className="h-8 border-2 font-black uppercase text-[9px] tracking-widest" onClick={() => appendSplit({ category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: 'unassigned' })}>
                             <Plus className="mr-1 h-3 w-3" /> Add Sub-Case
                         </Button>
                     </div>
@@ -1166,7 +1166,7 @@ export default function EhsObservationsPage() {
                                                     <SelectValue placeholder="Select specialized personnel..." />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="">Unassigned (Safety HQ Default)</SelectItem>
+                                                    <SelectItem value="unassigned">Unassigned (Safety HQ Default)</SelectItem>
                                                     {assignableUsers.map(u => (
                                                         <SelectItem key={u.id} value={u.id} disabled={u.status === 'locked'}>
                                                             {u.name} ({u.role})
@@ -1197,21 +1197,19 @@ export default function EhsObservationsPage() {
                         ))}
                     </div>
                     
-                    <Button type="button" variant="outline" className="w-full h-14 border-dashed border-2 font-black uppercase text-[11px] tracking-[0.2em] bg-white hover:bg-slate-50 mt-6 shadow-sm" onClick={() => appendSplit({ category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: '' })}>
+                    <Button type="button" variant="outline" className="w-full h-14 border-dashed border-2 font-black uppercase text-[11px] tracking-[0.2em] bg-white hover:bg-slate-50 mt-6 shadow-sm" onClick={() => appendSplit({ category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: 'unassigned' })}>
                         <Plus className="mr-2 h-5 w-5 text-primary" /> Add Another Component
                     </Button>
                 </form>
             </ScrollArea>
             <DialogFooter className="pt-4 border-t flex items-center justify-between shrink-0">
                 <div className="flex-1">
-                    {/* Error display for array constraints (like min(2)) */}
                     {splitForm.formState.errors.subObservations?.message && (
                         <p className="text-xs text-rose-600 font-black uppercase tracking-wide flex items-center gap-1.5">
                             <AlertTriangle className="h-3.5 w-3.5" />
                             {splitForm.formState.errors.subObservations.message}
                         </p>
                     )}
-                    {/* Fallback for general validation errors */}
                     {(!splitForm.formState.errors.subObservations?.message && Object.keys(splitForm.formState.errors).length > 0) && (
                         <p className="text-xs text-rose-600 font-black uppercase tracking-wide flex items-center gap-1.5">
                             <AlertTriangle className="h-3.5 w-3.5" />

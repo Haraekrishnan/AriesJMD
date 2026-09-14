@@ -226,7 +226,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
         stages['Resolution'].assignedById = user.id;
         stages['Resolution'].assignedAt = now;
         // USE PROVIDED ASSIGNEE OR DEFAULT
-        stages['Resolution'].assigneeId = sub.assigneeId || defaultAssigneeId;
+        stages['Resolution'].assigneeId = (sub.assigneeId && sub.assigneeId !== 'unassigned') ? sub.assigneeId : defaultAssigneeId;
 
         const subObs: EhsObservation = {
             ...parent,
