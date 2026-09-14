@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef, MouseEvent } from 'react';
@@ -1087,7 +1086,7 @@ export default function EhsObservationsPage() {
                         {splitFields.map((field, index) => (
                             <div key={field.id} className="p-5 border-2 border-slate-200 rounded-xl bg-white space-y-4 relative group/split shadow-sm">
                                 <div className="flex justify-between items-center border-b pb-2">
-                                    <span className="text-[11px] font-black uppercase text-slate-900 tracking-widest">Sub-Observation #{index + 1}</span>
+                                    <span className="text-11px] font-black uppercase text-slate-900 tracking-widest">Sub-Observation #{index + 1}</span>
                                     {splitFields.length > 2 && (
                                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-rose-600 hover:bg-rose-50" onClick={() => removeSplit(index)}>
                                             <Trash2 className="h-4 w-4" />
@@ -1161,13 +1160,15 @@ export default function EhsObservationsPage() {
             </ScrollArea>
             <DialogFooter className="pt-4 border-t flex items-center justify-between">
                 <div className="flex-1">
-                    {splitForm.formState.errors.subObservations?.root?.message && (
+                    {/* Primary error display for array-level validation (e.g. min 2 items) */}
+                    {splitForm.formState.errors.subObservations?.message && (
                         <p className="text-xs text-rose-600 font-black uppercase tracking-wide flex items-center gap-1.5">
                             <AlertTriangle className="h-3.5 w-3.5" />
-                            {splitForm.formState.errors.subObservations.root.message}
+                            {splitForm.formState.errors.subObservations.message}
                         </p>
                     )}
-                    {(!splitForm.formState.errors.subObservations?.root?.message && Object.keys(splitForm.formState.errors).length > 0) && (
+                    {/* Fallback display for field-level errors (e.g. description too short) */}
+                    {(!splitForm.formState.errors.subObservations?.message && Object.keys(splitForm.formState.errors).length > 0) && (
                         <p className="text-xs text-rose-600 font-black uppercase tracking-wide flex items-center gap-1.5">
                             <AlertTriangle className="h-3.5 w-3.5" />
                             Validation Errors Present - Review sub-cases.
