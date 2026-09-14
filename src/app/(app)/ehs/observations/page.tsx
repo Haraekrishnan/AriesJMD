@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef, MouseEvent } from 'react';
@@ -966,9 +967,22 @@ export default function EhsObservationsPage() {
 
                                         {stages.map((stage) => {
                                           const sData = obs.stages?.[stage];
-                                          const isDone = sData?.status === 'Completed';
-                                          const isActive = stage === obs.currentStage && obs.status !== 'Closed';
-                                          const isReturned = sData?.status === 'Returned';
+                                          
+                                          // Hierarchical Logic:
+                                          // Master is only "Completed" if all children are "Completed"
+                                          const isDone = childObservations.length > 0 
+                                            ? childObservations.every(child => child.stages?.[stage]?.status === 'Completed')
+                                            : sData?.status === 'Completed';
+
+                                          // Master shows "Active" if any child is at this stage OR master itself is at this stage
+                                          const isActive = childObservations.length > 0
+                                            ? (!isDone && childObservations.some(child => stage === child.currentStage && child.status !== 'Closed'))
+                                            : (stage === obs.currentStage && obs.status !== 'Closed');
+
+                                          // Master shows "Returned" if any child is at "Returned" state for this stage
+                                          const isReturned = childObservations.length > 0
+                                            ? childObservations.some(child => child.stages?.[stage]?.status === 'Returned')
+                                            : sData?.status === 'Returned';
                                           
                                           return (
                                             <TableCell key={stage} className={cn(
@@ -1042,11 +1056,12 @@ export default function EhsObservationsPage() {
                                                 const sData = child.stages?.[stage];
                                                 const isDone = sData?.status === 'Completed';
                                                 const isActive = stage === child.currentStage && child.status !== 'Closed';
+                                                const isReturned = sData?.status === 'Returned';
                                                 
                                                 return (
                                                     <TableCell key={stage} className="border-r border-slate-200 text-center p-0">
                                                         <div className="flex items-center justify-center h-full scale-75 opacity-60">
-                                                            {isDone ? <Check className="h-3 w-3 text-emerald-600" /> : isActive ? <div className="w-1 h-1 rounded-full bg-blue-600" /> : <div className="w-0.5 h-0.5 rounded-full bg-slate-300" />}
+                                                            {isDone ? <Check className="h-3 w-3 text-emerald-600" /> : isReturned ? <XCircle className="h-3 w-3 text-rose-600" /> : isActive ? <div className="w-1 h-1 rounded-full bg-blue-600" /> : <div className="w-0.5 h-0.5 rounded-full bg-slate-300" />}
                                                         </div>
                                                     </TableCell>
                                                 )
