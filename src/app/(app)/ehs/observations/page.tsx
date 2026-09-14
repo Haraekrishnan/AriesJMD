@@ -16,7 +16,7 @@ import {
   Check, XCircle, Trash2, History, Upload, Paperclip, Undo2, Image as ImageIcon, X,
   Bold, Italic, Underline, List, ListOrdered, Heading1, AlignLeft, UserPlus, ArrowRightLeft,
   ZoomIn, ZoomOut, Lock, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Split,
-  ChevronUp, Mic, ChevronsUpDown, AlertTriangle, ArrowUpRight
+  ChevronUp, Mic, ChevronsUpDown, AlertTriangle, ArrowUpRight, Info
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, parseISO, isValid } from 'date-fns';
@@ -589,8 +589,8 @@ export default function EhsObservationsPage() {
                                     >
                                         <div className={cn(
                                             "w-6 h-6 rounded flex items-center justify-center border font-black text-[10px]",
-                                            isDone ? "border-emerald-500 bg-emerald-50 text-emerald-600" : "border-slate-300"
-                                        )}>
+                                            isDone ? <Check className="h-3 w-3" /> : idx + 1}
+                                        >
                                             {isDone ? <Check className="h-3 w-3" /> : idx + 1}
                                         </div>
                                         <div className="flex-1 text-left overflow-hidden">
@@ -871,7 +871,7 @@ export default function EhsObservationsPage() {
                       <Plus className="mr-2 h-4 w-4" /> INITIATE CASE
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-3xl h-full sm:h-auto sm:max-h-[95vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
+                  <DialogContent className="sm:max-w-3xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
                     <DialogHeader>
                       <DialogTitle className="font-black uppercase tracking-tight text-slate-900">Initiate Safety Case</DialogTitle>
                       <DialogDescription className="font-medium text-slate-500">Log a professional observation report with rich narrative and evidence.</DialogDescription>
@@ -992,7 +992,7 @@ export default function EhsObservationsPage() {
                 <div className="flex-1 overflow-hidden relative">
                   <ScrollArea className="h-full w-full">
                     <Table className="border-collapse border-slate-300">
-                        <TableHeader className="bg-slate-100 sticky top-0 z-40">
+                        <TableHeader className="sticky top-0 z-40">
                             <TableRow className="border-b-2 border-slate-300">
                                 <TableHead className="w-20 border-r border-slate-300 font-black uppercase text-[10px] text-slate-900 text-center sticky left-0 z-50 bg-slate-100">ID</TableHead>
                                 <TableHead className="min-w-[300px] border-r border-slate-300 font-black uppercase text-[10px] text-slate-900 px-4 sticky left-20 z-50 bg-slate-100 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Narrative Findings</TableHead>
