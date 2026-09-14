@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef, MouseEvent } from 'react';
@@ -16,7 +15,7 @@ import {
   Check, XCircle, Trash2, History, Upload, Paperclip, Undo2, Image as ImageIcon, X,
   Bold, Italic, Underline, List, ListOrdered, Heading1, AlignLeft, UserPlus, ArrowRightLeft,
   ZoomIn, ZoomOut, Lock, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Split,
-  ChevronUp, Mic, ChevronsUpDown, AlertTriangle, ArrowUpRight, Info
+  ChevronUp, Info, AlertTriangle, ArrowUpRight
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, parseISO, isValid } from 'date-fns';
@@ -587,10 +586,13 @@ export default function EhsObservationsPage() {
                                               : "text-slate-500 hover:bg-white/60 hover:text-slate-900"
                                         )}
                                     >
+                                        {isViewing && (
+                                          <div className="absolute left-0 w-1.5 h-6 bg-slate-900 rounded-r-full" />
+                                        )}
                                         <div className={cn(
                                             "w-6 h-6 rounded flex items-center justify-center border font-black text-[10px]",
-                                            isDone ? <Check className="h-3 w-3" /> : idx + 1}
-                                        >
+                                            isDone ? "border-emerald-600 text-emerald-600 bg-emerald-50" : "border-slate-200 text-slate-400"
+                                        )}>
                                             {isDone ? <Check className="h-3 w-3" /> : idx + 1}
                                         </div>
                                         <div className="flex-1 text-left overflow-hidden">
@@ -638,7 +640,7 @@ export default function EhsObservationsPage() {
                                                 <TableHeader className="bg-slate-50">
                                                     <TableRow>
                                                         <TableHead className="font-black uppercase text-[9px] tracking-widest">Case ID</TableHead>
-                                                        <TableHead className="font-black uppercase text-[9px] tracking-widest">Finding Summary</TableHead>
+                                                        <TableHead className="min-w-[300px] font-black uppercase text-[9px] tracking-widest">Finding Summary</TableHead>
                                                         <TableHead className="font-black uppercase text-[9px] tracking-widest">Current Phase</TableHead>
                                                         <TableHead className="font-black uppercase text-[9px] tracking-widest">Responsibility</TableHead>
                                                         <TableHead className="text-right font-black uppercase text-[9px] tracking-widest">Action</TableHead>
