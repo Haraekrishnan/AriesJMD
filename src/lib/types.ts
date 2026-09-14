@@ -1167,7 +1167,7 @@ export type ObservationReport = {
 export type EhsObservationStatus = 'Open' | 'In Progress' | 'Closed' | 'Resolved' | 'Under Investigation';
 export type EhsObservationCategory = 'Unsafe Act' | 'Unsafe Condition' | 'Safe Act' | 'Near Miss' | 'Environmental';
 export type EhsObservationSeverity = 'Low' | 'Medium' | 'High' | 'Critical';
-export type CapaStage = 'Initiation' | 'Resolution' | 'Investigation' | 'Implementation' | 'Effectiveness Review' | 'Reference' | 'Closure';
+export type CapaStage = 'Initiation' | 'Investigation' | 'Resolution' | 'Implementation' | 'Effectiveness Review' | 'Reference' | 'Closure';
 
 export type CapaAttachment = {
   id: string;

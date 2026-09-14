@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef, MouseEvent } from 'react';
@@ -62,7 +61,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 const Loader2 = ({ className }: { className?: string }) => (
     <svg className={cn("animate-spin", className)} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373(0, 0, 5.373, 0, 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
     </svg>
 );
 
@@ -185,8 +184,8 @@ const severityConfig: Record<string, { bg: string, text: string, border: string 
 
 const stageConfig: Record<CapaStage, { label: string, icon: any, color: string, badge: string, description: string }> = {
   'Initiation': { label: 'Initiation', icon: Plus, color: 'text-slate-600', badge: 'bg-slate-100 text-slate-700', description: 'Initial recording of the site observation.' },
-  'Resolution': { label: 'Resolution', icon: FileCheck, color: 'text-emerald-600', badge: 'bg-emerald-50 text-emerald-700', description: 'Immediate correction and containment actions.' },
   'Investigation': { label: 'Investigation', icon: Search, color: 'text-blue-600', badge: 'bg-blue-50 text-blue-700', description: 'Root cause analysis using 5-Whys methodology.' },
+  'Resolution': { label: 'Resolution', icon: FileCheck, color: 'text-emerald-600', badge: 'bg-emerald-50 text-emerald-700', description: 'Immediate correction and containment actions.' },
   'Implementation': { label: 'Implementation', icon: Target, color: 'text-indigo-600', badge: 'bg-indigo-50 text-indigo-700', description: 'Long-term preventive action deployment.' },
   'Effectiveness Review': { label: 'Effectiveness Review', icon: CheckCircle, color: 'text-amber-600', badge: 'bg-emerald-50 text-amber-700', description: 'Validation that actions prevented recurrence.' },
   'Reference': { label: 'Reference', icon: FileSearch, color: 'text-slate-600', badge: 'bg-slate-50 text-slate-700', description: 'Technical archiving of documentation.' },
@@ -245,6 +244,7 @@ export default function EhsObservationsPage() {
   const [actionData, setActionData] = useState<any>({});
   const [reviewComment, setReviewComment] = useState('');
   const [tempAttachmentUrl, setTempAttachmentUrl] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
 
   const viewingObservation = useMemo(() => 
     observations.find(o => o.id === viewingObservationId), 
@@ -402,6 +402,32 @@ export default function EhsObservationsPage() {
           ]
       });
       setIsSplitDialogOpen(true);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsUploading(true);
+    toast({ title: 'Uploading Evidence...', description: 'Transmitting to Dropbox repository.' });
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload/dropbox', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setTempAttachmentUrl(data.downloadLink);
+        toast({ title: 'Document Prepared', description: 'Attachment linked to submission.' });
+      } else {
+        throw new Error(data.error || 'Upload failed');
+      }
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -801,12 +827,40 @@ export default function EhsObservationsPage() {
                                                 </div>
                                             )}
 
+                                            {/* Stage Attachments History */}
+                                            {activeViewStage && viewingObservation.stages?.[activeViewStage]?.attachments && (
+                                                <div className="space-y-2">
+                                                    <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Stage Evidence</Label>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {Object.values(viewingObservation.stages[activeViewStage].attachments!).map(file => (
+                                                            <Button key={file.id} variant="outline" size="sm" asChild className="h-8 text-[10px] font-bold">
+                                                                <a href={file.url} target="_blank" rel="noopener noreferrer">
+                                                                    <Paperclip className="mr-1.5 h-3 w-3" /> {file.name}
+                                                                </a>
+                                                            </Button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage!]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId && (
-                                                <div className="pt-6 border-t border-dashed">
-                                                    <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest mb-2 block">Link External Evidence</Label>
-                                                    <div className="flex items-center gap-4">
+                                                <div className="pt-6 border-t border-dashed space-y-4">
+                                                    <div>
+                                                        <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest mb-2 block">Upload Evidence (Dropbox)</Label>
+                                                        <div className="flex items-center gap-4">
+                                                            <Input 
+                                                                type="file"
+                                                                onChange={handleFileUpload}
+                                                                disabled={isUploading}
+                                                                className="h-10 text-xs font-bold cursor-pointer"
+                                                            />
+                                                            {isUploading && <Loader2 className="h-5 w-5 text-primary" />}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest mb-2 block">External Link</Label>
                                                         <Input 
-                                                            placeholder="Paste technical attachment URL or Dropbox link here..." 
+                                                            placeholder="Paste technical attachment URL or reference link here..." 
                                                             className="h-10 text-xs font-bold"
                                                             value={tempAttachmentUrl}
                                                             onChange={(e) => setTempAttachmentUrl(e.target.value)}

@@ -66,7 +66,7 @@ type EhsContextType = {
 
 const EhsContext = createContext<EhsContextType | undefined>(undefined);
 
-const CAPA_STAGES: CapaStage[] = ['Initiation', 'Resolution', 'Investigation', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];
+const CAPA_STAGES: CapaStage[] = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];
 
 const generateInitialStages = (creatorId: string): Record<CapaStage, CapaStageRecord> => {
     const stages: any = {};
@@ -180,24 +180,24 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     stages['Initiation'].reviewedById = user.id;
     stages['Initiation'].reviewedAt = now;
 
-    // 2. Route directly to Senior Safety Supervisor for 'Resolution'
-    stages['Resolution'].status = 'Pending';
-    stages['Resolution'].assignedById = user.id;
-    stages['Resolution'].assignedAt = now;
-    stages['Resolution'].assigneeId = initialAssigneeId;
+    // 2. Route directly to Senior Safety Supervisor for 'Investigation' (New Order)
+    stages['Investigation'].status = 'Pending';
+    stages['Investigation'].assignedById = user.id;
+    stages['Investigation'].assignedAt = now;
+    stages['Investigation'].assigneeId = initialAssigneeId;
 
     const newObservation: Omit<EhsObservation, 'id'> = {
       ...data,
       reporterId: user.id,
       createdAt: now,
-      currentStage: 'Resolution',
+      currentStage: 'Investigation',
       status: 'Open',
       stages,
       ccUserIds: [],
     };
     
     set(newRef, JSON.parse(JSON.stringify(newObservation)));
-    toast({ title: 'Safety Case Opened', description: `Case routed to ${seniorSafetySupervisor?.name || 'Safety HQ'}.` });
+    toast({ title: 'Safety Case Opened', description: `Case routed to ${seniorSafetySupervisor?.name || 'Safety HQ'} for Investigation.` });
   }, [user, users, toast]);
 
   const splitObservation = useCallback((parentId: string, subObservations: { category: any, severity: any, description: string, assigneeId?: string }[]) => {
@@ -222,11 +222,11 @@ export function EhsProvider({ children }: { children: ReactNode }) {
         stages['Initiation'].reviewedById = user.id;
         stages['Initiation'].reviewedAt = now;
 
-        stages['Resolution'].status = 'Pending';
-        stages['Resolution'].assignedById = user.id;
-        stages['Resolution'].assignedAt = now;
+        stages['Investigation'].status = 'Pending';
+        stages['Investigation'].assignedById = user.id;
+        stages['Investigation'].assignedAt = now;
         // USE PROVIDED ASSIGNEE OR DEFAULT
-        stages['Resolution'].assigneeId = (sub.assigneeId && sub.assigneeId !== 'unassigned') ? sub.assigneeId : defaultAssigneeId;
+        stages['Investigation'].assigneeId = (sub.assigneeId && sub.assigneeId !== 'unassigned') ? sub.assigneeId : defaultAssigneeId;
 
         const subObs: EhsObservation = {
             ...parent,
@@ -236,7 +236,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
             severity: sub.severity,
             description: sub.description,
             createdAt: now,
-            currentStage: 'Resolution',
+            currentStage: 'Investigation',
             status: 'Open',
             stages,
             ccUserIds: parent.ccUserIds || [],
