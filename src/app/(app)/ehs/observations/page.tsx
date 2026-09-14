@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef, MouseEvent } from 'react';
@@ -468,7 +469,7 @@ export default function EhsObservationsPage() {
                                         <CommandList>
                                             <CommandEmpty>No personnel found.</CommandEmpty>
                                             <CommandGroup>
-                                                {users.filter(u => u.status !== 'deactivated' && u.id !== user?.id).map(u => (
+                                                {users.filter(u => u.role !== 'Manager' && u.status === 'active' && u.id !== user?.id).map(u => (
                                                     <CommandItem 
                                                         key={u.id} 
                                                         onSelect={() => handleCcSelectedUsers([u.id])}
@@ -496,7 +497,7 @@ export default function EhsObservationsPage() {
                                         <CommandList>
                                             <CommandEmpty>No personnel found.</CommandEmpty>
                                             <CommandGroup>
-                                                {users.filter(u => u.role !== 'Manager' && u.status === 'active').map(u => (
+                                                {assignableUsers.map(u => (
                                                     <CommandItem 
                                                         key={u.id} 
                                                         onSelect={() => {
