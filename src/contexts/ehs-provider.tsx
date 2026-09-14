@@ -38,7 +38,7 @@ type EhsContextType = {
   
   // CAPA Management
   addObservation: (observation: Omit<EhsObservation, 'id' | 'createdAt' | 'status' | 'currentStage' | 'stages'>) => void;
-  splitObservation: (parentId: string, subObservations: { category: any, severity: any, description: string }[]) => void;
+  splitObservation: (parentId: string, subObservations: { category: any, severity: any, description: string, assigneeId?: string }[]) => void;
   assignStageOwner: (observationId: string, stage: CapaStage, assigneeId: string) => void;
   actionStage: (observationId: string, stage: CapaStage, data: any, attachmentUrl?: string) => void;
   reviewStage: (observationId: string, stage: CapaStage, status: 'Completed' | 'Returned', comment: string) => void;
@@ -200,13 +200,13 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     toast({ title: 'Safety Case Opened', description: `Case routed to ${seniorSafetySupervisor?.name || 'Safety HQ'}.` });
   }, [user, users, toast]);
 
-  const splitObservation = useCallback((parentId: string, subObservations: { category: any, severity: any, description: string }[]) => {
+  const splitObservation = useCallback((parentId: string, subObservations: { category: any, severity: any, description: string, assigneeId?: string }[]) => {
     if (!user) return;
     const parent = observations.find(o => o.id === parentId);
     if (!parent) return;
 
     const seniorSafetySupervisor = users.find(u => u.role === 'Senior Safety Supervisor' && u.status !== 'deactivated');
-    const initialAssigneeId = seniorSafetySupervisor ? seniorSafetySupervisor.id : user.id;
+    const defaultAssigneeId = seniorSafetySupervisor ? seniorSafetySupervisor.id : user.id;
     const now = new Date().toISOString();
 
     const updates: Record<string, any> = {};
@@ -225,7 +225,8 @@ export function EhsProvider({ children }: { children: ReactNode }) {
         stages['Resolution'].status = 'Pending';
         stages['Resolution'].assignedById = user.id;
         stages['Resolution'].assignedAt = now;
-        stages['Resolution'].assigneeId = initialAssigneeId;
+        // USE PROVIDED ASSIGNEE OR DEFAULT
+        stages['Resolution'].assigneeId = sub.assigneeId || defaultAssigneeId;
 
         const subObs: EhsObservation = {
             ...parent,
@@ -476,7 +477,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
   }, [user, toast]);
 
   const updateContactInfo = useCallback((info: Partial<EhsContactInfo>) => {
-    if (user?.role !== 'Admin' && user?.role !== 'Senior Safety Supervisor') return;
+    if (user?.role !== 'Admin' && user?.role === 'Senior Safety Supervisor') return;
     update(ref(rtdb, 'ehs/contactInfo'), info);
     toast({ title: 'Contact Info Updated' });
   }, [user, toast]);

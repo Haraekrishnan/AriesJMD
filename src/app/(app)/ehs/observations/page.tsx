@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef, MouseEvent } from 'react';
@@ -206,6 +205,7 @@ const splitSchema = z.object({
         category: z.enum(['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']),
         severity: z.enum(['Low', 'Medium', 'High', 'Critical']),
         description: z.string().min(5, 'Description is required (Min 5 chars)'),
+        assigneeId: z.string().optional(),
     })).min(2, 'At least 2 sub-cases are required for a split.'),
 });
 
@@ -218,7 +218,7 @@ type SplitFormValues = z.infer<typeof splitSchema>;
 
 export default function EhsObservationsPage() {
   const { audits, incidents, trainings, observations, addObservation, splitObservation, actionStage, reviewStage, assignStageOwner, addCcToObservation, deleteObservation } = useEhs();
-  const { user, users } = useAuth();
+  const { user, users, getAssignableUsers } = useAuth();
   const { projects } = useGeneral();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
@@ -258,8 +258,8 @@ export default function EhsObservationsPage() {
       resolver: zodResolver(splitSchema),
       defaultValues: {
           subObservations: [
-              { category: 'Unsafe Act', severity: 'Medium', description: '' },
-              { category: 'Unsafe Act', severity: 'Medium', description: '' }
+              { category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: '' },
+              { category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: '' }
           ]
       }
   });
@@ -299,8 +299,8 @@ export default function EhsObservationsPage() {
     if (isSplitDialogOpen) {
       splitForm.reset({
         subObservations: [
-            { category: 'Unsafe Act', severity: 'Medium', description: '' },
-            { category: 'Unsafe Act', severity: 'Medium', description: '' }
+            { category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: '' },
+            { category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: '' }
         ]
       });
     }
@@ -386,12 +386,13 @@ export default function EhsObservationsPage() {
   };
 
   const isSupervisor = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor';
+  const assignableUsers = useMemo(() => getAssignableUsers(), [getAssignableUsers]);
 
   const openSplitDialog = () => {
       splitForm.reset({
           subObservations: [
-              { category: 'Unsafe Act', severity: 'Medium', description: '' },
-              { category: 'Unsafe Act', severity: 'Medium', description: '' }
+              { category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: '' },
+              { category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: '' }
           ]
       });
       setIsSplitDialogOpen(true);
@@ -783,7 +784,7 @@ export default function EhsObservationsPage() {
                       <Plus className="mr-2 h-4 w-4" /> INITIATE CASE
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-3xl max-h-[95vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
+                  <DialogContent className="sm:max-w-3xl h-full sm:h-auto sm:max-h-[95vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
                     <DialogHeader>
                       <DialogTitle className="font-black uppercase tracking-tight text-slate-900">Initiate Safety Case</DialogTitle>
                       <DialogDescription className="font-medium text-slate-500">Log a professional observation report with rich narrative and evidence.</DialogDescription>
@@ -1081,8 +1082,8 @@ export default function EhsObservationsPage() {
           }
           setIsSplitDialogOpen(open);
       }}>
-        <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col">
-            <DialogHeader>
+        <DialogContent className="sm:max-w-4xl h-full sm:h-auto sm:max-h-[95vh] flex flex-col">
+            <DialogHeader className="shrink-0">
                 <DialogTitle className="font-black uppercase tracking-tight text-slate-900">Split Observation Case</DialogTitle>
                 <DialogDescription className="font-medium text-slate-500">
                     If this discovery contains multiple distinct issues, split them into sub-cases for individual CAPA tracking.
@@ -1097,7 +1098,7 @@ export default function EhsObservationsPage() {
 
                     <div className="flex justify-between items-center mb-2 px-1">
                         <Label className="font-black uppercase text-xs text-slate-500 tracking-widest">Defined Sub-Cases ({splitFields.length})</Label>
-                        <Button type="button" variant="outline" size="sm" className="h-8 border-2 font-black uppercase text-[9px] tracking-widest" onClick={() => appendSplit({ category: 'Unsafe Act', severity: 'Medium', description: '' })}>
+                        <Button type="button" variant="outline" size="sm" className="h-8 border-2 font-black uppercase text-[9px] tracking-widest" onClick={() => appendSplit({ category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: '' })}>
                             <Plus className="mr-1 h-3 w-3" /> Add Sub-Case
                         </Button>
                     </div>
@@ -1155,6 +1156,29 @@ export default function EhsObservationsPage() {
                                     </div>
                                 </div>
                                 <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Direct Assignee (Optional)</Label>
+                                    <Controller
+                                        control={splitForm.control}
+                                        name={`subObservations.${index}.assigneeId`}
+                                        render={({ field: aField }) => (
+                                            <Select onValueChange={aField.onChange} value={aField.value}>
+                                                <SelectTrigger className="h-10 font-bold border-2">
+                                                    <SelectValue placeholder="Select specialized personnel..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="">Unassigned (Safety HQ Default)</SelectItem>
+                                                    {assignableUsers.map(u => (
+                                                        <SelectItem key={u.id} value={u.id} disabled={u.status === 'locked'}>
+                                                            {u.name} ({u.role})
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    />
+                                    <p className="text-[9px] text-slate-400 italic ml-1">If left blank, the Senior Safety Supervisor will be assigned by default.</p>
+                                </div>
+                                <div className="space-y-1.5">
                                     <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Specific Finding Narrative</Label>
                                     <Controller
                                         control={splitForm.control}
@@ -1173,7 +1197,7 @@ export default function EhsObservationsPage() {
                         ))}
                     </div>
                     
-                    <Button type="button" variant="outline" className="w-full h-14 border-dashed border-2 font-black uppercase text-[11px] tracking-[0.2em] bg-white hover:bg-slate-50 mt-6 shadow-sm" onClick={() => appendSplit({ category: 'Unsafe Act', severity: 'Medium', description: '' })}>
+                    <Button type="button" variant="outline" className="w-full h-14 border-dashed border-2 font-black uppercase text-[11px] tracking-[0.2em] bg-white hover:bg-slate-50 mt-6 shadow-sm" onClick={() => appendSplit({ category: 'Unsafe Act', severity: 'Medium', description: '', assigneeId: '' })}>
                         <Plus className="mr-2 h-5 w-5 text-primary" /> Add Another Component
                     </Button>
                 </form>
