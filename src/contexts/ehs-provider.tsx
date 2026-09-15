@@ -364,7 +364,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
             // Returned - Reset action data to allow re-submission
             updates[`${stagePath}/actionedAt`] = null;
             updates[`${stagePath}/actionedById`] = null;
-            updates[`${stagePath}/status`] = 'Pending';
+            // Status remains 'Returned' to signal rework requirement in UI
         }
 
         updates['lastUpdated'] = now;

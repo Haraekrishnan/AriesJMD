@@ -776,7 +776,7 @@ export default function EhsObservationsPage() {
 
                                         <div className="space-y-6">
                                             {/* Rework Alert Callout */}
-                                            {viewingObservation.stages?.[activeViewStage!]?.status === 'Pending' && viewingObservation.stages?.[activeViewStage!]?.comments && (
+                                            {viewingObservation.stages?.[activeViewStage!]?.status === 'Returned' && viewingObservation.stages?.[activeViewStage!]?.comments && (
                                                 (() => {
                                                     const comments = Object.values(viewingObservation.stages[activeViewStage!].comments!);
                                                     const lastComment = comments.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime())[0];
@@ -798,7 +798,10 @@ export default function EhsObservationsPage() {
                                             {/* Discussion & Comment History */}
                                             {activeViewStage && viewingObservation.stages?.[activeViewStage]?.comments && (
                                                 <div className="space-y-3 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-inner">
-                                                    <Label className="text-[10px] font-black uppercase text-emerald-600 tracking-widest flex items-center gap-2 mb-2">
+                                                    <Label className={cn(
+                                                        "text-[10px] font-black uppercase tracking-widest flex items-center gap-2 mb-2",
+                                                        viewingObservation.stages?.[activeViewStage].status === 'Returned' ? "text-rose-600" : "text-emerald-600"
+                                                    )}>
                                                         <MessageSquare className="h-3.5 w-3.5" /> 
                                                         {viewingObservation.stages?.[activeViewStage].status === 'Completed' ? 'Verified with Comments' : (viewingObservation.stages?.[activeViewStage].status === 'Returned' ? 'Rework Suggested with Comments' : 'Discussion & Feedback')}
                                                     </Label>
@@ -990,7 +993,7 @@ export default function EhsObservationsPage() {
                                                 </div>
                                             )}
 
-                                            {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage!]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId && (
+                                            {activeViewStage === viewingObservation.currentStage && (viewingObservation.stages?.[activeViewStage!]?.status === 'Pending' || viewingObservation.stages?.[activeViewStage!]?.status === 'Returned') && user?.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId && (
                                                 <div className="pt-6 border-t border-dashed space-y-4">
                                                     <div>
                                                         <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest mb-2 block">Upload Evidence (Dropbox)</Label>
@@ -1049,7 +1052,7 @@ export default function EhsObservationsPage() {
                                 {viewingObservation.stages?.[activeViewStage!]?.status === 'Completed' && `Phase verified by ${users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.reviewedById)?.name || 'System'}`}
                             </div>
                             <div className="flex gap-2">
-                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage!]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId && (
+                                {activeViewStage === viewingObservation.currentStage && (viewingObservation.stages?.[activeViewStage!]?.status === 'Pending' || viewingObservation.stages?.[activeViewStage!]?.status === 'Returned') && user?.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId && (
                                     <Button className="bg-slate-900 hover:bg-black text-white font-black uppercase tracking-[0.2em] h-11 px-10 text-[10px]" onClick={handleActionSubmit}>
                                         Submit Stage Data
                                     </Button>
