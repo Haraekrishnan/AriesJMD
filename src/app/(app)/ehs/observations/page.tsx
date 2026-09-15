@@ -1241,18 +1241,18 @@ export default function EhsObservationsPage() {
                     <Table className="border-separate border-spacing-0">
                         <TableHeader className="sticky top-0 z-30">
                             <TableRow>
-                                <TableHead className="w-[80px] min-w-[80px] max-w-[80px] border-r border-b border-slate-300 font-black uppercase text-[10px] text-slate-900 text-center sticky left-0 z-50 bg-slate-100">ID</TableHead>
-                                <TableHead className="w-[400px] min-w-[400px] max-w-[400px] border-r border-b border-slate-300 font-black uppercase text-[10px] text-slate-900 px-4 sticky left-[80px] z-50 bg-slate-100 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Narrative Findings</TableHead>
-                                <TableHead className="w-32 min-w-32 border-r border-b border-slate-300 font-black uppercase text-[10px] text-slate-900 text-center">Category</TableHead>
-                                <TableHead className="w-24 min-w-24 border-r-2 border-b border-slate-400 font-black uppercase text-[10px] text-slate-900 text-center">Risk</TableHead>
+                                <TableHead className="w-[60px] min-w-[60px] max-w-[60px] border-r border-b border-slate-300 font-black uppercase text-[10px] text-slate-900 text-center sticky left-0 z-50 bg-slate-100">ID</TableHead>
+                                <TableHead className="w-[400px] min-w-[400px] max-w-[400px] border-r border-b border-slate-300 font-black uppercase text-[10px] text-slate-900 px-4 sticky left-[60px] z-50 bg-slate-100 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Narrative Findings</TableHead>
+                                <TableHead className="w-[100px] min-w-[100px] border-r border-b border-slate-300 font-black uppercase text-[9px] text-slate-900 text-center tracking-tight">Category</TableHead>
+                                <TableHead className="w-[80px] min-w-[80px] border-r-2 border-b border-slate-400 font-black uppercase text-[9px] text-slate-900 text-center tracking-tight">Risk</TableHead>
                                 
                                 {Object.values(stageConfig).map(cfg => (
-                                   <TableHead key={cfg.label} className="w-32 min-w-32 border-r border-b border-slate-200 font-black uppercase text-[9px] text-slate-600 text-center leading-tight bg-slate-50/50">
+                                   <TableHead key={cfg.label} className="w-[100px] min-w-[100px] border-r border-b border-slate-200 font-black uppercase text-[8px] text-slate-600 text-center leading-tight bg-slate-50/50 tracking-tighter">
                                       {cfg.label}
                                    </TableHead>
                                 ))}
 
-                                <TableHead className="w-28 min-w-28 text-right font-black uppercase text-[10px] text-slate-900 px-4 sticky right-0 z-50 bg-slate-100 shadow-[-2px_0_5px_rgba(0,0,0,0.05)] border-l border-b border-slate-300">Action</TableHead>
+                                <TableHead className="w-[100px] min-w-[100px] text-right font-black uppercase text-[9px] text-slate-900 px-4 sticky right-0 z-50 bg-slate-100 shadow-[-2px_0_5px_rgba(0,0,0,0.05)] border-l border-b border-slate-300 tracking-tight">Action</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1267,7 +1267,7 @@ export default function EhsObservationsPage() {
                                 return (
                                     <React.Fragment key={obs.id}>
                                     <TableRow className={cn("group hover:bg-blue-50/20 border-b border-slate-200 h-14", isExpanded && "bg-slate-50")}>
-                                        <TableCell className={cn("text-center font-mono text-[10px] font-black text-slate-500 border-r border-slate-200 sticky left-0 z-20 w-[80px] min-w-[80px] max-w-[80px]", isExpanded ? "bg-slate-50" : "bg-white")}>
+                                        <TableCell className={cn("text-center font-mono text-[10px] font-black text-slate-500 border-r border-slate-200 sticky left-0 z-20 w-[60px] min-w-[60px] max-w-[60px]", isExpanded ? "bg-slate-50" : "bg-white")}>
                                           <div className="flex flex-col items-center">
                                               {obs.id.slice(-6).toUpperCase()}
                                               {childObservations.length > 0 && (
@@ -1277,7 +1277,7 @@ export default function EhsObservationsPage() {
                                               )}
                                           </div>
                                         </TableCell>
-                                        <TableCell className={cn("border-r border-slate-200 px-4 py-2 sticky left-[80px] z-20 group-hover:bg-slate-50 transition-colors w-[400px] min-w-[400px] max-w-[400px]", isExpanded ? "bg-slate-50" : "bg-white")}>
+                                        <TableCell className={cn("border-r border-slate-200 px-4 py-2 sticky left-[60px] z-20 group-hover:bg-slate-50 transition-colors w-[400px] min-w-[400px] max-w-[400px]", isExpanded ? "bg-slate-50" : "bg-white")}>
                                             <div 
                                                 className="flex flex-col gap-0.5 cursor-pointer"
                                                 onClick={handleImageClick}
@@ -1298,11 +1298,11 @@ export default function EhsObservationsPage() {
                                                 )}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-center border-r border-slate-200 font-bold uppercase text-[10px] text-slate-700 w-32 min-w-32">
+                                        <TableCell className="text-center border-r border-slate-200 font-bold uppercase text-[9px] text-slate-700 w-[100px] min-w-[100px]">
                                             {obs.category}
                                         </TableCell>
-                                        <TableCell className="text-center border-r-2 border-slate-300 w-24 min-w-24">
-                                            <Badge variant="outline" className={cn("text-[9px] font-black uppercase h-5 px-2 border-2", severityConfig[obs.severity]?.border, severityConfig[obs.severity]?.text)}>
+                                        <TableCell className="text-center border-r-2 border-slate-300 w-[80px] min-w-[80px]">
+                                            <Badge variant="outline" className={cn("text-[8px] font-black uppercase h-5 px-1 border-2", severityConfig[obs.severity]?.border, severityConfig[obs.severity]?.text)}>
                                                 {obs.severity}
                                             </Badge>
                                         </TableCell>
@@ -1328,7 +1328,7 @@ export default function EhsObservationsPage() {
                                           
                                           return (
                                             <TableCell key={stage} className={cn(
-                                              "border-r border-slate-200 text-center p-0 w-32 min-w-32",
+                                              "border-r border-slate-200 text-center p-0 w-[100px] min-w-[100px]",
                                               isActive && "bg-blue-50/10",
                                               isDone && "bg-emerald-50/10",
                                               isReturned && "bg-rose-50/10"
@@ -1357,12 +1357,12 @@ export default function EhsObservationsPage() {
                                           )
                                         })}
 
-                                        <TableCell className={cn("text-right px-4 sticky right-0 z-20 group-hover:bg-slate-50 border-l border-slate-300 transition-colors w-28 min-w-28", isExpanded ? "bg-slate-50" : "bg-white")}>
+                                        <TableCell className={cn("text-right px-4 sticky right-0 z-20 group-hover:bg-slate-50 border-l border-slate-300 transition-colors w-[100px] min-w-[100px]", isExpanded ? "bg-slate-50" : "bg-white")}>
                                             <div className="flex items-center justify-end gap-2">
                                                 <Button 
                                                     variant="outline" 
                                                     size="sm" 
-                                                    className="h-7 px-3 font-black text-[9px] uppercase tracking-widest border-2 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
+                                                    className="h-7 px-2 font-black text-[9px] uppercase tracking-widest border-2 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
                                                     onClick={() => setViewingObservationId(obs.id)}
                                                 >
                                                     COCKPIT
@@ -1396,13 +1396,13 @@ export default function EhsObservationsPage() {
 
                                     {isExpanded && childObservations.map((child, cIdx) => (
                                         <TableRow key={child.id} className="bg-slate-100/40 border-b border-slate-200 h-12">
-                                            <TableCell className="text-center font-mono text-[9px] font-bold text-slate-400 border-r border-slate-200 sticky left-0 z-20 bg-slate-100/40 w-[80px] min-w-[80px] max-w-[80px]">
+                                            <TableCell className="text-center font-mono text-[9px] font-bold text-slate-400 border-r border-slate-200 sticky left-0 z-20 bg-slate-100/40 w-[60px] min-w-[60px] max-w-[60px]">
                                                 <div className="flex items-center gap-2 pl-4">
                                                     <div className="w-3 h-3 border-l-2 border-b-2 border-slate-300 rounded-bl-sm" />
                                                     {child.id.slice(-6).toUpperCase()}
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="border-r border-slate-200 px-4 py-1 sticky left-[80px] z-20 bg-slate-100/40 w-[400px] min-w-[400px] max-w-[400px]">
+                                            <TableCell className="border-r border-slate-200 px-4 py-1 sticky left-[60px] z-20 bg-slate-100/40 w-[400px] min-w-[400px] max-w-[400px]">
                                                  <div 
                                                     className="flex flex-col gap-0.5 cursor-pointer"
                                                     onClick={handleImageClick}
@@ -1413,9 +1413,9 @@ export default function EhsObservationsPage() {
                                                     </div>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-center border-r border-slate-200 font-bold uppercase text-[9px] text-slate-500 w-32 min-w-32">{child.category}</TableCell>
-                                            <TableCell className="text-center border-r-2 border-slate-300 w-24 min-w-24">
-                                                <Badge variant="outline" className={cn("text-[8px] font-black uppercase h-4 px-1.5 border opacity-70", severityConfig[child.severity]?.border, severityConfig[child.severity]?.text)}>
+                                            <TableCell className="text-center border-r border-slate-200 font-bold uppercase text-[9px] text-slate-500 w-[100px] min-w-[100px]">{child.category}</TableCell>
+                                            <TableCell className="text-center border-r-2 border-slate-300 w-[80px] min-w-[80px]">
+                                                <Badge variant="outline" className={cn("text-[8px] font-black uppercase h-4 px-1 border opacity-70", severityConfig[child.severity]?.border, severityConfig[child.severity]?.text)}>
                                                     {child.severity}
                                                 </Badge>
                                             </TableCell>
@@ -1426,14 +1426,14 @@ export default function EhsObservationsPage() {
                                                 const isReturned = sData?.status === 'Returned';
                                                 
                                                 return (
-                                                    <TableCell key={stage} className="border-r border-slate-200 text-center p-0 w-32 min-w-32">
+                                                    <TableCell key={stage} className="border-r border-slate-200 text-center p-0 w-[100px] min-w-[100px]">
                                                         <div className="flex items-center justify-center h-full scale-75 opacity-60">
                                                             {isDone ? <Check className="h-3 w-3 text-emerald-600" /> : isReturned ? <XCircle className="h-3 w-3 text-rose-600" /> : isActive ? <div className="w-1 h-1 rounded-full bg-blue-600" /> : <div className="w-0.5 h-0.5 rounded-full bg-slate-300" />}
                                                         </div>
                                                     </TableCell>
                                                 )
                                             })}
-                                            <TableCell className="text-right px-4 sticky right-0 z-20 bg-slate-100/40 border-l border-slate-300 w-28 min-w-28">
+                                            <TableCell className="text-right px-4 sticky right-0 z-20 bg-slate-100/40 border-l border-slate-300 w-[100px] min-w-[100px]">
                                                  <div className="flex items-center justify-end gap-2">
                                                     <Button 
                                                         variant="ghost" 
