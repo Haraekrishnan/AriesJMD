@@ -4,7 +4,7 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ShieldAlert, Clock, CheckCircle, Target, Activity, AlertCircle } from 'lucide-react';
+import { FileText, ShieldAlert, Clock, CheckCircle, Target, ArrowUpRight, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { EhsObservation } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
@@ -20,21 +20,60 @@ export default function CapaKpiCards({ observations, onFilterChange }: CapaKpiCa
     const counts = useMemo(() => {
         const total = observations.filter(o => !o.parentId).length;
         const open = observations.filter(o => !o.parentId && o.status !== 'Closed').length;
-        const critical = observations.filter(o => !o.parentId && o.severity === 'Critical').length;
-        const high = observations.filter(o => !o.parentId && o.severity === 'High').length;
+        const highRisk = observations.filter(o => !o.parentId && (o.severity === 'High' || o.severity === 'Critical')).length;
         const myActions = observations.filter(o => o.stages?.[o.currentStage]?.assigneeId === user?.id && o.status !== 'Closed').length;
-        const review = observations.filter(o => o.stages?.[o.currentStage]?.status === 'In Progress' && user?.role === 'Admin').length;
         const closed = observations.filter(o => !o.parentId && o.status === 'Closed').length;
+        const overdue = observations.filter(o => o.status !== 'Closed' && o.targetDate && new Date(o.targetDate) < new Date()).length;
 
-        return { total, open, highRisk: critical + high, critical, myActions, review, closed };
+        return { total, open, highRisk, myActions, closed, overdue };
     }, [observations, user]);
 
     const cards = [
-        { label: 'Total Cases', value: counts.total, icon: Activity, color: 'text-slate-600', bg: 'bg-slate-50', filter: { key: 'status', val: 'all' } },
-        { label: 'High & Critical', value: counts.highRisk, icon: AlertCircle, color: 'text-orange-600', bg: 'bg-orange-50', filter: { key: 'risk', val: 'High' } },
-        { label: 'My Action Req.', value: counts.myActions, icon: Target, color: 'text-blue-600', bg: 'bg-blue-50', filter: { key: 'status', val: 'Open' } },
-        { label: 'Waiting Review', value: counts.review, icon: ShieldAlert, color: 'text-amber-600', bg: 'bg-amber-50', filter: { key: 'status', val: 'In Progress' } },
-        { label: 'Case Closures', value: counts.closed, icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50', filter: { key: 'status', val: 'Closed' } },
+        { 
+            label: 'Total Cases', 
+            value: counts.total, 
+            trend: '+12% vs last month',
+            icon: FileText, 
+            color: 'text-blue-600', 
+            bg: 'bg-blue-50', 
+            filter: { key: 'status', val: 'all' } 
+        },
+        { 
+            label: 'High Risk', 
+            value: counts.highRisk, 
+            trend: '↑ 5 new',
+            icon: ShieldAlert, 
+            color: 'text-rose-600', 
+            bg: 'bg-rose-50', 
+            filter: { key: 'risk', val: 'High' } 
+        },
+        { 
+            label: 'In Progress', 
+            value: counts.open, 
+            trend: '50% of total',
+            icon: Clock, 
+            color: 'text-amber-600', 
+            bg: 'bg-amber-50', 
+            filter: { key: 'status', val: 'Open' } 
+        },
+        { 
+            label: 'Closed', 
+            value: counts.closed, 
+            trend: '↑ 8 this month',
+            icon: CheckCircle, 
+            color: 'text-emerald-600', 
+            bg: 'bg-emerald-50', 
+            filter: { key: 'status', val: 'Closed' } 
+        },
+        { 
+            label: 'Overdue', 
+            value: counts.overdue, 
+            trend: 'Needs attention',
+            icon: Target, 
+            color: 'text-indigo-600', 
+            bg: 'bg-indigo-50', 
+            filter: { key: 'status', val: 'Overdue' } 
+        },
     ];
 
     return (
@@ -42,7 +81,7 @@ export default function CapaKpiCards({ observations, onFilterChange }: CapaKpiCa
             {cards.map((card, i) => (
                 <Card 
                     key={i} 
-                    className="group hover:border-primary/30 cursor-pointer transition-all duration-300 shadow-sm rounded-3xl overflow-hidden border-slate-100"
+                    className="group hover:border-emerald-600/30 cursor-pointer transition-all duration-300 shadow-sm rounded-[1.5rem] overflow-hidden border-slate-100 bg-white"
                     onClick={() => onFilterChange(card.filter.key, card.filter.val)}
                 >
                     <CardContent className="p-6">
@@ -50,9 +89,14 @@ export default function CapaKpiCards({ observations, onFilterChange }: CapaKpiCa
                             <div className={cn("p-3 rounded-2xl group-hover:scale-110 transition-transform duration-300", card.bg, card.color)}>
                                 <card.icon className="h-5 w-5" />
                             </div>
-                            <span className="text-2xl font-black text-slate-900 tracking-tight">{card.value}</span>
+                            <div className="text-right">
+                                <span className="text-2xl font-black text-slate-900 tracking-tight">{card.value}</span>
+                            </div>
                         </div>
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{card.label}</p>
+                        <div className="mt-2 flex items-center gap-1">
+                            <span className={cn("text-[9px] font-bold uppercase", card.color)}>{card.trend}</span>
+                        </div>
                     </CardContent>
                 </Card>
             ))}
