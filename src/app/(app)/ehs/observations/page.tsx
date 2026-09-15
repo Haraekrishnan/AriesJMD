@@ -18,7 +18,7 @@ import {
   ChevronUp, Info, AlertTriangle, ArrowUpRight, Send
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, differenceInDays } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { 
@@ -1054,7 +1054,7 @@ export default function EhsObservationsPage() {
                             <div className="flex gap-2">
                                 {activeViewStage === viewingObservation.currentStage && (viewingObservation.stages?.[activeViewStage!]?.status === 'Pending' || viewingObservation.stages?.[activeViewStage!]?.status === 'Returned') && user?.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId && (
                                     <Button className="bg-slate-900 hover:bg-black text-white font-black uppercase tracking-[0.2em] h-11 px-10 text-[10px]" onClick={handleActionSubmit}>
-                                        Submit Stage Data
+                                        {activeViewStage === 'Closure' ? 'EXECUTE FINAL CLOSURE' : 'Submit Stage Data'}
                                     </Button>
                                 )}
                                 <Button variant="outline" className="font-black uppercase tracking-[0.2em] h-11 px-8 text-[10px] border-2" onClick={() => setViewingObservationId(null)}>
@@ -1225,6 +1225,8 @@ export default function EhsObservationsPage() {
                                 const stages = Object.keys(stageConfig) as CapaStage[];
                                 const childObservations = observations.filter(child => child.parentId === obs.id);
                                 const isExpanded = expandedMasterId === obs.id;
+                                
+                                const daysOpen = obs.status !== 'Closed' ? differenceInDays(new Date(), parseISO(obs.createdAt)) : null;
 
                                 return (
                                     <React.Fragment key={obs.id}>
@@ -1247,6 +1249,13 @@ export default function EhsObservationsPage() {
                                                 <div className="font-bold text-xs uppercase tracking-tight text-slate-800 leading-tight line-clamp-1 rich-text-content" dangerouslySetInnerHTML={{ __html: obs.description }} />
                                                 <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
                                                     <MapPin className="h-2.5 w-2.5" /> {site?.name} &middot; {obs.location}
+                                                    {obs.status === 'Closed' ? (
+                                                        <span className="ml-2 text-emerald-600 font-black bg-emerald-50 px-1.5 py-0.5 rounded-sm">CLOSED</span>
+                                                    ) : (
+                                                        <span className="ml-2 text-blue-600 font-black bg-blue-50 px-1.5 py-0.5 rounded-sm flex items-center gap-1">
+                                                            <Clock className="h-2 w-2" /> OPEN ({daysOpen} DAYS)
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 {childObservations.length > 0 && (
                                                     <Badge variant="secondary" className="w-fit text-[8px] h-4 mt-1 font-black">{childObservations.length} SUB-CASES</Badge>

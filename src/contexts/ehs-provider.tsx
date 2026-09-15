@@ -296,10 +296,12 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     const path = `ehs/observations/${observationId}/stages/${stage}`;
     const now = new Date().toISOString();
     
+    const isClosure = stage === 'Closure';
+
     const updates: any = {
       actionedById: user.id,
       actionedAt: now,
-      status: 'In Progress', // Waiting for review
+      status: isClosure ? 'Completed' : 'In Progress', 
       data: data || null
     };
 
@@ -314,9 +316,20 @@ export function EhsProvider({ children }: { children: ReactNode }) {
        };
     }
 
+    if (isClosure) {
+      updates['reviewedById'] = user.id;
+      updates['reviewedAt'] = now;
+      update(ref(rtdb, `ehs/observations/${observationId}`), { status: 'Closed', closedAt: now, lastUpdated: now });
+    }
+
     update(ref(rtdb, path), updates);
     update(ref(rtdb, `ehs/observations/${observationId}`), { lastUpdated: now });
-    toast({ title: 'Action Recorded', description: 'Pending Higher Official review.' });
+    
+    if (isClosure) {
+        toast({ title: 'Safety Case Closed', description: 'All remediation milestones have been achieved.' });
+    } else {
+        toast({ title: 'Action Recorded', description: 'Pending Higher Official review.' });
+    }
   }, [user, toast]);
 
   const reviewStage = useCallback((observationId: string, stage: CapaStage, status: 'Completed' | 'Returned', comment: string) => {
@@ -354,8 +367,14 @@ export function EhsProvider({ children }: { children: ReactNode }) {
                 updates[`stages/${nextStage}/status`] = 'Pending';
                 updates[`stages/${nextStage}/assignedById`] = user.id;
                 updates[`stages/${nextStage}/assignedAt`] = now;
-                // Inherit assignee if not already assigned or assigned to the higher official themselves
-                updates[`stages/${nextStage}/assigneeId`] = obs.stages[stage].assigneeId; 
+                
+                // NEW ROUTING LOGIC:
+                // After Implementation, "Effectiveness Review", "Reference", and "Closure" stay with the Delegator/Admin.
+                if (stage === 'Implementation' || stage === 'Effectiveness Review' || stage === 'Reference') {
+                    updates[`stages/${nextStage}/assigneeId`] = user.id; // Assign to the person who just approved the previous technical step
+                } else {
+                    updates[`stages/${nextStage}/assigneeId`] = obs.stages[stage].assigneeId; 
+                }
             } else {
                 updates['status'] = 'Closed';
                 updates['closedAt'] = now;
@@ -364,7 +383,6 @@ export function EhsProvider({ children }: { children: ReactNode }) {
             // Returned - Reset action data to allow re-submission
             updates[`${stagePath}/actionedAt`] = null;
             updates[`${stagePath}/actionedById`] = null;
-            // Status remains 'Returned' to signal rework requirement in UI
         }
 
         updates['lastUpdated'] = now;
