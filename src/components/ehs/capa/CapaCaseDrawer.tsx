@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -7,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { X, MapPin, User, Calendar, ShieldCheck, ArrowUpRight, Clock, Target, Edit, Split, MessageSquare, Paperclip } from 'lucide-react';
+import { X, MapPin, User, Calendar, ShieldCheck, ArrowUpRight, Clock, Target, Edit, Split, MessageSquare, Paperclip, FileText } from 'lucide-react';
 import type { EhsObservation } from '@/lib/types';
 import { useGeneral } from '@/contexts/general-provider';
 import { useAuth } from '@/contexts/auth-provider';
