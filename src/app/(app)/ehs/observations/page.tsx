@@ -31,6 +31,17 @@ import {
   DialogTrigger,
   DialogClose
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Label } from '@/components/ui/label';
 import { 
   Select, 
@@ -400,7 +411,9 @@ export default function EhsObservationsPage() {
   };
 
   const isSupervisor = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor';
-  const assignableUsers = useMemo(() => getAssignableUsers(), [getAssignableUsers]);
+  const assignableUsers = useMemo(() => {
+      return getAssignableUsers();
+  }, [getAssignableUsers]);
 
   const openSplitDialog = () => {
       splitForm.reset({
@@ -476,7 +489,7 @@ export default function EhsObservationsPage() {
                                         <CommandList>
                                             <CommandEmpty>No personnel found.</CommandEmpty>
                                             <CommandGroup>
-                                                {users.filter(u => u.role !== 'Manager' && u.id !== user?.id).map(u => (
+                                                {users.filter(u => u.role !== 'Manager').map(u => (
                                                     <CommandItem 
                                                         key={u.id} 
                                                         onSelect={() => handleCcSelectedUsers([u.id])}
@@ -1561,7 +1574,6 @@ export default function EhsObservationsPage() {
                                                         <SelectValue placeholder="Select specialized personnel..." />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="unassigned">Unassigned (Safety HQ Default)</SelectItem>
                                                         {assignableUsers.map(u => (
                                                             <SelectItem key={u.id} value={u.id}>
                                                                 {u.name} ({u.role})
@@ -1633,7 +1645,7 @@ export default function EhsObservationsPage() {
                 <DialogDescription>High-fidelity inspection of safety case evidence.</DialogDescription>
             </DialogHeader>
             <div className="absolute top-4 right-4 z-[60] flex gap-2">
-                <Button variant="secondary" size="icon" className="bg-white/80 hover:bg-white text-slate-900 rounded-full" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4"/></Button>
+                <Button variant="secondary" size="icon" className="bg-white/80 hover:bg-white text-slate-900 rounded-full" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4" /></Button>
                 <Button variant="secondary" size="icon" className="bg-white/80 hover:bg-white text-slate-900 rounded-full" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
                 {viewingImage && (
                     <a href={viewingImage} download target="_blank" rel="noopener noreferrer">
