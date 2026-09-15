@@ -1,11 +1,10 @@
-
 'use client';
 
 import React from 'react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Check, Clock, AlertTriangle, Lock } from 'lucide-react';
-import type { EhsObservation, CapaStage, CapaStageRecord } from '@/lib/types';
+import { Check, Clock, AlertTriangle, Lock, ShieldCheck } from 'lucide-react';
+import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
 
 const STAGES: CapaStage[] = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];
@@ -25,8 +24,10 @@ export default function CapaWorkflowTimeline({ observation, activeStage, onStage
                 const sData = observation.stages[stage];
                 const isCurrent = observation.currentStage === stage;
                 const isActive = activeStage === stage;
-                const isCompleted = sData?.status === 'Completed' || (observation.status === 'Closed' && STAGES.indexOf(stage) <= STAGES.indexOf(observation.currentStage));
+                
+                const isCompleted = sData?.status === 'Completed';
                 const isReturned = sData?.status === 'Returned';
+                const isSubmitted = sData?.status === 'In Progress';
                 
                 const assignee = users.find(u => u.id === sData?.assigneeId);
 
@@ -34,54 +35,70 @@ export default function CapaWorkflowTimeline({ observation, activeStage, onStage
                     <div 
                         key={stage}
                         className={cn(
-                            "relative pl-10 py-4 cursor-pointer transition-all duration-300 rounded-2xl group",
-                            isActive ? "bg-slate-50/80 shadow-sm" : "hover:bg-slate-50/50"
+                            "relative pl-12 py-4 cursor-pointer transition-all duration-300 rounded-2xl group",
+                            isActive ? "bg-slate-50 border border-slate-100 shadow-sm" : "hover:bg-slate-50/50"
                         )}
                         onClick={() => onStageSelect(stage)}
                     >
                         {/* Connecting Line */}
                         {i < STAGES.length - 1 && (
-                            <div className="absolute left-[19px] top-10 bottom-0 w-0.5 bg-slate-100 group-last:hidden" />
+                            <div className={cn(
+                                "absolute left-[19px] top-10 bottom-0 w-0.5 transition-colors duration-500",
+                                isCompleted ? "bg-emerald-500" : "bg-slate-100"
+                            )} />
                         )}
 
                         {/* Status Icon */}
                         <div className={cn(
-                            "absolute left-2 top-4 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors duration-500",
-                            isCompleted ? "bg-emerald-500 border-emerald-500 text-white" :
-                            isReturned ? "bg-rose-500 border-rose-500 text-white" :
-                            isCurrent ? "bg-blue-500 border-blue-500 text-white shadow-lg shadow-blue-500/20" :
+                            "absolute left-3 top-4 w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all duration-500 shadow-sm",
+                            isCompleted ? "bg-emerald-600 border-emerald-600 text-white" :
+                            isReturned ? "bg-rose-600 border-rose-600 text-white animate-pulse" :
+                            isSubmitted ? "bg-blue-100 border-blue-500 text-blue-600" :
+                            isCurrent ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/30" :
                             "bg-white border-slate-200 text-slate-300"
                         )}>
-                            {isCompleted ? <Check className="h-3 w-3" /> : 
-                             isReturned ? <AlertTriangle className="h-3 w-3" /> :
-                             isCurrent ? <Clock className="h-3 w-3 animate-pulse" /> : 
-                             <div className="w-1.5 h-1.5 rounded-full bg-current" />}
+                            {isCompleted ? <ShieldCheck className="h-4 w-4" /> : 
+                             isReturned ? <AlertTriangle className="h-4 w-4" /> :
+                             isCurrent ? <Clock className="h-4 w-4" /> : 
+                             <span className="text-[10px] font-black">{i + 1}</span>}
                         </div>
 
                         {/* Text Details */}
                         <div className="space-y-1">
-                            <div className="flex justify-between items-center">
+                            <div className="flex justify-between items-center pr-4">
                                 <p className={cn(
-                                    "text-[10px] font-black uppercase tracking-widest",
+                                    "text-[10px] font-black uppercase tracking-[0.15em]",
                                     isActive ? "text-slate-900" : "text-slate-500"
                                 )}>
                                     {stage}
                                 </p>
-                                {isCurrent && <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
                             </div>
                             
-                            {sData?.actionedAt ? (
-                                <p className="text-[8px] font-bold text-slate-400 uppercase">
-                                    {format(parseISO(sData.actionedAt), 'dd MMM · h:mm a')}
-                                </p>
-                            ) : isCurrent ? (
-                                <p className="text-[8px] font-black text-blue-600 uppercase tracking-tight">Active Milestone</p>
-                            ) : null}
+                            <div className="flex items-center gap-2">
+                                <Badge variant="outline" className={cn(
+                                    "h-4 px-1.5 rounded-sm text-[8px] font-black uppercase tracking-wider border-none",
+                                    isCompleted ? "bg-emerald-50 text-emerald-600" : 
+                                    isReturned ? "bg-rose-50 text-rose-600" :
+                                    isSubmitted ? "bg-blue-50 text-blue-600" :
+                                    isCurrent ? "bg-blue-50 text-blue-700" : "bg-slate-50 text-slate-400"
+                                )}>
+                                    {isReturned ? 'REWORK' : isSubmitted ? 'REVIEW' : isCompleted ? 'VERIFIED' : 'PENDING'}
+                                </Badge>
+                                
+                                {sData?.actionedAt && (
+                                    <span className="text-[8px] font-bold text-slate-400 uppercase">
+                                        {format(parseISO(sData.actionedAt), 'dd MMM')}
+                                    </span>
+                                )}
+                            </div>
 
-                            {isCurrent && assignee && (
-                                <div className="pt-2 animate-in fade-in duration-700">
-                                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Responsibility</p>
-                                    <p className="text-[10px] font-black text-slate-700 truncate">{assignee.name}</p>
+                            {isActive && assignee && (
+                                <div className="pt-2 animate-in fade-in duration-500 flex items-center gap-2">
+                                    <Avatar className="h-4 w-4 border border-slate-100">
+                                        <AvatarImage src={assignee.avatar} />
+                                        <AvatarFallback className="text-[6px]">{assignee.name[0]}</AvatarFallback>
+                                    </Avatar>
+                                    <p className="text-[9px] font-bold text-slate-600 truncate">{assignee.name}</p>
                                 </div>
                             )}
                         </div>

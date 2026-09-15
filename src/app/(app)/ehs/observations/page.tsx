@@ -16,7 +16,9 @@ import {
     Search,
     ChevronDown,
     Bell,
-    FileText
+    FileText,
+    History,
+    FileDown
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -25,18 +27,18 @@ import CapaFilters from '@/components/ehs/capa/CapaFilters';
 import CapaTable from '@/components/ehs/capa/CapaTable';
 import CapaCaseDrawer from '@/components/ehs/capa/CapaCaseDrawer';
 import CapaInitiateDialog from '@/components/ehs/capa/CapaInitiateDialog';
-import CapaPipelineSummary from '@/components/ehs/capa/CapaPipelineSummary';
-import { DateRangePicker } from '@/components/ui/date-range-picker';
+import CapaCockpit from '@/components/ehs/capa/CapaCockpit';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function SafetyObservationsPage() {
     const { observations } = useEhs();
-    const { user } = useAuth();
+    const { user, can } = useAuth();
     const { projects } = useGeneral();
 
     const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
+    const [cockpitCaseId, setCockpitCaseId] = useState<string | null>(null);
     const [isInitiateOpen, setIsInitiateOpen] = useState(false);
-    const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
     const [filters, setFilters] = useState({
         search: '',
@@ -65,201 +67,108 @@ export default function SafetyObservationsPage() {
     }, [masterObservations, filters]);
 
     const selectedObservation = useMemo(() => observations.find(o => o.id === selectedCaseId), [observations, selectedCaseId]);
+    const cockpitObservation = useMemo(() => observations.find(o => o.id === cockpitCaseId), [observations, cockpitCaseId]);
+
+    // If Cockpit is open, render the full-screen experience
+    if (cockpitObservation) {
+        return <CapaCockpit observation={cockpitObservation} onClose={() => setCockpitCaseId(null)} />;
+    }
 
     return (
-        <div className="min-h-screen bg-slate-50/50 flex flex-col">
-            {/* Top Global Header */}
-            <header className="h-16 shrink-0 bg-white border-b flex items-center justify-between px-8 z-30">
-                <div className="flex items-center gap-6 flex-1 max-w-2xl">
-                    <div className="relative w-full max-w-md">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input 
-                            placeholder="Search cases, keywords, sites, people..." 
-                            className="pl-10 h-10 bg-slate-50 border-none text-sm font-medium focus-visible:ring-emerald-500/20"
-                            value={filters.search}
-                            onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                        />
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                            <span className="text-[10px] font-bold text-slate-300 border rounded px-1 px-0.5">Ctrl</span>
-                            <span className="text-[10px] font-bold text-slate-300 border rounded px-1 px-0.5">K</span>
-                        </div>
-                    </div>
+        <div className="min-h-screen bg-[#F6F9FC] flex flex-col">
+            {/* --- PAGE HEADER --- */}
+            <header className="p-8 pb-4 shrink-0 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <div className="space-y-1">
+                    <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Safety Observations (CAPA)</h1>
+                    <p className="text-sm font-medium text-slate-500 uppercase tracking-[0.2em]">Capa Control Center · Safety Lifecycle Governance</p>
                 </div>
-
-                <div className="flex items-center gap-6">
-                    <Select defaultValue="all">
-                        <SelectTrigger className="w-[180px] h-10 border-none bg-slate-50 font-bold text-slate-600">
-                            <SelectValue placeholder="All Sites" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Sites</SelectItem>
-                            {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    
-                    <Button variant="ghost" size="icon" className="relative h-10 w-10 text-slate-400">
-                        <Bell className="h-5 w-5" />
-                        <div className="absolute top-2 right-2 h-2 w-2 rounded-full bg-rose-500 border-2 border-white"></div>
-                    </Button>
-
-                    <div className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-white font-black text-xs shadow-lg">
-                        {user?.name?.substring(0, 2).toUpperCase()}
-                    </div>
-                </div>
-            </header>
-
-            <main className="flex-1 overflow-hidden flex flex-col p-8 gap-8">
-                {/* Page Title & Stats */}
-                <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                        <h1 className="text-2xl font-black text-slate-900 tracking-tight">Safety Observations (CAPA)</h1>
-                        <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">CAPA Control Center · Safety Lifecycle Governance</p>
-                    </div>
-                    <div className="flex items-center gap-8 text-right pr-4">
-                        <div className="space-y-1">
+                <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="text-right hidden sm:block">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">A Safer Workplace</p>
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">A Stronger Tomorrow</p>
                         </div>
                         <Button 
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[11px] tracking-widest h-11 px-6 rounded-xl shadow-lg shadow-emerald-600/10"
+                            className="bg-[#2563EB] hover:bg-blue-700 text-white font-black uppercase text-[11px] tracking-widest h-12 px-8 rounded-xl shadow-lg shadow-blue-500/20"
                             onClick={() => setIsInitiateOpen(true)}
                         >
                             <Plus className="mr-2 h-4 w-4" /> Initiate Observation
                         </Button>
                     </div>
                 </div>
+            </header>
 
-                {/* KPI Cards Row */}
-                <CapaKpiCards observations={observations} />
+            {/* --- KPI SECTION --- */}
+            <div className="px-8 pb-8 shrink-0">
+                <CapaKpiCards 
+                    observations={filteredObservations} 
+                    onFilterByStatus={(s) => setFilters(prev => ({ ...prev, status: s }))}
+                    onFilterByRisk={(r) => setFilters(prev => ({ ...prev, risk: r }))}
+                />
+            </div>
 
-                {/* Pipeline Summary Row */}
-                <CapaPipelineSummary observations={observations} />
-
-                {/* Filters & Content Area */}
-                <div className="flex-1 overflow-hidden flex flex-col gap-6">
-                    {/* Professional Filter Bar */}
-                    <div className="flex flex-wrap items-center justify-between gap-4 p-2 bg-white rounded-2xl shadow-sm border border-slate-100">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <Select value={filters.category} onValueChange={(v) => setFilters(prev => ({ ...prev, category: v }))}>
-                                <SelectTrigger className="w-[150px] h-9 text-xs font-bold border-none bg-slate-50">
-                                    <SelectValue placeholder="All Categories" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Categories</SelectItem>
-                                    <SelectItem value="Unsafe Act">Unsafe Act</SelectItem>
-                                    <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
-                                    <SelectItem value="Safe Act">Safe Act</SelectItem>
-                                    <SelectItem value="Near Miss">Near Miss</SelectItem>
-                                    <SelectItem value="Environmental">Environmental</SelectItem>
-                                </SelectContent>
-                            </Select>
-
-                            <Select value={filters.risk} onValueChange={(v) => setFilters(prev => ({ ...prev, risk: v }))}>
-                                <SelectTrigger className="w-[140px] h-9 text-xs font-bold border-none bg-slate-50">
-                                    <SelectValue placeholder="All Risk Levels" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Risk Levels</SelectItem>
-                                    <SelectItem value="Low">Low</SelectItem>
-                                    <SelectItem value="Medium">Medium</SelectItem>
-                                    <SelectItem value="High">High</SelectItem>
-                                    <SelectItem value="Critical">Critical</SelectItem>
-                                </SelectContent>
-                            </Select>
-
-                            <Select value={filters.status} onValueChange={(v) => setFilters(prev => ({ ...prev, status: v }))}>
-                                <SelectTrigger className="w-[130px] h-9 text-xs font-bold border-none bg-slate-50">
-                                    <SelectValue placeholder="All Status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Status</SelectItem>
-                                    <SelectItem value="Open">Open</SelectItem>
-                                    <SelectItem value="In Progress">In Progress</SelectItem>
-                                    <SelectItem value="Closed">Closed</SelectItem>
-                                </SelectContent>
-                            </Select>
-
-                            <Select value={filters.site} onValueChange={(v) => setFilters(prev => ({ ...prev, site: v }))}>
-                                <SelectTrigger className="w-[130px] h-9 text-xs font-bold border-none bg-slate-50">
-                                    <SelectValue placeholder="All Sites" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Sites</SelectItem>
-                                    {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-
-                            <Button variant="ghost" className="h-9 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                <Filter className="mr-2 h-3.5 w-3.5" /> More Filters
-                            </Button>
-                        </div>
-
-                        <div className="flex items-center gap-2 pr-2">
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-9 px-3 text-[10px] font-black uppercase tracking-widest text-slate-500"
-                                onClick={() => setFilters({ search: '', category: 'all', risk: 'all', status: 'all', site: 'all', dateRange: undefined })}
-                            >
-                                <RotateCcw className="mr-2 h-3.5 w-3.5" /> Reset
-                            </Button>
-                            <Button variant="outline" size="sm" className="h-9 px-4 text-[10px] font-black uppercase tracking-widest border-2">
-                                <Download className="mr-2 h-3.5 w-3.5" /> Export
-                            </Button>
-                            <div className="flex bg-slate-100 p-1 rounded-lg border ml-2">
-                                <Button 
-                                    variant={viewMode === 'list' ? 'secondary' : 'ghost'} 
-                                    size="icon" 
-                                    className="h-7 w-7 rounded-md"
-                                    onClick={() => setViewMode('list')}
-                                >
-                                    <List className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                    variant={viewMode === 'grid' ? 'secondary' : 'ghost'} 
-                                    size="icon" 
-                                    className="h-7 w-7 rounded-md"
-                                    onClick={() => setViewMode('grid')}
-                                >
-                                    <LayoutGrid className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Main Content Grid */}
-                    <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr,420px] gap-8 min-h-0">
-                        <section className="bg-white rounded-3xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
-                            <div className="p-6 border-b flex justify-between items-center bg-slate-50/30">
-                                <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Observations ({filteredObservations.length})</h2>
-                            </div>
-                            <div className="flex-1 overflow-hidden">
-                                <CapaTable 
-                                    observations={filteredObservations} 
-                                    selectedId={selectedCaseId}
-                                    onSelect={setSelectedCaseId}
-                                />
-                            </div>
-                            
-                            {/* Pagination Footer */}
-                            <footer className="p-4 border-t bg-white flex justify-between items-center">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Showing 1 to 10 of {filteredObservations.length} cases</p>
-                                <div className="flex gap-1">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400"><RotateCcw className="h-4 w-4 rotate-180" /></Button>
-                                    {[1, 2].map(i => (
-                                        <Button key={i} variant={i === 1 ? 'default' : 'ghost'} size="icon" className="h-8 w-8 font-black text-[11px]">{i}</Button>
-                                    ))}
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400"><RotateCcw className="h-4 w-4" /></Button>
-                                </div>
-                            </footer>
-                        </section>
-
-                        {/* Preview Drawer */}
-                        <CapaCaseDrawer 
-                            observation={selectedObservation}
-                            onClose={() => setSelectedCaseId(null)}
+            {/* --- FILTER & MAIN AREA --- */}
+            <main className="flex-1 flex flex-col overflow-hidden px-8 pb-8 gap-6">
+                {/* Filter Toolbar */}
+                <Card className="rounded-xl border-slate-200 shadow-sm shrink-0">
+                    <CardContent className="p-2">
+                        <CapaFilters 
+                            filters={filters} 
+                            onFilterChange={setFilters} 
                         />
+                    </CardContent>
+                </Card>
+
+                {/* Registry Content */}
+                <div className="flex-1 flex gap-6 overflow-hidden">
+                    {/* Left: Table Area */}
+                    <div className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+                        <div className="p-4 border-b bg-slate-50/30 flex justify-between items-center shrink-0">
+                            <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="h-5 px-2 text-[9px] font-black uppercase tracking-wider bg-white">
+                                    {filteredObservations.length} Discoveries
+                                </Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button variant="ghost" size="sm" className="h-8 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                    <History className="mr-1.5 h-3.5 w-3.5" /> Audit Trail
+                                </Button>
+                                <Button variant="ghost" size="sm" className="h-8 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                    <FileDown className="mr-1.5 h-3.5 w-3.5" /> Export Excel
+                                </Button>
+                            </div>
+                        </div>
+                        
+                        <div className="flex-1 overflow-hidden">
+                             <CapaTable 
+                                observations={filteredObservations} 
+                                selectedId={selectedCaseId}
+                                onSelect={setSelectedCaseId}
+                                onOpenCockpit={setCockpitCaseId}
+                            />
+                        </div>
+
+                        {/* Pagination Footer */}
+                        <footer className="p-3 border-t bg-slate-50/50 flex justify-between items-center shrink-0">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Showing 1 to {Math.min(10, filteredObservations.length)} of {filteredObservations.length} entries</p>
+                            <div className="flex gap-1">
+                                <Button variant="outline" size="sm" className="h-7 px-2 text-[10px] font-bold uppercase">Prev</Button>
+                                <Button variant="secondary" size="sm" className="h-7 w-7 text-[10px] font-bold">1</Button>
+                                <Button variant="outline" size="sm" className="h-7 px-2 text-[10px] font-bold uppercase">Next</Button>
+                            </div>
+                        </footer>
                     </div>
+
+                    {/* Right: Quick Preview Panel */}
+                    {selectedObservation && (
+                        <div className="w-[420px] shrink-0 animate-in slide-in-from-right duration-300">
+                            <CapaCaseDrawer 
+                                observation={selectedObservation}
+                                onClose={() => setSelectedCaseId(null)}
+                                onOpenCockpit={() => setCockpitCaseId(selectedObservation.id)}
+                            />
+                        </div>
+                    )}
                 </div>
             </main>
 
