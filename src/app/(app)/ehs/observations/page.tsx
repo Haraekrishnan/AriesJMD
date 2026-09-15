@@ -1238,21 +1238,21 @@ export default function EhsObservationsPage() {
                 
                 <div className="flex-1 overflow-hidden relative">
                   <ScrollArea className="h-full w-full">
-                    <Table className="border-collapse border-slate-300">
-                        <TableHeader className="sticky top-0 z-40">
-                            <TableRow className="border-b-2 border-slate-300">
-                                <TableHead className="w-20 border-r border-slate-300 font-black uppercase text-[10px] text-slate-900 text-center sticky left-0 z-50 bg-slate-100">ID</TableHead>
-                                <TableHead className="min-w-[300px] border-r border-slate-300 font-black uppercase text-[10px] text-slate-900 px-4 sticky left-20 z-50 bg-slate-100 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Narrative Findings</TableHead>
-                                <TableHead className="w-32 border-r border-slate-300 font-black uppercase text-[10px] text-slate-900 text-center">Category</TableHead>
-                                <TableHead className="w-24 border-r-2 border-slate-400 font-black uppercase text-[10px] text-slate-900 text-center">Risk</TableHead>
+                    <Table className="border-separate border-spacing-0">
+                        <TableHeader className="sticky top-0 z-30">
+                            <TableRow>
+                                <TableHead className="w-[80px] border-r border-b border-slate-300 font-black uppercase text-[10px] text-slate-900 text-center sticky left-0 z-50 bg-slate-100">ID</TableHead>
+                                <TableHead className="w-[400px] border-r border-b border-slate-300 font-black uppercase text-[10px] text-slate-900 px-4 sticky left-[80px] z-50 bg-slate-100 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Narrative Findings</TableHead>
+                                <TableHead className="w-32 border-r border-b border-slate-300 font-black uppercase text-[10px] text-slate-900 text-center">Category</TableHead>
+                                <TableHead className="w-24 border-r-2 border-b border-slate-400 font-black uppercase text-[10px] text-slate-900 text-center">Risk</TableHead>
                                 
                                 {Object.values(stageConfig).map(cfg => (
-                                   <TableHead key={cfg.label} className="w-32 border-r border-slate-200 font-black uppercase text-[9px] text-slate-600 text-center leading-tight bg-slate-50/50">
+                                   <TableHead key={cfg.label} className="w-32 border-r border-b border-slate-200 font-black uppercase text-[9px] text-slate-600 text-center leading-tight bg-slate-50/50">
                                       {cfg.label}
                                    </TableHead>
                                 ))}
 
-                                <TableHead className="w-28 text-right font-black uppercase text-[10px] text-slate-900 px-4 sticky right-0 z-50 bg-slate-100 shadow-[-2px_0_5px_rgba(0,0,0,0.05)] border-l border-slate-300">Action</TableHead>
+                                <TableHead className="w-28 text-right font-black uppercase text-[10px] text-slate-900 px-4 sticky right-0 z-50 bg-slate-100 shadow-[-2px_0_5px_rgba(0,0,0,0.05)] border-l border-b border-slate-300">Action</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1267,7 +1267,7 @@ export default function EhsObservationsPage() {
                                 return (
                                     <React.Fragment key={obs.id}>
                                     <TableRow className={cn("group hover:bg-blue-50/20 border-b border-slate-200 h-14", isExpanded && "bg-slate-50")}>
-                                        <TableCell className={cn("text-center font-mono text-[10px] font-black text-slate-500 border-r border-slate-200 sticky left-0 z-20", isExpanded ? "bg-slate-50" : "bg-white")}>
+                                        <TableCell className={cn("text-center font-mono text-[10px] font-black text-slate-500 border-r border-slate-200 sticky left-0 z-20 w-[80px]", isExpanded ? "bg-slate-50" : "bg-white")}>
                                           <div className="flex flex-col items-center">
                                               {obs.id.slice(-6).toUpperCase()}
                                               {childObservations.length > 0 && (
@@ -1277,7 +1277,7 @@ export default function EhsObservationsPage() {
                                               )}
                                           </div>
                                         </TableCell>
-                                        <TableCell className={cn("border-r border-slate-200 px-4 py-2 sticky left-20 z-20 group-hover:bg-slate-50 transition-colors", isExpanded ? "bg-slate-50" : "bg-white")}>
+                                        <TableCell className={cn("border-r border-slate-200 px-4 py-2 sticky left-[80px] z-20 group-hover:bg-slate-50 transition-colors w-[400px]", isExpanded ? "bg-slate-50" : "bg-white")}>
                                             <div 
                                                 className="flex flex-col gap-0.5 cursor-pointer"
                                                 onClick={handleImageClick}
@@ -1396,13 +1396,13 @@ export default function EhsObservationsPage() {
 
                                     {isExpanded && childObservations.map((child, cIdx) => (
                                         <TableRow key={child.id} className="bg-slate-100/40 border-b border-slate-200 h-12">
-                                            <TableCell className="text-center font-mono text-[9px] font-bold text-slate-400 border-r border-slate-200 sticky left-0 z-20 bg-slate-100/40 pl-6">
+                                            <TableCell className="text-center font-mono text-[9px] font-bold text-slate-400 border-r border-slate-200 sticky left-0 z-20 bg-slate-100/40 pl-6 w-[80px]">
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-3 h-3 border-l-2 border-b-2 border-slate-300 rounded-bl-sm" />
                                                     {child.id.slice(-6).toUpperCase()}
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="border-r border-slate-200 px-4 py-1 sticky left-20 z-20 bg-slate-100/40">
+                                            <TableCell className="border-r border-slate-200 px-4 py-1 sticky left-[80px] z-20 bg-slate-100/40 w-[400px]">
                                                  <div 
                                                     className="flex flex-col gap-0.5 cursor-pointer"
                                                     onClick={handleImageClick}
