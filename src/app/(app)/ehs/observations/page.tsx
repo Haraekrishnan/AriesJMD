@@ -881,7 +881,7 @@ export default function EhsObservationsPage() {
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                             <div className="space-y-2">
                                                                 <Label className="text-[9px] font-bold uppercase text-slate-400">Who (Personnel involved)</Label>
-                                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status !== 'Completed' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
+                                                                {activeViewStage === viewingObservation.currentStage && (viewingObservation.stages?.[activeViewStage]?.status === 'Pending' || viewingObservation.stages?.[activeViewStage]?.status === 'Returned') && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
                                                                     <Input 
                                                                         className="h-10 font-bold" 
                                                                         placeholder="Name of personnel involved" 
@@ -894,7 +894,7 @@ export default function EhsObservationsPage() {
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label className="text-[9px] font-bold uppercase text-slate-400">When (Date/Time context)</Label>
-                                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status !== 'Completed' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
+                                                                {activeViewStage === viewingObservation.currentStage && (viewingObservation.stages?.[activeViewStage]?.status === 'Pending' || viewingObservation.stages?.[activeViewStage]?.status === 'Returned') && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
                                                                     <Input 
                                                                         className="h-10 font-bold" 
                                                                         placeholder="Date and time of discovery details" 
@@ -907,7 +907,7 @@ export default function EhsObservationsPage() {
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label className="text-[9px] font-bold uppercase text-slate-400">Where (Specific area/location)</Label>
-                                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status !== 'Completed' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
+                                                                {activeViewStage === viewingObservation.currentStage && (viewingObservation.stages?.[activeViewStage]?.status === 'Pending' || viewingObservation.stages?.[activeViewStage]?.status === 'Returned') && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
                                                                     <Input 
                                                                         className="h-10 font-bold" 
                                                                         placeholder="Detailed location" 
@@ -920,7 +920,7 @@ export default function EhsObservationsPage() {
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label className="text-[9px] font-bold uppercase text-slate-400">How (Sequence of events/method)</Label>
-                                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status !== 'Completed' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
+                                                                {activeViewStage === viewingObservation.currentStage && (viewingObservation.stages?.[activeViewStage]?.status === 'Pending' || viewingObservation.stages?.[activeViewStage]?.status === 'Returned') && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
                                                                     <Input 
                                                                         className="h-10 font-bold" 
                                                                         placeholder="How did it occur?" 
@@ -934,7 +934,7 @@ export default function EhsObservationsPage() {
                                                         </div>
                                                         <div className="space-y-2 pt-2">
                                                             <Label className="text-[9px] font-bold uppercase text-slate-400">Additional Investigation Details</Label>
-                                                            {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status !== 'Completed' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
+                                                            {activeViewStage === viewingObservation.currentStage && (viewingObservation.stages?.[activeViewStage]?.status === 'Pending' || viewingObservation.stages?.[activeViewStage]?.status === 'Returned') && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
                                                                 <RichNarrativeEditor 
                                                                     value={actionData.notes || ''} 
                                                                     onChange={(html) => setActionData({ ...actionData, notes: html })}
@@ -958,7 +958,7 @@ export default function EhsObservationsPage() {
                                                         <Label className="text-[10px] font-black uppercase tracking-widest text-slate-900">
                                                             {activeViewStage} Technical Narrative
                                                         </Label>
-                                                        {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage!]?.status !== 'Completed' && user?.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId ? (
+                                                        {activeViewStage === viewingObservation.currentStage && (viewingObservation.stages?.[activeViewStage!]?.status === 'Pending' || viewingObservation.stages?.[activeViewStage!]?.status === 'Returned') && user?.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId ? (
                                                             <div className="space-y-4">
                                                                 <RichNarrativeEditor 
                                                                     value={actionData.notes || ''} 
@@ -998,11 +998,11 @@ export default function EhsObservationsPage() {
                                                     <div>
                                                         <Label className="text-[10px] font-black uppercase text-slate-900 tracking-widest mb-2 block">Upload Evidence (Dropbox)</Label>
                                                         <div className="flex items-center gap-4">
-                                                            <Input 
+                                                            <input 
                                                                 type="file"
                                                                 onChange={handleFileUpload}
                                                                 disabled={isUploading}
-                                                                className="h-10 text-xs font-bold cursor-pointer"
+                                                                className="h-10 text-xs font-bold cursor-pointer block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                                                             />
                                                             {isUploading && <Loader2 className="h-5 w-5 text-primary" />}
                                                         </div>
