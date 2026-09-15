@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef, MouseEvent } from 'react';
@@ -16,7 +15,7 @@ import {
   Check, XCircle, Trash2, History, Upload, Paperclip, Undo2, Image as ImageIcon, X,
   Bold, Italic, Underline, List, ListOrdered, Heading1, AlignLeft, UserPlus, ArrowRightLeft,
   ZoomIn, ZoomOut, Lock, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Split,
-  ChevronUp, Info, AlertTriangle, ArrowUpRight
+  ChevronUp, Info, AlertTriangle, ArrowUpRight, Send
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format, parseISO, isValid } from 'date-fns';
@@ -219,7 +218,7 @@ type SplitFormValues = z.infer<typeof splitSchema>;
 /* ------------------------------------------------------------------ */
 
 export default function EhsObservationsPage() {
-  const { audits, incidents, trainings, observations, addObservation, splitObservation, actionStage, reviewStage, assignStageOwner, addCcToObservation, deleteObservation } = useEhs();
+  const { audits, incidents, trainings, observations, addObservation, splitObservation, actionStage, reviewStage, assignStageOwner, addStageComment, addCcToObservation, deleteObservation } = useEhs();
   const { user, users, getAssignableUsers } = useAuth();
   const { projects } = useGeneral();
   const { toast } = useToast();
@@ -245,6 +244,7 @@ export default function EhsObservationsPage() {
   // Form states for stage actions
   const [actionData, setActionData] = useState<any>({});
   const [reviewComment, setReviewComment] = useState('');
+  const [newDiscussionComment, setNewDiscussionComment] = useState('');
   const [tempAttachmentUrl, setTempAttachmentUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
 
@@ -355,6 +355,12 @@ export default function EhsObservationsPage() {
     if (!viewingObservationId || !activeViewStage) return;
     reviewStage(viewingObservationId, activeViewStage, status, reviewComment);
     setReviewComment('');
+  };
+
+  const handleAddDiscussionComment = () => {
+    if (!newDiscussionComment.trim() || !viewingObservationId || !activeViewStage) return;
+    addStageComment(viewingObservationId, activeViewStage, newDiscussionComment);
+    setNewDiscussionComment('');
   };
 
   const handleCcSelectedUsers = (userIds: string[]) => {
@@ -765,17 +771,37 @@ export default function EhsObservationsPage() {
                                         </div>
 
                                         <div className="space-y-6">
+                                            {/* Rework Alert Callout */}
+                                            {viewingObservation.stages?.[activeViewStage!]?.status === 'Pending' && viewingObservation.stages?.[activeViewStage!]?.comments && (
+                                                (() => {
+                                                    const comments = Object.values(viewingObservation.stages[activeViewStage!].comments!);
+                                                    const lastComment = comments.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime())[0];
+                                                    if (lastComment?.text.startsWith('[REWORK REQUIRED]')) {
+                                                        return (
+                                                            <Alert variant="destructive" className="bg-rose-50 border-rose-200 text-rose-800">
+                                                                <Undo2 className="h-4 w-4 text-rose-600" />
+                                                                <AlertTitle className="text-[10px] font-black uppercase tracking-widest">Rework Recommended</AlertTitle>
+                                                                <AlertDescription className="text-sm font-bold">
+                                                                    {lastComment.text.replace('[REWORK REQUIRED] ', '')}
+                                                                </AlertDescription>
+                                                            </Alert>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()
+                                            )}
+
                                             {/* Discussion & Comment History */}
                                             {activeViewStage && viewingObservation.stages?.[activeViewStage]?.comments && (
                                                 <div className="space-y-3 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-inner">
                                                     <Label className="text-[10px] font-black uppercase text-emerald-600 tracking-widest flex items-center gap-2 mb-2">
                                                         <MessageSquare className="h-3.5 w-3.5" /> Discussion & Feedback
                                                     </Label>
-                                                    <div className="space-y-4">
+                                                    <div className="space-y-4 mb-4">
                                                         {Object.values(viewingObservation.stages[activeViewStage].comments!)
                                                             .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime())
                                                             .map((c) => {
-                                                                const author = users.find(u => u.id === c.userId);
+                                                                const author = users.find((u) => u.id === c.userId);
                                                                 return (
                                                                     <div key={c.id} className="flex gap-3">
                                                                         <Avatar className="h-7 w-7 border shrink-0">
@@ -789,11 +815,35 @@ export default function EhsObservationsPage() {
                                                                                     {c.date && isValid(parseISO(c.date)) ? formatDistanceToNow(parseISO(c.date), { addSuffix: true }) : ''}
                                                                                 </span>
                                                                             </div>
-                                                                            <p className="text-xs font-bold text-slate-800 leading-tight whitespace-pre-wrap">{c.text}</p>
+                                                                            <p className="text-xs font-bold text-black dark:text-white leading-tight whitespace-pre-wrap">{c.text}</p>
                                                                         </div>
                                                                     </div>
                                                                 );
                                                             })}
+                                                    </div>
+
+                                                    <div className="relative pt-2">
+                                                        <Textarea 
+                                                            placeholder="Add a quick reply or feedback..." 
+                                                            className="min-h-[40px] pr-10 text-xs font-bold bg-white"
+                                                            value={newDiscussionComment}
+                                                            onChange={(e) => setNewDiscussionComment(e.target.value)}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter' && !e.shiftKey) {
+                                                                    e.preventDefault();
+                                                                    handleAddDiscussionComment();
+                                                                }
+                                                            }}
+                                                        />
+                                                        <Button 
+                                                            size="icon" 
+                                                            variant="ghost" 
+                                                            className="absolute right-1 top-1/2 -translate-y-[-50%] h-8 w-8 text-emerald-600"
+                                                            disabled={!newDiscussionComment.trim()}
+                                                            onClick={handleAddDiscussionComment}
+                                                        >
+                                                            <Send className="h-4 w-4" />
+                                                        </Button>
                                                     </div>
                                                 </div>
                                             )}

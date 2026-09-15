@@ -42,6 +42,7 @@ type EhsContextType = {
   assignStageOwner: (observationId: string, stage: CapaStage, assigneeId: string) => void;
   actionStage: (observationId: string, stage: CapaStage, data: any, attachmentUrl?: string) => void;
   reviewStage: (observationId: string, stage: CapaStage, status: 'Completed' | 'Returned', comment: string) => void;
+  addStageComment: (observationId: string, stage: CapaStage, text: string) => void;
   addCcToObservation: (observationId: string, userIds: string[]) => void;
   addStageAttachment: (observationId: string, stage: CapaStage, name: string, url: string) => void;
   deleteObservation: (observationId: string) => void;
@@ -277,6 +278,19 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     toast({ title: 'Stage Responsibility Assigned' });
   }, [user, toast]);
 
+  const addStageComment = useCallback((observationId: string, stage: CapaStage, text: string) => {
+    if (!user) return;
+    const now = new Date().toISOString();
+    const commentRef = push(ref(rtdb, `ehs/observations/${observationId}/stages/${stage}/comments`));
+    set(commentRef, {
+        id: commentRef.key,
+        userId: user.id,
+        text,
+        date: now
+    });
+    update(ref(rtdb, `ehs/observations/${observationId}`), { lastUpdated: now });
+  }, [user]);
+
   const actionStage = useCallback((observationId: string, stage: CapaStage, data: any, attachmentUrl?: string) => {
     if (!user) return;
     const path = `ehs/observations/${observationId}/stages/${stage}`;
@@ -326,7 +340,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
             updates[`${stagePath}/comments/${commentRef.key}`] = {
                 id: commentRef.key,
                 userId: user.id,
-                text: comment,
+                text: status === 'Returned' ? `[REWORK REQUIRED] ${comment}` : comment,
                 date: now
             };
         }
@@ -503,7 +517,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     <EhsContext.Provider value={{ 
         audits, incidents, riskAssessments, trainings, observations, supportTickets, contactInfo, 
         addAudit, addIncident, addRiskAssessment, addTraining, 
-        addObservation, splitObservation, assignStageOwner, actionStage, reviewStage, addStageAttachment, addCcToObservation, deleteObservation,
+        addObservation, splitObservation, assignStageOwner, actionStage, reviewStage, addStageComment, addStageAttachment, addCcToObservation, deleteObservation,
         reviewAudit, updateIncidentStatus, addSupportTicket, updateTicketStatus, addTicketComment, deleteSupportTicket, updateContactInfo, stats 
     }}>
       {children}
