@@ -54,6 +54,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { formatDistanceToNow } from 'date-fns';
 
 /* ------------------------------------------------------------------ */
 /* UTILITIES */
@@ -469,7 +470,7 @@ export default function EhsObservationsPage() {
                                         <CommandList>
                                             <CommandEmpty>No personnel found.</CommandEmpty>
                                             <CommandGroup>
-                                                {users.filter(u => u.role !== 'Manager' && u.status === 'active' && u.id !== user?.id).map(u => (
+                                                {users.filter(u => u.role !== 'Manager' && u.id !== user?.id).map(u => (
                                                     <CommandItem 
                                                         key={u.id} 
                                                         onSelect={() => handleCcSelectedUsers([u.id])}
@@ -477,6 +478,8 @@ export default function EhsObservationsPage() {
                                                     >
                                                         <Check className={cn("mr-2 h-4 w-4", viewingObservation.ccUserIds?.includes(u.id) ? "opacity-100" : "opacity-0")} />
                                                         {u.name} <span className="ml-1 text-[9px] text-slate-400">({u.role})</span>
+                                                        {u.status === 'locked' && <Badge variant="destructive" className="ml-auto text-[8px] h-4">LOCKED</Badge>}
+                                                        {u.status === 'deactivated' && <Badge variant="secondary" className="ml-auto text-[8px] h-4">REMOVED</Badge>}
                                                     </CommandItem>
                                                 ))}
                                             </CommandGroup>
@@ -762,6 +765,39 @@ export default function EhsObservationsPage() {
                                         </div>
 
                                         <div className="space-y-6">
+                                            {/* Discussion & Comment History */}
+                                            {activeViewStage && viewingObservation.stages?.[activeViewStage]?.comments && (
+                                                <div className="space-y-3 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-inner">
+                                                    <Label className="text-[10px] font-black uppercase text-emerald-600 tracking-widest flex items-center gap-2 mb-2">
+                                                        <MessageSquare className="h-3.5 w-3.5" /> Discussion & Feedback
+                                                    </Label>
+                                                    <div className="space-y-4">
+                                                        {Object.values(viewingObservation.stages[activeViewStage].comments!)
+                                                            .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime())
+                                                            .map((c) => {
+                                                                const author = users.find(u => u.id === c.userId);
+                                                                return (
+                                                                    <div key={c.id} className="flex gap-3">
+                                                                        <Avatar className="h-7 w-7 border shrink-0">
+                                                                            <AvatarImage src={author?.avatar} />
+                                                                            <AvatarFallback className="text-[9px] font-black">{author?.name?.[0]}</AvatarFallback>
+                                                                        </Avatar>
+                                                                        <div className="flex-1 space-y-1">
+                                                                            <div className="flex justify-between items-center">
+                                                                                <span className="text-[10px] font-black text-slate-500 uppercase">{author?.name}</span>
+                                                                                <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
+                                                                                    {c.date && isValid(parseISO(c.date)) ? formatDistanceToNow(parseISO(c.date), { addSuffix: true }) : ''}
+                                                                                </span>
+                                                                            </div>
+                                                                            <p className="text-xs font-bold text-slate-800 leading-tight whitespace-pre-wrap">{c.text}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             {activeViewStage === 'Initiation' && (
                                                 <div className="space-y-4">
                                                     <div className="p-6 border rounded-lg bg-slate-50/30">
