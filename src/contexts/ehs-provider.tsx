@@ -418,9 +418,19 @@ export function EhsProvider({ children }: { children: ReactNode }) {
 
   const deleteObservation = useCallback((observationId: string) => {
     if (user?.role !== 'Admin') return;
-    remove(ref(rtdb, `ehs/observations/${observationId}`));
-    toast({ title: 'Record Deleted', variant: 'destructive' });
-  }, [user, toast]);
+    
+    // Find children first to ensure hierarchical deletion
+    const children = observations.filter(o => o.parentId === observationId);
+    const updates: Record<string, any> = {};
+    updates[`ehs/observations/${observationId}`] = null;
+    children.forEach(child => {
+        updates[`ehs/observations/${child.id}`] = null;
+    });
+
+    update(ref(rtdb), updates).then(() => {
+        toast({ title: 'Record Deleted', variant: 'destructive' });
+    });
+  }, [user, observations, toast]);
 
   const reviewAudit = useCallback((auditId: string, status: 'Approved' | 'Rejected', comment: string) => {
     if (user?.role !== 'Senior Safety Supervisor' && user?.role !== 'Admin') {

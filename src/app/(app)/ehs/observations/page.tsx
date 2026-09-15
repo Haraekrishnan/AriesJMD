@@ -803,7 +803,7 @@ export default function EhsObservationsPage() {
                                                         viewingObservation.stages?.[activeViewStage].status === 'Returned' ? "text-rose-600" : "text-emerald-600"
                                                     )}>
                                                         <MessageSquare className="h-3.5 w-3.5" /> 
-                                                        {viewingObservation.stages?.[activeViewStage].status === 'Completed' ? 'Verified with Comments' : (viewingObservation.stages?.[activeViewStage].status === 'Returned' ? 'Rework Suggested with Comments' : 'Discussion & Feedback')}
+                                                        {viewingObservation.stages?.[activeViewStage].status === 'Completed' ? 'VERIFIED WITH COMMENTS' : (viewingObservation.stages?.[activeViewStage].status === 'Returned' ? 'REWORK SUGGESTED WITH COMMENTS' : 'Discussion & Feedback')}
                                                     </Label>
                                                     <div className="space-y-4 mb-4">
                                                         {Object.values(viewingObservation.stages[activeViewStage].comments!)
@@ -1052,6 +1052,29 @@ export default function EhsObservationsPage() {
                                 {viewingObservation.stages?.[activeViewStage!]?.status === 'Completed' && `Phase verified by ${users.find(u => u.id === viewingObservation.stages?.[activeViewStage!]?.reviewedById)?.name || 'System'}`}
                             </div>
                             <div className="flex gap-2">
+                                {user?.role === 'Admin' && (
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 font-black uppercase tracking-widest text-[10px] h-11 px-6 border-2 border-rose-100">
+                                                <Trash2 className="mr-2 h-4 w-4" /> Delete Forever
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Delete Safety Case Permanently?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    You are about to delete Case Dossier: <strong>{viewingObservation.id.slice(-6).toUpperCase()}</strong>. This will wipe all comments, evidence, and technical logs. It cannot be undone.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => { deleteObservation(viewingObservation.id); setViewingObservationId(null); }} className="bg-rose-600 text-white font-black uppercase tracking-widest text-xs h-10 hover:bg-rose-700">
+                                                    Yes, Delete Permanently
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                )}
                                 {activeViewStage === viewingObservation.currentStage && (viewingObservation.stages?.[activeViewStage!]?.status === 'Pending' || viewingObservation.stages?.[activeViewStage!]?.status === 'Returned') && user?.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId && (
                                     <Button className="bg-slate-900 hover:bg-black text-white font-black uppercase tracking-[0.2em] h-11 px-10 text-[10px]" onClick={handleActionSubmit}>
                                         {activeViewStage === 'Closure' ? 'EXECUTE FINAL CLOSURE' : 'Submit Stage Data'}
@@ -1216,7 +1239,7 @@ export default function EhsObservationsPage() {
                                    </TableHead>
                                 ))}
 
-                                <TableHead className="w-24 text-right font-black uppercase text-[10px] text-slate-900 px-4 sticky right-0 z-50 bg-slate-100 shadow-[-2px_0_5px_rgba(0,0,0,0.05)] border-l border-slate-300">Action</TableHead>
+                                <TableHead className="w-28 text-right font-black uppercase text-[10px] text-slate-900 px-4 sticky right-0 z-50 bg-slate-100 shadow-[-2px_0_5px_rgba(0,0,0,0.05)] border-l border-slate-300">Action</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1322,14 +1345,39 @@ export default function EhsObservationsPage() {
                                         })}
 
                                         <TableCell className={cn("text-right px-4 sticky right-0 z-20 group-hover:bg-slate-50 border-l border-slate-300 transition-colors", isExpanded ? "bg-slate-50" : "bg-white")}>
-                                            <Button 
-                                                variant="outline" 
-                                                size="sm" 
-                                                className="h-7 px-3 font-black text-[9px] uppercase tracking-widest border-2 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
-                                                onClick={() => setViewingObservationId(obs.id)}
-                                            >
-                                                COCKPIT
-                                            </Button>
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    className="h-7 px-3 font-black text-[9px] uppercase tracking-widest border-2 hover:bg-slate-900 hover:text-white transition-all shadow-sm"
+                                                    onClick={() => setViewingObservationId(obs.id)}
+                                                >
+                                                    COCKPIT
+                                                </Button>
+                                                {user?.role === 'Admin' && (
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-rose-600 hover:bg-rose-50 hover:text-rose-700">
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Delete Safety Case?</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    This will permanently remove Case ID: {obs.id.slice(-6).toUpperCase()} and all associated technical logs. This action cannot be undone.
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => deleteObservation(obs.id)} className="bg-rose-600 hover:bg-rose-700 text-white font-black uppercase text-xs">
+                                                                    Confirm Delete
+                                                                </AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                )}
+                                            </div>
                                         </TableCell>
                                     </TableRow>
 
@@ -1373,14 +1421,39 @@ export default function EhsObservationsPage() {
                                                 )
                                             })}
                                             <TableCell className="text-right px-4 sticky right-0 z-20 bg-slate-100/40 border-l border-slate-300">
-                                                 <Button 
-                                                    variant="ghost" 
-                                                    size="sm" 
-                                                    className="h-6 px-2 font-black text-[8px] uppercase tracking-widest border border-slate-300 hover:bg-slate-900 hover:text-white"
-                                                    onClick={() => setViewingObservationId(child.id)}
-                                                >
-                                                    COCKPIT
-                                                </Button>
+                                                 <div className="flex items-center justify-end gap-2">
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        className="h-6 px-2 font-black text-[8px] uppercase tracking-widest border border-slate-300 hover:bg-slate-900 hover:text-white"
+                                                        onClick={() => setViewingObservationId(child.id)}
+                                                    >
+                                                        COCKPIT
+                                                    </Button>
+                                                    {user?.role === 'Admin' && (
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-rose-600 hover:bg-rose-50 hover:text-rose-700">
+                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Delete Sub-Case?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        Delete individual split: <strong>{child.id.slice(-6).toUpperCase()}</strong>.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => deleteObservation(child.id)} className="bg-rose-600 text-white font-bold">
+                                                                        Delete
+                                                                    </AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    )}
+                                                 </div>
                                             </TableCell>
                                         </TableRow>
                                     ))}
