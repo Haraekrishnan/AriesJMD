@@ -30,6 +30,7 @@ import { useAuth } from '@/contexts/auth-provider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface CapaCaseDrawerProps {
     observation: EhsObservation | undefined;
@@ -145,7 +146,10 @@ export default function CapaCaseDrawer({ observation, onClose }: CapaCaseDrawerP
                             <div className="space-y-1">
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Reported By</p>
                                 <div className="flex items-center gap-2">
-                                    <Avatar className="h-6 w-6"><AvatarImage src={reporter?.avatar}/><AvatarFallback>{reporter?.name?.[0]}</AvatarFallback></Avatar>
+                                    <Avatar className="h-6 w-6">
+                                        <AvatarImage src={reporter?.avatar}/>
+                                        <AvatarFallback>{reporter?.name?.[0]}</AvatarFallback>
+                                    </Avatar>
                                     <span className="text-xs font-bold text-slate-800">{reporter?.name}</span>
                                 </div>
                             </div>
@@ -181,18 +185,6 @@ export default function CapaCaseDrawer({ observation, onClose }: CapaCaseDrawerP
                             <Button variant="outline" className="font-black uppercase text-[10px] tracking-widest h-10 rounded-xl border-2">
                                 <Split className="mr-2 h-3.5 w-3.5" /> Split Case
                             </Button>
-                            <Button variant="outline" className="font-black uppercase text-[10px] tracking-widest h-10 rounded-xl border-2 w-full col-span-1">
-                                <UserPlus className="mr-2 h-3.5 w-3.5" /> Assign
-                            </Button>
-                            <Select>
-                                <SelectTrigger className="h-10 text-[10px] font-black uppercase tracking-widest border-2 rounded-xl">
-                                    <SelectValue placeholder="More" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="audit">Audit Trail</SelectItem>
-                                    <SelectItem value="pdf">Download PDF</SelectItem>
-                                </SelectContent>
-                            </Select>
                         </div>
 
                         {/* Quick Actions Feed */}
@@ -203,29 +195,6 @@ export default function CapaCaseDrawer({ observation, onClose }: CapaCaseDrawerP
                                 <ActionIconBtn icon={Paperclip} label="Evidence" />
                                 <ActionIconBtn icon={ArrowUpRight} label="Redirect" />
                                 <ActionIconBtn icon={ShieldCheck} label="Overtake" />
-                            </div>
-                        </div>
-
-                        {/* Recent Activity Mini-Feed */}
-                        <div className="space-y-4 border-t pt-6">
-                            <div className="flex justify-between items-center">
-                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Recent Activity</h4>
-                                <Button variant="link" className="h-auto p-0 text-[10px] font-black text-blue-600 uppercase">View All</Button>
-                            </div>
-                            <div className="space-y-4">
-                                <div className="flex gap-3 items-start">
-                                    <Avatar className="h-7 w-7 border"><AvatarImage src="https://i.pravatar.cc/150?u=vj" /><AvatarFallback>VS</AvatarFallback></Avatar>
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-bold leading-tight">
-                                            <span className="font-black text-slate-900">Vijay Sai</span> reviewed Investigation 
-                                            <Badge variant="outline" className="ml-2 bg-rose-50 text-rose-600 border-rose-100 text-[8px] font-black uppercase h-4">Rework Suggested</Badge>
-                                        </p>
-                                        <p className="text-[9px] text-slate-400 font-medium uppercase tracking-tighter">2 hours ago</p>
-                                        <div className="bg-slate-50 p-3 rounded-2xl rounded-tl-none border border-slate-100">
-                                            <p className="text-[10px] text-slate-600 font-medium">"Need detailed root cause analysis with 5-Whys. Please rework."</p>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </TabsContent>

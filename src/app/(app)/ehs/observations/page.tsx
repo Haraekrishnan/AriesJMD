@@ -16,15 +16,16 @@ import {
     Search,
     ChevronDown,
     Bell,
+    FileText
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import CapaKpiCards from '@/components/ehs/capa/CapaKpiCards';
 import CapaFilters from '@/components/ehs/capa/CapaFilters';
 import CapaTable from '@/components/ehs/capa/CapaTable';
 import CapaCaseDrawer from '@/components/ehs/capa/CapaCaseDrawer';
 import CapaInitiateDialog from '@/components/ehs/capa/CapaInitiateDialog';
+import CapaPipelineSummary from '@/components/ehs/capa/CapaPipelineSummary';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { cn } from '@/lib/utils';
 
@@ -112,31 +113,27 @@ export default function SafetyObservationsPage() {
                 <div className="flex justify-between items-start">
                     <div className="space-y-1">
                         <h1 className="text-2xl font-black text-slate-900 tracking-tight">Safety Observations (CAPA)</h1>
-                        <p className="text-sm font-medium text-slate-500">Track, manage and close safety observations for a safer workplace.</p>
+                        <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">CAPA Control Center · Safety Lifecycle Governance</p>
                     </div>
                     <div className="flex items-center gap-8 text-right pr-4">
                         <div className="space-y-1">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">A Safer Workplace</p>
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">A Stronger Tomorrow</p>
                         </div>
-                        <div className="flex gap-0">
-                            <Button 
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[11px] tracking-widest h-11 px-6 rounded-l-xl shadow-lg shadow-emerald-600/10"
-                                onClick={() => setIsInitiateOpen(true)}
-                            >
-                                <Plus className="mr-2 h-4 w-4" /> Initiate Observation
-                            </Button>
-                            <Button 
-                                className="bg-emerald-700 hover:bg-emerald-800 text-white h-11 px-3 rounded-r-xl border-l border-emerald-500/30"
-                            >
-                                <ChevronDown className="h-4 w-4" />
-                            </Button>
-                        </div>
+                        <Button 
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[11px] tracking-widest h-11 px-6 rounded-xl shadow-lg shadow-emerald-600/10"
+                            onClick={() => setIsInitiateOpen(true)}
+                        >
+                            <Plus className="mr-2 h-4 w-4" /> Initiate Observation
+                        </Button>
                     </div>
                 </div>
 
                 {/* KPI Cards Row */}
                 <CapaKpiCards observations={observations} />
+
+                {/* Pipeline Summary Row */}
+                <CapaPipelineSummary observations={observations} />
 
                 {/* Filters & Content Area */}
                 <div className="flex-1 overflow-hidden flex flex-col gap-6">
@@ -191,12 +188,6 @@ export default function SafetyObservationsPage() {
                                     {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-
-                            <DateRangePicker 
-                                date={filters.dateRange} 
-                                onDateChange={(range) => setFilters(prev => ({ ...prev, dateRange: range as any }))}
-                                className="h-9 w-[220px]"
-                            />
 
                             <Button variant="ghost" className="h-9 text-[10px] font-black uppercase tracking-widest text-slate-400">
                                 <Filter className="mr-2 h-3.5 w-3.5" /> More Filters
@@ -255,11 +246,9 @@ export default function SafetyObservationsPage() {
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Showing 1 to 10 of {filteredObservations.length} cases</p>
                                 <div className="flex gap-1">
                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400"><RotateCcw className="h-4 w-4 rotate-180" /></Button>
-                                    {[1, 2, 3, 4, 5].map(i => (
+                                    {[1, 2].map(i => (
                                         <Button key={i} variant={i === 1 ? 'default' : 'ghost'} size="icon" className="h-8 w-8 font-black text-[11px]">{i}</Button>
                                     ))}
-                                    <span className="px-2 self-center text-slate-300">...</span>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 font-black text-[11px]">13</Button>
                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400"><RotateCcw className="h-4 w-4" /></Button>
                                 </div>
                             </footer>
