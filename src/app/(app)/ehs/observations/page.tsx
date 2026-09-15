@@ -68,6 +68,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { formatDistanceToNow } from 'date-fns';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 /* ------------------------------------------------------------------ */
 /* UTILITIES */
@@ -253,7 +259,7 @@ const CapaStatCard = ({ title, value, icon: Icon, trend, trendColor }: { title: 
 /* ------------------------------------------------------------------ */
 
 export default function EhsObservationsPage() {
-  const { stats, audits, incidents, trainings, observations, addObservation, splitObservation, actionStage, reviewStage, assignStageOwner, addStageComment, addCcToObservation, deleteObservation } = useEhs();
+  const { audits, incidents, trainings, observations, addObservation, splitObservation, actionStage, reviewStage, assignStageOwner, addStageComment, addCcToObservation, deleteObservation } = useEhs();
   const { user, users, getAssignableUsers } = useAuth();
   const { projects } = useGeneral();
   const { toast } = useToast();
@@ -1439,7 +1445,8 @@ export default function EhsObservationsPage() {
                                                 "font-black text-[9px] uppercase tracking-widest border-none px-3 h-5",
                                                 obs.severity === 'Critical' ? 'bg-rose-100 text-rose-700' :
                                                 obs.severity === 'High' ? 'bg-rose-50 text-rose-600' :
-                                                obs.severity === 'Medium' ? 'bg-orange-50 text-orange-600' : 'bg-emerald-50 text-emerald-600'
+                                                obs.severity === 'Medium' ? 'bg-orange-50 text-orange-600' :
+                                                obs.severity === 'Low' ? 'bg-emerald-50 text-emerald-600' : ''
                                             )}>
                                                 {obs.severity}
                                             </Badge>
@@ -1468,7 +1475,23 @@ export default function EhsObservationsPage() {
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuItem onClick={() => setViewingObservationId(obs.id)}>View Details</DropdownMenuItem>
                                                     {user?.role === 'Admin' && (
-                                                        <DropdownMenuItem className="text-rose-600" onClick={() => deleteObservation(obs.id)}>Delete Case</DropdownMenuItem>
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <DropdownMenuItem className="text-rose-600" onSelect={(e) => e.preventDefault()}>Delete Case</DropdownMenuItem>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Delete Safety Case Permanently?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        This action cannot be undone. All technical sub-cases and evidence will be lost.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => deleteObservation(obs.id)} className="bg-rose-600 text-white">Delete Permanently</AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
                                                     )}
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
@@ -1504,7 +1527,7 @@ export default function EhsObservationsPage() {
         </div>
       )}
 
-      {/* SPLIT DIALOG (OMITTED FOR BREVITY - PRESERVED FROM PREVIOUS VERSION) */}
+      {/* SPLIT DIALOG */}
       <Dialog open={isSplitDialogOpen} onOpenChange={(open) => { if (!open) splitForm.reset(); setIsSplitDialogOpen(open); }}>
         <DialogContent className="sm:max-w-4xl h-[95vh] flex flex-col p-0 overflow-hidden">
             <DialogHeader className="px-6 pt-6 shrink-0">
@@ -1512,7 +1535,6 @@ export default function EhsObservationsPage() {
                 <DialogDescription className="font-medium text-slate-500">If this discovery contains multiple distinct issues, split them into sub-cases.</DialogDescription>
             </DialogHeader>
             <div className="flex-1 px-6"><ScrollArea className="h-full w-full pr-4"><form id="split-observation-form" onSubmit={splitForm.handleSubmit(onSplitSubmit)} className="space-y-6 py-4 text-left">
-                {/* Split fields implementation here... */}
                 {splitFields.map((field, index) => (
                     <div key={field.id} className="p-5 border-2 border-slate-200 rounded-xl bg-white space-y-4 shadow-sm">
                         <Label className="font-black uppercase text-[10px]">Sub-Observation #{index+1}</Label>
