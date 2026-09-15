@@ -1,101 +1,104 @@
-
 'use client';
 
 import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { FileText, ShieldAlert, Clock, CheckCircle, Target, ArrowUpRight, TrendingUp } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { 
+    FileText, 
+    ShieldAlert, 
+    Clock, 
+    CheckCircle2, 
+    AlertTriangle,
+    ArrowUpRight,
+    ArrowDownRight
+} from 'lucide-react';
 import type { EhsObservation } from '@/lib/types';
-import { useAuth } from '@/contexts/auth-provider';
+import { cn } from '@/lib/utils';
 
 interface CapaKpiCardsProps {
     observations: EhsObservation[];
-    onFilterChange: (key: string, value: string) => void;
 }
 
-export default function CapaKpiCards({ observations, onFilterChange }: CapaKpiCardsProps) {
-    const { user } = useAuth();
+export default function CapaKpiCards({ observations }: CapaKpiCardsProps) {
+    const stats = useMemo(() => {
+        const total = observations.length;
+        const open = observations.filter(o => o.status !== 'Closed').length;
+        const highRisk = observations.filter(o => o.severity === 'High' || o.severity === 'Critical').length;
+        const inProgress = observations.filter(o => o.status === 'In Progress').length;
+        const closed = observations.filter(o => o.status === 'Closed').length;
+        const overdue = observations.filter(o => {
+            if (o.status === 'Closed') return false;
+            // Simple overdue logic based on age for this mockup
+            const ageDays = Math.floor((Date.now() - new Date(o.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+            return ageDays > 10;
+        }).length;
 
-    const counts = useMemo(() => {
-        const total = observations.filter(o => !o.parentId).length;
-        const open = observations.filter(o => !o.parentId && o.status !== 'Closed').length;
-        const highRisk = observations.filter(o => !o.parentId && (o.severity === 'High' || o.severity === 'Critical')).length;
-        const myActions = observations.filter(o => o.stages?.[o.currentStage]?.assigneeId === user?.id && o.status !== 'Closed').length;
-        const closed = observations.filter(o => !o.parentId && o.status === 'Closed').length;
-        const overdue = observations.filter(o => o.status !== 'Closed' && o.targetDate && new Date(o.targetDate) < new Date()).length;
-
-        return { total, open, highRisk, myActions, closed, overdue };
-    }, [observations, user]);
+        return { total, open, highRisk, inProgress, closed, overdue };
+    }, [observations]);
 
     const cards = [
         { 
             label: 'Total Cases', 
-            value: counts.total, 
-            trend: '+12% vs last month',
+            value: stats.total, 
             icon: FileText, 
+            trend: '+ 12% vs last month', 
+            trendUp: true, 
             color: 'text-blue-600', 
-            bg: 'bg-blue-50', 
-            filter: { key: 'status', val: 'all' } 
+            bg: 'bg-blue-50' 
         },
         { 
             label: 'High Risk', 
-            value: counts.highRisk, 
-            trend: '↑ 5 new',
+            value: stats.highRisk, 
             icon: ShieldAlert, 
+            trend: '↑ 5 new', 
+            trendUp: true, 
             color: 'text-rose-600', 
-            bg: 'bg-rose-50', 
-            filter: { key: 'risk', val: 'High' } 
+            bg: 'bg-rose-50' 
         },
         { 
             label: 'In Progress', 
-            value: counts.open, 
-            trend: '50% of total',
+            value: stats.inProgress, 
             icon: Clock, 
+            trend: '50% of total', 
+            trendUp: false, 
             color: 'text-amber-600', 
-            bg: 'bg-amber-50', 
-            filter: { key: 'status', val: 'Open' } 
+            bg: 'bg-amber-50' 
         },
         { 
             label: 'Closed', 
-            value: counts.closed, 
-            trend: '↑ 8 this month',
-            icon: CheckCircle, 
+            value: stats.closed, 
+            icon: CheckCircle2, 
+            trend: '↑ 8 this month', 
+            trendUp: true, 
             color: 'text-emerald-600', 
-            bg: 'bg-emerald-50', 
-            filter: { key: 'status', val: 'Closed' } 
+            bg: 'bg-emerald-50' 
         },
         { 
             label: 'Overdue', 
-            value: counts.overdue, 
-            trend: 'Needs attention',
-            icon: Target, 
+            value: stats.overdue, 
+            icon: AlertTriangle, 
+            trend: 'Needs attention', 
+            trendUp: true, 
             color: 'text-indigo-600', 
-            bg: 'bg-indigo-50', 
-            filter: { key: 'status', val: 'Overdue' } 
+            bg: 'bg-indigo-50' 
         },
     ];
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
-            {cards.map((card, i) => (
-                <Card 
-                    key={i} 
-                    className="group hover:border-emerald-600/30 cursor-pointer transition-all duration-300 shadow-sm rounded-[1.5rem] overflow-hidden border-slate-100 bg-white"
-                    onClick={() => onFilterChange(card.filter.key, card.filter.val)}
-                >
-                    <CardContent className="p-6">
-                        <div className="flex justify-between items-start mb-4">
-                            <div className={cn("p-3 rounded-2xl group-hover:scale-110 transition-transform duration-300", card.bg, card.color)}>
-                                <card.icon className="h-5 w-5" />
-                            </div>
-                            <div className="text-right">
-                                <span className="text-2xl font-black text-slate-900 tracking-tight">{card.value}</span>
-                            </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+            {cards.map((card, index) => (
+                <Card key={index} className="border-none shadow-sm rounded-[2rem] overflow-hidden group hover:shadow-md transition-all">
+                    <CardContent className="p-6 flex items-center gap-5">
+                        <div className={cn("h-14 w-14 rounded-[1.25rem] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform", card.bg)}>
+                            <card.icon className={cn("h-7 w-7", card.color)} />
                         </div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{card.label}</p>
-                        <div className="mt-2 flex items-center gap-1">
-                            <span className={cn("text-[9px] font-bold uppercase", card.color)}>{card.trend}</span>
+                        <div className="space-y-0.5">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{card.label}</p>
+                            <p className="text-3xl font-black text-slate-900 tracking-tighter">{card.value}</p>
+                            <div className="flex items-center gap-1">
+                                <span className={cn("text-[9px] font-bold flex items-center", card.trendUp ? "text-emerald-600" : "text-slate-400")}>
+                                    {card.trend}
+                                </span>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

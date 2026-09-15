@@ -1,24 +1,50 @@
-
 'use client';
 
 import React from 'react';
-import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, FilterX, MapPin, Tag, ShieldCheck, Clock, Download, RotateCcw, LayoutGrid, ListFilter } from 'lucide-react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import {
+    CalendarDays,
+    Filter,
+    RotateCcw,
+    Download,
+} from 'lucide-react';
 import { useGeneral } from '@/contexts/general-provider';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 
 interface CapaFiltersProps {
-    filters: any;
-    onFilterChange: (f: any) => void;
+    filters: {
+        search: string;
+        category: string;
+        risk: string;
+        status: string;
+        stage: string;
+        site: string;
+        dateRange?: { from?: Date; to?: Date };
+    };
+    onFilterChange: (filters: CapaFiltersProps['filters']) => void;
 }
 
-export default function CapaFilters({ filters, onFilterChange }: CapaFiltersProps) {
+export default function CapaFilters({
+    filters,
+    onFilterChange,
+}: CapaFiltersProps) {
     const { projects } = useGeneral();
 
-    const handleClear = () => {
+    const set = (key: string, value: unknown) => {
+        onFilterChange({
+            ...filters,
+            [key]: value,
+        });
+    };
+
+    const reset = () => {
         onFilterChange({
             search: '',
             category: 'all',
@@ -31,76 +57,105 @@ export default function CapaFilters({ filters, onFilterChange }: CapaFiltersProp
     };
 
     return (
-        <div className="flex flex-col gap-4">
-            {/* Filter Toolbar */}
-            <div className="flex flex-wrap items-center gap-4">
-                <div className="flex-1 min-w-[200px]">
-                    <Select value={filters.category} onValueChange={(v) => onFilterChange({ ...filters, category: v })}>
-                        <SelectTrigger className="h-10 rounded-xl font-bold border-slate-200 bg-white shadow-sm"><SelectValue placeholder="All Categories" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Categories</SelectItem>
-                            <SelectItem value="Unsafe Act">Unsafe Act</SelectItem>
-                            <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
-                            <SelectItem value="Safe Act">Safe Act</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
+        <div className="flex flex-wrap items-center gap-2">
+            <Select
+                value={filters.category}
+                onValueChange={value => set('category', value)}
+            >
+                <SelectTrigger className="h-10 w-[145px] rounded-lg border-slate-200 bg-white text-[12px] font-semibold">
+                    <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="Unsafe Act">Unsafe Act</SelectItem>
+                    <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
+                    <SelectItem value="Safe Act">Safe Act</SelectItem>
+                    <SelectItem value="Near Miss">Near Miss</SelectItem>
+                    <SelectItem value="Environmental">Environmental</SelectItem>
+                </SelectContent>
+            </Select>
 
-                <div className="flex-1 min-w-[150px]">
-                    <Select value={filters.risk} onValueChange={(v) => onFilterChange({ ...filters, risk: v })}>
-                        <SelectTrigger className="h-10 rounded-xl font-bold border-slate-200 bg-white shadow-sm"><SelectValue placeholder="All Risk Levels" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Risk Levels</SelectItem>
-                            <SelectItem value="Low">Low</SelectItem>
-                            <SelectItem value="Medium">Medium</SelectItem>
-                            <SelectItem value="High">High</SelectItem>
-                            <SelectItem value="Critical">Critical</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
+            <Select
+                value={filters.risk}
+                onValueChange={value => set('risk', value)}
+            >
+                <SelectTrigger className="h-10 w-[135px] rounded-lg border-slate-200 bg-white text-[12px] font-semibold">
+                    <SelectValue placeholder="All Risk Levels" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Risk Levels</SelectItem>
+                    <SelectItem value="Low">Low</SelectItem>
+                    <SelectItem value="Medium">Medium</SelectItem>
+                    <SelectItem value="High">High</SelectItem>
+                    <SelectItem value="Critical">Critical</SelectItem>
+                </SelectContent>
+            </Select>
 
-                <div className="flex-1 min-w-[150px]">
-                    <Select value={filters.status} onValueChange={(v) => onFilterChange({ ...filters, status: v })}>
-                        <SelectTrigger className="h-10 rounded-xl font-bold border-slate-200 bg-white shadow-sm"><SelectValue placeholder="All Status" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Status</SelectItem>
-                            <SelectItem value="Open">Open</SelectItem>
-                            <SelectItem value="In Progress">In Progress</SelectItem>
-                            <SelectItem value="Closed">Closed</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
+            <Select
+                value={filters.status}
+                onValueChange={value => set('status', value)}
+            >
+                <SelectTrigger className="h-10 w-[125px] rounded-lg border-slate-200 bg-white text-[12px] font-semibold">
+                    <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="Open">Open</SelectItem>
+                    <SelectItem value="In Progress">In Progress</SelectItem>
+                    <SelectItem value="Returned">Returned</SelectItem>
+                    <SelectItem value="Closed">Closed</SelectItem>
+                    <SelectItem value="Overdue">Overdue</SelectItem>
+                </SelectContent>
+            </Select>
 
-                <div className="flex-1 min-w-[180px]">
-                    <Select value={filters.site} onValueChange={(v) => onFilterChange({ ...filters, site: v })}>
-                        <SelectTrigger className="h-10 rounded-xl font-bold border-slate-200 bg-white shadow-sm"><SelectValue placeholder="All Sites" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Sites</SelectItem>
-                            {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                </div>
+            <Select
+                value={filters.site}
+                onValueChange={value => set('site', value)}
+            >
+                <SelectTrigger className="h-10 w-[130px] rounded-lg border-slate-200 bg-white text-[12px] font-semibold">
+                    <SelectValue placeholder="All Sites" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Sites</SelectItem>
+                    {projects.map(project => (
+                        <SelectItem key={project.id} value={project.id}>
+                            {project.name}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
 
-                <div className="flex-1 min-w-[240px]">
-                    <DateRangePicker 
-                        date={filters.dateRange} 
-                        onDateChange={(range) => onFilterChange({ ...filters, dateRange: range })}
-                        className="h-10 w-full"
-                    />
-                </div>
+            <DateRangePicker
+                date={filters.dateRange}
+                onDateChange={range => set('dateRange', range)}
+                className="h-10 w-[160px] rounded-lg"
+            />
 
-                <Button variant="outline" className="h-10 px-4 rounded-xl border-slate-200 font-bold text-slate-500 shadow-sm">
-                    <ListFilter className="mr-2 h-4 w-4" /> More Filters
+            <Button
+                variant="outline"
+                className="h-10 rounded-lg border-slate-200 px-3 text-[11px] font-bold"
+            >
+                <Filter className="mr-2 h-3.5 w-3.5" />
+                More Filters
+            </Button>
+
+            <div className="ml-auto flex items-center gap-1">
+                <Button
+                    variant="ghost"
+                    onClick={reset}
+                    className="h-10 px-3 text-[10px] font-black uppercase tracking-wider text-slate-500"
+                >
+                    <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                    Reset
                 </Button>
 
-                <div className="flex items-center gap-2 ml-auto">
-                    <Button variant="ghost" className="h-10 font-black uppercase text-[10px] tracking-widest text-slate-400 hover:text-slate-900" onClick={handleClear}>
-                        <RotateCcw className="mr-2 h-4 w-4" /> Reset
-                    </Button>
-                    <Button variant="outline" className="h-10 font-black uppercase text-[10px] tracking-widest border-2 border-slate-200">
-                        <Download className="mr-2 h-4 w-4" /> Export
-                    </Button>
-                </div>
+                <Button
+                    variant="outline"
+                    className="h-10 rounded-lg border-slate-200 px-3 text-[10px] font-black uppercase tracking-wider"
+                >
+                    <Download className="mr-1.5 h-3.5 w-3.5" />
+                    Export
+                </Button>
             </div>
         </div>
     );
