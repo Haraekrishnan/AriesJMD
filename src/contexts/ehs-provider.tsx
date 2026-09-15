@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo } from 'react';
@@ -328,7 +329,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     if (isClosure) {
         toast({ title: 'Safety Case Closed', description: 'All remediation milestones have been achieved.' });
     } else {
-        toast({ title: 'Action Recorded', description: 'Pending Higher Official review.' });
+        toast({ title: 'Action Recorded', description: 'Pending Official Review.' });
     }
   }, [user, toast]);
 

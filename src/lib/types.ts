@@ -1,3 +1,4 @@
+
 import type { User as FirebaseUser } from 'firebase/auth';
 
 // User & Auth
@@ -1210,7 +1211,11 @@ export type EhsObservation = {
   status: EhsObservationStatus;
   createdAt: string;
   closedAt?: string;
+  lastUpdated?: string;
   viewedBy?: { [userId: string]: boolean };
+  
+  targetDate?: string;
+  reworkCount?: number;
 };
 
 export type DeliveryNoteItem = {
