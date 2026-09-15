@@ -610,6 +610,10 @@ export default function EhsObservationsPage() {
                                   ? (!isDone && childObservationsForViewing.some(child => key === child.currentStage))
                                   : (key === viewingObservation.currentStage && viewingObservation.status !== 'Closed');
 
+                                const isReturned = childObservationsForViewing.length > 0
+                                  ? childObservationsForViewing.some(child => child.stages?.[key as CapaStage]?.status === 'Returned')
+                                  : s?.status === 'Returned';
+
                                 const isViewing = activeViewStage === key;
 
                                 return (
@@ -628,14 +632,14 @@ export default function EhsObservationsPage() {
                                         )}
                                         <div className={cn(
                                             "w-6 h-6 rounded flex items-center justify-center border font-black text-[10px]",
-                                            isDone ? "border-emerald-600 text-emerald-600 bg-emerald-50" : "border-slate-200 text-slate-400"
+                                            isDone ? "border-emerald-600 text-emerald-600 bg-emerald-50" : (isReturned ? "border-rose-600 text-rose-600 bg-rose-50" : "border-slate-200 text-slate-400")
                                         )}>
-                                            {isDone ? <Check className="h-3 w-3" /> : idx + 1}
+                                            {isDone ? <Check className="h-3 w-3" /> : (isReturned ? <Undo2 className="h-3 w-3" /> : idx + 1)}
                                         </div>
                                         <div className="flex-1 text-left overflow-hidden">
                                             <p className={cn(
                                                 "text-[9px] font-black uppercase tracking-widest truncate",
-                                                isViewing ? "text-slate-900" : isDone ? "text-emerald-600" : isActive ? "text-blue-600" : "text-slate-500"
+                                                isViewing ? "text-slate-900" : isDone ? "text-emerald-600" : isReturned ? "text-rose-600" : isActive ? "text-blue-600" : "text-slate-500"
                                             )}>{config.label}</p>
                                         </div>
                                     </button>
@@ -764,8 +768,8 @@ export default function EhsObservationsPage() {
                                             </div>
                                             <div className="space-y-1">
                                                 <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Stage Status</Label>
-                                                <Badge className="h-5 text-[9px] font-black uppercase tracking-wider" variant={viewingObservation.stages?.[activeViewStage!]?.status === 'Completed' ? 'success' : 'secondary'}>
-                                                    {viewingObservation.stages?.[activeViewStage!]?.status || 'Pending'}
+                                                <Badge className="h-5 text-[9px] font-black uppercase tracking-wider" variant={viewingObservation.stages?.[activeViewStage!]?.status === 'Completed' ? 'success' : (viewingObservation.stages?.[activeViewStage!]?.status === 'Returned' ? 'destructive' : 'secondary')}>
+                                                    {viewingObservation.stages?.[activeViewStage!]?.status === 'Returned' ? 'RETURNED FOR REWORK' : (viewingObservation.stages?.[activeViewStage!]?.status || 'Pending')}
                                                 </Badge>
                                             </div>
                                         </div>
@@ -795,7 +799,8 @@ export default function EhsObservationsPage() {
                                             {activeViewStage && viewingObservation.stages?.[activeViewStage]?.comments && (
                                                 <div className="space-y-3 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-inner">
                                                     <Label className="text-[10px] font-black uppercase text-emerald-600 tracking-widest flex items-center gap-2 mb-2">
-                                                        <MessageSquare className="h-3.5 w-3.5" /> Discussion & Feedback
+                                                        <MessageSquare className="h-3.5 w-3.5" /> 
+                                                        {viewingObservation.stages?.[activeViewStage].status === 'Completed' ? 'Verified with Comments' : (viewingObservation.stages?.[activeViewStage].status === 'Returned' ? 'Rework Suggested with Comments' : 'Discussion & Feedback')}
                                                     </Label>
                                                     <div className="space-y-4 mb-4">
                                                         {Object.values(viewingObservation.stages[activeViewStage].comments!)
@@ -873,7 +878,7 @@ export default function EhsObservationsPage() {
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                             <div className="space-y-2">
                                                                 <Label className="text-[9px] font-bold uppercase text-slate-400">Who (Personnel involved)</Label>
-                                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
+                                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status !== 'Completed' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
                                                                     <Input 
                                                                         className="h-10 font-bold" 
                                                                         placeholder="Name of personnel involved" 
@@ -886,7 +891,7 @@ export default function EhsObservationsPage() {
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label className="text-[9px] font-bold uppercase text-slate-400">When (Date/Time context)</Label>
-                                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
+                                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status !== 'Completed' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
                                                                     <Input 
                                                                         className="h-10 font-bold" 
                                                                         placeholder="Date and time of discovery details" 
@@ -899,7 +904,7 @@ export default function EhsObservationsPage() {
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label className="text-[9px] font-bold uppercase text-slate-400">Where (Specific area/location)</Label>
-                                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
+                                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status !== 'Completed' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
                                                                     <Input 
                                                                         className="h-10 font-bold" 
                                                                         placeholder="Detailed location" 
@@ -912,7 +917,7 @@ export default function EhsObservationsPage() {
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label className="text-[9px] font-bold uppercase text-slate-400">How (Sequence of events/method)</Label>
-                                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
+                                                                {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status !== 'Completed' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
                                                                     <Input 
                                                                         className="h-10 font-bold" 
                                                                         placeholder="How did it occur?" 
@@ -926,7 +931,7 @@ export default function EhsObservationsPage() {
                                                         </div>
                                                         <div className="space-y-2 pt-2">
                                                             <Label className="text-[9px] font-bold uppercase text-slate-400">Additional Investigation Details</Label>
-                                                            {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
+                                                            {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage]?.status !== 'Completed' && user?.id === viewingObservation.stages?.[activeViewStage]?.assigneeId ? (
                                                                 <RichNarrativeEditor 
                                                                     value={actionData.notes || ''} 
                                                                     onChange={(html) => setActionData({ ...actionData, notes: html })}
@@ -950,7 +955,7 @@ export default function EhsObservationsPage() {
                                                         <Label className="text-[10px] font-black uppercase tracking-widest text-slate-900">
                                                             {activeViewStage} Technical Narrative
                                                         </Label>
-                                                        {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage!]?.status === 'Pending' && user?.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId ? (
+                                                        {activeViewStage === viewingObservation.currentStage && viewingObservation.stages?.[activeViewStage!]?.status !== 'Completed' && user?.id === viewingObservation.stages?.[activeViewStage!]?.assigneeId ? (
                                                             <div className="space-y-4">
                                                                 <RichNarrativeEditor 
                                                                     value={actionData.notes || ''} 
