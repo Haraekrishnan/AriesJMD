@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { TpCertList, InventoryItem, UTMachine, DftMachine, Anemometer, DigitalCamera, OtherEquipment, LaptopDesktop, MobileSim, WeldingMachine, WalkieTalkie, PneumaticDrillingMachine, PneumaticAngleGrinder, WiredDrillingMachine, CordlessDrillingMachine, WiredAngleGrinder, CordlessAngleGrinder, CordlessReciprocatingSaw } from '@/lib/types';
+import type { TpCertList, InventoryItem, UTMachine, DftMachine, Anemometer, DigitalCamera, OtherEquipment, LaptopDesktop, MobileSim, WeldingMachine, WalkieTalkie } from '@/lib/types';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { parseISO, isValid, isAfter } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
@@ -18,7 +18,7 @@ import { useInventory } from '@/contexts/inventory-provider';
 
 interface EditableItem {
   itemId: string;
-  itemType: string;
+  itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'Anemometer' | 'DigitalCamera' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim' | 'WeldingMachine' | 'WalkieTalkie';
   materialName: string;
   manufacturerSrNo: string;
   tpInspectionDueDate: Date | null;
@@ -35,10 +35,8 @@ interface UpdateCertValidityDialogProps {
 export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }: UpdateCertValidityDialogProps) {
   const { 
       inventoryItems, utMachines, dftMachines, anemometers, digitalCameras, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies,
-      pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws,
       updateInventoryItem, updateUTMachine, updateDftMachine, updateAnemometer, updateDigitalCamera, updateOtherEquipment, updateLaptopDesktop, updateMobileSim,
-      updateWeldingMachine, updateWalkieTalkie,
-      updatePneumaticDrillingMachine, updatePneumaticAngleGrinder, updateWiredDrillingMachine, updateCordlessDrillingMachine, updateWiredAngleGrinder, updateCordlessAngleGrinder, updateCordlessReciprocatingSaw
+      updateWeldingMachine, updateWalkieTalkie
   } = useInventory();
   const { toast } = useToast();
 
@@ -49,9 +47,8 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
 
   useEffect(() => {
     if (certList && isOpen) {
-      const allItems: any[] = [
-        ...inventoryItems, ...utMachines, ...dftMachines, ...anemometers, ...digitalCameras, ...otherEquipments, ...laptopsDesktops, ...mobileSims, ...weldingMachines, ...walkieTalkies,
-        ...pneumaticDrillingMachines, ...pneumaticAngleGrinders, ...wiredDrillingMachines, ...cordlessDrillingMachines, ...wiredAngleGrinders, ...cordlessAngleGrinders, ...cordlessReciprocatingSaws
+      const allItems: (InventoryItem | UTMachine | DftMachine | Anemometer | DigitalCamera | OtherEquipment | LaptopDesktop | MobileSim | WeldingMachine | WalkieTalkie)[] = [
+        ...inventoryItems, ...utMachines, ...dftMachines, ...anemometers, ...digitalCameras, ...otherEquipments, ...laptopsDesktops, ...mobileSims, ...weldingMachines, ...walkieTalkies
       ];
 
       const itemsWithData: EditableItem[] = certList.items.map((listItem, index) => {
@@ -75,7 +72,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
       setBulkDate(undefined);
       setBulkLink('');
     }
-  }, [certList, isOpen, inventoryItems, utMachines, dftMachines, anemometers, digitalCameras, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies, pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws]);
+  }, [certList, isOpen, inventoryItems, utMachines, dftMachines, anemometers, digitalCameras, otherEquipments, laptopsDesktops, mobileSims, weldingMachines, walkieTalkies]);
   
   const groupedItems = useMemo(() => {
     return items.reduce((acc, item) => {
@@ -91,11 +88,6 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
     const newItems = [...items];
     (newItems[index] as any)[field] = value;
     setItems(newItems);
-    
-    // Auto-select the row when it's edited to ensure changes are saved
-    const newSelected = new Set(selectedIndices);
-    newSelected.add(index);
-    setSelectedIndices(newSelected);
   };
   
   const handleBulkApply = () => {
@@ -128,9 +120,8 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
     }
 
     let updatedCount = 0;
-    const allItemsFromContext: any[] = [
-      ...inventoryItems, ...utMachines, ...dftMachines, ...anemometers, ...digitalCameras, ...otherEquipments, ...laptopsDesktops, ...mobileSims, ...weldingMachines, ...walkieTalkies,
-      ...pneumaticDrillingMachines, ...pneumaticAngleGrinders, ...wiredDrillingMachines, ...cordlessDrillingMachines, ...wiredAngleGrinders, ...cordlessAngleGrinders, ...cordlessReciprocatingSaws
+    const allItemsFromContext: (InventoryItem | UTMachine | DftMachine | Anemometer | DigitalCamera | OtherEquipment | LaptopDesktop | MobileSim | WeldingMachine | WalkieTalkie)[] = [
+      ...inventoryItems, ...utMachines, ...dftMachines, ...anemometers, ...digitalCameras, ...otherEquipments, ...laptopsDesktops, ...mobileSims, ...weldingMachines, ...walkieTalkies
     ];
 
     selectedIndices.forEach(index => {
@@ -149,6 +140,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
         updateData.status = 'In Store';
       }
 
+
       try {
         switch(itemToUpdate.itemType) {
             case 'Inventory': updateInventoryItem(updateData as InventoryItem); break;
@@ -161,17 +153,15 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
             case 'MobileSim': updateMobileSim(updateData as MobileSim); break;
             case 'WeldingMachine': updateWeldingMachine(updateData as WeldingMachine); break;
             case 'WalkieTalkie': updateWalkieTalkie(updateData as WalkieTalkie); break;
-            case 'PneumaticDrillingMachine': updatePneumaticDrillingMachine(updateData as PneumaticDrillingMachine); break;
-            case 'PneumaticAngleGrinder': updatePneumaticAngleGrinder(updateData as PneumaticAngleGrinder); break;
-            case 'WiredDrillingMachine': updateWiredDrillingMachine(updateData as WiredDrillingMachine); break;
-            case 'CordlessDrillingMachine': updateCordlessDrillingMachine(updateData as CordlessDrillingMachine); break;
-            case 'WiredAngleGrinder': updateWiredAngleGrinder(updateData as WiredAngleGrinder); break;
-            case 'CordlessAngleGrinder': updateCordlessAngleGrinder(updateData as CordlessAngleGrinder); break;
-            case 'CordlessReciprocatingSaw': updateCordlessReciprocatingSaw(updateData as CordlessReciprocatingSaw); break;
         }
         updatedCount++;
       } catch (error) {
         console.error(`Failed to update item ${itemToUpdate.itemId}:`, error);
+        toast({
+          title: `Error updating ${itemToUpdate.materialName}`,
+          description: (error as Error).message || "Could not save changes for this item.",
+          variant: 'destructive',
+        });
       }
     });
 
@@ -224,7 +214,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
                 <Input value={bulkLink} onChange={e => setBulkLink(e.target.value)} placeholder="https://..." />
             </div>
              <div className="flex items-end">
-                <Button onClick={handleBulkApply} className="bg-blue-600 hover:bg-blue-700 text-white">Apply to Selected</Button>
+                <Button onClick={handleBulkApply}>Apply to Selected</Button>
             </div>
         </div>
 
@@ -262,7 +252,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
                       </TableHeader>
                       <TableBody>
                         {groupItems.map((item) => (
-                          <TableRow key={`${item.itemId}-${item.originalIndex}`}>
+                          <TableRow key={item.itemId}>
                             <TableCell>
                                 <Checkbox checked={selectedIndices.has(item.originalIndex)} onCheckedChange={() => handleRowSelect(item.originalIndex)} />
                             </TableCell>
@@ -293,9 +283,11 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
         </ScrollArea>
         <DialogFooter className="pt-4 mt-auto border-t">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white">Save Changes to Selected ({selectedIndices.size})</Button>
+            <Button onClick={handleSave}>Save Changes to Selected ({selectedIndices.size})</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
+    
