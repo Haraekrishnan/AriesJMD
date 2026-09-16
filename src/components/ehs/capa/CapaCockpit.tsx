@@ -11,7 +11,8 @@ import {
     User,
     Calendar,
     Search,
-    ShieldCheck
+    ShieldCheck,
+    Upload
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -57,56 +58,61 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
 
     return (
         <div className="fixed inset-0 z-50 flex flex-col bg-[#F3F7FB] text-slate-900 font-sans overflow-hidden">
-            {/* --- 1. CASE HEADER --- */}
-            <header className="h-[82px] shrink-0 bg-white border-b border-slate-200 px-8 flex items-center justify-between z-30">
+            {/* --- 1. CASE HEADER - NAVY THEMED IDENTITY STRIP --- */}
+            <header className="h-[82px] shrink-0 bg-[#0F172A] border-b border-white/10 px-8 flex items-center justify-between z-30 text-white shadow-xl">
                 <div className="flex items-center gap-6 min-w-0">
-                    <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 text-slate-400 hover:text-slate-900 border-2">
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={onClose} 
+                        className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10 border border-white/20 rounded-lg"
+                    >
                         <ChevronLeft className="h-6 w-6" />
                     </Button>
-                    <div className="min-w-0">
+                    <div className="min-w-0 text-left">
                         <div className="flex items-center gap-3 mb-1">
-                            <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">
+                            <h1 className="text-xl font-black tracking-tight uppercase text-white">
                                 CAPA-26-{observation.id.slice(-5).toUpperCase()}
                             </h1>
                             <Badge variant="outline" className={cn(
-                                "font-black uppercase text-[9px] tracking-widest h-5 px-3 border-2",
-                                observation.severity === 'High' || observation.severity === 'Critical' ? "bg-rose-50 text-rose-600 border-rose-100" : "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                "font-black uppercase text-[9px] tracking-widest h-5 px-3 border-2 text-white",
+                                observation.severity === 'High' || observation.severity === 'Critical' ? "bg-rose-600 border-rose-500" : "bg-emerald-600 border-emerald-500"
                             )}>
                                 {observation.severity} RISK
                             </Badge>
-                            <Badge className="bg-blue-600 text-white font-black text-[9px] h-5 uppercase px-3 rounded-sm">{observation.status}</Badge>
+                            <Badge className="bg-blue-600 text-white font-black text-[9px] h-5 uppercase px-3 rounded-sm border-none">{observation.status}</Badge>
                         </div>
-                        <p className="text-sm font-bold text-slate-500 truncate max-w-3xl uppercase tracking-tight" title={sanitizedDescription}>
+                        <p className="text-sm font-bold text-slate-300 truncate max-w-3xl uppercase tracking-tight" title={sanitizedDescription}>
                             {sanitizedDescription}
                         </p>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-8 shrink-0">
-                    <div className="text-right hidden xl:block border-r pr-8">
+                    <div className="text-right hidden xl:block border-r border-white/10 pr-8">
                         <div className="flex items-center gap-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                            <span className="flex items-center gap-1.5"><MapPin className="h-3 w-3 text-blue-500" /> {project?.name || 'N/A'}</span>
-                            <span className="flex items-center gap-1.5"><User className="h-3 w-3 text-emerald-500" /> {reporter?.name || 'N/A'}</span>
+                            <span className="flex items-center gap-1.5"><MapPin className="h-3 w-3 text-blue-400" /> {project?.name || 'N/A'}</span>
+                            <span className="flex items-center gap-1.5"><User className="h-3 w-3 text-emerald-400" /> {reporter?.name || 'N/A'}</span>
                             <span className="flex items-center gap-1.5"><Calendar className="h-3 w-3 text-slate-400" /> {format(parseISO(observation.createdAt), 'dd MMM yyyy')}</span>
-                            <span className="flex items-center gap-1.5 text-rose-600 font-black"><Clock className="h-3 w-3" /> {daysOpen} DAYS OPEN</span>
+                            <span className="flex items-center gap-1.5 text-rose-400 font-black"><Clock className="h-3 w-3" /> {daysOpen} DAYS OPEN</span>
                         </div>
                     </div>
                     <div className="flex gap-2">
-                        <Button variant="outline" className="h-10 px-4 rounded-lg border-2 font-black text-[10px] uppercase tracking-widest text-slate-700 gap-2 hover:bg-slate-50">
+                        <Button variant="outline" className="h-10 px-4 rounded-lg border-white/20 bg-white/5 text-white font-black text-[10px] uppercase tracking-widest gap-2 hover:bg-white/10">
                             <MessageSquare className="h-4 w-4" /> Comment
                         </Button>
-                        <Button variant="outline" className="h-10 px-4 rounded-lg border-2 font-black text-[10px] uppercase tracking-widest text-slate-700 gap-2 hover:bg-slate-50">
-                            <LinkIcon className="h-4 w-4" /> Evidence
+                        <Button variant="outline" className="h-10 px-4 rounded-lg border-white/20 bg-white/5 text-white font-black text-[10px] uppercase tracking-widest gap-2 hover:bg-white/10">
+                            <Upload className="h-4 w-4" /> Evidence
                         </Button>
-                        <Button variant="outline" size="icon" className="h-10 w-10 rounded-lg border-2">
-                            <MoreVertical className="h-4 w-4 text-slate-400" />
+                        <Button variant="outline" size="icon" className="h-10 w-10 rounded-lg border-white/20 bg-white/5 text-white hover:bg-white/10">
+                            <MoreVertical className="h-4 w-4" />
                         </Button>
                     </div>
                 </div>
             </header>
 
             {/* --- 2. LIFECYCLE STEPPER PANEL --- */}
-            <section className="h-[80px] shrink-0 bg-white border-b border-slate-200 px-8 flex items-center z-20">
+            <section className="h-[80px] shrink-0 bg-white border-b border-slate-200 px-8 flex items-center z-20 shadow-sm">
                 <CapaLifecycleStepper 
                     observation={observation} 
                     viewingStage={viewingStage} 
@@ -117,7 +123,7 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
             {/* --- 3. COCKPIT TECHNICAL WORKSPACE --- */}
             <div className="flex-1 flex overflow-hidden">
                 {/* LEFT: WORKFLOW SIDEBAR */}
-                <aside className="w-[220px] shrink-0 bg-[#F8FAFC] border-r border-slate-200 flex flex-col overflow-hidden">
+                <aside className="w-[220px] shrink-0 bg-[#F8FAFC] border-r border-slate-200 flex flex-col overflow-hidden shadow-[inset_-1px_0_0_rgba(0,0,0,0.05)]">
                     <CapaWorkflowSidebar 
                         observation={observation} 
                         viewingStage={viewingStage} 
@@ -143,7 +149,7 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                 </main>
 
                 {/* RIGHT: INTELLIGENCE SIDEBAR */}
-                <aside className="w-[300px] shrink-0 bg-white border-l border-slate-200 flex flex-col overflow-hidden">
+                <aside className="w-[300px] shrink-0 bg-white border-l border-slate-200 flex flex-col overflow-hidden shadow-[inset_1px_0_0_rgba(0,0,0,0.05)]">
                     <CapaCaseInformation observation={observation} />
                 </aside>
             </div>

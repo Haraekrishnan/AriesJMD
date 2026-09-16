@@ -29,6 +29,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { format, parseISO, isValid, differenceInDays } from 'date-fns';
 
 export default function CapaCaseInformation({ observation }: { observation: EhsObservation }) {
     const { users } = useAuth();
@@ -46,7 +47,7 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
 
     const healthStatus = useMemo(() => {
         if (observation.status === 'Closed') return { label: 'ON TRACK', color: 'text-emerald-600', bg: 'bg-emerald-50' };
-        if (daysOpen > 15 || observation.severity === 'Critical') return { label: 'CRITICAL', color: 'text-rose-600', bg: 'bg-rose-50' };
+        if (daysOpen > 14 || observation.severity === 'Critical') return { label: 'CRITICAL', color: 'text-rose-600', bg: 'bg-rose-50' };
         if (daysOpen > 7 || observation.severity === 'High') return { label: 'AT RISK', color: 'text-amber-600', bg: 'bg-amber-50' };
         return { label: 'ON TRACK', color: 'text-blue-600', bg: 'bg-blue-50' };
     }, [observation.status, observation.severity, daysOpen]);
@@ -83,8 +84,8 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
                         </div>
                         
                         <div className="grid grid-cols-3 gap-2">
-                            <HealthMetric label="Stage Age" value="0D" />
-                            <HealthMetric label="Reworks" value="0" />
+                            <HealthMetric label="Stage Age" value={`${differenceInDays(new Date(), parseISO(observation.lastUpdated || observation.createdAt))}D`} />
+                            <HealthMetric label="Reworks" value={`${observation.reworkCount || 0}`} />
                             <HealthMetric label="Overdue" value="0" />
                         </div>
                     </div>
@@ -109,7 +110,7 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
                                 <AvatarFallback className="bg-blue-50 text-blue-600 text-[10px] font-black">{currentOwner.name?.[0]}</AvatarFallback>
                             </Avatar>
                         )}
-                        <div className="h-10 w-10 rounded-full border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50/50">
+                        <div className="h-10 w-10 rounded-full border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50/50 cursor-pointer hover:bg-slate-100 transition-colors">
                             <PlusCircle className="h-4 w-4 text-slate-300" />
                         </div>
                     </div>
@@ -120,31 +121,17 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
                     <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-2 px-1">
                         <Target className="h-3.5 w-3.5" /> Stage Guidance
                     </h4>
-                    <div className="p-5 bg-blue-600 rounded-2xl text-white shadow-xl shadow-blue-600/20 relative overflow-hidden group">
+                    <div className="p-5 bg-slate-900 rounded-2xl text-white shadow-xl relative overflow-hidden group">
                         <div className="absolute top-0 right-0 -mr-6 -mt-6 h-20 w-20 bg-white/10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-1000" />
                         <div className="relative z-10 space-y-4">
                             <div className="flex items-start gap-3">
                                 <div className="h-7 w-7 rounded-lg bg-white/20 flex items-center justify-center shrink-0"><Zap className="h-4 w-4" /></div>
                                 <div className="space-y-1">
                                     <p className="text-[11px] font-black uppercase tracking-tight">Active Lifecycle Instruction</p>
-                                    <p className="text-[9px] font-medium opacity-80 leading-relaxed uppercase tracking-tight">Complete the technical methodology required for this specific milestone.</p>
+                                    <p className="text-[9px] font-medium opacity-80 leading-relaxed uppercase tracking-tight">
+                                        {getGuidance(observation.currentStage)}
+                                    </p>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* --- RECENT ACTIVITY --- */}
-                <div className="space-y-3">
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-2 px-1">
-                        <Activity className="h-3.5 w-3.5" /> Timeline
-                    </h4>
-                    <div className="space-y-4 p-1">
-                        <div className="flex gap-3">
-                            <div className="w-1 bg-emerald-500 rounded-full shrink-0" />
-                            <div>
-                                <p className="text-[10px] font-black text-slate-900 uppercase">Case Initiated</p>
-                                <p className="text-[9px] font-bold text-slate-400 uppercase">{format(parseISO(observation.createdAt), 'dd MMM, p')}</p>
                             </div>
                         </div>
                     </div>
@@ -152,6 +139,15 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
             </div>
         </ScrollArea>
     );
+}
+
+function getGuidance(stage: string) {
+    switch(stage) {
+        case 'Investigation': return 'Perform technical root cause analysis using 5-Whys and collect field evidence.';
+        case 'Resolution': return 'Define permanent corrective actions and assign responsible technical owners.';
+        case 'Implementation': return 'Execute approved actions and document field evidence with photos.';
+        default: return 'Complete the technical methodology required for this specific milestone.';
+    }
 }
 
 function InfoRow({ label, value, isRisk = false, risk = '', isBlue = false, isLast = false }: { label: string, value?: string | null, isRisk?: boolean, risk?: string, isBlue?: boolean, isLast?: boolean }) {
@@ -180,16 +176,4 @@ function HealthMetric({ label, value }: { label: string, value: string }) {
             <p className="text-[11px] font-black text-slate-900">{value}</p>
         </div>
     );
-}
-
-function parseISO(s: string) {
-    return new Date(s);
-}
-
-function isValid(d: Date) {
-    return d instanceof Date && !isNaN(d.getTime());
-}
-
-function differenceInDays(a: Date, b: Date) {
-    return Math.floor((a.getTime() - b.getTime()) / (1000 * 60 * 60 * 24));
 }
