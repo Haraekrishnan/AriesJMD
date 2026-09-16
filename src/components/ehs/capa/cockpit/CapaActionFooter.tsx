@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Save, Send, MessageSquare, ShieldAlert, CheckCircle2, Lock, Eye, ArrowRight } from 'lucide-react';
 import type { EhsObservation, CapaStage } from '@/lib/types';
