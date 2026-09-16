@@ -4,6 +4,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import type { EhsObservation } from '@/lib/types';
 import { useEhs } from '@/contexts/ehs-provider';
 import { Button } from '@/components/ui/button';
@@ -40,7 +41,7 @@ export default function CapaClosure({ observation, isLocked }: { observation: Eh
                         <StatItem label="Milestones Verified" value="6 of 7" icon={CheckCircle2} />
                         <div className="space-y-1.5">
                             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Lifecycle State</p>
-                            <Badge className="bg-blue-500 font-black uppercase text-[10px] h-6 px-4">VALIDATED</Badge>
+                            <Badge className="bg-blue-500 font-black uppercase text-[10px] h-6 px-4 border-none">VALIDATED</Badge>
                         </div>
                     </div>
 
@@ -81,4 +82,3 @@ function StatItem({ label, value, icon: Icon }: { label: string, value: string, 
         </div>
     );
 }
-
