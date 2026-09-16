@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
@@ -63,8 +64,12 @@ const statusStyles: Record<string, string> = {
 // Helper: Strip HTML and images for header display
 const stripHtml = (html: string) => {
     if (!html) return '';
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    return doc.body.textContent || "";
+    try {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        return doc.body.textContent || "";
+    } catch (e) {
+        return html;
+    }
 };
 
 export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) {
