@@ -2,7 +2,6 @@
 
 import React, { useMemo } from 'react';
 import { 
-    Activity, 
     ShieldCheck, 
     Clock, 
     MapPin, 
@@ -19,6 +18,12 @@ import type { EhsObservation } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 export default function CapaCaseInformation({ observation }: { observation: EhsObservation }) {
     const { users } = useAuth();
@@ -128,7 +133,7 @@ function InfoRow({ label, value, isRisk = false, risk = '', isBlue = false, isLa
                     risk === 'Medium' && "bg-amber-50 text-amber-600 border-amber-100",
                     risk === 'High' && "bg-rose-50 text-rose-600 border-rose-100",
                     risk === 'Critical' && "bg-rose-100 text-rose-900 border-rose-200"
-                )}>{value}</span>
+                )}>{value}</Badge>
             ) : (
                 <span className={cn("font-bold text-slate-900 uppercase truncate max-w-[150px]", isBlue && "text-blue-600")}>{value || '—'}</span>
             )}
