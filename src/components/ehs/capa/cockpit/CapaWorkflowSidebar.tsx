@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { Check, Circle, AlertTriangle, ShieldCheck } from 'lucide-react';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
+import { Progress } from '@/components/ui/progress';
 
 const STAGES: CapaStage[] = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];
 
@@ -18,8 +19,8 @@ export default function CapaWorkflowSidebar({ observation, viewingStage, onStage
     const { users } = useAuth();
 
     const progress = useMemo(() => {
-        const completed = STAGES.filter(s => observation.stages[s]?.status === 'Completed').length;
-        return Math.round((completed / STAGES.length) * 100);
+        const completedCount = STAGES.filter(s => observation.stages[s]?.status === 'Completed').length;
+        return Math.round((completedCount / STAGES.length) * 100);
     }, [observation]);
 
     return (
@@ -34,13 +35,11 @@ export default function CapaWorkflowSidebar({ observation, viewingStage, onStage
                         <span className="text-[9px] font-black text-blue-900 uppercase">Total Progress</span>
                         <span className="text-lg font-black text-blue-600">{progress}%</span>
                     </div>
-                    <div className="h-2 w-full bg-blue-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-600 transition-all duration-1000" style={{ width: `${progress}%` }} />
-                    </div>
+                    <Progress value={progress} className="h-2 bg-blue-100" />
                 </div>
             </div>
 
-            <nav className="flex-1 space-y-1 px-3">
+            <div className="flex-1 px-3 space-y-1">
                 {STAGES.map((stage, i) => {
                     const sData = observation.stages[stage];
                     const isCurrent = observation.currentStage === stage;
@@ -91,14 +90,14 @@ export default function CapaWorkflowSidebar({ observation, viewingStage, onStage
                         </div>
                     );
                 })}
-            </nav>
+            </div>
 
             <div className="px-6 mt-8">
                 <div className="p-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/50">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Status Summary</p>
-                    <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-bold text-slate-600">Stages Done:</span>
-                        <span className="text-xs font-black text-slate-900">{STAGES.filter(s => observation.stages[s]?.status === 'Completed').length} / 7</span>
+                    <div className="flex justify-between items-center text-[10px]">
+                        <span className="font-bold text-slate-600">Stages Done:</span>
+                        <span className="font-black text-slate-900">{STAGES.filter(s => observation.stages[s]?.status === 'Completed').length} / 7</span>
                     </div>
                 </div>
             </div>

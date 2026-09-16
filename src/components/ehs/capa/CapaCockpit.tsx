@@ -11,7 +11,9 @@ import {
     MapPin,
     User,
     Calendar,
-    ArrowRight
+    ArrowRight,
+    Search,
+    ShieldCheck
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -48,6 +50,7 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
         return isValid(created) ? Math.max(0, differenceInDays(new Date(), created)) : 0;
     }, [observation.createdAt]);
 
+    // Sanitized narrative for header (removing HTML images etc)
     const sanitizedDescription = useMemo(() => {
         if (!observation.description) return '';
         return observation.description.replace(/<[^>]*>/g, ' ').trim();
@@ -55,7 +58,7 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
 
     return (
         <div className="fixed inset-0 z-50 flex flex-col bg-[#F3F7FB] text-slate-900 font-sans overflow-hidden">
-            {/* --- CASE HEADER --- */}
+            {/* --- 1. CASE HEADER --- */}
             <header className="h-[82px] shrink-0 bg-white border-b border-slate-200 px-8 flex items-center justify-between z-30">
                 <div className="flex items-center gap-6 min-w-0">
                     <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 text-slate-400 hover:text-slate-900 border-2">
@@ -103,7 +106,7 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                 </div>
             </header>
 
-            {/* --- LIFECYCLE STEPPER PANEL --- */}
+            {/* --- 2. LIFECYCLE STEPPER PANEL --- */}
             <section className="h-[80px] shrink-0 bg-white border-b border-slate-200 px-8 flex items-center z-20">
                 <CapaLifecycleStepper 
                     observation={observation} 
@@ -112,7 +115,7 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                 />
             </section>
 
-            {/* --- COCKPIT TECHNICAL WORKSPACE --- */}
+            {/* --- 3. COCKPIT TECHNICAL WORKSPACE --- */}
             <div className="flex-1 flex overflow-hidden">
                 {/* LEFT: WORKFLOW SIDEBAR */}
                 <aside className="w-[220px] shrink-0 bg-[#F8FAFC] border-r border-slate-200 flex flex-col overflow-hidden">
@@ -124,9 +127,9 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                 </aside>
 
                 {/* CENTER: DOMINANT WORKSPACE */}
-                <main className="flex-1 flex flex-col overflow-hidden relative">
-                    <ScrollArea className="flex-1">
-                        <div className="w-full p-8 pb-32">
+                <main className="flex-1 flex flex-col overflow-hidden">
+                    <ScrollArea className="flex-1 bg-[#F5F8FC]/50">
+                        <div className="p-10">
                             <CapaStageWorkspace 
                                 observation={observation} 
                                 stage={viewingStage} 
@@ -134,7 +137,7 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                         </div>
                     </ScrollArea>
 
-                    {/* --- RIGID ACTION FOOTER --- */}
+                    {/* --- BOTTOM ACTION BAR --- */}
                     <footer className="h-20 shrink-0 bg-white border-t border-slate-200 px-8 flex items-center z-30 shadow-[0_-4px_15px_rgba(0,0,0,0.02)]">
                         <CapaActionFooter observation={observation} stage={viewingStage} />
                     </footer>

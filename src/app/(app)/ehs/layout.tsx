@@ -149,7 +149,7 @@ export default function EhsLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-hidden relative flex flex-col">
+      <main className="flex-1 overflow-hidden relative flex flex-col bg-[#F3F7FB]">
         <div className="flex-1 overflow-y-auto">
             <div className="animate-in fade-in duration-700 h-full">
             {children}

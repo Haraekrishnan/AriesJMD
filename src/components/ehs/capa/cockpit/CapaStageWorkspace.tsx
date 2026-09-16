@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Lock, ShieldCheck, AlertTriangle, Info, Clock, User, Zap } from 'lucide-react';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
@@ -54,7 +53,7 @@ export default function CapaStageWorkspace({ observation, stage }: Props) {
                     <div className="space-y-1">
                         <p className="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em]">Lifecycle Rework Instructed</p>
                         <p className="text-sm font-bold text-rose-900 italic leading-relaxed">
-                            "{sData?.comments ? Object.values(sData.comments).reverse().find(c => c.text.includes('[REWORK]'))?.text.replace('[REWORK]', '').trim() : 'Technical data requires clarification.'}"
+                            "{sData?.comments ? Object.values(sData.comments).reverse()[0]?.text : 'Technical data requires clarification.'}"
                         </p>
                     </div>
                 </div>
