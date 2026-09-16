@@ -105,9 +105,9 @@ export default function CapaWorkflowSidebar({ observation, viewingStage, onStage
                                             )}
                                         </div>
                                         {isCurrent && assignee && (
-                                            <p className="text-[10px] font-bold text-blue-600/80 truncate mt-1.5 flex items-center gap-1">
+                                            <div className="text-[10px] font-bold text-blue-600/80 truncate mt-1.5 flex items-center gap-1">
                                                 <div className="h-1 w-1 rounded-full bg-blue-600" /> {assignee.name.toUpperCase()}
-                                            </p>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
