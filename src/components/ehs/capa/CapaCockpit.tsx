@@ -7,22 +7,20 @@ import {
     Link as LinkIcon, 
     MoreVertical, 
     Clock, 
-    Target,
     MapPin,
     User,
     Calendar,
-    ArrowRight,
     Search,
     ShieldCheck
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Cockpit Sub-components
 import CapaLifecycleStepper from './cockpit/CapaLifecycleStepper';
@@ -50,9 +48,10 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
         return isValid(created) ? Math.max(0, differenceInDays(new Date(), created)) : 0;
     }, [observation.createdAt]);
 
-    // Sanitized narrative for header (removing HTML images etc)
+    // Sanitized narrative for header
     const sanitizedDescription = useMemo(() => {
         if (!observation.description) return '';
+        // Strip HTML tags safely
         return observation.description.replace(/<[^>]*>/g, ' ').trim();
     }, [observation.description]);
 
@@ -89,7 +88,7 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                             <span className="flex items-center gap-1.5"><MapPin className="h-3 w-3 text-blue-500" /> {project?.name || 'N/A'}</span>
                             <span className="flex items-center gap-1.5"><User className="h-3 w-3 text-emerald-500" /> {reporter?.name || 'N/A'}</span>
                             <span className="flex items-center gap-1.5"><Calendar className="h-3 w-3 text-slate-400" /> {format(parseISO(observation.createdAt), 'dd MMM yyyy')}</span>
-                            <span className="flex items-center gap-1.5 text-rose-600"><Clock className="h-3 w-3" /> {daysOpen} Days Open</span>
+                            <span className="flex items-center gap-1.5 text-rose-600 font-black"><Clock className="h-3 w-3" /> {daysOpen} DAYS OPEN</span>
                         </div>
                     </div>
                     <div className="flex gap-2">
@@ -128,8 +127,8 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
 
                 {/* CENTER: DOMINANT WORKSPACE */}
                 <main className="flex-1 flex flex-col overflow-hidden">
-                    <ScrollArea className="flex-1 bg-[#F5F8FC]/50">
-                        <div className="p-10">
+                    <ScrollArea className="flex-1 bg-[#F3F7FB]">
+                        <div className="p-8">
                             <CapaStageWorkspace 
                                 observation={observation} 
                                 stage={viewingStage} 

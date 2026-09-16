@@ -2,11 +2,12 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Save, Send, MessageSquare, ShieldAlert, CheckCircle2, Lock, Eye } from 'lucide-react';
+import { Save, Send, MessageSquare, ShieldAlert, CheckCircle2, Lock, Eye, ArrowRight } from 'lucide-react';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useEhs } from '@/contexts/ehs-provider';
 import { useAuth } from '@/contexts/auth-provider';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 interface Props {
     observation: EhsObservation;
@@ -24,25 +25,39 @@ export default function CapaActionFooter({ observation, stage }: Props) {
     const isLocked = isCompleted || isSubmitted;
     const isAssignee = user?.id === sData?.assigneeId;
 
+    const buttonLabel = useMemo(() => {
+        switch(stage) {
+            case 'Investigation': return 'SUBMIT INVESTIGATION';
+            case 'Resolution': return 'SUBMIT RESOLUTION';
+            case 'Implementation': return 'SUBMIT IMPLEMENTATION';
+            case 'Effectiveness Review': return 'APPROVE EFFECTIVENESS';
+            case 'Reference': return 'SUBMIT REFERENCE';
+            case 'Closure': return 'CLOSE CAPA';
+            default: return 'SUBMIT PHASE';
+        }
+    }, [stage]);
+
     return (
-        <div className="flex items-center justify-between w-full">
+        <div className="flex items-center justify-between w-full h-full">
             <div className="flex items-center gap-8">
-                <div className="flex items-center gap-3 px-4 py-1.5 bg-slate-50 border rounded-lg shadow-inner">
+                <div className="flex items-center gap-3">
                     <div className={cn(
                         "h-2 w-2 rounded-full",
-                        isCompleted ? "bg-emerald-500" : isSubmitted ? "bg-amber-500" : "bg-blue-500 shadow-[0_0_8px_rgba(37,99,235,0.4)] animate-pulse"
+                        isCompleted ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : 
+                        isSubmitted ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" : 
+                        "bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.4)] animate-pulse"
                     )} />
                     <span className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">
-                        Stage: {sData?.status || 'Pending'}
+                        STAGE STATUS: {isCompleted ? 'COMPLETED' : isSubmitted ? 'PENDING REVIEW' : 'ACTIVE'}
                     </span>
                 </div>
                 
-                <div className="flex items-center gap-1.5">
-                    <Button variant="ghost" size="sm" className="h-9 px-4 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-all">
-                        <Save className="mr-2 h-4 w-4" /> Save Draft
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" className="h-10 px-4 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-all gap-2">
+                        <Save className="h-3.5 w-3.5" /> Save Draft
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-9 px-4 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-all">
-                        <MessageSquare className="mr-2 h-4 w-4" /> Comment
+                    <Button variant="ghost" size="sm" className="h-10 px-4 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-all gap-2">
+                        <MessageSquare className="h-3.5 w-3.5" /> Comment
                     </Button>
                 </div>
             </div>
@@ -58,10 +73,10 @@ export default function CapaActionFooter({ observation, stage }: Props) {
                     </div>
                 ) : (
                     <Button 
-                        className="bg-[#2563EB] hover:bg-blue-700 text-white font-black uppercase tracking-[0.3em] text-[11px] h-14 px-12 rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all ring-offset-4 ring-offset-white focus:ring-4 focus:ring-blue-500/20"
+                        className="bg-[#2563EB] hover:bg-blue-700 text-white font-black uppercase tracking-[0.3em] text-[11px] h-14 px-12 rounded-xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all ring-offset-4 ring-offset-white focus:ring-4 focus:ring-blue-500/20"
                         onClick={() => actionStage(observation.id, stage, {})}
                     >
-                        Submit Technical Milestone <Send className="ml-3 h-4 w-4" />
+                        {buttonLabel} <ArrowRight className="ml-3 h-4 w-4" />
                     </Button>
                 )}
             </div>
