@@ -1,12 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { Check, Clock, AlertTriangle, User } from 'lucide-react';
+import { Check, Clock, AlertTriangle, ShieldCheck, Zap } from 'lucide-react';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
 import { format, parseISO, isValid } from 'date-fns';
 import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const STAGES: CapaStage[] = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];
 
@@ -21,29 +22,33 @@ export default function CapaWorkflowSidebar({ observation, viewingStage, onStage
     
     const stats = useMemo(() => {
         let completed = 0;
-        let inProgress = 0;
-        let returned = 0;
-        let pending = 0;
-
         STAGES.forEach(s => {
-            const status = observation.stages[s]?.status;
-            if (status === 'Completed') completed++;
-            else if (status === 'Returned') returned++;
-            else if (s === observation.currentStage) inProgress++;
-            else pending++;
+            if (observation.stages[s]?.status === 'Completed') completed++;
         });
-
-        const progress = Math.round((completed / STAGES.length) * 100);
-        return { completed, inProgress, returned, pending, progress };
-    }, [observation.stages, observation.currentStage]);
+        return { 
+            completed, 
+            progress: Math.round((completed / STAGES.length) * 100) 
+        };
+    }, [observation.stages]);
 
     return (
-        <div className="space-y-10">
-            <div>
-                <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 mb-6 flex items-center gap-2">
-                    <Clock className="h-3 w-3" /> Case Workflow
+        <div className="flex-1 flex flex-col min-h-0 bg-white">
+            <div className="p-5 border-b shrink-0">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 mb-4 flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-blue-600" /> Case Workflow
                 </h3>
-                <div className="space-y-0">
+                
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                        <span className="text-slate-400">Total Progress</span>
+                        <span className="text-blue-600">{stats.progress}%</span>
+                    </div>
+                    <Progress value={stats.progress} className="h-1 bg-slate-100" />
+                </div>
+            </div>
+
+            <ScrollArea className="flex-1 px-4 py-6">
+                <div className="space-y-0.5">
                     {STAGES.map((stage, i) => {
                         const sData = observation.stages[stage];
                         const isCurrent = observation.currentStage === stage;
@@ -58,31 +63,31 @@ export default function CapaWorkflowSidebar({ observation, viewingStage, onStage
                             <div 
                                 key={stage}
                                 className={cn(
-                                    "relative pl-8 py-3 cursor-pointer transition-all border-l-2",
-                                    isViewing ? "bg-blue-50/50 border-blue-600" : "border-slate-100 hover:bg-slate-50",
+                                    "relative pl-8 py-3.5 cursor-pointer transition-all border-l-2",
+                                    isViewing ? "bg-blue-50/40 border-blue-600" : "border-slate-100 hover:bg-slate-50",
                                     isFuture && "opacity-50 pointer-events-none"
                                 )}
                                 onClick={() => !isFuture && onStageSelect(stage)}
                             >
-                                {/* Vertical Connection */}
+                                {/* Connector */}
                                 {i < STAGES.length - 1 && (
                                     <div className={cn(
-                                        "absolute left-[-2px] top-6 bottom-[-6px] w-0.5",
+                                        "absolute left-[-2px] top-7 bottom-[-7px] w-0.5",
                                         isCompleted ? "bg-emerald-500" : "bg-slate-100"
                                     )} />
                                 )}
 
                                 {/* Node */}
                                 <div className={cn(
-                                    "absolute left-[-7px] top-4 h-3 w-3 rounded-full border-2 bg-white",
-                                    isCompleted ? "border-emerald-600 bg-emerald-600" :
-                                    isReturned ? "border-rose-500 bg-rose-500" :
+                                    "absolute left-[-6px] top-4.5 h-2.5 w-2.5 rounded-full border-2 bg-white",
+                                    isCompleted ? "border-emerald-600 bg-emerald-600 shadow-[0_0_8px_rgba(16,185,129,0.3)]" :
+                                    isReturned ? "border-rose-500 bg-rose-500 animate-pulse" :
                                     isCurrent ? "border-blue-600" : "border-slate-200"
                                 )}>
-                                    {isCompleted && <Check className="h-2 w-2 text-white absolute top-0.5 left-0.5" />}
+                                    {isCompleted && <Check className="h-1.5 w-1.5 text-white absolute top-0.5 left-0.5" />}
                                 </div>
 
-                                <div className="space-y-1">
+                                <div className="space-y-0.5">
                                     <p className={cn(
                                         "text-[10px] font-black uppercase tracking-tight",
                                         isViewing ? "text-blue-700" : "text-slate-600"
@@ -91,20 +96,20 @@ export default function CapaWorkflowSidebar({ observation, viewingStage, onStage
                                     </p>
                                     <div className="flex items-center gap-2">
                                         <span className={cn(
-                                            "text-[9px] font-bold uppercase",
+                                            "text-[8px] font-bold uppercase tracking-widest",
                                             isCompleted ? "text-emerald-600" : isReturned ? "text-rose-600" : "text-slate-400"
                                         )}>
                                             {sData?.status || 'Pending'}
                                         </span>
                                         {sData?.actionedAt && (
-                                            <span className="text-[8px] text-slate-300 font-bold uppercase">
+                                            <span className="text-[8px] text-slate-300 font-bold">
                                                 {format(parseISO(sData.actionedAt), 'dd MMM')}
                                             </span>
                                         )}
                                     </div>
                                     {isCurrent && assignee && (
-                                        <p className="text-[9px] font-bold text-blue-600/70 truncate mt-1">
-                                            @{assignee.name.split(' ')[0]}
+                                        <p className="text-[9px] font-bold text-blue-600/80 truncate mt-1">
+                                            @{assignee.name.split(' ')[0].toUpperCase()}
                                         </p>
                                     )}
                                 </div>
@@ -112,23 +117,7 @@ export default function CapaWorkflowSidebar({ observation, viewingStage, onStage
                         );
                     })}
                 </div>
-            </div>
-
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-4">
-                <div className="flex justify-between items-center">
-                    <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400">Case Progress</h4>
-                    <span className="text-xs font-black text-blue-600">{stats.progress}%</span>
-                </div>
-                <Progress value={stats.progress} className="h-1.5 bg-slate-200" />
-                <div className="grid grid-cols-2 gap-y-2 text-[9px] font-black uppercase tracking-widest text-slate-500">
-                    <div className="flex items-center gap-1.5"><div className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Done: {stats.completed}</div>
-                    <div className="flex items-center gap-1.5"><div className="h-1.5 w-1.5 rounded-full bg-blue-500" /> Active: {stats.inProgress}</div>
-                    <div className="flex items-center gap-1.5"><div className="h-1.5 w-1.5 rounded-full bg-slate-300" /> Pending: {stats.pending}</div>
-                    <div className="flex items-center gap-1.5"><div className="h-1.5 w-1.5 rounded-full bg-rose-500" /> Rework: {stats.returned}</div>
-                </div>
-            </div>
+            </ScrollArea>
         </div>
     );
 }
-
-import { useMemo } from 'react';
