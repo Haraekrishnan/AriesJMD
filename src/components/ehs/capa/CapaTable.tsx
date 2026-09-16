@@ -24,7 +24,8 @@ import {
     Calendar,
     MapPin,
     ArrowRight,
-    ExternalLink
+    ExternalLink,
+    Clock
 } from 'lucide-react';
 import type { EhsObservation } from '@/lib/types';
 import { useGeneral } from '@/contexts/general-provider';
@@ -213,4 +214,3 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
         </Table>
     );
 }
-
