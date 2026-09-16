@@ -2,10 +2,10 @@
 
 import React, { useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { Check, Clock, AlertTriangle, ShieldCheck, Zap } from 'lucide-react';
+import { Check, Clock, AlertTriangle, ShieldCheck } from 'lucide-react';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -32,23 +32,23 @@ export default function CapaWorkflowSidebar({ observation, viewingStage, onStage
     }, [observation.stages]);
 
     return (
-        <div className="flex-1 flex flex-col min-h-0 bg-white">
-            <div className="p-5 border-b shrink-0">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900 mb-4 flex items-center gap-2">
+        <div className="flex-1 flex flex-col min-h-0">
+            <div className="p-6 border-b bg-white">
+                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-900 mb-5 flex items-center gap-2">
                     <ShieldCheck className="h-4 w-4 text-blue-600" /> Case Workflow
                 </h3>
                 
                 <div className="space-y-3">
-                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                        <span className="text-slate-400">Total Progress</span>
-                        <span className="text-blue-600">{stats.progress}%</span>
+                    <div className="flex justify-between items-end">
+                        <span className="text-[10px] font-black uppercase text-slate-400">Total Progress</span>
+                        <span className="text-sm font-black text-blue-600">{stats.progress}%</span>
                     </div>
-                    <Progress value={stats.progress} className="h-1 bg-slate-100" />
+                    <Progress value={stats.progress} className="h-1.5 bg-slate-100" />
                 </div>
             </div>
 
-            <ScrollArea className="flex-1 px-4 py-6">
-                <div className="space-y-0.5">
+            <ScrollArea className="flex-1 py-4">
+                <div className="space-y-1 px-3">
                     {STAGES.map((stage, i) => {
                         const sData = observation.stages[stage];
                         const isCurrent = observation.currentStage === stage;
@@ -63,55 +63,53 @@ export default function CapaWorkflowSidebar({ observation, viewingStage, onStage
                             <div 
                                 key={stage}
                                 className={cn(
-                                    "relative pl-8 py-3.5 cursor-pointer transition-all border-l-2",
-                                    isViewing ? "bg-blue-50/40 border-blue-600" : "border-slate-100 hover:bg-slate-50",
-                                    isFuture && "opacity-50 pointer-events-none"
+                                    "group relative p-3.5 rounded-xl cursor-pointer transition-all border-2",
+                                    isViewing 
+                                        ? "bg-blue-50/50 border-blue-200 shadow-sm" 
+                                        : "bg-transparent border-transparent hover:bg-white hover:border-slate-100",
+                                    isFuture && "opacity-40 pointer-events-none"
                                 )}
                                 onClick={() => !isFuture && onStageSelect(stage)}
                             >
-                                {/* Connector */}
-                                {i < STAGES.length - 1 && (
+                                <div className="flex items-start gap-3">
                                     <div className={cn(
-                                        "absolute left-[-2px] top-7 bottom-[-7px] w-0.5",
-                                        isCompleted ? "bg-emerald-500" : "bg-slate-100"
-                                    )} />
-                                )}
-
-                                {/* Node */}
-                                <div className={cn(
-                                    "absolute left-[-6px] top-4.5 h-2.5 w-2.5 rounded-full border-2 bg-white",
-                                    isCompleted ? "border-emerald-600 bg-emerald-600 shadow-[0_0_8px_rgba(16,185,129,0.3)]" :
-                                    isReturned ? "border-rose-500 bg-rose-500 animate-pulse" :
-                                    isCurrent ? "border-blue-600" : "border-slate-200"
-                                )}>
-                                    {isCompleted && <Check className="h-1.5 w-1.5 text-white absolute top-0.5 left-0.5" />}
-                                </div>
-
-                                <div className="space-y-0.5">
-                                    <p className={cn(
-                                        "text-[10px] font-black uppercase tracking-tight",
-                                        isViewing ? "text-blue-700" : "text-slate-600"
+                                        "h-6 w-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-colors",
+                                        isCompleted ? "bg-emerald-600 border-emerald-600 text-white" :
+                                        isReturned ? "bg-rose-500 border-rose-500 text-white animate-pulse" :
+                                        isCurrent ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20" :
+                                        "bg-white border-slate-200 text-slate-300"
                                     )}>
-                                        {stage}
-                                    </p>
-                                    <div className="flex items-center gap-2">
-                                        <span className={cn(
-                                            "text-[8px] font-bold uppercase tracking-widest",
-                                            isCompleted ? "text-emerald-600" : isReturned ? "text-rose-600" : "text-slate-400"
+                                        {isCompleted ? <Check className="h-3.5 w-3.5" /> : <span className="text-[10px] font-black">{i + 1}</span>}
+                                    </div>
+
+                                    <div className="min-w-0 flex-1">
+                                        <p className={cn(
+                                            "text-[10px] font-black uppercase tracking-tight truncate",
+                                            isViewing ? "text-blue-900" : "text-slate-600"
                                         )}>
-                                            {sData?.status || 'Pending'}
-                                        </span>
-                                        {sData?.actionedAt && (
-                                            <span className="text-[8px] text-slate-300 font-bold">
-                                                {format(parseISO(sData.actionedAt), 'dd MMM')}
+                                            {stage}
+                                        </p>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <span className={cn(
+                                                "text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded",
+                                                isCompleted ? "bg-emerald-100 text-emerald-700" : 
+                                                isReturned ? "bg-rose-100 text-rose-700" :
+                                                "bg-slate-100 text-slate-500"
+                                            )}>
+                                                {sData?.status || 'Pending'}
                                             </span>
+                                            {sData?.actionedAt && (
+                                                <span className="text-[9px] text-slate-300 font-bold uppercase">
+                                                    {format(parseISO(sData.actionedAt), 'dd MMM')}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {isCurrent && assignee && (
+                                            <p className="text-[10px] font-bold text-blue-600/80 truncate mt-1.5 flex items-center gap-1">
+                                                <div className="h-1 w-1 rounded-full bg-blue-600" /> {assignee.name.toUpperCase()}
+                                            </p>
                                         )}
                                     </div>
-                                    {isCurrent && assignee && (
-                                        <p className="text-[9px] font-bold text-blue-600/80 truncate mt-1">
-                                            @{assignee.name.split(' ')[0].toUpperCase()}
-                                        </p>
-                                    )}
                                 </div>
                             </div>
                         );
