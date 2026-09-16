@@ -12,10 +12,11 @@ import {
     CheckCircle2,
     HelpCircle,
     Activity,
-    Users
+    Users,
+    PlusCircle
 } from 'lucide-react';
-import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import type { EhsObservation } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
@@ -179,4 +180,16 @@ function HealthMetric({ label, value }: { label: string, value: string }) {
             <p className="text-[11px] font-black text-slate-900">{value}</p>
         </div>
     );
+}
+
+function parseISO(s: string) {
+    return new Date(s);
+}
+
+function isValid(d: Date) {
+    return d instanceof Date && !isNaN(d.getTime());
+}
+
+function differenceInDays(a: Date, b: Date) {
+    return Math.floor((a.getTime() - b.getTime()) / (1000 * 60 * 60 * 24));
 }
