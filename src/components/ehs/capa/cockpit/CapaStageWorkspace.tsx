@@ -43,7 +43,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
@@ -232,6 +232,12 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
             <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); setNumPages(null); setPageNumber(1); }}>
                 <DialogContent className="max-w-[95vw] sm:max-w-5xl h-[90vh] flex flex-col p-0 overflow-hidden bg-black border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
                     
+                    {/* Accessibility Headers */}
+                    <DialogHeader className="sr-only">
+                        <DialogTitle>Case Discovery Evidence Viewer</DialogTitle>
+                        <DialogDescription>Full-resolution technical evidence for forensic inspection.</DialogDescription>
+                    </DialogHeader>
+
                     {/* Minimalist Overlay Controls */}
                     <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
                         {!isPdf && (
@@ -545,10 +551,9 @@ function EditableMeta({ label, value, isEditing, field, type, options, onChange 
                 )
             ) : (
                 <div className="h-9 px-3 flex items-center bg-white border border-slate-200 rounded-lg shadow-sm">
-                    <span className="text-[11px] font-bold text-slate-800 uppercase tracking-tight truncate">{value}</span>
+                    <span className="text-xs font-bold text-slate-800 uppercase tracking-tight truncate">{value}</span>
                 </div>
             )}
         </div>
     );
 }
-
