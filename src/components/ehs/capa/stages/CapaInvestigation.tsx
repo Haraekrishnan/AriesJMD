@@ -88,11 +88,14 @@ export default function CapaInvestigation({
                 </div>
 
                 <div className="flex-1">
-                    <ScrollArea className="flex-1">
+                    <ScrollArea className="flex-1 h-[60vh]">
                         <TabsContent value="summary" className="m-0 p-10 space-y-12">
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
                                 <div className="space-y-10">
-                                    <SectionHeading icon={Activity} title="TECHNICAL LOGISTICS" />
+                                    <div className="flex items-center gap-3">
+                                        <Activity className="h-5 w-5 text-blue-600" />
+                                        <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">TECHNICAL LOGISTICS</h4>
+                                    </div>
                                     <div className="space-y-8">
                                         <FormItem label="Who was involved?" isRequired placeholder="Personnel or departments..." isLocked={isLocked} name="involved" icon={UserRound} onPaste={(e) => handlePaste(e, 'involved')} />
                                         <FormItem label="Exact site position" isRequired placeholder="Specific deck or workshop..." isLocked={isLocked} name="exactLocation" icon={MapPin} onPaste={(e) => handlePaste(e, 'exactLocation')} />
@@ -104,7 +107,10 @@ export default function CapaInvestigation({
                                 </div>
 
                                 <div className="space-y-10">
-                                    <SectionHeading icon={MessageSquare} title="NARRATIVE CONTEXT" />
+                                    <div className="flex items-center gap-3">
+                                        <MessageSquare className="h-5 w-5 text-blue-600" />
+                                        <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">NARRATIVE CONTEXT</h4>
+                                    </div>
                                     <div className="space-y-8">
                                         <FormItem label="Sequence of events" isRequired type="textarea" placeholder="Detailed chronological sequence..." isLocked={isLocked} name="sequence" icon={MessageSquare} onPaste={(e) => handlePaste(e, 'sequence')} />
                                         <FormItem label="Immediate cause" isRequired type="textarea" placeholder="Direct reason for unsafe finding..." isLocked={isLocked} name="immediateCause" icon={AlertTriangle} onPaste={(e) => handlePaste(e, 'immediateCause')} />
@@ -115,7 +121,10 @@ export default function CapaInvestigation({
 
                         <TabsContent value="5why" className="m-0 p-10">
                             <div className="space-y-10 max-w-4xl mx-auto">
-                                <SectionHeading icon={Search} title="ROOT CAUSE ANALYSIS (5-WHY)" />
+                                <div className="flex items-center gap-3">
+                                    <Search className="h-5 w-5 text-blue-600" />
+                                    <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">ROOT CAUSE ANALYSIS (5-WHY)</h4>
+                                </div>
                                 <div className="space-y-6 py-6">
                                     {[1, 2, 3, 4, 5].map(i => (
                                         <WhyRow key={i} number={i} isLocked={isLocked} onPaste={(e) => handlePaste(e, `why${i}`)} />
@@ -126,29 +135,26 @@ export default function CapaInvestigation({
 
                         <TabsContent value="rootcause" className="m-0 p-10">
                             <div className="max-w-3xl mx-auto space-y-8">
-                                <SectionHeading icon={Activity} title="SYSTEMIC ROOT CAUSE" />
+                                <div className="flex items-center gap-3">
+                                    <Activity className="h-5 w-5 text-blue-600" />
+                                    <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">SYSTEMIC ROOT CAUSE</h4>
+                                </div>
                                 <FormItem label="Final Root Cause Determination" isRequired type="textarea" placeholder="Identify the systemic failure point..." isLocked={isLocked} name="rootCause" onPaste={(e) => handlePaste(e, 'rootCause')} />
                             </div>
                         </TabsContent>
 
                         <TabsContent value="conclusion" className="m-0 p-10">
                             <div className="max-w-3xl mx-auto space-y-8">
-                                <SectionHeading icon={CheckCircle2} title="INVESTIGATION CONCLUSION" />
+                                <div className="flex items-center gap-3">
+                                    <CheckCircle2 className="h-5 w-5 text-blue-600" />
+                                    <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">INVESTIGATION CONCLUSION</h4>
+                                </div>
                                 <FormItem label="Official Conclusion & Summary" isRequired type="textarea" placeholder="Synthesize findings and recommendations..." isLocked={isLocked} name="conclusion" onPaste={(e) => handlePaste(e, 'conclusion')} />
                             </div>
                         </TabsContent>
                     </ScrollArea>
                 </div>
             </Tabs>
-        </div>
-    );
-}
-
-function SectionHeading({ icon: Icon, title }: { icon: any, title: string }) {
-    return (
-        <div className="flex items-center gap-3">
-            <Icon className="h-5 w-5 text-blue-600" />
-            <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">{title}</h4>
         </div>
     );
 }
