@@ -11,7 +11,6 @@ import {
     Search,
     ShieldAlert,
     UserRound,
-    ChevronRight,
     GitBranch,
     History,
     CheckCircle2,
@@ -22,7 +21,6 @@ import { format, parseISO } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -49,11 +47,11 @@ export default function CapaInvestigation({
         <div className="w-full text-left">
             <section className="overflow-hidden rounded-[18px] border border-[#D9E2EC] bg-white shadow-[0_2px_12px_rgba(16,42,67,0.04)]">
                 
-                {/* 1. STAGE HEADER */}
+                {/* 1. STAGE HEADER (REF MATCH) */}
                 <div className="border-b border-[#E5EBF2] bg-white px-7 py-6">
                     <div className="flex items-center justify-between gap-6">
                         <div className="flex items-center gap-4">
-                            <div className="flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[12px] bg-[#1769FF] text-[21px] font-extrabold text-white shadow-[0_8px_20px_rgba(23,105,255,0.20)]">
+                            <div className="flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[12px] border border-slate-200 bg-white text-[21px] font-extrabold text-slate-700 shadow-sm">
                                 02
                             </div>
                             <div>

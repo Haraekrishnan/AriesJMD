@@ -4,7 +4,6 @@ import React from 'react';
 import {
     ShieldCheck,
     Clock3,
-    Activity,
     Calendar,
     FileText,
 } from 'lucide-react';
@@ -40,7 +39,7 @@ export default function CapaClosure({ observation, isLocked }: Props) {
                 <div className="border-b border-[#E5EBF2] bg-white px-7 py-6">
                     <div className="flex items-center justify-between gap-6">
                         <div className="flex items-center gap-4">
-                            <div className="flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[12px] bg-[#1769FF] text-[21px] font-extrabold text-white shadow-[0_8px_20px_rgba(23,105,255,0.20)]">
+                            <div className="flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[12px] border border-slate-200 bg-white text-[21px] font-extrabold text-slate-700 shadow-sm">
                                 07
                             </div>
                             <div>

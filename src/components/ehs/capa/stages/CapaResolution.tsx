@@ -6,7 +6,6 @@ import {
     Clock3,
     Activity,
     ShieldAlert,
-    UserRound,
 } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 
@@ -14,7 +13,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 import type { EhsObservation } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
@@ -38,7 +36,7 @@ export default function CapaResolution({ observation, isLocked }: Props) {
                 <div className="border-b border-[#E5EBF2] bg-white px-7 py-6">
                     <div className="flex items-center justify-between gap-6">
                         <div className="flex items-center gap-4">
-                            <div className="flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[12px] bg-[#1769FF] text-[21px] font-extrabold text-white shadow-[0_8px_20px_rgba(23,105,255,0.20)]">
+                            <div className="flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[12px] border border-slate-200 bg-white text-[21px] font-extrabold text-slate-700 shadow-sm">
                                 03
                             </div>
                             <div>
@@ -96,7 +94,7 @@ export default function CapaResolution({ observation, isLocked }: Props) {
                             <div className="space-y-6">
                                 <div className="space-y-2.5">
                                     <Label className="flex items-center gap-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#304B68] ml-1">
-                                        <ShieldAlert className="h-3 w-3 text-[#7A9ABB]" />
+                                        <ShieldAlert className="h-3 w-3 text-red-500" />
                                         Immediate Containment Strategy <span className="text-red-500">*</span>
                                     </Label>
                                     <Textarea 
