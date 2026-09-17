@@ -66,13 +66,19 @@ export default function CapaInvestigation({ observation, isLocked }: { observati
                             </div>
                         </div>
                     </div>
+                </TabsContent>
 
-                    <div className="mt-12 pt-8 border-t space-y-6">
-                        <div className="flex justify-between items-center">
-                            <SectionHeading icon={Search} title="ROOT CAUSE ANALYSIS (5-WHY)" />
-                            <span className="text-[9px] font-medium text-slate-400 uppercase tracking-widest">Identify systemic failure points</span>
+                <TabsContent value="5why" className="m-0 focus-visible:ring-0 animate-in fade-in duration-500">
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center border-b pb-4">
+                            <div className="flex items-center gap-2.5">
+                                <Search className="h-3.5 w-3.5 text-slate-600" />
+                                <h4 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-700">ROOT CAUSE ANALYSIS (5-WHY)</h4>
+                            </div>
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">IDENTIFY SYSTEMIC FAILURE POINTS</span>
                         </div>
-                        <div className="space-y-3 max-w-4xl">
+                        
+                        <div className="space-y-3 max-w-4xl py-4">
                             {[1, 2, 3, 4, 5].map(i => (
                                 <div key={i} className="flex gap-4 items-center">
                                     <div className="h-8 w-10 rounded border border-slate-300 bg-slate-50 text-slate-500 font-bold flex items-center justify-center text-[10px] uppercase">W{i}</div>
@@ -87,10 +93,10 @@ export default function CapaInvestigation({ observation, isLocked }: { observati
                     </div>
                 </TabsContent>
 
-                <TabsContent value="5why" className="m-0 focus-visible:ring-0">
+                <TabsContent value="rootcause" className="m-0 focus-visible:ring-0">
                     <div className="py-20 text-center border border-dashed rounded-lg bg-slate-50/50 border-slate-300">
-                        <Search className="h-10 w-10 mx-auto mb-4 text-slate-300" />
-                        <p className="font-bold uppercase text-[10px] tracking-[0.3em] text-slate-400">Advanced analysis restricted to summary view</p>
+                        <GitBranch className="h-10 w-10 mx-auto mb-4 text-slate-300" />
+                        <p className="font-bold uppercase text-[10px] tracking-[0.3em] text-slate-400">Root Cause Statement TBD after 5-Why Completion</p>
                     </div>
                 </TabsContent>
             </Tabs>
