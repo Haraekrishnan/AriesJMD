@@ -70,20 +70,20 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
 
     return (
         <Table className="w-full border-separate border-spacing-0">
-            <TableHeader className="sticky top-0 z-40 bg-white">
-                <TableRow className="hover:bg-transparent border-b-2 border-slate-100">
+            <TableHeader className="sticky top-0 z-40 bg-white shadow-sm">
+                <TableRow className="hover:bg-transparent border-b border-slate-200">
                     <TableHead className="w-12 px-6 border-b border-slate-200">
                         <Checkbox />
                     </TableHead>
-                    <TableHead className="w-[100px] font-black text-slate-900 border-b uppercase tracking-widest text-[9px] h-14">CASE ID</TableHead>
-                    <TableHead className="min-w-[400px] font-black text-slate-900 border-b uppercase tracking-widest text-[9px] h-14">NARRATIVE FINDINGS</TableHead>
-                    <TableHead className="w-[120px] font-black text-slate-900 border-b text-center uppercase tracking-widest text-[9px] h-14">CATEGORY</TableHead>
-                    <TableHead className="w-[100px] font-black text-slate-900 border-b text-center uppercase tracking-widest text-[9px] h-14">RISK</TableHead>
-                    <TableHead className="w-[120px] font-black text-slate-900 border-b text-center uppercase tracking-widest text-[9px] h-14">STATUS</TableHead>
-                    <TableHead className="w-[120px] font-black text-slate-900 border-b uppercase tracking-widest text-[9px] h-14">SITE</TableHead>
-                    <TableHead className="w-[130px] font-black text-slate-900 border-b uppercase tracking-widest text-[9px] h-14">INITIATED</TableHead>
-                    <TableHead className="w-[100px] font-black text-slate-900 border-b text-center uppercase tracking-widest text-[9px] h-14">AGE</TableHead>
-                    <TableHead className="w-[80px] text-right font-black text-slate-900 border-b uppercase tracking-widest text-[9px] px-6 h-14">ACTION</TableHead>
+                    <TableHead className="w-[90px] font-black text-slate-900 border-b uppercase tracking-widest text-[9px] h-14">CASE ID</TableHead>
+                    <TableHead className="min-w-[200px] font-black text-slate-900 border-b uppercase tracking-widest text-[9px] h-14">NARRATIVE FINDINGS</TableHead>
+                    <TableHead className="w-[110px] font-black text-slate-900 border-b text-center uppercase tracking-widest text-[9px] h-14">CATEGORY</TableHead>
+                    <TableHead className="w-[90px] font-black text-slate-900 border-b text-center uppercase tracking-widest text-[9px] h-14">RISK</TableHead>
+                    <TableHead className="w-[100px] font-black text-slate-900 border-b text-center uppercase tracking-widest text-[9px] h-14">STATUS</TableHead>
+                    <TableHead className="w-[100px] font-black text-slate-900 border-b uppercase tracking-widest text-[9px] h-14">SITE</TableHead>
+                    <TableHead className="w-[110px] font-black text-slate-900 border-b uppercase tracking-widest text-[9px] h-14">INITIATED</TableHead>
+                    <TableHead className="w-[80px] font-black text-slate-900 border-b text-center uppercase tracking-widest text-[9px] h-14">AGE</TableHead>
+                    <TableHead className="w-[70px] text-right font-black text-slate-900 border-b uppercase tracking-widest text-[9px] px-6 h-14">ACTION</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -102,7 +102,7 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
                             )}
                             onClick={() => onSelect(isSelected ? null : obs.id)}
                         >
-                            <TableCell className="px-6 py-5">
+                            <TableCell className="px-6 py-4">
                                 <Checkbox checked={isSelected} />
                             </TableCell>
                             <TableCell className="font-mono text-[10px] font-black text-blue-600">
@@ -114,42 +114,42 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
                                     <span>{obs.id.slice(-3).toUpperCase()}</span>
                                 </button>
                             </TableCell>
-                            <TableCell className="py-5">
-                                <div className="space-y-1">
-                                    <p className="text-[12px] font-bold text-slate-800 line-clamp-1 uppercase tracking-tight">
+                            <TableCell className="py-4">
+                                <div className="space-y-1 max-w-[320px]">
+                                    <p className="text-[11px] font-bold text-slate-800 line-clamp-2 uppercase tracking-tight leading-tight">
                                         {obs.description}
                                     </p>
-                                    <div className="flex items-center gap-2">
-                                        <div className="bg-slate-100 p-1 rounded-sm"><MapPin className="h-2.5 w-2.5 text-slate-400" /></div>
-                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{obs.location || 'SITE POSITION TBD'}</span>
+                                    <div className="flex items-center gap-1.5 opacity-60">
+                                        <MapPin className="h-2.5 w-2.5 text-slate-400" />
+                                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest truncate">{obs.location || 'SITE POSITION TBD'}</span>
                                     </div>
                                 </div>
                             </TableCell>
 
                             <TableCell className="text-center">
-                                <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest h-6 px-3 rounded-full bg-slate-50 border-slate-200 text-slate-600">
+                                <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest h-5 px-2 rounded-sm bg-slate-50 border-slate-200 text-slate-600 whitespace-nowrap">
                                     {obs.category}
                                 </Badge>
                             </TableCell>
 
                             <TableCell className="text-center">
-                                <Badge variant="outline" className={cn("text-[9px] font-black uppercase tracking-widest h-6 px-4 border-2 rounded-lg", riskStyles[obs.severity])}>
+                                <Badge variant="outline" className={cn("text-[8px] font-black uppercase tracking-widest h-5 px-2 border rounded-sm", riskStyles[obs.severity])}>
                                     {obs.severity}
                                 </Badge>
                             </TableCell>
 
                             <TableCell className="text-center">
-                                <Badge className={cn("text-[9px] font-black uppercase tracking-widest h-6 px-4 rounded border", statusStyles[obs.status])}>
+                                <Badge className={cn("text-[8px] font-black uppercase tracking-widest h-5 px-3 rounded-sm border", statusStyles[obs.status])}>
                                     {obs.status}
                                 </Badge>
                             </TableCell>
                             
-                            <TableCell className="text-[10px] font-black text-slate-900 uppercase">
+                            <TableCell className="text-[9px] font-black text-slate-900 uppercase">
                                 {project?.name || 'N/A'}
                             </TableCell>
 
-                            <TableCell className="text-[10px] font-bold text-slate-500 uppercase">
-                                <div className="flex flex-col">
+                            <TableCell className="text-[9px] font-bold text-slate-500 uppercase">
+                                <div className="flex flex-col leading-none gap-0.5">
                                     <span className="text-slate-900">{format(createdDate, 'dd MMM')}</span>
                                     <span>{format(createdDate, 'yyyy')}</span>
                                 </div>
@@ -157,39 +157,39 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
                             
                             <TableCell className="text-center">
                                 <div className={cn(
-                                    "text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5",
-                                    ageDays > 14 ? "text-rose-600" : "text-slate-600"
+                                    "text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1",
+                                    ageDays > 14 ? "text-rose-600" : "text-slate-500"
                                 )}>
-                                    <Clock className="h-3.5 w-3.5" />
-                                    <span>{ageDays} DAYS</span>
+                                    <Clock className="h-3 w-3" />
+                                    <span>{ageDays}D</span>
                                 </div>
                             </TableCell>
 
                             <TableCell className="text-right px-6">
-                                <div className="flex items-center justify-end gap-2">
+                                <div className="flex items-center justify-end gap-1">
                                     {user?.role === 'Admin' && (
                                         <AlertDialog>
                                             <AlertDialogTrigger asChild>
                                                 <Button 
                                                     variant="ghost" 
                                                     size="icon" 
-                                                    className="h-8 w-8 text-rose-600 hover:bg-rose-50"
+                                                    className="h-7 w-7 text-rose-600 hover:bg-rose-50"
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
-                                                    <Trash2 className="h-4 w-4" />
+                                                    <Trash2 className="h-3.5 w-3.5" />
                                                 </Button>
                                             </AlertDialogTrigger>
                                             <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                                                 <AlertDialogHeader>
-                                                    <AlertDialogTitle className="text-xl font-black uppercase tracking-tight">DELETE SAFETY CASE?</AlertDialogTitle>
+                                                    <AlertDialogTitle className="text-xl font-black uppercase tracking-tight text-slate-900">DELETE SAFETY CASE?</AlertDialogTitle>
                                                     <AlertDialogDescription className="text-slate-500 font-medium">
                                                         This action wipes all technical data for Case <strong>CAPA-{obs.id.slice(-3).toUpperCase()}</strong>.
                                                     </AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter className="gap-3">
-                                                    <AlertDialogCancel className="font-bold rounded-xl h-12 px-8">CANCEL</AlertDialogCancel>
+                                                    <AlertDialogCancel className="font-bold rounded-xl h-11 px-8">CANCEL</AlertDialogCancel>
                                                     <AlertDialogAction 
-                                                        className="bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-widest text-[10px] h-12 px-10 rounded-xl"
+                                                        className="bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-widest text-[10px] h-11 px-10 rounded-xl"
                                                         onClick={() => deleteObservation(obs.id)}
                                                     >
                                                         DELETE PERMANENTLY
@@ -198,8 +198,8 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
                                             </AlertDialogContent>
                                         </AlertDialog>
                                     )}
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
-                                        <MoreVertical className="h-4 w-4" />
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400">
+                                        <MoreVertical className="h-3.5 w-3.5" />
                                     </Button>
                                 </div>
                             </TableCell>
