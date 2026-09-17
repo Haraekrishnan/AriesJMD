@@ -25,6 +25,7 @@ import {
     ExternalLink,
     Clock,
     ZoomIn,
+    ZoomOut,
     X,
     Download,
     ChevronLeft,
