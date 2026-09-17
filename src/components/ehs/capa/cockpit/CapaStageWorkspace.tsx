@@ -133,7 +133,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
             case 'Closure':
                 return <CapaClosure observation={observation} isLocked={isLocked} />;
             default:
-                return <div className="py-20 text-center opacity-30 font-bold uppercase text-xs tracking-widest">TECHNICAL WORKSPACE OFFLINE</div>;
+                return <div className="py-20 text-center opacity-30 font-bold uppercase text-sm tracking-widest">TECHNICAL WORKSPACE OFFLINE</div>;
         }
     };
 
@@ -175,7 +175,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                         </div>
                         <div className="flex-1 space-y-4">
                             <div>
-                                <p className="text-[10px] font-black text-rose-500 uppercase tracking-[0.3em] mb-1">Official Review Correction instructed</p>
+                                <p className="text-[11px] font-black text-rose-500 uppercase tracking-[0.3em] mb-1">Official Review Correction instructed</p>
                                 <p className="text-sm font-bold text-rose-900 leading-relaxed italic">
                                     "{sData?.comments ? Object.values(sData.comments).reverse()[0]?.text : 'Technical details require clarification.'}"
                                 </p>
@@ -199,26 +199,26 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                         </div>
                         <div>
                             <h4 className="text-lg font-bold uppercase tracking-tight">Official Verification Workspace</h4>
-                            <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">Lifecycle Governance & Compliance Validation</p>
+                            <p className="text-slate-400 font-bold text-[11px] uppercase tracking-widest mt-1">Lifecycle Governance & Compliance Validation</p>
                         </div>
                     </div>
                     
-                    <div className="p-6 rounded-lg bg-white/5 border border-white/10 space-y-2">
-                         <p className="text-xs font-medium text-slate-300 leading-relaxed italic">
+                    <div className="p-8 rounded-lg bg-white/5 border border-white/10 space-y-2">
+                         <p className="text-sm font-medium text-slate-300 leading-relaxed italic">
                             Technical data and evidence have been uploaded by the assignee. Validate the findings to proceed to the next lifecycle stage or request immediate rework if the documentation is insufficient.
                          </p>
                     </div>
 
                     <div className="flex gap-4">
                          <Button 
-                            className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase tracking-widest text-[10px] rounded-lg shadow-lg active:scale-95 transition-all"
+                            className="flex-1 h-14 bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase tracking-widest text-[11px] rounded-lg shadow-lg active:scale-95 transition-all"
                             onClick={() => reviewStage(observation.id, stage, 'Completed', 'Documentation verified and approved.')}
                          >
                             <ThumbsUp className="mr-3 h-5 w-5" /> Verify & Continue Lifecycle
                          </Button>
                          <Button 
                             variant="outline" 
-                            className="flex-1 h-12 border-rose-500/30 text-rose-400 hover:bg-rose-600 hover:text-white hover:border-rose-600 font-bold uppercase tracking-widest text-[10px] rounded-lg transition-all active:scale-95"
+                            className="flex-1 h-14 border-rose-500/30 text-rose-400 hover:bg-rose-600 hover:text-white hover:border-rose-600 font-bold uppercase tracking-widest text-[11px] rounded-lg transition-all active:scale-95"
                             onClick={() => reviewStage(observation.id, stage, 'Returned', 'Technical data requires clarification.')}
                          >
                             <Undo2 className="mr-3 h-5 w-5" /> Instruct Rework
@@ -235,7 +235,6 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                         <DialogDescription>Full-resolution technical evidence for forensic inspection.</DialogDescription>
                     </div>
 
-                    {/* DISTINCT COLOR OVERLAY CONTROLS */}
                     <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
                         {!isPdf && (
                             <div className="flex gap-2">
@@ -267,7 +266,6 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                         </Button>
                     </div>
 
-                    {/* Bottom Status/Download Bar */}
                     <div className="absolute bottom-6 left-6 right-6 z-50 flex justify-between items-center">
                          <div className="bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-5 py-2 flex items-center gap-4">
                             <p className="text-[11px] font-black text-white uppercase tracking-widest">Case Discovery Evidence</p>
@@ -309,7 +307,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                 </ScrollArea>
                             ) : (
                                 <img 
-                                    src={viewingAttachmentUrl} 
+                                    src={viewingAttachmentUrl || ''} 
                                     alt="Evidence" 
                                     className={cn("transition-transform duration-200 shadow-2xl", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
                                     style={{ 
@@ -355,67 +353,62 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
         return observation.description.replace(/<IMG[^>]*>/gi, '').replace(/<[^>]*>?/gm, '').trim();
     }, [observation.description]);
 
-    const revisions = useMemo(() => {
-        if (!observation.revisions) return [];
-        return Object.values(observation.revisions).sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-    }, [observation.revisions]);
-
     const handleSave = async () => {
         await updateInitiationDetails(observation.id, formData);
         setIsEditing(false);
     };
 
     return (
-        <div className="space-y-10 text-left">
+        <div className="w-full text-left">
             <section className="overflow-hidden rounded-[18px] border border-[#D9E2EC] bg-white shadow-[0_2px_12px_rgba(16,42,67,0.04)]">
                 
                 {/* 1. STAGE HEADER */}
-                <div className="border-b border-[#E5EBF2] bg-white px-7 py-6">
+                <div className="border-b border-[#E5EBF2] bg-white px-7 py-8">
                     <div className="flex items-center justify-between gap-6">
-                        <div className="flex items-center gap-4">
-                            <div className="flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[12px] bg-[#1769FF] text-[21px] font-extrabold text-white shadow-[0_8px_20px_rgba(23,105,255,0.20)]">
+                        <div className="flex items-center gap-6">
+                            <div className="flex h-[64px] w-[64px] shrink-0 items-center justify-center rounded-[15px] border border-[#E5EBF2] bg-white text-[24px] font-extrabold text-[#071B33] shadow-sm">
                                 01
                             </div>
                             <div>
-                                <div className="mb-1 flex items-center gap-2">
-                                    <Badge variant="outline" className="rounded-full bg-[#E7F0FF] border-none px-3 py-0.5 text-[8px] font-extrabold uppercase tracking-[0.12em] text-[#1769FF]">
+                                <div className="mb-2 flex items-center gap-2">
+                                    <span className="rounded-full bg-[#E7F0FF] px-4 py-1 text-[9px] font-extrabold uppercase tracking-[0.12em] text-[#1769FF]">
                                         GOVERNANCE MILESTONE
-                                    </Badge>
+                                    </span>
                                 </div>
-                                <h2 className="text-[25px] font-extrabold uppercase leading-none tracking-tight text-[#071B33]">
+                                <h2 className="text-[28px] font-extrabold uppercase leading-none tracking-tight text-[#071B33]">
                                     INITIATION
                                 </h2>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-8">
+                        <div className="flex items-center gap-10">
                             <div className="text-right">
-                                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#8A9AAF]">REPORTER</p>
-                                <div className="mt-1 flex items-center gap-2 justify-end">
-                                    <p className="text-[10px] font-extrabold uppercase text-[#102A43]">{reporter?.name || 'Unknown'}</p>
-                                    <Avatar className="h-6 w-6 border">
+                                <p className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-[#8A9AAF]">REPORTER</p>
+                                <div className="mt-2 flex items-center gap-2 justify-end">
+                                    <p className="text-[12px] font-extrabold uppercase text-[#102A43]">{reporter?.name || 'Unknown'}</p>
+                                    <Avatar className="h-8 w-8 border shadow-sm">
                                         <AvatarImage src={reporter?.avatar} />
-                                        <AvatarFallback className="text-[8px]">{reporter?.name?.[0]}</AvatarFallback>
+                                        <AvatarFallback className="text-[10px]">{reporter?.name?.[0]}</AvatarFallback>
                                     </Avatar>
                                 </div>
                             </div>
-                            <div className="h-9 w-px bg-[#E5EBF2]" />
+                            <div className="h-12 w-px bg-[#E5EBF2]" />
                             <div className="text-right">
-                                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#8A9AAF]">TIMESTAMP</p>
-                                <p className="mt-1 flex items-center justify-end gap-1.5 text-[10px] font-extrabold uppercase text-[#102A43]">
-                                    <Calendar className="h-3 w-3 text-slate-400" /> {format(parseISO(observation.createdAt), 'dd-MM-yyyy')}
+                                <p className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-[#8A9AAF]">TIMESTAMP</p>
+                                <p className="mt-2 flex items-center justify-end gap-1.5 text-[12px] font-extrabold uppercase text-[#102A43]">
+                                    <Calendar className="h-4 w-4 text-slate-400" /> {format(parseISO(observation.createdAt), 'dd-MM-yyyy')}
                                 </p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="p-7 space-y-10">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <div className="p-10 space-y-12">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
                         {/* LEFT COLUMN: LOGISTICS */}
-                        <div className="space-y-8">
+                        <div className="space-y-10">
                             <SectionHeading icon={MapPin} title="OPERATIONAL LOGISTICS" />
-                            <div className="space-y-6">
+                            <div className="space-y-8">
                                 <EditableMeta label="Discovery Category" value={observation.category} isEditing={isEditing} type="select" options={['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']} onChange={val => setFormData(p => ({ ...p, category: val }))} icon={Search} />
                                 <EditableMeta label="Risk Severity" value={observation.severity} isEditing={isEditing} type="select" options={['Low', 'Medium', 'High', 'Critical']} onChange={val => setFormData(p => ({ ...p, severity: val }))} icon={ShieldCheck} />
                                 <EditableMeta label="Operational Site" value={project?.name || observation.projectId} isEditing={isEditing} type="select" options={projects.map(p => ({ id: p.id, name: p.name }))} onChange={val => setFormData(p => ({ ...p, projectId: val }))} icon={MapPin} />
@@ -424,43 +417,43 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
                         </div>
 
                         {/* RIGHT COLUMN: NARRATIVE */}
-                        <div className="space-y-8">
+                        <div className="space-y-10">
                             <div className="flex justify-between items-center">
                                 <SectionHeading icon={FileText} title="NARRATIVE CONTEXT" />
                                 {isAuthorized && !isEditing && (
-                                    <Button variant="ghost" size="sm" className="h-7 px-3 text-[9px] font-black uppercase border border-slate-200" onClick={() => setIsEditing(true)}>
-                                        <Edit3 className="h-3 w-3 mr-1.5" /> OVERWRITE
+                                    <Button variant="ghost" size="sm" className="h-8 px-4 text-[10px] font-black uppercase border border-slate-200 hover:bg-slate-50" onClick={() => setIsEditing(true)}>
+                                        <Edit3 className="h-4 w-4 mr-2" /> OVERWRITE
                                     </Button>
                                 )}
                             </div>
-                            <div className="space-y-6">
+                            <div className="space-y-8">
                                 {isEditing ? (
-                                    <div className="space-y-2">
-                                        <Label className="text-[9px] font-extrabold uppercase tracking-widest text-[#304B68]">Finding Description</Label>
-                                        <Textarea className="min-h-[120px] rounded-[10px] border-[#DCE5EF] bg-white text-[10px]" value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} />
-                                        <div className="flex justify-end gap-2 pt-2">
-                                            <Button variant="outline" size="sm" className="h-8 text-[9px]" onClick={() => setIsEditing(false)}>CANCEL</Button>
-                                            <Button size="sm" className="h-8 text-[9px] bg-[#1769FF]" onClick={handleSave}>SAVE CHANGES</Button>
+                                    <div className="space-y-3">
+                                        <Label className="text-[10px] font-extrabold uppercase tracking-widest text-[#304B68]">Finding Description</Label>
+                                        <Textarea className="min-h-[180px] rounded-[10px] border-[#DCE5EF] bg-white text-[12px] p-4 font-medium" value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} />
+                                        <div className="flex justify-end gap-3 pt-2">
+                                            <Button variant="outline" size="sm" className="h-10 px-6 text-[10px] font-bold" onClick={() => setIsEditing(false)}>CANCEL</Button>
+                                            <Button size="sm" className="h-10 px-8 text-[10px] font-bold bg-[#1769FF] hover:bg-[#1769FF]/90" onClick={handleSave}>SAVE CHANGES</Button>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="p-4 rounded-xl bg-slate-50 border border-[#DCE5EF] shadow-inner">
-                                        <p className="text-[10px] font-medium text-slate-700 leading-relaxed uppercase tracking-tight">
+                                    <div className="p-6 rounded-xl bg-slate-50 border border-[#DCE5EF] shadow-inner">
+                                        <p className="text-[13px] font-medium text-slate-700 leading-relaxed uppercase tracking-tight">
                                             {sanitizedDescription}
                                         </p>
                                     </div>
                                 )}
 
                                 {extractedEvidenceUrl && (
-                                    <div className="space-y-2">
-                                        <Label className="text-[9px] font-extrabold uppercase tracking-widest text-[#304B68]">Discovery Evidence</Label>
+                                    <div className="space-y-3">
+                                        <Label className="text-[10px] font-extrabold uppercase tracking-widest text-[#304B68]">Discovery Evidence</Label>
                                         <div 
-                                            className="h-32 w-48 rounded-lg border-2 border-slate-200 bg-white overflow-hidden relative group/img cursor-zoom-in"
+                                            className="h-48 w-72 rounded-xl border-2 border-slate-200 bg-white overflow-hidden relative group/img cursor-zoom-in shadow-md"
                                             onClick={() => onViewImage(extractedEvidenceUrl)}
                                         >
                                             <img src={extractedEvidenceUrl} alt="E" className="w-full h-full object-contain" />
                                             <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 flex items-center justify-center transition-all">
-                                                <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover/img:opacity-100" />
+                                                <ZoomIn className="h-8 w-8 text-white opacity-0 group-hover/img:opacity-100" />
                                             </div>
                                         </div>
                                     </div>
@@ -477,23 +470,23 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
 function SectionHeading({ icon: Icon, title }: { icon: any, title: string }) {
     return (
         <div className="flex items-center gap-3">
-            <Icon className="h-4 w-4 text-[#1769FF]" />
-            <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-[#304B68]">{title}</h4>
+            <Icon className="h-5 w-5 text-[#1769FF]" />
+            <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-[#304B68]">{title}</h4>
         </div>
     );
 }
 
 function EditableMeta({ label, value, isEditing, type, options, onChange, icon: Icon }: { label: string, value: string, isEditing: boolean, type: 'text' | 'select', options?: any[], onChange: (val: any) => void, icon?: any }) {
     return (
-        <div className="space-y-2.5">
-            <Label className="flex items-center gap-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#304B68] ml-1">
-                {Icon && <Icon className="h-3 w-3 text-[#7A9ABB]" />}
+        <div className="space-y-3">
+            <Label className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#304B68] ml-1">
+                {Icon && <Icon className="h-4 w-4 text-[#7A9ABB]" />}
                 {label}
             </Label>
             {isEditing ? (
                 type === 'select' ? (
                     <Select value={value} onValueChange={onChange}>
-                        <SelectTrigger className="h-[42px] rounded-[10px] border-[#DCE5EF] bg-white px-3.5 text-[10px] font-bold uppercase text-[#243B53]">
+                        <SelectTrigger className="h-[52px] rounded-[10px] border-[#DCE5EF] bg-white px-4 text-[12px] font-bold uppercase text-[#243B53] focus:ring-1 ring-blue-100">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -505,11 +498,11 @@ function EditableMeta({ label, value, isEditing, type, options, onChange, icon: 
                         </SelectContent>
                     </Select>
                 ) : (
-                    <Input className="h-[42px] rounded-[10px] border-[#DCE5EF] bg-white text-[10px]" value={value} onChange={e => onChange(e.target.value)} />
+                    <Input className="h-[52px] rounded-[10px] border-[#DCE5EF] bg-white text-[12px] px-4 font-bold" value={value} onChange={e => onChange(e.target.value)} />
                 )
             ) : (
-                <div className="h-[42px] px-3.5 flex items-center bg-slate-50 border border-[#DCE5EF] rounded-[10px]">
-                    <span className="text-[10px] font-bold text-[#102A43] uppercase truncate">{value}</span>
+                <div className="h-[52px] px-4 flex items-center bg-slate-50 border border-[#DCE5EF] rounded-[10px]">
+                    <span className="text-[12px] font-bold text-[#102A43] uppercase truncate">{value}</span>
                 </div>
             )}
         </div>
