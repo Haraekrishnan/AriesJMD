@@ -1190,6 +1190,7 @@ export type CapaStageRecord = {
   comments?: { [key: string]: Comment };
   attachments?: { [key: string]: CapaAttachment };
   data?: any; // Stage-specific data (e.g., 5-Whys, Plan)
+  targetDate?: string | null;
 };
 
 export type EhsRevision = {

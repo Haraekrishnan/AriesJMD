@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo } from 'react';
@@ -10,15 +11,16 @@ import {
     Users,
     CheckCircle2,
     Clock,
-    PlusCircle
+    PlusCircle,
+    Paperclip
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { format, parseISO, isValid, differenceInDays } from 'date-fns';
+import { format, parseISO, isValid, differenceInDays, isAfter } from 'date-fns';
 import { cn } from '@/lib/utils';
-import type { EhsObservation } from '@/lib/types';
+import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -29,13 +31,29 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
 
     const project = projects.find(p => p.id === observation.projectId);
     const reporter = users.find(u => u.id === observation.reporterId);
-    const currentOwner = users.find(u => u.id === observation.stages[observation.currentStage]?.assigneeId);
+    const sData = observation.stages[observation.currentStage];
+    const currentOwner = users.find(u => u.id === sData?.assigneeId);
 
     const daysOpen = useMemo(() => {
         if (!observation.createdAt) return 0;
         const created = parseISO(observation.createdAt);
         return isValid(created) ? Math.max(0, differenceInDays(new Date(), created)) : 0;
     }, [observation.createdAt]);
+
+    const isOverdue = useMemo(() => {
+        if (!sData?.targetDate) return false;
+        return isAfter(new Date(), parseISO(sData.targetDate)) && sData.status !== 'Completed';
+    }, [sData]);
+
+    const attachments = useMemo(() => {
+        const all: any[] = [];
+        Object.entries(observation.stages).forEach(([stage, data]) => {
+            if (data.attachments) {
+                Object.values(data.attachments).forEach(a => all.push({ ...a, stage }));
+            }
+        });
+        return all;
+    }, [observation]);
 
     return (
         <ScrollArea className="h-full border-l border-slate-200">
@@ -64,19 +82,48 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
                     <h5 className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 flex items-center gap-2 ml-1">
                         <Activity className="h-3.5 w-3.5 text-slate-400" /> GOVERNANCE HEALTH
                     </h5>
-                    <div className="p-4 rounded-xl bg-white border shadow-sm space-y-4">
+                    <div className={cn(
+                        "p-4 rounded-xl border shadow-sm space-y-4 transition-colors",
+                        isOverdue ? "bg-rose-50 border-rose-200" : "bg-white"
+                    )}>
                         <div className="flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-700">ON TRACK</span>
+                            <div className={cn("h-2 w-2 rounded-full", isOverdue ? "bg-rose-500 animate-pulse" : "bg-emerald-500")} />
+                            <span className={cn("text-[10px] font-black uppercase tracking-[0.15em]", isOverdue ? "text-rose-600" : "text-slate-700")}>
+                                {isOverdue ? 'LIFECYCLE DELAYED' : 'ON TRACK'}
+                            </span>
                         </div>
                         
                         <div className="grid grid-cols-3 gap-2">
                             <HealthMetric label="DAYS" value={`${daysOpen}D`} />
-                            <HealthMetric label="REWORK" value="0" />
-                            <HealthMetric label="ISSUES" value="0" />
+                            <HealthMetric label="TARGET" value={sData?.targetDate ? format(parseISO(sData.targetDate), 'dd MMM') : 'TBD'} isDanger={isOverdue} />
+                            <HealthMetric label="REWORK" value={String(observation.reworkCount || 0)} />
                         </div>
                     </div>
                 </div>
+
+                {/* ATTACHED EVIDENCE */}
+                {attachments.length > 0 && (
+                    <div className="space-y-3">
+                        <h5 className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 flex items-center gap-2 ml-1">
+                            <Paperclip className="h-3.5 w-3.5 text-slate-400" /> EVIDENCE LEDGER
+                        </h5>
+                        <div className="space-y-2">
+                            {attachments.map(a => (
+                                <div key={a.id} className="p-3 bg-slate-50 border rounded-lg flex items-center justify-between group hover:border-blue-300 transition-all">
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-slate-900 truncate uppercase tracking-tight">{a.name}</p>
+                                        <p className="text-[8px] font-black text-blue-500 uppercase tracking-widest">{a.stage}</p>
+                                    </div>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full bg-white border shadow-sm" asChild>
+                                        <a href={a.url} target="_blank" rel="noopener noreferrer">
+                                            <Download className="h-3.5 w-3.5 text-slate-400 group-hover:text-blue-600" />
+                                        </a>
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* PROTOCOL */}
                 <div className="space-y-3">
@@ -129,11 +176,14 @@ function InfoRow({ label, value, isRisk = false, risk = '', isBlue = false, isLa
     );
 }
 
-function HealthMetric({ label, value }: { label: string, value: string }) {
+function HealthMetric({ label, value, isDanger = false }: { label: string, value: string, isDanger?: boolean }) {
     return (
-        <div className="bg-slate-50 p-2 rounded-lg border text-center">
-            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{label}</p>
-            <p className="text-[10px] font-black text-slate-900">{value}</p>
+        <div className={cn(
+            "p-2 rounded-lg border text-center transition-colors",
+            isDanger ? "bg-rose-500 border-rose-600 shadow-lg shadow-rose-500/20" : "bg-slate-50 border-slate-100"
+        )}>
+            <p className={cn("text-[7px] font-black uppercase tracking-widest mb-0.5", isDanger ? "text-white/80" : "text-slate-400")}>{label}</p>
+            <p className={cn("text-[10px] font-black", isDanger ? "text-white" : "text-slate-900")}>{value}</p>
         </div>
     );
 }

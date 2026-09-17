@@ -1,6 +1,7 @@
+
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
     Zap,
     Clock3,
@@ -27,7 +28,26 @@ export default function CapaResolution({ observation, isLocked }: Props) {
     const { users } = useAuth();
     const sData = observation.stages?.Resolution;
     const currentOwner = users.find(u => u.id === sData?.assigneeId);
-    const { register } = useFormContext();
+    const { register, setValue } = useFormContext();
+
+    const handlePaste = useCallback((e: React.ClipboardEvent) => {
+        if (isLocked) return;
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                const blob = items[i].getAsFile();
+                if (blob) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const base64 = event.target?.result as string;
+                        const currentVal = (register('action') as any).value || '';
+                        setValue('action', `${currentVal}\n[TECHNICAL_EVIDENCE_ATTACHED:${base64.slice(0, 50)}...]\n`);
+                    };
+                    reader.readAsDataURL(blob);
+                }
+            }
+        }
+    }, [isLocked, register, setValue]);
 
     return (
         <div className="w-full text-left">
@@ -36,7 +56,7 @@ export default function CapaResolution({ observation, isLocked }: Props) {
                 {/* 1. STAGE HEADER */}
                 <div className="border-b border-[#E5EBF2] bg-white px-7 py-8">
                     <div className="flex items-center justify-between gap-6">
-                        <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-4">
                             <div className="flex h-[64px] w-[64px] shrink-0 items-center justify-center rounded-[15px] border border-[#E5EBF2] bg-white text-[24px] font-extrabold text-[#071B33] shadow-sm">
                                 03
                             </div>
@@ -67,7 +87,7 @@ export default function CapaResolution({ observation, isLocked }: Props) {
                             <div className="text-right">
                                 <p className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-[#8A9AAF]">TARGET</p>
                                 <p className="mt-2 flex items-center justify-end gap-1.5 text-[12px] font-extrabold uppercase text-[#102A43]">
-                                    <Clock3 className="h-4 w-4 text-slate-400" /> TBD
+                                    <Clock3 className="h-4 w-4 text-slate-400" /> {sData?.targetDate ? format(parseISO(sData.targetDate), 'dd MMM, HH:mm') : 'TBD'}
                                 </p>
                             </div>
                         </div>
@@ -102,6 +122,7 @@ export default function CapaResolution({ observation, isLocked }: Props) {
                                         disabled={isLocked}
                                         placeholder="Technical steps taken to control the discovery immediately..."
                                         {...register('action')}
+                                        onPaste={handlePaste}
                                         className="min-h-[200px] rounded-[10px] border-[#DCE5EF] bg-white px-4 py-4 text-[12px] font-medium leading-relaxed text-[#243B53] shadow-[0_1px_3px_rgba(16,42,67,0.03)] focus-visible:border-[#1769FF] focus-visible:ring-1 ring-blue-50"
                                     />
                                 </div>

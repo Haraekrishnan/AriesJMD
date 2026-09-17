@@ -1,6 +1,7 @@
+
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
     Activity,
     AlertTriangle,
@@ -67,7 +68,7 @@ export default function CapaInvestigation({
 
                         <div className="flex items-center gap-10">
                             <div className="text-right">
-                                <p className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-[#8A9AAF]">OWNERSHIP</p>
+                                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#8A9AAF]">OWNERSHIP</p>
                                 <div className="mt-2 flex items-center gap-2 justify-end">
                                     <p className="text-[12px] font-extrabold uppercase text-[#102A43]">{currentOwner?.name || 'TBD'}</p>
                                     <Avatar className="h-8 w-8 border shadow-sm">
@@ -78,9 +79,9 @@ export default function CapaInvestigation({
                             </div>
                             <div className="h-12 w-px bg-[#E5EBF2]" />
                             <div className="text-right">
-                                <p className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-[#8A9AAF]">TARGET</p>
+                                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#8A9AAF]">TARGET</p>
                                 <p className="mt-2 flex items-center justify-end gap-1.5 text-[12px] font-extrabold uppercase text-[#102A43]">
-                                    <Clock3 className="h-4 w-4 text-slate-400" /> TBD
+                                    <Clock3 className="h-4 w-4 text-slate-400" /> {sData?.targetDate ? format(parseISO(sData.targetDate), 'dd MMM, HH:mm') : 'TBD'}
                                 </p>
                             </div>
                         </div>
@@ -176,7 +177,28 @@ function SectionHeading({ icon: Icon, title }: { icon: any, title: string }) {
 }
 
 function FormItem({ label, placeholder, type = 'text', isLocked, isRequired, name, icon: Icon }: { label: string, placeholder?: string, type?: 'text' | 'textarea' | 'date' | 'time', isLocked: boolean, isRequired?: boolean, name: string, icon?: any }) {
-    const { register } = useFormContext();
+    const { register, setValue } = useFormContext();
+
+    const handlePaste = useCallback((e: React.ClipboardEvent) => {
+        if (isLocked) return;
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                const blob = items[i].getAsFile();
+                if (blob) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const base64 = event.target?.result as string;
+                        // Append the image reference as a technical block in the textarea
+                        const currentVal = register(name).value || '';
+                        setValue(name, `${currentVal}\n[TECHNICAL_EVIDENCE_ATTACHED:${base64.slice(0, 50)}...]\n`);
+                    };
+                    reader.readAsDataURL(blob);
+                }
+            }
+        }
+    }, [isLocked, register, name, setValue]);
+
     return (
         <div className="space-y-3">
             <Label className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#304B68] ml-1">
@@ -188,6 +210,7 @@ function FormItem({ label, placeholder, type = 'text', isLocked, isRequired, nam
                     disabled={isLocked}
                     placeholder={placeholder}
                     {...register(name)}
+                    onPaste={handlePaste}
                     className="min-h-[140px] rounded-[10px] border-[#DCE5EF] bg-white px-4 py-3 text-[12px] font-medium leading-relaxed text-[#243B53] shadow-[0_1px_3px_rgba(16,42,67,0.03)] placeholder:text-[#9AAABD] focus-visible:border-[#1769FF] focus-visible:ring-1 ring-blue-50"
                 />
             ) : (
