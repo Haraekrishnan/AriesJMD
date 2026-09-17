@@ -6,7 +6,6 @@ import { Save, ArrowRight, ShieldCheck } from 'lucide-react';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useEhs } from '@/contexts/ehs-provider';
 import { useAuth } from '@/contexts/auth-provider';
-import { cn } from '@/lib/utils';
 
 interface Props {
     observation: EhsObservation;

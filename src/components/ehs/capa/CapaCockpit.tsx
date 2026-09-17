@@ -4,13 +4,11 @@ import React, { useMemo, useState } from 'react';
 import { 
     ChevronLeft, 
     MessageSquare, 
-    MoreVertical, 
     Clock, 
     MapPin,
     User,
     Calendar,
     Paperclip,
-    Settings,
     FileText,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isValid } from 'date-fns';
@@ -50,7 +48,7 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
 
     return (
         <div className="fixed inset-0 z-40 flex flex-col bg-[#F3F7FB] text-slate-900 font-sans overflow-hidden">
-            {/* --- 1. EXECUTIVE IDENTITY HEADER --- */}
+            {/* --- 1. EXECUTIVE IDENTITY HEADER - OLD SCHOOL INDUSTRIAL --- */}
             <header className="h-[80px] shrink-0 bg-white border-b border-slate-200 px-8 flex items-center justify-between z-30">
                 <div className="flex items-center gap-6 min-w-0">
                     <Button 

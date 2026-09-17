@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { Check, Lock, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Check, Lock, AlertTriangle } from 'lucide-react';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 
 const STAGES: CapaStage[] = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];

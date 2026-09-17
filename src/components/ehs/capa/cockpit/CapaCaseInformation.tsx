@@ -5,14 +5,10 @@ import {
     ShieldCheck, 
     MapPin, 
     User, 
-    Zap,
-    CheckCircle2,
     Activity,
     Info,
-    History,
     Users,
-    PlusCircle,
-    FileText,
+    CheckCircle2,
     Clock,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';

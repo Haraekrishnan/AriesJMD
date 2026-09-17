@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { Check, AlertTriangle, FileText, Activity } from 'lucide-react';
+import { Check, AlertTriangle, Activity } from 'lucide-react';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
 import { ScrollArea } from '@/components/ui/scroll-area';

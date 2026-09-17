@@ -12,12 +12,10 @@ import {
     FileText, 
     Search, 
     GitBranch, 
-    LayoutGrid, 
     History, 
     CheckCircle2,
     Activity,
     MessageSquare,
-    AlertTriangle,
 } from 'lucide-react';
 
 const SECTIONS = [
@@ -103,7 +101,7 @@ export default function CapaInvestigation({ observation, isLocked }: { observati
                 <TabsContent value="5why" className="m-0 focus-visible:ring-0">
                     <div className="py-32 text-center border-4 border-dashed rounded-[3rem] bg-slate-50 border-slate-100">
                         <Search className="h-16 w-16 mx-auto mb-4 text-slate-200" />
-                        <p className="font-black uppercase text-xs tracking-[0.3em] text-slate-400">Visual Root Cause Module Offline</p>
+                        <p className="font-black uppercase text-xs tracking-[0.3em] text-slate-400">Visual Root Cause Analysis Module Offline</p>
                     </div>
                 </TabsContent>
             </Tabs>

@@ -13,7 +13,6 @@ import {
   HelpCircle,
   ClipboardCheck,
   Zap,
-  Eye,
   Settings,
   LogOut,
   ShieldAlert
@@ -56,7 +55,7 @@ export default function EhsLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="fixed inset-0 z-50 flex bg-[#F3F7FB] text-slate-900 overflow-hidden font-sans selection:bg-blue-100 selection:text-blue-900">
-      {/* EHS Side Navigation - DEEP NAVY THEME */}
+      {/* EHS Side Navigation - INDUSTRIAL DEEP NAVY */}
       <aside className="w-[280px] bg-[#0F172A] flex flex-col shrink-0 h-full text-white shadow-2xl">
         <div className="p-8 pb-10">
           <Link href="/dashboard" className="flex items-center gap-4 group">
