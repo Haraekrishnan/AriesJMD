@@ -11,7 +11,6 @@ import {
     Calendar,
     Paperclip,
     FileText,
-    Settings,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -25,7 +24,6 @@ import { useForm, FormProvider } from 'react-hook-form';
 
 // Cockpit Sub-components
 import CapaLifecycleStepper from './cockpit/CapaLifecycleStepper';
-import CapaWorkflowSidebar from './cockpit/CapaWorkflowSidebar';
 import CapaCaseInformation from './cockpit/CapaCaseInformation';
 import CapaStageWorkspace from './cockpit/CapaStageWorkspace';
 import CapaActionFooter from './cockpit/CapaActionFooter';
@@ -111,8 +109,8 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                     </div>
                 </header>
 
-                {/* --- 2. PRO-LIFECYCLE STEPPER --- */}
-                <section className="h-[75px] shrink-0 bg-white border-b border-slate-200 px-8 flex items-center z-20 shadow-sm">
+                {/* --- 2. PRO-LIFECYCLE STEPPER (NOW WITH PROGRESS) --- */}
+                <section className="h-[75px] shrink-0 bg-white border-b border-slate-200 px-8 flex items-center z-20 shadow-sm overflow-x-auto no-scrollbar">
                     <CapaLifecycleStepper 
                         observation={observation} 
                         viewingStage={viewingStage} 
@@ -122,19 +120,10 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
 
                 {/* --- 3. OPERATIONAL WORKSPACE GRID --- */}
                 <div className="flex-1 flex overflow-hidden">
-                    {/* LEFT: WORKFLOW SIDEBAR */}
-                    <aside className="w-[220px] shrink-0 bg-white border-r border-slate-200 flex flex-col overflow-hidden">
-                        <CapaWorkflowSidebar 
-                            observation={observation} 
-                            viewingStage={viewingStage} 
-                            onStageSelect={setViewingStage} 
-                        />
-                    </aside>
-
-                    {/* CENTER: PRIMARY TECHNICAL WORKBENCH */}
+                    {/* CENTER: PRIMARY TECHNICAL WORKBENCH (EXPANDED) */}
                     <main className="flex-1 flex flex-col overflow-hidden relative bg-[#F3F7FB]">
                         <ScrollArea className="flex-1">
-                            <div className="p-8 pb-28">
+                            <div className="p-8 pb-28 max-w-[1400px] mx-auto w-full">
                                 <CapaStageWorkspace 
                                     observation={observation} 
                                     stage={viewingStage} 
