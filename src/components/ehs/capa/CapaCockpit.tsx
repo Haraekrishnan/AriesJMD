@@ -122,7 +122,7 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                     {/* CENTER: PRIMARY TECHNICAL WORKBENCH (EXPANDED) */}
                     <main className="flex-1 flex flex-col overflow-hidden relative bg-[#F3F7FB]">
                         <ScrollArea className="flex-1">
-                            <div className="p-8 pb-28 max-w-[1400px] mx-auto w-full">
+                            <div className="p-6 pb-4 max-w-[1400px] mx-auto w-full">
                                 <CapaStageWorkspace 
                                     observation={observation} 
                                     stage={viewingStage} 

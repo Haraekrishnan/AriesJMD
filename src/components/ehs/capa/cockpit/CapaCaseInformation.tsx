@@ -57,13 +57,13 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
 
     return (
         <ScrollArea className="h-full border-l border-slate-200">
-            <div className="flex flex-col gap-10 py-8 px-8 text-left">
+            <div className="flex flex-col gap-6 py-6 px-6 text-left">
                 
                 {/* CASE INFO */}
-                <div className="space-y-4">
-                    <div className="flex items-center gap-3 mb-2 ml-1">
-                        <Info className="h-4 w-4 text-slate-400" />
-                        <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500">CASE INFORMATION</h4>
+                <div className="space-y-3">
+                    <div className="flex items-center gap-3 mb-1 ml-1">
+                        <Info className="h-3.5 w-3.5 text-slate-400" />
+                        <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">CASE INFORMATION</h4>
                     </div>
                     <div className="bg-white border rounded-xl divide-y divide-slate-100 shadow-sm overflow-hidden">
                         <InfoRow label="Category" value={observation.category} isBadge />
@@ -78,22 +78,22 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
                 </div>
 
                 {/* GOVERNANCE HEALTH */}
-                <div className="space-y-4">
-                    <h5 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 flex items-center gap-3 ml-1">
-                        <Activity className="h-4 w-4 text-slate-400" /> GOVERNANCE HEALTH
+                <div className="space-y-3">
+                    <h5 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 flex items-center gap-3 ml-1">
+                        <Activity className="h-3.5 w-3.5 text-slate-400" /> GOVERNANCE HEALTH
                     </h5>
                     <div className={cn(
-                        "p-6 rounded-2xl border-2 shadow-md space-y-6 transition-colors",
+                        "p-4 rounded-xl border-2 shadow-sm space-y-4 transition-colors",
                         isOverdue ? "bg-rose-50 border-rose-200" : "bg-white border-slate-50"
                     )}>
-                        <div className="flex items-center gap-3">
-                            <div className={cn("h-2.5 w-2.5 rounded-full", isOverdue ? "bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.4)]" : "bg-emerald-500")} />
-                            <span className={cn("text-[11px] font-black uppercase tracking-[0.2em]", isOverdue ? "text-rose-600" : "text-slate-700")}>
-                                {isOverdue ? 'LIFECYCLE DELAY DETECTED' : 'SYSTEM STATUS: OPTIMAL'}
+                        <div className="flex items-center gap-2">
+                            <div className={cn("h-2 w-2 rounded-full", isOverdue ? "bg-rose-500 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.4)]" : "bg-emerald-500")} />
+                            <span className={cn("text-[9px] font-black uppercase tracking-[0.15em]", isOverdue ? "text-rose-600" : "text-slate-700")}>
+                                {isOverdue ? 'LIFECYCLE DELAY' : 'SYSTEM OPTIMAL'}
                             </span>
                         </div>
                         
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-3 gap-2">
                             <HealthMetric label="DAYS" value={`${daysOpen}D`} />
                             <HealthMetric label="TARGET" value={sData?.targetDate ? format(parseISO(sData.targetDate), 'dd MMM') : 'TBD'} isDanger={isOverdue} />
                             <HealthMetric label="REWORK" value={String(observation.reworkCount || 0)} />
@@ -103,20 +103,20 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
 
                 {/* ATTACHED EVIDENCE */}
                 {attachments.length > 0 && (
-                    <div className="space-y-4">
-                        <h5 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 flex items-center gap-3 ml-1">
-                            <Paperclip className="h-4 w-4 text-slate-400" /> EVIDENCE LEDGER
+                    <div className="space-y-3">
+                        <h5 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 flex items-center gap-3 ml-1">
+                            <Paperclip className="h-3.5 w-3.5 text-slate-400" /> EVIDENCE LEDGER
                         </h5>
-                        <div className="space-y-2.5">
+                        <div className="space-y-2">
                             {attachments.map(a => (
-                                <div key={a.id} className="p-4 bg-slate-50 border rounded-xl flex items-center justify-between group hover:border-blue-400 hover:bg-white transition-all shadow-sm">
+                                <div key={a.id} className="p-3 bg-slate-50 border rounded-lg flex items-center justify-between group hover:border-blue-400 hover:bg-white transition-all shadow-sm">
                                     <div className="min-w-0 pr-4">
-                                        <p className="text-[12px] font-bold text-slate-900 truncate uppercase tracking-tight">{a.name}</p>
-                                        <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mt-0.5">{a.stage}</p>
+                                        <p className="text-[11px] font-bold text-slate-900 truncate uppercase tracking-tight">{a.name}</p>
+                                        <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest mt-0.5">{a.stage}</p>
                                     </div>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg bg-white border shadow-sm group-hover:text-blue-600 group-hover:border-blue-200" asChild>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg bg-white border shadow-sm group-hover:text-blue-600 group-hover:border-blue-200" asChild>
                                         <a href={a.url} target="_blank" rel="noopener noreferrer">
-                                            <Download className="h-4 w-4 text-slate-400 group-hover:text-blue-600" />
+                                            <Download className="h-3.5 w-3.5 text-slate-400 group-hover:text-blue-600" />
                                         </a>
                                     </Button>
                                 </div>
@@ -126,12 +126,12 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
                 )}
 
                 {/* PROTOCOL */}
-                <div className="space-y-4">
-                    <h5 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 flex items-center gap-3 ml-1">
-                        <ShieldCheck className="h-4 w-4 text-slate-400" /> STAGE PROTOCOL
+                <div className="space-y-3">
+                    <h5 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 flex items-center gap-3 ml-1">
+                        <ShieldCheck className="h-3.5 w-3.5 text-slate-400" /> STAGE PROTOCOL
                     </h5>
-                    <div className="p-6 bg-slate-50/50 border border-slate-200 rounded-2xl space-y-6 shadow-inner">
-                        <div className="space-y-3">
+                    <div className="p-4 bg-slate-50/50 border border-slate-200 rounded-xl space-y-4 shadow-inner">
+                        <div className="space-y-2">
                             {[
                                 "Identify all involved personnel",
                                 "Document site conditions",
@@ -139,13 +139,13 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
                                 "Analyze root cause chain",
                                 "Formulate remediation strategy"
                             ].map((step, i) => (
-                                <div key={i} className="flex items-start gap-3.5 text-[11px] font-bold text-slate-600">
-                                    <CheckCircle2 className="h-3.5 w-3.5 text-slate-300 mt-0.5 shrink-0" />
+                                <div key={i} className="flex items-start gap-2.5 text-[10px] font-bold text-slate-600">
+                                    <CheckCircle2 className="h-3 w-3 text-slate-300 mt-0.5 shrink-0" />
                                     <span className="uppercase tracking-tight leading-snug">{step}</span>
                                 </div>
                             ))}
                         </div>
-                        <Button variant="outline" className="w-full h-11 text-[11px] font-black uppercase tracking-[0.2em] bg-white border border-slate-300 rounded-xl hover:bg-slate-100 hover:border-slate-400 transition-all shadow-sm">
+                        <Button variant="outline" className="w-full h-9 text-[10px] font-black uppercase tracking-[0.15em] bg-white border border-slate-300 rounded-lg hover:bg-slate-100 hover:border-slate-400 transition-all shadow-sm">
                             VIEW SOP DOCUMENT
                         </Button>
                     </div>
@@ -157,20 +157,20 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
 
 function InfoRow({ label, value, isRisk = false, risk = '', isBlue = false, isLast = false, isBadge = false, isBold = false }: { label: string, value?: string | null, isRisk?: boolean, risk?: string, isBlue?: boolean, isLast?: boolean, isBadge?: boolean, isBold?: boolean }) {
     return (
-        <div className={cn("flex justify-between items-center px-6 py-3.5 text-[11px]", !isLast && "border-b border-slate-50")}>
+        <div className={cn("flex justify-between items-center px-4 py-2 text-[10px]", !isLast && "border-b border-slate-50")}>
             <span className="font-bold text-slate-400 uppercase tracking-widest">{label}</span>
             {isRisk ? (
                 <Badge variant="outline" className={cn(
-                    "font-black uppercase text-[9px] tracking-widest h-6 px-3 border rounded-md",
+                    "font-black uppercase text-[8px] tracking-widest h-5 px-2 border rounded-sm",
                     risk === 'Low' && "text-emerald-700 border-emerald-100 bg-emerald-50",
                     risk === 'Medium' && "text-amber-700 border-amber-100 bg-amber-50",
                     risk === 'High' && "text-red-700 border-red-100 bg-red-50",
                     risk === 'Critical' && "text-white border-red-800 bg-red-700"
                 )}>{value}</Badge>
             ) : isBadge ? (
-                <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 font-black text-[9px] px-3 h-6 tracking-widest uppercase rounded-md">{value}</Badge>
+                <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 font-black text-[8px] px-2 h-5 tracking-widest uppercase rounded-sm">{value}</Badge>
             ) : (
-                <span className={cn("font-bold text-slate-900 uppercase truncate max-w-[200px]", isBlue && "text-blue-700", isBold && "font-black")}>{value || '—'}</span>
+                <span className={cn("font-bold text-slate-900 uppercase truncate max-w-[180px]", isBlue && "text-blue-700", isBold && "font-black")}>{value || '—'}</span>
             )}
         </div>
     );
@@ -179,11 +179,11 @@ function InfoRow({ label, value, isRisk = false, risk = '', isBlue = false, isLa
 function HealthMetric({ label, value, isDanger = false }: { label: string, value: string, isDanger?: boolean }) {
     return (
         <div className={cn(
-            "p-3 rounded-xl border text-center transition-colors shadow-sm",
+            "p-2 rounded-lg border text-center transition-colors shadow-sm",
             isDanger ? "bg-rose-600 border-rose-700 shadow-rose-200" : "bg-white border-slate-100"
         )}>
-            <p className={cn("text-[8px] font-black uppercase tracking-[0.2em] mb-1", isDanger ? "text-white/70" : "text-slate-400")}>{label}</p>
-            <p className={cn("text-[12px] font-black uppercase tracking-tight", isDanger ? "text-white" : "text-slate-900")}>{value}</p>
+            <p className={cn("text-[7px] font-black uppercase tracking-[0.1em] mb-0.5", isDanger ? "text-white/70" : "text-slate-400")}>{label}</p>
+            <p className={cn("text-[10px] font-black uppercase tracking-tight", isDanger ? "text-white" : "text-slate-900")}>{value}</p>
         </div>
     );
 }
