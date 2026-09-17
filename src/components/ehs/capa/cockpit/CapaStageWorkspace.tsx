@@ -28,7 +28,8 @@ import {
     Calendar,
     ZoomIn,
     Download,
-    File
+    File,
+    Trash2
 } from 'lucide-react';
 import type { EhsObservation, CapaStage, Role } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
@@ -43,6 +44,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { useToast } from '@/hooks/use-toast';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 // Phase-Specific Components
 import CapaInvestigation from '../stages/CapaInvestigation';
@@ -60,7 +62,7 @@ interface CapaStageWorkspaceProps {
 export default function CapaStageWorkspace({ observation, stage }: CapaStageWorkspaceProps) {
     const { user, users } = useAuth();
     const { projects } = useGeneral();
-    const { reviewStage, assignStageOwner, addStageAttachment, deleteObservation } = useEhs();
+    const { reviewStage, assignStageOwner, addStageAttachment, deleteStageAttachment, deleteObservation } = useEhs();
     const { toast } = useToast();
     
     const sData = observation.stages[stage];
@@ -75,7 +77,9 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
     const isLocked = isCompleted || isSubmitted;
 
     const isSupervisor = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor';
-    const canReassign = (user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Senior Safety Supervisor') && !isCompleted;
+    const isManagement = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor' || user?.role === 'Project Coordinator';
+    
+    const canReassign = (isManagement) && !isCompleted;
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -203,26 +207,58 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                 <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">PHASE EVIDENCE LEDGER</h4>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {attachments.map(a => (
-                                    <div key={a.id} className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 flex items-center justify-between group hover:border-blue-400 transition-all shadow-sm">
-                                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                                            <div className="h-8 w-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center shrink-0">
-                                                <File className="h-4 w-4 text-slate-400" />
+                                {attachments.map(a => {
+                                    const isUploader = user?.id === a.uploadedBy;
+                                    const canDelete = isManagement || (!isLocked && isUploader);
+                                    
+                                    return (
+                                        <div key={a.id} className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 flex items-center justify-between group hover:border-blue-400 transition-all shadow-sm">
+                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                <div className="h-8 w-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center shrink-0">
+                                                    <File className="h-4 w-4 text-slate-400" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-[11px] font-bold text-slate-900 truncate uppercase tracking-tight">{a.name}</p>
+                                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{format(parseISO(a.uploadedAt), 'dd MMM, HH:mm')}</p>
+                                                </div>
                                             </div>
-                                            <div className="min-w-0">
-                                                <p className="text-[11px] font-bold text-slate-900 truncate uppercase tracking-tight">{a.name}</p>
-                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{format(parseISO(a.uploadedAt), 'dd MMM, HH:mm')}</p>
+                                            <div className="flex items-center gap-1 ml-2">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-blue-600 hover:text-white border-2 border-blue-600/20" asChild>
+                                                    <a href={a.url} target="_blank" rel="noopener noreferrer">
+                                                        <Download className="h-4 w-4" />
+                                                    </a>
+                                                </Button>
+                                                {canDelete && (
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-rose-500 hover:bg-rose-50 border-2 border-rose-500/10">
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle className="uppercase font-black">Delete Phase Evidence?</AlertDialogTitle>
+                                                                <AlertDialogDescription className="font-medium text-slate-500">
+                                                                    This will permanently remove the technical document "{a.name}" from the case dossier. 
+                                                                    {isLocked && isManagement && " [Institutional Override Mode Active]"}
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter className="gap-3">
+                                                                <AlertDialogCancel className="font-bold rounded-xl">CANCEL</AlertDialogCancel>
+                                                                <AlertDialogAction 
+                                                                    className="bg-rose-600 hover:bg-rose-700 text-white font-black uppercase text-[10px] tracking-widest rounded-xl"
+                                                                    onClick={() => deleteStageAttachment(observation.id, stage, a.id)}
+                                                                >
+                                                                    DELETE PERMANENTLY
+                                                                </AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                )}
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-1 ml-2">
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-blue-600 hover:text-white border-2 border-blue-600/20" asChild>
-                                                <a href={a.url} target="_blank" rel="noopener noreferrer">
-                                                    <Download className="h-4 w-4" />
-                                                </a>
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     )}

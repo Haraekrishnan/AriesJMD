@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo } from 'react';
@@ -49,6 +48,7 @@ type EhsContextType = {
   addStageComment: (observationId: string, stage: CapaStage, text: string) => void;
   addCcToObservation: (observationId: string, userIds: string[]) => void;
   addStageAttachment: (observationId: string, stage: CapaStage, name: string, url: string) => void;
+  deleteStageAttachment: (observationId: string, stage: CapaStage, attachmentId: string) => void;
   deleteObservation: (observationId: string) => void;
   
   reviewAudit: (auditId: string, status: 'Approved' | 'Rejected', comment: string) => void;
@@ -489,6 +489,11 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     });
   }, [user]);
 
+  const deleteStageAttachment = useCallback((observationId: string, stage: CapaStage, attachmentId: string) => {
+    remove(ref(rtdb, `ehs/observations/${observationId}/stages/${stage}/attachments/${attachmentId}`));
+    toast({ title: 'Attachment Deleted', variant: 'destructive' });
+  }, [toast]);
+
   const deleteObservation = useCallback((observationId: string) => {
     if (user?.role !== 'Admin') return;
     remove(ref(rtdb, `ehs/observations/${observationId}`));
@@ -572,7 +577,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     <EhsContext.Provider value={{ 
         audits, incidents, riskAssessments, trainings, observations, supportTickets, contactInfo, 
         addAudit, addIncident, addRiskAssessment, addTraining, 
-        addObservation, updateInitiationDetails, splitObservation, assignStageOwner, actionStage, reviewStage, addStageComment, addStageAttachment, addCcToObservation, deleteObservation,
+        addObservation, updateInitiationDetails, splitObservation, assignStageOwner, actionStage, reviewStage, addStageComment, addStageAttachment, deleteStageAttachment, addCcToObservation, deleteObservation,
         reviewAudit, updateIncidentStatus, addSupportTicket, updateTicketStatus, addTicketComment, deleteSupportTicket, updateContactInfo, stats 
     }}>
       {children}
