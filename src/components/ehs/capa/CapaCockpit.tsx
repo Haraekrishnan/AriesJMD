@@ -11,6 +11,7 @@ import {
     Calendar,
     Paperclip,
     Plus,
+    Settings,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { Button } from '@/components/ui/button';
