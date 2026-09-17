@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -137,8 +136,8 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                         </footer>
                     </main>
 
-                    {/* RIGHT: INTELLIGENCE PANEL */}
-                    <aside className="w-[300px] shrink-0 bg-white border-l border-slate-200 flex flex-col overflow-hidden">
+                    {/* RIGHT: INTELLIGENCE PANEL (EXPANDED) */}
+                    <aside className="w-[420px] shrink-0 bg-white border-l border-slate-200 flex flex-col overflow-hidden">
                         <CapaCaseInformation observation={observation} />
                     </aside>
                 </div>
