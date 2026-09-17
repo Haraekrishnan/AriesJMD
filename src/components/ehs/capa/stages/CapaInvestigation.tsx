@@ -44,7 +44,6 @@ export default function CapaInvestigation({
     const { addStageAttachment } = useEhs();
     const { toast } = useToast();
     const sData = observation.stages?.Investigation;
-    const currentOwner = users.find(u => u.id === sData?.assigneeId);
 
     const handlePaste = useCallback((e: React.ClipboardEvent, fieldName: string) => {
         if (isLocked) return;
@@ -68,8 +67,8 @@ export default function CapaInvestigation({
     return (
         <div className="w-full text-left">
             <Tabs defaultValue="summary" className="w-full">
-                <div className="px-10 border-b border-slate-100 bg-white">
-                    <TabsList className="h-14 w-full justify-start gap-12 bg-transparent p-0">
+                <div className="px-8 border-b border-slate-100 bg-white">
+                    <TabsList className="h-10 w-full justify-start gap-8 bg-transparent p-0">
                         {[
                             { id: 'summary', label: 'Investigation Summary', icon: Search },
                             { id: '5why', label: '5-Why Root Cause', icon: GitBranch },
@@ -79,93 +78,91 @@ export default function CapaInvestigation({
                             <TabsTrigger 
                                 key={tab.id} 
                                 value={tab.id}
-                                className="h-14 rounded-none border-b-2 border-transparent px-0 text-[11px] font-black uppercase tracking-widest text-slate-400 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 bg-transparent shadow-none"
+                                className="h-10 rounded-none border-b-2 border-transparent px-0 text-[10px] font-black uppercase tracking-widest text-slate-400 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 bg-transparent shadow-none"
                             >
-                                <tab.icon className="mr-2.5 h-4 w-4" /> {tab.label}
+                                <tab.icon className="mr-2 h-3.5 w-3.5" /> {tab.label}
                             </TabsTrigger>
                         ))}
                     </TabsList>
                 </div>
 
                 <div className="flex-1">
-                    <ScrollArea className="flex-1 h-[60vh]">
-                        <TabsContent value="summary" className="m-0 p-10 space-y-12">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-                                <div className="space-y-10">
-                                    <div className="flex items-center gap-3">
-                                        <Activity className="h-5 w-5 text-blue-600" />
-                                        <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">TECHNICAL LOGISTICS</h4>
-                                    </div>
-                                    <div className="space-y-8">
-                                        <FormItem label="Who was involved?" isRequired placeholder="Personnel or departments..." isLocked={isLocked} name="involved" icon={UserRound} onPaste={(e) => handlePaste(e, 'involved')} />
-                                        <FormItem label="Exact site position" isRequired placeholder="Specific deck or workshop..." isLocked={isLocked} name="exactLocation" icon={MapPin} onPaste={(e) => handlePaste(e, 'exactLocation')} />
-                                        <div className="grid grid-cols-2 gap-6">
-                                            <FormItem label="Discovery date" type="date" isLocked={isLocked} name="discoveryDate" icon={CalendarDays} />
-                                            <FormItem label="Discovery time" type="time" isLocked={isLocked} name="discoveryTime" icon={Clock3} />
-                                        </div>
-                                    </div>
+                    <TabsContent value="summary" className="m-0 p-8 space-y-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-2">
+                                    <Activity className="h-4 w-4 text-blue-600" />
+                                    <h4 className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-500">TECHNICAL LOGISTICS</h4>
                                 </div>
-
-                                <div className="space-y-10">
-                                    <div className="flex items-center gap-3">
-                                        <MessageSquare className="h-5 w-5 text-blue-600" />
-                                        <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">NARRATIVE CONTEXT</h4>
-                                    </div>
-                                    <div className="space-y-8">
-                                        <FormItem label="Sequence of events" isRequired type="textarea" placeholder="Detailed chronological sequence..." isLocked={isLocked} name="sequence" icon={MessageSquare} onPaste={(e) => handlePaste(e, 'sequence')} />
-                                        <FormItem label="Immediate cause" isRequired type="textarea" placeholder="Direct reason for unsafe finding..." isLocked={isLocked} name="immediateCause" icon={AlertTriangle} onPaste={(e) => handlePaste(e, 'immediateCause')} />
+                                <div className="space-y-4">
+                                    <FormItem label="Who was involved?" isRequired placeholder="Personnel or departments..." isLocked={isLocked} name="involved" icon={UserRound} onPaste={(e) => handlePaste(e, 'involved')} />
+                                    <FormItem label="Exact site position" isRequired placeholder="Specific deck or workshop..." isLocked={isLocked} name="exactLocation" icon={MapPin} onPaste={(e) => handlePaste(e, 'exactLocation')} />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <FormItem label="Discovery date" type="date" isLocked={isLocked} name="discoveryDate" icon={CalendarDays} />
+                                        <FormItem label="Discovery time" type="time" isLocked={isLocked} name="discoveryTime" icon={Clock3} />
                                     </div>
                                 </div>
                             </div>
-                        </TabsContent>
 
-                        <TabsContent value="5why" className="m-0 p-10">
-                            <div className="space-y-10 max-w-4xl mx-auto">
-                                <div className="flex items-center gap-3">
-                                    <Search className="h-5 w-5 text-blue-600" />
-                                    <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">ROOT CAUSE ANALYSIS (5-WHY)</h4>
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-2">
+                                    <MessageSquare className="h-4 w-4 text-blue-600" />
+                                    <h4 className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-500">NARRATIVE CONTEXT</h4>
                                 </div>
-                                <div className="space-y-6 py-6">
-                                    {[1, 2, 3, 4, 5].map(i => (
-                                        <WhyRow key={i} number={i} isLocked={isLocked} onPaste={(e) => handlePaste(e, `why${i}`)} />
-                                    ))}
+                                <div className="space-y-4">
+                                    <FormItem label="Sequence of events" isRequired type="textarea" placeholder="Detailed chronological sequence..." isLocked={isLocked} name="sequence" icon={MessageSquare} onPaste={(e) => handlePaste(e, 'sequence')} minHeight="100px" />
+                                    <FormItem label="Immediate cause" isRequired type="textarea" placeholder="Direct reason for unsafe finding..." isLocked={isLocked} name="immediateCause" icon={AlertTriangle} onPaste={(e) => handlePaste(e, 'immediateCause')} minHeight="100px" />
                                 </div>
                             </div>
-                        </TabsContent>
+                        </div>
+                    </TabsContent>
 
-                        <TabsContent value="rootcause" className="m-0 p-10">
-                            <div className="max-w-3xl mx-auto space-y-8">
-                                <div className="flex items-center gap-3">
-                                    <Activity className="h-5 w-5 text-blue-600" />
-                                    <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">SYSTEMIC ROOT CAUSE</h4>
-                                </div>
-                                <FormItem label="Final Root Cause Determination" isRequired type="textarea" placeholder="Identify the systemic failure point..." isLocked={isLocked} name="rootCause" onPaste={(e) => handlePaste(e, 'rootCause')} />
+                    <TabsContent value="5why" className="m-0 p-8">
+                        <div className="space-y-8 max-w-4xl mx-auto">
+                            <div className="flex items-center gap-2">
+                                <Search className="h-4 w-4 text-blue-600" />
+                                <h4 className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-500">ROOT CAUSE ANALYSIS (5-WHY)</h4>
                             </div>
-                        </TabsContent>
+                            <div className="space-y-3 py-2">
+                                {[1, 2, 3, 4, 5].map(i => (
+                                    <WhyRow key={i} number={i} isLocked={isLocked} onPaste={(e) => handlePaste(e, `why${i}`)} />
+                                ))}
+                            </div>
+                        </div>
+                    </TabsContent>
 
-                        <TabsContent value="conclusion" className="m-0 p-10">
-                            <div className="max-w-3xl mx-auto space-y-8">
-                                <div className="flex items-center gap-3">
-                                    <CheckCircle2 className="h-5 w-5 text-blue-600" />
-                                    <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">INVESTIGATION CONCLUSION</h4>
-                                </div>
-                                <FormItem label="Official Conclusion & Summary" isRequired type="textarea" placeholder="Synthesize findings and recommendations..." isLocked={isLocked} name="conclusion" onPaste={(e) => handlePaste(e, 'conclusion')} />
+                    <TabsContent value="rootcause" className="m-0 p-8">
+                        <div className="max-w-3xl mx-auto space-y-6">
+                            <div className="flex items-center gap-2">
+                                <Activity className="h-4 w-4 text-blue-600" />
+                                <h4 className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-500">SYSTEMIC ROOT CAUSE</h4>
                             </div>
-                        </TabsContent>
-                    </ScrollArea>
+                            <FormItem label="Final Root Cause Determination" isRequired type="textarea" placeholder="Identify the systemic failure point..." isLocked={isLocked} name="rootCause" onPaste={(e) => handlePaste(e, 'rootCause')} minHeight="120px" />
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="conclusion" className="m-0 p-8">
+                        <div className="max-w-3xl mx-auto space-y-6">
+                            <div className="flex items-center gap-2">
+                                <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                                <h4 className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-500">INVESTIGATION CONCLUSION</h4>
+                            </div>
+                            <FormItem label="Official Conclusion & Summary" isRequired type="textarea" placeholder="Synthesize findings and recommendations..." isLocked={isLocked} name="conclusion" onPaste={(e) => handlePaste(e, 'conclusion')} minHeight="120px" />
+                        </div>
+                    </TabsContent>
                 </div>
             </Tabs>
         </div>
     );
 }
 
-function FormItem({ label, placeholder, type = 'text', isLocked, isRequired, name, icon: Icon, onPaste }: { label: string, placeholder?: string, type?: 'text' | 'textarea' | 'date' | 'time', isLocked: boolean, isRequired?: boolean, name: string, icon?: any, onPaste?: (e: any) => void }) {
+function FormItem({ label, placeholder, type = 'text', isLocked, isRequired, name, icon: Icon, onPaste, minHeight }: { label: string, placeholder?: string, type?: 'text' | 'textarea' | 'date' | 'time', isLocked: boolean, isRequired?: boolean, name: string, icon?: any, onPaste?: (e: any) => void, minHeight?: string }) {
     const { register } = useFormContext();
 
     return (
-        <div className="space-y-3">
-            <Label className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500 ml-1">
-                {Icon && <Icon className="h-4 w-4 text-slate-300" />}
+        <div className="space-y-2">
+            <Label className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500 ml-1">
+                {Icon && <Icon className="h-3 w-3 text-slate-300" />}
                 {label} {isRequired && <span className="text-rose-500">*</span>}
             </Label>
             {type === 'textarea' ? (
@@ -174,7 +171,8 @@ function FormItem({ label, placeholder, type = 'text', isLocked, isRequired, nam
                     placeholder={placeholder}
                     {...register(name)}
                     onPaste={onPaste}
-                    className="min-h-[140px] rounded-xl border-slate-200 bg-white px-4 py-3 text-xs font-bold leading-relaxed text-slate-900 shadow-sm placeholder:text-slate-300 focus-visible:ring-blue-100"
+                    style={{ minHeight: minHeight || '80px' }}
+                    className="rounded-lg border-slate-200 bg-white px-3 py-2 text-[11px] font-bold leading-relaxed text-slate-900 shadow-sm placeholder:text-slate-300 focus-visible:ring-blue-100"
                 />
             ) : (
                 <Input 
@@ -183,7 +181,7 @@ function FormItem({ label, placeholder, type = 'text', isLocked, isRequired, nam
                     placeholder={placeholder}
                     {...register(name)}
                     onPaste={onPaste}
-                    className="h-[52px] rounded-xl border-slate-200 bg-white px-4 text-xs font-bold text-slate-900 shadow-sm placeholder:text-slate-300 focus-visible:ring-blue-100"
+                    className="h-10 rounded-lg border-slate-200 bg-white px-3 text-[11px] font-bold text-slate-900 shadow-sm placeholder:text-slate-300 focus-visible:ring-blue-100"
                 />
             )}
         </div>
@@ -193,9 +191,9 @@ function FormItem({ label, placeholder, type = 'text', isLocked, isRequired, nam
 function WhyRow({ number, isLocked, onPaste }: { number: number, isLocked: boolean, onPaste?: (e: any) => void }) {
     const { register } = useFormContext();
     return (
-        <div className="grid grid-cols-[40px_1fr] items-center gap-6">
+        <div className="grid grid-cols-[32px_1fr] items-center gap-4">
             <div className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-[10px] text-[10px] font-extrabold shadow-sm",
+                "flex h-8 w-8 items-center justify-center rounded-[8px] text-[9px] font-extrabold shadow-sm",
                 number === 1 ? "bg-slate-900 text-white" : "border border-slate-200 bg-white text-slate-400"
             )}>
                 W{number}
@@ -205,7 +203,7 @@ function WhyRow({ number, isLocked, onPaste }: { number: number, isLocked: boole
                 placeholder={number === 1 ? "Primary direct cause?" : "Why did that happen?"}
                 {...register(`why${number}`)}
                 onPaste={onPaste}
-                className="h-[52px] rounded-xl border-slate-200 bg-white px-5 text-xs font-bold text-slate-900 focus-visible:ring-blue-100"
+                className="h-10 rounded-lg border-slate-200 bg-white px-4 text-[11px] font-bold text-slate-900 focus-visible:ring-blue-100"
             />
         </div>
     );
