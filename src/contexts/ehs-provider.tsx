@@ -23,7 +23,7 @@ import type {
 } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
-import { addHours } from 'date-fns';
+import { addHours, format } from 'date-fns';
 
 type EhsContextType = {
   audits: EhsAudit[];
@@ -319,8 +319,6 @@ export function EhsProvider({ children }: { children: ReactNode }) {
       reviewedAt: null,
     };
 
-    // Investigation target date is fixed 24h at initiation, but reassigning shouldn't change it.
-    // However, if explicitly passed (like for Resolution), we set it.
     if (targetDate) {
         updates.targetDate = targetDate;
     }
@@ -328,13 +326,13 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, path), updates);
     update(ref(rtdb, `ehs/observations/${observationId}`), { lastUpdated: now });
     
-    // Log reassignment
+    // Log reassignment in the stage comments as a system message
     const commentRef = push(ref(rtdb, `ehs/observations/${observationId}/stages/${stage}/comments`));
     const targetUser = users.find(u => u.id === assigneeId);
     set(commentRef, {
         id: commentRef.key,
         userId: user.id,
-        text: `[SYSTEM] Responsibility assigned to ${targetUser?.name || 'User'}.`,
+        text: `[SYSTEM] Responsibility reassigned to ${targetUser?.name || 'User'}.`,
         date: now
     });
 
@@ -369,6 +367,15 @@ export function EhsProvider({ children }: { children: ReactNode }) {
         updates.actionedById = user.id;
         updates.actionedAt = now;
         updates.status = stage === 'Closure' ? 'Completed' : 'In Progress';
+        
+        // Log submission as a system comment
+        const commentRef = push(ref(rtdb, `ehs/observations/${observationId}/stages/${stage}/comments`));
+        updates[`comments/${commentRef.key}`] = {
+            id: commentRef.key,
+            userId: user.id,
+            text: `[SYSTEM] Phase findings submitted for verification.`,
+            date: now
+        };
     }
 
     if (attachmentUrl) {
@@ -430,30 +437,17 @@ export function EhsProvider({ children }: { children: ReactNode }) {
                 updates[`stages/${nextStage}/assignedById`] = user.id;
                 updates[`stages/${nextStage}/assignedAt`] = now;
                 
-                /**
-                 * SOP ROUTING LOGIC
-                 * 1. Investigation -> Resolution: Use nextOwnerData provided in dialog.
-                 * 2. Resolution -> Implementation: SAME OWNER as Resolution.
-                 * 3. Implementation -> Effectiveness Review: BACK TO Original Investigator.
-                 * 4. Effectiveness Review -> Reference: SAME OWNER (stays with Investigator).
-                 * 5. Reference -> Closure: BACK TO Implementation Owner.
-                 */
-                
                 if (stage === 'Investigation' && nextOwnerData) {
                     updates[`stages/${nextStage}/assigneeId`] = nextOwnerData.assigneeId;
                     updates[`stages/${nextStage}/targetDate`] = nextOwnerData.targetDate;
                 } else if (stage === 'Resolution') {
                     updates[`stages/${nextStage}/assigneeId`] = obs.stages['Resolution'].assigneeId;
-                    // Carry forward or prompt for target? Default to carry.
                     updates[`stages/${nextStage}/targetDate`] = obs.stages['Resolution'].targetDate;
                 } else if (stage === 'Implementation') {
-                    // Back to Investigator
                     updates[`stages/${nextStage}/assigneeId`] = obs.stages['Investigation'].assigneeId;
                 } else if (stage === 'Effectiveness Review') {
-                    // Stay with Investigator
                     updates[`stages/${nextStage}/assigneeId`] = obs.stages['Investigation'].assigneeId;
                 } else if (stage === 'Reference') {
-                    // Back to Resolution/Implementation Owner for final Closure
                     updates[`stages/${nextStage}/assigneeId`] = obs.stages['Resolution'].assigneeId;
                 } else {
                     updates[`stages/${nextStage}/assigneeId`] = obs.stages[stage].assigneeId;
@@ -502,7 +496,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
   }, [user, toast]);
 
   const reviewAudit = useCallback((auditId: string, status: 'Approved' | 'Rejected', comment: string) => {
-    if (user?.role !== 'Senior Safety Supervisor' && user?.role !== 'Admin') return;
+    if (user?.role !== 'Senior Safety Supervisor' && user?.role === 'Admin') return;
     update(ref(rtdb, `ehs/audits/${auditId}`), {
       status,
       supervisorComment: comment,
@@ -512,7 +506,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const updateIncidentStatus = useCallback((incidentId: string, status: EhsIncidentStatus, notes: string) => {
-    if (user?.role !== 'Senior Safety Supervisor' && user?.role !== 'Admin') return;
+    if (user?.role !== 'Senior Safety Supervisor' && user?.role === 'Admin') return;
     update(ref(rtdb, `ehs/incidents/${incidentId}`), {
       status,
       resolutionNotes: notes,

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo } from 'react';
@@ -7,10 +8,9 @@ import {
     User, 
     Activity,
     Info,
-    Users,
+    History,
     CheckCircle2,
     Clock,
-    PlusCircle,
     Paperclip,
     Download
 } from 'lucide-react';
@@ -20,7 +20,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format, parseISO, isValid, differenceInDays, isAfter } from 'date-fns';
 import { cn } from '@/lib/utils';
-import type { EhsObservation, CapaStage } from '@/lib/types';
+import type { EhsObservation } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -44,6 +44,34 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
         if (!sData?.targetDate) return false;
         return isAfter(new Date(), parseISO(sData.targetDate)) && sData.status !== 'Completed';
     }, [sData]);
+
+    const auditTrail = useMemo(() => {
+        const events: any[] = [];
+        
+        // Collect all comments from all stages
+        Object.entries(observation.stages).forEach(([stageName, stageData]) => {
+            if (stageData.comments) {
+                Object.values(stageData.comments).forEach(comment => {
+                    events.push({
+                        ...comment,
+                        stageName,
+                        isSystem: comment.text.startsWith('[SYSTEM]')
+                    });
+                });
+            }
+        });
+
+        // Add initiation as start point
+        events.push({
+            userId: observation.reporterId,
+            text: '[SYSTEM] Case initiated by reporter.',
+            date: observation.createdAt,
+            stageName: 'Initiation',
+            isSystem: true
+        });
+
+        return events.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+    }, [observation]);
 
     const attachments = useMemo(() => {
         const all: any[] = [];
@@ -101,6 +129,43 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
                     </div>
                 </div>
 
+                {/* TECHNICAL AUDIT TRAIL */}
+                <div className="space-y-4">
+                    <h5 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500 flex items-center gap-3 ml-1">
+                        <History className="h-4 w-4 text-slate-400" /> TECHNICAL AUDIT TRAIL
+                    </h5>
+                    <div className="space-y-4 pl-4 border-l-2 border-slate-100">
+                        {auditTrail.map((event, i) => {
+                            const actor = users.find(u => u.id === event.userId);
+                            return (
+                                <div key={i} className="relative space-y-1 pb-4 last:pb-0">
+                                    <div className="absolute -left-[22px] top-0 h-3 w-3 rounded-full bg-white border-2 border-slate-200" />
+                                    <div className="flex justify-between items-baseline gap-2">
+                                        <span className={cn(
+                                            "text-[9px] font-black uppercase tracking-wider",
+                                            event.isSystem ? "text-blue-600" : "text-slate-900"
+                                        )}>
+                                            {event.isSystem ? 'SYSTEM' : actor?.name}
+                                        </span>
+                                        <span className="text-[8px] font-bold text-slate-400 uppercase">
+                                            {format(parseISO(event.date), 'dd MMM, HH:mm')}
+                                        </span>
+                                    </div>
+                                    <p className={cn(
+                                        "text-[10px] leading-relaxed",
+                                        event.isSystem ? "font-bold text-slate-500 italic" : "font-medium text-slate-700"
+                                    )}>
+                                        {event.text}
+                                    </p>
+                                    <Badge variant="outline" className="h-4 px-1 rounded-sm text-[7px] font-black uppercase bg-slate-50 border-slate-200 text-slate-400">
+                                        PHASE: {event.stageName.toUpperCase()}
+                                    </Badge>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
                 {/* ATTACHED EVIDENCE */}
                 {attachments.length > 0 && (
                     <div className="space-y-4">
@@ -124,32 +189,6 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
                         </div>
                     </div>
                 )}
-
-                {/* PROTOCOL */}
-                <div className="space-y-4">
-                    <h5 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500 flex items-center gap-3 ml-1">
-                        <ShieldCheck className="h-4 w-4 text-slate-400" /> STAGE PROTOCOL
-                    </h5>
-                    <div className="p-6 bg-slate-50/80 border-2 border-slate-100 rounded-2xl space-y-6 shadow-inner">
-                        <div className="space-y-4">
-                            {[
-                                "Identify all involved personnel",
-                                "Document site conditions",
-                                "Perform technical forensics",
-                                "Analyze root cause chain",
-                                "Formulate remediation strategy"
-                            ].map((step, i) => (
-                                <div key={i} className="flex items-start gap-3.5 text-[11px] font-bold text-slate-600">
-                                    <CheckCircle2 className="h-4 w-4 text-slate-300 mt-0.5 shrink-0" />
-                                    <span className="uppercase tracking-tight leading-snug">{step}</span>
-                                </div>
-                            ))}
-                        </div>
-                        <Button variant="outline" className="w-full h-11 text-[10px] font-black uppercase tracking-[0.2em] bg-white border-2 border-slate-200 rounded-xl hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all shadow-md">
-                            ACCESS SOP REPOSITORY
-                        </Button>
-                    </div>
-                </div>
             </div>
         </ScrollArea>
     );
