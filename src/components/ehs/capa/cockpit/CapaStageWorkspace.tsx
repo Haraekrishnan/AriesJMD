@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useRef, MouseEvent } from 'react';
@@ -109,31 +110,24 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* --- PRIMARY TECHNICAL CARD --- */}
-            <Card className="bg-white border-slate-200 rounded-2xl shadow-[0_2px_15px_rgba(0,0,0,0.03)] overflow-hidden">
-                {/* 1. INDUSTRIAL HEADER (COMPACTED) */}
-                <div className="border-b border-slate-100 bg-white px-8 py-5">
+            <Card className="bg-white border-slate-200 rounded-2xl shadow-[0_2px_15px_rgba(0,0,0,0.03)] overflow-hidden min-h-[580px] flex flex-col">
+                {/* 1. INDUSTRIAL HEADER */}
+                <div className="border-b border-slate-100 bg-white px-8 py-5 shrink-0">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                         <div className="flex items-center gap-4">
-                            {/* Phase Number Box (Compacted) */}
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] border border-slate-200 bg-white text-lg font-black text-slate-900 shadow-sm">
+                            {/* Phase Number Box */}
+                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[12px] border border-slate-200 bg-white text-xl font-black text-slate-900 shadow-sm">
                                 0{['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'].indexOf(stage) + 1}
                             </div>
-                            <div>
-                                <div className="mb-1 flex items-center gap-2">
-                                    <Badge className={cn(
-                                        "h-4 font-black uppercase text-[7px] tracking-[0.2em] border-none shadow-sm",
-                                        isCompleted ? "bg-emerald-500" : isReturned ? "bg-rose-500" : isSubmitted ? "bg-amber-500" : "bg-blue-600"
-                                    )}>
-                                        {isReturned ? 'REWORK REQUIRED' : isSubmitted ? 'AWAITING OFFICIAL REVIEW' : isCompleted ? 'VERIFIED MILESTONE' : 'TECHNICAL ACTION'}
-                                    </Badge>
-                                </div>
-                                <h2 className="text-xl font-black uppercase leading-none tracking-tighter text-[#071B33]">
+                            <div className="space-y-1">
+                                <h2 className="text-2xl font-black uppercase leading-none tracking-tighter text-[#071B33]">
                                     {stage}
                                 </h2>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">MILESTONE TRACKER</p>
                             </div>
                         </div>
 
-                        {/* Ownership & Target Panel (Compacted) */}
+                        {/* Ownership & Target Panel */}
                         <div className="flex items-center gap-8">
                             <div className="text-right">
                                 <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">OWNERSHIP</p>
@@ -174,14 +168,14 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                     </div>
                 </div>
 
-                {/* 2. PHASE CONTENT */}
-                <div className="p-0">
+                {/* 2. PHASE CONTENT AREA */}
+                <div className="flex-1 min-h-0">
                     {renderStageContent()}
                 </div>
 
-                {/* 3. ATTACHMENT ACTION (COMPACTED) */}
+                {/* 3. ATTACHMENT ACTION */}
                 {!isLocked && stage !== 'Initiation' && (
-                    <div className="px-8 py-4 border-t bg-slate-50/50">
+                    <div className="px-8 py-4 border-t bg-slate-50/50 shrink-0">
                         <div className="flex justify-between items-center">
                             <div className="flex items-center gap-2">
                                 <div className="h-6 w-6 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center">

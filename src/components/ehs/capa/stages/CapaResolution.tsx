@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useCallback } from 'react';
@@ -53,7 +54,7 @@ export default function CapaResolution({ observation, isLocked }: Props) {
     return (
         <div className="p-8 space-y-10">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                <div className="space-y-6">
+                <div className="space-y-6 text-left">
                     <SectionHeading icon={Activity} title="TECHNICAL STRATEGY" />
                     <div className="space-y-6">
                         <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 shadow-inner space-y-2">
@@ -65,7 +66,7 @@ export default function CapaResolution({ observation, isLocked }: Props) {
                     </div>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-6 text-left">
                     <SectionHeading icon={Zap} title="REMEDIATION CONTEXT" />
                     <div className="space-y-6">
                         <div className="space-y-2">
@@ -91,8 +92,8 @@ export default function CapaResolution({ observation, isLocked }: Props) {
 function SectionHeading({ icon: Icon, title }: { icon: any; title: string }) {
     return (
         <div className="flex items-center gap-2">
-            <Icon className="h-4 w-4 text-blue-600" />
-            <h4 className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-500">{title}</h4>
+            <Icon className="h-4 w-4 text-[#1769FF]" />
+            <h4 className="text-[9px] font-black uppercase tracking-[0.25em] text-[#304B68]">{title}</h4>
         </div>
     );
 }

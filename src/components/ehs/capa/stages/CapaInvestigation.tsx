@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useCallback } from 'react';
@@ -43,7 +44,6 @@ export default function CapaInvestigation({
     const { users } = useAuth();
     const { addStageAttachment } = useEhs();
     const { toast } = useToast();
-    const sData = observation.stages?.Investigation;
 
     const handlePaste = useCallback((e: React.ClipboardEvent, fieldName: string) => {
         if (isLocked) return;
