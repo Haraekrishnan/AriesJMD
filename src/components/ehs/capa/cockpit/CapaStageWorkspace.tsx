@@ -28,6 +28,7 @@ import {
     Calendar,
     ZoomIn,
     Download,
+    File
 } from 'lucide-react';
 import type { EhsObservation, CapaStage, Role } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
@@ -39,7 +40,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { useToast } from '@/hooks/use-toast';
 
@@ -59,7 +60,7 @@ interface CapaStageWorkspaceProps {
 export default function CapaStageWorkspace({ observation, stage }: CapaStageWorkspaceProps) {
     const { user, users } = useAuth();
     const { projects } = useGeneral();
-    const { reviewStage, assignStageOwner, addStageAttachment } = useEhs();
+    const { reviewStage, assignStageOwner, addStageAttachment, deleteObservation } = useEhs();
     const { toast } = useToast();
     
     const sData = observation.stages[stage];
@@ -105,6 +106,11 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
     };
 
     const currentOwner = users.find(u => u.id === sData?.assigneeId);
+    
+    const attachments = useMemo(() => {
+        if (!sData?.attachments) return [];
+        return Object.values(sData.attachments).sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
+    }, [sData]);
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -114,7 +120,6 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                 <div className="border-b border-slate-100 bg-white px-8 py-6 shrink-0">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                         <div className="flex items-center gap-4">
-                            {/* Phase Number Box */}
                             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[12px] border border-slate-200 bg-white text-xl font-black text-slate-900 shadow-sm">
                                 0{['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'].indexOf(stage) + 1}
                             </div>
@@ -126,7 +131,6 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                             </div>
                         </div>
 
-                        {/* Ownership & Target Panel */}
                         <div className="flex items-center gap-8">
                             <div className="text-right">
                                 <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">OWNERSHIP</p>
@@ -168,8 +172,48 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                 </div>
 
                 {/* 2. PHASE CONTENT AREA */}
-                <div className="flex-1 min-h-0">
+                <div className="flex-1 min-h-0 overflow-y-auto">
                     {renderStageContent()}
+                    
+                    {/* Integrated Evidence Section within the card */}
+                    {attachments.length > 0 && (
+                        <div className="px-8 pb-8 space-y-4">
+                            <div className="flex items-center gap-2 border-b pb-2">
+                                <FileText className="h-4 w-4 text-blue-600" />
+                                <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">PHASE EVIDENCE LEDGER</h4>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {attachments.map(a => (
+                                    <div key={a.id} className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 flex items-center justify-between group hover:border-blue-400 transition-all shadow-sm">
+                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                            <div className="h-8 w-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center shrink-0">
+                                                <File className="h-4 w-4 text-slate-400" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-[11px] font-bold text-slate-900 truncate uppercase tracking-tight">{a.name}</p>
+                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{format(parseISO(a.uploadedAt), 'dd MMM, HH:mm')}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1 ml-2">
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-7 w-7 rounded-lg hover:text-blue-600"
+                                                onClick={() => setViewingAttachmentUrl(a.url)}
+                                            >
+                                                <ZoomIn className="h-3.5 w-3.5" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:text-blue-600" asChild>
+                                                <a href={a.url} target="_blank" rel="noopener noreferrer">
+                                                    <Download className="h-3.5 w-3.5" />
+                                                </a>
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* 3. ATTACHMENT ACTION */}
@@ -262,6 +306,26 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* --- EVIDENCE VIEWER --- */}
+            <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => setViewingAttachmentUrl(null)}>
+                <DialogContent className="max-w-[95vw] md:max-w-5xl w-full p-0 overflow-hidden bg-black border-none shadow-2xl">
+                    <div className="absolute top-4 right-4 z-50">
+                        <Button variant="ghost" size="icon" className="text-white hover:bg-white/10" onClick={() => setViewingAttachmentUrl(null)}>
+                            <X className="h-6 w-6" />
+                        </Button>
+                    </div>
+                    <div className="aspect-video w-full flex items-center justify-center bg-black">
+                        {viewingAttachmentUrl && (
+                            <img 
+                                src={viewingAttachmentUrl} 
+                                alt="Evidence" 
+                                className="max-w-full max-h-full object-contain"
+                            />
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
@@ -324,3 +388,4 @@ function MetaRow({ label, value, icon: Icon, isRisk = false, risk = '' }: { labe
         </div>
     );
 }
+

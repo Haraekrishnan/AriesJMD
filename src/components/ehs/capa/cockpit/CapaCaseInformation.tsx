@@ -10,8 +10,6 @@ import {
     History,
     CheckCircle2,
     Clock,
-    Paperclip,
-    Download,
     Search
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -72,16 +70,6 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
         });
 
         return events.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-    }, [observation]);
-
-    const attachments = useMemo(() => {
-        const all: any[] = [];
-        Object.entries(observation.stages).forEach(([stage, data]) => {
-            if (data.attachments) {
-                Object.values(data.attachments).forEach(a => all.push({ ...a, stage }));
-            }
-        });
-        return all;
     }, [observation]);
 
     return (
@@ -179,30 +167,6 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>
-
-                {/* ATTACHED EVIDENCE */}
-                {attachments.length > 0 && (
-                    <div className="space-y-4">
-                        <h5 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500 flex items-center gap-3 ml-1">
-                            <Paperclip className="h-4 w-4 text-slate-400" /> EVIDENCE LEDGER
-                        </h5>
-                        <div className="space-y-3">
-                            {attachments.map(a => (
-                                <div key={a.id} className="p-4 bg-slate-50 border rounded-xl flex items-center justify-between group hover:border-blue-400 hover:bg-white transition-all shadow-sm">
-                                    <div className="min-w-0 pr-4">
-                                        <p className="text-[12px] font-bold text-slate-900 truncate uppercase tracking-tight">{a.name}</p>
-                                        <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mt-1">{a.stage}</p>
-                                    </div>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg bg-white border shadow-sm group-hover:text-blue-600 group-hover:border-blue-200" asChild>
-                                        <a href={a.url} target="_blank" rel="noopener noreferrer">
-                                            <Download className="h-4 w-4 text-slate-400 group-hover:text-blue-600" />
-                                        </a>
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
             </div>
         </ScrollArea>
     );
