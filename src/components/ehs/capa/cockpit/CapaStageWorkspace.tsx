@@ -39,21 +39,21 @@ export default function CapaStageWorkspace({ observation, stage }: Props) {
             case 'Effectiveness Review': return <CapaEffectivenessReview observation={observation} isLocked={isLocked} />;
             case 'Reference': return <CapaReference observation={observation} isLocked={isLocked} />;
             case 'Closure': return <CapaClosure observation={observation} isLocked={isLocked} />;
-            default: return <div className="py-20 text-center opacity-30"><p className="font-bold uppercase text-sm tracking-widest">TECHNICAL WORKSPACE OFFLINE</p></div>;
+            default: return <div className="py-20 text-center opacity-30"><p className="font-bold uppercase text-xs tracking-widest">TECHNICAL WORKSPACE OFFLINE</p></div>;
         }
     };
 
     return (
-        <div className="space-y-6 max-w-[1000px] mx-auto text-left">
+        <div className="space-y-6 max-w-[1200px] mx-auto text-left">
             {/* --- REWORK NOTIFICATION --- */}
             {isReturned && (
-                <div className="p-4 rounded border-2 border-red-200 bg-red-50 flex items-start gap-4 shadow-sm">
-                    <div className="p-2 bg-red-600 rounded text-white shrink-0">
-                        <AlertTriangle className="h-5 w-5" />
+                <div className="p-4 rounded border border-rose-200 bg-rose-50 flex items-start gap-4">
+                    <div className="p-2 bg-rose-600 rounded-sm text-white shrink-0">
+                        <AlertTriangle className="h-4 w-4" />
                     </div>
                     <div className="space-y-1">
-                        <p className="text-[10px] font-black text-red-700 uppercase tracking-widest">REWORK INSTRUCTIONS</p>
-                        <p className="text-sm font-bold text-red-950 italic leading-snug">
+                        <p className="text-[10px] font-bold text-rose-700 uppercase tracking-widest">REWORK INSTRUCTIONS</p>
+                        <p className="text-sm font-medium text-rose-950 italic leading-snug">
                             "{sData?.comments ? Object.values(sData.comments).reverse()[0]?.text : 'Technical details require clarification.'}"
                         </p>
                     </div>
@@ -61,15 +61,15 @@ export default function CapaStageWorkspace({ observation, stage }: Props) {
             )}
 
             {/* --- PRIMARY WORKBENCH --- */}
-            <div className="bg-white rounded border border-slate-300 shadow-sm overflow-hidden">
-                <div className="px-8 py-6 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
+            <div className="bg-white rounded-lg border border-slate-300 shadow-sm overflow-hidden">
+                <div className="px-8 py-6 border-b border-slate-200 bg-slate-50/30 flex justify-between items-center">
                     <div className="flex items-center gap-5">
-                        <div className="h-12 w-12 bg-[#0F172A] rounded border-b-4 border-blue-600 flex items-center justify-center shrink-0">
-                            <span className="text-white font-black text-lg">0{phaseNumber}</span>
+                        <div className="h-10 w-10 bg-slate-50 border border-slate-300 rounded-md flex items-center justify-center shrink-0">
+                            <span className="text-slate-600 font-bold text-base">0{phaseNumber}</span>
                         </div>
-                        <div className="space-y-0.5">
-                            <Badge className="bg-blue-600 text-white font-black uppercase text-[8px] tracking-widest px-2.5 h-5 border-none rounded-sm">TECHNICAL ACTION</Badge>
-                            <h3 className="text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none">{stage}</h3>
+                        <div className="space-y-1">
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-bold uppercase text-[9px] tracking-wider px-2 h-5 rounded-sm">TECHNICAL ACTION</Badge>
+                            <h3 className="text-xl font-bold text-slate-900 uppercase tracking-tight leading-none">{stage}</h3>
                         </div>
                     </div>
 
@@ -77,20 +77,20 @@ export default function CapaStageWorkspace({ observation, stage }: Props) {
                         {assignee && (
                             <div className="flex items-center gap-3">
                                 <div className="text-right">
-                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">OWNERSHIP</p>
-                                    <p className="text-[11px] font-bold text-slate-900 uppercase">{assignee.name}</p>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">OWNERSHIP</p>
+                                    <p className="text-[11px] font-bold text-slate-700 uppercase">{assignee.name}</p>
                                 </div>
-                                <Avatar className="h-10 w-10 border border-slate-200 rounded">
+                                <Avatar className="h-9 w-9 border border-slate-200 rounded-full">
                                     <AvatarImage src={assignee.avatar}/>
-                                    <AvatarFallback className="bg-slate-100 text-slate-600 font-bold text-xs">{assignee.name?.[0]}</AvatarFallback>
+                                    <AvatarFallback className="bg-slate-100 text-slate-500 font-bold text-[10px]">{assignee.name?.[0]}</AvatarFallback>
                                 </Avatar>
                             </div>
                         )}
-                        <div className="text-right border-l border-slate-200 pl-8 h-10 flex flex-col justify-center">
-                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">TARGET</p>
+                        <div className="text-right border-l border-slate-200 pl-8 h-8 flex flex-col justify-center">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">TARGET</p>
                             <div className="flex items-center gap-1.5 justify-end">
-                                <Clock className="h-3.5 w-3.5 text-slate-400" />
-                                <span className="text-sm font-black text-slate-900">TBD</span>
+                                <Clock className="h-3 w-3 text-slate-400" />
+                                <span className="text-xs font-bold text-slate-800">TBD</span>
                             </div>
                         </div>
                     </div>
