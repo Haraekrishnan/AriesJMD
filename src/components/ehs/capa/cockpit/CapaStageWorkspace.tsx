@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useRef, MouseEvent } from 'react';
@@ -309,7 +310,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                 </ScrollArea>
                             ) : (
                                 <img 
-                                    src={viewingAttachmentUrl || ''} 
+                                    src={viewingAttachmentUrl} 
                                     alt="Evidence" 
                                     className={cn("transition-transform duration-200 shadow-2xl", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
                                     style={{ 
@@ -319,7 +320,8 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                         objectFit: 'contain'
                                     }}
                                 />
-                            )}
+                            )
+                        )}
                     </div>
                 </DialogContent>
             </Dialog>
@@ -541,7 +543,7 @@ function EditableMeta({ label, value, isEditing, field, type, options, onChange 
     return (
         <div className="space-y-1.5">
             <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1 flex items-center gap-2">
-                <div className="h-1 w-1 rounded-full bg-[#2563EB]" /> {label}
+                <div className="h-1 w-1 rounded-full bg-blue-500/30" /> {label}
             </Label>
             {isEditing ? (
                 type === 'select' ? (
