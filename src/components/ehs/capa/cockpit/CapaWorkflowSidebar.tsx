@@ -7,6 +7,7 @@ import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const STAGES: CapaStage[] = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];
 
@@ -87,7 +88,7 @@ export default function CapaWorkflowSidebar({ observation, viewingStage, onStage
                                     )}>
                                         {stage}
                                     </p>
-                                    <div className="flex items-center gap-2 mt-1">
+                                    <div className="flex items-center gap-1.5 mt-0.5">
                                         <Badge variant="outline" className={cn(
                                             "h-4 px-1.5 rounded-sm text-[7px] font-black uppercase tracking-widest border-none",
                                             isCompleted ? "bg-emerald-50 text-emerald-600" : 
