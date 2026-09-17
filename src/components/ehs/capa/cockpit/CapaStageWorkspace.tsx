@@ -67,7 +67,7 @@ interface CapaStageWorkspaceProps {
 }
 
 export default function CapaStageWorkspace({ observation, stage }: CapaStageWorkspaceProps) {
-    const { user } = useAuth();
+    const { user, users } = useAuth();
     const { reviewStage } = useEhs();
     const sData = observation.stages[stage];
     
@@ -230,13 +230,11 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
 
             {/* --- LIGHTBOX EVIDENCE VIEWER --- */}
             <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); setNumPages(null); setPageNumber(1); }}>
-                <DialogContent className="max-w-[95vw] sm:max-w-5xl h-[90vh] flex flex-col p-0 overflow-hidden bg-black border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
-                    
-                    {/* Accessibility Headers */}
-                    <DialogHeader className="sr-only">
+                <DialogContent className="max-w-[90vw] md:max-w-3xl h-auto max-h-[85vh] flex flex-col p-0 overflow-hidden bg-black border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+                    <div className="sr-only">
                         <DialogTitle>Case Discovery Evidence Viewer</DialogTitle>
                         <DialogDescription>Full-resolution technical evidence for forensic inspection.</DialogDescription>
-                    </DialogHeader>
+                    </div>
 
                     {/* Minimalist Overlay Controls */}
                     <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
@@ -272,7 +270,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
 
                     <div 
                       ref={imageContainerRef}
-                      className="flex-1 overflow-hidden flex items-center justify-center bg-black relative"
+                      className="aspect-video w-full overflow-hidden flex items-center justify-center bg-black relative"
                       onMouseDown={handleMouseDown}
                       onMouseMove={handleMouseMove}
                       onMouseUp={handleMouseUpOrLeave}
@@ -287,7 +285,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                             onLoadSuccess={onDocumentLoadSuccess}
                                             className="flex justify-center"
                                         >
-                                            <Page pageNumber={pageNumber} scale={1.5} />
+                                            <Page pageNumber={pageNumber} scale={1.2} />
                                         </Document>
                                     </div>
                                 </ScrollArea>
@@ -298,8 +296,8 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                     className={cn("transition-transform duration-200 shadow-2xl", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
                                     style={{
                                         transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`,
-                                        maxWidth: zoom > 1 ? 'none' : '90%',
-                                        maxHeight: zoom > 1 ? 'none' : '90%',
+                                        maxWidth: zoom > 1 ? 'none' : '100%',
+                                        maxHeight: zoom > 1 ? 'none' : '100%',
                                         objectFit: 'contain'
                                     }}
                                 />
@@ -554,6 +552,17 @@ function EditableMeta({ label, value, isEditing, field, type, options, onChange 
                     <span className="text-xs font-bold text-slate-800 uppercase tracking-tight truncate">{value}</span>
                 </div>
             )}
+        </div>
+    );
+}
+
+function StatItem({ label, value, icon: Icon }: { label: string, value: string, icon: any }) {
+    return (
+        <div className="space-y-1.5 text-left">
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2">
+                <Icon className="h-2.5 w-2.5 text-slate-500" /> {label}
+            </p>
+            <p className="text-lg font-black text-white tracking-tight uppercase">{value}</p>
         </div>
     );
 }
