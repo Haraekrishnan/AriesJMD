@@ -230,41 +230,40 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
 
             {/* --- IMAGE VIEWER DIALOG --- */}
             <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); setNumPages(null); setPageNumber(1); }}>
-                <DialogContent className="max-w-[95vw] h-[95vh] flex flex-col p-0 overflow-hidden bg-white border-none shadow-2xl">
-                    <DialogHeader className="p-4 border-b bg-white shrink-0 flex flex-row items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="h-8 w-8 rounded bg-blue-50 flex items-center justify-center border border-blue-100">
-                                <Search className="h-4 w-4 text-blue-600" />
+                <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col p-0 overflow-hidden bg-black border-2 border-slate-800 shadow-2xl">
+                    <DialogHeader className="p-3 border-b border-slate-800 bg-white shrink-0 flex flex-row items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="h-6 w-6 rounded bg-slate-100 flex items-center justify-center border border-slate-200">
+                                <Search className="h-3 w-3 text-slate-500" />
                             </div>
                             <div>
-                                <DialogTitle className="text-sm font-black uppercase tracking-tight">Technical Evidence Viewer</DialogTitle>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Forensic Inspection Zoom</p>
+                                <DialogTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-700">TECHNICAL EVIDENCE VIEWER</DialogTitle>
                             </div>
                         </div>
                         <div className="flex items-center gap-2 mr-8">
                             {!isPdf && (
                                 <>
-                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4" /></Button>
-                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
+                                    <Button variant="outline" size="icon" className="h-7 w-7 border-slate-300" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-3.5 w-3.5 text-slate-600" /></Button>
+                                    <Button variant="outline" size="icon" className="h-7 w-7 border-slate-300" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-3.5 w-3.5 text-slate-600" /></Button>
                                 </>
                             )}
                             {isPdf && numPages && (
-                                <div className="flex items-center gap-2 text-[10px] font-bold uppercase px-4 border-x">
+                                <div className="flex items-center gap-2 text-[9px] font-bold uppercase px-4 border-x border-slate-200">
                                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPageNumber(p => Math.max(1, p - 1))} disabled={pageNumber <= 1}><ChevronLeft className="h-3 w-3" /></Button>
                                     <span>PAGE {pageNumber} / {numPages}</span>
                                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPageNumber(p => Math.min(numPages, p + 1))} disabled={pageNumber >= numPages}><ChevronRight className="h-3 w-3" /></Button>
                                 </div>
                             )}
-                            <Button variant="outline" className="h-8 text-[10px] font-black uppercase tracking-widest gap-2 bg-white" asChild>
+                            <Button variant="outline" className="h-7 text-[9px] font-black uppercase tracking-widest gap-2 bg-white border-slate-300 text-slate-700" asChild>
                                 <a href={viewingAttachmentUrl || ''} download target="_blank" rel="noopener noreferrer">
-                                    <Download className="h-3.5 w-3.5" /> DOWNLOAD
+                                    <Download className="h-3 w-3" /> DOWNLOAD
                                 </a>
                             </Button>
                         </div>
                     </DialogHeader>
                     <div 
                       ref={imageContainerRef}
-                      className="flex-1 overflow-auto flex items-center justify-center p-8 bg-slate-100/50"
+                      className="flex-1 overflow-auto flex items-center justify-center p-6 bg-black"
                       onMouseDown={handleMouseDown}
                       onMouseMove={handleMouseMove}
                       onMouseUp={handleMouseUpOrLeave}
@@ -275,15 +274,15 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                 <Document
                                     file={viewingAttachmentUrl}
                                     onLoadSuccess={onDocumentLoadSuccess}
-                                    className="flex justify-center shadow-2xl"
+                                    className="flex justify-center"
                                 >
-                                    <Page pageNumber={pageNumber} scale={1.5} />
+                                    <Page pageNumber={pageNumber} scale={1.2} />
                                 </Document>
                             ) : (
                                 <img 
                                     src={viewingAttachmentUrl} 
                                     alt="Evidence" 
-                                    className={cn("transition-transform duration-200 shadow-2xl rounded-lg", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
+                                    className={cn("transition-transform duration-200", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
                                     style={{
                                         transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`,
                                         maxWidth: zoom > 1 ? 'none' : '100%',
