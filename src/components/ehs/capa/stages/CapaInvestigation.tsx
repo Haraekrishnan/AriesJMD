@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { 
@@ -24,7 +25,8 @@ import {
     Plus,
     Download,
     X,
-    ExternalLink
+    ExternalLink,
+    Upload
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -123,7 +125,7 @@ export default function CapaInvestigation({ observation, isLocked }: { observati
                             </h4>
                             <div className="space-y-8">
                                 <FormItem label="Sequence of Events (Chronological)" type="textarea" placeholder="Step-by-step technical sequence of the discovery..." isLocked={isLocked} />
-                                <FormItem label="Immediate Finding (Primary Cause)" type="textarea" placeholder="State the direct unsafe act or condition..." isLocked={isLocked} isRequired />
+                                <FormItem label="Immediate Finding (Primary Cause)" type="textarea" placeholder="State the direct reason for the unsafe act or condition..." isLocked={isLocked} isRequired />
                             </div>
                         </Card>
                     </div>
