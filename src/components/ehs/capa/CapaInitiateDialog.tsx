@@ -16,19 +16,35 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { useEhs } from '@/contexts/ehs-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { useToast } from '@/hooks/use-toast';
-import { ShieldCheck, MapPin, AlertCircle, Plus, Info, X, Paperclip, Check, RotateCcw } from 'lucide-react';
+import { 
+  Info, 
+  AlertTriangle, 
+  BarChart3, 
+  MapPin, 
+  Building2, 
+  Send, 
+  Paperclip, 
+  X,
+  Check
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const initiateSchema = z.object({
   description: z.string().min(5, 'Narrative description must be detailed.'),
-  category: z.enum(['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']).optional().default('Unsafe Act'),
-  severity: z.enum(['Low', 'Medium', 'High', 'Critical']).optional().default('Medium'),
-  projectId: z.string().optional().default(''),
+  category: z.enum(['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']).default('Unsafe Act'),
+  severity: z.enum(['Low', 'Medium', 'High', 'Critical']).default('Medium'),
+  projectId: z.string().min(1, 'Please select an operational site.'),
   location: z.string().optional().default(''),
   discoveryAttachmentUrl: z.string().optional().nullable(),
 });
@@ -73,184 +89,204 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
   }, [form, toast]);
 
   const onSubmit = (data: FormValues) => {
-    const submissionData = {
-        ...data,
-        projectId: data.projectId || 'Unassigned',
-        location: data.location || 'Location TBD'
-    };
-    
-    addObservation(submissionData);
+    addObservation(data);
     onOpenChange(false);
     setPastedImage(null);
     form.reset();
   };
 
-  const handleReset = () => {
-    form.reset();
-    setPastedImage(null);
-    toast({ title: 'Interface Reset', description: 'Entries have been cleared.' });
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={(v) => { onOpenChange(v); if(!v) { setPastedImage(null); form.reset(); } }}>
-      <DialogContent className="sm:max-w-4xl bg-white border-none shadow-2xl p-0 overflow-hidden rounded-[1.5rem]">
-        <div className="flex h-[700px]">
-          {/* --- INDUSTRIAL SIDEBAR --- */}
-          <div className="w-56 bg-[#0F172A] p-8 text-white flex flex-col justify-between shrink-0">
-            <div className="space-y-12">
-                <div className="bg-[#10B981] h-12 w-12 rounded-2xl flex items-center justify-center shadow-lg shadow-[#10B981]/20">
-                    <ShieldCheck className="h-7 w-7 text-white" />
+      <DialogContent className="sm:max-w-3xl bg-white p-0 overflow-hidden border-none shadow-2xl rounded-2xl">
+        <DialogHeader className="p-8 pb-4">
+          <DialogTitle className="text-2xl font-black text-[#0F172A] uppercase tracking-tight">INITIATE SAFETY OBSERVATION</DialogTitle>
+          <DialogDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest">Phase 01: Initial Discovery & Capture</DialogDescription>
+        </DialogHeader>
+
+        <ScrollArea className="max-h-[80vh]">
+          <div className="p-8 pt-2 space-y-8">
+            {/* Info Box */}
+            <div className="flex items-start gap-4 p-5 bg-[#EFF6FF] border border-[#DBEAFE] rounded-xl animate-in fade-in duration-500">
+                <div className="bg-[#2563EB] h-6 w-6 rounded-full flex items-center justify-center shrink-0">
+                    <Info className="h-3.5 w-3.5 text-white" />
                 </div>
-                
-                <div className="space-y-6">
-                    <div className="space-y-1">
-                        <p className="text-[10px] font-black text-white uppercase tracking-[0.2em]">PHASE 01</p>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-tight">INITIAL DISCOVERY & CAPTURE</p>
+                <p className="text-[13px] font-medium text-[#1E40AF] leading-relaxed">
+                    Report any unsafe act, unsafe condition, near miss or positive safety observation. Your input helps us maintain a safe and healthy workplace.
+                </p>
+            </div>
+
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10">
+              
+              {/* Step 1: Narrative */}
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                        <div className="h-6 w-6 rounded-full bg-[#2563EB] text-white flex items-center justify-center text-[10px] font-black">1</div>
+                        <Label className="text-[11px] font-black uppercase tracking-widest text-[#0F172A]">Safety Finding Narrative <span className="text-rose-500">*</span></Label>
                     </div>
-                    <Button 
-                        variant="ghost" 
-                        onClick={handleReset}
-                        className="p-0 h-auto text-[9px] font-black text-slate-400 hover:text-white uppercase tracking-[0.2em] gap-2"
-                    >
-                        <RotateCcw className="h-3 w-3" /> RESET INTERFACE
-                    </Button>
+                    <span className="text-[10px] font-medium text-slate-400">Provide a clear and concise description.</span>
                 </div>
-            </div>
-            
-            <div className="space-y-1">
-                <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em]">EHS GOVERNANCE V4.0</p>
-                <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">ARIES MARINE GROUP</p>
-            </div>
-          </div>
-
-          {/* --- UNIFIED TECHNICAL WORKSPACE --- */}
-          <div className="flex-1 flex flex-col bg-white relative">
-            <ScrollArea className="flex-1">
-                <div className="p-10 pb-4">
-                    <DialogHeader className="mb-10">
-                        <DialogTitle className="text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">INITIATE OBSERVATION</DialogTitle>
-                        <DialogDescription className="font-bold text-slate-400 uppercase text-[10px] tracking-[0.2em] mt-2">Safety Lifecycle Stage 01: Initiation</DialogDescription>
-                    </DialogHeader>
-
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10 text-left">
-                        {/* Narrative Finding Section */}
-                        <div className="space-y-5 animate-in fade-in duration-700">
-                            <Label className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 ml-1 flex items-center gap-2">
-                                <div className="h-1.5 w-1.5 rounded-full bg-[#10B981]" /> SAFETY FINDING NARRATIVE
-                            </Label>
-                            <div className="relative group">
-                                <Textarea 
-                                    {...form.register('description')} 
-                                    onPaste={handlePaste}
-                                    placeholder="Describe the unsafe act or condition precisely..." 
-                                    className="min-h-[200px] rounded-[1.5rem] p-8 font-bold text-sm bg-slate-50/50 border-2 border-slate-100 focus-visible:ring-[#10B981]/20 focus-visible:border-[#10B981]/50 shadow-inner resize-none leading-relaxed transition-all"
-                                />
-                                <div className="absolute bottom-4 right-6 flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-widest pointer-events-none opacity-50">
-                                    <Paperclip className="h-3 w-3" /> PASTE IMAGES SUPPORTED
-                                </div>
-                            </div>
-                            
-                            {pastedImage && (
-                                <div className="flex items-center gap-3 p-4 bg-emerald-50 border-2 border-emerald-100 rounded-2xl animate-in zoom-in-95 duration-300 shadow-sm">
-                                    <div className="h-14 w-20 rounded-lg border-2 border-white shadow-md overflow-hidden shrink-0 bg-white flex items-center justify-center">
-                                        <img src={pastedImage} alt="Pasted" className="max-w-full max-h-full object-contain" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Evidence Captured</p>
-                                        <p className="text-[9px] font-bold text-emerald-600/70 uppercase">Image from clipboard attached as primary discovery photo</p>
-                                    </div>
-                                    <Button variant="ghost" size="icon" className="h-9 w-9 text-rose-500 hover:bg-rose-50 rounded-full" onClick={() => { setPastedImage(null); form.setValue('discoveryAttachmentUrl', null); }}>
-                                        <X className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            )}
-                            {form.formState.errors.description && <p className="text-xs text-rose-600 font-bold ml-2">{form.formState.errors.description.message}</p>}
+                <div className="relative group">
+                    <Textarea 
+                        {...form.register('description')} 
+                        onPaste={handlePaste}
+                        placeholder="Describe the unsafe act or condition precisely..." 
+                        className="min-h-[140px] rounded-xl p-6 font-medium text-sm bg-white border border-slate-200 focus-visible:ring-blue-100 focus-visible:border-blue-500 transition-all resize-none shadow-sm"
+                    />
+                    <div className="absolute bottom-3 right-4 flex items-center gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                        <div className="flex items-center gap-1.5 opacity-60">
+                            <Paperclip className="h-3 w-3" /> 
+                            <span>Paste images supported</span>
                         </div>
-
-                        {/* Classification Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
-                            <div className="space-y-4">
-                                <Label className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 ml-1">Observation Category</Label>
-                                <Controller
-                                    control={form.control}
-                                    name="category"
-                                    render={({ field }) => (
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                            <SelectTrigger className="h-12 rounded-xl font-bold uppercase text-[10px] border-2 border-slate-100 bg-slate-50/30 px-6 shadow-sm">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Unsafe Act">Unsafe Act</SelectItem>
-                                                <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
-                                                <SelectItem value="Safe Act">Safe Act</SelectItem>
-                                                <SelectItem value="Near Miss">Near Miss</SelectItem>
-                                                <SelectItem value="Environmental">Environmental</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    )}
-                                />
-                            </div>
-                            <div className="space-y-4">
-                                <Label className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 ml-1">Risk Severity Index</Label>
-                                <Controller
-                                    control={form.control}
-                                    name="severity"
-                                    render={({ field }) => (
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                            <SelectTrigger className="h-12 rounded-xl font-bold uppercase text-[10px] border-2 border-slate-100 bg-slate-50/30 px-6 shadow-sm">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Low">Low Risk</SelectItem>
-                                                <SelectItem value="Medium">Medium Risk</SelectItem>
-                                                <SelectItem value="High">High Risk</SelectItem>
-                                                <SelectItem value="Critical">Critical Risk</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    )}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Logistics Section */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-slate-100">
-                            <div className="space-y-4">
-                                <Label className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 ml-1">Operational Site</Label>
-                                <Controller
-                                    control={form.control}
-                                    name="projectId"
-                                    render={({ field }) => (
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                            <SelectTrigger className="h-12 rounded-xl font-bold uppercase text-[10px] border-2 border-slate-100 bg-slate-50/30 px-6 shadow-sm">
-                                                <SelectValue placeholder="Select Operational Site" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="unassigned">Site Unassigned</SelectItem>
-                                                {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    )}
-                                />
-                            </div>
-                            <div className="space-y-4">
-                                <Label className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 ml-1">Specific Area / Unit</Label>
-                                <Input {...form.register('location')} placeholder="e.g. Tank 201-A, Level 3" className="h-12 rounded-xl font-bold border-2 border-slate-100 bg-slate-50/30 px-6 shadow-sm text-sm" />
-                            </div>
-                        </div>
-
-                        <div className="pt-8 flex justify-end">
-                            <Button 
-                                type="submit" 
-                                className="h-14 px-16 bg-[#0F172A] hover:bg-black text-white font-black uppercase text-[11px] tracking-[0.2em] rounded-2xl shadow-xl shadow-[#0F172A]/20 active:scale-95 transition-all"
-                            >
-                                Authorize Initiation <Check className="ml-3 h-4 w-4" />
-                            </Button>
-                        </div>
-                    </form>
+                        <span>{form.watch('description')?.length || 0}/2000</span>
+                    </div>
                 </div>
-            </ScrollArea>
+                {pastedImage && (
+                    <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-100 rounded-lg animate-in zoom-in-95">
+                        <div className="h-10 w-14 rounded border bg-white overflow-hidden shrink-0 flex items-center justify-center">
+                            <img src={pastedImage} alt="Pasted" className="max-w-full max-h-full object-contain" />
+                        </div>
+                        <p className="flex-1 text-[10px] font-bold text-emerald-700 uppercase tracking-widest">Forensic Photo Captured from Clipboard</p>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-500" onClick={() => { setPastedImage(null); form.setValue('discoveryAttachmentUrl', null); }}>
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
+                )}
+                {form.formState.errors.description && <p className="text-xs text-rose-600 font-bold ml-1">{form.formState.errors.description.message}</p>}
+              </div>
+
+              {/* Steps 2 & 3: Category & Risk */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                    <div className="flex flex-col">
+                        <div className="flex items-center gap-3 mb-1">
+                            <div className="h-6 w-6 rounded-full bg-[#2563EB] text-white flex items-center justify-center text-[10px] font-black">2</div>
+                            <Label className="text-[11px] font-black uppercase tracking-widest text-[#0F172A]">Observation Category <span className="text-rose-500">*</span></Label>
+                        </div>
+                        <span className="text-[10px] font-medium text-slate-400 ml-9">Select the category that best describes this observation.</span>
+                    </div>
+                    <Controller
+                        control={form.control}
+                        name="category"
+                        render={({ field }) => (
+                            <div className="relative">
+                                <AlertTriangle className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#2563EB] z-10" />
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <SelectTrigger className="h-12 pl-11 rounded-xl font-bold text-sm bg-white border border-slate-200">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Unsafe Act">Unsafe Act</SelectItem>
+                                        <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
+                                        <SelectItem value="Safe Act">Safe Act</SelectItem>
+                                        <SelectItem value="Near Miss">Near Miss</SelectItem>
+                                        <SelectItem value="Environmental">Environmental</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+                    />
+                </div>
+
+                <div className="space-y-4">
+                    <div className="flex flex-col">
+                        <div className="flex items-center gap-3 mb-1">
+                            <div className="h-6 w-6 rounded-full bg-[#2563EB] text-white flex items-center justify-center text-[10px] font-black">3</div>
+                            <Label className="text-[11px] font-black uppercase tracking-widest text-[#0F172A]">Risk Severity Index <span className="text-rose-500">*</span></Label>
+                        </div>
+                        <span className="text-[10px] font-medium text-slate-400 ml-9">Select the assessed risk level.</span>
+                    </div>
+                    <Controller
+                        control={form.control}
+                        name="severity"
+                        render={({ field }) => (
+                            <div className="relative">
+                                <BarChart3 className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#2563EB] z-10" />
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <SelectTrigger className="h-12 pl-11 rounded-xl font-bold text-sm bg-white border border-slate-200">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Low">Low Risk</SelectItem>
+                                        <SelectItem value="Medium">Medium Risk</SelectItem>
+                                        <SelectItem value="High">High Risk</SelectItem>
+                                        <SelectItem value="Critical">Critical Risk</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+                    />
+                </div>
+              </div>
+
+              {/* Steps 4 & 5: Site & Area */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2">
+                <div className="space-y-4">
+                    <div className="flex flex-col">
+                        <div className="flex items-center gap-3 mb-1">
+                            <div className="h-6 w-6 rounded-full bg-[#2563EB] text-white flex items-center justify-center text-[10px] font-black">4</div>
+                            <Label className="text-[11px] font-black uppercase tracking-widest text-[#0F172A]">Operational Site <span className="text-rose-500">*</span></Label>
+                        </div>
+                        <span className="text-[10px] font-medium text-slate-400 ml-9">Select the site where the observation occurred.</span>
+                    </div>
+                    <Controller
+                        control={form.control}
+                        name="projectId"
+                        render={({ field }) => (
+                            <div className="relative">
+                                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#2563EB] z-10" />
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <SelectTrigger className="h-12 pl-11 rounded-xl font-bold text-sm bg-white border border-slate-200">
+                                        <SelectValue placeholder="Select operational site" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+                    />
+                </div>
+
+                <div className="space-y-4">
+                    <div className="flex flex-col">
+                        <div className="flex items-center gap-3 mb-1">
+                            <div className="h-6 w-6 rounded-full bg-[#2563EB] text-white flex items-center justify-center text-[10px] font-black">5</div>
+                            <Label className="text-[11px] font-black uppercase tracking-widest text-[#0F172A]">Specific Area / Unit</Label>
+                        </div>
+                        <span className="text-[10px] font-medium text-slate-400 ml-9">Provide the specific area, unit or equipment (if applicable).</span>
+                    </div>
+                    <div className="relative">
+                        <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#2563EB] z-10" />
+                        <Input 
+                            {...form.register('location')} 
+                            placeholder="e.g. Tank 201-A, Level 3" 
+                            className="h-12 pl-11 rounded-xl font-bold text-sm bg-white border border-slate-200 shadow-sm"
+                        />
+                    </div>
+                </div>
+              </div>
+
+              {/* Action Footer */}
+              <div className="pt-6 flex justify-end gap-3">
+                <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => onOpenChange(false)}
+                    className="h-12 px-8 rounded-xl font-black uppercase tracking-widest text-[10px] border-2"
+                >
+                    Cancel
+                </Button>
+                <Button 
+                    type="submit" 
+                    className="h-12 px-8 bg-[#2563EB] hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[10px] rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+                >
+                    <Send className="mr-2 h-4 w-4" /> Create Observation
+                </Button>
+              </div>
+            </form>
           </div>
-        </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
