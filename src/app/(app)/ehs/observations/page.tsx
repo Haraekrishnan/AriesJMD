@@ -110,7 +110,7 @@ export default function SafetyObservationsPage() {
                     <div className="p-5 border-b bg-white flex justify-between items-center shrink-0">
                         <div className="flex items-center gap-2">
                             <Badge variant="outline" className="h-6 px-3 text-[10px] font-black uppercase tracking-widest bg-slate-900 text-white border-none rounded">
-                                {filteredObservations.length} DISCOVERIES
+                                {filteredObservations.length} OBSERVATIONS / CASES
                             </Badge>
                         </div>
                         <div className="flex items-center gap-4">

@@ -177,17 +177,17 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
                                 <div className="flex items-start gap-4 max-w-[400px]">
                                     {evidenceUrl && (
                                         <div 
-                                            className="h-10 w-16 shrink-0 rounded border border-slate-200 bg-slate-50 overflow-hidden relative group/thumb cursor-zoom-in"
+                                            className="h-16 w-24 shrink-0 rounded border border-slate-200 bg-slate-50 overflow-hidden relative group/thumb cursor-zoom-in shadow-sm"
                                             onClick={(e) => { e.stopPropagation(); setViewingAttachmentUrl(evidenceUrl); }}
                                         >
                                             <img src={evidenceUrl} alt="E" className="w-full h-full object-contain" />
                                             <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 flex items-center justify-center transition-all">
-                                                <ZoomIn className="h-3 w-3 text-white opacity-0 group-hover/thumb:opacity-100" />
+                                                <ZoomIn className="h-4 w-4 text-white opacity-0 group-hover/thumb:opacity-100" />
                                             </div>
                                         </div>
                                     )}
                                     <div className="space-y-1 min-w-0">
-                                        <p className="text-[11px] font-bold text-slate-800 line-clamp-2 uppercase tracking-tight leading-tight">
+                                        <p className="text-[11px] font-bold text-slate-800 line-clamp-3 uppercase tracking-tight leading-tight">
                                             {sanitizedText}
                                         </p>
                                         <div className="flex items-center gap-1.5 opacity-60">
@@ -285,7 +285,7 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
         <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); setNumPages(null); setPageNumber(1); }}>
             <DialogContent className="max-w-3xl w-full h-auto max-h-[85vh] flex flex-col p-0 overflow-hidden bg-black border border-white/10 shadow-2xl">
                 <div className="sr-only">
-                    <DialogTitle>Case Discovery Evidence Viewer</DialogTitle>
+                    <DialogTitle>Observation Evidence Viewer</DialogTitle>
                     <DialogDescription>Full-resolution technical evidence for forensic inspection.</DialogDescription>
                 </div>
 
@@ -305,7 +305,7 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
                 {/* Bottom Status/Download Bar */}
                 <div className="absolute bottom-4 left-4 right-4 z-50 flex justify-between items-center">
                     <div className="bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-4 py-1.5 flex items-center gap-3">
-                        <p className="text-[10px] font-black text-white uppercase tracking-widest">Registry Evidence Preview</p>
+                        <p className="text-[10px] font-black text-white uppercase tracking-widest">Observation Evidence Preview</p>
                         {isPdf && numPages && (
                             <div className="flex items-center gap-2 text-[10px] font-bold text-white border-l border-white/20 pl-3">
                                 <Button variant="ghost" size="icon" className="h-6 w-6 text-white hover:bg-white/10" onClick={() => setPageNumber(p => Math.max(1, p - 1))} disabled={pageNumber <= 1}><ChevronLeft className="h-3 w-3" /></Button>

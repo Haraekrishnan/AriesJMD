@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -85,7 +84,7 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
           {/* Form Area */}
           <div className="flex-1 p-10">
             <DialogHeader className="mb-8">
-              <DialogTitle className="text-2xl font-black text-slate-900 uppercase tracking-tight">Initiate Discovery</DialogTitle>
+              <DialogTitle className="text-2xl font-black text-slate-900 uppercase tracking-tight">Initiate Observation</DialogTitle>
               <DialogDescription className="font-bold text-slate-400 uppercase text-[9px] tracking-[0.2em]">Safety Lifecycle Stage 01: Initiation</DialogDescription>
             </DialogHeader>
 
@@ -192,4 +191,3 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
     </Dialog>
   );
 }
-
