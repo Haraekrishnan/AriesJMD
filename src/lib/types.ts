@@ -1192,6 +1192,15 @@ export type CapaStageRecord = {
   data?: any; // Stage-specific data (e.g., 5-Whys, Plan)
 };
 
+export type EhsRevision = {
+  id: string;
+  date: string;
+  userId: string;
+  field: string;
+  oldValue: any;
+  newValue: any;
+};
+
 export type EhsObservation = {
   id: string;
   reporterId: string;
@@ -1207,6 +1216,7 @@ export type EhsObservation = {
   currentStage: CapaStage;
   stages: Record<CapaStage, CapaStageRecord>;
   ccUserIds?: string[];
+  revisions?: { [key: string]: EhsRevision };
   
   status: EhsObservationStatus;
   createdAt: string;

@@ -18,7 +18,8 @@ import type {
   EhsObservation, 
   CapaStage,
   CapaStageRecord,
-  Comment 
+  Comment,
+  EhsRevision
 } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
@@ -39,6 +40,7 @@ type EhsContextType = {
   
   // CAPA Management
   addObservation: (observation: Omit<EhsObservation, 'id' | 'createdAt' | 'status' | 'currentStage' | 'stages'>) => void;
+  updateInitiationDetails: (observationId: string, updates: Partial<EhsObservation>) => Promise<void>;
   splitObservation: (parentId: string, subObservations: { category: any, severity: any, description: string, assigneeId?: string }[]) => void;
   assignStageOwner: (observationId: string, stage: CapaStage, assigneeId: string) => void;
   actionStage: (observationId: string, stage: CapaStage, data: any, isSubmit?: boolean, attachmentUrl?: string) => void;
@@ -201,6 +203,45 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     set(newRef, JSON.parse(JSON.stringify(newObservation)));
     toast({ title: 'Safety Case Opened', description: `Case routed to ${seniorSafetySupervisor?.name || 'Safety HQ'} for Investigation.` });
   }, [user, users, toast]);
+
+  const updateInitiationDetails = useCallback(async (observationId: string, updates: Partial<EhsObservation>) => {
+    if (!user) return;
+    const obsRef = ref(rtdb, `ehs/observations/${observationId}`);
+    const snap = await get(obsRef);
+    if (!snap.exists()) return;
+    const current = snap.val() as EhsObservation;
+
+    const now = new Date().toISOString();
+    const finalUpdates: any = { ...updates, lastUpdated: now };
+    
+    // Record revisions
+    const revisionPath = `ehs/observations/${observationId}/revisions`;
+    Object.keys(updates).forEach(field => {
+        const oldValue = (current as any)[field];
+        const newValue = (updates as any)[field];
+        
+        if (oldValue !== newValue) {
+            const revRef = push(ref(rtdb, revisionPath));
+            const revision: EhsRevision = {
+                id: revRef.key!,
+                date: now,
+                userId: user.id,
+                field,
+                oldValue: oldValue === undefined ? null : oldValue,
+                newValue: newValue === undefined ? null : newValue
+            };
+            finalUpdates[`revisions/${revRef.key}`] = revision;
+        }
+    });
+
+    try {
+        await update(obsRef, finalUpdates);
+        toast({ title: 'Initiation Details Overridden', description: 'Changes logged in audit ledger.' });
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Update Failed' });
+    }
+  }, [user, toast]);
 
   const splitObservation = useCallback((parentId: string, subObservations: { category: any, severity: any, description: string, assigneeId?: string }[]) => {
     if (!user) return;
@@ -554,7 +595,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     <EhsContext.Provider value={{ 
         audits, incidents, riskAssessments, trainings, observations, supportTickets, contactInfo, 
         addAudit, addIncident, addRiskAssessment, addTraining, 
-        addObservation, splitObservation, assignStageOwner, actionStage, reviewStage, addStageComment, addStageAttachment, addCcToObservation, deleteObservation,
+        addObservation, updateInitiationDetails, splitObservation, assignStageOwner, actionStage, reviewStage, addStageComment, addStageAttachment, addCcToObservation, deleteObservation,
         reviewAudit, updateIncidentStatus, addSupportTicket, updateTicketStatus, addTicketComment, deleteSupportTicket, updateContactInfo, stats 
     }}>
       {children}
