@@ -12,7 +12,6 @@ import {
     ShieldAlert,
     UserRound,
     GitBranch,
-    History,
     CheckCircle2,
 } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
@@ -96,7 +95,6 @@ export default function CapaInvestigation({
                                 { id: 'summary', label: 'Summary', icon: Search },
                                 { id: '5why', label: '5-Why Analysis', icon: GitBranch },
                                 { id: 'rootcause', label: 'Root Cause', icon: Activity },
-                                { id: 'timeline', label: 'Timeline', icon: History },
                                 { id: 'conclusion', label: 'Conclusion', icon: CheckCircle2 }
                             ].map(tab => (
                                 <TabsTrigger 

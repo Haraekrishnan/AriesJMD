@@ -80,7 +80,7 @@ export default function CapaEffectivenessReview({ observation, isLocked }: Props
                         <div className="space-y-10">
                             <SectionHeading icon={ShieldCheck} title="Technical Recap" />
                             <div className="space-y-8">
-                                <div className="p-6 rounded-xl bg-slate-50 border border-[#DCE5EF] space-y-4">
+                                <div className="p-6 rounded-xl bg-slate-50 border border-[#DCE5EF] space-y-4 shadow-inner">
                                     <div>
                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Implemented Action</p>
                                         <p className="text-[12px] font-bold text-[#102A43] uppercase leading-relaxed mt-2">

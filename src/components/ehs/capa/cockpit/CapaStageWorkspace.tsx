@@ -137,54 +137,8 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
         }
     };
 
-    const phaseNumber = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'].indexOf(stage) + 1;
-
     return (
         <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* --- PHASE HEADER & ALERTS --- */}
-            <div className="space-y-6">
-                <div className="flex justify-between items-end">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
-                             <div className="h-10 w-10 rounded border border-slate-300 bg-slate-50 flex items-center justify-center shadow-sm">
-                                <span className="font-bold text-slate-700 text-lg">0{phaseNumber}</span>
-                             </div>
-                             <Badge variant="outline" className={cn(
-                                "h-6 font-bold uppercase text-[10px] tracking-wider px-3 border shadow-sm",
-                                isCompleted ? "bg-emerald-50 text-emerald-700 border-emerald-200" : 
-                                isReturned ? "bg-rose-50 text-rose-700 border-rose-200" : 
-                                isSubmitted ? "bg-amber-50 text-amber-700 border-amber-200" : 
-                                "bg-blue-50 text-blue-700 border-blue-200"
-                             )}>
-                                {isReturned ? 'REWORK REQUIRED' : isSubmitted ? 'AWAITING OFFICIAL REVIEW' : isCompleted ? 'VERIFIED MILESTONE' : 'TECHNICAL ACTION'}
-                             </Badge>
-                        </div>
-                        <h3 className="text-xl font-bold text-slate-900 uppercase tracking-tight">{stage}</h3>
-                    </div>
-                    {isLocked && stage !== 'Initiation' && (
-                        <div className="flex items-center gap-2 text-slate-400 font-bold text-[10px] uppercase tracking-widest bg-slate-100 px-4 py-2 rounded-full">
-                            <Lock className="h-3 w-3" /> Locked For Audit Protection
-                        </div>
-                    )}
-                </div>
-
-                {isReturned && (
-                    <div className="p-8 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-6 shadow-sm">
-                        <div className="p-4 bg-rose-600 rounded-lg shadow-md">
-                            <AlertTriangle className="h-6 w-6 text-white" />
-                        </div>
-                        <div className="flex-1 space-y-4">
-                            <div>
-                                <p className="text-[11px] font-black text-rose-500 uppercase tracking-[0.3em] mb-1">Official Review Correction instructed</p>
-                                <p className="text-sm font-bold text-rose-900 leading-relaxed italic">
-                                    "{sData?.comments ? Object.values(sData.comments).reverse()[0]?.text : 'Technical details require clarification.'}"
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-
             {/* --- PHASE WORKSPACE --- */}
             <div className={cn("transition-all duration-700", (isLocked && stage !== 'Initiation') && "opacity-90 grayscale-[0.2]")}>
                 {renderStageContent()}

@@ -80,7 +80,7 @@ export default function CapaResolution({ observation, isLocked }: Props) {
                         <div className="space-y-10">
                             <SectionHeading icon={Activity} title="Technical Strategy" />
                             <div className="space-y-8">
-                                <div className="p-6 rounded-xl bg-slate-50 border border-[#DCE5EF] space-y-3">
+                                <div className="p-6 rounded-xl bg-slate-50 border border-[#DCE5EF] shadow-inner space-y-3">
                                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Root Cause Recap (W5)</p>
                                     <p className="text-[13px] font-bold text-[#102A43] leading-relaxed uppercase italic">
                                         {observation.stages['Investigation']?.data?.why5 || 'Pending technical investigation.'}
