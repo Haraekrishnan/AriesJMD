@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useCallback } from 'react';
@@ -10,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useEhs } from '@/contexts/ehs-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { useToast } from '@/hooks/use-toast';
-import { ShieldCheck, MapPin, AlertCircle, Plus, Info, X, Paperclip, Check } from 'lucide-react';
+import { ShieldCheck, MapPin, AlertCircle, Plus, Info, X, Paperclip, Check, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -39,7 +39,6 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
   const { addObservation } = useEhs();
   const { projects } = useGeneral();
   const { toast } = useToast();
-  const [step, setStep] = useState(1);
   const [pastedImage, setPastedImage] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
@@ -65,7 +64,7 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
                     const base64 = event.target?.result as string;
                     setPastedImage(base64);
                     form.setValue('discoveryAttachmentUrl', base64);
-                    toast({ title: 'Image Evidence Captured', description: 'Photo attached to narrative.' });
+                    toast({ title: 'Evidence Captured', description: 'Photo attached to narrative finding.' });
                 };
                 reader.readAsDataURL(blob);
             }
@@ -74,7 +73,6 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
   }, [form, toast]);
 
   const onSubmit = (data: FormValues) => {
-    // Explicitly handle optional fields to ensure they don't break the provider
     const submissionData = {
         ...data,
         projectId: data.projectId || 'Unassigned',
@@ -83,48 +81,40 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
     
     addObservation(submissionData);
     onOpenChange(false);
-    setStep(1);
     setPastedImage(null);
     form.reset();
   };
 
-  const nextStep = async () => {
-    const fieldsToValidate = step === 1 ? ['description'] : step === 2 ? ['category', 'severity'] : ['projectId', 'location'];
-    const isValid = await form.trigger(fieldsToValidate as any);
-    if (isValid) setStep(s => s + 1);
+  const handleReset = () => {
+    form.reset();
+    setPastedImage(null);
+    toast({ title: 'Interface Reset', description: 'Entries have been cleared.' });
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(v) => { onOpenChange(v); if(!v) { setStep(1); setPastedImage(null); form.reset(); } }}>
-      <DialogContent className="sm:max-w-3xl bg-white border-none shadow-2xl p-0 overflow-hidden rounded-[1.5rem]">
-        <div className="flex h-[600px]">
-          {/* --- OLD SCHOOL SIDEBAR --- */}
+    <Dialog open={isOpen} onOpenChange={(v) => { onOpenChange(v); if(!v) { setPastedImage(null); form.reset(); } }}>
+      <DialogContent className="sm:max-w-4xl bg-white border-none shadow-2xl p-0 overflow-hidden rounded-[1.5rem]">
+        <div className="flex h-[700px]">
+          {/* --- INDUSTRIAL SIDEBAR --- */}
           <div className="w-56 bg-[#0F172A] p-8 text-white flex flex-col justify-between shrink-0">
-            <div className="space-y-10">
+            <div className="space-y-12">
                 <div className="bg-[#10B981] h-12 w-12 rounded-2xl flex items-center justify-center shadow-lg shadow-[#10B981]/20">
                     <ShieldCheck className="h-7 w-7 text-white" />
                 </div>
                 
-                <nav className="space-y-6">
-                    {[
-                        { id: 1, label: 'DISCOVERY' },
-                        { id: 2, label: 'CLASSIFICATION' },
-                        { id: 3, label: 'LOGISTICS' }
-                    ].map(item => (
-                        <div key={item.id} className="flex items-center gap-4 group">
-                            <div className={cn(
-                                "h-2 w-2 rounded-full transition-all duration-500",
-                                step === item.id ? "bg-[#10B981] ring-4 ring-[#10B981]/20 scale-125" : "bg-slate-700"
-                            )} />
-                            <span className={cn(
-                                "text-[10px] font-black uppercase tracking-[0.2em] transition-colors",
-                                step === item.id ? "text-white" : "text-slate-500"
-                            )}>
-                                {item.label}
-                            </span>
-                        </div>
-                    ))}
-                </nav>
+                <div className="space-y-6">
+                    <div className="space-y-1">
+                        <p className="text-[10px] font-black text-white uppercase tracking-[0.2em]">PHASE 01</p>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-tight">INITIAL DISCOVERY & CAPTURE</p>
+                    </div>
+                    <Button 
+                        variant="ghost" 
+                        onClick={handleReset}
+                        className="p-0 h-auto text-[9px] font-black text-slate-400 hover:text-white uppercase tracking-[0.2em] gap-2"
+                    >
+                        <RotateCcw className="h-3 w-3" /> RESET INTERFACE
+                    </Button>
+                </div>
             </div>
             
             <div className="space-y-1">
@@ -133,57 +123,60 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
             </div>
           </div>
 
-          {/* --- MAIN WORKSPACE --- */}
+          {/* --- UNIFIED TECHNICAL WORKSPACE --- */}
           <div className="flex-1 flex flex-col bg-white relative">
-            <div className="p-10 flex-1 overflow-y-auto">
-                <DialogHeader className="mb-12">
-                <DialogTitle className="text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">INITIATE OBSERVATION</DialogTitle>
-                <DialogDescription className="font-bold text-slate-400 uppercase text-[10px] tracking-[0.2em] mt-2">Safety Lifecycle Stage 01: Initiation</DialogDescription>
-                </DialogHeader>
+            <ScrollArea className="flex-1">
+                <div className="p-10 pb-4">
+                    <DialogHeader className="mb-10">
+                        <DialogTitle className="text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">INITIATE OBSERVATION</DialogTitle>
+                        <DialogDescription className="font-bold text-slate-400 uppercase text-[10px] tracking-[0.2em] mt-2">Safety Lifecycle Stage 01: Initiation</DialogDescription>
+                    </DialogHeader>
 
-                <div className="space-y-10">
-                    {step === 1 && (
-                        <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-500">
-                            <Label className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 ml-1">Safety Finding Narrative</Label>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10 text-left">
+                        {/* Narrative Finding Section */}
+                        <div className="space-y-5 animate-in fade-in duration-700">
+                            <Label className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 ml-1 flex items-center gap-2">
+                                <div className="h-1.5 w-1.5 rounded-full bg-[#10B981]" /> SAFETY FINDING NARRATIVE
+                            </Label>
                             <div className="relative group">
                                 <Textarea 
                                     {...form.register('description')} 
                                     onPaste={handlePaste}
                                     placeholder="Describe the unsafe act or condition precisely..." 
-                                    className="min-h-[220px] rounded-[1.5rem] p-8 font-bold text-sm bg-slate-50/50 border-2 border-slate-100 focus-visible:ring-[#10B981]/20 focus-visible:border-[#10B981]/50 shadow-inner resize-none leading-relaxed transition-all"
+                                    className="min-h-[200px] rounded-[1.5rem] p-8 font-bold text-sm bg-slate-50/50 border-2 border-slate-100 focus-visible:ring-[#10B981]/20 focus-visible:border-[#10B981]/50 shadow-inner resize-none leading-relaxed transition-all"
                                 />
                                 <div className="absolute bottom-4 right-6 flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-widest pointer-events-none opacity-50">
                                     <Paperclip className="h-3 w-3" /> PASTE IMAGES SUPPORTED
                                 </div>
                             </div>
+                            
                             {pastedImage && (
-                                <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-100 rounded-xl animate-in zoom-in-95 duration-300">
-                                    <div className="h-12 w-12 rounded-lg border-2 border-white shadow-sm overflow-hidden shrink-0">
-                                        <img src={pastedImage} alt="Pasted" className="h-full w-full object-cover" />
+                                <div className="flex items-center gap-3 p-4 bg-emerald-50 border-2 border-emerald-100 rounded-2xl animate-in zoom-in-95 duration-300 shadow-sm">
+                                    <div className="h-14 w-20 rounded-lg border-2 border-white shadow-md overflow-hidden shrink-0 bg-white flex items-center justify-center">
+                                        <img src={pastedImage} alt="Pasted" className="max-w-full max-h-full object-contain" />
                                     </div>
                                     <div className="flex-1">
                                         <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Evidence Captured</p>
-                                        <p className="text-[9px] font-bold text-emerald-600/70 uppercase">Image from clipboard attached</p>
+                                        <p className="text-[9px] font-bold text-emerald-600/70 uppercase">Image from clipboard attached as primary discovery photo</p>
                                     </div>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-600 hover:bg-emerald-100 rounded-full" onClick={() => { setPastedImage(null); form.setValue('discoveryAttachmentUrl', null); }}>
+                                    <Button variant="ghost" size="icon" className="h-9 w-9 text-rose-500 hover:bg-rose-50 rounded-full" onClick={() => { setPastedImage(null); form.setValue('discoveryAttachmentUrl', null); }}>
                                         <X className="h-4 w-4" />
                                     </Button>
                                 </div>
                             )}
                             {form.formState.errors.description && <p className="text-xs text-rose-600 font-bold ml-2">{form.formState.errors.description.message}</p>}
                         </div>
-                    )}
 
-                    {step === 2 && (
-                        <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
+                        {/* Classification Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
                             <div className="space-y-4">
-                                <Label className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 ml-1">Classification (Optional)</Label>
+                                <Label className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 ml-1">Observation Category</Label>
                                 <Controller
                                     control={form.control}
                                     name="category"
                                     render={({ field }) => (
                                         <Select onValueChange={field.onChange} value={field.value}>
-                                            <SelectTrigger className="h-14 rounded-2xl font-black uppercase text-[11px] border-2 border-slate-100 bg-slate-50/30 px-6 shadow-sm">
+                                            <SelectTrigger className="h-12 rounded-xl font-bold uppercase text-[10px] border-2 border-slate-100 bg-slate-50/30 px-6 shadow-sm">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -198,13 +191,13 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
                                 />
                             </div>
                             <div className="space-y-4">
-                                <Label className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 ml-1">Severity Index (Optional)</Label>
+                                <Label className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 ml-1">Risk Severity Index</Label>
                                 <Controller
                                     control={form.control}
                                     name="severity"
                                     render={({ field }) => (
                                         <Select onValueChange={field.onChange} value={field.value}>
-                                            <SelectTrigger className="h-14 rounded-2xl font-black uppercase text-[11px] border-2 border-slate-100 bg-slate-50/30 px-6 shadow-sm">
+                                            <SelectTrigger className="h-12 rounded-xl font-bold uppercase text-[10px] border-2 border-slate-100 bg-slate-50/30 px-6 shadow-sm">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -218,18 +211,17 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
                                 />
                             </div>
                         </div>
-                    )}
 
-                    {step === 3 && (
-                        <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
+                        {/* Logistics Section */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-slate-100">
                             <div className="space-y-4">
-                                <Label className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 ml-1">Primary Site (Optional)</Label>
+                                <Label className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 ml-1">Operational Site</Label>
                                 <Controller
                                     control={form.control}
                                     name="projectId"
                                     render={({ field }) => (
                                         <Select onValueChange={field.onChange} value={field.value}>
-                                            <SelectTrigger className="h-14 rounded-2xl font-black uppercase text-[11px] border-2 border-slate-100 bg-slate-50/30 px-6 shadow-sm">
+                                            <SelectTrigger className="h-12 rounded-xl font-bold uppercase text-[10px] border-2 border-slate-100 bg-slate-50/30 px-6 shadow-sm">
                                                 <SelectValue placeholder="Select Operational Site" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -241,39 +233,22 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
                                 />
                             </div>
                             <div className="space-y-4">
-                                <Label className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 ml-1">Specific Unit/Area (Optional)</Label>
-                                <Input {...form.register('location')} placeholder="e.g. Tank 201-A, Level 3" className="h-14 rounded-2xl font-bold border-2 border-slate-100 bg-slate-50/30 px-6 shadow-sm" />
+                                <Label className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 ml-1">Specific Area / Unit</Label>
+                                <Input {...form.register('location')} placeholder="e.g. Tank 201-A, Level 3" className="h-12 rounded-xl font-bold border-2 border-slate-100 bg-slate-50/30 px-6 shadow-sm text-sm" />
                             </div>
                         </div>
-                    )}
-                </div>
-            </div>
 
-            <footer className="p-10 pt-4 bg-white flex justify-between items-center shrink-0">
-                {step > 1 ? (
-                    <Button type="button" variant="ghost" className="font-black uppercase text-[10px] tracking-[0.2em] text-slate-400 hover:text-slate-900" onClick={() => setStep(s => s - 1)}>
-                        Back Track
-                    </Button>
-                ) : <div />}
-                
-                {step < 3 ? (
-                    <Button 
-                        type="button" 
-                        className="h-14 px-12 bg-[#0F172A] text-white font-black uppercase text-[11px] tracking-[0.2em] rounded-2xl shadow-xl shadow-[#0F172A]/20 active:scale-95 transition-all" 
-                        onClick={nextStep}
-                    >
-                        Next Phase
-                    </Button>
-                ) : (
-                    <Button 
-                        type="submit" 
-                        onClick={form.handleSubmit(onSubmit)}
-                        className="h-14 px-16 bg-[#10B981] hover:bg-[#059669] text-white font-black uppercase text-[11px] tracking-[0.2em] rounded-2xl shadow-xl shadow-[#10B981]/20 active:scale-95 transition-all"
-                    >
-                        Authorize Initiation <Check className="ml-3 h-4 w-4" />
-                    </Button>
-                )}
-            </footer>
+                        <div className="pt-8 flex justify-end">
+                            <Button 
+                                type="submit" 
+                                className="h-14 px-16 bg-[#0F172A] hover:bg-black text-white font-black uppercase text-[11px] tracking-[0.2em] rounded-2xl shadow-xl shadow-[#0F172A]/20 active:scale-95 transition-all"
+                            >
+                                Authorize Initiation <Check className="ml-3 h-4 w-4" />
+                            </Button>
+                        </div>
+                    </form>
+                </div>
+            </ScrollArea>
           </div>
         </div>
       </DialogContent>
