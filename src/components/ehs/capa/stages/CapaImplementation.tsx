@@ -1,78 +1,144 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import type { EhsObservation } from '@/lib/types';
-import { useEhs } from '@/contexts/ehs-provider';
-import { Button } from '@/components/ui/button';
-import { ListChecks, Calendar, ShieldCheck, Zap } from 'lucide-react';
+import {
+    ListChecks,
+    Clock3,
+    Activity,
+    ShieldCheck,
+    Zap,
+    Calendar,
+} from 'lucide-react';
+import { useFormContext } from 'react-hook-form';
 
-export default function CapaImplementation({ observation, isLocked }: { observation: EhsObservation, isLocked: boolean }) {
-    const sData = observation.stages['Implementation'];
-    const { actionStage } = useEhs();
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+import type { EhsObservation } from '@/lib/types';
+import { useAuth } from '@/contexts/auth-provider';
+
+interface Props {
+    observation: EhsObservation;
+    isLocked: boolean;
+}
+
+export default function CapaImplementation({ observation, isLocked }: Props) {
+    const { users } = useAuth();
+    const sData = observation.stages?.Implementation;
+    const currentOwner = users.find(u => u.id === sData?.assigneeId);
+    const { register } = useFormContext();
 
     return (
-        <div className="space-y-12">
-            <Card className="rounded-[2.5rem] border-none shadow-2xl bg-white p-10 border-t-8 border-t-blue-600">
-                <CardContent className="p-0 space-y-12">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                        <div className="space-y-4">
-                            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-2">
-                                <ShieldCheck className="h-4 w-4 text-emerald-600" /> Corrective Action Plan (CA)
-                            </Label>
-                            <Textarea 
-                                disabled={isLocked}
-                                placeholder="Technical steps taken to eliminate the root cause locally..."
-                                className="min-h-[160px] rounded-[2rem] p-6 font-bold border-2 border-slate-100 bg-slate-50 focus-visible:ring-blue-100 shadow-inner"
-                                defaultValue={sData?.data?.corrective}
-                            />
+        <div className="w-full text-left">
+            <section className="overflow-hidden rounded-[18px] border border-[#D9E2EC] bg-white shadow-[0_2px_12px_rgba(16,42,67,0.04)]">
+                
+                {/* 1. STAGE HEADER */}
+                <div className="border-b border-[#E5EBF2] bg-white px-7 py-6">
+                    <div className="flex items-center justify-between gap-6">
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[12px] bg-[#1769FF] text-[21px] font-extrabold text-white shadow-[0_8px_20px_rgba(23,105,255,0.20)]">
+                                04
+                            </div>
+                            <div>
+                                <div className="mb-1 flex items-center gap-2">
+                                    <Badge variant="outline" className="rounded-full bg-[#E7F0FF] border-none px-3 py-0.5 text-[8px] font-extrabold uppercase tracking-[0.12em] text-[#1769FF]">
+                                        TECHNICAL ACTION
+                                    </Badge>
+                                </div>
+                                <h2 className="text-[25px] font-extrabold uppercase leading-none tracking-tight text-[#071B33]">
+                                    IMPLEMENTATION
+                                </h2>
+                            </div>
                         </div>
-                        <div className="space-y-4">
-                            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-2">
-                                <Zap className="h-4 w-4 text-blue-600" /> Preventive Action Plan (PA)
-                            </Label>
-                            <Textarea 
-                                disabled={isLocked}
-                                placeholder="Organizational changes to prevent recurrence globally..."
-                                className="min-h-[160px] rounded-[2rem] p-6 font-bold border-2 border-slate-100 bg-slate-50 focus-visible:ring-blue-100 shadow-inner"
-                                defaultValue={sData?.data?.preventive}
-                            />
+
+                        <div className="flex items-center gap-8">
+                            <div className="text-right">
+                                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#8A9AAF]">OWNERSHIP</p>
+                                <div className="mt-1 flex items-center gap-2 justify-end">
+                                    <p className="text-[10px] font-extrabold uppercase text-[#102A43]">{currentOwner?.name || 'TBD'}</p>
+                                    <Avatar className="h-6 w-6 border">
+                                        <AvatarImage src={currentOwner?.avatar} />
+                                        <AvatarFallback className="text-[8px]">{currentOwner?.name?.[0]}</AvatarFallback>
+                                    </Avatar>
+                                </div>
+                            </div>
+                            <div className="h-9 w-px bg-[#E5EBF2]" />
+                            <div className="text-right">
+                                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#8A9AAF]">TARGET</p>
+                                <p className="mt-1 flex items-center justify-end gap-1.5 text-[10px] font-extrabold uppercase text-[#102A43]">
+                                    <Clock3 className="h-3 w-3 text-slate-400" /> TBD
+                                </p>
+                            </div>
                         </div>
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-6 border-t border-slate-50">
-                        <div className="space-y-3">
-                             <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1 flex items-center gap-2">
-                                <Calendar className="h-3 w-3" /> Execution Deadline
-                             </Label>
-                             <Input type="date" disabled={isLocked} className="h-12 rounded-xl font-bold border-2 border-slate-100 px-6" defaultValue={sData?.data?.targetDate} />
-                        </div>
-                        <div className="space-y-3">
-                             <Label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1 flex items-center gap-2">
-                                <ListChecks className="h-3 w-3" /> Implementation Status
-                             </Label>
-                             <div className="h-12 rounded-xl border-2 border-slate-100 flex items-center px-6 text-xs font-black uppercase tracking-tight text-slate-800">
-                                {isLocked ? 'MILESTONE ACHIEVED' : 'ACTIVE IN FIELD'}
-                             </div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {!isLocked && (
-                <div className="flex justify-end pt-6">
-                    <Button 
-                        className="h-16 px-16 bg-[#2563EB] hover:bg-blue-700 text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-2xl shadow-blue-500/20 active:scale-95 transition-all" 
-                        onClick={() => actionStage(observation.id, 'Implementation', { submitted: true })}
-                    >
-                        Submit Technical Implementation
-                    </Button>
                 </div>
-            )}
+
+                <div className="p-7 space-y-10">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                        {/* LEFT COLUMN */}
+                        <div className="space-y-8">
+                            <SectionHeading icon={ShieldCheck} title="Corrective Actions (CA)" />
+                            <div className="space-y-6">
+                                <div className="space-y-2.5">
+                                    <Label className="flex items-center gap-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#304B68] ml-1">
+                                        Action Execution Details <span className="text-red-500">*</span>
+                                    </Label>
+                                    <Textarea 
+                                        disabled={isLocked}
+                                        placeholder="Technical steps taken to eliminate root cause locally..."
+                                        {...register('corrective')}
+                                        className="min-h-[140px] rounded-[10px] border-[#DCE5EF] bg-white px-3.5 py-3 text-[10px] font-medium leading-relaxed text-[#243B53] shadow-[0_1px_3px_rgba(16,42,67,0.03)] focus-visible:border-[#1769FF] focus-visible:ring-2 focus-visible:ring-[#DCEAFF]"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                     <div className="space-y-2.5">
+                                        <Label className="flex items-center gap-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#304B68] ml-1">
+                                            <Calendar className="h-3 w-3 text-[#7A9ABB]" />
+                                            Target Date
+                                        </Label>
+                                        <Input 
+                                            type="date"
+                                            disabled={isLocked}
+                                            {...register('targetDate')}
+                                            className="h-[42px] rounded-[10px] border-[#DCE5EF] bg-white px-3.5 text-[10px] font-medium text-[#243B53] shadow-[0_1px_3px_rgba(16,42,67,0.03)] focus-visible:border-[#1769FF] focus-visible:ring-2 focus-visible:ring-[#DCEAFF]"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* RIGHT COLUMN */}
+                        <div className="space-y-8">
+                            <SectionHeading icon={Zap} title="Preventive Actions (PA)" />
+                            <div className="space-y-6">
+                                <div className="space-y-2.5">
+                                    <Label className="flex items-center gap-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#304B68] ml-1">
+                                        Systemic Recurrence Controls <span className="text-red-500">*</span>
+                                    </Label>
+                                    <Textarea 
+                                        disabled={isLocked}
+                                        placeholder="Organizational changes to prevent global recurrence..."
+                                        {...register('preventive')}
+                                        className="min-h-[140px] rounded-[10px] border-[#DCE5EF] bg-white px-3.5 py-3 text-[10px] font-medium leading-relaxed text-[#243B53] shadow-[0_1px_3px_rgba(16,42,67,0.03)] focus-visible:border-[#1769FF] focus-visible:ring-2 focus-visible:ring-[#DCEAFF]"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     );
 }
 
+function SectionHeading({ icon: Icon, title }: { icon: any, title: string }) {
+    return (
+        <div className="flex items-center gap-3">
+            <Icon className="h-4 w-4 text-[#1769FF]" />
+            <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-[#304B68]">{title}</h4>
+        </div>
+    );
+}

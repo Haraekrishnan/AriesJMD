@@ -1,84 +1,130 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import {
+    ShieldCheck,
+    Clock3,
+    Activity,
+    Calendar,
+    FileText,
+} from 'lucide-react';
+import { useFormContext } from 'react-hook-form';
+import { format, parseISO, differenceInDays } from 'date-fns';
+
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import type { EhsObservation } from '@/lib/types';
-import { useEhs } from '@/contexts/ehs-provider';
-import { Button } from '@/components/ui/button';
-import { ShieldCheck, Calendar, Clock, CheckCircle2 } from 'lucide-react';
-import { format, parseISO, differenceInDays } from 'date-fns';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-export default function CapaClosure({ observation, isLocked }: { observation: EhsObservation, isLocked: boolean }) {
-    const { actionStage } = useEhs();
+import type { EhsObservation } from '@/lib/types';
+import { useAuth } from '@/contexts/auth-provider';
+
+interface Props {
+    observation: EhsObservation;
+    isLocked: boolean;
+}
+
+export default function CapaClosure({ observation, isLocked }: Props) {
+    const { users } = useAuth();
+    const sData = observation.stages?.Closure;
+    const currentOwner = users.find(u => u.id === sData?.assigneeId);
+    const { register } = useFormContext();
 
     const ageDays = differenceInDays(new Date(), parseISO(observation.createdAt)) || 0;
 
     return (
-        <div className="space-y-12">
-            <Card className="rounded-[3rem] border-none shadow-2xl bg-slate-900 text-white p-12 relative overflow-hidden">
-                <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-emerald-500/10 rounded-full blur-[80px]" />
+        <div className="w-full text-left">
+            <section className="overflow-hidden rounded-[18px] border border-[#D9E2EC] bg-white shadow-[0_2px_12px_rgba(16,42,67,0.04)]">
                 
-                <CardContent className="p-0 space-y-12 relative z-10">
-                    <div className="flex items-center gap-6">
-                        <div className="p-5 bg-emerald-500 rounded-[1.75rem] shadow-2xl shadow-emerald-500/40 animate-in zoom-in duration-700">
-                            <ShieldCheck className="h-10 w-10 text-white" />
+                {/* 1. STAGE HEADER */}
+                <div className="border-b border-[#E5EBF2] bg-white px-7 py-6">
+                    <div className="flex items-center justify-between gap-6">
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[12px] bg-[#1769FF] text-[21px] font-extrabold text-white shadow-[0_8px_20px_rgba(23,105,255,0.20)]">
+                                07
+                            </div>
+                            <div>
+                                <div className="mb-1 flex items-center gap-2">
+                                    <Badge variant="outline" className="rounded-full bg-[#E7F0FF] border-none px-3 py-0.5 text-[8px] font-extrabold uppercase tracking-[0.12em] text-[#1769FF]">
+                                        TECHNICAL ACTION
+                                    </Badge>
+                                </div>
+                                <h2 className="text-[25px] font-extrabold uppercase leading-none tracking-tight text-[#071B33]">
+                                    CLOSURE
+                                </h2>
+                            </div>
                         </div>
-                        <div>
-                            <h4 className="text-3xl font-black uppercase tracking-tight">Final Authorization Sign-off</h4>
-                            <p className="text-slate-400 font-bold text-sm uppercase tracking-widest mt-1">Lifecycle Completion Milestone achieved</p>
+
+                        <div className="flex items-center gap-8">
+                            <div className="text-right">
+                                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#8A9AAF]">OWNERSHIP</p>
+                                <div className="mt-1 flex items-center gap-2 justify-end">
+                                    <p className="text-[10px] font-extrabold uppercase text-[#102A43]">{currentOwner?.name || 'TBD'}</p>
+                                    <Avatar className="h-6 w-6 border">
+                                        <AvatarImage src={currentOwner?.avatar} />
+                                        <AvatarFallback className="text-[8px]">{currentOwner?.name?.[0]}</AvatarFallback>
+                                    </Avatar>
+                                </div>
+                            </div>
+                            <div className="h-9 w-px bg-[#E5EBF2]" />
+                            <div className="text-right">
+                                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#8A9AAF]">LIFECYCLE AGE</p>
+                                <p className="mt-1 flex items-center justify-end gap-1.5 text-[10px] font-extrabold uppercase text-[#102A43]">
+                                    <Clock3 className="h-3 w-3 text-slate-400" /> {ageDays}D
+                                </p>
+                            </div>
                         </div>
                     </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-10 py-10 border-y border-white/5">
-                        <StatItem label="Case Total Age" value={`${ageDays} Days`} icon={Clock} />
-                        <div className="space-y-1.5">
-                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2"><Calendar className="h-2.5 w-2.5" /> Site Discovery</p>
-                            <p className="text-base font-black text-white uppercase">{format(parseISO(observation.createdAt), 'dd MMM yy')}</p>
-                        </div>
-                        <StatItem label="Milestones Verified" value="6 of 7" icon={CheckCircle2} />
-                        <div className="space-y-1.5">
-                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Lifecycle State</p>
-                            <Badge className="bg-blue-500 font-black uppercase text-[10px] h-6 px-4 border-none">VALIDATED</Badge>
-                        </div>
-                    </div>
-
-                    <div className="space-y-4">
-                        <Label className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 flex items-center gap-2">
-                             Final Organizational Narrative
-                        </Label>
-                        <Textarea 
-                            disabled={isLocked}
-                            placeholder="Provide final closing summary for the organizational master registry..."
-                            className="min-h-[140px] rounded-[2rem] p-8 font-bold bg-white/5 border-white/10 text-white focus-visible:ring-emerald-500/20 text-lg leading-relaxed shadow-inner"
-                        />
-                    </div>
-                </CardContent>
-            </Card>
-
-            {!isLocked && (
-                <div className="flex justify-end pt-4">
-                    <Button 
-                        className="h-20 px-20 bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-[0.3em] text-xs rounded-[2.5rem] shadow-2xl shadow-emerald-500/30 active:scale-95 transition-all ring-offset-4 ring-offset-[#F6F9FC] focus:ring-4 focus:ring-emerald-500/20" 
-                        onClick={() => actionStage(observation.id, 'Closure', { final: true })}
-                    >
-                        AUTHORIZE CASE ARCHIVAL & CLOSURE
-                    </Button>
                 </div>
-            )}
+
+                <div className="p-7 space-y-10">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                        {/* LEFT COLUMN */}
+                        <div className="space-y-8">
+                            <SectionHeading icon={ShieldCheck} title="Certification Ledger" />
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                     <div className="p-4 rounded-xl bg-slate-50 border border-[#DCE5EF] space-y-1">
+                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Discovery Date</p>
+                                        <p className="text-xs font-black text-[#102A43] uppercase">{format(parseISO(observation.createdAt), 'dd MMM yyyy')}</p>
+                                     </div>
+                                     <div className="p-4 rounded-xl bg-slate-50 border border-[#DCE5EF] space-y-1">
+                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Compliance Health</p>
+                                        <Badge className="bg-emerald-500 h-5 text-[8px] uppercase border-none">OPTIMAL</Badge>
+                                     </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* RIGHT COLUMN */}
+                        <div className="space-y-8">
+                            <SectionHeading icon={FileText} title="Final Declaration" />
+                            <div className="space-y-6">
+                                <div className="space-y-2.5">
+                                    <Label className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#304B68] ml-1">
+                                        Organizational Summary <span className="text-red-500">*</span>
+                                    </Label>
+                                    <Textarea 
+                                        disabled={isLocked}
+                                        placeholder="Final declaration regarding achieved safety goals..."
+                                        {...register('finalSummary')}
+                                        className="min-h-[140px] rounded-[10px] border-[#DCE5EF] bg-white px-3.5 py-3 text-[10px] font-medium leading-relaxed text-[#243B53] shadow-[0_1px_3px_rgba(16,42,67,0.03)] focus-visible:border-[#1769FF] focus-visible:ring-2 focus-visible:ring-[#DCEAFF]"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     );
 }
 
-function StatItem({ label, value, icon: Icon }: { label: string, value: string, icon: any }) {
+function SectionHeading({ icon: Icon, title }: { icon: any, title: string }) {
     return (
-        <div className="space-y-1.5">
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2">
-                <Icon className="h-2.5 w-2.5 text-slate-500" /> {label}
-            </p>
-            <p className="text-lg font-black text-white tracking-tight">{value}</p>
+        <div className="flex items-center gap-3">
+            <Icon className="h-4 w-4 text-[#1769FF]" />
+            <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-[#304B68]">{title}</h4>
         </div>
     );
 }

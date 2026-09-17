@@ -1,72 +1,125 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import {
+    Zap,
+    Clock3,
+    Activity,
+    ShieldAlert,
+    UserRound,
+} from 'lucide-react';
+import { useFormContext } from 'react-hook-form';
+
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import type { EhsObservation } from '@/lib/types';
-import { useEhs } from '@/contexts/ehs-provider';
-import { Button } from '@/components/ui/button';
-import { Info, ShieldCheck, Zap } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
-export default function CapaResolution({ observation, isLocked }: { observation: EhsObservation, isLocked: boolean }) {
-    const sData = observation.stages['Resolution'];
-    const rcaData = observation.stages['Investigation']?.data;
-    const { actionStage } = useEhs();
+import type { EhsObservation } from '@/lib/types';
+import { useAuth } from '@/contexts/auth-provider';
+
+interface Props {
+    observation: EhsObservation;
+    isLocked: boolean;
+}
+
+export default function CapaResolution({ observation, isLocked }: Props) {
+    const { users } = useAuth();
+    const sData = observation.stages?.Resolution;
+    const currentOwner = users.find(u => u.id === sData?.assigneeId);
+    const { register } = useFormContext();
 
     return (
-        <div className="space-y-12">
-            {/* Investigation Recap */}
-            <div className="p-8 rounded-[2rem] bg-[#F1F5F9] border-2 border-slate-200 border-dashed">
-                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 mb-4 flex items-center gap-2">
-                    <ShieldCheck className="h-3 w-3" /> Root Cause Evidence
-                </p>
-                <div className="space-y-4">
-                    <div>
-                        <span className="text-[9px] font-black text-slate-400 uppercase">Systemic Failure (W5):</span>
-                        <p className="text-sm font-bold text-slate-700 uppercase">{rcaData?.why5 || 'Technical investigation pending completion.'}</p>
+        <div className="w-full text-left">
+            <section className="overflow-hidden rounded-[18px] border border-[#D9E2EC] bg-white shadow-[0_2px_12px_rgba(16,42,67,0.04)]">
+                
+                {/* 1. STAGE HEADER */}
+                <div className="border-b border-[#E5EBF2] bg-white px-7 py-6">
+                    <div className="flex items-center justify-between gap-6">
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[12px] bg-[#1769FF] text-[21px] font-extrabold text-white shadow-[0_8px_20px_rgba(23,105,255,0.20)]">
+                                03
+                            </div>
+                            <div>
+                                <div className="mb-1 flex items-center gap-2">
+                                    <Badge variant="outline" className="rounded-full bg-[#E7F0FF] border-none px-3 py-0.5 text-[8px] font-extrabold uppercase tracking-[0.12em] text-[#1769FF]">
+                                        TECHNICAL ACTION
+                                    </Badge>
+                                </div>
+                                <h2 className="text-[25px] font-extrabold uppercase leading-none tracking-tight text-[#071B33]">
+                                    RESOLUTION
+                                </h2>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-8">
+                            <div className="text-right">
+                                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#8A9AAF]">OWNERSHIP</p>
+                                <div className="mt-1 flex items-center gap-2 justify-end">
+                                    <p className="text-[10px] font-extrabold uppercase text-[#102A43]">{currentOwner?.name || 'TBD'}</p>
+                                    <Avatar className="h-6 w-6 border">
+                                        <AvatarImage src={currentOwner?.avatar} />
+                                        <AvatarFallback className="text-[8px]">{currentOwner?.name?.[0]}</AvatarFallback>
+                                    </Avatar>
+                                </div>
+                            </div>
+                            <div className="h-9 w-px bg-[#E5EBF2]" />
+                            <div className="text-right">
+                                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#8A9AAF]">TARGET</p>
+                                <p className="mt-1 flex items-center justify-end gap-1.5 text-[10px] font-extrabold uppercase text-[#102A43]">
+                                    <Clock3 className="h-3 w-3 text-slate-400" /> TBD
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <Card className="rounded-[2.5rem] border-none shadow-2xl bg-white p-10 border-t-8 border-t-blue-600">
-                <CardContent className="p-0 space-y-10">
-                    <div className="space-y-6">
-                        <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-2">
-                            <Zap className="h-4 w-4 text-blue-600" /> Immediate Containment Strategy
-                        </Label>
-                        <Textarea 
-                            disabled={isLocked}
-                            placeholder="What actions were authorized immediately to control the discovery? (e.g. Area isolation, Stop work order issued, Equipment tagged out)"
-                            className="min-h-[220px] rounded-[2rem] p-8 font-bold border-2 focus-visible:ring-blue-100 bg-slate-50 border-slate-100 shadow-inner text-lg leading-relaxed"
-                            defaultValue={sData?.data?.action}
-                        />
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
-                        <div className="p-6 rounded-2xl bg-blue-50/50 border border-blue-100">
-                            <p className="text-[9px] font-black text-blue-600 uppercase tracking-[0.2em] mb-2">Responsibility</p>
-                            <p className="text-xs font-bold text-slate-700 uppercase">Site Management / Area Owner</p>
+                <div className="p-7 space-y-10">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                        {/* LEFT COLUMN */}
+                        <div className="space-y-8">
+                            <SectionHeading icon={Activity} title="Technical Strategy" />
+                            <div className="space-y-6">
+                                <div className="p-4 rounded-xl bg-slate-50 border border-[#DCE5EF] space-y-2">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Root Cause Recap (W5)</p>
+                                    <p className="text-xs font-bold text-[#102A43] leading-relaxed uppercase italic">
+                                        {observation.stages['Investigation']?.data?.why5 || 'Pending technical investigation.'}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
-                        <div className="p-6 rounded-2xl bg-emerald-50/50 border border-emerald-100">
-                            <p className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-2">Validation Required</p>
-                            <p className="text-xs font-bold text-slate-700 uppercase">Senior Safety Official Review</p>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
 
-            {!isLocked && (
-                <div className="flex justify-end pt-6">
-                    <Button 
-                        className="h-16 px-16 bg-[#2563EB] hover:bg-blue-700 text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-2xl shadow-blue-500/20 active:scale-95 transition-all" 
-                        onClick={() => actionStage(observation.id, 'Resolution', { submitted: true })}
-                    >
-                        Submit Containment Logs
-                    </Button>
+                        {/* RIGHT COLUMN */}
+                        <div className="space-y-8">
+                            <SectionHeading icon={Zap} title="Containment Context" />
+                            <div className="space-y-6">
+                                <div className="space-y-2.5">
+                                    <Label className="flex items-center gap-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#304B68] ml-1">
+                                        <ShieldAlert className="h-3 w-3 text-[#7A9ABB]" />
+                                        Immediate Containment Strategy <span className="text-red-500">*</span>
+                                    </Label>
+                                    <Textarea 
+                                        disabled={isLocked}
+                                        placeholder="Technical steps taken to control the discovery immediately..."
+                                        {...register('action')}
+                                        className="min-h-[160px] rounded-[10px] border-[#DCE5EF] bg-white px-3.5 py-3 text-[10px] font-medium leading-relaxed text-[#243B53] shadow-[0_1px_3px_rgba(16,42,67,0.03)] focus-visible:border-[#1769FF] focus-visible:ring-2 focus-visible:ring-[#DCEAFF]"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            )}
+            </section>
         </div>
     );
 }
 
+function SectionHeading({ icon: Icon, title }: { icon: any, title: string }) {
+    return (
+        <div className="flex items-center gap-3">
+            <Icon className="h-4 w-4 text-[#1769FF]" />
+            <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-[#304B68]">{title}</h4>
+        </div>
+    );
+}

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useRef, MouseEvent } from 'react';
@@ -344,8 +343,8 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
 
     const isAuthorized = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor';
     const project = projects.find(p => p.id === observation.projectId);
+    const reporter = users.find(u => u.id === observation.reporterId);
 
-    // Extraction Logic for Embedded Evidence
     const extractedEvidenceUrl = useMemo(() => {
         if (observation.discoveryAttachmentUrl) return observation.discoveryAttachmentUrl;
         const match = observation.description.match(/src="([^"]+)"/i);
@@ -367,188 +366,134 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
     };
 
     return (
-        <div className="space-y-10">
-            <Card className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-8 shadow-inner text-left">
-                <CardContent className="p-0 space-y-8">
-                    <div className="flex justify-between items-start">
-                        <div className="space-y-4 flex-1">
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-2 ml-1">
-                                <Info className="h-3 w-3" /> REPORTED SAFETY FINDING NARRATIVE
-                            </p>
-                            {isEditing ? (
-                                <Textarea 
-                                    className="min-h-[120px] rounded-lg p-4 font-bold text-sm bg-white border-2 border-blue-100 shadow-md focus-visible:ring-blue-200"
-                                    value={formData.description}
-                                    onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
-                                />
-                            ) : (
-                                <div className="p-6 rounded-lg bg-white border border-slate-200 shadow-sm relative overflow-hidden group">
-                                    <div className="absolute top-0 left-0 w-1.5 h-full bg-[#2563EB]" />
-                                    <p className="text-sm font-bold text-slate-800 leading-relaxed uppercase tracking-tight">
-                                        {sanitizedDescription}
-                                    </p>
+        <div className="space-y-10 text-left">
+            <section className="overflow-hidden rounded-[18px] border border-[#D9E2EC] bg-white shadow-[0_2px_12px_rgba(16,42,67,0.04)]">
+                
+                {/* 1. STAGE HEADER */}
+                <div className="border-b border-[#E5EBF2] bg-white px-7 py-6">
+                    <div className="flex items-center justify-between gap-6">
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[12px] bg-[#1769FF] text-[21px] font-extrabold text-white shadow-[0_8px_20px_rgba(23,105,255,0.20)]">
+                                01
+                            </div>
+                            <div>
+                                <div className="mb-1 flex items-center gap-2">
+                                    <Badge variant="outline" className="rounded-full bg-[#E7F0FF] border-none px-3 py-0.5 text-[8px] font-extrabold uppercase tracking-[0.12em] text-[#1769FF]">
+                                        GOVERNANCE MILESTONE
+                                    </Badge>
                                 </div>
-                            )}
+                                <h2 className="text-[25px] font-extrabold uppercase leading-none tracking-tight text-[#071B33]">
+                                    INITIATION
+                                </h2>
+                            </div>
                         </div>
 
-                        {isAuthorized && (
-                            <div className="ml-8 pt-6">
-                                {isEditing ? (
-                                    <div className="flex gap-2">
-                                        <Button variant="outline" size="sm" className="rounded-lg font-bold h-9 px-4" onClick={() => setIsEditing(false)}>
-                                            <X className="h-4 w-4 mr-2" /> Cancel
-                                        </Button>
-                                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-black uppercase tracking-widest text-[9px] h-9 px-5 shadow-md shadow-emerald-500/20" onClick={handleSave}>
-                                            <Save className="h-4 w-4 mr-2" /> Save Revisions
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <Button variant="outline" size="sm" className="rounded-lg font-black uppercase tracking-widest text-[9px] h-9 px-5 border-2 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition-all" onClick={() => setIsEditing(true)}>
-                                        <Edit3 className="h-4 w-4 mr-2" /> Overwrite Record
+                        <div className="flex items-center gap-8">
+                            <div className="text-right">
+                                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#8A9AAF]">REPORTER</p>
+                                <div className="mt-1 flex items-center gap-2 justify-end">
+                                    <p className="text-[10px] font-extrabold uppercase text-[#102A43]">{reporter?.name || 'Unknown'}</p>
+                                    <Avatar className="h-6 w-6 border">
+                                        <AvatarImage src={reporter?.avatar} />
+                                        <AvatarFallback className="text-[8px]">{reporter?.name?.[0]}</AvatarFallback>
+                                    </Avatar>
+                                </div>
+                            </div>
+                            <div className="h-9 w-px bg-[#E5EBF2]" />
+                            <div className="text-right">
+                                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#8A9AAF]">TIMESTAMP</p>
+                                <p className="mt-1 flex items-center justify-end gap-1.5 text-[10px] font-extrabold uppercase text-[#102A43]">
+                                    <Calendar className="h-3 w-3 text-slate-400" /> {format(parseISO(observation.createdAt), 'dd-MM-yyyy')}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-7 space-y-10">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                        {/* LEFT COLUMN: LOGISTICS */}
+                        <div className="space-y-8">
+                            <SectionHeading icon={MapPin} title="OPERATIONAL LOGISTICS" />
+                            <div className="space-y-6">
+                                <EditableMeta label="Discovery Category" value={observation.category} isEditing={isEditing} type="select" options={['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']} onChange={val => setFormData(p => ({ ...p, category: val }))} icon={Search} />
+                                <EditableMeta label="Risk Severity" value={observation.severity} isEditing={isEditing} type="select" options={['Low', 'Medium', 'High', 'Critical']} onChange={val => setFormData(p => ({ ...p, severity: val }))} icon={ShieldCheck} />
+                                <EditableMeta label="Operational Site" value={project?.name || observation.projectId} isEditing={isEditing} type="select" options={projects.map(p => ({ id: p.id, name: p.name }))} onChange={val => setFormData(p => ({ ...p, projectId: val }))} icon={MapPin} />
+                                <EditableMeta label="Specific Location" value={observation.location} isEditing={isEditing} type="text" onChange={val => setFormData(p => ({ ...p, location: val }))} icon={MapPin} />
+                            </div>
+                        </div>
+
+                        {/* RIGHT COLUMN: NARRATIVE */}
+                        <div className="space-y-8">
+                            <div className="flex justify-between items-center">
+                                <SectionHeading icon={FileText} title="NARRATIVE CONTEXT" />
+                                {isAuthorized && !isEditing && (
+                                    <Button variant="ghost" size="sm" className="h-7 px-3 text-[9px] font-black uppercase border border-slate-200" onClick={() => setIsEditing(true)}>
+                                        <Edit3 className="h-3 w-3 mr-1.5" /> OVERWRITE
                                     </Button>
                                 )}
                             </div>
-                        )}
-                    </div>
-
-                    {/* Metadata Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-6 pt-6 border-t border-slate-200">
-                        <EditableMeta 
-                            label="Discovery Category" 
-                            value={observation.category} 
-                            isEditing={isEditing}
-                            field="category"
-                            type="select"
-                            options={['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']}
-                            onChange={(val) => setFormData(p => ({ ...p, category: val }))}
-                        />
-                        <EditableMeta 
-                            label="Risk Severity" 
-                            value={observation.severity} 
-                            isEditing={isEditing}
-                            field="severity"
-                            type="select"
-                            options={['Low', 'Medium', 'High', 'Critical']}
-                            onChange={(val) => setFormData(p => ({ ...p, severity: val }))}
-                        />
-                        <EditableMeta 
-                            label="Operational Site" 
-                            value={project?.name || observation.projectId} 
-                            isEditing={isEditing}
-                            field="projectId"
-                            type="select"
-                            options={projects.map(p => ({ id: p.id, name: p.name }))}
-                            onChange={(val) => setFormData(p => ({ ...p, projectId: val }))}
-                        />
-                        <EditableMeta 
-                            label="Specific Location" 
-                            value={observation.location} 
-                            isEditing={isEditing}
-                            field="location"
-                            type="text"
-                            onChange={(val) => setFormData(p => ({ ...p, location: val }))}
-                        />
-                    </div>
-
-                    {/* Discovery Evidence Preview */}
-                    {extractedEvidenceUrl && (
-                        <div className="space-y-4 pt-6 border-t">
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-2 ml-1">
-                                <Search className="h-3.5 w-3.5" /> SITE DISCOVERY EVIDENCE
-                            </p>
-                            <div className="relative group max-w-sm">
-                                <div 
-                                    className="rounded-xl overflow-hidden border-2 border-slate-200 shadow-md bg-slate-100 aspect-video cursor-pointer flex items-center justify-center p-2"
-                                    onClick={() => onViewImage(extractedEvidenceUrl)}
-                                >
-                                    <img 
-                                        src={extractedEvidenceUrl} 
-                                        alt="Discovery" 
-                                        className="max-w-full max-h-full object-contain transition-transform duration-700 group-hover:scale-105" 
-                                    />
-                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all flex items-center justify-center">
-                                        <ZoomIn className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+                            <div className="space-y-6">
+                                {isEditing ? (
+                                    <div className="space-y-2">
+                                        <Label className="text-[9px] font-extrabold uppercase tracking-widest text-[#304B68]">Finding Description</Label>
+                                        <Textarea className="min-h-[120px] rounded-[10px] border-[#DCE5EF] bg-white text-[10px]" value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} />
+                                        <div className="flex justify-end gap-2 pt-2">
+                                            <Button variant="outline" size="sm" className="h-8 text-[9px]" onClick={() => setIsEditing(false)}>CANCEL</Button>
+                                            <Button size="sm" className="h-8 text-[9px] bg-[#1769FF]" onClick={handleSave}>SAVE CHANGES</Button>
+                                        </div>
                                     </div>
-                                </div>
-                                <p className="mt-3 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">CLICK TO MAGNIFY EVIDENCE</p>
+                                ) : (
+                                    <div className="p-4 rounded-xl bg-slate-50 border border-[#DCE5EF] shadow-inner">
+                                        <p className="text-[10px] font-medium text-slate-700 leading-relaxed uppercase tracking-tight">
+                                            {sanitizedDescription}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {extractedEvidenceUrl && (
+                                    <div className="space-y-2">
+                                        <Label className="text-[9px] font-extrabold uppercase tracking-widest text-[#304B68]">Discovery Evidence</Label>
+                                        <div 
+                                            className="h-32 w-48 rounded-lg border-2 border-slate-200 bg-white overflow-hidden relative group/img cursor-zoom-in"
+                                            onClick={() => onViewImage(extractedEvidenceUrl)}
+                                        >
+                                            <img src={extractedEvidenceUrl} alt="E" className="w-full h-full object-contain" />
+                                            <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 flex items-center justify-center transition-all">
+                                                <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover/img:opacity-100" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
-                    )}
-                </CardContent>
-            </Card>
-
-            {/* --- REVISION HISTORY LEDGER --- */}
-            <div className="space-y-4 text-left">
-                <div className="flex items-center gap-3 ml-2">
-                    <History className="h-4 w-4 text-slate-400" />
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">FORENSIC AUDIT LEDGER</h4>
+                    </div>
                 </div>
-                
-                {revisions.length > 0 ? (
-                    <div className="border border-slate-200 rounded-xl bg-white shadow-sm overflow-hidden">
-                        <Table>
-                            <TableHeader className="bg-slate-50/80">
-                                <TableRow className="hover:bg-transparent border-b-2 border-slate-200">
-                                    <TableHead className="text-[8px] font-black text-slate-900 uppercase tracking-widest h-10 text-center">TIMESTAMP</TableHead>
-                                    <TableHead className="text-[8px] font-black text-slate-900 uppercase tracking-widest h-10">BY OFFICIAL</TableHead>
-                                    <TableHead className="text-[8px] font-black text-slate-900 uppercase tracking-widest h-10">FIELD DATA</TableHead>
-                                    <TableHead className="text-[8px] font-black text-slate-900 uppercase tracking-widest h-10">PREVIOUS STATE</TableHead>
-                                    <TableHead className="text-[8px] font-black text-slate-900 uppercase tracking-widest h-10">NEW STATE</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {revisions.map((rev) => {
-                                    const revUser = users.find(u => u.id === rev.userId);
-                                    return (
-                                        <TableRow key={rev.id} className="hover:bg-slate-50/50">
-                                            <TableCell className="text-[9px] font-bold text-slate-400 text-center py-3">
-                                                {format(parseISO(rev.date), 'dd/MM/yy · HH:mm')}
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    <Avatar className="h-5 w-5 border border-slate-100">
-                                                        <AvatarImage src={revUser?.avatar} />
-                                                        <AvatarFallback className="text-[7px] font-bold">{revUser?.name?.[0]}</AvatarFallback>
-                                                    </Avatar>
-                                                    <span className="text-[9px] font-bold text-slate-900 uppercase">{revUser?.name}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant="outline" className="text-[7px] font-bold uppercase tracking-wider border-blue-200 text-blue-600 bg-blue-50 px-1.5 h-4">{rev.field}</Badge>
-                                            </TableCell>
-                                            <TableCell className="text-[9px] font-medium text-rose-400 italic strike-through line-through opacity-60">
-                                                {String(rev.oldValue || '—')}
-                                            </TableCell>
-                                            <TableCell className="text-[9px] font-bold text-emerald-600">
-                                                {String(rev.newValue || '—')}
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
-                    </div>
-                ) : (
-                    <div className="py-10 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50 flex flex-col items-center justify-center opacity-40">
-                         <ShieldCheck className="h-6 w-6 text-slate-300 mb-2" />
-                         <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Original record intact · No revisions recorded</p>
-                    </div>
-                )}
-            </div>
+            </section>
         </div>
     );
 }
 
-function EditableMeta({ label, value, isEditing, field, type, options, onChange }: { label: string, value: string, isEditing: boolean, field: string, type: 'text' | 'select', options?: any[], onChange: (val: any) => void }) {
+function SectionHeading({ icon: Icon, title }: { icon: any, title: string }) {
     return (
-        <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1 flex items-center gap-2">
-                <div className="h-1 w-1 rounded-full bg-blue-500/30" /> {label}
+        <div className="flex items-center gap-3">
+            <Icon className="h-4 w-4 text-[#1769FF]" />
+            <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-[#304B68]">{title}</h4>
+        </div>
+    );
+}
+
+function EditableMeta({ label, value, isEditing, type, options, onChange, icon: Icon }: { label: string, value: string, isEditing: boolean, type: 'text' | 'select', options?: any[], onChange: (val: any) => void, icon?: any }) {
+    return (
+        <div className="space-y-2.5">
+            <Label className="flex items-center gap-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#304B68] ml-1">
+                {Icon && <Icon className="h-3 w-3 text-[#7A9ABB]" />}
+                {label}
             </Label>
             {isEditing ? (
                 type === 'select' ? (
                     <Select value={value} onValueChange={onChange}>
-                        <SelectTrigger className="h-9 rounded-lg font-bold text-xs bg-white border border-slate-300 shadow-sm">
+                        <SelectTrigger className="h-[42px] rounded-[10px] border-[#DCE5EF] bg-white px-3.5 text-[10px] font-bold uppercase text-[#243B53]">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -560,15 +505,11 @@ function EditableMeta({ label, value, isEditing, field, type, options, onChange 
                         </SelectContent>
                     </Select>
                 ) : (
-                    <Input 
-                        className="h-9 rounded-lg font-bold text-xs bg-white border border-slate-300 shadow-sm"
-                        value={value}
-                        onChange={e => onChange(e.target.value)}
-                    />
+                    <Input className="h-[42px] rounded-[10px] border-[#DCE5EF] bg-white text-[10px]" value={value} onChange={e => onChange(e.target.value)} />
                 )
             ) : (
-                <div className="h-9 px-3 flex items-center bg-white border border-slate-200 rounded-lg shadow-sm">
-                    <span className="text-xs font-bold text-slate-800 uppercase tracking-tight truncate">{value}</span>
+                <div className="h-[42px] px-3.5 flex items-center bg-slate-50 border border-[#DCE5EF] rounded-[10px]">
+                    <span className="text-[10px] font-bold text-[#102A43] uppercase truncate">{value}</span>
                 </div>
             )}
         </div>
