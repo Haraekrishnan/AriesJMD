@@ -332,7 +332,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     set(commentRef, {
         id: commentRef.key,
         userId: user.id,
-        text: `[SYSTEM] Responsibility reassigned to ${targetUser?.name || 'User'}.`,
+        text: `Responsibility reassigned to ${targetUser?.name || 'User'}.`,
         date: now
     });
 
@@ -373,7 +373,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
         updates[`comments/${commentRef.key}`] = {
             id: commentRef.key,
             userId: user.id,
-            text: `[SYSTEM] Phase findings submitted for verification.`,
+            text: `Phase findings submitted for verification.`,
             date: now
         };
     }
@@ -422,7 +422,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
             updates[`${stagePath}/comments/${commentRef.key}`] = {
                 id: commentRef.key,
                 userId: user.id,
-                text: status === 'Returned' ? `[REWORK REQUIRED] ${comment}` : comment,
+                text: status === 'Returned' ? `REWORK REQUIRED: ${comment}` : comment,
                 date: now
             };
         }

@@ -54,7 +54,6 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
                     events.push({
                         ...comment,
                         stageName,
-                        isSystem: comment.text.startsWith('[SYSTEM]')
                     });
                 });
             }
@@ -63,10 +62,9 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
         // Add initiation as start point
         events.push({
             userId: observation.reporterId,
-            text: '[SYSTEM] Case initiated by reporter.',
+            text: 'Case initiated by reporter.',
             date: observation.createdAt,
             stageName: 'Initiation',
-            isSystem: true
         });
 
         return events.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
@@ -138,21 +136,15 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
                                                 <div className="absolute -left-[23px] top-1 h-3.5 w-3.5 rounded-full bg-white border-2 border-slate-200 z-10" />
                                                 
                                                 <div className="flex justify-between items-baseline gap-2">
-                                                    <span className={cn(
-                                                        "text-[10px] font-black uppercase tracking-wider",
-                                                        event.isSystem ? "text-blue-600" : "text-slate-900"
-                                                    )}>
-                                                        {event.isSystem ? 'SYSTEM' : actor?.name}
+                                                    <span className="text-[10px] font-black uppercase tracking-wider text-blue-600">
+                                                        {actor?.name || 'SYSTEM'}
                                                     </span>
                                                     <span className="text-[9px] font-bold text-slate-400 uppercase">
                                                         {format(parseISO(event.date), 'dd MMM, HH:mm')}
                                                     </span>
                                                 </div>
                                                 
-                                                <p className={cn(
-                                                    "text-[11px] leading-relaxed",
-                                                    event.isSystem ? "font-bold text-slate-500 italic" : "font-medium text-slate-700"
-                                                )}>
+                                                <p className="text-[11px] leading-relaxed font-medium text-slate-700 italic">
                                                     {event.text}
                                                 </p>
 
