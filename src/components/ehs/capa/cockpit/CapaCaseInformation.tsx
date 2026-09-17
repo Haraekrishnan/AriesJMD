@@ -15,13 +15,14 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import type { EhsObservation } from '@/lib/types';
-import { useAuth } from '@/contexts/auth-provider';
-import { useGeneral } from '@/contexts/general-provider';
-import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format, parseISO, isValid, differenceInDays } from 'date-fns';
+import { cn } from '@/lib/utils';
+import type { EhsObservation } from '@/lib/types';
+import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function CapaCaseInformation({ observation }: { observation: EhsObservation }) {
     const { users } = useAuth();
@@ -55,7 +56,7 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
                 {/* --- CASE INFORMATION --- */}
                 <div className="space-y-4">
                     <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 flex items-center gap-2 px-1">
-                        <Info className="h-4 w-4" /> Case Information
+                        <Info className="h-4 w-4" /> CASE INFORMATION
                     </h4>
                     <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
                         <InfoRow label="Category" value={observation.category} />
@@ -72,7 +73,7 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
                 {/* --- GOVERNANCE HEALTH --- */}
                 <div className="space-y-4">
                     <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 flex items-center gap-2 px-1">
-                        <ShieldCheck className="h-4 w-4" /> Governance Health
+                        <ShieldCheck className="h-4 w-4" /> GOVERNANCE HEALTH
                     </h4>
                     <div className={cn("p-6 border rounded-2xl space-y-6 shadow-sm", healthStatus.bg)}>
                         <div className="flex items-center gap-2">
@@ -81,9 +82,9 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
                         </div>
                         
                         <div className="grid grid-cols-3 gap-3">
-                            <HealthMetric label="Stage Age" value={`${stageAge}D`} />
-                            <HealthMetric label="Reworks" value={`${observation.reworkCount || 0}`} />
-                            <HealthMetric label="Overdue" value="0" />
+                            <HealthMetric label="STAGE AGE" value={`${stageAge}D`} />
+                            <HealthMetric label="REWORKS" value={`${observation.reworkCount || 0}`} />
+                            <HealthMetric label="OVERDUE" value="0" />
                         </div>
                     </div>
                 </div>
@@ -91,15 +92,15 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
                 {/* --- STAGE GUIDANCE --- */}
                 <div className="space-y-4">
                     <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 flex items-center gap-2 px-1">
-                        <Zap className="h-4 w-4" /> Stage Guidance
+                        <Zap className="h-4 w-4" /> STAGE GUIDANCE
                     </h4>
                     <div className="p-6 bg-[#0F172A] rounded-2xl text-white shadow-xl relative overflow-hidden group">
                         <div className="absolute top-0 right-0 -mr-8 -mt-8 h-24 w-24 bg-white/10 rounded-full blur-2xl transition-transform duration-700 group-hover:scale-150" />
                         <div className="relative z-10 space-y-4">
                             <div className="flex items-start gap-4">
                                 <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20"><Activity className="h-4 w-4" /></div>
-                                <div className="space-y-1.5">
-                                    <p className="text-xs font-black uppercase tracking-tight">Active Lifecycle Protocol</p>
+                                <div className="space-y-1.5 text-left">
+                                    <p className="text-xs font-black uppercase tracking-tight">ACTIVE LIFECYCLE PROTOCOL</p>
                                     <p className="text-[10px] font-medium opacity-80 leading-relaxed uppercase tracking-tight">
                                         {getGuidance(observation.currentStage)}
                                     </p>
@@ -113,9 +114,9 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
                 <div className="space-y-4">
                     <div className="flex justify-between items-center px-1">
                         <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 flex items-center gap-2">
-                            <Users className="h-4 w-4" /> Stakeholder Loop
+                            <Users className="h-4 w-4" /> STAKEHOLDER LOOP
                         </h4>
-                        <Button variant="ghost" className="h-6 px-3 text-[9px] font-black uppercase tracking-widest text-blue-600 hover:bg-blue-50 rounded-lg">Notify Personnel +</Button>
+                        <Button variant="ghost" className="h-6 px-3 text-[9px] font-black uppercase tracking-widest text-blue-600 hover:bg-blue-50 rounded-lg">Notify +</Button>
                     </div>
                     <div className="flex flex-wrap gap-2.5 p-1">
                         <Avatar className="h-11 w-11 border-2 border-white shadow-md ring-1 ring-slate-100 hover:scale-110 transition-transform">
@@ -128,8 +129,8 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
                                 <AvatarFallback className="bg-blue-50 text-blue-600 text-xs font-black">{currentOwner.name?.[0]}</AvatarFallback>
                             </Avatar>
                         )}
-                        <div className="h-11 w-11 rounded-full border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50/50 cursor-pointer hover:bg-slate-100 transition-colors">
-                            <PlusCircle className="h-5 w-5 text-slate-300" />
+                        <div className="h-11 w-11 rounded-full border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50/50 cursor-pointer hover:bg-slate-100 transition-colors text-slate-400">
+                            <PlusCircle className="h-5 w-5" />
                         </div>
                     </div>
                 </div>
@@ -140,10 +141,10 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
 
 function getGuidance(stage: string) {
     switch(stage) {
-        case 'Investigation': return 'Systematically identify root causes using 5-Why analysis and document all field evidence.';
-        case 'Resolution': return 'Formulate durable corrective actions and obtain operational owner buy-in.';
-        case 'Implementation': return 'Execute approved remediations and record objective evidence (Before/After photos).';
-        default: return 'Fulfill the standard operational methodology for this safety milestone.';
+        case 'Investigation': return 'SYSTEMATICALLY IDENTIFY ROOT CAUSES USING 5-WHY ANALYSIS AND DOCUMENT ALL FIELD EVIDENCE.';
+        case 'Resolution': return 'FORMULATE DURABLE CORRECTIVE ACTIONS AND OBTAIN OPERATIONAL OWNER BUY-IN.';
+        case 'Implementation': return 'EXECUTE APPROVED REMEDIATIONS AND RECORD OBJECTIVE EVIDENCE (BEFORE/AFTER PHOTOS).';
+        default: return 'FULFILL THE STANDARD OPERATIONAL METHODOLOGY FOR THIS SAFETY MILESTONE.';
     }
 }
 
@@ -155,7 +156,7 @@ function InfoRow({ label, value, isRisk = false, risk = '', isBlue = false, isLa
                 <Badge variant="outline" className={cn(
                     "font-black uppercase text-[8px] tracking-widest h-5 px-3 border-2",
                     risk === 'Low' && "bg-emerald-50 text-emerald-600 border-emerald-100",
-                    risk === 'Medium' && "bg-amber-50 text-amber-600 border-amber-100",
+                    risk === 'Medium' && "bg-amber-50 text-amber-700 border-amber-100",
                     risk === 'High' && "bg-rose-50 text-rose-600 border-rose-100",
                     risk === 'Critical' && "bg-rose-100 text-rose-900 border-rose-200"
                 )}>{value}</Badge>

@@ -2,10 +2,9 @@
 
 import React, { useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { Check, Circle, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Check, AlertTriangle, ShieldCheck } from 'lucide-react';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
-import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
@@ -30,7 +29,7 @@ export default function CapaWorkflowSidebar({ observation, viewingStage, onStage
         <div className="flex flex-col h-full py-8">
             <div className="px-6 mb-8">
                 <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 mb-8 flex items-center gap-2.5">
-                    <ShieldCheck className="h-4 w-4 text-blue-600" /> Case Workflow
+                    <ShieldCheck className="h-4 w-4 text-blue-600" /> CASE WORKFLOW
                 </h3>
                 
                 <div className="p-5 rounded-2xl bg-white border-2 border-slate-100 shadow-sm space-y-5 text-center">
@@ -41,7 +40,7 @@ export default function CapaWorkflowSidebar({ observation, viewingStage, onStage
                         </svg>
                         <span className="absolute text-xl font-black text-slate-900">{stats.percentage}%</span>
                     </div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Progress</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">TOTAL PROGRESS</p>
                 </div>
             </div>
 
@@ -85,15 +84,22 @@ export default function CapaWorkflowSidebar({ observation, viewingStage, onStage
                                     )}>
                                         {stage}
                                     </p>
-                                    {isCurrent && assignee && (
-                                        <div className={cn(
-                                            "text-[9px] font-bold mt-1 uppercase flex items-center gap-1.5",
-                                            isViewing ? "text-white/70" : "text-blue-600/80"
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                        <Badge variant="outline" className={cn(
+                                            "h-4 px-1 rounded-sm text-[7px] font-black uppercase tracking-widest border-none",
+                                            isCompleted ? "bg-emerald-50 text-emerald-600" : 
+                                            isReturned ? "bg-rose-50 text-rose-600" :
+                                            isSubmitted ? "bg-blue-50 text-blue-600" :
+                                            isViewing ? "bg-white/20 text-white" : "bg-slate-50 text-slate-400"
                                         )}>
-                                            <div className={cn("h-1 w-1 rounded-full", isViewing ? "bg-white" : "bg-blue-600")} />
-                                            {assignee.name}
-                                        </div>
-                                    )}
+                                            {isCompleted ? 'DONE' : isReturned ? 'REWORK' : isSubmitted ? 'REVIEW' : 'PENDING'}
+                                        </Badge>
+                                        {isCurrent && assignee && (
+                                            <span className={cn("text-[9px] font-bold truncate uppercase", isViewing ? "text-white/80" : "text-blue-600/80")}>
+                                                &middot; {assignee.name}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         );
@@ -102,15 +108,15 @@ export default function CapaWorkflowSidebar({ observation, viewingStage, onStage
             </ScrollArea>
 
             <div className="px-6 mt-auto">
-                <div className="p-5 rounded-2xl border-2 border-dashed border-slate-200 bg-white/50 space-y-4">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Case Metrics</p>
+                <div className="p-5 rounded-2xl border-2 border-dashed border-slate-200 bg-white/50 space-y-4 shadow-sm">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">CASE METRICS</p>
                     <div className="space-y-2.5 text-[10px] font-bold uppercase tracking-tight">
                         <div className="flex justify-between items-center">
-                            <span className="text-slate-500">Completed</span>
+                            <span className="text-slate-500">COMPLETED</span>
                             <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-none font-black h-5">{stats.completedCount}</Badge>
                         </div>
                         <div className="flex justify-between items-center">
-                            <span className="text-slate-500">Milestones Left</span>
+                            <span className="text-slate-500">MILESTONES LEFT</span>
                             <Badge variant="outline" className="bg-blue-50 text-blue-600 border-none font-black h-5">{STAGES.length - stats.completedCount}</Badge>
                         </div>
                     </div>

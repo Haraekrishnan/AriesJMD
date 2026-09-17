@@ -9,9 +9,7 @@ import {
     MapPin,
     User,
     Calendar,
-    ShieldCheck,
     Upload,
-    Bell
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -48,7 +46,6 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
         return isValid(created) ? Math.max(0, differenceInDays(new Date(), created)) : 0;
     }, [observation.createdAt]);
 
-    // Sanitized narrative for header (stripts HTML/Images)
     const sanitizedDescription = useMemo(() => {
         if (!observation.description) return '';
         return observation.description.replace(/<[^>]*>/g, ' ').trim();
@@ -97,8 +94,8 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                     </div>
                     <div className="flex gap-2">
                          <div className="hidden lg:flex flex-col text-right mr-4 justify-center">
-                            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest leading-none">A Safer Workplace</p>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1 leading-none">A Stronger Tomorrow</p>
+                            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest leading-none">A SAFER WORKPLACE</p>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1 leading-none">A STRONGER TOMORROW</p>
                         </div>
                         <Button variant="outline" className="h-10 px-4 rounded-lg border-white/20 bg-white/5 text-white font-black text-[10px] uppercase tracking-widest gap-2 hover:bg-white/10">
                             <MessageSquare className="h-4 w-4" /> Comment
@@ -133,7 +130,7 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                     />
                 </aside>
 
-                {/* CENTER: DOMINANT WORKSPACE (REMOVED MAX-WIDTH) */}
+                {/* CENTER: DOMINANT WORKSPACE */}
                 <main className="flex-1 flex flex-col overflow-hidden bg-[#F3F7FB]">
                     <ScrollArea className="flex-1">
                         <div className="p-8 pb-24">
@@ -144,7 +141,7 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                         </div>
                     </ScrollArea>
 
-                    {/* --- FIXED ACTION FOOTER (Integrated into grid) --- */}
+                    {/* --- FIXED ACTION FOOTER --- */}
                     <footer className="h-20 shrink-0 bg-white border-t border-slate-200 px-8 flex items-center z-30 shadow-[0_-4px_15px_rgba(0,0,0,0.02)]">
                         <CapaActionFooter observation={observation} stage={viewingStage} />
                     </footer>

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Lock, ShieldCheck, AlertTriangle, Info, Clock, User, Zap } from 'lucide-react';
+import { Lock, AlertTriangle, Info, Clock } from 'lucide-react';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
 import { cn } from '@/lib/utils';
@@ -51,7 +51,7 @@ export default function CapaStageWorkspace({ observation, stage }: Props) {
                         <AlertTriangle className="h-5 w-5 text-white" />
                     </div>
                     <div className="space-y-1">
-                        <p className="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em]">Lifecycle Rework Instructed</p>
+                        <p className="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em]">LIFECYCLE REWORK INSTRUCTED</p>
                         <p className="text-sm font-bold text-rose-900 italic leading-relaxed">
                             "{sData?.comments ? Object.values(sData.comments).reverse()[0]?.text : 'Technical data requires clarification.'}"
                         </p>
@@ -74,7 +74,7 @@ export default function CapaStageWorkspace({ observation, stage }: Props) {
                                 )}>
                                     {isCompleted ? 'VERIFIED MILESTONE' : isReturned ? 'REWORK ACTIVE' : 'TECHNICAL ACTION REQUIRED'}
                                 </Badge>
-                                {isCompleted && <div className="flex items-center gap-1 text-[9px] font-black text-slate-400 uppercase tracking-widest"><Lock className="h-3 w-3" /> System Locked</div>}
+                                {isCompleted && <div className="flex items-center gap-1 text-[9px] font-black text-slate-400 uppercase tracking-widest"><Lock className="h-3 w-3" /> SYSTEM LOCKED</div>}
                             </div>
                             <h3 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">{stage}</h3>
                         </div>
@@ -84,7 +84,7 @@ export default function CapaStageWorkspace({ observation, stage }: Props) {
                         {assignee && (
                             <div className="flex items-center gap-3">
                                 <div className="text-right">
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Ownership</p>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">OWNERSHIP</p>
                                     <p className="text-xs font-black text-slate-800 uppercase">{assignee.name}</p>
                                 </div>
                                 <Avatar className="h-10 w-10 border-2 border-white shadow-xl ring-1 ring-slate-100">
@@ -94,7 +94,7 @@ export default function CapaStageWorkspace({ observation, stage }: Props) {
                             </div>
                         )}
                         <div className="text-right border-l pl-8 h-8 flex flex-col justify-center">
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Target Delivery</p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">TARGET DELIVERY</p>
                             <div className="flex items-center gap-1.5 justify-end">
                                 <Clock className="h-3.5 w-3.5 text-blue-500" />
                                 <span className="text-sm font-black text-slate-900 uppercase">TBD</span>
@@ -116,7 +116,7 @@ function InitiationView({ observation }: { observation: EhsObservation }) {
         <div className="space-y-10">
             <div className="p-8 rounded-[2rem] bg-slate-50 border-2 border-dashed border-slate-200 shadow-inner">
                 <p className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-400 mb-4 flex items-center gap-2">
-                    <Info className="h-4 w-4" /> Reported Safety Finding
+                    <Info className="h-4 w-4" /> REPORTED SAFETY FINDING
                 </p>
                 <div className="p-8 bg-white border border-slate-100 rounded-3xl shadow-sm text-xl font-bold text-slate-800 leading-relaxed italic uppercase tracking-tight">
                     "{observation.description}"

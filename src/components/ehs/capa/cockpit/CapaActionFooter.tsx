@@ -2,12 +2,11 @@
 
 import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Save, Send, MessageSquare, ShieldAlert, CheckCircle2, Lock, Eye, ArrowRight, Loader2 } from 'lucide-react';
+import { Save, ArrowRight, Lock, Eye, MessageSquare } from 'lucide-react';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useEhs } from '@/contexts/ehs-provider';
 import { useAuth } from '@/contexts/auth-provider';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 
 interface Props {
     observation: EhsObservation;
@@ -57,10 +56,10 @@ export default function CapaActionFooter({ observation, stage }: Props) {
                 
                 <div className="flex items-center gap-3">
                     <Button variant="ghost" size="sm" className="h-11 px-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-all gap-2.5">
-                        <Save className="h-4 w-4" /> Save Draft
+                        <Save className="h-4 w-4" /> SAVE DRAFT
                     </Button>
                     <Button variant="ghost" size="sm" className="h-11 px-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-all gap-2.5">
-                        <MessageSquare className="h-4 w-4" /> Add Comment
+                        <MessageSquare className="h-4 w-4" /> ADD COMMENT
                     </Button>
                 </div>
             </div>
