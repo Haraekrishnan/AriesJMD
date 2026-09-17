@@ -138,9 +138,22 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
     };
 
     return (
-        <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* --- PHASE WORKSPACE --- */}
-            <div className={cn("transition-all duration-700", (isLocked && stage !== 'Initiation') && "opacity-90 grayscale-[0.2]")}>
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {/* --- PHASE ALERT (IF RETURNED) --- */}
+            {isReturned && (
+                <div className="p-6 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-4 shadow-sm">
+                    <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+                    <div>
+                        <p className="text-[10px] font-black text-rose-500 uppercase tracking-[0.3em] mb-1">Official Review Correction instructed</p>
+                        <p className="text-sm font-bold text-rose-900 leading-relaxed italic">
+                            "{sData?.comments ? Object.values(sData.comments).reverse()[0]?.text : 'Technical details require clarification.'}"
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {/* --- PHASE WORKSPACE (INDIVIDUAL STAGE CARDS) --- */}
+            <div className={cn("transition-all duration-700", (isLocked && stage !== 'Initiation') && "opacity-95 grayscale-[0.1]")}>
                 {renderStageContent()}
             </div>
 
@@ -189,7 +202,6 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                         <DialogDescription>Full-resolution technical evidence for forensic inspection.</DialogDescription>
                     </div>
 
-                    {/* DISTINCT COLOR OVERLAY CONTROLS */}
                     <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
                         {!isPdf && (
                             <div className="flex gap-2">
@@ -330,7 +342,7 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
                                         GOVERNANCE MILESTONE
                                     </span>
                                 </div>
-                                <h2 className="text-[25px] font-extrabold uppercase leading-none tracking-[-0.025em] text-[#071B33]">
+                                <h2 className="text-[25px] font-extrabold uppercase leading-none tracking-tight text-[#071B33]">
                                     INITIATION
                                 </h2>
                             </div>

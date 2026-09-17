@@ -113,7 +113,7 @@ export default function CapaResolution({ observation, isLocked }: Props) {
     );
 }
 
-function SectionHeading({ icon: Icon, title }: { icon: any, title: string }) {
+function SectionHeading({ icon: Icon, title }: { icon: any; title: string }) {
     return (
         <div className="flex items-center gap-3">
             <Icon className="h-4 w-4 text-[#1769FF]" />
