@@ -47,20 +47,20 @@ export default function CapaInvestigation({
         <div className="w-full text-left">
             <section className="overflow-hidden rounded-[18px] border border-[#D9E2EC] bg-white shadow-[0_2px_12px_rgba(16,42,67,0.04)]">
                 
-                {/* 1. STAGE HEADER (REF MATCH) */}
+                {/* 1. STAGE HEADER */}
                 <div className="border-b border-[#E5EBF2] bg-white px-7 py-6">
                     <div className="flex items-center justify-between gap-6">
                         <div className="flex items-center gap-4">
-                            <div className="flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[12px] border border-slate-200 bg-white text-[21px] font-extrabold text-slate-700 shadow-sm">
+                            <div className="flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[15px] border border-[#E5EBF2] bg-white text-[21px] font-extrabold text-[#071B33] shadow-sm">
                                 02
                             </div>
                             <div>
-                                <div className="mb-1 flex items-center gap-2">
-                                    <Badge variant="outline" className="rounded-full bg-[#E7F0FF] border-none px-3 py-0.5 text-[8px] font-extrabold uppercase tracking-[0.12em] text-[#1769FF]">
+                                <div className="mb-1.5 flex items-center gap-2">
+                                    <span className="rounded-full bg-[#E7F0FF] px-3 py-1 text-[8px] font-extrabold uppercase tracking-[0.12em] text-[#1769FF]">
                                         TECHNICAL ACTION
-                                    </Badge>
+                                    </span>
                                 </div>
-                                <h2 className="text-[25px] font-extrabold uppercase leading-none tracking-tight text-[#071B33]">
+                                <h2 className="text-[25px] font-extrabold uppercase leading-none tracking-[-0.025em] text-[#071B33]">
                                     INVESTIGATION
                                 </h2>
                             </div>
