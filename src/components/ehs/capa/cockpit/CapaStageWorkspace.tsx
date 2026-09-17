@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useRef, MouseEvent } from 'react';
@@ -115,7 +114,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
         setIsPanning(false);
     };
 
-    const isPdf = viewingAttachmentUrl && viewingAttachmentUrl.toLowerCase().includes('.pdf');
+    const isPdf = viewingAttachmentUrl && viewingAttachmentUrl.toLowerCase().endsWith('.pdf');
 
     const renderStageContent = () => {
         switch (stage) {
@@ -215,14 +214,14 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                             className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase tracking-widest text-[10px] rounded-lg shadow-lg active:scale-95 transition-all"
                             onClick={() => reviewStage(observation.id, stage, 'Completed', 'Documentation verified and approved.')}
                          >
-                            <ThumbsUp className="mr-3 h-4 w-4" /> Verify & Continue Lifecycle
+                            <ThumbsUp className="mr-3 h-5 w-5" /> Verify & Continue Lifecycle
                          </Button>
                          <Button 
                             variant="outline" 
                             className="flex-1 h-12 border-rose-500/30 text-rose-400 hover:bg-rose-600 hover:text-white hover:border-rose-600 font-bold uppercase tracking-widest text-[10px] rounded-lg transition-all active:scale-95"
                             onClick={() => reviewStage(observation.id, stage, 'Returned', 'Technical data requires clarification.')}
                          >
-                            <Undo2 className="mr-3 h-4 w-4" /> Instruct Rework
+                            <Undo2 className="mr-3 h-5 w-5" /> Instruct Rework
                          </Button>
                     </div>
                 </div>
@@ -230,40 +229,59 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
 
             {/* --- LIGHTBOX EVIDENCE VIEWER --- */}
             <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); setNumPages(null); setPageNumber(1); }}>
-                <DialogContent className="max-w-[90vw] md:max-w-3xl h-auto max-h-[85vh] flex flex-col p-0 overflow-hidden bg-black border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+                <DialogContent className="max-w-[95vw] md:max-w-7xl w-full h-auto max-h-[90vh] flex flex-col p-0 overflow-hidden bg-black border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
                     <div className="sr-only">
                         <DialogTitle>Case Discovery Evidence Viewer</DialogTitle>
                         <DialogDescription>Full-resolution technical evidence for forensic inspection.</DialogDescription>
                     </div>
 
-                    {/* Minimalist Overlay Controls */}
-                    <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+                    {/* DISTINCT COLOR OVERLAY CONTROLS */}
+                    <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
                         {!isPdf && (
-                            <div className="flex bg-white/10 backdrop-blur-md rounded-lg border border-white/20 p-1">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
+                            <div className="flex gap-2">
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-10 w-10 text-white bg-blue-600 hover:bg-blue-700 shadow-lg rounded-lg border border-blue-400/30" 
+                                    onClick={() => setZoom(z => z + 0.2)}
+                                >
+                                    <ZoomIn className="h-5 w-5" />
+                                </Button>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-10 w-10 text-white bg-slate-700 hover:bg-slate-800 shadow-lg rounded-lg border border-slate-500/30" 
+                                    onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}
+                                >
+                                    <ZoomOut className="h-5 w-5" />
+                                </Button>
                             </div>
                         )}
-                        <Button variant="ghost" size="icon" className="h-8 w-8 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-white hover:bg-rose-600 transition-colors" onClick={() => setViewingAttachmentUrl(null)}>
-                            <X className="h-4 w-4" />
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-10 w-10 bg-rose-600 text-white hover:bg-rose-700 shadow-lg rounded-lg border border-rose-400/30 transition-colors" 
+                            onClick={() => setViewingAttachmentUrl(null)}
+                        >
+                            <X className="h-5 w-5" />
                         </Button>
                     </div>
 
                     {/* Bottom Status/Download Bar */}
-                    <div className="absolute bottom-4 left-4 right-4 z-50 flex justify-between items-center">
-                         <div className="bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-4 py-1.5 flex items-center gap-3">
-                            <p className="text-[10px] font-black text-white uppercase tracking-widest">Case Discovery Evidence</p>
+                    <div className="absolute bottom-6 left-6 right-6 z-50 flex justify-between items-center">
+                         <div className="bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-5 py-2 flex items-center gap-4">
+                            <p className="text-[11px] font-black text-white uppercase tracking-widest">Case Discovery Evidence</p>
                             {isPdf && numPages && (
-                                <div className="flex items-center gap-2 text-[10px] font-bold text-white border-l border-white/20 pl-3">
-                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-white hover:bg-white/10" onClick={() => setPageNumber(p => Math.max(1, p - 1))} disabled={pageNumber <= 1}><ChevronLeft className="h-3 w-3" /></Button>
+                                <div className="flex items-center gap-2 text-[10px] font-bold text-white border-l border-white/20 pl-4">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/10" onClick={() => setPageNumber(p => Math.max(1, p - 1))} disabled={pageNumber <= 1}><ChevronLeft className="h-3 w-3" /></Button>
                                     <span>PAGE {pageNumber} / {numPages}</span>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-white hover:bg-white/10" onClick={() => setPageNumber(p => Math.min(numPages, p + 1))} disabled={pageNumber >= numPages}><ChevronRight className="h-3 w-3" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/10" onClick={() => setPageNumber(p => Math.min(numPages, p + 1))} disabled={pageNumber >= numPages}><ChevronRight className="h-3 w-3" /></Button>
                                 </div>
                             )}
                          </div>
-                         <Button variant="outline" className="bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white hover:text-black font-black uppercase text-[10px] tracking-widest h-9 px-6 rounded-full gap-2" asChild>
+                         <Button variant="outline" className="bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white hover:text-black font-black uppercase text-[11px] tracking-widest h-11 px-8 rounded-full gap-3 shadow-2xl" asChild>
                             <a href={viewingAttachmentUrl || ''} download target="_blank" rel="noopener noreferrer">
-                                <Download className="h-3.5 w-3.5" /> DOWNLOAD EVIDENCE
+                                <Download className="h-4 w-4" /> DOWNLOAD FULL SIZE
                             </a>
                          </Button>
                     </div>
@@ -285,24 +303,23 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                             onLoadSuccess={onDocumentLoadSuccess}
                                             className="flex justify-center"
                                         >
-                                            <Page pageNumber={pageNumber} scale={1.2} />
+                                            <Page pageNumber={pageNumber} scale={1.5} />
                                         </Document>
                                     </div>
                                 </ScrollArea>
                             ) : (
                                 <img 
-                                    src={viewingAttachmentUrl} 
+                                    src={viewingAttachmentUrl || ''} 
                                     alt="Evidence" 
                                     className={cn("transition-transform duration-200 shadow-2xl", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
-                                    style={{
-                                        transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`,
-                                        maxWidth: zoom > 1 ? 'none' : '100%',
+                                    style={{ 
+                                        transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`, 
+                                        maxWidth: zoom > 1 ? 'none' : '100%', 
                                         maxHeight: zoom > 1 ? 'none' : '100%',
                                         objectFit: 'contain'
                                     }}
                                 />
-                            )
-                        )}
+                            )}
                     </div>
                 </DialogContent>
             </Dialog>
@@ -552,17 +569,6 @@ function EditableMeta({ label, value, isEditing, field, type, options, onChange 
                     <span className="text-xs font-bold text-slate-800 uppercase tracking-tight truncate">{value}</span>
                 </div>
             )}
-        </div>
-    );
-}
-
-function StatItem({ label, value, icon: Icon }: { label: string, value: string, icon: any }) {
-    return (
-        <div className="space-y-1.5 text-left">
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2">
-                <Icon className="h-2.5 w-2.5 text-slate-500" /> {label}
-            </p>
-            <p className="text-lg font-black text-white tracking-tight uppercase">{value}</p>
         </div>
     );
 }
