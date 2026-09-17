@@ -310,6 +310,10 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
             {/* --- EVIDENCE VIEWER --- */}
             <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => setViewingAttachmentUrl(null)}>
                 <DialogContent className="max-w-[95vw] md:max-w-5xl w-full p-0 overflow-hidden bg-black border-none shadow-2xl">
+                    <DialogHeader className="sr-only">
+                        <DialogTitle>Phase Evidence Viewer</DialogTitle>
+                        <DialogDescription>Full-resolution technical evidence for stage {stage}</DialogDescription>
+                    </DialogHeader>
                     <div className="absolute top-4 right-4 z-50">
                         <Button variant="ghost" size="icon" className="text-white hover:bg-white/10" onClick={() => setViewingAttachmentUrl(null)}>
                             <X className="h-6 w-6" />
@@ -388,4 +392,3 @@ function MetaRow({ label, value, icon: Icon, isRisk = false, risk = '' }: { labe
         </div>
     );
 }
-
