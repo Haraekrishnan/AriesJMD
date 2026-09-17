@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useRef, useCallback } from 'react';
@@ -20,7 +21,8 @@ import {
     GitBranch,
     CheckCircle2,
     Search,
-    UploadCloud
+    UploadCloud,
+    Paperclip
 } from 'lucide-react';
 import type { EhsObservation, CapaStage, Role } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
@@ -36,7 +38,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 // Phase-Specific Components
 import CapaInvestigation from '../stages/CapaInvestigation';
@@ -114,9 +115,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            {/* Phase Context Card */}
-            <Card className="bg-white border-[#E5EBF2] rounded-2xl shadow-sm overflow-hidden min-h-[640px] flex flex-col">
-                {/* Industrial Phase Header */}
+            <Card className="bg-white border-[#E5EBF2] rounded-2xl shadow-sm overflow-hidden min-h-[680px] flex flex-col">
                 <div className="border-b border-[#E5EBF2] bg-white px-8 py-6 shrink-0">
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-5">
@@ -166,11 +165,9 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                 </div>
 
                 <div className="flex-1 overflow-hidden flex flex-col">
-                    {/* Phase Work Area */}
                     <div className="flex-1 overflow-y-auto">
                         {stage === 'Initiation' ? <CapaInitiation observation={observation} /> : renderStageContent()}
                         
-                        {/* Evidence Ledger (Integrated) */}
                         <div className="px-8 pb-8 space-y-6">
                             <div className="flex items-center gap-3 border-b border-slate-100 pb-2">
                                 <Paperclip className="h-4 w-4 text-blue-600" />
@@ -242,7 +239,6 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                 </div>
             </Card>
 
-            {/* Reassign Dialog */}
             <Dialog open={isReassignOpen} onOpenChange={setIsReassignOpen}>
                 <DialogContent className="sm:max-w-md bg-white border-none shadow-2xl p-0 overflow-hidden rounded-2xl">
                     <div className="p-8 pb-4">
