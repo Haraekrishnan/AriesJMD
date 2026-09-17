@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, MouseEvent } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,19 +24,34 @@ import {
     MapPin,
     User,
     Calendar,
-    Search
+    Search,
+    ZoomIn,
+    ZoomOut,
+    Download,
+    ChevronLeft,
+    ChevronRight,
+    Paperclip
 } from 'lucide-react';
 import type { EhsObservation, CapaStage, User as UserType } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { cn } from '@/lib/utils';
 import { useEhs } from '@/contexts/ehs-provider';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
+import 'react-pdf/dist/esm/Page/TextLayer.css';
+
+// Set up PDF worker
+if (typeof window !== 'undefined') {
+    pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+}
 
 // Phase-Specific Components
 import CapaInvestigation from '../stages/CapaInvestigation';
@@ -55,6 +71,16 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
     const { reviewStage } = useEhs();
     const sData = observation.stages[stage];
     
+    // Viewer State
+    const [viewingAttachmentUrl, setViewingAttachmentUrl] = useState<string | null>(null);
+    const [zoom, setZoom] = useState(1);
+    const [isPanning, setIsPanning] = useState(false);
+    const [startPosition, setStartPosition] = useState({ x: 0, y: 0 });
+    const [translate, setTranslate] = useState({ x: 0, y: 0 });
+    const imageContainerRef = useRef<HTMLDivElement>(null);
+    const [numPages, setNumPages] = useState<number | null>(null);
+    const [pageNumber, setPageNumber] = useState(1);
+
     const isCurrentStage = observation.currentStage === stage;
     const isCompleted = sData?.status === 'Completed';
     const isSubmitted = sData?.status === 'In Progress';
@@ -63,10 +89,38 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
 
     const isSupervisor = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor';
 
+    const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+        setNumPages(numPages);
+    };
+
+    const handleMouseDown = (e: MouseEvent<HTMLDivElement>) => {
+        if (zoom <= 1) return;
+        e.preventDefault();
+        setIsPanning(true);
+        setStartPosition({
+            x: e.clientX - translate.x,
+            y: e.clientY - translate.y,
+        });
+    };
+
+    const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+        if (!isPanning || !imageContainerRef.current) return;
+        e.preventDefault();
+        const x = e.clientX - startPosition.x;
+        const y = e.clientY - startPosition.y;
+        setTranslate({ x, y });
+    };
+    
+    const handleMouseUpOrLeave = () => {
+        setIsPanning(false);
+    };
+
+    const isPdf = viewingAttachmentUrl && viewingAttachmentUrl.toLowerCase().includes('.pdf');
+
     const renderStageContent = () => {
         switch (stage) {
             case 'Initiation':
-                return <CapaInitiation observation={observation} />;
+                return <CapaInitiation observation={observation} onViewImage={setViewingAttachmentUrl} />;
             case 'Investigation':
                 return <CapaInvestigation observation={observation} isLocked={isLocked} />;
             case 'Resolution':
@@ -173,11 +227,80 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                     </div>
                 </div>
             )}
+
+            {/* --- IMAGE VIEWER DIALOG --- */}
+            <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); setNumPages(null); setPageNumber(1); }}>
+                <DialogContent className="max-w-[95vw] h-[95vh] flex flex-col p-0 overflow-hidden bg-white border-none shadow-2xl">
+                    <DialogHeader className="p-4 border-b bg-white shrink-0 flex flex-row items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="h-8 w-8 rounded bg-blue-50 flex items-center justify-center border border-blue-100">
+                                <Search className="h-4 w-4 text-blue-600" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-sm font-black uppercase tracking-tight">Technical Evidence Viewer</DialogTitle>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Forensic Inspection Zoom</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 mr-8">
+                            {!isPdf && (
+                                <>
+                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4" /></Button>
+                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
+                                </>
+                            )}
+                            {isPdf && numPages && (
+                                <div className="flex items-center gap-2 text-[10px] font-bold uppercase px-4 border-x">
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPageNumber(p => Math.max(1, p - 1))} disabled={pageNumber <= 1}><ChevronLeft className="h-3 w-3" /></Button>
+                                    <span>PAGE {pageNumber} / {numPages}</span>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPageNumber(p => Math.min(numPages, p + 1))} disabled={pageNumber >= numPages}><ChevronRight className="h-3 w-3" /></Button>
+                                </div>
+                            )}
+                            <Button variant="outline" className="h-8 text-[10px] font-black uppercase tracking-widest gap-2 bg-white" asChild>
+                                <a href={viewingAttachmentUrl || ''} download target="_blank" rel="noopener noreferrer">
+                                    <Download className="h-3.5 w-3.5" /> DOWNLOAD
+                                </a>
+                            </Button>
+                        </div>
+                    </DialogHeader>
+                    <div 
+                      ref={imageContainerRef}
+                      className="flex-1 overflow-auto flex items-center justify-center p-8 bg-slate-100/50"
+                      onMouseDown={handleMouseDown}
+                      onMouseMove={handleMouseMove}
+                      onMouseUp={handleMouseUpOrLeave}
+                      onMouseLeave={handleMouseUpOrLeave}
+                    >
+                        {viewingAttachmentUrl && (
+                            isPdf ? (
+                                <Document
+                                    file={viewingAttachmentUrl}
+                                    onLoadSuccess={onDocumentLoadSuccess}
+                                    className="flex justify-center shadow-2xl"
+                                >
+                                    <Page pageNumber={pageNumber} scale={1.5} />
+                                </Document>
+                            ) : (
+                                <img 
+                                    src={viewingAttachmentUrl} 
+                                    alt="Evidence" 
+                                    className={cn("transition-transform duration-200 shadow-2xl rounded-lg", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
+                                    style={{
+                                        transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`,
+                                        maxWidth: zoom > 1 ? 'none' : '100%',
+                                        maxHeight: zoom > 1 ? 'none' : '100%',
+                                        objectFit: 'contain'
+                                    }}
+                                />
+                            )
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
 
-function CapaInitiation({ observation }: { observation: EhsObservation }) {
+function CapaInitiation({ observation, onViewImage }: { observation: EhsObservation, onViewImage: (url: string) => void }) {
     const { user, users } = useAuth();
     const { projects } = useGeneral();
     const { updateInitiationDetails } = useEhs();
@@ -192,8 +315,21 @@ function CapaInitiation({ observation }: { observation: EhsObservation }) {
 
     const isAuthorized = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor';
     
-    const reporter = users.find(u => u.id === observation.reporterId);
     const project = projects.find(p => p.id === observation.projectId);
+
+    // Extraction Logic for Embedded Evidence
+    const extractedEvidenceUrl = useMemo(() => {
+        if (observation.discoveryAttachmentUrl) return observation.discoveryAttachmentUrl;
+        
+        // Check for embedded <img> tags in description (as seen in screenshot)
+        const match = observation.description.match(/src="([^"]+)"/i);
+        return match ? match[1] : null;
+    }, [observation.discoveryAttachmentUrl, observation.description]);
+
+    const sanitizedDescription = useMemo(() => {
+        // Strip <img> tags and raw HTML for the text display
+        return observation.description.replace(/<IMG[^>]*>/gi, '').replace(/<[^>]*>?/gm, '').trim();
+    }, [observation.description]);
 
     const revisions = useMemo(() => {
         if (!observation.revisions) return [];
@@ -211,7 +347,7 @@ function CapaInitiation({ observation }: { observation: EhsObservation }) {
                 <CardContent className="p-0 space-y-10">
                     <div className="flex justify-between items-start">
                         <div className="space-y-4 flex-1">
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-2">
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-2 ml-1">
                                 <Info className="h-3 w-3" /> Reported Safety Finding Narrative
                             </p>
                             {isEditing ? (
@@ -224,7 +360,7 @@ function CapaInitiation({ observation }: { observation: EhsObservation }) {
                                 <div className="p-6 rounded-lg bg-white border border-slate-200 shadow-sm relative overflow-hidden group">
                                     <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500" />
                                     <p className="text-sm font-bold text-slate-800 leading-relaxed uppercase tracking-tight">
-                                        {observation.description}
+                                        {sanitizedDescription}
                                     </p>
                                 </div>
                             )}
@@ -290,19 +426,26 @@ function CapaInitiation({ observation }: { observation: EhsObservation }) {
                     </div>
 
                     {/* Discovery Attachment Frame */}
-                    {observation.discoveryAttachmentUrl && (
+                    {extractedEvidenceUrl && (
                         <div className="space-y-4 pt-6 border-t">
                             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-2 ml-1">
                                 <Search className="h-3.5 w-3.5" /> Site Discovery Evidence
                             </p>
                             <div className="relative group max-w-md">
-                                <div className="rounded-xl overflow-hidden border-4 border-white shadow-xl bg-slate-200 aspect-video">
+                                <div 
+                                    className="rounded-xl overflow-hidden border-4 border-white shadow-xl bg-slate-200 aspect-video cursor-pointer"
+                                    onClick={() => onViewImage(extractedEvidenceUrl)}
+                                >
                                     <img 
-                                        src={observation.discoveryAttachmentUrl} 
-                                        alt="Discovery" 
+                                        src={extractedEvidenceUrl} 
+                                        alt="Discovery Evidence" 
                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
                                     />
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all flex items-center justify-center">
+                                        <ZoomIn className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </div>
                                 </div>
+                                <p className="mt-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center">CLICK TO MAGNIFY EVIDENCE</p>
                             </div>
                         </div>
                     )}
