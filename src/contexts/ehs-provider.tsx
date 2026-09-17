@@ -41,7 +41,7 @@ type EhsContextType = {
   addObservation: (observation: Omit<EhsObservation, 'id' | 'createdAt' | 'status' | 'currentStage' | 'stages'>) => void;
   splitObservation: (parentId: string, subObservations: { category: any, severity: any, description: string, assigneeId?: string }[]) => void;
   assignStageOwner: (observationId: string, stage: CapaStage, assigneeId: string) => void;
-  actionStage: (observationId: string, stage: CapaStage, data: any, attachmentUrl?: string) => void;
+  actionStage: (observationId: string, stage: CapaStage, data: any, isSubmit?: boolean, attachmentUrl?: string) => void;
   reviewStage: (observationId: string, stage: CapaStage, status: 'Completed' | 'Returned', comment: string) => void;
   addStageComment: (observationId: string, stage: CapaStage, text: string) => void;
   addCcToObservation: (observationId: string, userIds: string[]) => void;
@@ -292,19 +292,23 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `ehs/observations/${observationId}`), { lastUpdated: now });
   }, [user]);
 
-  const actionStage = useCallback((observationId: string, stage: CapaStage, data: any, attachmentUrl?: string) => {
+  const actionStage = useCallback((observationId: string, stage: CapaStage, data: any, isSubmit: boolean = true, attachmentUrl?: string) => {
     if (!user) return;
     const path = `ehs/observations/${observationId}/stages/${stage}`;
     const now = new Date().toISOString();
     
     const isClosure = stage === 'Closure';
+    const isActuallySubmitting = isSubmit || isClosure;
 
     const updates: any = {
-      actionedById: user.id,
-      actionedAt: now,
-      status: isClosure ? 'Completed' : 'In Progress', 
       data: data || null
     };
+
+    if (isActuallySubmitting) {
+        updates.actionedById = user.id;
+        updates.actionedAt = now;
+        updates.status = isClosure ? 'Completed' : 'In Progress';
+    }
 
     if (attachmentUrl) {
        const attachmentRef = push(ref(rtdb, `${path}/attachments`));
@@ -326,10 +330,14 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, path), updates);
     update(ref(rtdb, `ehs/observations/${observationId}`), { lastUpdated: now });
     
-    if (isClosure) {
-        toast({ title: 'Safety Case Closed', description: 'All remediation milestones have been achieved.' });
+    if (isActuallySubmitting) {
+        if (isClosure) {
+            toast({ title: 'Safety Case Closed', description: 'All remediation milestones have been achieved.' });
+        } else {
+            toast({ title: 'Action Recorded', description: 'Pending Official Review.' });
+        }
     } else {
-        toast({ title: 'Action Recorded', description: 'Pending Official Review.' });
+        toast({ title: 'Draft Synchronized', description: 'Technical data cached in registry.' });
     }
   }, [user, toast]);
 

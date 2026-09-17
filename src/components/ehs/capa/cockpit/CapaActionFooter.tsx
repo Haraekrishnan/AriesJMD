@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo } from 'react';
@@ -6,6 +7,7 @@ import { Save, ArrowRight, ShieldCheck } from 'lucide-react';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useEhs } from '@/contexts/ehs-provider';
 import { useAuth } from '@/contexts/auth-provider';
+import { useFormContext } from 'react-hook-form';
 
 interface Props {
     observation: EhsObservation;
@@ -15,6 +17,7 @@ interface Props {
 export default function CapaActionFooter({ observation, stage }: Props) {
     const { user } = useAuth();
     const { actionStage } = useEhs();
+    const { getValues } = useFormContext();
     
     const sData = observation.stages[stage];
     const isCurrentStage = observation.currentStage === stage;
@@ -22,6 +25,11 @@ export default function CapaActionFooter({ observation, stage }: Props) {
     const isSubmitted = sData?.status === 'In Progress';
     const isLocked = isCompleted || isSubmitted;
     const isAssignee = user?.id === sData?.assigneeId;
+
+    const handleAction = (isSubmit: boolean) => {
+        const formData = getValues();
+        actionStage(observation.id, stage, formData, isSubmit);
+    };
 
     const buttonLabel = useMemo(() => {
         switch(stage) {
@@ -36,7 +44,13 @@ export default function CapaActionFooter({ observation, stage }: Props) {
     return (
         <div className="flex items-center justify-between w-full h-full max-w-[1000px] mx-auto">
             <div className="flex items-center gap-4">
-                <Button variant="outline" size="sm" className="h-9 px-5 text-[10px] font-black uppercase tracking-widest text-slate-900 border border-slate-300 gap-2 bg-white hover:bg-slate-50">
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-9 px-5 text-[10px] font-black uppercase tracking-widest text-slate-900 border border-slate-300 gap-2 bg-white hover:bg-slate-50"
+                    disabled={isLocked || !isCurrentStage}
+                    onClick={() => handleAction(false)}
+                >
                     <Save className="h-3.5 w-3.5" /> SAVE AS DRAFT
                 </Button>
             </div>
@@ -51,7 +65,7 @@ export default function CapaActionFooter({ observation, stage }: Props) {
                 <Button 
                     className="bg-slate-900 hover:bg-black text-white font-black uppercase tracking-[0.15em] text-[10px] h-10 px-10 rounded-sm shadow-sm transition-all disabled:bg-slate-200"
                     disabled={isLocked || !isCurrentStage}
-                    onClick={() => actionStage(observation.id, stage, { submitted: true })}
+                    onClick={() => handleAction(true)}
                 >
                     {isLocked ? 'STAGE FINALIZED' : buttonLabel} <ArrowRight className="ml-3 h-4 w-4" />
                 </Button>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -18,6 +19,7 @@ import {
     MessageSquare,
     ArrowDown
 } from 'lucide-react';
+import { useFormContext } from 'react-hook-form';
 
 const SECTIONS = [
     { id: 'summary', label: 'Summary', icon: FileText },
@@ -50,19 +52,19 @@ export default function CapaInvestigation({ observation, isLocked }: { observati
                         <div className="space-y-6">
                             <SectionHeading icon={Activity} title="TECHNICAL LOGISTICS" />
                             <div className="space-y-5">
-                                <FormItem label="Who was involved?" isRequired placeholder="Personnel or departments..." isLocked={isLocked} />
-                                <FormItem label="Exact site position" isRequired placeholder="Specific deck or workshop..." isLocked={isLocked} />
+                                <FormItem label="Who was involved?" isRequired placeholder="Personnel or departments..." isLocked={isLocked} name="involved" />
+                                <FormItem label="Exact site position" isRequired placeholder="Specific deck or workshop..." isLocked={isLocked} name="exactLocation" />
                                 <div className="grid grid-cols-2 gap-4">
-                                    <FormItem label="Discovery date" type="date" isLocked={isLocked} />
-                                    <FormItem label="Discovery time" type="time" isLocked={isLocked} />
+                                    <FormItem label="Discovery date" type="date" isLocked={isLocked} name="discoveryDate" />
+                                    <FormItem label="Discovery time" type="time" isLocked={isLocked} name="discoveryTime" />
                                 </div>
                             </div>
                         </div>
                         <div className="space-y-6">
                             <SectionHeading icon={MessageSquare} title="NARRATIVE CONTEXT" />
                             <div className="space-y-5">
-                                <FormItem label="Sequence of events" isRequired type="textarea" placeholder="Detailed chronological sequence..." isLocked={isLocked} />
-                                <FormItem label="Immediate cause" isRequired type="textarea" placeholder="Direct reason for unsafe finding..." isLocked={isLocked} />
+                                <FormItem label="Sequence of events" isRequired type="textarea" placeholder="Detailed chronological sequence..." isLocked={isLocked} name="sequence" />
+                                <FormItem label="Immediate cause" isRequired type="textarea" placeholder="Direct reason for unsafe finding..." isLocked={isLocked} name="immediateCause" />
                             </div>
                         </div>
                     </div>
@@ -80,23 +82,27 @@ export default function CapaInvestigation({ observation, isLocked }: { observati
                         
                         <div className="space-y-3 max-w-4xl py-4">
                             {[1, 2, 3, 4, 5].map(i => (
-                                <div key={i} className="flex gap-4 items-center">
-                                    <div className="h-8 w-10 rounded border border-slate-300 bg-slate-50 text-slate-500 font-bold flex items-center justify-center text-[10px] uppercase">W{i}</div>
-                                    <Input 
-                                        disabled={isLocked}
-                                        placeholder={i === 1 ? "Primary direct cause?" : "Why did that happen?"}
-                                        className="h-10 rounded-md border-slate-300 bg-white font-medium text-xs focus-visible:ring-1 focus-visible:ring-blue-200"
-                                    />
-                                </div>
+                                <WhyRow key={i} number={i} isLocked={isLocked} />
                             ))}
                         </div>
                     </div>
                 </TabsContent>
 
                 <TabsContent value="rootcause" className="m-0 focus-visible:ring-0">
-                    <div className="py-20 text-center border border-dashed rounded-lg bg-slate-50/50 border-slate-300">
-                        <GitBranch className="h-10 w-10 mx-auto mb-4 text-slate-300" />
-                        <p className="font-bold uppercase text-[10px] tracking-[0.3em] text-slate-400">Root Cause Statement TBD after 5-Why Completion</p>
+                    <div className="space-y-6">
+                        <SectionHeading icon={GitBranch} title="SYSTEMIC ROOT CAUSE" />
+                        <div className="p-4 border rounded-md bg-white">
+                            <FormItem label="Final Root Cause Determination" isRequired type="textarea" placeholder="Based on analysis, identify the systemic failure..." isLocked={isLocked} name="rootCause" />
+                        </div>
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="conclusion" className="m-0 focus-visible:ring-0">
+                    <div className="space-y-6">
+                        <SectionHeading icon={CheckCircle2} title="INVESTIGATION CONCLUSION" />
+                        <div className="p-4 border rounded-md bg-white">
+                            <FormItem label="Official Conclusion & Summary" isRequired type="textarea" placeholder="Synthesize findings and recommendations..." isLocked={isLocked} name="conclusion" />
+                        </div>
                     </div>
                 </TabsContent>
             </Tabs>
@@ -113,7 +119,8 @@ function SectionHeading({ icon: Icon, title }: { icon: any, title: string }) {
     );
 }
 
-function FormItem({ label, placeholder, type = 'text', isLocked, isRequired }: { label: string, placeholder?: string, type?: 'text' | 'textarea' | 'date' | 'time', isLocked: boolean, isRequired?: boolean }) {
+function FormItem({ label, placeholder, type = 'text', isLocked, isRequired, name }: { label: string, placeholder?: string, type?: 'text' | 'textarea' | 'date' | 'time', isLocked: boolean, isRequired?: boolean, name: string }) {
+    const { register } = useFormContext();
     return (
         <div className="space-y-1.5">
             <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 ml-0.5">
@@ -123,6 +130,7 @@ function FormItem({ label, placeholder, type = 'text', isLocked, isRequired }: {
                 <Textarea 
                     disabled={isLocked}
                     placeholder={placeholder}
+                    {...register(name)}
                     className="min-h-[90px] rounded-md border-slate-300 font-medium text-xs bg-white focus-visible:ring-1 focus-visible:ring-blue-200 p-3 resize-none leading-relaxed"
                 />
             ) : (
@@ -130,9 +138,25 @@ function FormItem({ label, placeholder, type = 'text', isLocked, isRequired }: {
                     type={type}
                     disabled={isLocked}
                     placeholder={placeholder}
+                    {...register(name)}
                     className="h-9 rounded-md border-slate-300 font-medium text-xs bg-white focus-visible:ring-1 focus-visible:ring-blue-200 px-3"
                 />
             )}
+        </div>
+    );
+}
+
+function WhyRow({ number, isLocked }: { number: number, isLocked: boolean }) {
+    const { register } = useFormContext();
+    return (
+        <div className="flex gap-4 items-center">
+            <div className="h-8 w-10 rounded border border-slate-300 bg-slate-50 text-slate-500 font-bold flex items-center justify-center text-[10px] uppercase">W{number}</div>
+            <Input 
+                disabled={isLocked}
+                placeholder={number === 1 ? "Primary direct cause?" : "Why did that happen?"}
+                {...register(`why${number}`)}
+                className="h-10 rounded-md border-slate-300 bg-white font-medium text-xs focus-visible:ring-1 focus-visible:ring-blue-200"
+            />
         </div>
     );
 }
