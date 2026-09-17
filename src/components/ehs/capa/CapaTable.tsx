@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo, useState, useRef, MouseEvent } from 'react';
 import { 
     Table, 
     TableBody, 
@@ -23,7 +23,12 @@ import {
     Trash2,
     MapPin,
     ExternalLink,
-    Clock
+    Clock,
+    ZoomIn,
+    X,
+    Download,
+    ChevronLeft,
+    ChevronRight
 } from 'lucide-react';
 import type { EhsObservation } from '@/lib/types';
 import { useGeneral } from '@/contexts/general-provider';
@@ -41,6 +46,16 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
+import 'react-pdf/dist/esm/Page/TextLayer.css';
+
+// Set up PDF worker
+if (typeof window !== 'undefined') {
+    pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+}
 
 interface CapaTableProps {
     observations: EhsObservation[];
@@ -68,7 +83,46 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
     const { user } = useAuth();
     const { deleteObservation } = useEhs();
 
+    // Lightbox State
+    const [viewingAttachmentUrl, setViewingAttachmentUrl] = useState<string | null>(null);
+    const [zoom, setZoom] = useState(1);
+    const [isPanning, setIsPanning] = useState(false);
+    const [startPosition, setStartPosition] = useState({ x: 0, y: 0 });
+    const [translate, setTranslate] = useState({ x: 0, y: 0 });
+    const imageContainerRef = useRef<HTMLDivElement>(null);
+    const [numPages, setNumPages] = useState<number | null>(null);
+    const [pageNumber, setPageNumber] = useState(1);
+
+    const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+        setNumPages(numPages);
+    };
+
+    const handleMouseDown = (e: MouseEvent<HTMLDivElement>) => {
+        if (zoom <= 1) return;
+        e.preventDefault();
+        setIsPanning(true);
+        setStartPosition({
+            x: e.clientX - translate.x,
+            y: e.clientY - translate.y,
+        });
+    };
+
+    const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+        if (!isPanning || !imageContainerRef.current) return;
+        e.preventDefault();
+        const x = e.clientX - startPosition.x;
+        const y = e.clientY - startPosition.y;
+        setTranslate({ x, y });
+    };
+    
+    const handleMouseUpOrLeave = () => {
+        setIsPanning(false);
+    };
+
+    const isPdf = viewingAttachmentUrl && viewingAttachmentUrl.toLowerCase().includes('.pdf');
+
     return (
+        <>
         <Table className="w-full border-separate border-spacing-0">
             <TableHeader className="sticky top-0 z-40 bg-white shadow-sm">
                 <TableRow className="hover:bg-transparent border-b border-slate-200">
@@ -93,6 +147,10 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
                     const createdDate = parseISO(obs.createdAt);
                     const ageDays = isValid(createdDate) ? differenceInDays(new Date(), createdDate) : 0;
 
+                    // Extract Evidence URL and Sanitize Text
+                    const evidenceUrl = obs.discoveryAttachmentUrl || obs.description.match(/src="([^"]+)"/i)?.[1];
+                    const sanitizedText = obs.description.replace(/<IMG[^>]*>/gi, '').replace(/<[^>]*>?/gm, '').trim();
+
                     return (
                         <TableRow 
                             key={obs.id} 
@@ -115,13 +173,26 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
                                 </button>
                             </TableCell>
                             <TableCell className="py-4">
-                                <div className="space-y-1 max-w-[320px]">
-                                    <p className="text-[11px] font-bold text-slate-800 line-clamp-2 uppercase tracking-tight leading-tight">
-                                        {obs.description}
-                                    </p>
-                                    <div className="flex items-center gap-1.5 opacity-60">
-                                        <MapPin className="h-2.5 w-2.5 text-slate-400" />
-                                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest truncate">{obs.location || 'SITE POSITION TBD'}</span>
+                                <div className="flex items-start gap-4 max-w-[400px]">
+                                    {evidenceUrl && (
+                                        <div 
+                                            className="h-10 w-16 shrink-0 rounded border border-slate-200 bg-slate-50 overflow-hidden relative group/thumb cursor-zoom-in"
+                                            onClick={(e) => { e.stopPropagation(); setViewingAttachmentUrl(evidenceUrl); }}
+                                        >
+                                            <img src={evidenceUrl} alt="E" className="w-full h-full object-contain" />
+                                            <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 flex items-center justify-center transition-all">
+                                                <ZoomIn className="h-3 w-3 text-white opacity-0 group-hover/thumb:opacity-100" />
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="space-y-1 min-w-0">
+                                        <p className="text-[11px] font-bold text-slate-800 line-clamp-2 uppercase tracking-tight leading-tight">
+                                            {sanitizedText}
+                                        </p>
+                                        <div className="flex items-center gap-1.5 opacity-60">
+                                            <MapPin className="h-2.5 w-2.5 text-slate-400" />
+                                            <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest truncate">{obs.location || 'SITE POSITION TBD'}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </TableCell>
@@ -208,5 +279,85 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
                 })}
             </TableBody>
         </Table>
+
+        {/* --- LIGHTBOX EVIDENCE VIEWER --- */}
+        <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); setNumPages(null); setPageNumber(1); }}>
+            <DialogContent className="max-w-3xl w-full h-auto max-h-[85vh] flex flex-col p-0 overflow-hidden bg-black border border-white/10 shadow-2xl">
+                <div className="sr-only">
+                    <DialogTitle>Case Discovery Evidence Viewer</DialogTitle>
+                    <DialogDescription>Full-resolution technical evidence for forensic inspection.</DialogDescription>
+                </div>
+
+                {/* Minimalist Overlay Controls */}
+                <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+                    {!isPdf && (
+                        <div className="flex bg-white/10 backdrop-blur-md rounded-lg border border-white/20 p-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
+                        </div>
+                    )}
+                    <Button variant="ghost" size="icon" className="h-8 w-8 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-white hover:bg-rose-600 transition-colors" onClick={() => setViewingAttachmentUrl(null)}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+
+                {/* Bottom Status/Download Bar */}
+                <div className="absolute bottom-4 left-4 right-4 z-50 flex justify-between items-center">
+                    <div className="bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-4 py-1.5 flex items-center gap-3">
+                        <p className="text-[10px] font-black text-white uppercase tracking-widest">Registry Evidence Preview</p>
+                        {isPdf && numPages && (
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-white border-l border-white/20 pl-3">
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-white hover:bg-white/10" onClick={() => setPageNumber(p => Math.max(1, p - 1))} disabled={pageNumber <= 1}><ChevronLeft className="h-3 w-3" /></Button>
+                                <span>PAGE {pageNumber} / {numPages}</span>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-white hover:bg-white/10" onClick={() => setPageNumber(p => Math.min(numPages, p + 1))} disabled={pageNumber >= numPages}><ChevronRight className="h-3 w-3" /></Button>
+                            </div>
+                        )}
+                    </div>
+                    <Button variant="outline" className="bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white hover:text-black font-black uppercase text-[10px] tracking-widest h-9 px-6 rounded-full gap-2" asChild>
+                        <a href={viewingAttachmentUrl || ''} download target="_blank" rel="noopener noreferrer">
+                            <Download className="h-3.5 w-3.5" /> DOWNLOAD
+                        </a>
+                    </Button>
+                </div>
+
+                <div 
+                    ref={imageContainerRef}
+                    className="aspect-video w-full overflow-hidden flex items-center justify-center bg-black relative"
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUpOrLeave}
+                    onMouseLeave={handleMouseUpOrLeave}
+                >
+                    {viewingAttachmentUrl && (
+                        isPdf ? (
+                            <ScrollArea className="h-full w-full">
+                                <div className="flex justify-center p-12">
+                                    <Document
+                                        file={viewingAttachmentUrl}
+                                        onLoadSuccess={onDocumentLoadSuccess}
+                                        className="flex justify-center"
+                                    >
+                                        <Page pageNumber={pageNumber} scale={1.2} />
+                                    </Document>
+                                </div>
+                            </ScrollArea>
+                        ) : (
+                            <img 
+                                src={viewingAttachmentUrl} 
+                                alt="Evidence" 
+                                className={cn("transition-transform duration-200 shadow-2xl", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
+                                style={{
+                                    transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`,
+                                    maxWidth: zoom > 1 ? 'none' : '100%',
+                                    maxHeight: zoom > 1 ? 'none' : '100%',
+                                    objectFit: 'contain'
+                                }}
+                            />
+                        )
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
+        </>
     );
 }
