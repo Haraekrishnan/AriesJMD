@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useCallback } from 'react';
@@ -32,20 +31,33 @@ export default function CapaResolution({ observation, isLocked }: Props) {
     const { toast } = useToast();
     const { register } = useFormContext();
 
-    const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
         if (isLocked) return;
         const items = e.clipboardData.items;
         for (let i = 0; i < items.length; i++) {
             if (items[i].type.indexOf('image') !== -1) {
                 const blob = items[i].getAsFile();
                 if (blob) {
-                    toast({ title: 'Capturing evidence...', description: 'Clipboard data intercepted.' });
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        const base64 = event.target?.result as string;
-                        addStageAttachment(observation.id, 'Resolution', `Resolution_Evidence_${Date.now()}`, base64);
-                    };
-                    reader.readAsDataURL(blob);
+                    toast({ title: 'Transmitting forensic capture...', description: 'Uploading clipboard evidence to Dropbox.' });
+                    
+                    const formData = new FormData();
+                    formData.append("file", blob, `Forensic_Paste_Resolution_${Date.now()}.png`);
+                    
+                    try {
+                        const res = await fetch("/api/upload/dropbox", {
+                            method: "POST",
+                            body: formData,
+                        });
+                        const uploadData = await res.json();
+                        
+                        if (uploadData.success) {
+                            addStageAttachment(observation.id, 'Resolution', `Forensic_Capture_${Date.now()}`, uploadData.downloadLink);
+                            toast({ title: 'Evidence Captured', description: 'Photo attached to Resolution milestone.' });
+                        }
+                    } catch (err) {
+                        console.error("Paste upload failed", err);
+                        toast({ variant: 'destructive', title: 'Transmission Error', description: 'Could not sync clipboard evidence.' });
+                    }
                 }
             }
         }

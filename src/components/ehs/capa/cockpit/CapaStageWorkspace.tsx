@@ -65,7 +65,6 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
     
     const sData = observation.stages[stage];
     
-    const [viewingAttachmentUrl, setViewingAttachmentUrl] = useState<string | null>(null);
     const [isReassignOpen, setIsReassignOpen] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
 
@@ -81,20 +80,41 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !user) return;
+        
         setIsUploading(true);
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            const base64 = event.target?.result as string;
-            addStageAttachment(observation.id, stage, file.name, base64);
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            toast({ title: 'Transmitting to Storage...', description: 'Uploading file to institutional Dropbox.' });
+            const res = await fetch("/api/upload/dropbox", {
+                method: "POST",
+                body: formData,
+            });
+
+            const uploadData = await res.json();
+            
+            if (!res.ok || !uploadData.success) {
+                throw new Error(uploadData.error || 'File upload failed.');
+            }
+
+            addStageAttachment(observation.id, stage, file.name, uploadData.downloadLink);
+            toast({ title: 'Evidence Attached', description: 'File linked to case record.' });
+        } catch (error: any) {
+            console.error("Upload failed:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Storage Error',
+                description: error.message || 'Could not upload the file.',
+            });
+        } finally {
             setIsUploading(false);
-            toast({ title: 'Evidence Attached' });
-        };
-        reader.readAsDataURL(file);
+        }
     };
 
     const renderStageContent = () => {
         switch (stage) {
-            case 'Initiation': return <CapaInitiation observation={observation} onViewImage={setViewingAttachmentUrl} />;
+            case 'Initiation': return <CapaInitiation observation={observation} />;
             case 'Investigation': return <CapaInvestigation observation={observation} isLocked={isLocked} />;
             case 'Resolution': return <CapaResolution observation={observation} isLocked={isLocked} />;
             case 'Implementation': return <CapaImplementation observation={observation} isLocked={isLocked} />;
@@ -195,17 +215,9 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-1 ml-2">
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="h-7 w-7 rounded-lg hover:text-blue-600"
-                                                onClick={() => setViewingAttachmentUrl(a.url)}
-                                            >
-                                                <ZoomIn className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:text-blue-600" asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-blue-600 hover:text-white border-2 border-blue-600/20" asChild>
                                                 <a href={a.url} target="_blank" rel="noopener noreferrer">
-                                                    <Download className="h-3.5 w-3.5" />
+                                                    <Download className="h-4 w-4" />
                                                 </a>
                                             </Button>
                                         </div>
@@ -228,9 +240,9 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                             </div>
                             <div className="relative">
                                 <input type="file" id="stage-file-upload-workspace" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
-                                <Button variant="outline" asChild className="h-9 px-6 rounded-lg border-2 font-black uppercase text-[10px] tracking-widest hover:bg-white shadow-sm transition-all">
+                                <Button variant="outline" asChild className="h-10 px-8 rounded-xl border-2 font-black uppercase text-[11px] tracking-widest hover:bg-white shadow-sm transition-all bg-white border-slate-200">
                                     <label htmlFor="stage-file-upload-workspace" className="cursor-pointer flex items-center">
-                                        {isUploading ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Plus className="h-3.5 w-3.5 mr-2" />}
+                                        {isUploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
                                         Upload Technical File
                                     </label>
                                 </Button>
@@ -270,7 +282,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                                 key={u.id} 
                                                 onSelect={() => { assignStageOwner(observation.id, stage, u.id); setIsReassignOpen(false); }}
                                                 className={cn(
-                                                    "flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all duration-200 mb-2 group",
+                                                    "flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all duration-200 mb-2 group aria-selected:bg-blue-600 aria-selected:text-white shadow-sm",
                                                     isSelected ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30" : "hover:bg-blue-50"
                                                 )}
                                             >
@@ -280,7 +292,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                                         {u.name[0]}
                                                     </AvatarFallback>
                                                 </Avatar>
-                                                <div className="flex-1 min-w-0">
+                                                <div className="flex-1 min-w-0 text-left">
                                                     <p className={cn(
                                                         "text-sm font-black uppercase tracking-tight truncate",
                                                         isSelected ? "text-white" : "text-[#0F172A]"
@@ -306,35 +318,11 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                     </div>
                 </DialogContent>
             </Dialog>
-
-            {/* --- EVIDENCE VIEWER --- */}
-            <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => setViewingAttachmentUrl(null)}>
-                <DialogContent className="max-w-[95vw] md:max-w-5xl w-full p-0 overflow-hidden bg-black border-none shadow-2xl">
-                    <DialogHeader className="sr-only">
-                        <DialogTitle>Phase Evidence Viewer</DialogTitle>
-                        <DialogDescription>Full-resolution technical evidence for stage {stage}</DialogDescription>
-                    </DialogHeader>
-                    <div className="absolute top-4 right-4 z-50">
-                        <Button variant="ghost" size="icon" className="text-white hover:bg-white/10" onClick={() => setViewingAttachmentUrl(null)}>
-                            <X className="h-6 w-6" />
-                        </Button>
-                    </div>
-                    <div className="aspect-video w-full flex items-center justify-center bg-black">
-                        {viewingAttachmentUrl && (
-                            <img 
-                                src={viewingAttachmentUrl} 
-                                alt="Evidence" 
-                                className="max-w-full max-h-full object-contain"
-                            />
-                        )}
-                    </div>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }
 
-function CapaInitiation({ observation, onViewImage }: { observation: EhsObservation, onViewImage: (url: string) => void }) {
+function CapaInitiation({ observation }: { observation: EhsObservation }) {
     const { projects } = useGeneral();
     const project = projects.find(p => p.id === observation.projectId);
     const sanitizedDescription = observation.description.replace(/<IMG[^>]*>/gi, '').replace(/<[^>]*>?/gm, '').trim();
@@ -367,9 +355,15 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
                         {extractedEvidenceUrl && (
                             <div className="space-y-3">
                                 <Label className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 ml-1">Discovery Evidence</Label>
-                                <div className="h-48 w-72 rounded-xl border-2 border-slate-200 bg-white overflow-hidden relative group/img cursor-zoom-in shadow-md hover:border-blue-400 transition-all" onClick={() => onViewImage(extractedEvidenceUrl)}>
+                                <div className="h-48 w-72 rounded-xl border-2 border-slate-200 bg-white overflow-hidden relative shadow-md">
                                     <img src={extractedEvidenceUrl} alt="E" className="w-full h-full object-contain" />
-                                    <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 flex items-center justify-center transition-all"><ZoomIn className="h-8 w-8 text-white opacity-0 group-hover/img:opacity-100" /></div>
+                                    <div className="absolute top-2 right-2">
+                                        <Button size="icon" variant="secondary" className="h-8 w-8 rounded-lg" asChild>
+                                            <a href={extractedEvidenceUrl} download target="_blank" rel="noopener noreferrer">
+                                                <Download className="h-4 w-4" />
+                                            </a>
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                         )}
