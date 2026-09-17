@@ -40,53 +40,48 @@ export default function CapaKpiCards({ observations, onFilterByStatus, onFilterB
 
     const cards = [
         { 
-            label: 'Total Cases', 
+            label: 'TOTAL CASES', 
             value: stats.total, 
             icon: FileText, 
-            trend: '+ 12% vs last month', 
+            trend: '+ 12% VS LAST M...', 
             color: 'text-slate-900', 
-            bg: 'bg-white',
-            border: 'border-slate-200',
+            accent: 'border-t-slate-400',
             onClick: () => onFilterByStatus('all')
         },
         { 
-            label: 'High Risk', 
+            label: 'HIGH RISK', 
             value: stats.highRisk, 
             icon: ShieldAlert, 
-            trend: 'Priority Actions', 
+            trend: 'PRIORITY ACTIONS', 
             color: 'text-rose-600', 
-            bg: 'bg-white',
-            border: 'border-rose-200',
+            accent: 'border-t-rose-500',
             onClick: () => onFilterByRisk('High')
         },
         { 
-            label: 'In Progress', 
+            label: 'IN PROGRESS', 
             value: stats.inProgress, 
             icon: Zap, 
-            trend: 'Active Workflow', 
+            trend: 'ACTIVE WORKFLOW', 
             color: 'text-blue-600', 
-            bg: 'bg-white',
-            border: 'border-blue-200',
+            accent: 'border-t-blue-500',
             onClick: () => onFilterByStatus('In Progress')
         },
         { 
-            label: 'Closed', 
+            label: 'CLOSED', 
             value: stats.closed, 
             icon: CheckCircle2, 
-            trend: 'Validated Completion', 
+            trend: 'VALIDATED COMPL...', 
             color: 'text-emerald-600', 
-            bg: 'bg-white',
-            border: 'border-emerald-200',
+            accent: 'border-t-emerald-500',
             onClick: () => onFilterByStatus('Closed')
         },
         { 
-            label: 'Overdue', 
+            label: 'OVERDUE', 
             value: stats.overdue, 
             icon: AlertTriangle, 
-            trend: 'Immediate Action', 
+            trend: 'IMMEDIATE ACTION', 
             color: 'text-rose-700', 
-            bg: 'bg-rose-50/30',
-            border: 'border-rose-300',
+            accent: 'border-t-rose-600',
             onClick: () => onFilterByStatus('Overdue')
         },
     ];
@@ -97,25 +92,21 @@ export default function CapaKpiCards({ observations, onFilterByStatus, onFilterB
                 <Card 
                     key={index} 
                     className={cn(
-                        "cursor-pointer transition-all duration-300 hover:shadow-md border-2",
-                        card.bg,
-                        card.border
+                        "cursor-pointer transition-all duration-300 hover:shadow-md border border-slate-200 border-t-4 bg-white",
+                        card.accent
                     )}
                     onClick={card.onClick}
                 >
-                    <CardContent className="p-5 flex items-center gap-4">
-                        <div className={cn(
-                            "h-12 w-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm",
-                            card.bg === 'bg-white' ? 'bg-slate-50' : 'bg-white'
-                        )}>
-                            <card.icon className={cn("h-6 w-6", card.color)} />
-                        </div>
-                        <div className="space-y-0.5">
+                    <CardContent className="p-6 flex items-center justify-between">
+                        <div className="space-y-1">
                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{card.label}</p>
-                            <div className="flex items-baseline gap-2">
-                                <p className="text-2xl font-black text-slate-900 tracking-tighter">{card.value}</p>
-                                <span className="text-[8px] font-bold text-slate-400 uppercase truncate max-w-[80px]">{card.trend}</span>
+                            <div className="flex items-center gap-3">
+                                <p className="text-3xl font-black text-slate-900 tracking-tighter">{card.value}</p>
+                                <span className="text-[8px] font-bold text-slate-400 uppercase leading-tight max-w-[80px]">{card.trend}</span>
                             </div>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-xl">
+                            <card.icon className={cn("h-6 w-6", card.color)} />
                         </div>
                     </CardContent>
                 </Card>

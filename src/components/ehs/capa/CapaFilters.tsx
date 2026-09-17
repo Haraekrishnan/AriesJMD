@@ -10,13 +10,15 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import {
-    CalendarDays,
     Filter,
     RotateCcw,
     Download,
+    Calendar as CalendarIcon
 } from 'lucide-react';
 import { useGeneral } from '@/contexts/general-provider';
-import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
 
 interface CapaFiltersProps {
     filters: {
@@ -24,9 +26,8 @@ interface CapaFiltersProps {
         category: string;
         risk: string;
         status: string;
-        stage: string;
         site: string;
-        dateRange?: { from?: Date; to?: Date };
+        date?: Date;
     };
     onFilterChange: (filters: CapaFiltersProps['filters']) => void;
 }
@@ -50,19 +51,18 @@ export default function CapaFilters({
             category: 'all',
             risk: 'all',
             status: 'all',
-            stage: 'all',
             site: 'all',
-            dateRange: undefined,
+            date: undefined,
         });
     };
 
     return (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
             <Select
                 value={filters.category}
                 onValueChange={value => set('category', value)}
             >
-                <SelectTrigger className="h-10 w-[145px] rounded-lg border-slate-200 bg-white text-[12px] font-semibold">
+                <SelectTrigger className="h-10 w-[160px] rounded-lg border-slate-200 bg-white text-[12px] font-bold uppercase tracking-tight">
                     <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
@@ -79,7 +79,7 @@ export default function CapaFilters({
                 value={filters.risk}
                 onValueChange={value => set('risk', value)}
             >
-                <SelectTrigger className="h-10 w-[135px] rounded-lg border-slate-200 bg-white text-[12px] font-semibold">
+                <SelectTrigger className="h-10 w-[150px] rounded-lg border-slate-200 bg-white text-[12px] font-bold uppercase tracking-tight">
                     <SelectValue placeholder="All Risk Levels" />
                 </SelectTrigger>
                 <SelectContent>
@@ -95,7 +95,7 @@ export default function CapaFilters({
                 value={filters.status}
                 onValueChange={value => set('status', value)}
             >
-                <SelectTrigger className="h-10 w-[125px] rounded-lg border-slate-200 bg-white text-[12px] font-semibold">
+                <SelectTrigger className="h-10 w-[140px] rounded-lg border-slate-200 bg-white text-[12px] font-bold uppercase tracking-tight">
                     <SelectValue placeholder="All Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -104,7 +104,6 @@ export default function CapaFilters({
                     <SelectItem value="In Progress">In Progress</SelectItem>
                     <SelectItem value="Returned">Returned</SelectItem>
                     <SelectItem value="Closed">Closed</SelectItem>
-                    <SelectItem value="Overdue">Overdue</SelectItem>
                 </SelectContent>
             </Select>
 
@@ -112,7 +111,7 @@ export default function CapaFilters({
                 value={filters.site}
                 onValueChange={value => set('site', value)}
             >
-                <SelectTrigger className="h-10 w-[130px] rounded-lg border-slate-200 bg-white text-[12px] font-semibold">
+                <SelectTrigger className="h-10 w-[140px] rounded-lg border-slate-200 bg-white text-[12px] font-bold uppercase tracking-tight">
                     <SelectValue placeholder="All Sites" />
                 </SelectTrigger>
                 <SelectContent>
@@ -125,36 +124,42 @@ export default function CapaFilters({
                 </SelectContent>
             </Select>
 
-            <DateRangePicker
-                date={filters.dateRange}
-                onDateChange={range => set('dateRange', range)}
-                className="h-10 w-[160px] rounded-lg"
-            />
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button variant="outline" className="h-10 rounded-lg border-slate-200 bg-white px-4 text-[11px] font-bold uppercase text-slate-500">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {filters.date ? format(filters.date, 'dd MMM yyyy') : 'Pick a date'}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={filters.date} onSelect={d => set('date', d)} />
+                </PopoverContent>
+            </Popover>
 
             <Button
                 variant="outline"
-                className="h-10 rounded-lg border-slate-200 px-3 text-[11px] font-bold"
+                className="h-10 rounded-lg border-slate-200 px-4 text-[11px] font-black uppercase text-slate-500"
             >
-                <Filter className="mr-2 h-3.5 w-3.5" />
+                <Filter className="mr-2 h-4 w-4" />
                 More Filters
             </Button>
 
-            <div className="ml-auto flex items-center gap-1">
+            <div className="ml-auto flex items-center gap-4">
                 <Button
                     variant="ghost"
                     onClick={reset}
-                    className="h-10 px-3 text-[10px] font-black uppercase tracking-wider text-slate-500"
+                    className="h-10 px-3 text-[10px] font-black uppercase tracking-widest text-slate-500"
                 >
-                    <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                    Reset
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    RESET
                 </Button>
 
                 <Button
                     variant="outline"
-                    className="h-10 rounded-lg border-slate-200 px-3 text-[10px] font-black uppercase tracking-wider"
+                    className="h-10 rounded-lg border-slate-200 px-6 text-[10px] font-black uppercase tracking-widest bg-white"
                 >
-                    <Download className="mr-1.5 h-3.5 w-3.5" />
-                    Export
+                    <Download className="mr-2 h-4 w-4" />
+                    EXPORT
                 </Button>
             </div>
         </div>
