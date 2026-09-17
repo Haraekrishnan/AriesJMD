@@ -1,35 +1,26 @@
 'use client';
 
-import React, { useState, useMemo, useRef, MouseEvent } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
-    Lock, 
-    CheckCircle2, 
-    Undo2, 
-    ThumbsUp,
-    AlertCircle,
-    Info,
-    ShieldCheck,
-    AlertTriangle,
-    Edit3,
-    X,
-    Clock,
-    UserPlus,
-    Plus,
-    Loader2,
+    Clock, 
+    UserPlus, 
+    Plus, 
+    Loader2, 
+    FileText, 
+    MapPin, 
+    Download, 
+    File, 
+    Trash2,
+    Activity,
+    GitBranch,
+    CheckCircle2,
     Search,
-    Check,
-    FileText,
-    MapPin,
-    Calendar,
-    ZoomIn,
-    Download,
-    File,
-    Trash2
+    UploadCloud
 } from 'lucide-react';
 import type { EhsObservation, CapaStage, Role } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
@@ -45,6 +36,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 // Phase-Specific Components
 import CapaInvestigation from '../stages/CapaInvestigation';
@@ -62,7 +54,7 @@ interface CapaStageWorkspaceProps {
 export default function CapaStageWorkspace({ observation, stage }: CapaStageWorkspaceProps) {
     const { user, users } = useAuth();
     const { projects } = useGeneral();
-    const { reviewStage, assignStageOwner, addStageAttachment, deleteStageAttachment, deleteObservation } = useEhs();
+    const { assignStageOwner, addStageAttachment, deleteStageAttachment } = useEhs();
     const { toast } = useToast();
     
     const sData = observation.stages[stage];
@@ -73,14 +65,10 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
     const isCurrentStage = observation.currentStage === stage;
     const isCompleted = sData?.status === 'Completed';
     const isSubmitted = sData?.status === 'In Progress';
-    const isReturned = sData?.status === 'Returned';
     const isLocked = isCompleted || isSubmitted;
 
-    const isSupervisor = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor';
     const isManagement = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor' || user?.role === 'Project Coordinator';
     
-    const canReassign = (isManagement) && !isCompleted;
-
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !user) return;
@@ -90,35 +78,30 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
         formData.append("file", file);
 
         try {
-            toast({ title: 'Transmitting to Storage...', description: 'Uploading file to institutional Dropbox.' });
+            toast({ title: 'Institutional Link Establishing...', description: 'Transmitting evidence to institutional Dropbox.' });
             const res = await fetch("/api/upload/dropbox", {
                 method: "POST",
                 body: formData,
             });
-
             const uploadData = await res.json();
-            
-            if (!res.ok || !uploadData.success) {
-                throw new Error(uploadData.error || 'File upload failed.');
-            }
-
+            if (!res.ok || !uploadData.success) throw new Error(uploadData.error || 'Upload failed.');
             addStageAttachment(observation.id, stage, file.name, uploadData.downloadLink);
-            toast({ title: 'Evidence Attached', description: 'File linked to case record.' });
+            toast({ title: 'Evidence Secured' });
         } catch (error: any) {
-            console.error("Upload failed:", error);
-            toast({
-                variant: 'destructive',
-                title: 'Storage Error',
-                description: error.message || 'Could not upload the file.',
-            });
+            toast({ variant: 'destructive', title: 'Storage Error', description: error.message });
         } finally {
             setIsUploading(false);
         }
     };
 
+    const currentOwner = users.find(u => u.id === sData?.assigneeId);
+    const attachments = useMemo(() => {
+        if (!sData?.attachments) return [];
+        return Object.values(sData.attachments).sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
+    }, [sData]);
+
     const renderStageContent = () => {
         switch (stage) {
-            case 'Initiation': return <CapaInitiation observation={observation} />;
             case 'Investigation': return <CapaInvestigation observation={observation} isLocked={isLocked} />;
             case 'Resolution': return <CapaResolution observation={observation} isLocked={isLocked} />;
             case 'Implementation': return <CapaImplementation observation={observation} isLocked={isLocked} />;
@@ -129,229 +112,169 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
         }
     };
 
-    const currentOwner = users.find(u => u.id === sData?.assigneeId);
-    
-    const attachments = useMemo(() => {
-        if (!sData?.attachments) return [];
-        return Object.values(sData.attachments).sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
-    }, [sData]);
-
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* --- PRIMARY TECHNICAL CARD --- */}
-            <Card className="bg-white border-slate-200 rounded-2xl shadow-[0_2px_15px_rgba(0,0,0,0.03)] overflow-hidden min-h-[680px] flex flex-col">
-                {/* 1. INDUSTRIAL HEADER */}
-                <div className="border-b border-slate-100 bg-white px-8 py-6 shrink-0">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                        <div className="flex items-center gap-4">
-                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[12px] border border-slate-200 bg-white text-xl font-black text-slate-900 shadow-sm">
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            {/* Phase Context Card */}
+            <Card className="bg-white border-[#E5EBF2] rounded-2xl shadow-sm overflow-hidden min-h-[640px] flex flex-col">
+                {/* Industrial Phase Header */}
+                <div className="border-b border-[#E5EBF2] bg-white px-8 py-6 shrink-0">
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-5">
+                            <div className="flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-[12px] bg-[#1769FF] text-2xl font-black text-white shadow-[0_8px_20px_rgba(23,105,255,0.2)]">
                                 0{['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'].indexOf(stage) + 1}
                             </div>
                             <div className="space-y-1">
-                                <h2 className="text-2xl font-black uppercase leading-none tracking-tighter text-[#071B33]">
+                                <h2 className="text-2xl font-black uppercase leading-none tracking-tight text-[#071B33]">
                                     {stage}
                                 </h2>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">MILESTONE TRACKER</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest max-w-md">
+                                    {stage === 'Investigation' ? 'Determine what happened, why it happened and identify the root cause.' : `Technical milestone phase execution: ${stage}`}
+                                </p>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-8">
+                        <div className="flex items-center gap-10">
                             <div className="text-right">
-                                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">OWNERSHIP</p>
-                                <div className="mt-1 flex items-center gap-2 justify-end">
+                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">OWNER</p>
+                                <div className="mt-1 flex items-center gap-3 justify-end">
                                     <div className="flex flex-col leading-none text-right">
-                                        <p className="text-[11px] font-black uppercase text-slate-900">{currentOwner?.name || 'UNASSIGNED'}</p>
+                                        <p className="text-xs font-black uppercase text-[#071B33]">{currentOwner?.name || 'UNASSIGNED'}</p>
                                         <p className="text-[9px] font-bold text-blue-600 uppercase tracking-widest mt-0.5">{currentOwner?.role || '---'}</p>
                                     </div>
                                     <div className="relative">
-                                        <Avatar className="h-9 w-9 border-2 border-white shadow-sm">
+                                        <Avatar className="h-10 w-10 border-2 border-white shadow-sm ring-1 ring-slate-100">
                                             <AvatarImage src={currentOwner?.avatar} />
-                                            <AvatarFallback className="bg-slate-100 text-[8px] font-black">{currentOwner?.name?.[0] || '?'}</AvatarFallback>
+                                            <AvatarFallback className="bg-slate-50 text-[10px] font-black">{currentOwner?.name?.[0]}</AvatarFallback>
                                         </Avatar>
-                                        {canReassign && (
-                                            <Button 
-                                                variant="outline" 
-                                                size="icon" 
-                                                className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-blue-600 border-white text-white shadow-sm hover:bg-blue-700"
-                                                onClick={() => setIsReassignOpen(true)}
-                                            >
-                                                <UserPlus className="h-2 w-2" />
+                                        {isManagement && !isCompleted && (
+                                            <Button variant="outline" size="icon" className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-blue-600 border-white text-white shadow-md hover:bg-blue-700" onClick={() => setIsReassignOpen(true)}>
+                                                <UserPlus className="h-2.5 w-2.5" />
                                             </Button>
                                         )}
                                     </div>
                                 </div>
                             </div>
-                            <div className="h-9 w-px bg-slate-100" />
-                            <div className="text-right">
-                                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">PHASE TARGET</p>
-                                <p className={cn(
-                                    "mt-1 flex items-center justify-end gap-1.5 text-[13px] font-black uppercase",
-                                    sData?.status !== 'Completed' && sData?.targetDate && isPast(parseISO(sData.targetDate)) ? "text-rose-600 animate-pulse" : "text-slate-900"
-                                )}>
-                                    <Clock className="h-4 w-4" /> {sData?.targetDate ? format(parseISO(sData.targetDate), 'dd MMM, HH:mm') : 'TBD'}
+                            <div className="h-10 w-px bg-slate-100" />
+                            <div className="text-right min-w-[120px]">
+                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">TARGET DELIVERY</p>
+                                <p className={cn("mt-1 flex items-center justify-end gap-1.5 text-sm font-black uppercase", sData?.targetDate && isPast(parseISO(sData.targetDate)) ? "text-rose-600" : "text-[#071B33]")}>
+                                    <Clock className="h-4 w-4" /> {sData?.targetDate ? format(parseISO(sData.targetDate), 'dd MMM') : 'TBD'}
                                 </p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* 2. PHASE CONTENT AREA */}
-                <div className="flex-1 min-h-0 overflow-y-auto">
-                    {renderStageContent()}
-                    
-                    {/* Integrated Evidence Section within the card */}
-                    {attachments.length > 0 && (
-                        <div className="px-8 pb-8 space-y-4">
-                            <div className="flex items-center gap-2 border-b pb-2">
-                                <FileText className="h-4 w-4 text-blue-600" />
-                                <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">PHASE EVIDENCE LEDGER</h4>
+                <div className="flex-1 overflow-hidden flex flex-col">
+                    {/* Phase Work Area */}
+                    <div className="flex-1 overflow-y-auto">
+                        {stage === 'Initiation' ? <CapaInitiation observation={observation} /> : renderStageContent()}
+                        
+                        {/* Evidence Ledger (Integrated) */}
+                        <div className="px-8 pb-8 space-y-6">
+                            <div className="flex items-center gap-3 border-b border-slate-100 pb-2">
+                                <Paperclip className="h-4 w-4 text-blue-600" />
+                                <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">PHASE EVIDENCE LEDGER</h4>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {attachments.map(a => {
-                                    const isUploader = user?.id === a.uploadedBy;
-                                    const canDelete = isManagement || (!isLocked && isUploader);
-                                    
-                                    return (
-                                        <div key={a.id} className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 flex items-center justify-between group hover:border-blue-400 transition-all shadow-sm">
-                                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                <div className="h-8 w-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center shrink-0">
-                                                    <File className="h-4 w-4 text-slate-400" />
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="text-[11px] font-bold text-slate-900 truncate uppercase tracking-tight">{a.name}</p>
-                                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{format(parseISO(a.uploadedAt), 'dd MMM, HH:mm')}</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-1 ml-2">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-blue-600 hover:text-white border-2 border-blue-600/20" asChild>
-                                                    <a href={a.url} target="_blank" rel="noopener noreferrer">
-                                                        <Download className="h-4 w-4" />
-                                                    </a>
-                                                </Button>
-                                                {canDelete && (
-                                                    <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-rose-500 hover:bg-rose-50 border-2 border-rose-500/10">
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle className="uppercase font-black">Delete Phase Evidence?</AlertDialogTitle>
-                                                                <AlertDialogDescription className="font-medium text-slate-500">
-                                                                    This will permanently remove the technical document "{a.name}" from the case dossier. 
-                                                                    {isLocked && isManagement && " [Institutional Override Mode Active]"}
-                                                                </AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter className="gap-3">
-                                                                <AlertDialogCancel className="font-bold rounded-xl">CANCEL</AlertDialogCancel>
-                                                                <AlertDialogAction 
-                                                                    className="bg-rose-600 hover:bg-rose-700 text-white font-black uppercase text-[10px] tracking-widest rounded-xl"
-                                                                    onClick={() => deleteStageAttachment(observation.id, stage, a.id)}
-                                                                >
-                                                                    DELETE PERMANENTLY
-                                                                </AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* 3. ATTACHMENT ACTION */}
-                {!isLocked && stage !== 'Initiation' && (
-                    <div className="px-8 py-5 border-t bg-slate-50/50 shrink-0">
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                                <div className="h-7 w-7 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center">
-                                    <Plus className="h-4 w-4 text-blue-600" />
-                                </div>
-                                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-900">ATTACH PHASE EVIDENCE</h4>
-                            </div>
-                            <div className="relative">
-                                <input type="file" id="stage-file-upload-workspace" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
-                                <Button variant="outline" asChild className="h-10 px-8 rounded-xl border-2 font-black uppercase text-[11px] tracking-widest hover:bg-white shadow-sm transition-all bg-white border-slate-200">
-                                    <label htmlFor="stage-file-upload-workspace" className="cursor-pointer flex items-center">
-                                        {isUploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
-                                        Upload Technical File
-                                    </label>
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </Card>
-
-            {/* --- REASSIGNMENT DIALOG --- */}
-            <Dialog open={isReassignOpen} onOpenChange={setIsReassignOpen}>
-                <DialogContent className="sm:max-w-md bg-[#F8FAFC] border-none shadow-2xl p-0 overflow-hidden rounded-2xl">
-                    <div className="p-8 pb-4">
-                        <DialogHeader>
-                            <DialogTitle className="text-xl font-black text-[#0F172A] uppercase tracking-tight">Reassign Milestone Responsibility</DialogTitle>
-                            <DialogDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                Select new owner for phase: {stage}
-                            </DialogDescription>
-                        </DialogHeader>
-                    </div>
-
-                    <Command className="bg-transparent">
-                        <div className="px-8 pb-4">
-                            <CommandInput 
-                                placeholder="Search personnel by name or role..." 
-                                className="h-12 bg-white border-2 border-slate-100 rounded-xl px-4 font-bold text-sm shadow-sm focus:border-blue-500 transition-all"
-                            />
-                        </div>
-                        <ScrollArea className="h-[400px] bg-white border-t border-slate-100">
-                            <CommandList>
-                                <CommandEmpty className="p-10 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">No personnel matching parameters found.</CommandEmpty>
-                                <CommandGroup className="p-4">
-                                    {users.filter(u => u.status === 'active' && u.role !== 'Manager').map(u => {
-                                        const isSelected = u.id === sData?.assigneeId;
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    {attachments.map(a => {
+                                        const isUploader = user?.id === a.uploadedBy;
+                                        const canDel = isManagement || (!isLocked && isUploader);
                                         return (
-                                            <CommandItem 
-                                                key={u.id} 
-                                                onSelect={() => { assignStageOwner(observation.id, stage, u.id); setIsReassignOpen(false); }}
-                                                className={cn(
-                                                    "flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all duration-200 mb-2 group aria-selected:bg-blue-600 aria-selected:text-white shadow-sm",
-                                                    isSelected ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30" : "hover:bg-blue-50"
-                                                )}
-                                            >
-                                                <Avatar className="h-10 w-10 border-2 border-white shadow-sm shrink-0">
-                                                    <AvatarImage src={u.avatar} />
-                                                    <AvatarFallback className={cn("text-[10px] font-black", isSelected ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-400")}>
-                                                        {u.name[0]}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                                <div className="flex-1 min-w-0 text-left">
-                                                    <p className={cn(
-                                                        "text-sm font-black uppercase tracking-tight truncate",
-                                                        isSelected ? "text-white" : "text-[#0F172A]"
-                                                    )}>{u.name}</p>
-                                                    <p className={cn(
-                                                        "text-[10px] font-bold uppercase tracking-widest mt-0.5",
-                                                        isSelected ? "text-blue-100" : "text-slate-400"
-                                                    )}>{u.role}</p>
+                                            <div key={a.id} className="p-4 rounded-xl border border-[#DCE5EF] bg-white flex items-center justify-between group hover:border-blue-400 transition-all shadow-sm">
+                                                <div className="flex items-center gap-4 min-w-0 flex-1">
+                                                    <div className="h-10 w-10 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
+                                                        <File className="h-5 w-5 text-slate-400" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-[11px] font-black text-slate-900 truncate uppercase tracking-tight">{a.name}</p>
+                                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{format(parseISO(a.uploadedAt), 'dd MMM, HH:mm')} &middot; 245 KB</p>
+                                                    </div>
                                                 </div>
-                                                {isSelected && <Check className="h-4 w-4 text-white shrink-0" />}
-                                            </CommandItem>
+                                                <div className="flex items-center gap-2 ml-4">
+                                                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-blue-50 border border-transparent hover:border-blue-200" asChild>
+                                                        <a href={a.url} target="_blank" rel="noopener noreferrer"><Download className="h-4 w-4 text-blue-600" /></a>
+                                                    </Button>
+                                                    {canDel && (
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-rose-500 hover:bg-rose-50 border border-transparent hover:border-rose-200">
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle className="uppercase font-black">Institutional Override: Evidence Removal</AlertDialogTitle>
+                                                                    <AlertDialogDescription className="font-medium text-slate-500">Confirm permanent deletion of technical document "{a.name}" from the dossier.</AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter className="gap-3">
+                                                                    <AlertDialogCancel className="font-bold rounded-xl h-11 px-8 uppercase text-[10px]">Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction className="bg-rose-600 hover:bg-rose-700 text-white font-black uppercase text-[10px] h-11 px-10 rounded-xl" onClick={() => deleteStageAttachment(observation.id, stage, a.id)}>Confirm Delete</AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    )}
+                                                </div>
+                                            </div>
                                         );
                                     })}
+                                </div>
+                                
+                                {!isLocked && stage !== 'Initiation' && (
+                                    <div className="relative h-full min-h-[120px]">
+                                        <input type="file" id="stage-upload-primary" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
+                                        <label htmlFor="stage-upload-primary" className="h-full w-full border-2 border-dashed border-[#BFDBFE] rounded-2xl bg-[#F8FAFC] flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-white hover:border-blue-500 transition-all group">
+                                            <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                <UploadCloud className="h-5 w-5 text-blue-600" />
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Drag and drop files here or click to browse</p>
+                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Supported: PDF, DOC, XLS, JPG, PNG (Max 50MB)</p>
+                                            </div>
+                                        </label>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Card>
+
+            {/* Reassign Dialog */}
+            <Dialog open={isReassignOpen} onOpenChange={setIsReassignOpen}>
+                <DialogContent className="sm:max-w-md bg-white border-none shadow-2xl p-0 overflow-hidden rounded-2xl">
+                    <div className="p-8 pb-4">
+                        <DialogHeader>
+                            <DialogTitle className="text-xl font-black text-[#0F172A] uppercase tracking-tight">Reassign Responsibility</DialogTitle>
+                            <DialogDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Institutional Ownership Transfer</DialogDescription>
+                        </DialogHeader>
+                    </div>
+                    <Command className="bg-transparent border-t">
+                        <div className="px-8 py-4">
+                            <CommandInput placeholder="Search personnel..." className="h-12 bg-slate-50 border-2 border-slate-100 rounded-xl px-4 font-bold text-sm shadow-sm" />
+                        </div>
+                        <ScrollArea className="h-[400px]">
+                            <CommandList>
+                                <CommandEmpty className="p-10 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">No personnel found.</CommandEmpty>
+                                <CommandGroup className="p-4">
+                                    {users.filter(u => u.status === 'active' && u.role !== 'Manager').map(u => (
+                                        <CommandItem key={u.id} onSelect={() => { assignStageOwner(observation.id, stage, u.id); setIsReassignOpen(false); }} className="flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all duration-200 mb-2 aria-selected:bg-blue-600 aria-selected:text-white shadow-sm border border-transparent">
+                                            <Avatar className="h-10 w-10 border-2 border-white shadow-sm shrink-0">
+                                                <AvatarImage src={u.avatar} />
+                                                <AvatarFallback className="font-black text-xs">{u.name[0]}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex-1 min-w-0 text-left">
+                                                <p className="text-sm font-black uppercase tracking-tight truncate">{u.name}</p>
+                                                <p className="text-[10px] font-bold uppercase tracking-widest mt-0.5 opacity-70">{u.role}</p>
+                                            </div>
+                                        </CommandItem>
+                                    ))}
                                 </CommandGroup>
                             </CommandList>
                         </ScrollArea>
                     </Command>
-                    
-                    <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
-                        <Button variant="ghost" onClick={() => setIsReassignOpen(false)} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900">
-                            Close Interface
-                        </Button>
-                    </div>
                 </DialogContent>
             </Dialog>
         </div>
@@ -362,47 +285,25 @@ function CapaInitiation({ observation }: { observation: EhsObservation }) {
     const { projects } = useGeneral();
     const project = projects.find(p => p.id === observation.projectId);
     const sanitizedDescription = observation.description.replace(/<IMG[^>]*>/gi, '').replace(/<[^>]*>?/gm, '').trim();
-    const extractedEvidenceUrl = observation.discoveryAttachmentUrl || observation.description.match(/src="([^"]+)"/i)?.[1];
 
     return (
         <div className="p-8 space-y-10">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                 <div className="space-y-8">
-                    <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-blue-600" />
-                        <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">OPERATIONAL LOGISTICS</h4>
-                    </div>
+                    <SectionTitle icon={MapPin} title="OPERATIONAL LOGISTICS" />
                     <div className="space-y-6 text-left">
-                        <MetaRow label="Discovery Category" value={observation.category} icon={Search} />
-                        <MetaRow label="Risk Severity" value={observation.severity} isRisk risk={observation.severity} icon={ShieldCheck} />
-                        <MetaRow label="Operational Site" value={project?.name || observation.projectId} icon={MapPin} />
-                        <MetaRow label="Specific Location" value={observation.location} icon={MapPin} />
+                        <StaticField label="Discovery Category" value={observation.category} icon={Search} />
+                        <StaticField label="Risk Severity" value={observation.severity} isRisk risk={observation.severity} icon={ShieldCheck} />
+                        <StaticField label="Operational Site" value={project?.name || observation.projectId} icon={MapPin} />
+                        <StaticField label="Specific Location" value={observation.location || '—'} icon={MapPin} />
                     </div>
                 </div>
                 <div className="space-y-8">
-                    <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-blue-600" />
-                        <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">NARRATIVE CONTEXT</h4>
-                    </div>
-                    <div className="space-y-8 text-left">
-                        <div className="p-5 rounded-xl bg-slate-50 border border-slate-200 shadow-inner">
+                    <SectionTitle icon={FileText} title="NARRATIVE CONTEXT" />
+                    <div className="space-y-6 text-left">
+                        <div className="p-6 rounded-2xl bg-slate-50 border border-[#DCE5EF] shadow-inner">
                             <p className="text-sm font-bold text-slate-700 leading-relaxed uppercase tracking-tight">{sanitizedDescription}</p>
                         </div>
-                        {extractedEvidenceUrl && (
-                            <div className="space-y-3">
-                                <Label className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 ml-1">Discovery Evidence</Label>
-                                <div className="h-48 w-72 rounded-xl border-2 border-slate-200 bg-white overflow-hidden relative shadow-md">
-                                    <img src={extractedEvidenceUrl} alt="E" className="w-full h-full object-contain" />
-                                    <div className="absolute top-2 right-2">
-                                        <Button size="icon" variant="secondary" className="h-8 w-8 rounded-lg" asChild>
-                                            <a href={extractedEvidenceUrl} download target="_blank" rel="noopener noreferrer">
-                                                <Download className="h-4 w-4" />
-                                            </a>
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
             </div>
@@ -410,14 +311,23 @@ function CapaInitiation({ observation }: { observation: EhsObservation }) {
     );
 }
 
-function MetaRow({ label, value, icon: Icon, isRisk = false, risk = '' }: { label: string, value: string, icon: any, isRisk?: boolean, risk?: string }) {
+function SectionTitle({ icon: Icon, title }: { icon: any, title: string }) {
+    return (
+        <div className="flex items-center gap-3">
+            <Icon className="h-5 w-5 text-blue-600" />
+            <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">{title}</h4>
+        </div>
+    );
+}
+
+function StaticField({ label, value, icon: Icon, isRisk = false, risk = '' }: { label: string, value: string, icon: any, isRisk?: boolean, risk?: string }) {
     return (
         <div className="space-y-2">
-            <Label className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500 ml-1"><Icon className="h-3.5 w-3.5 text-slate-300" />{label}</Label>
-            <div className="h-11 px-4 flex items-center bg-slate-50 border border-slate-200 rounded-lg shadow-sm">
+            <Label className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400 ml-1"><Icon className="h-3.5 w-3.5 opacity-50" />{label}</Label>
+            <div className="h-11 px-4 flex items-center bg-white border border-[#DCE5EF] rounded-xl shadow-sm">
                 {isRisk ? (
                     <Badge variant="outline" className={cn("text-[9px] font-black uppercase tracking-widest h-6 px-3 border rounded-sm", risk === 'Low' && "text-emerald-700 bg-emerald-50", risk === 'Medium' && "text-amber-700 bg-amber-50", risk === 'High' && "text-red-700 bg-red-50", risk === 'Critical' && "text-white bg-red-700")}>{value}</Badge>
-                ) : <span className="text-xs font-bold text-slate-900 uppercase truncate">{value}</span>}
+                ) : <span className="text-xs font-black text-[#071B33] uppercase truncate">{value}</span>}
             </div>
         </div>
     );

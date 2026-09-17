@@ -10,7 +10,8 @@ import {
     History,
     CheckCircle2,
     Clock,
-    Search
+    Search,
+    BookOpen
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,6 @@ import type { EhsObservation } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 export default function CapaCaseInformation({ observation }: { observation: EhsObservation }) {
     const { users } = useAuth();
@@ -39,126 +39,74 @@ export default function CapaCaseInformation({ observation }: { observation: EhsO
         return isValid(created) ? Math.max(0, differenceInDays(new Date(), created)) : 0;
     }, [observation.createdAt]);
 
-    const isOverdue = useMemo(() => {
-        if (!sData?.targetDate) return false;
-        return isAfter(new Date(), parseISO(sData.targetDate)) && sData.status !== 'Completed';
-    }, [sData]);
-
-    const auditTrail = useMemo(() => {
-        const events: any[] = [];
-        
-        // Collect all comments from all stages
-        Object.entries(observation.stages).forEach(([stageName, stageData]) => {
-            if (stageData.comments) {
-                Object.values(stageData.comments).forEach(comment => {
-                    events.push({
-                        ...comment,
-                        stageName,
-                    });
-                });
-            }
-        });
-
-        // Add initiation as start point
-        events.push({
-            userId: observation.reporterId,
-            text: 'Case initiated by reporter.',
-            date: observation.createdAt,
-            stageName: 'Initiation',
-        });
-
-        return events.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-    }, [observation]);
-
     return (
-        <ScrollArea className="h-full border-l border-slate-200">
+        <ScrollArea className="h-full">
             <div className="flex flex-col gap-8 py-8 px-8 text-left">
                 
-                {/* CASE INFO */}
+                {/* 1. CASE INFORMATION LEDGER */}
                 <div className="space-y-4">
-                    <div className="flex items-center gap-3 mb-1 ml-1">
-                        <Info className="h-4 w-4 text-slate-400" />
-                        <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">CASE INFORMATION</h4>
+                    <div className="flex items-center gap-3 ml-1">
+                        <Info className="h-4 w-4 text-blue-600" />
+                        <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-900">CASE INFORMATION</h4>
                     </div>
-                    <div className="bg-white border rounded-xl divide-y divide-slate-100 shadow-sm overflow-hidden">
+                    <div className="bg-white border rounded-xl divide-y divide-slate-100 shadow-sm overflow-hidden border-[#DCE5EF]">
                         <InfoRow label="Category" value={observation.category} isBadge />
                         <InfoRow label="Risk Index" value={observation.severity} isRisk risk={observation.severity} />
                         <InfoRow label="Site" value={project?.name} isBold />
-                        <InfoRow label="Area" value={observation.location} />
+                        <InfoRow label="Area" value={observation.location || '—'} />
                         <InfoRow label="Reporter" value={reporter?.name} />
                         <InfoRow label="Owner" value={currentOwner?.name} isBlue />
                         <InfoRow label="Started" value={format(parseISO(observation.createdAt), 'dd MMMM yyyy')} />
-                        <InfoRow label="Age" value={`${daysOpen} Days`} isLast />
+                        <InfoRow label="Age" value={`${daysOpen} Days`} />
+                        <InfoRow label="Target Closure" value="—" isLast />
                     </div>
                 </div>
 
-                {/* GOVERNANCE HEALTH */}
+                {/* 2. GOVERNANCE HEALTH */}
                 <div className="space-y-4">
-                    <h5 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500 flex items-center gap-3 ml-1">
-                        <Activity className="h-4 w-4 text-slate-400" /> GOVERNANCE HEALTH
+                    <h5 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-900 flex items-center gap-3 ml-1">
+                        <Activity className="h-4 w-4 text-blue-600" /> GOVERNANCE HEALTH
                     </h5>
-                    <div className={cn(
-                        "p-6 rounded-2xl border-2 shadow-sm space-y-6 transition-colors",
-                        isOverdue ? "bg-rose-50 border-rose-200" : "bg-white border-slate-50"
-                    )}>
+                    <div className="p-6 rounded-2xl bg-white border border-[#DCE5EF] shadow-sm space-y-6">
                         <div className="flex items-center gap-3">
-                            <div className={cn("h-3 w-3 rounded-full", isOverdue ? "bg-rose-500 animate-pulse shadow-[0_0_12px_rgba(244,63,94,0.6)]" : "bg-emerald-500")} />
-                            <span className={cn("text-[10px] font-black uppercase tracking-[0.2em]", isOverdue ? "text-rose-600" : "text-slate-700")}>
-                                {isOverdue ? 'LIFECYCLE DELAY DETECTED' : 'SYSTEM HEALTH OPTIMAL'}
-                            </span>
+                            <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                            <span className="text-[11px] font-black uppercase tracking-widest text-slate-700">System Health Optimal</span>
                         </div>
+                        <p className="text-[10px] font-medium text-slate-400 leading-tight">Activities are within expected timeframe.</p>
                         
                         <div className="grid grid-cols-3 gap-3">
                             <HealthMetric label="DAYS" value={`${daysOpen}D`} />
-                            <HealthMetric label="TARGET" value={sData?.targetDate ? format(parseISO(sData.targetDate), 'dd MMM') : 'TBD'} isDanger={isOverdue} />
-                            <HealthMetric label="REWORK" value={String(observation.reworkCount || 0)} />
+                            <HealthMetric label="TARGET" value="TBD" />
+                            <HealthMetric label="REWORK" value="0" />
                         </div>
                     </div>
                 </div>
 
-                {/* TECHNICAL AUDIT TRAIL ACCORDION */}
-                <Accordion type="single" collapsible defaultValue="audit-trail" className="w-full">
-                    <AccordionItem value="audit-trail" className="border-none">
-                        <AccordionTrigger className="hover:no-underline py-0 mb-4">
-                            <div className="flex items-center gap-3 ml-1">
-                                <History className="h-4 w-4 text-slate-400" />
-                                <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">TECHNICAL AUDIT TRAIL</h4>
+                {/* 3. STAGE GUIDANCE */}
+                <div className="space-y-4">
+                    <h5 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-900 flex items-center gap-3 ml-1">
+                        <BookOpen className="h-4 w-4 text-blue-600" /> STAGE GUIDANCE
+                    </h5>
+                    <div className="p-6 rounded-2xl bg-[#EFF6FF] border border-[#DBEAFE] shadow-sm space-y-5">
+                        <div className="flex items-start gap-3">
+                            <div className="h-6 w-6 rounded-full bg-blue-600 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20">
+                                <Info className="h-3.5 w-3.5 text-white" />
                             </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="pt-2">
-                            <ScrollArea className="h-[400px] pr-4">
-                                <div className="space-y-8 pl-4 border-l-2 border-slate-100 ml-2 relative">
-                                    {auditTrail.map((event, i) => {
-                                        const actor = users.find(u => u.id === event.userId);
-                                        return (
-                                            <div key={i} className="relative space-y-2 pb-2 last:pb-0">
-                                                {/* Timeline Node */}
-                                                <div className="absolute -left-[23px] top-1 h-3.5 w-3.5 rounded-full bg-white border-2 border-slate-200 z-10" />
-                                                
-                                                <div className="flex justify-between items-baseline gap-2">
-                                                    <span className="text-[10px] font-black uppercase tracking-wider text-blue-600">
-                                                        {actor?.name || 'SYSTEM'}
-                                                    </span>
-                                                    <span className="text-[9px] font-bold text-slate-400 uppercase">
-                                                        {format(parseISO(event.date), 'dd MMM, HH:mm')}
-                                                    </span>
-                                                </div>
-                                                
-                                                <p className="text-[11px] leading-relaxed font-medium text-slate-700 italic">
-                                                    {event.text}
-                                                </p>
+                            <div className="space-y-1.5">
+                                <p className="text-[11px] font-black uppercase text-blue-800 tracking-tight">Perform a technical investigation</p>
+                                <p className="text-[10px] font-medium text-blue-600 leading-relaxed">Determine what happened, why it happened, and identify the underlying root cause.</p>
+                            </div>
+                        </div>
 
-                                                <Badge variant="outline" className="h-5 px-2 rounded-sm text-[8px] font-black uppercase bg-slate-50 border-slate-200 text-slate-400 tracking-tighter">
-                                                    PHASE: {event.stageName.toUpperCase()}
-                                                </Badge>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </ScrollArea>
-                        </AccordionContent>
-                    </AccordionItem>
-                </Accordion>
+                        <div className="space-y-2.5">
+                            <GuidelineItem text="Gather factual information" completed />
+                            <GuidelineItem text="Identify all possible causes" completed />
+                            <GuidelineItem text="Perform 5-Why analysis" active />
+                            <GuidelineItem text="Collect evidence and interviews" />
+                            <GuidelineItem text="Determine systemic root cause" />
+                        </div>
+                    </div>
+                </div>
             </div>
         </ScrollArea>
     );
@@ -171,28 +119,43 @@ function InfoRow({ label, value, isRisk = false, risk = '', isBlue = false, isLa
             {isRisk ? (
                 <Badge variant="outline" className={cn(
                     "font-black uppercase text-[9px] tracking-widest h-6 px-3 border rounded-sm",
-                    risk === 'Low' && "text-emerald-700 border-emerald-100 bg-emerald-50",
-                    risk === 'Medium' && "text-amber-700 border-amber-100 bg-amber-50",
-                    risk === 'High' && "text-red-700 border-red-100 bg-red-50",
-                    risk === 'Critical' && "text-white border-red-800 bg-red-700"
+                    risk === 'Low' && "text-emerald-700 bg-emerald-50 border-emerald-100",
+                    risk === 'Medium' && "text-amber-700 bg-amber-50 border-amber-100",
+                    risk === 'High' && "text-red-700 bg-red-50 border-red-100",
+                    risk === 'Critical' && "text-white bg-red-700"
                 )}>{value}</Badge>
             ) : isBadge ? (
-                <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 font-black text-[9px] px-3 h-6 tracking-widest uppercase rounded-sm">{value}</Badge>
+                <Badge variant="outline" className="bg-slate-50 text-blue-700 border-blue-100 font-black text-[9px] px-3 h-6 tracking-widest uppercase rounded-sm">{value}</Badge>
             ) : (
-                <span className={cn("font-bold text-slate-900 uppercase truncate max-w-[200px]", isBlue && "text-blue-700", isBold && "font-black text-xs")}>{value || '—'}</span>
+                <span className={cn("font-black text-slate-900 uppercase truncate max-w-[200px]", isBlue && "text-blue-700", isBold && "text-xs")}>{value || '—'}</span>
             )}
         </div>
     );
 }
 
-function HealthMetric({ label, value, isDanger = false }: { label: string, value: string, isDanger?: boolean }) {
+function HealthMetric({ label, value }: { label: string, value: string }) {
     return (
-        <div className={cn(
-            "p-3 rounded-xl border-2 text-center transition-colors shadow-md",
-            isDanger ? "bg-rose-600 border-rose-700 shadow-rose-200" : "bg-white border-slate-100"
-        )}>
-            <p className={cn("text-[8px] font-black uppercase tracking-[0.1em] mb-1", isDanger ? "text-white/70" : "text-slate-400")}>{label}</p>
-            <p className={cn("text-[12px] font-black uppercase tracking-tight", isDanger ? "text-white" : "text-slate-900")}>{value}</p>
+        <div className="p-3 rounded-xl bg-white border border-[#DCE5EF] text-center shadow-sm">
+            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">{label}</p>
+            <p className="text-[13px] font-black text-slate-900 uppercase">{value}</p>
+        </div>
+    );
+}
+
+function GuidelineItem({ text, completed = false, active = false }: { text: string, completed?: boolean, active?: boolean }) {
+    return (
+        <div className="flex items-center gap-3">
+            <div className={cn(
+                "h-5 w-5 rounded-full flex items-center justify-center border-2",
+                completed ? "bg-blue-600 border-blue-600 text-white" : active ? "bg-white border-blue-600 text-blue-600" : "bg-white border-slate-300"
+            )}>
+                {completed && <CheckCircle2 className="h-3 w-3" />}
+                {active && <div className="h-1.5 w-1.5 rounded-full bg-blue-600" />}
+            </div>
+            <span className={cn(
+                "text-[10px] font-bold uppercase tracking-tight",
+                completed ? "text-slate-400 line-through" : active ? "text-blue-700" : "text-slate-500"
+            )}>{text}</span>
         </div>
     );
 }
