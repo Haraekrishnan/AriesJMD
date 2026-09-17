@@ -27,6 +27,8 @@ export default function CapaStageWorkspace({ observation, stage }: Props) {
     const isCompleted = sData?.status === 'Completed';
     const isReturned = sData?.status === 'Returned';
     const assignee = users.find(u => u.id === sData?.assigneeId);
+    
+    const phaseNumber = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'].indexOf(stage) + 1;
 
     const renderStageContent = () => {
         const isLocked = isCompleted || sData?.status === 'In Progress';
@@ -62,12 +64,12 @@ export default function CapaStageWorkspace({ observation, stage }: Props) {
             <div className="bg-white rounded border border-slate-300 shadow-sm overflow-hidden">
                 <div className="px-8 py-6 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
                     <div className="flex items-center gap-5">
-                        <div className="h-14 w-14 rounded bg-slate-900 flex items-center justify-center text-white border-b-4 border-blue-600">
-                            <span className="font-black text-xl">0{['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'].indexOf(stage) + 1}</span>
+                        <div className="h-12 w-12 bg-[#0F172A] rounded border-b-4 border-blue-600 flex items-center justify-center shrink-0">
+                            <span className="text-white font-black text-lg">0{phaseNumber}</span>
                         </div>
-                        <div className="space-y-1">
-                            <Badge className="bg-blue-600 text-white font-bold uppercase text-[8px] h-5 px-2 tracking-widest border-none rounded-sm">TECHNICAL ACTION</Badge>
-                            <h3 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">{stage}</h3>
+                        <div className="space-y-0.5">
+                            <Badge className="bg-blue-600 text-white font-black uppercase text-[8px] tracking-widest px-2.5 h-5 border-none rounded-sm">TECHNICAL ACTION</Badge>
+                            <h3 className="text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none">{stage}</h3>
                         </div>
                     </div>
 
