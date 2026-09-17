@@ -41,12 +41,20 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const initiateSchema = z.object({
-  description: z.string().min(5, 'Narrative description must be detailed.'),
+  description: z.string().optional().default(''),
   category: z.enum(['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']).default('Unsafe Act'),
   severity: z.enum(['Low', 'Medium', 'High', 'Critical']).default('Medium'),
   projectId: z.string().min(1, 'Please select an operational site.'),
   location: z.string().optional().default(''),
   discoveryAttachmentUrl: z.string().optional().nullable(),
+}).refine(data => {
+  const hasText = data.description && data.description.trim().length >= 5;
+  const hasImage = !!data.discoveryAttachmentUrl;
+  // Valid if has enough text OR an image
+  return hasText || hasImage;
+}, {
+  message: 'Provide a detailed description or attach discovery evidence.',
+  path: ['description'],
 });
 
 type FormValues = z.infer<typeof initiateSchema>;
@@ -100,7 +108,7 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
       <DialogContent className="sm:max-w-3xl bg-white p-0 overflow-hidden border-none shadow-2xl rounded-2xl">
         <DialogHeader className="p-8 pb-4">
           <DialogTitle className="text-2xl font-black text-[#0F172A] uppercase tracking-tight">INITIATE SAFETY OBSERVATION</DialogTitle>
-          <DialogDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest">Phase 01: Initial Discovery & Capture</DialogDescription>
+          <DialogDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest">PHASE 01: INITIAL DISCOVERY & CAPTURE</DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="max-h-[80vh]">
@@ -146,7 +154,7 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
                         <div className="h-10 w-14 rounded border bg-white overflow-hidden shrink-0 flex items-center justify-center">
                             <img src={pastedImage} alt="Pasted" className="max-w-full max-h-full object-contain" />
                         </div>
-                        <p className="flex-1 text-[10px] font-bold text-emerald-700 uppercase tracking-widest">Forensic Photo Captured from Clipboard</p>
+                        <p className="flex-1 text-[10px] font-black text-emerald-700 uppercase tracking-widest">EHS DISCOVERY IMAGE ATTACHED</p>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-500" onClick={() => { setPastedImage(null); form.setValue('discoveryAttachmentUrl', null); }}>
                             <X className="h-4 w-4" />
                         </Button>
