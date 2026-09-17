@@ -321,7 +321,7 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
     const extractedEvidenceUrl = useMemo(() => {
         if (observation.discoveryAttachmentUrl) return observation.discoveryAttachmentUrl;
         
-        // Check for embedded <img> tags in description (as seen in screenshot)
+        // Check for embedded <img> tags in description (as seen in recent data entries)
         const match = observation.description.match(/src="([^"]+)"/i);
         return match ? match[1] : null;
     }, [observation.discoveryAttachmentUrl, observation.description]);
@@ -433,13 +433,13 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
                             </p>
                             <div className="relative group max-w-md">
                                 <div 
-                                    className="rounded-xl overflow-hidden border-4 border-white shadow-xl bg-slate-200 aspect-video cursor-pointer"
+                                    className="rounded-xl overflow-hidden border-4 border-white shadow-xl bg-slate-200/50 aspect-video cursor-pointer flex items-center justify-center"
                                     onClick={() => onViewImage(extractedEvidenceUrl)}
                                 >
                                     <img 
                                         src={extractedEvidenceUrl} 
                                         alt="Discovery Evidence" 
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                                        className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-700" 
                                     />
                                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all flex items-center justify-center">
                                         <ZoomIn className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -482,7 +482,7 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
                                                     <Avatar className="h-5 w-5 border border-slate-100">
-                                                        <AvatarImage src={revUser?.avatar}/>
+                                                        <AvatarImage src={revUser?.avatar} />
                                                         <AvatarFallback className="text-[7px] font-bold">{revUser?.name?.[0]}</AvatarFallback>
                                                     </Avatar>
                                                     <span className="text-[9px] font-bold text-slate-900 uppercase">{revUser?.name}</span>
