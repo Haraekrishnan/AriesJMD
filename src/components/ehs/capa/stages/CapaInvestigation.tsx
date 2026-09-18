@@ -84,7 +84,7 @@ export default function CapaInvestigation({
                             <TabsTrigger 
                                 key={tab.id} 
                                 value={tab.id}
-                                className="h-12 rounded-none border-b-2 border-transparent px-0 text-[11px] font-black uppercase tracking-widest text-slate-400 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 bg-transparent shadow-none"
+                                className="h-12 rounded-none border-b-2 border-transparent px-0 text-[11px] font-black uppercase tracking-widest text-slate-400 data-[state=active]:border-slate-900 data-[state=active]:text-slate-900 bg-transparent shadow-none"
                             >
                                 <tab.icon className="mr-2.5 h-4 w-4" /> {tab.label}
                             </TabsTrigger>
@@ -98,8 +98,8 @@ export default function CapaInvestigation({
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
                             <div className="space-y-8">
                                 <div className="flex items-center gap-3">
-                                    <Activity className="h-5 w-5 text-blue-600" />
-                                    <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">TECHNICAL LOGISTICS</h4>
+                                    <Activity className="h-5 w-5 text-slate-900" />
+                                    <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-900">TECHNICAL LOGISTICS</h4>
                                 </div>
                                 <div className="space-y-6">
                                     <FormItem label="Who was involved?" isRequired placeholder="List personnel, contractors or departments involved." isLocked={isLocked} name="who" icon={UserRound} />
@@ -113,8 +113,8 @@ export default function CapaInvestigation({
 
                             <div className="space-y-8">
                                 <div className="flex items-center gap-3">
-                                    <MessageSquare className="h-5 w-5 text-blue-600" />
-                                    <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">NARRATIVE CONTEXT</h4>
+                                    <MessageSquare className="h-5 w-5 text-slate-900" />
+                                    <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-900">NARRATIVE CONTEXT</h4>
                                 </div>
                                 <div className="space-y-8">
                                     <FormItem label="Sequence of events (How)?" isRequired type="textarea" placeholder="Describe the chronological sequence of events..." isLocked={isLocked} name="sequence" icon={MessageSquare} onPaste={handlePaste} minHeight="120px" />
@@ -124,30 +124,34 @@ export default function CapaInvestigation({
                         </div>
                     </TabsContent>
 
-                    {/* --- 5-WHY TAB --- */}
-                    <TabsContent value="5why" className="m-0 p-8 space-y-10 animate-in fade-in duration-500">
-                         <div className="max-w-4xl mx-auto space-y-10">
-                            <div className="text-center space-y-2 border-b border-slate-100 pb-6">
-                                <h4 className="text-sm font-black uppercase tracking-[0.4em] text-blue-600">5-WHY ROOT CAUSE ANALYSIS</h4>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Institutional protocol: Ask "Why?" until a systemic vulnerability is isolated.</p>
+                    {/* --- OLD SCHOOL 5-WHY TAB --- */}
+                    <TabsContent value="5why" className="m-0 p-8 animate-in fade-in duration-500">
+                        <div className="max-w-4xl mx-auto">
+                            <div className="border-2 border-slate-900 mb-8 p-6 bg-slate-50">
+                                <h4 className="text-sm font-black uppercase tracking-[0.4em] text-slate-900">5-WHY ROOT CAUSE ANALYSIS PROTOCOL</h4>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2">Institutional Directive: Trace causal factors to the primary systemic failure.</p>
                             </div>
-                            
-                            <div className="space-y-4">
+
+                            <div className="border-2 border-slate-900 bg-white divide-y-2 divide-slate-900">
+                                <div className="grid grid-cols-[100px_1fr] bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest">
+                                    <div className="p-3 border-r-2 border-white text-center">STAGE</div>
+                                    <div className="p-3 pl-6">INVESTIGATIVE FINDING / LOGICAL REASONING</div>
+                                </div>
+
                                 {[1, 2, 3, 4, 5].map(i => (
-                                    <div key={i} className="flex gap-8 group">
-                                        <div className="flex flex-col items-center shrink-0 w-12">
-                                            <div className="h-12 w-12 rounded-xl bg-slate-900 text-white font-black flex items-center justify-center text-sm shadow-lg group-hover:scale-105 transition-transform">W{i}</div>
-                                            {i < 5 && <ArrowDown className="h-5 w-5 text-slate-200 my-3" />}
+                                    <div key={i} className="grid grid-cols-[100px_1fr]">
+                                        <div className="bg-slate-100 border-r-2 border-slate-900 flex items-center justify-center font-black text-2xl text-slate-900 shadow-inner">
+                                            W{i}
                                         </div>
-                                        <div className="flex-1 space-y-2 pb-6">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-                                                {i === 1 ? 'Primary Reason (Why did the finding occur?)' : `Logical Successor (Why did W${i-1} occur?)`}
+                                        <div className="p-8 space-y-3 bg-white">
+                                            <Label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 block italic">
+                                                {i === 1 ? 'Q: Why did the primary discovery occur?' : `Q: Why did the condition in W${i-1} exist?`}
                                             </Label>
                                             <Textarea 
                                                 disabled={isLocked}
                                                 {...useFormContext().register(`why${i}`)}
                                                 placeholder={i === 1 ? "Enter immediate investigative finding..." : "Enter technical reasoning for the above factor..."}
-                                                className="min-h-[60px] rounded-xl border-2 border-slate-50 bg-white font-bold text-xs focus-visible:ring-blue-100 shadow-sm"
+                                                className="min-h-[100px] rounded-none border-2 border-slate-200 bg-slate-50/50 font-bold text-xs focus-visible:ring-0 focus-visible:border-slate-900 transition-all resize-none shadow-inner p-4"
                                             />
                                         </div>
                                     </div>
@@ -162,8 +166,8 @@ export default function CapaInvestigation({
                             <div className="grid grid-cols-1 md:grid-cols-[1fr,2fr] gap-12">
                                 <div className="space-y-8">
                                     <div className="flex items-center gap-3">
-                                        <Layers className="h-5 w-5 text-blue-600" />
-                                        <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">SYSTEMIC CATEGORY</h4>
+                                        <Layers className="h-5 w-5 text-slate-900" />
+                                        <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-900">SYSTEMIC CATEGORY</h4>
                                     </div>
                                     <div className="space-y-6">
                                         <div className="space-y-2">
@@ -173,7 +177,7 @@ export default function CapaInvestigation({
                                                 control={useFormContext().control}
                                                 render={({ field }) => (
                                                     <Select onValueChange={field.onChange} value={field.value} disabled={isLocked}>
-                                                        <SelectTrigger className="h-12 rounded-xl border-2 border-slate-50 bg-white font-black text-[11px] uppercase tracking-widest">
+                                                        <SelectTrigger className="h-12 rounded-none border-2 border-slate-900 bg-white font-black text-[11px] uppercase tracking-widest">
                                                             <SelectValue placeholder="Categorize Failure" />
                                                         </SelectTrigger>
                                                         <SelectContent>
@@ -192,8 +196,8 @@ export default function CapaInvestigation({
 
                                 <div className="space-y-8">
                                     <div className="flex items-center gap-3">
-                                        <GitBranch className="h-5 w-5 text-blue-600" />
-                                        <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">DETAILED ROOT CAUSE</h4>
+                                        <GitBranch className="h-5 w-5 text-slate-900" />
+                                        <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-900">DETAILED ROOT CAUSE</h4>
                                     </div>
                                     <div className="space-y-8">
                                         <FormItem label="Definitive Root Cause Statement" isRequired type="textarea" placeholder="Final technical isolation of the systemic failure..." isLocked={isLocked} name="rootCause" icon={ShieldAlert} minHeight="160px" />
@@ -207,8 +211,8 @@ export default function CapaInvestigation({
                     {/* --- CONCLUSION TAB --- */}
                     <TabsContent value="conclusion" className="m-0 p-8 space-y-12 animate-in fade-in duration-500">
                         <div className="max-w-3xl mx-auto space-y-12">
-                             <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-                                <CheckCircle2 className="h-6 w-6 text-blue-600" />
+                             <div className="flex items-center gap-3 border-b-2 border-slate-900 pb-4">
+                                <CheckCircle2 className="h-6 w-6 text-slate-900" />
                                 <h4 className="text-sm font-black uppercase tracking-tight text-slate-900">AUTHORIZED PHASE CONCLUSION</h4>
                             </div>
 
@@ -217,9 +221,9 @@ export default function CapaInvestigation({
                                 <FormItem label="Institutional Recommendation" isRequired type="textarea" placeholder="Proposed corrective strategy for the resolution phase..." isLocked={isLocked} name="recommendation" icon={ListChecks} minHeight="120px" />
                             </div>
 
-                            <div className="p-6 rounded-2xl bg-blue-50 border-2 border-blue-100 flex items-start gap-4">
-                                <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-                                <p className="text-[11px] font-bold text-blue-700 leading-relaxed uppercase tracking-tight">
+                            <div className="p-6 rounded-none border-2 border-slate-900 bg-slate-50 flex items-start gap-4">
+                                <Info className="h-5 w-5 text-slate-900 shrink-0 mt-0.5" />
+                                <p className="text-[11px] font-bold text-slate-600 leading-relaxed uppercase tracking-tight">
                                     Note: Finalizing this phase will trigger an automated notification to the Senior Safety Supervisor for institutional verification and milestone approval.
                                 </p>
                             </div>
@@ -235,7 +239,7 @@ function FormItem({ label, placeholder, type = 'text', isLocked, isRequired, nam
     const { register } = useFormContext();
     return (
         <div className="space-y-2">
-            <Label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#071B33] ml-1">
+            <Label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-900 ml-1">
                 {Icon && <Icon className="h-3.5 w-3.5 opacity-50" />}
                 {label} {isRequired && <span className="text-rose-500">*</span>}
             </Label>
@@ -246,7 +250,7 @@ function FormItem({ label, placeholder, type = 'text', isLocked, isRequired, nam
                     {...register(name)}
                     onPaste={onPaste}
                     style={{ minHeight: minHeight || '100px' }}
-                    className="rounded-xl border-[#DCE5EF] bg-white px-5 py-4 text-sm font-bold leading-relaxed text-slate-900 shadow-sm placeholder:text-slate-300 focus-visible:ring-blue-100 transition-all resize-none"
+                    className="rounded-none border-2 border-slate-200 bg-white px-5 py-4 text-sm font-bold leading-relaxed text-slate-900 shadow-inner placeholder:text-slate-300 focus-visible:ring-0 focus-visible:border-slate-900 transition-all resize-none"
                 />
             ) : (
                 <Input 
@@ -254,7 +258,7 @@ function FormItem({ label, placeholder, type = 'text', isLocked, isRequired, nam
                     disabled={isLocked}
                     placeholder={placeholder}
                     {...register(name)}
-                    className="h-12 rounded-xl border-[#DCE5EF] bg-white px-5 text-sm font-black text-[#071B33] shadow-sm placeholder:text-slate-300 focus-visible:ring-blue-100 transition-all"
+                    className="h-12 rounded-none border-2 border-slate-200 bg-white px-5 text-sm font-black text-slate-900 shadow-inner placeholder:text-slate-300 focus-visible:ring-0 focus-visible:border-slate-900 transition-all"
                 />
             )}
         </div>
