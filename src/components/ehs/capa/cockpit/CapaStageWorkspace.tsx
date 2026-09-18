@@ -16,7 +16,6 @@ import {
     File, 
     Trash2,
     Search,
-    UploadCloud,
     Paperclip,
     ShieldCheck,
     GitBranch,
@@ -24,6 +23,17 @@ import {
     CheckCircle2,
     ArrowDown
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
@@ -44,14 +54,9 @@ interface CapaStageWorkspaceProps {
 
 export default function CapaStageWorkspace({ observation, stage }: CapaStageWorkspaceProps) {
     const { user, users } = useAuth();
-    const { projects } = useGeneral();
-    const { assignStageOwner, addStageAttachment, deleteStageAttachment } = useEhs();
+    const { deleteStageAttachment } = useEhs();
     
     const sData = observation.stages[stage];
-    
-    const [isUploading, setIsUploading] = useState(false);
-
-    const isCurrentStage = observation.currentStage === stage;
     const isCompleted = sData?.status === 'Completed';
     const isSubmitted = sData?.status === 'In Progress';
     const isLocked = isCompleted || isSubmitted;
@@ -63,17 +68,17 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
     }, [sData]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-10">
             {/* Phase Context Card - OLD SCHOOL INDUSTRIAL */}
             <Card className="bg-white border-2 border-slate-900 rounded-none shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden flex flex-col">
                 <div className="bg-slate-100 px-8 py-6 border-b-2 border-slate-900 flex justify-between items-center">
                     <div className="flex items-center gap-6">
-                        <div className="h-14 w-14 rounded-none border-2 border-slate-900 bg-blue-600 flex items-center justify-center text-white text-2xl font-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                        <div className="h-14 w-14 rounded-none border-2 border-slate-900 bg-[#2563EB] flex items-center justify-center text-white text-2xl font-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                             0{['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'].indexOf(stage) + 1}
                         </div>
                         <div className="space-y-1">
                             <h2 className="text-3xl font-black uppercase tracking-tighter text-slate-900">{stage}</h2>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Lifecycle Maintenance Workflow & Verification Unit</p>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Institutional Verification Unit & Workflow Registry</p>
                         </div>
                     </div>
 
@@ -83,7 +88,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                             <div className="flex items-center gap-3">
                                 <div className="leading-tight">
                                     <p className="text-xs font-black text-slate-900 uppercase tracking-tight">{currentOwner?.name || 'UNASSIGNED'}</p>
-                                    <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Supervisor</p>
+                                    <p className="text-[9px] font-black text-[#2563EB] uppercase tracking-widest">Supervisor</p>
                                 </div>
                                 <Avatar className="h-10 w-10 border-2 border-slate-900 rounded-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                                     <AvatarImage src={currentOwner?.avatar} />
@@ -95,7 +100,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                         <div className="space-y-1">
                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">TARGET DELIVERY</p>
                             <p className="text-sm font-black text-slate-900 flex items-center justify-end gap-2">
-                                <Clock className="h-4 w-4 text-blue-600" /> {sData?.targetDate ? format(parseISO(sData.targetDate), 'dd MMM yyyy') : 'TBD'}
+                                <Clock className="h-4 w-4 text-[#2563EB]" /> {sData?.targetDate ? format(parseISO(sData.targetDate), 'dd MMM yyyy') : 'TBD'}
                             </p>
                         </div>
                     </div>
@@ -108,13 +113,13 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                 {[
                                     { id: 'summary', label: 'Investigation Summary', icon: FileText },
                                     { id: '5why', label: '5-Why Analysis', icon: GitBranch },
-                                    { id: 'systemic', label: 'Systemic Root Cause', icon: LayoutGrid },
+                                    { id: 'rootcause', label: 'Systemic Root Cause', icon: LayoutGrid },
                                     { id: 'conclusion', label: 'Phase Conclusion', icon: CheckCircle2 },
                                 ].map(tab => (
                                     <TabsTrigger 
                                         key={tab.id} 
                                         value={tab.id}
-                                        className="h-14 rounded-none border-b-4 border-transparent px-0 text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 bg-transparent shadow-none transition-all"
+                                        className="h-14 rounded-none border-b-4 border-transparent px-0 text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 data-[state=active]:border-[#2563EB] data-[state=active]:text-blue-700 bg-transparent shadow-none transition-all"
                                     >
                                         <tab.icon className="mr-2 h-4 w-4" /> {tab.label}
                                     </TabsTrigger>
@@ -129,11 +134,11 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                         <TabsContent value="5why" className="p-10 m-0 animate-in fade-in duration-500">
                             <div className="max-w-4xl mx-auto space-y-8">
                                 <div className="p-6 bg-slate-900 text-white rounded-none border-2 border-slate-900 mb-8">
-                                    <h4 className="text-xs font-black uppercase tracking-[0.4em] flex items-center gap-3">
-                                        <GitBranch className="h-4 w-4 text-blue-400" /> 5-Why Technical Ledger
+                                    <h4 className="text-[10px] font-black uppercase tracking-[0.4em] flex items-center gap-3 text-blue-400">
+                                        <GitBranch className="h-4 w-4" /> 5-WHY TECHNICAL LEDGER
                                     </h4>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">
-                                        Maintain logical causality until a systemic organizational failure is identified.
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-2">
+                                        Maintain logical technical causality until a systemic organizational failure is identified.
                                     </p>
                                 </div>
 
@@ -150,11 +155,11 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                             </div>
                                             <div className="p-6 bg-white relative">
                                                 <Label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 absolute top-2 left-4">
-                                                    {i === 1 ? 'Primary Discovery Reasoning' : `Link to W${i-1} Condition`}
+                                                    {i === 1 ? 'Primary Discovery Reasoning' : `Link to W${i-1} Technical Condition`}
                                                 </Label>
                                                 <Textarea 
                                                     disabled={isLocked}
-                                                    placeholder="Document technical why..."
+                                                    placeholder="Enter technical why..."
                                                     className="border-none bg-transparent rounded-none focus-visible:ring-0 min-h-[100px] text-sm font-bold uppercase p-4 shadow-inner"
                                                 />
                                             </div>
@@ -164,7 +169,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                             </div>
                         </TabsContent>
 
-                        <TabsContent value="systemic" className="p-10 m-0 animate-in fade-in duration-500">
+                        <TabsContent value="rootcause" className="p-10 m-0 animate-in fade-in duration-500">
                             <div className="max-w-3xl mx-auto space-y-10">
                                 <div className="p-8 border-4 border-slate-900 bg-white space-y-8">
                                     <div className="space-y-4">
@@ -196,7 +201,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
 
                         <TabsContent value="conclusion" className="p-10 m-0 animate-in fade-in duration-500">
                             <div className="max-w-3xl mx-auto space-y-8">
-                                <div className="p-10 bg-blue-600 text-white border-4 border-slate-900 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-8">
+                                <div className="p-10 bg-blue-600 text-white border-4 border-slate-900 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-8 rounded-none">
                                     <h3 className="text-2xl font-black uppercase tracking-tighter flex items-center gap-4">
                                         <ShieldCheck className="h-8 w-8" /> INVESTIGATION FINALIZATION
                                     </h3>
@@ -225,13 +230,13 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                     </Tabs>
 
                     {/* Integrated Document Ledger - OLD SCHOOL */}
-                    <div className="px-10 pb-10 space-y-8">
+                    <div className="px-10 pb-10 space-y-8 mt-10">
                         <div className="flex items-center justify-between border-b-4 border-slate-900 pb-2">
                             <div className="flex items-center gap-3">
-                                <Paperclip className="h-5 w-5 text-blue-600" />
+                                <Paperclip className="h-5 w-5 text-[#2563EB]" />
                                 <h4 className="text-[12px] font-black uppercase tracking-[0.3em] text-slate-900">PHASE DOCUMENT LEDGER</h4>
                             </div>
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Forensic Repository</span>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dossier Repository</span>
                         </div>
                         
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -248,7 +253,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <Button variant="ghost" size="icon" className="h-9 w-9 border-2 border-transparent hover:border-slate-900 rounded-none text-blue-600" asChild>
+                                            <Button variant="ghost" size="icon" className="h-9 w-9 border-2 border-transparent hover:border-slate-900 rounded-none text-[#2563EB]" asChild>
                                                 <a href={a.url} target="_blank" rel="noopener noreferrer"><Download className="h-4 w-4" /></a>
                                             </Button>
                                             <AlertDialog>
@@ -280,11 +285,11 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                             
                             <div className="h-full border-4 border-dashed border-slate-900 bg-blue-50/50 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-blue-100 transition-all min-h-[160px] group shadow-[8px_8px_0px_0px_rgba(37,99,235,0.1)]">
                                 <div className="h-12 w-12 rounded-none bg-white border-2 border-slate-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center group-hover:scale-110 transition-transform">
-                                    <UploadCloud className="h-6 w-6 text-blue-600" />
+                                    <Download className="h-6 w-6 text-[#2563EB]" />
                                 </div>
                                 <div className="text-center space-y-1">
-                                    <p className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em]">Add Technical Files</p>
-                                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Drag and drop or click to transmit</p>
+                                    <p className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em]">Transmit Technical Files</p>
+                                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Select files for institutional archival</p>
                                 </div>
                             </div>
                         </div>
@@ -293,25 +298,4 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
             </Card>
         </div>
     );
-}
-
-function UploadCloud(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
-      <path d="M12 12v9" />
-      <path d="m16 16-4-4-4 4" />
-    </svg>
-  )
 }

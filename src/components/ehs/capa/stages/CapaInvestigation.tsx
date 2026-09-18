@@ -8,8 +8,8 @@ import {
     Clock3,
     MapPin,
     MessageSquare,
-    Search,
     UserRound,
+    Info
 } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 
@@ -49,7 +49,7 @@ export default function CapaInvestigation({ observation, isLocked }: Props) {
                                 disabled={isLocked}
                                 placeholder="IDENTIFY PERSONNEL OR DEPARTMENTS..." 
                                 {...register('who')}
-                                className="h-12 pl-12 rounded-none border-2 border-slate-900 bg-white font-black text-xs uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus-visible:ring-0 focus-visible:border-blue-600"
+                                className="h-12 pl-12 rounded-none border-2 border-slate-900 bg-white font-black text-xs uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus-visible:ring-0 focus-visible:border-[#2563EB]"
                             />
                         </div>
                     </div>
@@ -62,7 +62,7 @@ export default function CapaInvestigation({ observation, isLocked }: Props) {
                                 disabled={isLocked}
                                 placeholder="SPECIFIC UNIT, DECK OR WORKSHOP..." 
                                 {...register('where')}
-                                className="h-12 pl-12 rounded-none border-2 border-slate-900 bg-white font-black text-xs uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus-visible:ring-0 focus-visible:border-blue-600"
+                                className="h-12 pl-12 rounded-none border-2 border-slate-900 bg-white font-black text-xs uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus-visible:ring-0 focus-visible:border-[#2563EB]"
                             />
                         </div>
                     </div>
@@ -116,6 +116,13 @@ export default function CapaInvestigation({ observation, isLocked }: Props) {
                             {...register('immediateCause')}
                             className="min-h-[120px] rounded-none border-2 border-slate-900 bg-white px-5 py-4 text-xs font-black uppercase leading-relaxed text-slate-900 shadow-[inset_4px_4px_0px_0px_rgba(0,0,0,0.05)] focus-visible:ring-0 border-l-rose-600 border-l-8"
                         />
+                    </div>
+
+                    <div className="p-6 rounded-none bg-blue-50 border-2 border-blue-100 flex items-start gap-4">
+                        <Info className="h-5 w-5 text-[#2563EB] shrink-0 mt-0.5" />
+                        <p className="text-[11px] font-bold text-blue-700 leading-relaxed uppercase tracking-tight">
+                            Note: Finalizing this phase will trigger an automated notification to the Senior Safety Supervisor for institutional verification and milestone approval.
+                        </p>
                     </div>
                 </div>
             </div>
