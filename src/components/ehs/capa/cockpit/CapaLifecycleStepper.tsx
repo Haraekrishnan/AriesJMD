@@ -1,9 +1,11 @@
+
 'use client';
 
 import React, { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
 import type { EhsObservation, CapaStage } from '@/lib/types';
+import { Progress } from '@/components/ui/progress';
 
 const STAGES: CapaStage[] = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];
 
@@ -21,58 +23,57 @@ export default function CapaLifecycleStepper({ observation, viewingStage, onStag
     }, [observation]);
 
     return (
-        <div className="flex items-center w-full gap-16 min-w-max">
+        <div className="flex items-center w-full gap-12">
             {/* Progress Display */}
-            <div className="flex flex-col shrink-0 min-w-[150px]">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] leading-none mb-2">Overall Compliance</span>
+            <div className="flex flex-col shrink-0 min-w-[180px]">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2">Overall Progress</span>
                 <div className="flex items-center gap-4">
-                    <span className="text-3xl font-black text-[#2563EB] tracking-tighter leading-none">{stats.percentage}%</span>
-                    <div className="h-1.5 w-24 bg-slate-100 rounded-none overflow-hidden border border-slate-200">
-                        <div className="h-full bg-[#2563EB] transition-all duration-1000" style={{ width: `${stats.percentage}%` }} />
-                    </div>
+                    <span className="text-2xl font-black text-blue-700 tracking-tighter leading-none">{stats.percentage}%</span>
+                    <Progress value={stats.percentage} className="h-1.5 flex-1 bg-slate-200" />
                 </div>
             </div>
 
             {/* Stepper Chain */}
-            <div className="flex items-center justify-between flex-1 gap-2">
+            <div className="flex items-center flex-1 justify-between max-w-5xl">
                 {STAGES.map((stage, i) => {
                     const sData = observation.stages[stage];
                     const isViewing = viewingStage === stage;
                     const isCompleted = sData?.status === 'Completed';
+                    const isCurrent = observation.currentStage === stage;
                     const isFuture = STAGES.indexOf(stage) > STAGES.indexOf(observation.currentStage);
 
                     return (
                         <React.Fragment key={stage}>
                             <div 
                                 className={cn(
-                                    "flex items-center gap-4 cursor-pointer transition-all px-3 py-2 border-b-4",
-                                    isViewing ? "border-[#2563EB] bg-blue-50/30" : "border-transparent opacity-50 grayscale hover:opacity-100 hover:grayscale-0",
-                                    isFuture && "pointer-events-none opacity-20"
+                                    "flex items-center gap-3 cursor-pointer transition-all px-2 py-1.5 rounded-lg",
+                                    isViewing ? "bg-blue-50/50" : "hover:bg-slate-100",
+                                    isFuture && "opacity-40 grayscale pointer-events-none"
                                 )}
                                 onClick={() => onStageSelect(stage)}
                             >
                                 <div className={cn(
-                                    "h-10 w-10 rounded-none border-2 flex items-center justify-center transition-all text-xs font-black shadow-[3px_3px_0px_0px_rgba(0,0,0,0.1)]",
-                                    isCompleted ? "bg-emerald-600 border-slate-900 text-white" :
-                                    isViewing ? "bg-[#2563EB] border-slate-900 text-white" :
+                                    "h-8 w-8 rounded-full border-2 flex items-center justify-center transition-all text-[11px] font-black shadow-sm",
+                                    isCompleted ? "bg-emerald-500 border-emerald-500 text-white" :
+                                    isViewing ? "bg-[#2563EB] border-[#2563EB] text-white" :
                                     "bg-white border-slate-200 text-slate-400"
                                 )}>
-                                    {isCompleted ? <Check className="h-5 w-5 stroke-[4]" /> : <span>0{i + 1}</span>}
+                                    {isCompleted ? <Check className="h-4 w-4 stroke-[4]" /> : <span>{i + 1}</span>}
                                 </div>
                                 <div className="flex flex-col leading-none">
                                     <p className={cn(
-                                        "text-[10px] font-black uppercase tracking-widest",
-                                        isViewing ? "text-[#2563EB]" : "text-slate-500"
+                                        "text-[10px] font-black uppercase tracking-wider",
+                                        isViewing ? "text-blue-700" : "text-slate-500"
                                     )}>
                                         {stage}
                                     </p>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter mt-1">
-                                        {isCompleted ? 'VERIFIED' : isViewing ? 'IN PROGRESS' : 'PENDING'}
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">
+                                        {isCompleted ? 'Completed' : isViewing ? 'In Progress' : 'Pending'}
                                     </p>
                                 </div>
                             </div>
                             {i < STAGES.length - 1 && (
-                                <div className="h-0.5 w-8 bg-slate-200 shrink-0" />
+                                <div className="h-px bg-slate-200 flex-1 mx-2 min-w-[20px]" />
                             )}
                         </React.Fragment>
                     );
