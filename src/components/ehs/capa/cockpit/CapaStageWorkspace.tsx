@@ -9,13 +9,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { 
     Clock, 
-    UserPlus, 
     FileText, 
-    MapPin, 
     Download, 
     File, 
     Trash2,
-    Search,
     Paperclip,
     ShieldCheck,
     GitBranch,
@@ -40,9 +37,7 @@ import { useGeneral } from '@/contexts/general-provider';
 import { cn } from '@/lib/utils';
 import { useEhs } from '@/contexts/ehs-provider';
 import { format, parseISO } from 'date-fns';
-import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Phase-Specific Components
 import CapaInvestigation from '../stages/CapaInvestigation';
@@ -53,7 +48,7 @@ interface CapaStageWorkspaceProps {
 }
 
 export default function CapaStageWorkspace({ observation, stage }: CapaStageWorkspaceProps) {
-    const { user, users } = useAuth();
+    const { users } = useAuth();
     const { deleteStageAttachment } = useEhs();
     
     const sData = observation.stages[stage];
@@ -96,11 +91,11 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                 </Avatar>
                             </div>
                         </div>
-                        <div className="h-12 w-0.5 bg-slate-300" />
+                        <div className="h-12 w-0.5 bg-slate-900" />
                         <div className="space-y-1">
                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">TARGET DELIVERY</p>
-                            <p className="text-sm font-black text-slate-900 flex items-center justify-end gap-2">
-                                <Clock className="h-4 w-4 text-[#2563EB]" /> {sData?.targetDate ? format(parseISO(sData.targetDate), 'dd MMM yyyy') : 'TBD'}
+                            <p className="text-sm font-black text-slate-900 flex items-center justify-end gap-2 text-blue-600">
+                                <Clock className="h-4 w-4" /> {sData?.targetDate ? format(parseISO(sData.targetDate), 'dd MMM yyyy') : 'TBD'}
                             </p>
                         </div>
                     </div>
@@ -113,7 +108,6 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                 {[
                                     { id: 'summary', label: 'Investigation Summary', icon: FileText },
                                     { id: '5why', label: '5-Why Analysis', icon: GitBranch },
-                                    { id: 'rootcause', label: 'Systemic Root Cause', icon: LayoutGrid },
                                     { id: 'conclusion', label: 'Phase Conclusion', icon: CheckCircle2 },
                                 ].map(tab => (
                                     <TabsTrigger 
@@ -159,8 +153,8 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                                 </Label>
                                                 <Textarea 
                                                     disabled={isLocked}
-                                                    placeholder="Enter technical why..."
-                                                    className="border-none bg-transparent rounded-none focus-visible:ring-0 min-h-[100px] text-sm font-bold uppercase p-4 shadow-inner"
+                                                    placeholder="ENTER TECHNICAL WHY..."
+                                                    className="border-none bg-transparent rounded-none focus-visible:ring-0 min-h-[100px] text-sm font-black uppercase p-4 shadow-inner"
                                                 />
                                             </div>
                                         </div>
@@ -169,49 +163,19 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                             </div>
                         </TabsContent>
 
-                        <TabsContent value="rootcause" className="p-10 m-0 animate-in fade-in duration-500">
-                            <div className="max-w-3xl mx-auto space-y-10">
-                                <div className="p-8 border-4 border-slate-900 bg-white space-y-8">
-                                    <div className="space-y-4">
-                                        <Label className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-900">1. Root Cause Categorization</Label>
-                                        <Select disabled={isLocked}>
-                                            <SelectTrigger className="h-14 border-2 border-slate-900 rounded-none font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                                                <SelectValue placeholder="Select Domain..." />
-                                            </SelectTrigger>
-                                            <SelectContent className="rounded-none border-2 border-slate-900">
-                                                <SelectItem value="Human" className="font-bold uppercase text-xs">Human Factor / Behavioral</SelectItem>
-                                                <SelectItem value="Process" className="font-bold uppercase text-xs">Procedural / Process Deficiency</SelectItem>
-                                                <SelectItem value="Equipment" className="font-bold uppercase text-xs">Equipment / Technical Failure</SelectItem>
-                                                <SelectItem value="System" className="font-bold uppercase text-xs">Management System Failure</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <Label className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-900">2. Definitive Root Cause Statement</Label>
-                                        <Textarea 
-                                            disabled={isLocked}
-                                            placeholder="Declare the isolated systemic root cause..."
-                                            className="min-h-[180px] border-2 border-slate-900 rounded-none font-bold p-6 text-sm uppercase shadow-inner focus-visible:ring-blue-100"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </TabsContent>
-
                         <TabsContent value="conclusion" className="p-10 m-0 animate-in fade-in duration-500">
                             <div className="max-w-3xl mx-auto space-y-8">
-                                <div className="p-10 bg-blue-600 text-white border-4 border-slate-900 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-8 rounded-none">
+                                <div className="p-10 bg-[#2563EB] text-white border-4 border-slate-900 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-8 rounded-none">
                                     <h3 className="text-2xl font-black uppercase tracking-tighter flex items-center gap-4">
                                         <ShieldCheck className="h-8 w-8" /> INVESTIGATION FINALIZATION
                                     </h3>
                                     
-                                    <div className="space-y-6">
+                                    <div className="space-y-6 text-left">
                                         <div className="space-y-2">
                                             <Label className="text-[10px] font-black uppercase tracking-widest text-blue-100">Final Investigative Finding</Label>
                                             <Textarea 
                                                 disabled={isLocked}
-                                                className="bg-white/10 border-white/20 text-white rounded-none p-4 font-bold"
+                                                className="bg-white/10 border-white/20 text-white rounded-none p-4 font-black uppercase text-xs"
                                                 placeholder="Executive summary of findings..."
                                             />
                                         </div>
@@ -219,7 +183,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                             <Label className="text-[10px] font-black uppercase tracking-widest text-blue-100">Institutional Recommendations</Label>
                                             <Textarea 
                                                 disabled={isLocked}
-                                                className="bg-white/10 border-white/20 text-white rounded-none p-4 font-bold"
+                                                className="bg-white/10 border-white/20 text-white rounded-none p-4 font-black uppercase text-xs"
                                                 placeholder="Required actions for resolution phase..."
                                             />
                                         </div>
@@ -229,14 +193,14 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                         </TabsContent>
                     </Tabs>
 
-                    {/* Integrated Document Ledger - OLD SCHOOL */}
+                    {/* Integrated Document Ledger */}
                     <div className="px-10 pb-10 space-y-8 mt-10">
                         <div className="flex items-center justify-between border-b-4 border-slate-900 pb-2">
                             <div className="flex items-center gap-3">
                                 <Paperclip className="h-5 w-5 text-[#2563EB]" />
                                 <h4 className="text-[12px] font-black uppercase tracking-[0.3em] text-slate-900">PHASE DOCUMENT LEDGER</h4>
                             </div>
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dossier Repository</span>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Institutional Archival</span>
                         </div>
                         
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -265,7 +229,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                                 <AlertDialogContent className="rounded-none border-4 border-slate-900">
                                                     <AlertDialogHeader>
                                                         <AlertDialogTitle className="font-black uppercase tracking-tight">WIPE DOCUMENT RECORD?</AlertDialogTitle>
-                                                        <AlertDialogDescription className="font-bold text-slate-500">This will permanently remove the technical attachment from the case dossier.</AlertDialogDescription>
+                                                        <AlertDialogDescription className="font-bold text-slate-500 text-left">This will permanently remove the technical attachment from the case dossier.</AlertDialogDescription>
                                                     </AlertDialogHeader>
                                                     <AlertDialogFooter className="gap-3">
                                                         <AlertDialogCancel className="font-black uppercase text-[10px] h-11 px-8 rounded-none border-2 border-slate-900 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">Cancel</AlertDialogCancel>
@@ -278,7 +242,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                 )) : (
                                     <div className="h-full border-4 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center opacity-40 grayscale min-h-[160px]">
                                         <FileText className="h-10 w-10 mb-2" />
-                                        <p className="text-[10px] font-black uppercase tracking-widest">No documentation attached</p>
+                                        <p className="text-[10px] font-black uppercase tracking-widest">No documents attached</p>
                                     </div>
                                 )}
                             </div>
@@ -299,3 +263,4 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
         </div>
     );
 }
+

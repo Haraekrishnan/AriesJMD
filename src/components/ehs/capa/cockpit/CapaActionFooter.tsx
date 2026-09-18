@@ -36,10 +36,10 @@ export default function CapaActionFooter({ observation, stage }: Props) {
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] leading-none mb-1">Current Stage</p>
                     <p className="text-sm font-black uppercase text-slate-900 tracking-tight">{stage}</p>
                 </div>
-                <div className="h-8 w-px bg-slate-300" />
+                <div className="h-8 w-px bg-slate-900" />
                 <div className="flex flex-col text-left">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] leading-none mb-1">Stage Status</p>
-                    <Badge className="bg-blue-600 text-white font-black h-5 text-[9px] border-none uppercase tracking-widest px-3 rounded-none">
+                    <Badge className="bg-[#2563EB] text-white font-black h-5 text-[9px] border-none uppercase tracking-widest px-3 rounded-none">
                         {sData?.status || 'IN PROGRESS'}
                     </Badge>
                 </div>
@@ -52,15 +52,9 @@ export default function CapaActionFooter({ observation, stage }: Props) {
                     disabled={isLocked || !isCurrentStage}
                     onClick={() => handleAction(false)}
                 >
-                    <Save className="h-4 w-4" /> Save as Draft
+                    <Save className="h-4 w-4" /> Save Draft
                 </Button>
-                <Button 
-                    variant="outline" 
-                    className="h-10 px-6 rounded-none font-black text-[10px] uppercase tracking-widest gap-2 border-2 border-slate-900 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] bg-white active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all"
-                    disabled={isLocked || !isCurrentStage}
-                >
-                    <MessageSquare className="h-4 w-4" /> Add Comment
-                </Button>
+                
                 <Button 
                     variant="outline" 
                     className="h-10 px-6 rounded-none font-black text-[10px] uppercase tracking-widest gap-2 border-2 border-slate-900 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] bg-white active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all"

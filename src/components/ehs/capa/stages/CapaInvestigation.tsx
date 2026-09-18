@@ -9,10 +9,11 @@ import {
     MapPin,
     MessageSquare,
     UserRound,
-    Info
+    Info,
+    ArrowDown
 } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
-
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,104 +29,154 @@ export default function CapaInvestigation({ observation, isLocked }: Props) {
     const { register } = useFormContext();
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 text-left">
-            {/* LEFT COLUMN: TECHNICAL LOGISTICS */}
-            <div className="space-y-8">
-                <div className="flex justify-between items-center border-b-4 border-slate-900 pb-2">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-slate-900 p-2 text-white">
-                            <Activity className="h-5 w-5" />
+        <div className="space-y-10 text-left">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                {/* LEFT COLUMN: TECHNICAL LOGISTICS */}
+                <div className="space-y-8">
+                    <div className="flex justify-between items-center border-b-4 border-slate-900 pb-2">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-slate-900 p-2 text-white">
+                                <Activity className="h-5 w-5" />
+                            </div>
+                            <h4 className="text-[12px] font-black uppercase tracking-[0.3em] text-slate-900">TECHNICAL LOGISTICS</h4>
                         </div>
-                        <h4 className="text-[12px] font-black uppercase tracking-[0.3em] text-slate-900">TECHNICAL LOGISTICS</h4>
+                    </div>
+
+                    <div className="space-y-8">
+                        <div className="space-y-2.5">
+                            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">WHO WAS INVOLVED? <span className="text-rose-600">*</span></Label>
+                            <div className="relative">
+                                <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                <Input 
+                                    disabled={isLocked}
+                                    placeholder="IDENTIFY PERSONNEL OR DEPARTMENTS..." 
+                                    {...register('who')}
+                                    className="h-12 pl-12 rounded-none border-2 border-slate-900 bg-white font-black text-xs uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus-visible:ring-0 focus-visible:border-[#2563EB]"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2.5">
+                            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">SITE POSITION / COORDINATES <span className="text-rose-600">*</span></Label>
+                            <div className="relative">
+                                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                <Input 
+                                    disabled={isLocked}
+                                    placeholder="SPECIFIC UNIT, DECK OR WORKSHOP..." 
+                                    {...register('where')}
+                                    className="h-12 pl-12 rounded-none border-2 border-slate-900 bg-white font-black text-xs uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus-visible:ring-0 focus-visible:border-[#2563EB]"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2.5">
+                                <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">DISCOVERY DATE <span className="text-rose-600">*</span></Label>
+                                <div className="relative">
+                                    <CalendarDays className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                    <Input disabled={isLocked} type="date" {...register('whenDate')} className="h-12 pl-12 rounded-none border-2 border-slate-900 bg-white font-black text-xs shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus-visible:ring-0" />
+                                </div>
+                            </div>
+                            <div className="space-y-2.5">
+                                <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">DISCOVERY TIME <span className="text-rose-600">*</span></Label>
+                                <div className="relative">
+                                    <Clock3 className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                    <Input disabled={isLocked} type="time" {...register('whenTime')} className="h-12 pl-12 rounded-none border-2 border-slate-900 bg-white font-black text-xs shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus-visible:ring-0" />
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
+                {/* RIGHT COLUMN: NARRATIVE CONTEXT */}
                 <div className="space-y-8">
-                    <div className="space-y-2.5">
-                        <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">WHO WAS INVOLVED? <span className="text-rose-600">*</span></Label>
-                        <div className="relative">
-                            <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                            <Input 
-                                disabled={isLocked}
-                                placeholder="IDENTIFY PERSONNEL OR DEPARTMENTS..." 
-                                {...register('who')}
-                                className="h-12 pl-12 rounded-none border-2 border-slate-900 bg-white font-black text-xs uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus-visible:ring-0 focus-visible:border-[#2563EB]"
-                            />
+                    <div className="flex justify-between items-center border-b-4 border-slate-900 pb-2">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-slate-900 p-2 text-white">
+                                <MessageSquare className="h-5 w-5" />
+                            </div>
+                            <h4 className="text-[12px] font-black uppercase tracking-[0.3em] text-slate-900">NARRATIVE CONTEXT</h4>
                         </div>
                     </div>
 
-                    <div className="space-y-2.5">
-                        <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">SITE POSITION / COORDINATES <span className="text-rose-600">*</span></Label>
-                        <div className="relative">
-                            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                            <Input 
+                    <div className="space-y-8">
+                        <div className="space-y-2.5">
+                            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">SEQUENCE OF EVENTS <span className="text-rose-600">*</span></Label>
+                            <Textarea 
                                 disabled={isLocked}
-                                placeholder="SPECIFIC UNIT, DECK OR WORKSHOP..." 
-                                {...register('where')}
-                                className="h-12 pl-12 rounded-none border-2 border-slate-900 bg-white font-black text-xs uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus-visible:ring-0 focus-visible:border-[#2563EB]"
+                                placeholder="DOCUMENT THE CHRONOLOGICAL ORDER..." 
+                                {...register('sequence')}
+                                className="min-h-[140px] rounded-none border-2 border-slate-900 bg-white px-5 py-4 text-xs font-black uppercase leading-relaxed text-slate-900 shadow-[inset_4px_4px_0px_0px_rgba(0,0,0,0.05)] focus-visible:ring-0"
                             />
                         </div>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2.5">
-                            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">DISCOVERY DATE <span className="text-rose-600">*</span></Label>
-                            <div className="relative">
-                                <CalendarDays className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                <Input disabled={isLocked} type="date" {...register('whenDate')} className="h-12 pl-12 rounded-none border-2 border-slate-900 bg-white font-black text-xs shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus-visible:ring-0" />
-                            </div>
+                            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">IMMEDIATE TECHNICAL CAUSE <span className="text-rose-600">*</span></Label>
+                            <Textarea 
+                                disabled={isLocked}
+                                placeholder="DIRECT REASON FOR SAFETY FINDING..." 
+                                {...register('immediateCause')}
+                                className="min-h-[120px] rounded-none border-2 border-slate-900 bg-white px-5 py-4 text-xs font-black uppercase leading-relaxed text-slate-900 shadow-[inset_4px_4px_0px_0px_rgba(0,0,0,0.05)] focus-visible:ring-0 border-l-rose-600 border-l-8"
+                            />
                         </div>
-                        <div className="space-y-2.5">
-                            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">DISCOVERY TIME <span className="text-rose-600">*</span></Label>
-                            <div className="relative">
-                                <Clock3 className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                <Input disabled={isLocked} type="time" {...register('whenTime')} className="h-12 pl-12 rounded-none border-2 border-slate-900 bg-white font-black text-xs shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus-visible:ring-0" />
-                            </div>
+
+                        <div className="p-6 rounded-none bg-blue-50 border-2 border-blue-900 flex items-start gap-4">
+                            <Info className="h-5 w-5 text-[#2563EB] shrink-0 mt-0.5" />
+                            <p className="text-[11px] font-bold text-blue-900 leading-relaxed uppercase tracking-tight">
+                                Note: Finalizing this phase will trigger an automated notification to the Senior Safety Supervisor for institutional verification and milestone approval.
+                            </p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* RIGHT COLUMN: NARRATIVE CONTEXT */}
-            <div className="space-y-8">
-                <div className="flex justify-between items-center border-b-4 border-slate-900 pb-2">
+            {/* --- OLD SCHOOL 5-WHY TABLE --- */}
+            <div className="space-y-6 pt-10">
+                <div className="flex items-center justify-between border-b-4 border-slate-900 pb-2">
                     <div className="flex items-center gap-3">
                         <div className="bg-slate-900 p-2 text-white">
-                            <MessageSquare className="h-5 w-5" />
+                            <AlertTriangle className="h-5 w-5" />
                         </div>
-                        <h4 className="text-[12px] font-black uppercase tracking-[0.3em] text-slate-900">NARRATIVE CONTEXT</h4>
+                        <h4 className="text-[12px] font-black uppercase tracking-[0.3em] text-slate-900">5-WHY CAUSALITY LEDGER</h4>
                     </div>
+                    <Badge className="bg-[#2563EB] text-white font-black uppercase text-[10px] h-6 px-4 rounded-none border-2 border-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">STRICT LOGIC CHAIN</Badge>
                 </div>
 
-                <div className="space-y-8">
-                    <div className="space-y-2.5">
-                        <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">SEQUENCE OF EVENTS <span className="text-rose-600">*</span></Label>
-                        <Textarea 
-                            disabled={isLocked}
-                            placeholder="DOCUMENT THE CHRONOLOGICAL ORDER..." 
-                            {...register('sequence')}
-                            className="min-h-[140px] rounded-none border-2 border-slate-900 bg-white px-5 py-4 text-xs font-black uppercase leading-relaxed text-slate-900 shadow-[inset_4px_4px_0px_0px_rgba(0,0,0,0.05)] focus-visible:ring-0"
-                        />
+                <div className="border-4 border-slate-900 bg-white shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+                    <div className="grid grid-cols-[100px_1fr] bg-slate-900 text-white border-b-4 border-slate-900">
+                        <div className="p-4 border-r-2 border-white font-black text-[11px] uppercase tracking-[0.2em] text-center">LEVEL</div>
+                        <div className="p-4 font-black text-[11px] uppercase tracking-[0.2em] px-8">TECHNICAL REASONING / CAUSALITY</div>
                     </div>
-
-                    <div className="space-y-2.5">
-                        <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">IMMEDIATE TECHNICAL CAUSE <span className="text-rose-600">*</span></Label>
-                        <Textarea 
-                            disabled={isLocked}
-                            placeholder="DIRECT REASON FOR SAFETY FINDING..." 
-                            {...register('immediateCause')}
-                            className="min-h-[120px] rounded-none border-2 border-slate-900 bg-white px-5 py-4 text-xs font-black uppercase leading-relaxed text-slate-900 shadow-[inset_4px_4px_0px_0px_rgba(0,0,0,0.05)] focus-visible:ring-0 border-l-rose-600 border-l-8"
-                        />
-                    </div>
-
-                    <div className="p-6 rounded-none bg-blue-50 border-2 border-blue-100 flex items-start gap-4">
-                        <Info className="h-5 w-5 text-[#2563EB] shrink-0 mt-0.5" />
-                        <p className="text-[11px] font-bold text-blue-700 leading-relaxed uppercase tracking-tight">
-                            Note: Finalizing this phase will trigger an automated notification to the Senior Safety Supervisor for institutional verification and milestone approval.
-                        </p>
-                    </div>
+                    {[1, 2, 3, 4, 5].map(i => (
+                        <div key={i} className="grid grid-cols-[100px_1fr] border-b-2 border-slate-900 last:border-b-0 group">
+                            <div className="p-10 border-r-4 border-slate-900 bg-slate-100 flex flex-col items-center justify-center gap-2 group-hover:bg-blue-50 transition-colors">
+                                <span className="text-4xl font-black text-slate-900 tracking-tighter">W{i}</span>
+                                {i < 5 && <ArrowDown className="h-4 w-4 text-slate-400" />}
+                            </div>
+                            <div className="p-8 bg-white relative">
+                                <Label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 absolute top-3 left-6">
+                                    {i === 1 ? 'Primary Discovery Reasoning' : `Link to W${i-1} Technical Condition`}
+                                </Label>
+                                <Textarea 
+                                    disabled={isLocked}
+                                    placeholder="ENTER TECHNICAL WHY..."
+                                    {...register(`why${i}`)}
+                                    className="border-none bg-transparent rounded-none focus-visible:ring-0 min-h-[100px] text-sm font-black uppercase p-4 shadow-[inset_4px_4px_0px_0px_rgba(0,0,0,0.03)] leading-relaxed"
+                                />
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
+        </div>
+    );
+}
+
+function SectionHeading({ icon: Icon, title }: { icon: any, title: string }) {
+    return (
+        <div className="flex items-center gap-3">
+            <Icon className="h-4 w-4 text-[#2563EB]" />
+            <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-[#304B68]">{title}</h4>
         </div>
     );
 }
