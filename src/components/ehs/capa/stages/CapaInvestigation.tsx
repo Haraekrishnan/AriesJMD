@@ -16,7 +16,8 @@ import {
     ArrowDown,
     FileText,
     Layers,
-    ListChecks
+    ListChecks,
+    Info
 } from 'lucide-react';
 import { useFormContext, Controller } from 'react-hook-form';
 import { format, parseISO } from 'date-fns';
