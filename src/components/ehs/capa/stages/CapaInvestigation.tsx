@@ -73,7 +73,7 @@ export default function CapaInvestigation({
     return (
         <div className="w-full text-left">
             <Tabs defaultValue="summary" className="w-full">
-                <div className="px-8 border-b border-slate-100 bg-white">
+                <div className="px-8 border-b-2 border-slate-900 bg-white">
                     <TabsList className="h-12 w-full justify-start gap-10 bg-transparent p-0 overflow-x-auto no-scrollbar">
                         {[
                             { id: 'summary', label: 'Investigation Summary', icon: FileText },

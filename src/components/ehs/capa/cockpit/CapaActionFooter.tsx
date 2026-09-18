@@ -1,13 +1,11 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Save, ArrowRight, ShieldCheck, MessageSquare, Paperclip } from 'lucide-react';
+import { Save, ArrowRight, MessageSquare, Paperclip, CheckCircle2 } from 'lucide-react';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useEhs } from '@/contexts/ehs-provider';
-import { useAuth } from '@/contexts/auth-provider';
 import { useFormContext } from 'react-hook-form';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -16,7 +14,6 @@ interface Props {
 }
 
 export default function CapaActionFooter({ observation, stage }: Props) {
-    const { user } = useAuth();
     const { actionStage } = useEhs();
     const { getValues } = useFormContext();
     
@@ -33,17 +30,17 @@ export default function CapaActionFooter({ observation, stage }: Props) {
 
     return (
         <div className="flex items-center justify-between w-full h-full">
-            <div className="flex items-center gap-8">
+            <div className="flex items-center gap-10">
                 <div className="flex flex-col">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">STAGE</p>
-                    <p className="text-xs font-black uppercase text-slate-900">{stage}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">PHASE IDENTITY</p>
+                    <p className="text-sm font-black uppercase text-slate-900 tracking-tighter">{stage}</p>
                 </div>
-                <div className="h-8 w-px bg-slate-100" />
+                <div className="h-10 w-0.5 bg-slate-900" />
                 <div className="flex flex-col">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">STATUS</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">GOVERNANCE STATUS</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                        <div className={cn("h-2 w-2 rounded-full", isCompleted ? "bg-emerald-500" : isSubmitted ? "bg-amber-500" : "bg-blue-600")} />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">{sData?.status || 'PENDING'}</span>
+                        <div className={cn("h-3 w-3 rounded-none border-2 border-slate-900", isCompleted ? "bg-emerald-500" : isSubmitted ? "bg-amber-400" : "bg-blue-600")} />
+                        <span className="text-xs font-black uppercase tracking-widest text-slate-900">{sData?.status || 'PENDING'}</span>
                     </div>
                 </div>
             </div>
@@ -51,27 +48,23 @@ export default function CapaActionFooter({ observation, stage }: Props) {
             <div className="flex items-center gap-3">
                 <Button 
                     variant="outline" 
-                    className="h-11 px-8 rounded-xl border-2 font-black text-[10px] uppercase tracking-widest gap-2 bg-white"
+                    className="h-11 px-8 rounded-none border-2 border-slate-900 font-black text-[11px] uppercase tracking-widest gap-2 bg-white"
                     disabled={isLocked || !isCurrentStage}
                     onClick={() => handleAction(false)}
                 >
-                    <Save className="h-4 w-4 text-slate-400" /> SAVE AS DRAFT
+                    <Save className="h-4 w-4" /> SAVE DRAFT
                 </Button>
                 
-                <Button variant="outline" className="h-11 px-8 rounded-xl border-2 font-black text-[10px] uppercase tracking-widest gap-2 bg-white">
-                    <MessageSquare className="h-4 w-4 text-slate-400" /> ADD COMMENT
-                </Button>
-                
-                <Button variant="outline" className="h-11 px-8 rounded-xl border-2 font-black text-[10px] uppercase tracking-widest gap-2 bg-white">
-                    <Paperclip className="h-4 w-4 text-slate-400" /> UPLOAD EVIDENCE
-                </Button>
-
                 <Button 
-                    className="h-11 px-10 bg-[#1769FF] hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[10px] rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all ml-4"
+                    className={cn(
+                        "h-11 px-10 rounded-none font-black uppercase tracking-[0.2em] text-[11px] active:scale-95 transition-all ml-4 border-2 border-slate-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
+                        isCompleted ? "bg-emerald-500 text-white" : "bg-[#1769FF] text-white hover:bg-blue-700"
+                    )}
                     disabled={isLocked || !isCurrentStage}
                     onClick={() => handleAction(true)}
                 >
-                    {isCompleted ? 'PHASE FINALIZED' : `FINALIZE ${stage.toUpperCase()}`} <ArrowRight className="ml-3 h-4 w-4" />
+                    {isCompleted ? <CheckCircle2 className="mr-2 h-4 w-4" /> : null}
+                    {isCompleted ? 'MILESTONE FINALIZED' : `AUTHORIZE ${stage.toUpperCase()}`} <ArrowRight className="ml-3 h-4 w-4" />
                 </Button>
             </div>
         </div>
