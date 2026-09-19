@@ -16,6 +16,8 @@ import { Badge } from '@/components/ui/badge';
 import type { EhsObservation } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function CapaRightSidebar({ observation }: { observation: EhsObservation }) {
     return (
@@ -149,7 +151,7 @@ function ActivityItem({ user, role, time, content, type }: any) {
             </div>
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-2">
                 <Badge variant="outline" className="bg-[#FFF8E1] text-[#B7791F] border-[#FEF3C7] text-[8px] font-black uppercase px-2 h-5 rounded-sm">{type}</Badge>
-                <p className="text-[11px] font-bold text-slate-600 leading-relaxed italic italic whitespace-pre-wrap">"{content}"</p>
+                <p className="text-[11px] font-bold text-slate-600 leading-relaxed italic whitespace-pre-wrap">"{content}"</p>
             </div>
         </div>
     );
