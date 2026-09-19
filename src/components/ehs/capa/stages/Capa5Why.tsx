@@ -4,7 +4,7 @@ import React from 'react';
 import { useFormContext } from 'react-hook-form';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Target, ShieldCheck, ArrowDown, Activity } from 'lucide-react';
+import { Search, Target, ShieldCheck, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
@@ -15,7 +15,6 @@ interface Props {
 export default function Capa5Why({ isLocked }: Props) {
     const { register } = useFormContext();
 
-    // Modern high-visibility well style
     const wellClasses = "min-h-[100px] rounded-2xl border-2 border-slate-200 bg-slate-50 font-bold text-sm px-6 py-5 focus-visible:ring-blue-100 focus-visible:bg-white shadow-inner placeholder:text-slate-300 transition-all leading-relaxed";
 
     return (
@@ -86,7 +85,6 @@ export default function Capa5Why({ isLocked }: Props) {
                         <ShieldCheck className="h-4 w-4 text-white" /> ANALYSIS VALIDATED
                     </div>
                 </div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-4 ml-1">This statement serves as the forensic basis for all subsequent Remediation and Preventive strategies.</p>
             </div>
         </div>
     );

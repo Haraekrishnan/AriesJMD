@@ -76,7 +76,6 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
         toast({ title: 'Evidence Removed', variant: 'destructive' });
     };
 
-    // Modern SaaS styling: Recessed, subtle shadow, soft border
     const wellClasses = "rounded-xl border-2 border-slate-200 bg-slate-50 font-bold text-xs px-5 focus-visible:bg-white focus-visible:ring-blue-100 transition-all shadow-inner placeholder:text-slate-300";
 
     return (
@@ -182,7 +181,7 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                             <ShieldCheck className="h-7 w-7 text-white" />
                         </div>
                         <div className="text-left">
-                            <Badge className="bg-blue-500 text-white border-none px-4 h-6 text-[9px] font-black tracking-widest uppercase mb-2">{stageStatus.toUpperCase()}</Badge>
+                            <Badge className="bg-blue-500 text-white border-none px-4 h-6 text-[9px] font-black tracking-widest uppercase mb-2">{stageStatus?.toUpperCase() || 'PHASE ACTIVE'}</Badge>
                             <p className="text-lg font-black uppercase tracking-tight leading-none">Investigation Milestone Active</p>
                         </div>
                     </div>
@@ -192,10 +191,10 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                             <p className="text-sm font-bold text-white uppercase mt-1">{format(parseISO(observation.createdAt), 'dd MMM yyyy')}</p>
                         </div>
                         <div>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Target Delivery</p>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Compliance Health</p>
                             <div className="flex items-center gap-2 mt-1">
-                                <Clock className="h-4 w-4 text-blue-400" />
-                                <span className="text-sm font-bold uppercase tracking-widest text-blue-400">Within Window</span>
+                                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                                <span className="text-sm font-bold uppercase tracking-widest text-emerald-400">Optimal</span>
                             </div>
                         </div>
                     </div>

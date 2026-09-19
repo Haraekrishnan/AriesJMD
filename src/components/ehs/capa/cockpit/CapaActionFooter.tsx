@@ -3,7 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Save, ArrowRight, MessageSquare, UploadCloud, ShieldCheck } from 'lucide-react';
+import { Save, ArrowRight, MessageSquare, UploadCloud } from 'lucide-react';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useEhs } from '@/contexts/ehs-provider';
 import { useFormContext } from 'react-hook-form';
@@ -40,7 +40,7 @@ export default function CapaActionFooter({ observation, stage }: Props) {
                 <div className="flex flex-col text-left">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] leading-none mb-2">Stage Integrity</p>
                     <Badge className={cn(
-                        "font-black h-6 text-[10px] border-none uppercase tracking-[0.2em] px-4 rounded-lg shadow-sm",
+                        "font-black h-6 text-[10px] border-none uppercase tracking-[0.2em] px-4 rounded shadow-sm",
                         isCompleted ? "bg-emerald-500" : isSubmitted ? "bg-amber-500" : "bg-blue-600"
                     )}>
                         {sData?.status || 'PENDING'}
@@ -51,7 +51,7 @@ export default function CapaActionFooter({ observation, stage }: Props) {
             <div className="flex items-center gap-4">
                 <Button 
                     variant="ghost" 
-                    className="h-12 px-8 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] gap-3 hover:bg-slate-100 transition-all"
+                    className="h-12 px-8 rounded-xl font-black text-[11px] uppercase tracking-[0.2em] gap-3 hover:bg-slate-100 transition-all"
                     disabled={isLocked || !isCurrentStage}
                     onClick={() => handleAction(false)}
                 >
@@ -62,7 +62,7 @@ export default function CapaActionFooter({ observation, stage }: Props) {
                      <Button 
                         variant="outline" 
                         size="icon"
-                        className="h-12 w-12 rounded-2xl border-2 hover:bg-slate-50 shadow-sm border-slate-200 bg-white"
+                        className="h-12 w-12 rounded-xl border-2 hover:bg-slate-50 shadow-sm border-slate-200 bg-white"
                         disabled={isLocked || !isCurrentStage}
                     >
                         <MessageSquare className="h-4.5 w-4.5 text-slate-400" />
@@ -70,7 +70,7 @@ export default function CapaActionFooter({ observation, stage }: Props) {
                     <Button 
                         variant="outline" 
                         size="icon"
-                        className="h-12 w-12 rounded-2xl border-2 hover:bg-slate-50 shadow-sm border-slate-200 bg-white"
+                        className="h-12 w-12 rounded-xl border-2 hover:bg-slate-50 shadow-sm border-slate-200 bg-white"
                         disabled={isLocked || !isCurrentStage}
                     >
                         <UploadCloud className="h-4.5 w-4.5 text-slate-400" />

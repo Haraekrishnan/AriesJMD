@@ -21,7 +21,7 @@ export default function CapaLifecycleStepper({ observation, viewingStage, onStag
     }, [observation]);
 
     return (
-        <div className="flex items-center w-full gap-20 text-left">
+        <div className="flex items-center w-full gap-16 text-left">
             {/* Overall Progress Meter */}
             <div className="flex flex-col shrink-0">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] leading-none mb-4">Overall Progress</span>

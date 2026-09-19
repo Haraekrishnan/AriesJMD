@@ -11,9 +11,8 @@ import {
     SelectTrigger, 
     SelectValue 
 } from '@/components/ui/select';
-import { GitBranch, Layers, ShieldAlert, Target, ShieldCheck } from 'lucide-react';
+import { GitBranch, Layers, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 
 const CATEGORIES = [
     'Human Factor / Individual Error',
@@ -34,7 +33,7 @@ export default function CapaSystemicRootCause({ isLocked }: Props) {
     const wellClasses = "rounded-2xl border-2 border-slate-200 bg-slate-50 font-bold text-sm shadow-inner transition-all focus-visible:bg-white focus-visible:border-blue-600 focus-visible:ring-0";
 
     return (
-        <div className="space-y-16 text-left animate-in fade-in duration-700">
+        <div className="space-y-16 text-left animate-in fade-in duration-700 p-10">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-20">
                 
                 {/* --- LEFT: DOMAIN CATEGORIZATION --- */}
@@ -44,7 +43,7 @@ export default function CapaSystemicRootCause({ isLocked }: Props) {
                         <h4 className="text-[16px] font-black uppercase tracking-[0.3em] text-slate-900 leading-none">DOMAIN CATEGORIZATION</h4>
                     </div>
 
-                    <div className="space-y-12 pr-10">
+                    <div className="space-y-12">
                         <div className="space-y-4">
                             <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">PRIMARY FAILURE DOMAIN <span className="text-rose-600">*</span></Label>
                             <Controller
@@ -61,7 +60,6 @@ export default function CapaSystemicRootCause({ isLocked }: Props) {
                                     </Select>
                                 )}
                             />
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight ml-1">Identify the technical or organizational domain where the systemic breakdown originated.</p>
                         </div>
 
                         <div className="space-y-4">
@@ -97,7 +95,6 @@ export default function CapaSystemicRootCause({ isLocked }: Props) {
                                     <ShieldAlert className="h-6 w-6 text-white" /> SYSTEMIC BREAKDOWN
                                 </div>
                             </div>
-                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight mt-4 ml-1">This statement serves as the technical basis for all subsequent Remediation and Preventive strategies.</p>
                         </div>
                     </div>
                 </div>

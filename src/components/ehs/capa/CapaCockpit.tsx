@@ -54,16 +54,16 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
         <FormProvider {...methods}>
             <div className="fixed inset-0 z-40 flex flex-col bg-[#F3F7FB] text-slate-900 font-sans overflow-hidden select-none">
                 
-                {/* --- 1. DUAL-TIER EXECUTIVE HEADER --- */}
+                {/* --- 1. MULTI-TIER EXECUTIVE HEADER --- */}
                 <header className="shrink-0 bg-white border-b z-30 shadow-sm">
-                    {/* Tier 1: Case Identity & Global Tools */}
+                    {/* Tier 1: Case Identity & Action Hub */}
                     <div className="px-8 py-4 flex items-center justify-between border-b bg-white">
                         <div className="flex items-center gap-6">
                             <Button 
                                 variant="outline" 
                                 size="sm" 
                                 onClick={onClose} 
-                                className="h-9 px-4 rounded-xl text-slate-500 hover:bg-slate-50 font-bold uppercase text-[10px] tracking-widest border-2 transition-all"
+                                className="h-8 px-4 rounded-md text-slate-500 hover:bg-slate-50 font-bold uppercase text-[9px] tracking-widest border-2 transition-all"
                             >
                                 <ChevronLeft className="mr-2 h-4 w-4" /> Back
                             </Button>
@@ -89,10 +89,10 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                                 </div>
                             </div>
                             <div className="flex items-center gap-2 ml-4">
-                                <Button variant="outline" className="h-11 px-5 gap-3 text-slate-700 rounded-xl font-black text-[10px] uppercase tracking-widest border-2 bg-white hover:bg-slate-50 transition-all">
+                                <Button variant="outline" className="h-10 px-5 gap-3 text-slate-700 rounded-lg font-black text-[10px] uppercase tracking-widest border-2 bg-white hover:bg-slate-50 transition-all">
                                     <MessageSquare className="h-4 w-4 text-slate-400" /> Add Note
                                 </Button>
-                                <Button variant="outline" className="h-11 px-5 gap-3 text-slate-700 rounded-xl font-black text-[10px] uppercase tracking-widest border-2 bg-white hover:bg-slate-50 transition-all">
+                                <Button variant="outline" className="h-10 px-5 gap-3 text-slate-700 rounded-lg font-black text-[10px] uppercase tracking-widest border-2 bg-white hover:bg-slate-50 transition-all">
                                     <UploadCloud className="h-4 w-4 text-slate-400" /> Upload Document
                                 </Button>
                             </div>
@@ -133,7 +133,7 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                     />
                 </section>
 
-                {/* --- 3. CORE WORKSPACE --- */}
+                {/* --- 3. CORE WORKSPACE & SIDEBAR --- */}
                 <div className="flex-1 flex overflow-hidden">
                     <main className="flex-1 flex flex-col overflow-hidden relative bg-[#F8FAFC]">
                         <ScrollArea className="flex-1">
@@ -149,7 +149,7 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                     </main>
 
                     {/* INTELLIGENCE SIDEBAR */}
-                    <aside className="w-[400px] shrink-0 border-l bg-white flex flex-col z-20 overflow-hidden shadow-2xl relative">
+                    <aside className="w-[380px] shrink-0 border-l bg-white flex flex-col z-20 overflow-hidden shadow-2xl relative">
                         <ScrollArea className="h-full">
                            <CapaRightSidebar observation={observation} />
                         </ScrollArea>

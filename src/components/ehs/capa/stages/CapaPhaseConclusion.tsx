@@ -4,7 +4,7 @@ import React from 'react';
 import { useFormContext } from 'react-hook-form';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { CheckCircle2, ShieldCheck, FileText, Target, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, ShieldCheck, FileText, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
@@ -18,7 +18,7 @@ export default function CapaPhaseConclusion({ isLocked }: Props) {
     const wellClasses = "rounded-3xl border-2 border-slate-200 bg-slate-50 font-bold text-sm px-8 py-7 focus-visible:ring-blue-100 focus-visible:bg-white shadow-inner transition-all leading-relaxed";
 
     return (
-        <div className="space-y-20 text-left animate-in fade-in duration-700">
+        <div className="space-y-20 text-left animate-in fade-in duration-700 p-10">
             <div className="max-w-5xl mx-auto space-y-20 py-10">
                 
                 {/* --- TECHNICAL PHASE SUMMARY --- */}
@@ -42,7 +42,6 @@ export default function CapaPhaseConclusion({ isLocked }: Props) {
                             <Target className="h-24 w-24 text-slate-900" />
                         </div>
                     </div>
-                    <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest ml-1">Comprehensive declaration for executive safety auditing and knowledge management.</p>
                 </div>
 
                 {/* --- SAFETY RECOMMENDATIONS LEDGER --- */}
@@ -69,20 +68,7 @@ export default function CapaPhaseConclusion({ isLocked }: Props) {
                             <CheckCircle2 className="h-6 w-6 text-white" /> PHASE COMPLETE
                         </div>
                     </div>
-
-                    <div className="p-8 bg-amber-50 border border-amber-100 rounded-[2.5rem] flex items-start gap-6 shadow-sm">
-                        <div className="p-3 bg-amber-500 rounded-2xl shadow-lg shadow-amber-500/20">
-                            <AlertTriangle className="h-6 w-6 text-white" />
-                        </div>
-                        <div className="space-y-1">
-                            <p className="text-[11px] font-black text-amber-700 uppercase tracking-[0.3em] mb-1">Lifecycle Governance Protocol</p>
-                            <p className="text-sm font-bold text-amber-900/80 leading-relaxed max-w-4xl">
-                                Submission of this technical ledger will finalize the Investigation Milestone. Subsequent Resolution and Implementation strategies will be derived directly from these authorized recommendations.
-                            </p>
-                        </div>
-                    </div>
                 </div>
-
             </div>
         </div>
     );
