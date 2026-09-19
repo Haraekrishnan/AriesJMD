@@ -61,7 +61,6 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
             const data = await res.json();
 
             if (data.success) {
-                // In a real app we'd call addStageAttachment, but for this mock we just show success
                 toast({ title: 'Evidence Captured' });
             } else {
                 throw new Error(data.error);
@@ -73,8 +72,8 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
         }
     };
 
-    const inputWell = "h-11 rounded-lg border border-slate-200 bg-slate-50 font-bold text-sm px-10 focus-visible:bg-white focus-visible:ring-blue-100 transition-all shadow-sm placeholder:text-slate-300";
-    const areaWell = "min-h-[100px] rounded-lg border border-slate-200 bg-slate-50 font-bold text-sm p-4 focus-visible:bg-white focus-visible:ring-blue-100 transition-all shadow-sm resize-none";
+    const inputWell = "h-11 rounded-lg border border-slate-200 bg-slate-50 font-bold text-sm px-10 focus-visible:bg-white focus-visible:ring-blue-100 transition-all shadow-inner placeholder:text-slate-300";
+    const areaWell = "min-h-[100px] rounded-lg border border-slate-200 bg-slate-50 font-bold text-sm p-4 focus-visible:bg-white focus-visible:ring-blue-100 transition-all shadow-inner resize-none";
 
     return (
         <div className="space-y-8 text-left animate-in fade-in duration-500">
@@ -94,7 +93,7 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                             <Label className="text-[10px] font-black uppercase tracking-widest text-blue-600 ml-1">Who was involved? <span className="text-rose-600">*</span></Label>
                             <div className="relative">
                                 <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                <Input disabled={isLocked} {...register('who')} placeholder="CFVF" className={inputWell} />
+                                <Input disabled={isLocked} {...register('who')} placeholder="Enter personnel or teams..." className={inputWell} />
                             </div>
                             <p className="text-[9px] font-medium text-slate-400 ml-1">List personnel, contractors or departments involved.</p>
                         </div>
@@ -103,7 +102,7 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                             <Label className="text-[10px] font-black uppercase tracking-widest text-blue-600 ml-1">Exact site position <span className="text-rose-600">*</span></Label>
                             <div className="relative">
                                 <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                <Input disabled={isLocked} {...register('where')} placeholder="XCVXC" className={inputWell} />
+                                <Input disabled={isLocked} {...register('where')} placeholder="Specific location..." className={inputWell} />
                             </div>
                             <p className="text-[9px] font-medium text-slate-400 ml-1">Specific deck, unit, workshop or coordinate.</p>
                         </div>
@@ -113,7 +112,7 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-blue-600 ml-1">Discovery date <span className="text-rose-600">*</span></Label>
                                 <div className="relative">
                                     <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                    <Input disabled={isLocked} type="date" {...register('whenDate')} defaultValue="2026-09-17" className={inputWell} />
+                                    <Input disabled={isLocked} type="date" {...register('whenDate')} className={inputWell} />
                                 </div>
                             </div>
                             <div className="space-y-2">
@@ -140,7 +139,7 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                     <div className="space-y-6">
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-blue-600 ml-1">Sequence of events (How)? <span className="text-rose-600">*</span></Label>
-                            <Textarea disabled={isLocked} {...register('sequence')} placeholder="CXCVXC" className={areaWell} />
+                            <Textarea disabled={isLocked} {...register('sequence')} placeholder="Chronological flow..." className={areaWell} />
                             <p className="text-[9px] font-medium text-slate-400 ml-1">Describe the chronological sequence of events leading to this observation.</p>
                         </div>
 
@@ -160,19 +159,20 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                         <Paperclip className="h-5 w-5 text-blue-600" />
                         <h4 className="text-[12px] font-black uppercase tracking-[0.2em] text-slate-800">PHASE EVIDENCE LEDGER</h4>
                     </div>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Upload relevant documents, images or evidence</p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Technical documentation registry</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                    {/* File List */}
                     <div className="space-y-3">
                         {attachments.length > 0 ? attachments.map((file) => (
-                            <div key={file.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50 flex items-center justify-between group hover:bg-white hover:border-blue-200 transition-all">
+                            <div key={file.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50 flex items-center justify-between group hover:bg-white hover:border-blue-200 transition-all shadow-inner">
                                 <div className="flex items-center gap-4">
-                                    <div className="h-10 w-10 bg-white rounded-lg border flex items-center justify-center text-rose-500 font-black text-[10px] uppercase">PDF</div>
+                                    <div className="h-10 w-10 bg-white rounded-lg border flex items-center justify-center text-rose-500 font-black text-[10px] uppercase">DOC</div>
                                     <div className="flex flex-col text-left">
                                         <p className="text-xs font-black uppercase text-slate-800 tracking-tight">{file.name}</p>
-                                        <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{format(parseISO(file.uploadedAt), 'dd MMM yyyy, HH:mm')} · 245 KB</p>
+                                        <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">
+                                            {isValid(parseISO(file.uploadedAt)) ? format(parseISO(file.uploadedAt), 'dd MMM yyyy, HH:mm') : 'N/A'}
+                                        </p>
                                     </div>
                                 </div>
                                 <div className="flex gap-1">
@@ -192,7 +192,6 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                         )}
                     </div>
 
-                    {/* Upload Zone */}
                     <div className="relative">
                         <div className={cn(
                             "border-2 border-dashed rounded-[1.5rem] p-10 flex flex-col items-center justify-center gap-4 transition-all",
@@ -217,4 +216,3 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
         </div>
     );
 }
-

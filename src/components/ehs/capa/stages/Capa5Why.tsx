@@ -18,7 +18,7 @@ export default function Capa5Why({ isLocked }: Props) {
     const wellClasses = "min-h-[100px] rounded-xl border border-slate-200 bg-slate-50 font-bold text-sm px-6 py-4 focus-visible:ring-blue-100 focus-visible:bg-white shadow-inner placeholder:text-slate-300 transition-all leading-relaxed";
 
     return (
-        <div className="space-y-12 text-left">
+        <div className="space-y-12 text-left animate-in fade-in duration-500">
             <div className="p-8 rounded-2xl bg-blue-50/30 border border-blue-100 flex items-start gap-6">
                 <div className="bg-blue-600 h-10 w-10 rounded-lg flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20">
                     <Search className="h-5 w-5 text-white" />
@@ -36,8 +36,8 @@ export default function Capa5Why({ isLocked }: Props) {
                     <div key={i} className="flex gap-8 group animate-in slide-in-from-left duration-500" style={{ animationDelay: `${i * 100}ms` }}>
                         <div className="flex flex-col items-center shrink-0 pt-2">
                             <div className={cn(
-                                "h-12 w-12 rounded-xl border-2 flex items-center justify-center font-black text-lg transition-all",
-                                i === 5 ? "bg-slate-900 border-slate-900 text-white" : "bg-white border-slate-200 text-slate-800 shadow-sm"
+                                "h-12 w-12 rounded-xl border-2 flex items-center justify-center font-black text-lg transition-all shadow-sm",
+                                i === 5 ? "bg-slate-900 border-slate-900 text-white" : "bg-white border-slate-200 text-slate-800"
                             )}>
                                 W{i}
                             </div>

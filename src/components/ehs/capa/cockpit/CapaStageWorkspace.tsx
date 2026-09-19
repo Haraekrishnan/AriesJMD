@@ -61,6 +61,8 @@ if (typeof window !== 'undefined') {
     pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 }
 
+const STAGES: CapaStage[] = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];
+
 interface CapaStageWorkspaceProps {
     observation: EhsObservation;
     stage: CapaStage;
@@ -165,7 +167,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                     {assignee && (
                         <div className="flex flex-col items-end">
                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
-                                {stage === 'Initiation' ? 'CREATOR' : 'PHASE ASSIGNEE'}
+                                {stage === 'Initiation' ? 'REPORTER / CREATOR' : 'PHASE ASSIGNEE'}
                             </p>
                             <div className="flex items-center gap-3">
                                 <div className="flex flex-col">
@@ -225,8 +227,8 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
 
             <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); setNumPages(null); setPageNumber(1); }}>
                 <DialogContent className="max-w-[95vw] md:max-w-7xl w-full h-auto max-h-[90vh] flex flex-col p-0 overflow-hidden bg-black border border-white/10 shadow-2xl">
-                    <DialogTitle className="sr-only">Forensic Evidence Viewer</DialogTitle>
-                    <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
+                    <DialogTitle className="px-6 py-4 text-white text-sm font-black uppercase tracking-widest bg-slate-900/50">Forensic Evidence Viewer</DialogTitle>
+                    <div className="absolute top-16 right-6 z-50 flex items-center gap-3">
                         {!isPdf && (
                             <div className="flex gap-2">
                                 <Button variant="ghost" size="icon" className="h-10 w-10 text-white bg-blue-600 hover:bg-blue-700 shadow-lg rounded-lg" onClick={() => setZoom(z => z + 0.2)}><ZoomIn className="h-5 w-5" /></Button>
@@ -275,9 +277,17 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
 
     const isAuthorized = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor';
     const project = projects.find(p => p.id === observation.projectId);
+    const reporter = users.find(u => u.id === observation.reporterId);
 
-    const extractedEvidenceUrl = observation.discoveryAttachmentUrl || observation.description.match(/src="([^"]+)"/i)?.[1];
-    const sanitizedDescription = observation.description.replace(/<IMG[^>]*>/gi, '').replace(/<[^>]*>?/gm, '').trim();
+    const extractedEvidenceUrl = useMemo(() => {
+        if (observation.discoveryAttachmentUrl) return observation.discoveryAttachmentUrl;
+        const match = observation.description.match(/src="([^"]+)"/i);
+        return match ? match[1] : null;
+    }, [observation.discoveryAttachmentUrl, observation.description]);
+
+    const sanitizedDescription = useMemo(() => {
+        return observation.description.replace(/<IMG[^>]*>/gi, '').replace(/<[^>]*>?/gm, '').trim();
+    }, [observation.description]);
 
     const handleSave = async () => {
         await updateInitiationDetails(observation.id, formData);
@@ -351,23 +361,21 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
     );
 }
 
-function EditableMeta({ label, value, isEditing, type, options, onChange, icon: Icon }: any) {
-    const wellClasses = "h-11 rounded-lg border border-slate-200 bg-slate-50 font-bold text-sm px-10 focus-visible:ring-blue-100 focus-visible:bg-white shadow-inner transition-all";
-    
+function EditableMeta({ label, value, isEditing, type, options, onChange, icon: Icon }: { label: string, value: string, isEditing: boolean, type: 'text' | 'select', options?: any[], onChange: (val: any) => void, icon?: any }) {
     return (
-        <div className="space-y-2">
-            <Label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">
-                {Icon && <Icon className="h-3.5 w-3.5 text-slate-400" />}
+        <div className="space-y-2.5">
+            <Label className="flex items-center gap-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#304B68] ml-1">
+                {Icon && <Icon className="h-3 w-3 text-[#7A9ABB]" />}
                 {label}
             </Label>
             {isEditing ? (
                 type === 'select' ? (
                     <Select value={value} onValueChange={onChange}>
-                        <SelectTrigger className="h-11 rounded-lg border-slate-200 bg-slate-50 px-4 text-sm font-bold uppercase text-slate-800 shadow-inner">
+                        <SelectTrigger className="h-[42px] rounded-[10px] border-[#DCE5EF] bg-slate-50 shadow-inner px-3.5 text-[10px] font-bold uppercase text-[#243B53] focus:ring-blue-100">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            {options?.map((opt: any) => (
+                            {options?.map(opt => (
                                 <SelectItem key={typeof opt === 'string' ? opt : opt.id} value={typeof opt === 'string' ? opt : opt.id}>
                                     {typeof opt === 'string' ? opt : opt.name}
                                 </SelectItem>
@@ -375,11 +383,11 @@ function EditableMeta({ label, value, isEditing, type, options, onChange, icon: 
                         </SelectContent>
                     </Select>
                 ) : (
-                    <Input className="h-11 rounded-lg border-slate-200 bg-slate-50 px-4 text-sm font-bold shadow-inner" value={value} onChange={e => onChange(e.target.value)} />
+                    <Input className="h-[42px] rounded-[10px] border-[#DCE5EF] bg-slate-50 shadow-inner text-[10px] px-3.5 focus:ring-blue-100" value={value} onChange={e => onChange(e.target.value)} />
                 )
             ) : (
-                <div className="h-11 px-4 flex items-center bg-slate-50 border border-slate-200 rounded-lg shadow-inner">
-                    <span className="text-xs font-black text-slate-900 uppercase truncate">{value}</span>
+                <div className="h-[42px] px-3.5 flex items-center bg-slate-50 border border-[#DCE5EF] rounded-[10px] shadow-inner">
+                    <span className="text-[10px] font-bold text-[#102A43] uppercase truncate">{value}</span>
                 </div>
             )}
         </div>

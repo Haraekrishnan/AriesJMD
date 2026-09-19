@@ -30,7 +30,7 @@ interface Props {
 export default function CapaSystemicRootCause({ isLocked }: Props) {
     const { register, control } = useFormContext();
 
-    const wellClasses = "rounded-xl border border-slate-200 bg-slate-50 font-bold text-sm shadow-inner transition-all focus-visible:bg-white focus-visible:border-blue-600 focus-visible:ring-0 leading-relaxed";
+    const wellClasses = "rounded-xl border border-slate-200 bg-slate-50 font-bold text-sm shadow-inner transition-all focus-within:bg-white focus-within:border-blue-600 focus-within:ring-0 leading-relaxed";
 
     return (
         <div className="space-y-16 text-left animate-in fade-in duration-700">
