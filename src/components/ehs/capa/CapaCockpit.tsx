@@ -103,25 +103,6 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                         </div>
 
                         <div className="flex items-center gap-10">
-                            {/* EXECUTIVE VERIFICATION ACTION CARD (BLACK BOX) */}
-                            {isCurrentStage && isSubmitted && isSupervisor && (
-                                <div className="bg-[#0F172A] px-4 py-2 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-right-2 shadow-2xl">
-                                    <Button 
-                                        variant="outline" 
-                                        className="h-8 border-rose-500/30 text-rose-400 hover:bg-rose-600 hover:text-white font-black uppercase tracking-widest text-[8px] px-4 rounded-lg"
-                                        onClick={() => setReviewAction('Returned')}
-                                    >
-                                        <Undo2 className="mr-2 h-3 w-3" /> Instruct Rework
-                                    </Button>
-                                    <Button 
-                                        className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[8px] px-6 rounded-lg shadow-lg shadow-emerald-500/20"
-                                        onClick={() => setReviewAction('Completed')}
-                                    >
-                                        <CheckCircle2 className="mr-2 h-3.5 w-3.5" /> Verify & Continue
-                                    </Button>
-                                </div>
-                            )}
-
                             <div className="flex flex-col text-right leading-none mr-4">
                                 <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">A SAFER WORKPLACE</p>
                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">A HEALTHIER TOMORROW</p>
@@ -198,7 +179,12 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
 
                         {/* FIXED ACTION FOOTER */}
                         <footer className="h-20 shrink-0 bg-white border-t px-10 flex items-center z-40 shadow-2xl">
-                            <CapaActionFooter observation={observation} stage={viewingStage} />
+                            <CapaActionFooter 
+                                observation={observation} 
+                                stage={viewingStage} 
+                                onVerify={() => setReviewAction('Completed')}
+                                onRework={() => setReviewAction('Returned')}
+                            />
                         </footer>
                     </main>
 

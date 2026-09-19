@@ -241,7 +241,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                     <AlertTriangle className="h-6 w-6 text-rose-500" />
                     <div className="flex-1">
                         <p className="text-[10px] font-black text-rose-500 uppercase tracking-[0.3em] mb-1">Official Review Correction instructed</p>
-                        <p className="text-lg font-bold text-rose-900 italic">"{sData?.comments ? Object.values(sData.comments).reverse()[0]?.text : 'Technical details require clarification.'}"</p>
+                        <p className="text-sm font-bold text-rose-900 italic">"{sData?.comments ? Object.values(sData.comments).reverse()[0]?.text : 'Technical details require clarification.'}"</p>
                     </div>
                 </div>
             )}
@@ -252,10 +252,10 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
 
             <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); setNumPages(null); setPageNumber(1); }}>
                 <DialogContent className="max-w-[95vw] md:max-w-7xl w-full h-auto max-h-[90vh] flex flex-col p-0 overflow-hidden bg-black border border-white/10 shadow-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="sr-only">Evidence Detail Viewer</DialogTitle>
-                        <DialogDescription className="sr-only">Full-resolution forensic evidence viewer.</DialogDescription>
-                    </DialogHeader>
+                    <div className="sr-only">
+                        <DialogTitle>Evidence Detail Viewer</DialogTitle>
+                        <DialogDescription>Full-resolution forensic evidence viewer.</DialogDescription>
+                    </div>
                     <div className="absolute top-16 right-6 z-50 flex items-center gap-3">
                         {!isPdf && (
                             <div className="flex gap-2">
@@ -369,9 +369,9 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
 
                 <div className="p-7 space-y-10">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                        {/* LEFT COLUMN: DETAILS */}
+                        {/* LEFT COLUMN: LOGISTICS */}
                         <div className="space-y-8">
-                            <SectionHeading icon={MapPin} title="DETAILS" />
+                            <SectionHeading icon={MapPin} title="OPERATIONAL LOGISTICS" />
                             <div className="space-y-6">
                                 <EditableMeta label="Discovery Category" value={observation.category} isEditing={isEditing} type="select" options={['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']} onChange={val => setFormData(p => ({ ...p, category: val }))} icon={Search} />
                                 <EditableMeta label="Risk Severity" value={observation.severity} isEditing={isEditing} type="select" options={['Low', 'Medium', 'High', 'Critical']} onChange={val => setFormData(p => ({ ...p, severity: val }))} icon={ShieldCheck} />
@@ -380,10 +380,10 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
                             </div>
                         </div>
 
-                        {/* RIGHT COLUMN: SUMMARY */}
+                        {/* RIGHT COLUMN: NARRATIVE */}
                         <div className="space-y-8">
                             <div className="flex justify-between items-center">
-                                <SectionHeading icon={FileText} title="SUMMARY" />
+                                <SectionHeading icon={FileText} title="NARRATIVE CONTEXT" />
                                 {isAuthorized && !isEditing && (
                                     <Button variant="ghost" size="sm" className="h-7 px-3 text-[9px] font-black uppercase border border-slate-200" onClick={() => setIsEditing(true)}>
                                         <Edit3 className="h-3 w-3 mr-1.5" /> OVERWRITE
@@ -394,15 +394,15 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
                                 {isEditing ? (
                                     <div className="space-y-2">
                                         <Label className="text-[9px] font-extrabold uppercase tracking-widest text-[#304B68]">Finding Description</Label>
-                                        <Textarea className="min-h-[400px] rounded-[10px] border-[#DCE5EF] bg-slate-50 shadow-inner text-[10px] font-bold p-4" value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} />
+                                        <Textarea className="min-h-[120px] rounded-[10px] border-[#DCE5EF] bg-white text-[10px]" value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} />
                                         <div className="flex justify-end gap-2 pt-2">
                                             <Button variant="outline" size="sm" className="h-8 text-[9px]" onClick={() => setIsEditing(false)}>CANCEL</Button>
                                             <Button size="sm" className="h-8 text-[9px] bg-[#1769FF]" onClick={handleSave}>SAVE CHANGES</Button>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="p-6 rounded-xl bg-slate-50 border border-[#DCE5EF] shadow-inner min-h-[400px]">
-                                        <p className="text-[10px] font-bold text-slate-700 leading-relaxed uppercase tracking-tight">
+                                    <div className="p-4 rounded-xl bg-slate-50 border border-[#DCE5EF] shadow-inner">
+                                        <p className="text-[10px] font-medium text-slate-700 leading-relaxed uppercase tracking-tight">
                                             {sanitizedDescription}
                                         </p>
                                     </div>
@@ -450,7 +450,7 @@ function EditableMeta({ label, value, isEditing, type, options, onChange, icon: 
             {isEditing ? (
                 type === 'select' ? (
                     <Select value={value} onValueChange={onChange}>
-                        <SelectTrigger className="h-[42px] rounded-[10px] border-[#DCE5EF] bg-slate-50 shadow-inner px-3.5 text-[10px] font-bold uppercase text-[#243B53]">
+                        <SelectTrigger className="h-[42px] rounded-[10px] border-[#DCE5EF] bg-white px-3.5 text-[10px] font-bold uppercase text-[#243B53]">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -462,10 +462,10 @@ function EditableMeta({ label, value, isEditing, type, options, onChange, icon: 
                         </SelectContent>
                     </Select>
                 ) : (
-                    <Input className="h-[42px] rounded-[10px] border-[#DCE5EF] bg-slate-50 shadow-inner text-[10px] font-bold" value={value} onChange={e => onChange(e.target.value)} />
+                    <Input className="h-[42px] rounded-[10px] border-[#DCE5EF] bg-white text-[10px]" value={value} onChange={e => onChange(e.target.value)} />
                 )
             ) : (
-                <div className="h-[42px] px-3.5 flex items-center bg-slate-50 border border-[#DCE5EF] rounded-[10px] shadow-inner">
+                <div className="h-[42px] px-3.5 flex items-center bg-slate-50 border border-[#DCE5EF] rounded-[10px]">
                     <span className="text-[10px] font-bold text-[#102A43] uppercase truncate">{value}</span>
                 </div>
             )}
