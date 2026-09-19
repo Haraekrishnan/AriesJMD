@@ -31,21 +31,21 @@ interface Props {
 export default function CapaSystemicRootCause({ isLocked }: Props) {
     const { register, control } = useFormContext();
 
-    // High visibility style for entry fields - industrial "well" look
-    const wellClasses = "rounded-none border-2 border-slate-200 bg-slate-50 font-bold text-sm shadow-inner transition-all focus-visible:bg-white focus-visible:border-blue-600 focus-visible:ring-0";
+    // High visibility style: Recessed with bg-slate-50
+    const wellClasses = "rounded-2xl border-2 border-slate-200 bg-slate-50 font-bold text-sm shadow-inner transition-all focus-visible:bg-white focus-visible:border-blue-600 focus-visible:ring-0";
 
     return (
-        <div className="space-y-16 text-left animate-in fade-in duration-700 p-2">
+        <div className="space-y-16 text-left animate-in fade-in duration-700">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-20">
                 
-                {/* --- LEFT: CATEGORIZATION --- */}
+                {/* --- LEFT: DOMAIN CATEGORIZATION --- */}
                 <div className="space-y-12">
-                    <div className="flex items-center gap-4 border-b-4 border-slate-900 pb-4 mx-10">
-                        <Layers className="h-6 w-6 text-blue-600" />
-                        <h4 className="text-[14px] font-black uppercase tracking-[0.3em] text-slate-900">DOMAIN CATEGORIZATION</h4>
+                    <div className="flex items-center gap-4 border-b-4 border-slate-900 pb-5">
+                        <Layers className="h-7 w-7 text-blue-600" />
+                        <h4 className="text-[16px] font-black uppercase tracking-[0.3em] text-slate-900 leading-none">DOMAIN CATEGORIZATION</h4>
                     </div>
 
-                    <div className="space-y-12 px-10">
+                    <div className="space-y-12 pr-10">
                         <div className="space-y-4">
                             <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">PRIMARY FAILURE DOMAIN <span className="text-rose-600">*</span></Label>
                             <Controller
@@ -53,7 +53,7 @@ export default function CapaSystemicRootCause({ isLocked }: Props) {
                                 control={control}
                                 render={({ field }) => (
                                     <Select disabled={isLocked} onValueChange={field.onChange} value={field.value}>
-                                        <SelectTrigger className={cn("h-14 px-6 uppercase tracking-widest", wellClasses)}>
+                                        <SelectTrigger className={cn("h-14 px-6 uppercase tracking-widest font-black text-xs shadow-xl", wellClasses)}>
                                             <SelectValue placeholder="SELECT CAUSAL DOMAIN" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -62,7 +62,7 @@ export default function CapaSystemicRootCause({ isLocked }: Props) {
                                     </Select>
                                 )}
                             />
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight ml-1">Select the operational domain where the systemic breakdown was identified.</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight ml-1">Identify the technical or organizational domain where the systemic breakdown originated.</p>
                         </div>
 
                         <div className="space-y-4">
@@ -71,53 +71,53 @@ export default function CapaSystemicRootCause({ isLocked }: Props) {
                                 disabled={isLocked}
                                 {...register('contributingFactors')}
                                 placeholder="List external or secondary factors that influenced the primary finding..."
-                                className={cn("min-h-[200px] px-8 py-6 leading-relaxed", wellClasses)}
+                                className={cn("min-h-[240px] px-8 py-7 leading-relaxed", wellClasses)}
                             />
                         </div>
                     </div>
                 </div>
 
-                {/* --- RIGHT: FINAL STATEMENT --- */}
-                <div className="space-y-12 pr-10">
-                    <div className="flex items-center gap-4 border-b-4 border-slate-900 pb-4">
-                        <GitBranch className="h-6 w-6 text-blue-600" />
-                        <h4 className="text-[14px] font-black uppercase tracking-[0.3em] text-slate-900">ROOT CAUSE DEFINITION</h4>
+                {/* --- RIGHT: ROOT CAUSE DEFINITION --- */}
+                <div className="space-y-12">
+                    <div className="flex items-center gap-4 border-b-4 border-slate-900 pb-5">
+                        <GitBranch className="h-7 w-7 text-blue-600" />
+                        <h4 className="text-[16px] font-black uppercase tracking-[0.3em] text-slate-900 leading-none">ROOT CAUSE DEFINITION</h4>
                     </div>
 
                     <div className="space-y-8">
                         <div className="space-y-4">
-                            <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">TECHNICAL ROOT CAUSE STATEMENT <span className="text-rose-600">*</span></Label>
+                            <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">OFFICIAL ROOT CAUSE STATEMENT <span className="text-rose-600">*</span></Label>
                             <div className="relative group">
                                 <Textarea 
                                     disabled={isLocked}
                                     {...register('finalRootCauseStatement')}
                                     placeholder="Provide the definitive, validated root cause statement for institutional archival..."
-                                    className="min-h-[380px] rounded-none border-4 border-slate-900 bg-white p-10 font-bold text-lg leading-relaxed text-slate-800 focus-visible:ring-0 shadow-2xl transition-all"
+                                    className="min-h-[440px] rounded-[2.5rem] border-4 border-slate-900 bg-white p-12 font-black text-xl uppercase tracking-tight text-rose-700 focus-visible:ring-0 shadow-2xl transition-all"
                                 />
-                                <div className="absolute bottom-6 right-6 flex items-center gap-3 px-5 py-2.5 bg-rose-600 text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-xl ring-4 ring-rose-600/10">
-                                    <ShieldAlert className="h-5 w-5" /> OFFICIAL FINDING
+                                <div className="absolute bottom-10 right-10 flex items-center gap-3 px-6 py-3 bg-rose-600 text-white text-[12px] font-black uppercase tracking-widest rounded-2xl shadow-xl ring-4 ring-rose-600/10">
+                                    <ShieldAlert className="h-6 w-6 text-white" /> SYSTEMIC BREAKDOWN
                                 </div>
                             </div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight ml-1">This statement serves as the forensic basis for all subsequent Remediation and Preventive strategies.</p>
+                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight mt-4 ml-1">This statement serves as the technical basis for all subsequent Remediation and Preventive strategies.</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* --- CASE INTEGRITY FOOTER --- */}
-            <div className="pt-12 border-t-4 border-slate-100 flex justify-between items-center px-10">
-                 <div className="flex items-center gap-6">
+            {/* --- COMPLIANCE FOOTER --- */}
+            <div className="pt-12 border-t-2 border-slate-100 flex justify-between items-center px-4">
+                 <div className="flex items-center gap-10">
                     <div className="text-left">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Phase Security</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Phase Registry</p>
                         <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline" className="h-6 px-3 rounded-none font-black text-[9px] border-2 uppercase tracking-widest border-slate-900">ENCRYPTED LEDGER</Badge>
+                            <Badge variant="outline" className="h-7 px-4 rounded-full font-black text-[10px] border-2 uppercase tracking-widest border-slate-900 text-slate-900">SECURE TECHNICAL LEDGER</Badge>
                         </div>
                     </div>
                     <div className="text-left">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Validation Status</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Validation State</p>
                         <div className="flex items-center gap-2 mt-1">
-                            <Target className="h-4 w-4 text-rose-600" />
-                            <span className="text-[11px] font-black uppercase text-slate-900">Awaiting Sub-Milestone Finalization</span>
+                            <Target className="h-5 w-5 text-rose-600" />
+                            <span className="text-sm font-black uppercase text-slate-900 tracking-tighter">Awaiting Finalization</span>
                         </div>
                     </div>
                  </div>

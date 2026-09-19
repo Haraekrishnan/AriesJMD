@@ -15,47 +15,47 @@ interface Props {
 export default function CapaPhaseConclusion({ isLocked }: Props) {
     const { register } = useFormContext();
 
-    // High visibility style for entry fields - industrial "well" look
-    const wellClasses = "rounded-none border-2 border-slate-200 bg-slate-50 font-bold text-sm px-8 py-6 focus-visible:ring-0 focus-visible:border-blue-600 shadow-inner placeholder:text-slate-300 transition-all";
+    // High visibility style: Recessed with bg-slate-50
+    const wellClasses = "rounded-2xl border-2 border-slate-200 bg-slate-50 font-bold text-sm px-8 py-7 focus-visible:ring-blue-100 focus-visible:bg-white shadow-inner transition-all leading-relaxed";
 
     return (
-        <div className="space-y-16 text-left animate-in fade-in duration-700 p-10">
-            <div className="max-w-5xl mx-auto space-y-16">
+        <div className="space-y-20 text-left animate-in fade-in duration-700">
+            <div className="max-w-5xl mx-auto space-y-20 py-10">
                 
-                {/* --- SUMMARY CONCLUSION --- */}
+                {/* --- TECHNICAL PHASE SUMMARY --- */}
                 <div className="space-y-8">
-                    <div className="flex items-center justify-between border-b-4 border-slate-900 pb-4">
-                        <div className="flex items-center gap-4">
-                            <FileText className="h-7 w-7 text-blue-600" />
-                            <h4 className="text-[16px] font-black uppercase tracking-[0.3em] text-slate-900">TECHNICAL PHASE SUMMARY</h4>
+                    <div className="flex items-center justify-between border-b-4 border-slate-900 pb-5">
+                        <div className="flex items-center gap-5">
+                            <FileText className="h-8 w-8 text-blue-600" />
+                            <h4 className="text-[20px] font-black uppercase tracking-tight text-slate-900">TECHNICAL PHASE SUMMARY</h4>
                         </div>
-                        <Badge variant="outline" className="h-6 px-3 border-2 border-slate-900 font-black text-[9px] uppercase tracking-widest rounded-none">ARCHIVAL READY</Badge>
+                        <Badge variant="outline" className="h-7 px-5 border-2 border-slate-900 font-black text-[10px] uppercase tracking-widest rounded-lg bg-slate-900 text-white">ARCHIVAL READY</Badge>
                     </div>
                     
                     <div className="relative group">
                         <Textarea 
                             disabled={isLocked}
                             {...register('investigationConclusion')}
-                            placeholder="Summarize the entire investigation cycle, identified breakdowns, and resulting technical determinations..."
-                            className={cn("min-h-[240px] leading-relaxed shadow-lg", wellClasses)}
+                            placeholder="Summarize the complete investigation lifecycle, identified breakdowns, and resulting technical determinations for institutional archival..."
+                            className={cn("min-h-[300px] shadow-2xl", wellClasses)}
                         />
-                        <div className="absolute top-6 right-6 opacity-5 group-hover:opacity-10 transition-opacity">
-                            <Target className="h-20 w-20 text-slate-900" />
+                        <div className="absolute top-8 right-8 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <Target className="h-24 w-24 text-slate-900" />
                         </div>
                     </div>
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">Comprehensive declaration for executive safety auditing.</p>
+                    <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest ml-1">Comprehensive declaration for executive safety auditing and knowledge management.</p>
                 </div>
 
-                {/* --- RECOMMENDATIONS LEDGER --- */}
+                {/* --- SAFETY RECOMMENDATIONS LEDGER --- */}
                 <div className="space-y-8">
-                    <div className="flex items-center justify-between border-b-4 border-slate-900 pb-4">
-                        <div className="flex items-center gap-4">
-                            <ShieldCheck className="h-7 w-7 text-emerald-600" />
-                            <h4 className="text-[16px] font-black uppercase tracking-[0.3em] text-slate-900">SAFETY RECOMMENDATIONS LEDGER</h4>
+                    <div className="flex items-center justify-between border-b-4 border-slate-900 pb-5">
+                        <div className="flex items-center gap-5">
+                            <ShieldCheck className="h-8 w-8 text-emerald-600" />
+                            <h4 className="text-[20px] font-black uppercase tracking-tight text-slate-900">SAFETY RECOMMENDATIONS LEDGER</h4>
                         </div>
-                        <div className="flex items-center gap-2">
-                             <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                             <span className="text-[10px] font-black uppercase text-emerald-600 tracking-[0.2em]">Ready for Verification</span>
+                        <div className="flex items-center gap-3">
+                             <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_12px_rgba(16,185,129,0.6)]" />
+                             <span className="text-[11px] font-black uppercase text-emerald-600 tracking-[0.3em]">Ready for Verification</span>
                         </div>
                     </div>
 
@@ -63,20 +63,22 @@ export default function CapaPhaseConclusion({ isLocked }: Props) {
                         <Textarea 
                             disabled={isLocked}
                             {...register('safetyRecommendations')}
-                            placeholder="List mandatory actions, technical corrections, or systemic enhancements required to mitigate future recurrence..."
-                            className={cn("min-h-[240px] border-emerald-600/30 bg-emerald-50/10 leading-relaxed shadow-2xl ring-4 ring-emerald-500/5", wellClasses)}
+                            placeholder="List mandatory actions, technical corrections, or systemic enhancements required to mitigate future recurrence and achieve institutional safety goals..."
+                            className={cn("min-h-[300px] border-emerald-600/20 bg-emerald-50/20 shadow-2xl ring-8 ring-emerald-500/5", wellClasses)}
                         />
-                        <div className="absolute bottom-6 right-6 flex items-center gap-3 px-6 py-3 bg-emerald-600 text-white text-[12px] font-black uppercase tracking-[0.25em] shadow-2xl ring-4 ring-emerald-600/20 active:scale-95 transition-all cursor-pointer">
-                            <CheckCircle2 className="h-5 w-5" /> PHASE COMPLETE
+                        <div className="absolute bottom-8 right-8 flex items-center gap-4 px-8 py-4 bg-emerald-600 text-white text-[14px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-2xl shadow-emerald-500/30 active:scale-95 transition-all">
+                            <CheckCircle2 className="h-6 w-6 text-white" /> PHASE COMPLETE
                         </div>
                     </div>
 
-                    <div className="p-6 bg-amber-50 border-2 border-amber-200 rounded-none flex items-start gap-4">
-                        <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                        <div>
-                            <p className="text-[11px] font-black text-amber-700 uppercase tracking-widest mb-1">Lifecycle Governance Protocol</p>
-                            <p className="text-xs font-bold text-amber-900/80 leading-relaxed">
-                                Submission of this ledger will finalize the Investigation Milestone. Subsequent Resolution and Implementation phases will be derived directly from these recommendations.
+                    <div className="p-8 bg-amber-50 border-2 border-amber-100 rounded-3xl flex items-start gap-6 shadow-sm">
+                        <div className="p-3 bg-amber-500 rounded-xl shadow-lg shadow-amber-500/20">
+                            <AlertTriangle className="h-6 w-6 text-white" />
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-[11px] font-black text-amber-700 uppercase tracking-[0.3em] mb-1">Lifecycle Governance Protocol</p>
+                            <p className="text-sm font-bold text-amber-900/80 leading-relaxed max-w-4xl">
+                                Submission of this technical ledger will finalize the Investigation Milestone. Subsequent Resolution and Implementation strategies will be derived directly from these authorized recommendations.
                             </p>
                         </div>
                     </div>
