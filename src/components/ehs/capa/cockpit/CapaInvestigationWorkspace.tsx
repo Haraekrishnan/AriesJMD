@@ -20,7 +20,7 @@ import { format, parseISO, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 export default function CapaInvestigationWorkspace({ observation }: { observation: EhsObservation }) {
-    const { register } = useFormContext();
+    const { register, watch } = useFormContext();
 
     const stageStatus = observation.stages?.Investigation?.status || 'Pending';
     const isLocked = stageStatus === 'Completed' || stageStatus === 'In Progress';

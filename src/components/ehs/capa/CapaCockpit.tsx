@@ -1,27 +1,17 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
     ChevronLeft, 
     Clock, 
     MapPin,
     User,
     Calendar,
-    Target,
     MoreVertical,
     CheckCircle2,
     Undo2,
-    MessageSquare,
-    AlertTriangle,
-    History,
-    FileText,
     ShieldCheck,
     ThumbsUp,
-    Zap,
-    Activity,
-    ShieldAlert,
-    ExternalLink,
-    Check
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -66,6 +56,15 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
         defaultValues: sData?.data || {}
     });
 
+    // CRITICAL: Reset form when switching stages to ensure historical data loads
+    useEffect(() => {
+        if (sData?.data) {
+            methods.reset(sData.data);
+        } else {
+            methods.reset({});
+        }
+    }, [viewingStage, sData, methods]);
+
     const progress = useMemo(() => {
         const completedCount = STAGES.filter(s => observation.stages[s]?.status === 'Completed').length;
         return Math.round((completedCount / STAGES.length) * 100);
@@ -109,19 +108,18 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                         </div>
 
                         <div className="flex items-center gap-8">
-                            {/* MANAGEMENT VERIFICATION CARD - HEADER ANCHORED */}
+                            {/* MANAGEMENT VERIFICATION COMMANDS */}
                             {isCurrentStage && isSubmitted && isSupervisor && (
-                                <div className="bg-[#0F172A] p-2 rounded-xl flex items-center gap-2 animate-in fade-in zoom-in-95 shadow-xl ring-4 ring-white">
+                                <div className="flex items-center gap-3 animate-in fade-in zoom-in-95">
                                     <Button 
-                                        variant="ghost" 
-                                        className="h-9 text-rose-400 hover:bg-rose-400/10 font-black uppercase tracking-[0.1em] text-[9px] px-4 rounded-lg transition-all"
+                                        variant="outline"
+                                        className="h-10 text-rose-600 hover:bg-rose-50 font-black uppercase tracking-[0.1em] text-[9px] px-6 rounded-xl border-2 border-rose-100 transition-all"
                                         onClick={() => setReviewAction('Returned')}
                                     >
-                                        <Undo2 className="mr-2 h-3.5 w-3.5" /> INSTRUCT REWORK
+                                        <Undo2 className="mr-2 h-4 w-4" /> INSTRUCT REWORK
                                     </Button>
-                                    <div className="h-4 w-px bg-white/10" />
                                     <Button 
-                                        className="h-9 bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-[0.1em] text-[9px] px-6 rounded-lg shadow-lg"
+                                        className="h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-[0.1em] text-[9px] px-8 rounded-xl shadow-lg shadow-emerald-500/10"
                                         onClick={() => setReviewAction('Completed')}
                                     >
                                         <CheckCircle2 className="mr-2 h-4 w-4" /> VERIFY & CONTINUE

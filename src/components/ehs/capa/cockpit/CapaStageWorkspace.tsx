@@ -428,109 +428,65 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
 
     return (
         <div className="w-full text-left">
-            <section className="overflow-hidden rounded-[18px] border border-[#D9E2EC] bg-white shadow-[0_2px_12px_rgba(16,42,67,0.04)]">
-                
-                {/* 1. STAGE HEADER */}
-                <div className="border-b border-[#E5EBF2] bg-white px-7 py-6">
-                    <div className="flex items-center justify-between gap-6">
-                        <div className="flex items-center gap-4">
-                            <div className="flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[15px] border border-[#E5EBF2] bg-white text-[21px] font-extrabold text-[#071B33] shadow-sm">
-                                01
-                            </div>
-                            <div>
-                                <div className="mb-1.5 flex items-center gap-2">
-                                    <span className="rounded-full bg-[#E7F0FF] px-3 py-1 text-[8px] font-extrabold uppercase tracking-[0.12em] text-[#1769FF]">
-                                        GOVERNANCE MILESTONE
-                                    </span>
-                                </div>
-                                <h2 className="text-[25px] font-extrabold uppercase leading-none tracking-tight text-[#071B33]">
-                                    INITIATION
-                                </h2>
-                            </div>
+            <div className="p-10 space-y-10">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                    {/* LEFT COLUMN: LOGISTICS */}
+                    <div className="space-y-8">
+                        <SectionHeading icon={MapPin} title="DETAILS" />
+                        <div className="space-y-6">
+                            <EditableMeta label="Discovery Category" value={observation.category} isEditing={isEditing} type="select" options={['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']} onChange={val => setFormData(p => ({ ...p, category: val }))} icon={Search} />
+                            <EditableMeta label="Risk Severity" value={observation.severity} isEditing={isEditing} type="select" options={['Low', 'Medium', 'High', 'Critical']} onChange={val => setFormData(p => ({ ...p, severity: val }))} icon={ShieldCheck} />
+                            <EditableMeta label="Operational Site" value={project?.name || observation.projectId} isEditing={isEditing} type="select" options={projects.map(p => ({ id: p.id, name: p.name }))} onChange={val => setFormData(p => ({ ...p, projectId: val }))} icon={MapPin} />
+                            <EditableMeta label="Specific Location" value={observation.location} isEditing={isEditing} type="text" onChange={val => setFormData(p => ({ ...p, location: val }))} icon={MapPin} />
                         </div>
+                    </div>
 
-                        <div className="flex items-center gap-8">
-                            <div className="text-right">
-                                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#8A9AAF]">REPORTER</p>
-                                <div className="mt-1 flex items-center gap-2 justify-end">
-                                    <p className="text-[10px] font-extrabold uppercase text-[#102A43]">{reporter?.name || 'Unknown'}</p>
-                                    <Avatar className="h-6 w-6 border">
-                                        <AvatarImage src={reporter?.avatar} />
-                                        <AvatarFallback className="text-[8px]">{reporter?.name?.[0]}</AvatarFallback>
-                                    </Avatar>
+                    {/* RIGHT COLUMN: NARRATIVE */}
+                    <div className="space-y-8">
+                        <div className="flex justify-between items-center">
+                            <SectionHeading icon={FileText} title="SUMMARY" />
+                            {isAuthorized && !isEditing && (
+                                <Button variant="ghost" size="sm" className="h-7 px-3 text-[9px] font-black uppercase border border-slate-200" onClick={() => setIsEditing(true)}>
+                                    <Edit3 className="h-3 w-3 mr-1.5" /> OVERWRITE
+                                </Button>
+                            )}
+                        </div>
+                        <div className="space-y-6">
+                            {isEditing ? (
+                                <div className="space-y-2">
+                                    <Label className="text-[9px] font-extrabold uppercase tracking-widest text-[#304B68]">Finding Description</Label>
+                                    <Textarea className="min-h-[400px] rounded-[10px] border-[#DCE5EF] bg-white text-[10px]" value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} />
+                                    <div className="flex justify-end gap-2 pt-2">
+                                        <Button variant="outline" size="sm" className="h-8 text-[9px]" onClick={() => setIsEditing(false)}>CANCEL</Button>
+                                        <Button size="sm" className="h-8 text-[9px] bg-[#1769FF]" onClick={handleSave}>SAVE CHANGES</Button>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="h-9 w-px bg-[#E5EBF2]" />
-                            <div className="text-right">
-                                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#8A9AAF]">TIMESTAMP</p>
-                                <p className="mt-1 flex items-center justify-end gap-1.5 text-[10px] font-extrabold uppercase text-[#102A43]">
-                                    <Calendar className="h-3 w-3 text-slate-400" /> {format(parseISO(observation.createdAt), 'dd-MM-yyyy')}
-                                </p>
-                            </div>
+                            ) : (
+                                <div className="p-8 rounded-xl bg-slate-50 border border-[#DCE5EF] shadow-inner min-h-[400px]">
+                                    <p className="text-sm font-bold text-slate-700 leading-relaxed uppercase tracking-tight">
+                                        {sanitizedDescription}
+                                    </p>
+                                </div>
+                            )}
+
+                            {extractedEvidenceUrl && (
+                                <div className="space-y-2">
+                                    <Label className="text-[9px] font-extrabold uppercase tracking-widest text-[#304B68]">Discovery Evidence</Label>
+                                    <div 
+                                        className="h-32 w-48 rounded-lg border-2 border-slate-200 bg-white overflow-hidden relative group/img cursor-zoom-in"
+                                        onClick={() => onViewImage(extractedEvidenceUrl)}
+                                    >
+                                        <img src={extractedEvidenceUrl} alt="E" className="w-full h-full object-contain" />
+                                        <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 flex items-center justify-center transition-all">
+                                            <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover/img:opacity-100" />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
-
-                <div className="p-7 space-y-10">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                        {/* LEFT COLUMN: LOGISTICS */}
-                        <div className="space-y-8">
-                            <SectionHeading icon={MapPin} title="DETAILS" />
-                            <div className="space-y-6">
-                                <EditableMeta label="Discovery Category" value={observation.category} isEditing={isEditing} type="select" options={['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']} onChange={val => setFormData(p => ({ ...p, category: val }))} icon={Search} />
-                                <EditableMeta label="Risk Severity" value={observation.severity} isEditing={isEditing} type="select" options={['Low', 'Medium', 'High', 'Critical']} onChange={val => setFormData(p => ({ ...p, severity: val }))} icon={ShieldCheck} />
-                                <EditableMeta label="Operational Site" value={project?.name || observation.projectId} isEditing={isEditing} type="select" options={projects.map(p => ({ id: p.id, name: p.name }))} onChange={val => setFormData(p => ({ ...p, projectId: val }))} icon={MapPin} />
-                                <EditableMeta label="Specific Location" value={observation.location} isEditing={isEditing} type="text" onChange={val => setFormData(p => ({ ...p, location: val }))} icon={MapPin} />
-                            </div>
-                        </div>
-
-                        {/* RIGHT COLUMN: NARRATIVE */}
-                        <div className="space-y-8">
-                            <div className="flex justify-between items-center">
-                                <SectionHeading icon={FileText} title="SUMMARY" />
-                                {isAuthorized && !isEditing && (
-                                    <Button variant="ghost" size="sm" className="h-7 px-3 text-[9px] font-black uppercase border border-slate-200" onClick={() => setIsEditing(true)}>
-                                        <Edit3 className="h-3 w-3 mr-1.5" /> OVERWRITE
-                                    </Button>
-                                )}
-                            </div>
-                            <div className="space-y-6">
-                                {isEditing ? (
-                                    <div className="space-y-2">
-                                        <Label className="text-[9px] font-extrabold uppercase tracking-widest text-[#304B68]">Finding Description</Label>
-                                        <Textarea className="min-h-[400px] rounded-[10px] border-[#DCE5EF] bg-white text-[10px]" value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} />
-                                        <div className="flex justify-end gap-2 pt-2">
-                                            <Button variant="outline" size="sm" className="h-8 text-[9px]" onClick={() => setIsEditing(false)}>CANCEL</Button>
-                                            <Button size="sm" className="h-8 text-[9px] bg-[#1769FF]" onClick={handleSave}>SAVE CHANGES</Button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="p-8 rounded-xl bg-slate-50 border border-[#DCE5EF] shadow-inner min-h-[400px]">
-                                        <p className="text-sm font-bold text-slate-700 leading-relaxed uppercase tracking-tight">
-                                            {sanitizedDescription}
-                                        </p>
-                                    </div>
-                                )}
-
-                                {extractedEvidenceUrl && (
-                                    <div className="space-y-2">
-                                        <Label className="text-[9px] font-extrabold uppercase tracking-widest text-[#304B68]">Discovery Evidence</Label>
-                                        <div 
-                                            className="h-32 w-48 rounded-lg border-2 border-slate-200 bg-white overflow-hidden relative group/img cursor-zoom-in"
-                                            onClick={() => onViewImage(extractedEvidenceUrl)}
-                                        >
-                                            <img src={extractedEvidenceUrl} alt="E" className="w-full h-full object-contain" />
-                                            <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 flex items-center justify-center transition-all">
-                                                <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover/img:opacity-100" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
+            </div>
         </div>
     );
 }
