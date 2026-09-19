@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { Check } from 'lucide-react';
+import { Check, Circle } from 'lucide-react';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { Progress } from '@/components/ui/progress';
 
@@ -24,16 +24,16 @@ export default function CapaLifecycleStepper({ observation, viewingStage, onStag
     return (
         <div className="flex items-center w-full gap-16 text-left">
             {/* Progress Display */}
-            <div className="flex flex-col shrink-0 min-w-[200px]">
-                <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] leading-none mb-3">Overall Compliance</span>
-                <div className="flex items-center gap-6">
-                    <span className="text-3xl font-black text-[#2563EB] tracking-tighter leading-none">{stats.percentage}%</span>
-                    <Progress value={stats.percentage} className="h-2 flex-1 bg-slate-200 rounded-none border border-slate-300 shadow-inner" />
+            <div className="flex flex-col shrink-0 min-w-[180px]">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] leading-none mb-3">Overall Progress</span>
+                <div className="flex items-center gap-5">
+                    <span className="text-3xl font-black text-blue-600 tracking-tighter leading-none">{stats.percentage}%</span>
+                    <Progress value={stats.percentage} className="h-1.5 flex-1 bg-slate-100 rounded-full" />
                 </div>
             </div>
 
-            {/* Stepper Chain */}
-            <div className="flex items-center flex-1 justify-between max-w-6xl">
+            {/* Stepper Path */}
+            <div className="flex items-center flex-1 justify-between max-w-5xl">
                 {STAGES.map((stage, i) => {
                     const sData = observation.stages[stage];
                     const isViewing = viewingStage === stage;
@@ -45,34 +45,41 @@ export default function CapaLifecycleStepper({ observation, viewingStage, onStag
                         <React.Fragment key={stage}>
                             <div 
                                 className={cn(
-                                    "flex items-center gap-4 cursor-pointer transition-all px-3 py-2 rounded-none border-2",
-                                    isViewing ? "bg-blue-50 border-blue-200 shadow-sm" : "border-transparent hover:bg-slate-100",
-                                    isFuture && "opacity-40 grayscale pointer-events-none"
+                                    "flex flex-col items-center gap-2 cursor-pointer transition-all px-2",
+                                    isViewing ? "scale-110" : "hover:opacity-80",
+                                    isFuture && "opacity-30 grayscale pointer-events-none"
                                 )}
                                 onClick={() => onStageSelect(stage)}
                             >
                                 <div className={cn(
-                                    "h-10 w-10 rounded-none border-4 flex items-center justify-center transition-all text-[12px] font-black shadow-sm",
-                                    isCompleted ? "bg-emerald-500 border-emerald-600 text-white" :
-                                    isViewing ? "bg-[#2563EB] border-blue-700 text-white" :
+                                    "h-10 w-10 rounded-full border-2 flex items-center justify-center transition-all text-[11px] font-black shadow-sm relative",
+                                    isCompleted ? "bg-emerald-500 border-emerald-500 text-white" :
+                                    isViewing ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/30" :
                                     "bg-white border-slate-200 text-slate-400"
                                 )}>
-                                    {isCompleted ? <Check className="h-5 w-5 stroke-[4]" /> : <span>0{i + 1}</span>}
+                                    {isCompleted ? <Check className="h-5 w-5 stroke-[4]" /> : <span>{i + 1}</span>}
+                                    {isCurrent && !isCompleted && (
+                                        <div className="absolute inset-0 rounded-full border-2 border-blue-600 animate-ping opacity-20" />
+                                    )}
                                 </div>
-                                <div className="flex flex-col leading-none">
+                                <div className="text-center">
                                     <p className={cn(
-                                        "text-[11px] font-black uppercase tracking-[0.15em]",
-                                        isViewing ? "text-[#2563EB]" : "text-slate-500"
+                                        "text-[9px] font-black uppercase tracking-widest whitespace-nowrap",
+                                        isViewing ? "text-blue-600" : "text-slate-400"
                                     )}>
                                         {stage}
-                                    </p>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-1.5 tracking-widest">
-                                        {isCompleted ? 'VERIFIED' : isViewing ? 'IN PROGRESS' : 'PENDING'}
                                     </p>
                                 </div>
                             </div>
                             {i < STAGES.length - 1 && (
-                                <div className="h-1 bg-slate-200 flex-1 mx-4 min-w-[20px] shadow-inner" />
+                                <div className="h-0.5 bg-slate-100 flex-1 mx-2 min-w-[20px] relative">
+                                    <div 
+                                        className={cn(
+                                            "absolute inset-0 bg-emerald-500 transition-all duration-1000",
+                                            isCompleted ? "w-full" : "w-0"
+                                        )} 
+                                    />
+                                </div>
                             )}
                         </React.Fragment>
                     );

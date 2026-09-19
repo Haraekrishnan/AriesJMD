@@ -30,9 +30,9 @@ import {
 import type { EhsObservation, CapaStage, User as UserType } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
 import { useEhs } from '@/contexts/ehs-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { cn } from '@/lib/utils';
 import { format, parseISO, isValid } from 'date-fns';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Document, Page, pdfjs } from 'react-pdf';
@@ -44,12 +44,12 @@ if (typeof window !== 'undefined') {
 }
 
 // Phase-Specific Components
+import CapaInvestigationWorkspace from './CapaInvestigationWorkspace';
 import CapaResolution from '../stages/CapaResolution';
 import CapaImplementation from '../stages/CapaImplementation';
 import CapaEffectivenessReview from '../stages/CapaEffectivenessReview';
 import CapaReference from '../stages/CapaReference';
 import CapaClosure from '../stages/CapaClosure';
-import CapaInvestigationWorkspace from './CapaInvestigationWorkspace';
 
 interface CapaStageWorkspaceProps {
     observation: EhsObservation;
@@ -58,7 +58,7 @@ interface CapaStageWorkspaceProps {
 
 export default function CapaStageWorkspace({ observation, stage }: CapaStageWorkspaceProps) {
     const { user, users } = useAuth();
-    const { reviewStage, deleteStageAttachment, updateInitiationDetails } = useEhs();
+    const { reviewStage, deleteStageAttachment } = useEhs();
     const sData = observation.stages[stage];
     
     // Viewer State
@@ -80,7 +80,6 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
     const isSupervisor = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor';
     const currentOwner = users.find(u => u.id === sData?.assigneeId);
     
-    // Deletion Logic: Available only to assignor until phase is finalized
     const isAssignor = user?.id === sData?.assignedById;
     const canDeleteDocument = (isAssignor || user?.role === 'Admin') && !isLocked;
 
@@ -110,18 +109,20 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
         setIsPanning(false);
     };
 
-    const isPdf = viewingAttachmentUrl && viewingAttachmentUrl.toLowerCase().endsWith('.pdf');
+    const isPdf = useMemo(() => {
+        return viewingAttachmentUrl?.toLowerCase().endsWith('.pdf');
+    }, [viewingAttachmentUrl]);
 
     const renderStageContent = () => {
         switch (stage) {
             case 'Investigation':
                 return <CapaInvestigationWorkspace observation={observation} />;
-            case 'Resolution': return <div className="p-12"><CapaResolution observation={observation} isLocked={isLocked} /></div>;
-            case 'Implementation': return <div className="p-12"><CapaImplementation observation={observation} isLocked={isLocked} /></div>;
-            case 'Effectiveness Review': return <div className="p-12"><CapaEffectivenessReview observation={observation} isLocked={isLocked} /></div>;
-            case 'Reference': return <div className="p-12"><CapaReference observation={observation} isLocked={isLocked} /></div>;
-            case 'Closure': return <div className="p-12"><CapaClosure observation={observation} isLocked={isLocked} /></div>;
-            default: return <div className="p-24 text-center opacity-30 font-black uppercase text-xs tracking-[0.3em]">Technical Workspace Offline</div>;
+            case 'Resolution': return <CapaResolution observation={observation} isLocked={isLocked} />;
+            case 'Implementation': return <CapaImplementation observation={observation} isLocked={isLocked} />;
+            case 'Effectiveness Review': return <CapaEffectivenessReview observation={observation} isLocked={isLocked} />;
+            case 'Reference': return <CapaReference observation={observation} isLocked={isLocked} />;
+            case 'Closure': return <CapaClosure observation={observation} isLocked={isLocked} />;
+            default: return <div className="py-20 text-center opacity-30 font-black uppercase text-xs tracking-[0.3em]">Technical Workspace Offline</div>;
         }
     };
 
@@ -134,27 +135,27 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
 
     return (
         <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700 text-left">
-            {/* --- PHASE HEADER & ALERTS --- */}
-            <div className="space-y-8">
+            {/* --- PHASE IDENTIFIER --- */}
+            <div className="space-y-6">
                 <div className="flex justify-between items-end">
-                    <div className="flex items-center gap-10">
-                        <div className="h-16 w-16 rounded-none border-4 border-slate-900 bg-blue-600 flex items-center justify-center text-white text-3xl font-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+                    <div className="flex items-center gap-8">
+                        <div className="h-16 w-16 rounded-3xl bg-blue-600 flex items-center justify-center text-white text-3xl font-black shadow-xl shadow-blue-500/20">
                             0{['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'].indexOf(stage) + 1}
                         </div>
                         <div>
-                            <div className="flex items-center gap-4 mb-2">
+                            <div className="flex items-center gap-3 mb-2">
                                 <Badge className={cn(
-                                    "h-6 font-black uppercase text-[10px] tracking-[0.25em] border-none shadow-sm rounded-none px-4",
-                                    isCompleted ? "bg-emerald-600" : isReturned ? "bg-rose-600" : isSubmitted ? "bg-amber-500" : "bg-blue-600"
+                                    "h-5 font-black uppercase text-[8px] tracking-[0.2em] border-none shadow-sm rounded-lg px-3",
+                                    isCompleted ? "bg-emerald-500" : isReturned ? "bg-rose-500" : isSubmitted ? "bg-amber-500" : "bg-blue-600"
                                 )}>
                                     {isReturned ? 'REWORK REQUIRED' : isSubmitted ? 'AWAITING OFFICIAL REVIEW' : isCompleted ? 'VERIFIED MILESTONE' : 'TECHNICAL ACTION REQUIRED'}
                                 </Badge>
                             </div>
-                            <h3 className="text-5xl font-black text-slate-900 uppercase tracking-tighter leading-none">{stage}</h3>
+                            <h3 className="text-4xl font-black text-slate-900 uppercase tracking-tight">{stage}</h3>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-12">
+                    <div className="flex items-center gap-10">
                         <div className="text-right space-y-1.5">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">PHASE OWNER</p>
                             <div className="flex items-center gap-4">
@@ -162,32 +163,25 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                     <p className="text-sm font-black text-slate-900 uppercase tracking-tight">{currentOwner?.name || 'UNASSIGNED'}</p>
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Operational Lead</p>
                                 </div>
-                                <Avatar className="h-12 w-12 border-2 border-slate-900 rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                                <Avatar className="h-12 w-12 border-2 border-slate-100 shadow-md ring-1 ring-slate-100">
                                     <AvatarImage src={currentOwner?.avatar} />
                                     <AvatarFallback className="text-[12px] font-black bg-blue-50 text-blue-600">{currentOwner?.name?.[0]}</AvatarFallback>
                                 </Avatar>
                             </div>
                         </div>
-                        <div className="h-16 w-1.5 bg-slate-900" />
-                        <div className="text-right space-y-1.5">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">TARGET DELIVERY</p>
-                            <p className="text-lg font-black text-slate-900 flex items-center justify-end gap-3 tracking-tighter">
-                                <Clock className="h-5 w-5 text-blue-600" /> {sData?.targetDate ? format(parseISO(sData.targetDate), 'dd MMM yyyy') : 'TBD'}
-                            </p>
-                        </div>
                     </div>
                 </div>
 
                 {isReturned && (
-                    <div className="p-10 rounded-none border-4 border-rose-600 bg-rose-50 flex items-start gap-8 shadow-[10px_10px_0px_0px_rgba(225,29,72,0.1)]">
-                        <div className="p-5 bg-rose-600 rounded-none shadow-xl">
-                            <AlertTriangle className="h-8 w-8 text-white" />
+                    <div className="p-8 rounded-[2rem] bg-rose-50 border-2 border-rose-100 flex items-start gap-6 shadow-sm">
+                        <div className="p-4 bg-rose-500 rounded-2xl shadow-xl shadow-rose-500/20">
+                            <AlertTriangle className="h-6 w-6 text-white" />
                         </div>
-                        <div className="flex-1 space-y-5">
+                        <div className="flex-1 space-y-4">
                             <div>
-                                <p className="text-[12px] font-black text-rose-600 uppercase tracking-[0.4em] mb-2">OFFICIAL REVIEW CORRECTION INSTRUCTED</p>
-                                <p className="text-xl font-bold text-rose-900 leading-relaxed italic">
-                                    "{sData?.comments ? Object.values(sData.comments).reverse()[0]?.text : 'Technical details require clarification and resubmission.'}"
+                                <p className="text-[10px] font-black text-rose-500 uppercase tracking-[0.3em] mb-1">Official Review Correction instructed</p>
+                                <p className="text-lg font-bold text-rose-900 leading-relaxed italic">
+                                    "{sData?.comments ? Object.values(sData.comments).reverse()[0]?.text : 'Technical details require clarification.'}"
                                 </p>
                             </div>
                         </div>
@@ -196,7 +190,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
             </div>
 
             {/* --- PHASE WORKSPACE --- */}
-            <Card className="bg-white border-4 border-slate-900 rounded-none shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+            <Card className="bg-white border-none rounded-[3rem] shadow-xl overflow-hidden">
                 {renderStageContent()}
             </Card>
 
@@ -204,19 +198,19 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
             <div className="space-y-6">
                 <div className="flex items-center gap-4 pl-1">
                     <Paperclip className="h-5 w-5 text-blue-600" />
-                    <h4 className="text-[14px] font-black uppercase tracking-[0.4em] text-slate-900">PHASE DOCUMENT LEDGER</h4>
+                    <h4 className="text-[12px] font-black uppercase tracking-[0.4em] text-slate-500">PHASE DOCUMENT LEDGER</h4>
                 </div>
                 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {attachmentsArray.map(a => (
-                        <Card key={a.id} className="bg-white border-2 border-slate-900 rounded-none p-5 flex items-center justify-between shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:bg-slate-50 transition-colors">
+                        <Card key={a.id} className="bg-white border-none rounded-3xl p-5 flex items-center justify-between shadow-sm border border-slate-50 hover:shadow-md transition-all">
                             <div className="flex items-center gap-5">
-                                <div className="h-14 w-14 rounded-none bg-slate-50 border-2 border-slate-200 flex items-center justify-center">
-                                    <FileText className="h-7 w-7 text-slate-400" />
+                                <div className="h-12 w-12 rounded-2xl bg-slate-50 border flex items-center justify-center">
+                                    <FileText className="h-6 w-6 text-slate-400" />
                                 </div>
                                 <div>
-                                    <p className="text-[14px] font-black text-slate-900 uppercase tracking-tight truncate max-w-[200px]">{a.name}</p>
-                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                    <p className="text-sm font-black text-slate-900 uppercase tracking-tight truncate max-w-[200px]">{a.name}</p>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
                                         {format(parseISO(a.uploadedAt), 'dd MMM yyyy, p')}
                                     </p>
                                 </div>
@@ -225,33 +219,29 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                 <Button 
                                     variant="ghost" 
                                     size="icon" 
-                                    className="h-12 w-12 text-blue-600 hover:bg-blue-100/50 border-2 border-transparent hover:border-blue-600 rounded-none"
+                                    className="h-10 w-10 text-blue-600 hover:bg-blue-50 rounded-xl"
                                     onClick={() => setViewingAttachmentUrl(a.url)}
                                 >
-                                    <Download className="h-6 w-6" />
+                                    <Download className="h-5 w-5" />
                                 </Button>
                                 {canDeleteDocument && (
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="h-12 w-12 text-rose-600 hover:bg-rose-100/50 border-2 border-transparent hover:border-blue-600 rounded-none"
-                                            >
-                                                <Trash2 className="h-6 w-6" />
+                                            <Button variant="ghost" size="icon" className="h-10 w-10 text-rose-600 hover:bg-rose-50 rounded-xl">
+                                                <Trash2 className="h-5 w-5" />
                                             </Button>
                                         </AlertDialogTrigger>
-                                        <AlertDialogContent className="rounded-none border-4 border-slate-900">
+                                        <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
                                             <AlertDialogHeader>
-                                                <AlertDialogTitle className="font-black uppercase tracking-tight text-slate-900">DELETE DOCUMENT RECORD?</AlertDialogTitle>
+                                                <AlertDialogTitle className="font-black uppercase tracking-tight text-slate-900 text-xl">DELETE DOCUMENT RECORD?</AlertDialogTitle>
                                                 <AlertDialogDescription className="font-bold text-slate-500">
-                                                    This will permanently purge this document from the phase ledger. This action is irreversible and will be logged.
+                                                    This will permanently purge this document from the phase ledger. This action is irreversible.
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
-                                                <AlertDialogCancel className="rounded-none font-black uppercase text-[10px] h-12 px-8 border-2 border-slate-200">Cancel</AlertDialogCancel>
+                                                <AlertDialogCancel className="rounded-xl font-bold h-11 px-8">Cancel</AlertDialogCancel>
                                                 <AlertDialogAction 
-                                                    className="bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-widest text-[10px] h-12 px-10 rounded-none shadow-lg"
+                                                    className="bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-widest text-[10px] h-11 px-10 rounded-xl shadow-lg"
                                                     onClick={() => deleteStageAttachment(observation.id, stage, a.id)}
                                                 >
                                                     CONFIRM PURGE
@@ -265,12 +255,12 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                     ))}
                     
                     {!isLocked && (
-                        <div className="h-full border-4 border-dashed border-slate-200 rounded-none bg-white p-10 flex flex-col items-center justify-center gap-5 cursor-pointer hover:bg-slate-50 hover:border-blue-600 transition-all group min-h-[140px]">
-                            <div className="h-12 w-12 bg-blue-50 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
-                                <UploadCloud className="h-7 w-7 text-blue-600" />
+                        <div className="h-full border-2 border-dashed border-slate-200 rounded-[2rem] bg-white p-10 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-slate-50 hover:border-blue-300 transition-all group min-h-[140px]">
+                            <div className="h-10 w-10 bg-blue-50 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <UploadCloud className="h-6 w-6 text-blue-600" />
                             </div>
                             <div className="text-center">
-                                <p className="text-[12px] font-black text-slate-900 uppercase tracking-[0.2em]">TRANSMIT TECHNICAL DOCUMENT</p>
+                                <p className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em]">TRANSMIT TECHNICAL DOCUMENT</p>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">DROP FILE OR CLICK TO BROWSE</p>
                             </div>
                         </div>
@@ -278,9 +268,46 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                 </div>
             </div>
 
-            {/* --- ATTACHMENT VIEWER --- */}
+            {/* --- OFFICIAL REVIEW PANEL --- */}
+            {isCurrentStage && isSubmitted && isSupervisor && (
+                <div className="p-10 rounded-[3rem] bg-slate-900 text-white shadow-2xl space-y-8 animate-in slide-in-from-bottom-10 duration-1000 border border-white/5">
+                    <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-2xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                            <ShieldCheck className="h-7 w-7 text-white" />
+                        </div>
+                        <div>
+                            <h4 className="text-xl font-black uppercase tracking-tight">Official Verification Workspace</h4>
+                            <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Lifecycle Governance & Compliance Validation</p>
+                        </div>
+                    </div>
+                    
+                    <div className="p-6 rounded-[1.5rem] bg-white/5 border border-white/10 space-y-2">
+                         <p className="text-sm font-medium text-slate-300 leading-relaxed italic">
+                            Technical data and evidence have been uploaded by the assignee. Validate the findings to proceed to the next lifecycle stage.
+                         </p>
+                    </div>
+
+                    <div className="flex gap-4">
+                         <Button 
+                            className="flex-1 h-16 bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-2xl shadow-emerald-500/20 active:scale-95 transition-all"
+                            onClick={() => reviewStage(observation.id, stage, 'Completed', 'Documentation verified and approved.')}
+                         >
+                            <ThumbsUp className="mr-3 h-5 w-5" /> Verify & Continue Lifecycle
+                         </Button>
+                         <Button 
+                            variant="outline" 
+                            className="flex-1 h-16 border-rose-500/30 text-rose-400 hover:bg-rose-600 hover:text-white hover:border-rose-600 font-black uppercase tracking-[0.2em] text-xs rounded-2xl transition-all active:scale-95"
+                            onClick={() => reviewStage(observation.id, stage, 'Returned', 'Technical data requires clarification.')}
+                         >
+                            <Undo2 className="mr-3 h-5 w-5" /> Instruct Rework
+                         </Button>
+                    </div>
+                </div>
+            )}
+
+            {/* --- VIEWER --- */}
             <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); setNumPages(null); setPageNumber(1); }}>
-                <DialogContent className="max-w-[95vw] md:max-w-7xl w-full h-auto max-h-[90vh] flex flex-col p-0 overflow-hidden bg-black border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)] rounded-none">
+                <DialogContent className="max-w-[95vw] md:max-w-7xl w-full h-auto max-h-[90vh] flex flex-col p-0 overflow-hidden bg-black border border-white/10 shadow-2xl rounded-3xl">
                     <div className="sr-only">
                         <DialogTitle>Phase Document Viewer</DialogTitle>
                         <DialogDescription>Full-resolution view for technical verification.</DialogDescription>
@@ -292,28 +319,28 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                 <Button 
                                     variant="ghost" 
                                     size="icon" 
-                                    className="h-12 w-12 text-white bg-blue-600 hover:bg-blue-700 shadow-xl rounded-none border-2 border-blue-400/30" 
+                                    className="h-10 w-10 text-white bg-blue-600 hover:bg-blue-700 shadow-xl rounded-xl border border-blue-400/30" 
                                     onClick={() => setZoom(z => z + 0.2)}
                                 >
-                                    <ZoomIn className="h-6 w-6" />
+                                    <ZoomIn className="h-5 w-5" />
                                 </Button>
                                 <Button 
                                     variant="ghost" 
                                     size="icon" 
-                                    className="h-12 w-12 text-white bg-slate-700 hover:bg-slate-800 shadow-xl rounded-none border-2 border-slate-500/30" 
+                                    className="h-10 w-10 text-white bg-slate-700 hover:bg-slate-800 shadow-xl rounded-xl border border-slate-500/30" 
                                     onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}
                                 >
-                                    <ZoomOut className="h-6 w-6" />
+                                    <ZoomOut className="h-5 w-5" />
                                 </Button>
                             </div>
                         )}
                         <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-12 w-12 bg-rose-600 text-white hover:bg-rose-700 shadow-xl rounded-none border-2 border-rose-400/30 transition-colors" 
+                            className="h-10 w-10 bg-rose-600 text-white hover:bg-rose-700 shadow-xl rounded-xl border border-rose-400/30 transition-colors" 
                             onClick={() => setViewingAttachmentUrl(null)}
                         >
-                            <X className="h-6 w-6" />
+                            <X className="h-5 w-5" />
                         </Button>
                     </div>
 
@@ -345,8 +372,8 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                     className={cn("transition-transform duration-200 shadow-2xl", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
                                     style={{ 
                                         transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`, 
-                                        maxWidth: '100%', 
-                                        maxHeight: '100%',
+                                        maxWidth: '90%', 
+                                        maxHeight: '90%',
                                         objectFit: 'contain'
                                     }}
                                 />
