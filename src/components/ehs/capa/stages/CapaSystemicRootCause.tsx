@@ -11,7 +11,7 @@ import {
     SelectTrigger, 
     SelectValue 
 } from '@/components/ui/select';
-import { GitBranch, Layers, ShieldAlert, Target } from 'lucide-react';
+import { GitBranch, Layers, ShieldAlert, Target, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 

@@ -27,10 +27,10 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/auth-provider';
 import { useEhs } from '@/contexts/ehs-provider';
+import { format, parseISO } from 'date-fns';
 
 export default function CapaInvestigationWorkspace({ observation }: { observation: EhsObservation }) {
     const { user } = useAuth();
-    const { deleteStageAttachment } = useEhs();
     const { register, setValue, watch } = useFormContext();
     const { toast } = useToast();
     const [isUploading, setIsUploading] = useState(false);
