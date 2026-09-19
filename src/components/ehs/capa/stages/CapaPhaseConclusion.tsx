@@ -15,8 +15,7 @@ interface Props {
 export default function CapaPhaseConclusion({ isLocked }: Props) {
     const { register } = useFormContext();
 
-    // High visibility style: Recessed with bg-slate-50
-    const wellClasses = "rounded-2xl border-2 border-slate-200 bg-slate-50 font-bold text-sm px-8 py-7 focus-visible:ring-blue-100 focus-visible:bg-white shadow-inner transition-all leading-relaxed";
+    const wellClasses = "rounded-3xl border-2 border-slate-200 bg-slate-50 font-bold text-sm px-8 py-7 focus-visible:ring-blue-100 focus-visible:bg-white shadow-inner transition-all leading-relaxed";
 
     return (
         <div className="space-y-20 text-left animate-in fade-in duration-700">
@@ -29,7 +28,7 @@ export default function CapaPhaseConclusion({ isLocked }: Props) {
                             <FileText className="h-8 w-8 text-blue-600" />
                             <h4 className="text-[20px] font-black uppercase tracking-tight text-slate-900">TECHNICAL PHASE SUMMARY</h4>
                         </div>
-                        <Badge variant="outline" className="h-7 px-5 border-2 border-slate-900 font-black text-[10px] uppercase tracking-widest rounded-lg bg-slate-900 text-white">ARCHIVAL READY</Badge>
+                        <Badge variant="outline" className="h-7 px-5 border-none font-black text-[10px] uppercase tracking-widest rounded-full bg-slate-900 text-white">ARCHIVAL READY</Badge>
                     </div>
                     
                     <div className="relative group">
@@ -37,7 +36,7 @@ export default function CapaPhaseConclusion({ isLocked }: Props) {
                             disabled={isLocked}
                             {...register('investigationConclusion')}
                             placeholder="Summarize the complete investigation lifecycle, identified breakdowns, and resulting technical determinations for institutional archival..."
-                            className={cn("min-h-[300px] shadow-2xl", wellClasses)}
+                            className={cn("min-h-[300px] shadow-sm", wellClasses)}
                         />
                         <div className="absolute top-8 right-8 opacity-5 group-hover:opacity-10 transition-opacity">
                             <Target className="h-24 w-24 text-slate-900" />
@@ -64,15 +63,15 @@ export default function CapaPhaseConclusion({ isLocked }: Props) {
                             disabled={isLocked}
                             {...register('safetyRecommendations')}
                             placeholder="List mandatory actions, technical corrections, or systemic enhancements required to mitigate future recurrence and achieve institutional safety goals..."
-                            className={cn("min-h-[300px] border-emerald-600/20 bg-emerald-50/20 shadow-2xl ring-8 ring-emerald-500/5", wellClasses)}
+                            className={cn("min-h-[300px] border-emerald-600/10 bg-emerald-50/50 shadow-sm", wellClasses)}
                         />
                         <div className="absolute bottom-8 right-8 flex items-center gap-4 px-8 py-4 bg-emerald-600 text-white text-[14px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-2xl shadow-emerald-500/30 active:scale-95 transition-all">
                             <CheckCircle2 className="h-6 w-6 text-white" /> PHASE COMPLETE
                         </div>
                     </div>
 
-                    <div className="p-8 bg-amber-50 border-2 border-amber-100 rounded-3xl flex items-start gap-6 shadow-sm">
-                        <div className="p-3 bg-amber-500 rounded-xl shadow-lg shadow-amber-500/20">
+                    <div className="p-8 bg-amber-50 border border-amber-100 rounded-[2.5rem] flex items-start gap-6 shadow-sm">
+                        <div className="p-3 bg-amber-500 rounded-2xl shadow-lg shadow-amber-500/20">
                             <AlertTriangle className="h-6 w-6 text-white" />
                         </div>
                         <div className="space-y-1">

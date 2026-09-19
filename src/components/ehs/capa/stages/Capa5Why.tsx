@@ -15,13 +15,13 @@ interface Props {
 export default function Capa5Why({ isLocked }: Props) {
     const { register } = useFormContext();
 
-    // High visibility style: Recessed with bg-slate-50
+    // Modern high-visibility well style
     const wellClasses = "min-h-[100px] rounded-2xl border-2 border-slate-200 bg-slate-50 font-bold text-sm px-6 py-5 focus-visible:ring-blue-100 focus-visible:bg-white shadow-inner placeholder:text-slate-300 transition-all leading-relaxed";
 
     return (
         <div className="space-y-16 text-left animate-in fade-in duration-700">
             {/* --- INSTRUCTIONAL CAPTURE --- */}
-            <div className="p-8 rounded-3xl bg-[#EFF6FF] border border-[#DBEAFE] flex items-start gap-6 shadow-sm">
+            <div className="p-8 rounded-[2rem] bg-[#EFF6FF] border border-[#DBEAFE] flex items-start gap-6 shadow-sm">
                 <div className="bg-blue-600 h-11 w-11 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20">
                     <Search className="h-5 w-5 text-white" />
                 </div>
@@ -40,7 +40,7 @@ export default function Capa5Why({ isLocked }: Props) {
                     <div key={i} className="flex gap-10 group animate-in slide-in-from-left duration-500" style={{ animationDelay: `${i * 100}ms` }}>
                         <div className="flex flex-col items-center shrink-0 pt-3">
                             <div className={cn(
-                                "h-14 w-14 rounded-2xl border-2 flex items-center justify-center font-black text-xl shadow-xl transition-all group-hover:scale-105",
+                                "h-14 w-14 rounded-2xl border-2 flex items-center justify-center font-black text-xl shadow-lg transition-all group-hover:scale-105",
                                 i === 5 ? "bg-slate-900 border-slate-900 text-white" : "bg-white border-slate-200 text-slate-800"
                             )}>
                                 W{i}
@@ -51,11 +51,11 @@ export default function Capa5Why({ isLocked }: Props) {
                         </div>
                         <div className="flex-1 space-y-3 pb-12">
                             <div className="flex justify-between items-center px-1">
-                                <Label className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">
+                                <Label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">
                                     {i === 1 ? 'Primary Discovery Reasoning' : `Systemic link to finding W${i-1}`}
                                 </Label>
                                 {i === 5 && (
-                                    <Badge className="bg-amber-500 text-white font-black text-[9px] tracking-widest px-3 h-5 rounded-full border-none shadow-sm">SYSTEMIC LAYER</Badge>
+                                    <Badge className="bg-amber-500 text-white border-none font-black text-[9px] tracking-widest px-3 h-5 rounded-full shadow-sm">SYSTEMIC LAYER</Badge>
                                 )}
                             </div>
                             <Textarea 
@@ -80,9 +80,9 @@ export default function Capa5Why({ isLocked }: Props) {
                         disabled={isLocked}
                         {...register('rootCauseCandidate')}
                         placeholder="State the final systemic root cause identified at Level W5 for executive validation..."
-                        className="min-h-[200px] rounded-3xl border-4 border-slate-900 bg-white p-10 font-black text-lg uppercase tracking-tight text-blue-700 placeholder:text-slate-100 focus-visible:ring-0 shadow-2xl transition-all"
+                        className="min-h-[200px] rounded-[2rem] border-2 border-slate-200 bg-slate-50 p-10 font-black text-lg uppercase tracking-tight text-blue-700 placeholder:text-slate-100 focus-visible:bg-white transition-all shadow-inner"
                     />
-                    <div className="absolute top-8 right-8 flex items-center gap-3 px-5 py-2.5 bg-emerald-600 text-white text-[11px] font-black uppercase tracking-widest rounded-xl shadow-xl">
+                    <div className="absolute top-8 right-8 flex items-center gap-3 px-5 py-2.5 bg-emerald-600 text-white text-[11px] font-black uppercase tracking-widest rounded-2xl shadow-xl">
                         <ShieldCheck className="h-4 w-4 text-white" /> ANALYSIS VALIDATED
                     </div>
                 </div>

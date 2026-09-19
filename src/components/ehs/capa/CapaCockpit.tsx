@@ -63,7 +63,7 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                                 variant="outline" 
                                 size="sm" 
                                 onClick={onClose} 
-                                className="h-9 px-4 rounded-lg text-slate-500 hover:bg-slate-50 font-bold uppercase text-[10px] tracking-widest border-2 transition-all"
+                                className="h-9 px-4 rounded-xl text-slate-500 hover:bg-slate-50 font-bold uppercase text-[10px] tracking-widest border-2 transition-all"
                             >
                                 <ChevronLeft className="mr-2 h-4 w-4" /> Back
                             </Button>
@@ -71,17 +71,17 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                                 <h1 className="text-2xl font-black text-slate-900 tracking-tighter uppercase leading-none">
                                     {observation.id.slice(-12).toUpperCase()}
                                 </h1>
-                                <Badge className="bg-orange-100 text-orange-700 border-orange-200 font-black uppercase text-[10px] px-3 h-7 rounded-md tracking-widest">
+                                <Badge className="bg-orange-100 text-orange-700 border-none font-black uppercase text-[10px] px-3 h-7 rounded-full tracking-widest">
                                     {observation.severity.toUpperCase()} RISK
                                 </Badge>
-                                <Badge className="bg-blue-600 text-white border-none font-black uppercase text-[10px] px-4 h-7 rounded-md tracking-widest shadow-sm">
+                                <Badge className="bg-blue-600 text-white border-none font-black uppercase text-[10px] px-4 h-7 rounded-full tracking-widest shadow-sm">
                                     {observation.status.toUpperCase()}
                                 </Badge>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-3 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100">
+                            <div className="flex items-center gap-3 bg-emerald-50 px-4 py-2 rounded-2xl border border-emerald-100">
                                 <ShieldCheck className="h-5 w-5 text-emerald-600" />
                                 <div className="text-left">
                                     <p className="text-[10px] font-black text-emerald-900 uppercase tracking-widest leading-none">TECHNICAL GOVERNANCE</p>
@@ -103,23 +103,23 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                     <div className="px-8 py-3.5 flex items-center gap-12 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] bg-slate-50/50">
                         <div className="flex items-center gap-2.5">
                             <MapPin className="h-4 w-4 text-slate-300" />
-                            <span className="text-slate-600">{project?.name || 'KITCHEN DUTY'}</span>
+                            <span className="text-slate-600">{project?.name || 'OPERATIONAL SITE TBD'}</span>
                         </div>
                         <div className="flex items-center gap-2.5">
                             <User className="h-4 w-4 text-slate-300" />
-                            <span>Reporter: <span className="text-slate-600">{reporter?.name || 'HARIKRISHNAN P S'}</span></span>
+                            <span>Reporter: <span className="text-slate-600">{reporter?.name || 'OFFICIAL RECORD'}</span></span>
                         </div>
                         <div className="flex items-center gap-2.5">
                             <Calendar className="h-4 w-4 text-slate-300" />
-                            <span>{format(parseISO(observation.createdAt), 'dd MMM yyyy')}</span>
+                            <span>Initiated: <span className="text-slate-600">{format(parseISO(observation.createdAt), 'dd MMM yyyy')}</span></span>
                         </div>
                         <div className="flex items-center gap-2.5 text-rose-500 bg-rose-50 px-3 py-1 rounded-full border border-rose-100">
                             <Clock className="h-4 w-4" />
-                            <span>0 Days Open</span>
+                            <span>PHASE DELAY: 0D</span>
                         </div>
                         <div className="flex items-center gap-2.5 text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 ml-auto">
                             <Target className="h-4 w-4" />
-                            <span>Target Closure: 30 Sep 2026</span>
+                            <span>Target Closure: TBD</span>
                         </div>
                     </div>
                 </header>

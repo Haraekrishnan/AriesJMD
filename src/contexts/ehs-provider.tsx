@@ -73,6 +73,12 @@ const EhsContext = createContext<EhsContextType | undefined>(undefined);
 
 const CAPA_STAGES: CapaStage[] = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];
 
+const sanitizeData = (data: any) => {
+    return JSON.parse(JSON.stringify(data, (key, value) => {
+        return value === undefined ? null : value;
+    }));
+};
+
 const generateInitialStages = (creatorId: string): Record<CapaStage, CapaStageRecord> => {
     const stages: any = {};
     CAPA_STAGES.forEach(stage => {
@@ -203,7 +209,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
       ccUserIds: [],
     };
     
-    set(newRef, JSON.parse(JSON.stringify(newObservation)));
+    set(newRef, sanitizeData(newObservation));
     toast({ title: 'Safety Case Opened', description: `Investigation deadline: ${format(addHours(now, 24), 'dd MMM, HH:mm')}` });
   }, [user, users, toast]);
 
@@ -238,7 +244,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     });
 
     try {
-        await update(obsRef, finalUpdates);
+        await update(obsRef, sanitizeData(finalUpdates));
         toast({ title: 'Initiation Details Overridden' });
     } catch (e) {
         console.error(e);
@@ -289,7 +295,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
             ccUserIds: parent.ccUserIds || [],
         };
 
-        updates[`ehs/observations/${newId}`] = JSON.parse(JSON.stringify(subObs));
+        updates[`ehs/observations/${newId}`] = sanitizeData(subObs);
     });
 
     const commentRef = push(ref(rtdb, `ehs/observations/${parentId}/stages/Initiation/comments`));
@@ -323,7 +329,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
         updates.targetDate = targetDate;
     }
 
-    update(ref(rtdb, path), updates);
+    update(ref(rtdb, path), sanitizeData(updates));
     update(ref(rtdb, `ehs/observations/${observationId}`), { lastUpdated: now });
     
     // Log reassignment in the stage comments as a system message
@@ -395,7 +401,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
       update(ref(rtdb, `ehs/observations/${observationId}`), { status: 'Closed', closedAt: now, lastUpdated: now });
     }
 
-    update(ref(rtdb, path), updates);
+    update(ref(rtdb, path), sanitizeData(updates));
     update(ref(rtdb, `ehs/observations/${observationId}`), { lastUpdated: now });
     
     toast({ title: isActuallySubmitting ? 'Action Recorded' : 'Draft Saved' });
@@ -460,7 +466,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
         }
 
         updates['lastUpdated'] = now;
-        update(obsRef, updates);
+        update(obsRef, sanitizeData(updates));
         toast({ title: `Stage ${status}` });
     });
   }, [user, toast]);

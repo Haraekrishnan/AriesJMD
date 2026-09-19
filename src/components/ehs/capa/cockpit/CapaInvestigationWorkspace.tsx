@@ -76,8 +76,8 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
         toast({ title: 'Evidence Removed', variant: 'destructive' });
     };
 
-    // Distinct Input style: Recessed with bg-slate-50
-    const inputClasses = "rounded-lg border-2 border-slate-200 bg-slate-50 font-bold text-xs px-5 focus-visible:bg-white focus-visible:ring-blue-100 transition-all shadow-inner placeholder:text-slate-300";
+    // Modern SaaS styling: Recessed, subtle shadow, soft border
+    const wellClasses = "rounded-xl border-2 border-slate-200 bg-slate-50 font-bold text-xs px-5 focus-visible:bg-white focus-visible:ring-blue-100 transition-all shadow-inner placeholder:text-slate-300";
 
     return (
         <div className="flex flex-col gap-12 text-left">
@@ -91,22 +91,22 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                     <div className="space-y-8">
                         <div className="space-y-3">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Who was involved? <span className="text-rose-600">*</span></Label>
-                            <Input disabled={isLocked} {...register('who')} placeholder="Personnel, contractors, or departments..." className={cn("h-12", inputClasses)} />
+                            <Input disabled={isLocked} {...register('who')} placeholder="Personnel, contractors, or departments..." className={cn("h-12", wellClasses)} />
                         </div>
 
                         <div className="space-y-3">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Exact site position <span className="text-rose-600">*</span></Label>
-                            <Input disabled={isLocked} {...register('where')} placeholder="Deck, unit, workshop or coordinate..." className={cn("h-12", inputClasses)} />
+                            <Input disabled={isLocked} {...register('where')} placeholder="Deck, unit, workshop or coordinate..." className={cn("h-12", wellClasses)} />
                         </div>
 
                         <div className="grid grid-cols-2 gap-6">
                             <div className="space-y-3">
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Discovery date <span className="text-rose-600">*</span></Label>
-                                <Input disabled={isLocked} type="date" {...register('whenDate')} className={cn("h-12", inputClasses)} />
+                                <Input disabled={isLocked} type="date" {...register('whenDate')} className={cn("h-12", wellClasses)} />
                             </div>
                             <div className="space-y-3">
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Discovery time</Label>
-                                <Input disabled={isLocked} type="time" {...register('whenTime')} className={cn("h-12", inputClasses)} />
+                                <Input disabled={isLocked} type="time" {...register('whenTime')} className={cn("h-12", wellClasses)} />
                             </div>
                         </div>
 
@@ -114,9 +114,9 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                         <div className="space-y-3 pt-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Primary Discovery Evidence</Label>
                             {discoveryAttachment ? (
-                                <div className="p-4 rounded-xl bg-emerald-50 border-2 border-emerald-100 flex items-center justify-between shadow-sm animate-in zoom-in-95">
+                                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-between shadow-sm animate-in zoom-in-95">
                                     <div className="flex items-center gap-4">
-                                        <div className="h-14 w-20 bg-white rounded-lg border-2 border-emerald-200 flex items-center justify-center overflow-hidden shadow-sm">
+                                        <div className="h-14 w-20 bg-white rounded-xl border-2 border-emerald-200 flex items-center justify-center overflow-hidden shadow-sm">
                                             <img src={discoveryAttachment} alt="Evidence" className="h-full w-full object-contain" />
                                         </div>
                                         <div className="text-left">
@@ -132,7 +132,7 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                                 </div>
                             ) : (
                                 <div className={cn(
-                                    "border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-8 gap-3 transition-all relative overflow-hidden group",
+                                    "border-2 border-dashed rounded-3xl flex flex-col items-center justify-center p-8 gap-3 transition-all relative overflow-hidden group",
                                     isLocked ? "bg-slate-50 border-slate-200" : "border-blue-200 bg-blue-50/30 hover:border-blue-500 cursor-pointer hover:bg-blue-50/60"
                                 )}>
                                     {isUploading ? <Loader2 className="h-7 w-7 text-blue-600 animate-spin" /> : <UploadCloud className="h-7 w-7 text-blue-400 group-hover:scale-110 transition-transform" />}
@@ -158,17 +158,17 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                     <div className="space-y-8">
                         <div className="space-y-3">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Sequence of events (How?) <span className="text-rose-600">*</span></Label>
-                            <Textarea disabled={isLocked} {...register('sequence')} placeholder="Document the chronological sequence leading to discovery..." className={cn("min-h-[140px] p-5 leading-relaxed", inputClasses)} />
+                            <Textarea disabled={isLocked} {...register('sequence')} placeholder="Document the chronological sequence leading to discovery..." className={cn("min-h-[140px] p-5 leading-relaxed", wellClasses)} />
                         </div>
 
                         <div className="space-y-3">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Activity during discovery</Label>
-                            <Textarea disabled={isLocked} {...register('how')} placeholder="Describe the specific operation or task being performed..." className={cn("min-h-[140px] p-5 leading-relaxed", inputClasses)} />
+                            <Textarea disabled={isLocked} {...register('how')} placeholder="Describe the specific operation or task being performed..." className={cn("min-h-[140px] p-5 leading-relaxed", wellClasses)} />
                         </div>
 
                         <div className="space-y-3">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Immediate cause <span className="text-rose-600">*</span></Label>
-                            <Textarea disabled={isLocked} {...register('immediateCause')} placeholder="Direct reason for the unsafe act or condition discovered..." className={cn("min-h-[110px] p-5 border-l-rose-600 border-l-4", inputClasses)} />
+                            <Textarea disabled={isLocked} {...register('immediateCause')} placeholder="Direct reason for the unsafe act or condition discovered..." className={cn("min-h-[110px] p-5 border-l-rose-600 border-l-4", wellClasses)} />
                         </div>
                     </div>
                 </div>
@@ -176,7 +176,7 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
 
             {/* STATUS LEDGER */}
             <div className="pt-12 border-t-2 border-slate-100">
-                <div className="p-8 rounded-3xl bg-slate-900 text-white flex flex-col md:flex-row justify-between items-center gap-8 shadow-2xl">
+                <div className="p-8 rounded-[2.5rem] bg-slate-900 text-white flex flex-col md:flex-row justify-between items-center gap-8 shadow-2xl border border-white/5">
                     <div className="flex items-center gap-6">
                         <div className="h-14 w-14 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
                             <ShieldCheck className="h-7 w-7 text-white" />
