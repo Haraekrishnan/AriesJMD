@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import { GitBranch, Layers, Target, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 const CATEGORIES = [
     'Human Factor / Competency Deficiency',
@@ -33,7 +34,7 @@ export default function CapaSystemicRootCause({ isLocked }: Props) {
     const wellClasses = "rounded-xl border border-slate-200 bg-slate-50 font-bold text-sm shadow-inner transition-all focus-within:bg-white focus-within:border-blue-600 focus-within:ring-0 leading-relaxed";
 
     return (
-        <div className="space-y-16 text-left animate-in fade-in duration-700">
+        <div className="space-y-16 text-left animate-in fade-in duration-500">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
                 
                 <div className="space-y-12">

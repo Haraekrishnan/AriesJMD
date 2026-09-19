@@ -425,4 +425,3 @@ export const useEhs = () => {
   if (!context) throw new Error('useEhs must be used within EhsProvider');
   return context;
 };
-

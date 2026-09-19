@@ -29,7 +29,8 @@ import {
     Paperclip,
     Zap,
     Activity,
-    Target
+    Target,
+    Clock
 } from 'lucide-react';
 import type { EhsObservation, CapaStage, User as UserType } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
@@ -39,6 +40,7 @@ import { useEhs } from '@/contexts/ehs-provider';
 import { format, parseISO, isValid } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Document, Page, pdfjs } from 'react-pdf';

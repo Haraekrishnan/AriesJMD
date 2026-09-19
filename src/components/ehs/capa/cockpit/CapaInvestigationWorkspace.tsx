@@ -24,18 +24,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, Controller } from 'react-hook-form';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/auth-provider';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function CapaInvestigationWorkspace({ observation }: { observation: EhsObservation }) {
     const { user } = useAuth();
-    const { register, setValue, watch } = useFormContext();
+    const { register, setValue, watch, control } = useFormContext();
     const { toast } = useToast();
     const [isUploading, setIsUploading] = useState(false);
 
