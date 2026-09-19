@@ -11,7 +11,7 @@ import {
     SelectTrigger, 
     SelectValue 
 } from '@/components/ui/select';
-import { GitBranch, Layers, ShieldAlert, Target } from 'lucide-react';
+import { GitBranch, Layers, Target, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const CATEGORIES = [
@@ -30,7 +30,7 @@ interface Props {
 export default function CapaSystemicRootCause({ isLocked }: Props) {
     const { register, control } = useFormContext();
 
-    const wellClasses = "rounded-xl border border-slate-200 bg-slate-50 font-bold text-sm shadow-sm transition-all focus-visible:bg-white focus-visible:border-blue-600 focus-visible:ring-0 leading-relaxed";
+    const wellClasses = "rounded-xl border border-slate-200 bg-slate-50 font-bold text-sm shadow-inner transition-all focus-visible:bg-white focus-visible:border-blue-600 focus-visible:ring-0 leading-relaxed";
 
     return (
         <div className="space-y-16 text-left animate-in fade-in duration-700">
@@ -98,4 +98,3 @@ export default function CapaSystemicRootCause({ isLocked }: Props) {
         </div>
     );
 }
-

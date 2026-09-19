@@ -4,7 +4,7 @@ import React from 'react';
 import { useFormContext } from 'react-hook-form';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { CheckCircle2, ShieldCheck, FileText, Target } from 'lucide-react';
+import { CheckCircle2, ShieldCheck, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
@@ -15,7 +15,7 @@ interface Props {
 export default function CapaPhaseConclusion({ isLocked }: Props) {
     const { register } = useFormContext();
 
-    const wellClasses = "rounded-2xl border border-slate-200 bg-slate-50 font-bold text-sm px-8 py-6 focus-visible:ring-blue-100 focus-visible:bg-white shadow-sm transition-all leading-relaxed";
+    const wellClasses = "rounded-2xl border border-slate-200 bg-slate-50 font-bold text-sm px-8 py-6 focus-visible:ring-blue-100 focus-visible:bg-white shadow-inner transition-all leading-relaxed";
 
     return (
         <div className="space-y-16 text-left animate-in fade-in duration-700">
@@ -27,7 +27,7 @@ export default function CapaPhaseConclusion({ isLocked }: Props) {
                             <FileText className="h-6 w-6 text-blue-600" />
                             <h4 className="text-[16px] font-black uppercase tracking-tight text-slate-900">TECHNICAL PHASE SUMMARY</h4>
                         </div>
-                        <Badge variant="outline" className="h-6 px-4 border-none font-black text-[9px] uppercase tracking-widest rounded-md bg-slate-900 text-white">AUDIT READY</Badge>
+                        <Badge variant="outline" className="h-6 px-4 border-none font-black text-[9px] uppercase tracking-widest rounded-md bg-slate-900 text-white shadow-sm">AUDIT READY</Badge>
                     </div>
                     
                     <div className="relative group">
@@ -64,4 +64,3 @@ export default function CapaPhaseConclusion({ isLocked }: Props) {
         </div>
     );
 }
-

@@ -17,7 +17,6 @@ import type {
   EhsObservation, 
   CapaStage,
   CapaStageRecord,
-  EhsRevision,
   User,
   NotificationSettings
 } from '@/lib/types';
@@ -73,9 +72,6 @@ const EhsContext = createContext<EhsContextType | undefined>(undefined);
 
 const CAPA_STAGES: CapaStage[] = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];
 
-/**
- * Utility to sanitize data for Firebase RTDB by converting undefined values to null.
- */
 const sanitizeData = (data: any) => {
     return JSON.parse(JSON.stringify(data, (key, value) => {
         return value === undefined ? null : value;
@@ -209,7 +205,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
 
     try {
         await update(obsRef, sanitizeData(finalUpdates));
-        toast({ title: 'Initiation Details Overridden' });
+        toast({ title: 'Initiation Details Updated' });
     } catch (e) {
         console.error(e);
         toast({ variant: 'destructive', title: 'Update Failed' });
@@ -259,7 +255,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, path), sanitizeData(updates));
     update(ref(rtdb, `ehs/observations/${observationId}`), { lastUpdated: now });
     const commentRef = push(ref(rtdb, `ehs/observations/${observationId}/stages/${stage}/comments`));
-    set(commentRef, { id: commentRef.key, userId: user.id, text: `Responsibility reassigned to ${users.find(u => u.id === assigneeId)?.name || 'User'}.`, date: now });
+    set(commentRef, { id: commentRef.key, userId: user.id, text: `Responsibility assigned to ${users.find(u => u.id === assigneeId)?.name || 'User'}.`, date: now });
     toast({ title: 'Assignment Synchronized' });
   }, [user, users, toast]);
 
@@ -324,17 +320,17 @@ export function EhsProvider({ children }: { children: ReactNode }) {
                     updates[`stages/${nextStage}/targetDate`] = nextOwnerData.targetDate; 
                 }
                 else if (stage === 'Resolution') { 
-                    updates[`stages/${nextStage}/assigneeId`] = obs.stages['Resolution'].assigneeId || null; 
-                    updates[`stages/${nextStage}/targetDate`] = obs.stages['Resolution'].targetDate || null; 
+                    updates[`stages/${nextStage}/assigneeId`] = obs.stages['Resolution']?.assigneeId || null; 
+                    updates[`stages/${nextStage}/targetDate`] = obs.stages['Resolution']?.targetDate || null; 
                 }
                 else if (['Implementation', 'Effectiveness Review'].includes(stage)) { 
-                    updates[`stages/${nextStage}/assigneeId`] = obs.stages['Investigation'].assigneeId || null; 
+                    updates[`stages/${nextStage}/assigneeId`] = obs.stages['Investigation']?.assigneeId || null; 
                 }
                 else if (stage === 'Reference') { 
-                    updates[`stages/${nextStage}/assigneeId`] = obs.stages['Resolution'].assigneeId || null; 
+                    updates[`stages/${nextStage}/assigneeId`] = obs.stages['Resolution']?.assigneeId || null; 
                 }
                 else { 
-                    updates[`stages/${nextStage}/assigneeId`] = obs.stages[stage].assigneeId || null; 
+                    updates[`stages/${nextStage}/assigneeId`] = obs.stages[stage]?.assigneeId || null; 
                 }
             }
         } else { updates[`${stagePath}/actionedAt`] = null; updates[`${stagePath}/actionedById`] = null; }

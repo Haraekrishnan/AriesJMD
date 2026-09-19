@@ -15,7 +15,7 @@ interface Props {
 export default function Capa5Why({ isLocked }: Props) {
     const { register } = useFormContext();
 
-    const wellClasses = "min-h-[100px] rounded-xl border border-slate-200 bg-slate-50 font-bold text-sm px-6 py-4 focus-visible:ring-blue-100 focus-visible:bg-white shadow-sm placeholder:text-slate-300 transition-all leading-relaxed";
+    const wellClasses = "min-h-[100px] rounded-xl border border-slate-200 bg-slate-50 font-bold text-sm px-6 py-4 focus-visible:ring-blue-100 focus-visible:bg-white shadow-inner placeholder:text-slate-300 transition-all leading-relaxed";
 
     return (
         <div className="space-y-12 text-left">
@@ -37,7 +37,7 @@ export default function Capa5Why({ isLocked }: Props) {
                         <div className="flex flex-col items-center shrink-0 pt-2">
                             <div className={cn(
                                 "h-12 w-12 rounded-xl border-2 flex items-center justify-center font-black text-lg transition-all",
-                                i === 5 ? "bg-slate-900 border-slate-900 text-white" : "bg-white border-slate-200 text-slate-800"
+                                i === 5 ? "bg-slate-900 border-slate-900 text-white" : "bg-white border-slate-200 text-slate-800 shadow-sm"
                             )}>
                                 W{i}
                             </div>
@@ -51,7 +51,7 @@ export default function Capa5Why({ isLocked }: Props) {
                                     {i === 1 ? 'Primary Discovery Reasoning' : `Logical Link to W${i-1}`}
                                 </Label>
                                 {i === 5 && (
-                                    <Badge className="bg-amber-500 text-white border-none font-black text-[9px] tracking-widest px-3 h-5 rounded-md">SYSTEMIC FAILURE POINT</Badge>
+                                    <Badge className="bg-amber-500 text-white border-none font-black text-[9px] tracking-widest px-3 h-5 rounded-md shadow-sm">SYSTEMIC FAILURE POINT</Badge>
                                 )}
                             </div>
                             <Textarea 
@@ -67,4 +67,3 @@ export default function Capa5Why({ isLocked }: Props) {
         </div>
     );
 }
-

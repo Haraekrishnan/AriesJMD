@@ -75,6 +75,16 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
     const { reviewStage } = useEhs();
     const sData = observation.stages[stage];
     
+    // Viewer State
+    const [viewingAttachmentUrl, setViewingAttachmentUrl] = useState<string | null>(null);
+    const [zoom, setZoom] = useState(1);
+    const [isPanning, setIsPanning] = useState(false);
+    const [startPosition, setStartPosition] = useState({ x: 0, y: 0 });
+    const [translate, setTranslate] = useState({ x: 0, y: 0 });
+    const imageContainerRef = useRef<HTMLDivElement>(null);
+    const [numPages, setNumPages] = useState<number | null>(null);
+    const [pageNumber, setPageNumber] = useState(1);
+
     const isCurrentStage = observation.currentStage === stage;
     const isCompleted = sData?.status === 'Completed';
     const isSubmitted = sData?.status === 'In Progress';
@@ -83,8 +93,38 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
 
     const isSupervisor = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor';
 
+    const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+        setNumPages(numPages);
+    };
+
+    const handleMouseDown = (e: MouseEvent<HTMLDivElement>) => {
+        if (zoom <= 1) return;
+        e.preventDefault();
+        setIsPanning(true);
+        setStartPosition({
+            x: e.clientX - translate.x,
+            y: e.clientY - translate.y,
+        });
+    };
+
+    const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+        if (!isPanning || !imageContainerRef.current) return;
+        e.preventDefault();
+        const x = e.clientX - startPosition.x;
+        const y = e.clientY - startPosition.y;
+        setTranslate({ x, y });
+    };
+    
+    const handleMouseUpOrLeave = () => {
+        setIsPanning(false);
+    };
+
+    const isPdf = viewingAttachmentUrl && viewingAttachmentUrl.toLowerCase().endsWith('.pdf');
+
     const renderStageContent = () => {
         switch (stage) {
+            case 'Initiation':
+                return <CapaInitiation observation={observation} onViewImage={setViewingAttachmentUrl} />;
             case 'Investigation':
                 return (
                     <Tabs defaultValue="summary" className="w-full">
@@ -158,7 +198,204 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                     </div>
                 </div>
             )}
+
+            <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); setNumPages(null); setPageNumber(1); }}>
+                <DialogContent className="max-w-[95vw] md:max-w-7xl w-full h-auto max-h-[90vh] flex flex-col p-0 overflow-hidden bg-black border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+                    <DialogHeader className="sr-only">
+                        <DialogTitle>Case Discovery Evidence Viewer</DialogTitle>
+                        <DialogDescription>Full-resolution technical evidence for forensic inspection.</DialogDescription>
+                    </DialogHeader>
+
+                    <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
+                        {!isPdf && (
+                            <div className="flex gap-2">
+                                <Button variant="ghost" size="icon" className="h-10 w-10 text-white bg-blue-600 hover:bg-blue-700 shadow-lg rounded-lg border border-blue-400/30" onClick={() => setZoom(z => z + 0.2)}>
+                                    <ZoomIn className="h-5 w-5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-10 w-10 text-white bg-slate-700 hover:bg-slate-800 shadow-lg rounded-lg border border-slate-500/30" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}>
+                                    <ZoomOut className="h-5 w-5" />
+                                </Button>
+                            </div>
+                        )}
+                        <Button variant="ghost" size="icon" className="h-10 w-10 bg-rose-600 text-white hover:bg-rose-700 shadow-lg rounded-lg border border-rose-400/30 transition-colors" onClick={() => setViewingAttachmentUrl(null)}>
+                            <X className="h-5 w-5" />
+                        </Button>
+                    </div>
+
+                    <div className="absolute bottom-6 left-6 right-6 z-50 flex justify-between items-center">
+                         <div className="bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-5 py-2 flex items-center gap-4">
+                            <p className="text-[11px] font-black text-white uppercase tracking-widest">Case Discovery Evidence</p>
+                            {isPdf && numPages && (
+                                <div className="flex items-center gap-2 text-[10px] font-bold text-white border-l border-white/20 pl-4">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/10" onClick={() => setPageNumber(p => Math.max(1, p - 1))} disabled={pageNumber <= 1}><ChevronLeft className="h-3 w-3" /></Button>
+                                    <span>PAGE {pageNumber} / {numPages}</span>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/10" onClick={() => setPageNumber(p => Math.min(numPages, p + 1))} disabled={pageNumber >= numPages}><ChevronRight className="h-3 w-3" /></Button>
+                                </div>
+                            )}
+                         </div>
+                         <Button variant="outline" className="bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white hover:text-black font-black uppercase text-[11px] tracking-widest h-11 px-8 rounded-full gap-3 shadow-2xl" asChild>
+                            <a href={viewingAttachmentUrl || ''} download target="_blank" rel="noopener noreferrer">
+                                <Download className="h-4 w-4" /> DOWNLOAD FULL SIZE
+                            </a>
+                         </Button>
+                    </div>
+
+                    <div 
+                      ref={imageContainerRef}
+                      className="aspect-video w-full overflow-hidden flex items-center justify-center bg-black relative"
+                      onMouseDown={handleMouseDown}
+                      onMouseMove={handleMouseMove}
+                      onMouseUp={handleMouseUpOrLeave}
+                      onMouseLeave={handleMouseUpOrLeave}
+                    >
+                        {viewingAttachmentUrl && (
+                            isPdf ? (
+                                <ScrollArea className="h-full w-full">
+                                    <div className="flex justify-center p-12">
+                                        <Document file={viewingAttachmentUrl} onLoadSuccess={onDocumentLoadSuccess} className="flex justify-center">
+                                            <Page pageNumber={pageNumber} scale={1.5} />
+                                        </Document>
+                                    </div>
+                                </ScrollArea>
+                            ) : (
+                                <img src={viewingAttachmentUrl || ''} alt="Evidence" className={cn("transition-transform duration-200 shadow-2xl", isPanning ? 'cursor-grabbing' : 'cursor-grab')} style={{ transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`, maxWidth: zoom > 1 ? 'none' : '100%', maxHeight: zoom > 1 ? 'none' : '100%', objectFit: 'contain' }} />
+                            )
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
 
+function CapaInitiation({ observation, onViewImage }: { observation: EhsObservation, onViewImage: (url: string) => void }) {
+    const { user, users } = useAuth();
+    const { projects } = useGeneral();
+    const { updateInitiationDetails } = useEhs();
+    const [isEditing, setIsEditing] = useState(false);
+    const [formData, setFormData] = useState({
+        description: observation.description,
+        category: observation.category,
+        severity: observation.severity,
+        projectId: observation.projectId,
+        location: observation.location
+    });
+
+    const isAuthorized = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor';
+    const project = projects.find(p => p.id === observation.projectId);
+    const reporter = users.find(u => u.id === observation.reporterId);
+
+    const extractedEvidenceUrl = observation.discoveryAttachmentUrl || observation.description.match(/src="([^"]+)"/i)?.[1];
+    const sanitizedDescription = observation.description.replace(/<IMG[^>]*>/gi, '').replace(/<[^>]*>?/gm, '').trim();
+
+    const handleSave = async () => {
+        await updateInitiationDetails(observation.id, formData);
+        setIsEditing(false);
+    };
+
+    return (
+        <div className="p-10 space-y-10 text-left animate-in fade-in duration-700">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+                <div className="space-y-10">
+                    <SectionHeading icon={MapPin} title="OPERATIONAL LOGISTICS" />
+                    <div className="space-y-6">
+                        <EditableMeta label="Discovery Category" value={observation.category} isEditing={isEditing} type="select" options={['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']} onChange={val => setFormData(p => ({ ...p, category: val }))} icon={Search} />
+                        <EditableMeta label="Risk Severity" value={observation.severity} isEditing={isEditing} type="select" options={['Low', 'Medium', 'High', 'Critical']} onChange={val => setFormData(p => ({ ...p, severity: val }))} icon={ShieldCheck} />
+                        <EditableMeta label="Operational Site" value={project?.name || observation.projectId} isEditing={isEditing} type="select" options={projects.map(p => ({ id: p.id, name: p.name }))} onChange={val => setFormData(p => ({ ...p, projectId: val }))} icon={Building2} />
+                        <EditableMeta label="Specific Location" value={observation.location} isEditing={isEditing} type="text" onChange={val => setFormData(p => ({ ...p, location: val }))} icon={MapPin} />
+                    </div>
+                </div>
+
+                <div className="space-y-10">
+                    <div className="flex justify-between items-center">
+                        <SectionHeading icon={FileText} title="NARRATIVE CONTEXT" />
+                        {isAuthorized && !isEditing && (
+                            <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[10px] border border-slate-200" onClick={() => setIsEditing(true)}>
+                                <Edit3 className="h-3.5 w-3.5 mr-2" /> OVERWRITE
+                            </Button>
+                        )}
+                    </div>
+                    <div className="space-y-8">
+                        {isEditing ? (
+                            <div className="space-y-3">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Finding Description</Label>
+                                <Textarea className="min-h-[160px] rounded-xl border-2 border-slate-100 bg-slate-50 font-bold text-sm" value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} />
+                                <div className="flex justify-end gap-2 pt-2">
+                                    <Button variant="outline" size="sm" className="h-9 font-bold" onClick={() => setIsEditing(false)}>CANCEL</Button>
+                                    <Button size="sm" className="h-9 font-bold bg-blue-600" onClick={handleSave}>SAVE CHANGES</Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="p-6 rounded-2xl bg-slate-50 border-2 border-slate-100 shadow-inner">
+                                <p className="text-sm font-bold text-slate-700 leading-relaxed uppercase tracking-tight">
+                                    {sanitizedDescription}
+                                </p>
+                            </div>
+                        )}
+
+                        {extractedEvidenceUrl && (
+                            <div className="space-y-3">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Discovery Evidence</Label>
+                                <div 
+                                    className="h-40 w-64 rounded-xl border-2 border-slate-200 bg-white overflow-hidden relative group/img cursor-zoom-in shadow-md"
+                                    onClick={() => onViewImage(extractedEvidenceUrl)}
+                                >
+                                    <img src={extractedEvidenceUrl} alt="E" className="w-full h-full object-contain" />
+                                    <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 flex items-center justify-center transition-all">
+                                        <ZoomIn className="h-8 w-8 text-white opacity-0 group-hover/img:opacity-100" />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function SectionHeading({ icon: Icon, title }: { icon: any, title: string }) {
+    return (
+        <div className="flex items-center gap-3">
+            <Icon className="h-5 w-5 text-blue-600" />
+            <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-800">{title}</h4>
+        </div>
+    );
+}
+
+function EditableMeta({ label, value, isEditing, type, options, onChange, icon: Icon }: any) {
+    const wellClasses = "h-11 rounded-lg border border-slate-200 bg-slate-50 font-bold text-sm px-10 focus-visible:ring-blue-100 focus-visible:bg-white shadow-sm transition-all";
+    
+    return (
+        <div className="space-y-2">
+            <Label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">
+                {Icon && <Icon className="h-3.5 w-3.5 text-slate-400" />}
+                {label}
+            </Label>
+            {isEditing ? (
+                type === 'select' ? (
+                    <Select value={value} onValueChange={onChange}>
+                        <SelectTrigger className="h-11 rounded-lg border-slate-200 bg-slate-50 px-4 text-sm font-bold uppercase text-slate-800">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {options?.map((opt: any) => (
+                                <SelectItem key={typeof opt === 'string' ? opt : opt.id} value={typeof opt === 'string' ? opt : opt.id}>
+                                    {typeof opt === 'string' ? opt : opt.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                ) : (
+                    <Input className="h-11 rounded-lg border-slate-200 bg-slate-50 px-4 text-sm font-bold" value={value} onChange={e => onChange(e.target.value)} />
+                )
+            ) : (
+                <div className="h-11 px-4 flex items-center bg-slate-50 border border-slate-200 rounded-lg shadow-inner">
+                    <span className="text-xs font-black text-slate-900 uppercase truncate">{value}</span>
+                </div>
+            )}
+        </div>
+    );
+}
+
+import { Building2 } from 'lucide-react';
