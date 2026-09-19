@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo } from 'react';
@@ -143,6 +144,13 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const addObservationActivity = useCallback((observationId: string, action: string) => {
+    if (!user) return;
+    const now = new Date().toISOString();
+    const actRef = push(ref(rtdb, `ehs/observations/${observationId}/activities`));
+    set(actRef, { id: actRef.key, userId: user.id, action, date: now });
+  }, [user]);
+
   const addAudit = useCallback((data: Omit<EhsAudit, 'id'>) => {
     push(ref(rtdb, 'ehs/audits'), { ...data, status: 'Pending Review' as EhsAuditStatus });
   }, []);
@@ -180,7 +188,18 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     stages['Investigation'].assigneeId = initialAssigneeId;
     stages['Investigation'].targetDate = addHours(now, 24).toISOString();
 
-    const newObservation: Omit<EhsObservation, 'id'> = { ...data, reporterId: user.id, createdAt: nowISO, currentStage: 'Investigation', status: 'Open', stages, ccUserIds: [] };
+    const newObservation: Omit<EhsObservation, 'id'> = { 
+        ...data, 
+        reporterId: user.id, 
+        createdAt: nowISO, 
+        currentStage: 'Investigation', 
+        status: 'Open', 
+        stages, 
+        ccUserIds: [],
+        activities: {
+            'init': { id: 'init', userId: user.id, action: 'Case initiated and discovery captured.', date: nowISO }
+        }
+    };
     set(newRef, sanitizeData(newObservation));
     toast({ title: 'Safety Case Opened', description: `Investigation deadline: ${format(addHours(now, 24), 'dd MMM, HH:mm')}` });
   }, [user, users, toast]);
@@ -205,12 +224,13 @@ export function EhsProvider({ children }: { children: ReactNode }) {
 
     try {
         await update(obsRef, sanitizeData(finalUpdates));
+        addObservationActivity(observationId, 'Initiation metadata overwritten by Higher Official.');
         toast({ title: 'Initiation Details Updated' });
     } catch (e) {
         console.error(e);
         toast({ variant: 'destructive', title: 'Update Failed' });
     }
-  }, [user, toast]);
+  }, [user, toast, addObservationActivity]);
 
   const splitObservation = useCallback((parentId: string, subObservations: { category: any, severity: any, description: string, assigneeId?: string }[]) => {
     if (!user) return;
@@ -243,21 +263,26 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     const commentRef = push(ref(rtdb, `ehs/observations/${parentId}/stages/Initiation/comments`));
     updates[`ehs/observations/${parentId}/stages/Initiation/comments/${commentRef.key}`] = { id: commentRef.key, userId: user.id, text: `Observation split into ${subObservations.length} sub-cases.`, date: nowISO };
     update(ref(rtdb), updates);
+    addObservationActivity(parentId, `Splitting case into ${subObservations.length} specific workflows.`);
     toast({ title: 'Observation Split' });
-  }, [user, observations, users, toast]);
+  }, [user, observations, users, toast, addObservationActivity]);
 
   const assignStageOwner = useCallback((observationId: string, stage: CapaStage, assigneeId: string, targetDate?: string) => {
     if (!user) return;
     const path = `ehs/observations/${observationId}/stages/${stage}`;
     const now = new Date().toISOString();
+    const assigneeName = users.find(u => u.id === assigneeId)?.name || 'Personnel';
     const updates: any = { assigneeId, assignedById: user.id, assignedAt: now, status: 'Pending', actionedById: null, actionedAt: null, reviewedById: null, reviewedAt: null };
     if (targetDate) updates.targetDate = targetDate;
     update(ref(rtdb, path), sanitizeData(updates));
     update(ref(rtdb, `ehs/observations/${observationId}`), { lastUpdated: now });
+    
     const commentRef = push(ref(rtdb, `ehs/observations/${observationId}/stages/${stage}/comments`));
-    set(commentRef, { id: commentRef.key, userId: user.id, text: `Responsibility assigned to ${users.find(u => u.id === assigneeId)?.name || 'User'}.`, date: now });
+    set(commentRef, { id: commentRef.key, userId: user.id, text: `Responsibility assigned to ${assigneeName}.`, date: now });
+    
+    addObservationActivity(observationId, `Assigned ${stage} phase to ${assigneeName}.`);
     toast({ title: 'Assignment Synchronized' });
-  }, [user, users, toast]);
+  }, [user, users, toast, addObservationActivity]);
 
   const addStageComment = useCallback((observationId: string, stage: CapaStage, text: string) => {
     if (!user) return;
@@ -278,6 +303,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
         updates.status = stage === 'Closure' ? 'Completed' : 'In Progress';
         const commentRef = push(ref(rtdb, `ehs/observations/${observationId}/stages/${stage}/comments`));
         updates[`comments/${commentRef.key}`] = { id: commentRef.key, userId: user.id, text: `Phase findings submitted for verification.`, date: now };
+        addObservationActivity(observationId, `Submitted ${stage} data for Higher Official review.`);
     }
     if (attachmentUrl) {
        const attachmentRef = push(ref(rtdb, `${path}/attachments`));
@@ -286,11 +312,12 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     if (stage === 'Closure') {
       updates['reviewedById'] = user.id; updates['reviewedAt'] = now;
       update(ref(rtdb, `ehs/observations/${observationId}`), { status: 'Closed', closedAt: now, lastUpdated: now });
+      addObservationActivity(observationId, `Final safety case closure validated.`);
     }
     update(ref(rtdb, path), updates);
     update(ref(rtdb, `ehs/observations/${observationId}`), { lastUpdated: now });
     toast({ title: isSubmit ? 'Action Recorded' : 'Draft Saved' });
-  }, [user, toast]);
+  }, [user, toast, addObservationActivity]);
 
   const reviewStage = useCallback((observationId: string, stage: CapaStage, status: 'Completed' | 'Returned', comment: string, nextOwnerData?: { assigneeId: string, targetDate: string }) => {
     if (!user) return;
@@ -309,6 +336,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
             updates[`${stagePath}/comments/${commentRef.key}`] = { id: commentRef.key, userId: user.id, text: status === 'Returned' ? `REWORK REQUIRED: ${comment}` : comment, date: now };
         }
         if (status === 'Completed') {
+            addObservationActivity(observationId, `Verified ${stage} findings. Milestone complete.`);
             const nextStage = CAPA_STAGES[CAPA_STAGES.indexOf(stage) + 1];
             if (nextStage) {
                 updates['currentStage'] = nextStage;
@@ -334,6 +362,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
                 }
             }
         } else { 
+            addObservationActivity(observationId, `Returned ${stage} for technical rework.`);
             updates[`${stagePath}/actionedAt`] = null; 
             updates[`${stagePath}/actionedById`] = null; 
         }
@@ -341,7 +370,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
         update(obsRef, sanitizeData(updates));
         toast({ title: `Stage ${status}` });
     });
-  }, [user, toast]);
+  }, [user, toast, addObservationActivity]);
 
   const addCcToObservation = useCallback((observationId: string, userIds: string[]) => {
     if (!user) return;
@@ -357,14 +386,17 @@ export function EhsProvider({ children }: { children: ReactNode }) {
 
   const addStageAttachment = useCallback((observationId: string, stage: CapaStage, name: string, url: string) => {
     if (!user) return;
+    const now = new Date().toISOString();
     const attachmentRef = push(ref(rtdb, `ehs/observations/${observationId}/stages/${stage}/attachments`));
-    set(attachmentRef, { id: attachmentRef.key, name, url, uploadedBy: user.id, uploadedAt: new Date().toISOString() });
-  }, [user]);
+    set(attachmentRef, { id: attachmentRef.key, name, url, uploadedBy: user.id, uploadedAt: now });
+    addObservationActivity(observationId, `Uploaded document "${name}" to ${stage} registry.`);
+  }, [user, addObservationActivity]);
 
   const deleteStageAttachment = useCallback((observationId: string, stage: CapaStage, attachmentId: string) => {
     remove(ref(rtdb, `ehs/observations/${observationId}/stages/${stage}/attachments/${attachmentId}`));
+    addObservationActivity(observationId, `Removed document from ${stage} technical registry.`);
     toast({ title: 'Attachment Deleted', variant: 'destructive' });
-  }, [toast]);
+  }, [toast, addObservationActivity]);
 
   const deleteObservation = useCallback((observationId: string) => {
     if (user?.role !== 'Admin') return;

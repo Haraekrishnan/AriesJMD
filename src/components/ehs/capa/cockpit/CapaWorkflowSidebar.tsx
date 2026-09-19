@@ -109,7 +109,7 @@ export default function CapaWorkflowSidebar({ observation, viewingStage, onStage
                                             {stage}
                                         </p>
                                         {isCurrent && assignee && (
-                                            <p className="text-[8px] font-bold text-blue-600 uppercase mt-0.5 truncate">Owned by {assignee.name.split(' ')[0]}</p>
+                                            <p className="text-[8px] font-bold text-blue-600 uppercase mt-0.5 truncate">Assigned to {assignee.name.split(' ')[0]}</p>
                                         )}
                                     </div>
                                     

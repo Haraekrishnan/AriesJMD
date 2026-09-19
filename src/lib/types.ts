@@ -1193,6 +1193,13 @@ export type CapaStageRecord = {
   targetDate?: string | null;
 };
 
+export type EhsActivity = {
+    id: string;
+    userId: string;
+    action: string;
+    date: string; // ISO
+};
+
 export type EhsRevision = {
   id: string;
   date: string;
@@ -1218,6 +1225,7 @@ export type EhsObservation = {
   stages: Record<CapaStage, CapaStageRecord>;
   ccUserIds?: string[];
   revisions?: { [key: string]: EhsRevision };
+  activities?: { [key: string]: EhsActivity };
   
   status: EhsObservationStatus;
   createdAt: string;

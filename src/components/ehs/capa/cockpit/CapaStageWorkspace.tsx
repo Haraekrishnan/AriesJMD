@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useRef, MouseEvent } from 'react';
@@ -333,7 +334,7 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
                                 </div>
                             </div>
                         ) : (
-                            <div className="p-8 rounded-xl bg-slate-50 border border-[#DCE5EF] shadow-inner min-h-[250px]">
+                            <div className="p-8 rounded-xl bg-slate-50 border border-[#DCE5EF] shadow-inner min-h-[400px]">
                                 <p className="text-sm font-bold text-slate-700 leading-relaxed uppercase tracking-tight">
                                     {sanitizedDescription}
                                 </p>

@@ -1,19 +1,21 @@
+
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { 
     Info, 
     Activity, 
-    CheckCircle2,
     Clock,
-    FileText
+    FileText,
+    History
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { EhsObservation, CapaStage } from '@/lib/types';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function CapaRightSidebar({ observation, activeStage }: { observation: EhsObservation, activeStage: CapaStage }) {
     const { users } = useAuth();
@@ -23,6 +25,13 @@ export default function CapaRightSidebar({ observation, activeStage }: { observa
     const reporter = users.find(u => u.id === observation.reporterId);
     const sData = observation.stages[observation.currentStage];
     const assignee = users.find(u => u.id === sData?.assigneeId);
+
+    const activities = useMemo(() => {
+        if (!observation.activities) return [];
+        return Object.values(observation.activities).sort((a, b) => 
+            parseISO(b.date).getTime() - parseISO(a.date).getTime()
+        );
+    }, [observation]);
 
     return (
         <div className="flex flex-col h-full bg-white divide-y divide-slate-100 text-left">
@@ -65,29 +74,38 @@ export default function CapaRightSidebar({ observation, activeStage }: { observa
                 </div>
             </div>
 
-            {/* 3. STAGE GUIDANCE */}
-            <div className="p-8 space-y-6">
+            {/* 3. ACTIVITY LOG */}
+            <div className="p-8 space-y-6 flex-1 flex flex-col min-h-0">
                 <h4 className="text-[12px] font-black uppercase tracking-[0.3em] text-blue-600 flex items-center gap-3">
-                    <FileText className="h-4 w-4" /> STAGE GUIDANCE
+                    <History className="h-4 w-4" /> ACTIVITY LOG
                 </h4>
                 
-                <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-4 mb-4 shadow-sm">
-                    <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0 shadow-md">
-                        <Info className="h-4 w-4 text-white" />
+                <ScrollArea className="flex-1 -mx-2 px-2">
+                    <div className="space-y-6 pb-4">
+                        {activities.length > 0 ? activities.map((act) => {
+                            const actor = users.find(u => u.id === act.userId);
+                            return (
+                                <div key={act.id} className="relative pl-6 before:absolute before:left-0 before:top-1.5 before:w-2 before:h-2 before:bg-blue-600 before:rounded-full after:absolute after:left-[3px] after:top-4 after:bottom-[-24px] after:w-0.5 after:bg-slate-100 last:after:hidden">
+                                    <p className="text-[11px] font-black text-slate-900 uppercase leading-snug tracking-tight">
+                                        {act.action}
+                                    </p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-[9px] font-bold text-slate-400 uppercase">{actor?.name}</span>
+                                        <span className="text-[9px] text-slate-300 font-bold">•</span>
+                                        <span className="text-[9px] font-bold text-slate-400 uppercase">
+                                            {formatDistanceToNow(parseISO(act.date), { addSuffix: true })}
+                                        </span>
+                                    </div>
+                                </div>
+                            )
+                        }) : (
+                            <div className="py-20 text-center opacity-30">
+                                <History className="h-8 w-8 mx-auto mb-2" />
+                                <p className="text-[10px] font-black uppercase tracking-widest">No activities recorded</p>
+                            </div>
+                        )}
                     </div>
-                    <div>
-                        <p className="text-[11px] font-black text-blue-700 uppercase tracking-tight mb-1">Execute technical investigation</p>
-                        <p className="text-[10px] font-bold text-blue-600/70 leading-relaxed uppercase">Perform a comprehensive discovery cycle to identify the systemic root cause.</p>
-                    </div>
-                </div>
-
-                <div className="space-y-4 pt-2">
-                    <GuidanceItem label="Gather factual information" checked />
-                    <GuidanceItem label="Identify all possible causes" checked />
-                    <GuidanceItem label="Perform 5-Why analysis" checked />
-                    <GuidanceItem label="Collect evidence and interviews" checked />
-                    <GuidanceItem label="Determine systemic root cause" checked />
-                </div>
+                </ScrollArea>
             </div>
         </div>
     );
@@ -114,20 +132,6 @@ function HealthMetric({ label, value }: any) {
         <div className="p-4 bg-white border border-slate-100 rounded-xl text-center flex flex-col gap-1 shadow-sm hover:shadow-md transition-all">
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
             <p className="text-lg font-black text-slate-900 tracking-tighter">{value}</p>
-        </div>
-    );
-}
-
-function GuidanceItem({ label, checked }: any) {
-    return (
-        <div className="flex items-center gap-3">
-            <div className={cn(
-                "h-5 w-5 rounded-full flex items-center justify-center border-2 transition-all",
-                checked ? "bg-blue-600 border-blue-600 shadow-sm" : "bg-white border-slate-200"
-            )}>
-                {checked && <CheckCircle2 className="h-3.5 w-3.5 text-white stroke-[3]" />}
-            </div>
-            <span className="text-[11px] font-black text-slate-600 uppercase tracking-tight leading-none">{label}</span>
         </div>
     );
 }
