@@ -202,6 +202,10 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
 
             <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); setNumPages(null); setPageNumber(1); }}>
                 <DialogContent className="max-w-[95vw] md:max-w-7xl w-full h-auto max-h-[90vh] flex flex-col p-0 overflow-hidden bg-black border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+                    <DialogHeader className="sr-only">
+                        <DialogTitle>Observation Evidence Viewer</DialogTitle>
+                        <DialogDescription>Full-resolution technical evidence for forensic inspection.</DialogDescription>
+                    </DialogHeader>
                     <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
                         {!isPdf && (
                             <div className="flex gap-2">
@@ -253,46 +257,51 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
 
     return (
         <div className="w-full text-left">
-            <section className="overflow-hidden rounded-[2rem] bg-white">
-                <div className="border-b-2 border-slate-100 bg-white px-10 py-8">
+            <section className="overflow-hidden rounded-[18px] border border-[#D9E2EC] bg-white shadow-[0_2px_12px_rgba(16,42,67,0.04)]">
+                <div className="border-b border-[#E5EBF2] bg-white px-7 py-6">
                     <div className="flex items-center justify-between gap-6">
-                        <div className="flex items-center gap-6">
-                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-4 border-slate-900 bg-white text-2xl font-black text-slate-900 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.1)]">01</div>
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[15px] border border-[#E5EBF2] bg-white text-[21px] font-extrabold text-[#071B33] shadow-sm">01</div>
                             <div>
-                                <Badge className="bg-blue-50 text-blue-600 border-blue-100 rounded-none h-5 font-black uppercase tracking-[0.2em] text-[8px] mb-1">GOVERNANCE MILESTONE</Badge>
-                                <h2 className="text-3xl font-black uppercase tracking-tight text-slate-900 leading-none">INITIATION</h2>
+                                <div className="mb-1.5 flex items-center gap-2">
+                                    <span className="rounded-full bg-[#E7F0FF] px-3 py-1 text-[8px] font-extrabold uppercase tracking-[0.12em] text-[#1769FF]">GOVERNANCE MILESTONE</span>
+                                </div>
+                                <h2 className="text-[25px] font-extrabold uppercase leading-none tracking-tight text-[#071B33]">INITIATION</h2>
                             </div>
                         </div>
-                        <div className="flex items-center gap-10">
+                        <div className="flex items-center gap-8">
                             <div className="text-right">
-                                <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">REPORTER</p>
-                                <div className="mt-1.5 flex items-center gap-3 justify-end">
-                                    <p className="text-xs font-black uppercase text-slate-900">{reporter?.name}</p>
-                                    <Avatar className="h-8 w-8 border-2 border-white shadow-md"><AvatarImage src={reporter?.avatar}/><AvatarFallback className="text-[10px] font-black">{reporter?.name?.[0]}</AvatarFallback></Avatar>
+                                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#8A9AAF]">REPORTER</p>
+                                <div className="mt-1 flex items-center gap-2 justify-end">
+                                    <p className="text-[10px] font-extrabold uppercase text-[#102A43]">{reporter?.name || 'Unknown'}</p>
+                                    <Avatar className="h-6 w-6 border"><AvatarImage src={reporter?.avatar}/><AvatarFallback className="text-[8px]">{reporter?.name?.[0]}</AvatarFallback></Avatar>
                                 </div>
                             </div>
+                            <div className="h-9 w-px bg-[#E5EBF2]" />
                             <div className="text-right">
-                                <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">TIMESTAMP</p>
-                                <p className="mt-1.5 flex items-center justify-end gap-2 text-xs font-black uppercase text-slate-900"><Calendar className="h-4 w-4 text-blue-600"/> {format(parseISO(observation.createdAt), 'dd MMM yyyy')}</p>
+                                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#8A9AAF]">TIMESTAMP</p>
+                                <p className="mt-1 flex items-center justify-end gap-1.5 text-[10px] font-extrabold uppercase text-[#102A43]"><Calendar className="h-3 w-3 text-slate-400"/> {format(parseISO(observation.createdAt), 'dd-MM-yyyy')}</p>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div className="p-10 grid grid-cols-1 lg:grid-cols-2 gap-16">
-                    <div className="space-y-10">
-                        <SectionHeading icon={MapPin} title="OPERATIONAL LOGISTICS" />
-                        <div className="space-y-6">
-                            <EditableMeta label="Discovery Category" value={observation.category} isEditing={isEditing} type="select" options={['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']} onChange={val => setFormData(p => ({ ...p, category: val }))} icon={Search} />
-                            <EditableMeta label="Risk Severity" value={observation.severity} isEditing={isEditing} type="select" options={['Low', 'Medium', 'High', 'Critical']} onChange={val => setFormData(p => ({ ...p, severity: val }))} icon={ShieldCheck} />
-                            <EditableMeta label="Operational Site" value={project?.name || observation.projectId} isEditing={isEditing} type="select" options={projects.map(p => ({ id: p.id, name: p.name }))} onChange={val => setFormData(p => ({ ...p, projectId: val }))} icon={MapPin} />
-                            <EditableMeta label="Specific Location" value={observation.location} isEditing={isEditing} type="text" onChange={val => setFormData(p => ({ ...p, location: val }))} icon={MapPin} />
-                        </div>
-                    </div>
-                    <div className="space-y-10">
-                        <div className="flex justify-between items-center"><SectionHeading icon={FileText} title="NARRATIVE CONTEXT" /> {isAuthorized && !isEditing && <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase border-2 text-[10px] rounded-lg" onClick={() => setIsEditing(true)}><Edit3 className="h-3.5 w-3.5 mr-2"/> OVERWRITE</Button>}</div>
+                <div className="p-7 space-y-10">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                         <div className="space-y-8">
-                            {isEditing ? <div className="space-y-3"><Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Finding Description</Label><Textarea className="min-h-[160px] rounded-2xl border-2 border-slate-200 bg-slate-50 font-bold text-sm shadow-inner p-6" value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} /><div className="flex justify-end gap-3 pt-2"><Button variant="outline" className="h-10 px-6 rounded-lg font-black uppercase text-[10px]" onClick={() => setIsEditing(false)}>CANCEL</Button><Button className="h-10 px-8 rounded-lg font-black uppercase text-[10px] bg-blue-600" onClick={handleSave}>SAVE CHANGES</Button></div></div> : <div className="p-8 rounded-[2rem] bg-slate-50 border-2 border-slate-100 shadow-inner"><p className="text-sm font-bold text-slate-800 leading-relaxed uppercase tracking-tight italic">"{sanitizedDescription}"</p></div>}
-                            {extractedEvidenceUrl && <div className="space-y-3"><Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Discovery Evidence</Label><div className="h-40 w-64 rounded-3xl border-4 border-slate-900 bg-white overflow-hidden relative group/img cursor-zoom-in shadow-xl" onClick={() => onViewImage(extractedEvidenceUrl)}><img src={extractedEvidenceUrl} alt="E" className="w-full h-full object-contain" /><div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 flex items-center justify-center transition-all"><ZoomIn className="h-8 w-8 text-white opacity-0 group-hover/img:opacity-100" /></div></div></div>}
+                            <SectionHeading icon={MapPin} title="OPERATIONAL LOGISTICS" />
+                            <div className="space-y-6">
+                                <EditableMeta label="Discovery Category" value={observation.category} isEditing={isEditing} type="select" options={['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']} onChange={val => setFormData(p => ({ ...p, category: val }))} icon={Search} />
+                                <EditableMeta label="Risk Severity" value={observation.severity} isEditing={isEditing} type="select" options={['Low', 'Medium', 'High', 'Critical']} onChange={val => setFormData(p => ({ ...p, severity: val }))} icon={ShieldCheck} />
+                                <EditableMeta label="Operational Site" value={project?.name || observation.projectId} isEditing={isEditing} type="select" options={projects.map(p => ({ id: p.id, name: p.name }))} onChange={val => setFormData(p => ({ ...p, projectId: val }))} icon={MapPin} />
+                                <EditableMeta label="Specific Location" value={observation.location} isEditing={isEditing} type="text" onChange={val => setFormData(p => ({ ...p, location: val }))} icon={MapPin} />
+                            </div>
+                        </div>
+                        <div className="space-y-8">
+                            <div className="flex justify-between items-center"><SectionHeading icon={FileText} title="NARRATIVE CONTEXT" /> {isAuthorized && !isEditing && <Button variant="ghost" size="sm" className="h-7 px-3 text-[9px] font-black uppercase border border-slate-200" onClick={() => setIsEditing(true)}><Edit3 className="h-3 w-3 mr-1.5"/> OVERWRITE</Button>}</div>
+                            <div className="space-y-6">
+                                {isEditing ? <div className="space-y-2"><Label className="text-[9px] font-extrabold uppercase tracking-widest text-[#304B68]">Finding Description</Label><Textarea className="min-h-[120px] rounded-[10px] border-[#DCE5EF] bg-white text-[10px]" value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} /><div className="flex justify-end gap-2 pt-2"><Button variant="outline" size="sm" className="h-8 text-[9px]" onClick={() => setIsEditing(false)}>CANCEL</Button><Button size="sm" className="h-8 text-[9px] bg-[#1769FF]" onClick={handleSave}>SAVE CHANGES</Button></div></div> : <div className="p-4 rounded-xl bg-slate-50 border border-[#DCE5EF] shadow-inner"><p className="text-[10px] font-medium text-slate-700 leading-relaxed uppercase tracking-tight italic">"{sanitizedDescription}"</p></div>}
+                                {extractedEvidenceUrl && <div className="space-y-2"><Label className="text-[9px] font-extrabold uppercase tracking-widest text-[#304B68]">Discovery Evidence</Label><div className="h-32 w-48 rounded-lg border-2 border-slate-200 bg-white overflow-hidden relative group/img cursor-zoom-in" onClick={() => onViewImage(extractedEvidenceUrl)}><img src={extractedEvidenceUrl} alt="E" className="w-full h-full object-contain" /><div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 flex items-center justify-center transition-all"><ZoomIn className="h-6 w-6 text-white opacity-0 group-hover/img:opacity-100" /></div></div></div>}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -302,21 +311,21 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
 }
 
 function SectionHeading({ icon: Icon, title }: { icon: any, title: string }) {
-    return <div className="flex items-center gap-4"><Icon className="h-5 w-5 text-blue-600" /><h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500">{title}</h4></div>;
+    return <div className="flex items-center gap-3"><Icon className="h-4 w-4 text-[#1769FF]" /><h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-[#304B68]">{title}</h4></div>;
 }
 
 function EditableMeta({ label, value, isEditing, type, options, onChange, icon: Icon }: { label: string, value: string, isEditing: boolean, type: 'text' | 'select', options?: any[], onChange: (val: any) => void, icon?: any }) {
     return (
-        <div className="space-y-3">
-            <Label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">{Icon && <Icon className="h-3.5 w-3.5 text-blue-400" />}{label}</Label>
+        <div className="space-y-2.5">
+            <Label className="flex items-center gap-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#304B68] ml-1">{Icon && <Icon className="h-3 w-3 text-[#7A9ABB]" />}{label}</Label>
             {isEditing ? (
                 type === 'select' ? (
                     <Select value={value} onValueChange={onChange}>
-                        <SelectTrigger className="h-12 rounded-xl border-2 border-slate-200 bg-slate-50 px-5 text-xs font-black uppercase text-slate-900 shadow-inner"><SelectValue /></SelectTrigger>
-                        <SelectContent>{options?.map(opt => <SelectItem key={typeof opt === 'string' ? opt : opt.id} value={typeof opt === 'string' ? opt : opt.id} className="text-xs font-black uppercase">{typeof opt === 'string' ? opt : opt.name}</SelectItem>)}</SelectContent>
+                        <SelectTrigger className="h-[42px] rounded-[10px] border-[#DCE5EF] bg-white px-3.5 text-[10px] font-bold uppercase text-[#243B53]"><SelectValue /></SelectTrigger>
+                        <SelectContent>{options?.map(opt => <SelectItem key={typeof opt === 'string' ? opt : opt.id} value={typeof opt === 'string' ? opt : opt.id}>{typeof opt === 'string' ? opt : opt.name}</SelectItem>)}</SelectContent>
                     </Select>
-                ) : <Input className="h-12 rounded-xl border-2 border-slate-200 bg-slate-50 text-xs font-black uppercase shadow-inner px-5" value={value} onChange={e => onChange(e.target.value)} />
-            ) : <div className="h-12 px-5 flex items-center bg-slate-50 border-2 border-slate-100 rounded-xl shadow-inner"><span className="text-xs font-black text-slate-900 uppercase truncate">{value}</span></div>}
+                ) : <Input className="h-[42px] rounded-[10px] border-[#DCE5EF] bg-white text-[10px]" value={value} onChange={e => onChange(e.target.value)} />
+            ) : <div className="h-[42px] px-3.5 flex items-center bg-slate-50 border border-[#DCE5EF] rounded-[10px]"><span className="text-[10px] font-bold text-[#102A43] uppercase truncate">{value}</span></div>}
         </div>
     );
 }

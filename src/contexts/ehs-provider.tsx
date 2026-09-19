@@ -311,7 +311,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
             const nextStage = CAPA_STAGES[CAPA_STAGES.indexOf(stage) + 1];
             if (nextStage) {
                 updates['currentStage'] = nextStage;
-                updates[`stages/${nextStage}/status`] = 'Pending';
+                updates[`stages/${nextStage}/status'] = 'Pending';
                 updates[`stages/${nextStage}/assignedById`] = user.id;
                 updates[`stages/${nextStage}/assignedAt`] = now;
                 if (stage === 'Investigation' && nextOwnerData) { updates[`stages/${nextStage}/assigneeId`] = nextOwnerData.assigneeId; updates[`stages/${nextStage}/targetDate`] = nextOwnerData.targetDate; }

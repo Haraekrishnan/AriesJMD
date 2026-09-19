@@ -109,7 +109,7 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                             </div>
                         </div>
 
-                        {/* SPATIALLY OPTIMIZED UPLOAD (Just below date) */}
+                        {/* SPATIALLY OPTIMIZED UPLOAD */}
                         <div className="space-y-3 pt-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Primary Discovery Evidence</Label>
                             {discoveryAttachment ? (

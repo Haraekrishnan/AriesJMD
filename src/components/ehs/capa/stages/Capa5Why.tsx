@@ -79,7 +79,7 @@ export default function Capa5Why({ isLocked }: Props) {
                         disabled={isLocked}
                         {...register('rootCauseCandidate')}
                         placeholder="State the final systemic root cause identified at Level W5 for executive validation..."
-                        className="min-h-[200px] rounded-[2rem] border-2 border-slate-200 bg-slate-50 p-10 font-black text-lg uppercase tracking-tight text-blue-700 placeholder:text-slate-100 focus-visible:bg-white transition-all shadow-inner"
+                        className="min-h-[200px] rounded-[2rem] border-2 border-slate-200 bg-slate-50 p-12 font-black text-xl uppercase tracking-tight text-blue-700 placeholder:text-slate-100 focus-visible:bg-white transition-all shadow-inner"
                     />
                     <div className="absolute top-8 right-8 flex items-center gap-3 px-5 py-2.5 bg-emerald-600 text-white text-[11px] font-black uppercase tracking-widest rounded-2xl shadow-xl">
                         <ShieldCheck className="h-4 w-4 text-white" /> ANALYSIS VALIDATED
