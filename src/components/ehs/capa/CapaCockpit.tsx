@@ -9,6 +9,13 @@ import {
     Calendar,
     Target,
     MoreVertical,
+    CheckCircle2,
+    Undo2,
+    ThumbsUp,
+    MessageSquare,
+    AlertTriangle,
+    History,
+    FileText
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -17,7 +24,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
+import { useEhs } from '@/contexts/ehs-provider';
 import { useForm, FormProvider } from 'react-hook-form';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 import CapaLifecycleStepper from './cockpit/CapaLifecycleStepper';
 import CapaRightSidebar from './cockpit/CapaRightSidebar';
@@ -26,15 +37,23 @@ import CapaActionFooter from './cockpit/CapaActionFooter';
 
 const STAGES: CapaStage[] = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];
 
-export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) {
-    const { users } = useAuth();
+export default function CapaCockpit({ observation, onClose }: { observation: EhsObservation; onClose: () => void; }) {
+    const { user, users } = useAuth();
     const { projects } = useGeneral();
+    const { reviewStage } = useEhs();
     const [viewingStage, setViewingStage] = useState<CapaStage>(observation.currentStage || 'Initiation');
+    
+    // Review Dialog State
+    const [reviewAction, setReviewAction] = useState<'Completed' | 'Returned' | null>(null);
+    const [reviewComment, setReviewComment] = useState('');
 
     const project = projects.find(p => p.id === observation.projectId);
     const reporter = users.find(u => u.id === observation.reporterId);
     
     const sData = observation.stages[viewingStage];
+    const isCurrentStage = observation.currentStage === viewingStage;
+    const isSubmitted = sData?.status === 'In Progress';
+    const isSupervisor = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor' || user?.role === 'Project Coordinator';
 
     const methods = useForm({
         defaultValues: sData?.data || {}
@@ -44,6 +63,13 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
         const completedCount = STAGES.filter(s => observation.stages[s]?.status === 'Completed').length;
         return Math.round((completedCount / STAGES.length) * 100);
     }, [observation]);
+
+    const handleReviewSubmit = () => {
+        if (!reviewAction) return;
+        reviewStage(observation.id, viewingStage, reviewAction, reviewComment);
+        setReviewAction(null);
+        setReviewComment('');
+    };
 
     return (
         <FormProvider {...methods}>
@@ -76,6 +102,25 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                         </div>
 
                         <div className="flex items-center gap-10">
+                            {/* EXECUTIVE VERIFICATION ACTIONS */}
+                            {isCurrentStage && isSubmitted && isSupervisor && (
+                                <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-2">
+                                    <Button 
+                                        variant="outline" 
+                                        className="h-10 border-rose-500/30 text-rose-600 hover:bg-rose-50 font-black uppercase tracking-widest text-[9px] px-6 rounded-xl"
+                                        onClick={() => setReviewAction('Returned')}
+                                    >
+                                        <Undo2 className="mr-2 h-3.5 w-3.5" /> Instruct Rework
+                                    </Button>
+                                    <Button 
+                                        className="h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[9px] px-8 rounded-xl shadow-lg shadow-emerald-500/20"
+                                        onClick={() => setReviewAction('Completed')}
+                                    >
+                                        <CheckCircle2 className="mr-2 h-4 w-4" /> Verify & Continue
+                                    </Button>
+                                </div>
+                            )}
+
                             <div className="flex flex-col text-right leading-none mr-4">
                                 <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">A SAFER WORKPLACE</p>
                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">A HEALTHIER TOMORROW</p>
@@ -164,6 +209,54 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                     </aside>
                 </div>
             </div>
+
+            {/* Verification Dialog */}
+            <Dialog open={!!reviewAction} onOpenChange={(o) => !o && setReviewAction(null)}>
+                <DialogContent className="bg-white border-slate-200 text-slate-900 shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-slate-900 uppercase font-black tracking-tight">
+                            {reviewAction === 'Completed' ? 'Verify Milestone' : 'Instruct Technical Rework'}
+                        </DialogTitle>
+                        <DialogDescription className="text-slate-500 font-medium">
+                            {reviewAction === 'Completed' 
+                                ? 'Authorize the findings and proceed to the next lifecycle stage.' 
+                                : 'Return the case to the assignee for clarification or correction.'}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4 text-left">
+                        <div className="space-y-2">
+                            <Label className="text-slate-900 font-black uppercase text-[10px] tracking-widest ml-1">
+                                {reviewAction === 'Completed' ? 'Validation Notes' : 'Rework Instructions'}
+                            </Label>
+                            <Textarea 
+                                className="bg-slate-50 border-slate-200 text-slate-900 min-h-[120px] rounded-xl font-bold p-4 focus-visible:ring-emerald-600/20 shadow-inner" 
+                                placeholder="Enter technical comments for the audit trail..."
+                                value={reviewComment}
+                                onChange={(e) => setReviewComment(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" className="h-12 px-6 rounded-xl font-bold" onClick={() => setReviewAction(null)}>
+                            Cancel
+                        </Button>
+                        <Button 
+                            className={cn(
+                                "font-black uppercase text-[10px] h-12 px-8 rounded-xl shadow-lg",
+                                reviewAction === 'Completed' ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-rose-600 hover:bg-rose-700 text-white"
+                            )}
+                            onClick={handleReviewSubmit}
+                        >
+                            {reviewAction === 'Completed' ? 'Authorize & Proceed' : 'Submit Rework Order'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </FormProvider>
     );
+}
+
+interface CapaCockpitProps {
+    observation: EhsObservation;
+    onClose: () => void;
 }
