@@ -162,10 +162,6 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     push(ref(rtdb, 'ehs/riskAssessments'), data);
   }, []);
 
-  const addTraining = useCallback((data: Omit<EhsTraining, 'id'>) => {
-    push(ref(rtdb, 'ehs/trainings'), data);
-  }, []);
-
   const addObservation = useCallback((data: Omit<EhsObservation, 'id' | 'createdAt' | 'status' | 'currentStage' | 'stages'>) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'ehs/observations'));
@@ -432,6 +428,10 @@ export function EhsProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const updateContactInfo = useCallback((info: Partial<EhsContactInfo>) => update(ref(rtdb, 'ehs/contactInfo'), info), []);
+
+  const addTraining = useCallback((data: Omit<EhsTraining, 'id'>) => {
+    push(ref(rtdb, 'ehs/trainings'), data);
+  }, []);
 
   const stats = useMemo(() => {
     const totalIncidents = incidents.length;

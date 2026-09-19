@@ -71,7 +71,7 @@ if (typeof window !== 'undefined') {
     pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 }
 
-const STAGES: CapaStage[] = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];
+const STAGES_LIST: CapaStage[] = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];
 
 interface CapaStageWorkspaceProps {
     observation: EhsObservation;
@@ -166,7 +166,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
             <div className="p-8 rounded-[2rem] bg-white border border-slate-200 shadow-sm flex items-center justify-between relative overflow-hidden">
                 <div className="flex items-center gap-8">
                     <div className="h-14 w-14 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-blue-500/20">
-                        {String(STAGES.indexOf(stage) + 1).padStart(2, '0')}
+                        {String(STAGES_LIST.indexOf(stage) + 1).padStart(2, '0')}
                     </div>
                     <div>
                         <h3 className="text-3xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">{stage}</h3>
