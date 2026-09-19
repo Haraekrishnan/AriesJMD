@@ -44,10 +44,6 @@ if (typeof window !== 'undefined') {
 }
 
 // Phase-Specific Components
-import CapaInvestigation from '../stages/CapaInvestigation';
-import Capa5Why from '../stages/Capa5Why';
-import CapaSystemicRootCause from '../stages/CapaSystemicRootCause';
-import CapaInvestigationConclusion from '../stages/CapaInvestigationConclusion';
 import CapaResolution from '../stages/CapaResolution';
 import CapaImplementation from '../stages/CapaImplementation';
 import CapaEffectivenessReview from '../stages/CapaEffectivenessReview';
@@ -114,7 +110,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
         setIsPanning(false);
     };
 
-    const isPdf = viewingAttachmentUrl && viewingAttachmentUrl.toLowerCase().includes('.pdf');
+    const isPdf = viewingAttachmentUrl && viewingAttachmentUrl.toLowerCase().endsWith('.pdf');
 
     const renderStageContent = () => {
         switch (stage) {
@@ -240,7 +236,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                             <Button 
                                                 variant="ghost" 
                                                 size="icon" 
-                                                className="h-12 w-12 text-rose-600 hover:bg-rose-100/50 border-2 border-transparent hover:border-rose-600 rounded-none"
+                                                className="h-12 w-12 text-rose-600 hover:bg-rose-100/50 border-2 border-transparent hover:border-blue-600 rounded-none"
                                             >
                                                 <Trash2 className="h-6 w-6" />
                                             </Button>

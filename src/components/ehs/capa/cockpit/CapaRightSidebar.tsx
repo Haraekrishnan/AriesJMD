@@ -18,10 +18,15 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { format, parseISO } from 'date-fns';
+import { useAuth } from '@/contexts/auth-provider';
 
 export default function CapaRightSidebar({ observation }: { observation: EhsObservation }) {
+    const { users } = useAuth();
+    const reporter = users.find(u => u.id === observation.reporterId);
+    
     return (
-        <div className="flex flex-col h-full bg-white divide-y-2 divide-slate-900 text-left">
+        <div className="flex flex-col h-full bg-white divide-y-4 divide-slate-900 text-left">
             {/* 1. CASE INFORMATION */}
             <div className="p-6 space-y-5">
                 <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-900 flex items-center gap-3">
@@ -32,7 +37,7 @@ export default function CapaRightSidebar({ observation }: { observation: EhsObse
                     <MetaRow label="Risk Index" value={observation.severity} isRisk />
                     <MetaRow label="Site" value={observation.projectId} />
                     <MetaRow label="Area" value={observation.location || 'SITE POSITION TBD'} />
-                    <MetaRow label="Reporter" value="OFFICIAL RECORD" />
+                    <MetaRow label="Reporter" value={reporter?.name || 'OFFICIAL RECORD'} />
                     <MetaRow label="Initiated On" value={format(parseISO(observation.createdAt), 'dd MMM yyyy')} />
                     <MetaRow label="Days Open" value="0 Days" />
                 </div>
@@ -121,7 +126,7 @@ function GuidanceItem({ label, checked }: any) {
                 "h-4 w-4 rounded-none flex items-center justify-center border-2 transition-all",
                 checked ? "bg-emerald-600 border-slate-900 shadow-sm" : "bg-white border-slate-200"
             )}>
-                {checked && <CheckCircle2 className="h-3 w-3 text-white" />}
+                {checked && <CheckCircle2 className="h-3.5 w-3.5 text-white" />}
             </div>
             <span className="text-[10px] font-black text-slate-600 uppercase tracking-tight leading-none">{label}</span>
         </div>

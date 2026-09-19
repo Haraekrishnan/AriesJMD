@@ -33,6 +33,7 @@ import type { EhsObservation } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { format, parseISO } from 'date-fns';
 
 export default function CapaInvestigationWorkspace({ observation }: { observation: EhsObservation }) {
     const { register, setValue, watch, control } = useFormContext();
@@ -237,7 +238,7 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                                     </h4>
                                     <div className="space-y-8">
                                         <div className="space-y-2.5">
-                                            <Label className="text-[11px] font-black uppercase tracking-widest text-slate-600 ml-1">Sequence of events (How?) <span className="text-rose-500">*</span></Label>
+                                            <Label className="text-[11px] font-black uppercase tracking-widest text-slate-600 ml-1">Sequence of events (How?) <span className="text-rose-600">*</span></Label>
                                             <Textarea disabled={isLocked} {...register('sequence')} placeholder="Describe the chronological sequence of events leading to discovery..." className="min-h-[140px] rounded-none border-2 border-slate-200 bg-white font-medium text-sm px-5 py-4 focus-visible:border-blue-600 focus-visible:ring-0 shadow-inner leading-relaxed" />
                                         </div>
 
@@ -247,7 +248,7 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                                         </div>
 
                                         <div className="space-y-2.5">
-                                            <Label className="text-[11px] font-black uppercase tracking-widest text-slate-600 ml-1">Immediate cause (Direct reason) <span className="text-rose-500">*</span></Label>
+                                            <Label className="text-[11px] font-black uppercase tracking-widest text-slate-600 ml-1">Immediate cause (Direct reason) <span className="text-rose-600">*</span></Label>
                                             <Textarea disabled={isLocked} {...register('immediateCause')} placeholder="State the direct reason for the unsafe act or condition..." className="min-h-[140px] rounded-none border-2 border-slate-900 bg-white font-medium text-sm px-5 py-4 focus-visible:border-blue-600 focus-visible:ring-0 shadow-inner leading-relaxed border-l-8 border-l-rose-600" />
                                         </div>
                                     </div>
