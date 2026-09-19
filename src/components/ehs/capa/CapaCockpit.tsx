@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { 
     ChevronLeft, 
     MessageSquare, 
@@ -11,11 +11,9 @@ import {
     ShieldCheck,
     UploadCloud,
     Target,
-    Zap,
     Activity,
-    Info,
-    History,
-    ShieldAlert
+    Plus,
+    MoreVertical
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -37,8 +35,6 @@ interface CapaCockpitProps {
     onClose: () => void;
 }
 
-const STAGES: CapaStage[] = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];
-
 export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) {
     const { users } = useAuth();
     const { projects } = useGeneral();
@@ -53,65 +49,80 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
 
     return (
         <FormProvider {...methods}>
-            <div className="fixed inset-0 z-40 flex flex-col bg-[#F8FAFC] text-slate-900 font-sans overflow-hidden select-none">
+            <div className="fixed inset-0 z-40 flex flex-col bg-[#F3F7FB] text-slate-900 font-sans overflow-hidden select-none">
                 
-                {/* --- 1. MODERN SaaS HEADER --- */}
-                <header className="shrink-0 bg-white border-b px-8 py-4 flex flex-col gap-3 z-30 shadow-sm">
-                    <div className="flex items-center justify-between">
+                {/* --- 1. DUAL-TIER EXECUTIVE HEADER --- */}
+                <header className="shrink-0 bg-white border-b z-30">
+                    {/* Top Tier */}
+                    <div className="px-8 py-3 flex items-center justify-between border-b bg-slate-50/30">
                         <div className="flex items-center gap-6">
                             <Button 
-                                variant="ghost" 
+                                variant="outline" 
                                 size="sm" 
                                 onClick={onClose} 
-                                className="h-10 px-4 rounded-xl text-slate-600 hover:bg-slate-100 font-bold uppercase text-[10px] tracking-widest border"
+                                className="h-8 px-3 rounded-lg text-slate-500 hover:bg-white font-bold uppercase text-[10px] tracking-widest border-2 border-slate-200"
                             >
-                                <ChevronLeft className="mr-2 h-4 w-4" /> Back
+                                <ChevronLeft className="mr-1.5 h-3.5 w-3.5" /> Back
                             </Button>
-                            <div className="flex items-center gap-4">
-                                <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
+                            <div className="flex items-center gap-3">
+                                <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">
                                     {observation.id.slice(-12).toUpperCase()}
                                 </h1>
-                                <div className="flex gap-2">
-                                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 font-black uppercase text-[9px] px-3 h-6 rounded-lg tracking-widest">
-                                        {observation.severity.toUpperCase()} RISK
-                                    </Badge>
-                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-black uppercase text-[9px] px-3 h-6 rounded-lg tracking-widest">
-                                        {observation.status.toUpperCase()}
-                                    </Badge>
-                                </div>
+                                <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200 font-black uppercase text-[9px] px-2 h-5 rounded-md tracking-wider">
+                                    {observation.severity.toUpperCase()} RISK
+                                </Badge>
+                                <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200 font-black uppercase text-[9px] px-2 h-5 rounded-md tracking-wider">
+                                    {observation.status.toUpperCase()}
+                                </Badge>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-3 mr-6 bg-emerald-50 px-4 py-2 rounded-2xl border border-emerald-100">
-                                <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                            <div className="flex items-center gap-2 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
+                                <ShieldCheck className="h-4 w-4 text-emerald-600" />
                                 <div className="text-left">
-                                    <p className="text-[10px] font-black text-emerald-900 uppercase tracking-widest leading-none">TECHNICAL GOVERNANCE</p>
-                                    <p className="text-[9px] font-bold text-emerald-600/80 uppercase tracking-widest mt-1 leading-none">SYSTEM OPTIMAL</p>
+                                    <p className="text-[9px] font-black text-emerald-900 uppercase tracking-widest leading-none">TECHNICAL GOVERNANCE</p>
+                                    <p className="text-[8px] font-bold text-emerald-600/80 uppercase tracking-widest mt-0.5 leading-none">SYSTEM OPTIMAL</p>
                                 </div>
                             </div>
-                            <Button variant="outline" size="sm" className="h-10 px-6 gap-2 text-slate-700 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all border-2">
-                                <MessageSquare className="h-4 w-4" /> Add Note
-                            </Button>
-                            <Button variant="outline" size="sm" className="h-10 px-6 gap-2 text-slate-700 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all border-2">
-                                <UploadCloud className="h-4 w-4" /> Upload Document
-                            </Button>
+                            <div className="flex items-center gap-2 ml-4">
+                                <Button variant="outline" size="sm" className="h-9 px-4 gap-2 text-slate-700 rounded-xl font-black text-[10px] uppercase tracking-widest border-2">
+                                    <MessageSquare className="h-3.5 w-3.5" /> Add Note
+                                </Button>
+                                <Button variant="outline" size="sm" className="h-9 px-4 gap-2 text-slate-700 rounded-xl font-black text-[10px] uppercase tracking-widest border-2">
+                                    <UploadCloud className="h-3.5 w-3.5" /> Upload Document
+                                </Button>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] pt-1">
-                        <div className="flex items-center gap-8">
-                            <span className="flex items-center gap-2 text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg"><MapPin className="h-3.5 w-3.5" /> {project?.name || 'SITE TBD'}</span>
-                            <span className="flex items-center gap-2"><User className="h-3.5 w-3.5" /> Reporter: {reporter?.name || 'N/A'}</span>
-                            <span className="flex items-center gap-2"><Calendar className="h-3.5 w-3.5" /> {format(parseISO(observation.createdAt), 'dd MMM yyyy')}</span>
-                            <span className="flex items-center gap-2 text-rose-600"><Clock className="h-3.5 w-3.5" /> 0 Days Open</span>
-                            <span className="flex items-center gap-2 text-blue-600"><Target className="h-3.5 w-3.5" /> Target Closure: 30 Sep 2026</span>
+                    {/* Metadata Readout row */}
+                    <div className="px-8 py-2.5 flex items-center gap-10 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                        <div className="flex items-center gap-2 bg-slate-100/50 px-2 py-1 rounded">
+                            <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                            <span className="text-slate-600">{project?.name || 'SITE TBD'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <User className="h-3.5 w-3.5 text-slate-400" />
+                            <span>Reporter: <span className="text-slate-600">{reporter?.name || 'N/A'}</span></span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                            <span>{format(parseISO(observation.createdAt), 'dd MMM yyyy')}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-rose-500">
+                            <Clock className="h-3.5 w-3.5" />
+                            <span>0 Days Open</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-blue-600">
+                            <Target className="h-3.5 w-3.5" />
+                            <span>Target Closure: 30 Sep 2026</span>
                         </div>
                     </div>
                 </header>
 
                 {/* --- 2. PROGRESS TIER --- */}
-                <section className="h-24 shrink-0 bg-white border-b px-10 flex items-center z-20 shadow-sm">
+                <section className="h-20 shrink-0 bg-white border-b px-8 flex items-center z-20">
                     <CapaLifecycleStepper 
                         observation={observation} 
                         viewingStage={viewingStage} 
@@ -123,19 +134,19 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                 <div className="flex-1 flex overflow-hidden">
                     <main className="flex-1 flex flex-col overflow-hidden relative bg-[#F8FAFC]">
                         <ScrollArea className="flex-1">
-                            <div className="p-8 max-w-[1400px] mx-auto w-full pb-32">
+                            <div className="p-8 max-w-[1500px] mx-auto w-full pb-32">
                                 <CapaStageWorkspace observation={observation} stage={viewingStage} />
                             </div>
                         </ScrollArea>
 
                         {/* BOTTOM ACTION BAR */}
-                        <footer className="h-24 shrink-0 bg-white/80 backdrop-blur-md border-t px-10 flex items-center z-30 absolute bottom-0 left-0 right-0 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+                        <footer className="h-20 shrink-0 bg-white/90 backdrop-blur-md border-t px-8 flex items-center z-30 absolute bottom-0 left-0 right-0 shadow-lg">
                             <CapaActionFooter observation={observation} stage={viewingStage} />
                         </footer>
                     </main>
 
                     {/* RIGHT SIDEBAR */}
-                    <aside className="w-[400px] shrink-0 border-l bg-white flex flex-col z-20 overflow-y-auto shadow-2xl">
+                    <aside className="w-[380px] shrink-0 border-l bg-white flex flex-col z-20 overflow-y-auto">
                         <CapaRightSidebar observation={observation} />
                     </aside>
                 </div>
