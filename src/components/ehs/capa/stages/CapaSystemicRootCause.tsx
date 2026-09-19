@@ -40,12 +40,12 @@ export default function CapaSystemicRootCause({ isLocked }: Props) {
                 
                 {/* --- LEFT: CATEGORIZATION --- */}
                 <div className="space-y-12">
-                    <div className="flex items-center gap-4 border-b-4 border-slate-900 pb-4">
+                    <div className="flex items-center gap-4 border-b-4 border-slate-900 pb-4 mx-10">
                         <Layers className="h-6 w-6 text-blue-600" />
                         <h4 className="text-[14px] font-black uppercase tracking-[0.3em] text-slate-900">DOMAIN CATEGORIZATION</h4>
                     </div>
 
-                    <div className="space-y-12">
+                    <div className="space-y-12 px-10">
                         <div className="space-y-4">
                             <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">PRIMARY FAILURE DOMAIN <span className="text-rose-600">*</span></Label>
                             <Controller
@@ -78,7 +78,7 @@ export default function CapaSystemicRootCause({ isLocked }: Props) {
                 </div>
 
                 {/* --- RIGHT: FINAL STATEMENT --- */}
-                <div className="space-y-12">
+                <div className="space-y-12 pr-10">
                     <div className="flex items-center gap-4 border-b-4 border-slate-900 pb-4">
                         <GitBranch className="h-6 w-6 text-blue-600" />
                         <h4 className="text-[14px] font-black uppercase tracking-[0.3em] text-slate-900">ROOT CAUSE DEFINITION</h4>
@@ -105,7 +105,7 @@ export default function CapaSystemicRootCause({ isLocked }: Props) {
             </div>
 
             {/* --- CASE INTEGRITY FOOTER --- */}
-            <div className="pt-12 border-t-4 border-slate-100 flex justify-between items-center">
+            <div className="pt-12 border-t-4 border-slate-100 flex justify-between items-center px-10">
                  <div className="flex items-center gap-6">
                     <div className="text-left">
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Phase Security</p>

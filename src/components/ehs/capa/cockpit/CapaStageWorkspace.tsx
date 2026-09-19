@@ -182,7 +182,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* --- PHASE ALERT (IF RETURNED) --- */}
             {isReturned && (
-                <div className="p-6 rounded-none bg-rose-50 border-2 border-rose-200 flex items-start gap-4 shadow-sm">
+                <div className="p-6 rounded-none bg-rose-50 border-2 border-rose-200 flex items-start gap-4 shadow-sm mx-10 mt-6">
                     <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
                     <div>
                         <p className="text-[10px] font-black text-rose-500 uppercase tracking-[0.3em] mb-1">Official Review Correction instructed</p>
@@ -194,7 +194,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
             )}
 
             {/* --- PHASE WORKSPACE --- */}
-            <Card className="bg-white border-none rounded-none shadow-xl overflow-hidden ring-1 ring-slate-100">
+            <Card className="bg-white border-none rounded-none shadow-xl overflow-hidden ring-1 ring-slate-100 mx-10 mt-10">
                 <div className={cn("transition-all duration-700", (isLocked && stage !== 'Initiation') && "opacity-95 grayscale-[0.1]")}>
                     {renderStageContent()}
                 </div>
@@ -202,7 +202,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
 
             {/* --- OFFICIAL REVIEW PANEL --- */}
             {isCurrentStage && isSubmitted && isSupervisor && stage !== 'Initiation' && (
-                <div className="p-10 rounded-none bg-slate-900 text-white shadow-2xl space-y-8 animate-in slide-in-from-bottom-10 duration-1000 border-4 border-slate-800">
+                <div className="mx-10 p-10 rounded-none bg-slate-900 text-white shadow-2xl space-y-8 animate-in slide-in-from-bottom-10 duration-1000 border-4 border-slate-800">
                     <div className="flex items-center gap-4">
                         <div className="h-12 w-12 rounded-none bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
                             <ShieldCheck className="h-7 w-7 text-white" />

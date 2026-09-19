@@ -19,7 +19,7 @@ export default function CapaPhaseConclusion({ isLocked }: Props) {
     const wellClasses = "rounded-none border-2 border-slate-200 bg-slate-50 font-bold text-sm px-8 py-6 focus-visible:ring-0 focus-visible:border-blue-600 shadow-inner placeholder:text-slate-300 transition-all";
 
     return (
-        <div className="space-y-16 text-left animate-in fade-in duration-700 p-2">
+        <div className="space-y-16 text-left animate-in fade-in duration-700 p-10">
             <div className="max-w-5xl mx-auto space-y-16">
                 
                 {/* --- SUMMARY CONCLUSION --- */}

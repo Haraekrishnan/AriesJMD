@@ -62,7 +62,7 @@ export default function CapaActionFooter({ observation, stage }: Props) {
                      <Button 
                         variant="outline" 
                         size="icon"
-                        className="h-12 w-12 rounded-2xl border-2 hover:bg-slate-50 shadow-sm border-slate-200"
+                        className="h-12 w-12 rounded-2xl border-2 hover:bg-slate-50 shadow-sm border-slate-200 bg-white"
                         disabled={isLocked || !isCurrentStage}
                     >
                         <MessageSquare className="h-4.5 w-4.5 text-slate-400" />
@@ -70,7 +70,7 @@ export default function CapaActionFooter({ observation, stage }: Props) {
                     <Button 
                         variant="outline" 
                         size="icon"
-                        className="h-12 w-12 rounded-2xl border-2 hover:bg-slate-50 shadow-sm border-slate-200"
+                        className="h-12 w-12 rounded-2xl border-2 hover:bg-slate-50 shadow-sm border-slate-200 bg-white"
                         disabled={isLocked || !isCurrentStage}
                     >
                         <UploadCloud className="h-4.5 w-4.5 text-slate-400" />
