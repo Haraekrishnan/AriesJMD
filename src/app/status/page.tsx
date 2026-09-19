@@ -1,6 +1,6 @@
-
 'use client';
-import React, { useEffect } from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -13,9 +13,14 @@ export default function StatusPage() {
   const { user, loading, logout, requestUnlock } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
-    if (loading) {
+    setHasMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hasMounted || loading) {
       return;
     }
 
@@ -26,12 +31,11 @@ export default function StatusPage() {
 
     const isInactive = user.status === 'locked' || user.status === 'deactivated';
 
-    // If the user is on this page but is NOT inactive, send them away.
+    // If an active user lands on this page, send them to the dashboard
     if (!isInactive) {
       router.replace('/dashboard');
     }
-  }, [user, loading, router]);
-
+  }, [user, loading, hasMounted, router]);
 
   const handleUnlockRequest = () => {
     if (user) {
@@ -42,9 +46,11 @@ export default function StatusPage() {
       });
     }
   };
+
+  const isInactive = user?.status === 'locked' || user?.status === 'deactivated';
   
-  // Render loading state until the checks in useEffect are complete
-  if (loading || !user || (user.status !== 'locked' && user.status !== 'deactivated')) {
+  // Render loading state until mounted and auth is verified
+  if (!hasMounted || loading || !user || !isInactive) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="text-center space-y-2">
@@ -63,7 +69,6 @@ export default function StatusPage() {
 
   const isDeactivated = user.status === 'deactivated';
 
-  // Only render the locked/deactivated page content if we are sure
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-full max-w-md text-center">

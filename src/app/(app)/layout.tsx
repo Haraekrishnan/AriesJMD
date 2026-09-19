@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-provider';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,36 +13,40 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
-    if (loading) {
+    setHasMounted(true);
+  }, []);
+
+  const isInactive = user?.status === 'locked' || user?.status === 'deactivated';
+
+  useEffect(() => {
+    if (!hasMounted || loading) {
       return;
     }
+
     if (!user) {
       router.replace('/login');
       return;
     }
 
-    const isInactive = user.status === 'locked' || user.status === 'deactivated';
-
-    if (isInactive && pathname !== '/status') {
+    if (isInactive) {
+      // Inactive users (locked/deactivated) must not access the main app routes
       router.replace('/status');
-    } else if (!isInactive && pathname === '/status') {
-      router.replace('/dashboard');
     }
-  }, [user, loading, router, pathname]);
+  }, [user, loading, isInactive, hasMounted, router]);
 
-  const isInactive = user?.status === 'locked' || user?.status === 'deactivated';
-
-  if (loading || !user || isInactive) {
-    // If locked or deactivated, we show a loading/redirecting state until the useEffect kicks in.
-    // This prevents a flash of the main layout for an unauthorized user.
+  // Handle Loading and Authorization states
+  if (!hasMounted || loading || !user || isInactive) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex items-center space-x-4">
           <Skeleton className="h-12 w-12 rounded-full" />
           <div className="space-y-2">
-            <p className="text-muted-foreground">Verifying session...</p>
+            <p className="text-muted-foreground">
+              {isInactive ? 'Redirecting...' : 'Verifying session...'}
+            </p>
             <Skeleton className="h-4 w-[250px]" />
             <Skeleton className="h-4 w-[200px]" />
           </div>
