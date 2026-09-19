@@ -17,8 +17,11 @@ import {
     AlertTriangle,
     Edit3,
     X,
+    Save,
+    History,
     FileText,
     MapPin,
+    User,
     Calendar,
     Search,
     ZoomIn,
@@ -119,7 +122,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                     <div className="bg-slate-50/50 border-b px-10">
                         <TabsList className="h-16 w-full justify-start gap-12 bg-transparent p-0">
                             {[
-                                { id: 'summary', label: 'Technical Summary', icon: FileText },
+                                { id: 'summary', label: 'Summary', icon: FileText },
                                 { id: '5why', label: '5-Why Analysis', icon: Activity },
                                 { id: 'rootcause', label: 'Systemic Root Cause', icon: Zap },
                                 { id: 'conclusion', label: 'Phase Conclusion', icon: CheckCircle2 },
@@ -301,7 +304,7 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
         <div className="p-7 space-y-10">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                 <div className="space-y-8">
-                    <SectionHeading icon={MapPin} title="OPERATIONAL LOGISTICS" />
+                    <SectionHeading icon={MapPin} title="DETAILS" />
                     <div className="space-y-6">
                         <EditableMeta label="Discovery Category" value={observation.category} isEditing={isEditing} type="select" options={['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']} onChange={val => setFormData(p => ({ ...p, category: val }))} icon={Search} />
                         <EditableMeta label="Risk Severity" value={observation.severity} isEditing={isEditing} type="select" options={['Low', 'Medium', 'High', 'Critical']} onChange={val => setFormData(p => ({ ...p, severity: val }))} icon={ShieldCheck} />
@@ -346,7 +349,7 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
                                 >
                                     <img src={extractedEvidenceUrl} alt="E" className="w-full h-full object-contain" />
                                     <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 flex items-center justify-center transition-all">
-                                        <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover/img:opacity-100" />
+                                        <ClarifyZoomIn className="h-6 w-6 text-white opacity-0 group-hover/img:opacity-100" />
                                     </div>
                                 </div>
                             </div>
@@ -399,3 +402,5 @@ function EditableMeta({ label, value, isEditing, type, options, onChange, icon: 
         </div>
     );
 }
+
+const ClarifyZoomIn = ZoomIn;

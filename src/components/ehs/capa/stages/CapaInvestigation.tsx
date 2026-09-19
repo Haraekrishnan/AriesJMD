@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -35,11 +34,11 @@ export default function CapaInvestigation({ observation, isLocked }: Props) {
         <div className="space-y-12 text-left animate-in fade-in duration-700">
             {/* --- TOP ROW: TWO COLUMN LOGISTICS & CONTEXT --- */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 p-10">
-                {/* LEFT COLUMN: TECHNICAL LOGISTICS */}
+                {/* LEFT COLUMN: DETAILS */}
                 <div className="space-y-10">
                     <div className="flex items-center gap-4 border-b-4 border-slate-900 pb-4">
                         <Activity className="h-6 w-6 text-[#2563EB]" />
-                        <h4 className="text-[14px] font-black uppercase tracking-[0.3em] text-slate-900">TECHNICAL LOGISTICS</h4>
+                        <h4 className="text-[14px] font-black uppercase tracking-[0.3em] text-slate-900">DETAILS</h4>
                     </div>
 
                     <div className="space-y-8">

@@ -50,12 +50,12 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
     return (
         <div className="space-y-8 text-left animate-in fade-in duration-500">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                {/* 1. TECHNICAL LOGISTICS */}
+                {/* 1. DETAILS */}
                 <div className="p-8 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-8">
                     <div className="flex items-center justify-between border-b pb-4">
                         <div className="flex items-center gap-3">
                             <FileSearch className="h-5 w-5 text-blue-600" />
-                            <h4 className="text-[12px] font-black uppercase tracking-[0.2em] text-slate-800">TECHNICAL LOGISTICS</h4>
+                            <h4 className="text-[12px] font-black uppercase tracking-[0.2em] text-slate-800">DETAILS</h4>
                         </div>
                         <p className="text-[9px] font-bold text-slate-400 uppercase">Factual incident parameters</p>
                     </div>
