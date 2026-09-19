@@ -11,13 +11,13 @@ import {
     RotateCcw, 
     Download,
     History,
-    FileDown
+    FileDown,
+    Activity
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import CapaKpiCards from '@/components/ehs/capa/CapaKpiCards';
 import CapaFilters from '@/components/ehs/capa/CapaFilters';
 import CapaTable from '@/components/ehs/capa/CapaTable';
-import CapaCaseDrawer from '@/components/ehs/capa/CapaCaseDrawer';
 import CapaInitiateDialog from '@/components/ehs/capa/CapaInitiateDialog';
 import CapaCockpit from '@/components/ehs/capa/CapaCockpit';
 import { cn } from '@/lib/utils';
@@ -35,7 +35,6 @@ export default function SafetyObservationsPage() {
         category: 'all',
         risk: 'all',
         status: 'all',
-        stage: 'all',
         site: 'all',
     });
 
@@ -64,15 +63,14 @@ export default function SafetyObservationsPage() {
 
     return (
         <div className="min-h-screen bg-[#F3F7FB] flex flex-col text-left">
-            {/* --- PAGE HEADER: INDUSTRIAL STYLE --- */}
             <header className="p-10 pb-6 shrink-0 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div className="space-y-1">
                     <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase leading-none">SAFETY OBSERVATIONS (CAPA)</h1>
-                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">CAPA CONTROL CENTER · SAFETY LIFECYCLE GOVERNANCE</p>
+                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">TECHNICAL GOVERNANCE · SAFETY LIFECYCLE MANAGEMENT</p>
                 </div>
                 <div className="flex flex-col items-end gap-3">
                     <div className="hidden lg:flex flex-col text-right mr-4 leading-none">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">A SAFER WORKPLACE</p>
+                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.3em]">A SAFER WORKPLACE</p>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1">A STRONGER TOMORROW</p>
                     </div>
                     <Button 
@@ -84,7 +82,6 @@ export default function SafetyObservationsPage() {
                 </div>
             </header>
 
-            {/* --- KPI SECTION --- */}
             <div className="px-10 pb-10 shrink-0">
                 <CapaKpiCards 
                     observations={filteredObservations} 
@@ -93,9 +90,7 @@ export default function SafetyObservationsPage() {
                 />
             </div>
 
-            {/* --- FILTER & MAIN AREA --- */}
             <main className="flex-1 flex flex-col overflow-hidden px-10 pb-10 gap-6">
-                {/* Filter Toolbar */}
                 <Card className="rounded-2xl border-slate-200 shadow-sm bg-white overflow-hidden">
                     <CardContent className="p-3">
                         <CapaFilters 
@@ -105,12 +100,11 @@ export default function SafetyObservationsPage() {
                     </CardContent>
                 </Card>
 
-                {/* Registry Registry Content */}
                 <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
                     <div className="p-5 border-b bg-white flex justify-between items-center shrink-0">
                         <div className="flex items-center gap-2">
                             <Badge variant="outline" className="h-6 px-3 text-[10px] font-black uppercase tracking-widest bg-slate-900 text-white border-none rounded">
-                                {filteredObservations.length} OBSERVATIONS / CASES
+                                {filteredObservations.length} ACTIVE CASES
                             </Badge>
                         </div>
                         <div className="flex items-center gap-4">
@@ -118,7 +112,7 @@ export default function SafetyObservationsPage() {
                                 <History className="h-4 w-4" /> AUDIT TRAIL
                             </Button>
                             <Button variant="ghost" size="sm" className="h-8 text-[10px] font-black uppercase tracking-widest text-slate-500 gap-2">
-                                <FileDown className="h-4 w-4" /> EXPORT EXCEL
+                                <FileDown className="h-4 w-4" /> EXPORT REGISTRY
                             </Button>
                         </div>
                     </div>
@@ -131,16 +125,6 @@ export default function SafetyObservationsPage() {
                             onOpenCockpit={setCockpitId}
                         />
                     </div>
-
-                    {/* Pagination Footer */}
-                    <footer className="p-4 border-t bg-slate-50/50 flex justify-between items-center shrink-0">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">SHOWING 1 TO {Math.min(15, filteredObservations.length)} OF {filteredObservations.length} ENTRIES</p>
-                        <div className="flex gap-1">
-                            <Button variant="outline" size="sm" className="h-8 px-4 text-[10px] font-black uppercase rounded-lg">PREV</Button>
-                            <Button variant="secondary" size="sm" className="h-8 w-8 text-[10px] font-black rounded-lg">1</Button>
-                            <Button variant="outline" size="sm" className="h-8 px-4 text-[10px] font-black uppercase rounded-lg">NEXT</Button>
-                        </div>
-                    </footer>
                 </div>
             </main>
 
