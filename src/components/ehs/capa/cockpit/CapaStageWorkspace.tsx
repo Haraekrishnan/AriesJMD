@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useRef, MouseEvent } from 'react';
@@ -39,7 +38,8 @@ import {
     Check,
     ChevronsUpDown,
     Upload,
-    Trash2
+    Trash2,
+    ExternalLink
 } from 'lucide-react';
 import type { EhsObservation, CapaStage, User as UserType } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
