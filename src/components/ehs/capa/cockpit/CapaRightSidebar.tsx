@@ -4,11 +4,9 @@ import React from 'react';
 import { 
     Info, 
     Activity, 
-    Zap,
     CheckCircle2,
     Clock,
-    FileText,
-    History
+    FileText
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { EhsObservation, CapaStage } from '@/lib/types';
@@ -29,8 +27,8 @@ export default function CapaRightSidebar({ observation, activeStage }: { observa
     return (
         <div className="flex flex-col h-full bg-white divide-y divide-slate-100 text-left">
             {/* 1. CASE INFORMATION */}
-            <div className="p-6 space-y-6">
-                <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-blue-600 flex items-center gap-3">
+            <div className="p-8 space-y-6">
+                <h4 className="text-[12px] font-black uppercase tracking-[0.3em] text-blue-600 flex items-center gap-3">
                     <Info className="h-4 w-4" /> CASE INFORMATION
                 </h4>
                 <div className="space-y-4">
@@ -39,7 +37,7 @@ export default function CapaRightSidebar({ observation, activeStage }: { observa
                     <MetaRow label="Operational Site" value={project?.name} isBold />
                     <MetaRow label="Area" value={observation.location || '—'} />
                     <MetaRow label="Reported By" value={reporter?.name} />
-                    <MetaRow label="Phase Owner" value={assignee?.name} isBlue />
+                    <MetaRow label="Phase Assignee" value={assignee?.name} isBlue />
                     <MetaRow label="Started On" value={format(parseISO(observation.createdAt), 'dd MMMM yyyy')} />
                     <MetaRow label="Age" value="1 Days" />
                     <MetaRow label="Target Closure" value="—" />
@@ -47,8 +45,8 @@ export default function CapaRightSidebar({ observation, activeStage }: { observa
             </div>
 
             {/* 2. GOVERNANCE HEALTH */}
-            <div className="p-6 space-y-6 bg-slate-50/30">
-                <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-blue-600 flex items-center gap-3">
+            <div className="p-8 space-y-6 bg-slate-50/30">
+                <h4 className="text-[12px] font-black uppercase tracking-[0.3em] text-blue-600 flex items-center gap-3">
                     <Activity className="h-4 w-4" /> GOVERNANCE HEALTH
                 </h4>
                 
@@ -56,7 +54,7 @@ export default function CapaRightSidebar({ observation, activeStage }: { observa
                     <div className="h-3 w-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
                     <div className="flex flex-col leading-tight">
                         <span className="text-[12px] font-black text-slate-800 uppercase tracking-tight">System Health Optimal</span>
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Activities are within expected timeframe.</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Compliance thresholds validated.</span>
                     </div>
                 </div>
 
@@ -68,22 +66,22 @@ export default function CapaRightSidebar({ observation, activeStage }: { observa
             </div>
 
             {/* 3. STAGE GUIDANCE */}
-            <div className="p-6 space-y-6">
-                <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-blue-600 flex items-center gap-3">
+            <div className="p-8 space-y-6">
+                <h4 className="text-[12px] font-black uppercase tracking-[0.3em] text-blue-600 flex items-center gap-3">
                     <FileText className="h-4 w-4" /> STAGE GUIDANCE
                 </h4>
                 
-                <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-4 mb-4">
+                <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-4 mb-4 shadow-sm">
                     <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0 shadow-md">
                         <Info className="h-4 w-4 text-white" />
                     </div>
                     <div>
-                        <p className="text-[11px] font-black text-blue-700 uppercase tracking-tight mb-1">Perform a technical investigation</p>
-                        <p className="text-[10px] font-bold text-blue-600/70 leading-relaxed uppercase">Determine what happened, why it happened, and identify the underlying root cause.</p>
+                        <p className="text-[11px] font-black text-blue-700 uppercase tracking-tight mb-1">Execute technical investigation</p>
+                        <p className="text-[10px] font-bold text-blue-600/70 leading-relaxed uppercase">Perform a comprehensive discovery cycle to identify the systemic root cause.</p>
                     </div>
                 </div>
 
-                <div className="space-y-3 pt-2">
+                <div className="space-y-4 pt-2">
                     <GuidanceItem label="Gather factual information" checked />
                     <GuidanceItem label="Identify all possible causes" checked />
                     <GuidanceItem label="Perform 5-Why analysis" checked />
@@ -100,11 +98,11 @@ function MetaRow({ label, value, isRisk, isBlue, isBold }: any) {
         <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
             <span className="text-slate-400 font-medium">{label}</span>
             {isRisk ? (
-                <Badge className="bg-orange-400 text-white border-none font-black px-2 h-5 text-[9px] rounded-sm">{value || 'Medium'}</Badge>
+                <Badge className="bg-orange-400 text-white border-none font-black px-2 h-5 text-[9px] rounded-sm shadow-sm">{value || 'Medium'}</Badge>
             ) : (
                 <span className={cn(
                     "text-right truncate max-w-[180px]",
-                    isBlue ? "text-blue-600" : isBold ? "text-slate-900 font-black" : "text-slate-700"
+                    isBlue ? "text-blue-600 font-black" : isBold ? "text-slate-900 font-black" : "text-slate-700"
                 )}>{value || '—'}</span>
             )}
         </div>
@@ -113,9 +111,9 @@ function MetaRow({ label, value, isRisk, isBlue, isBold }: any) {
 
 function HealthMetric({ label, value }: any) {
     return (
-        <div className="p-3 bg-white border border-slate-100 rounded-xl text-center flex flex-col gap-1 shadow-sm">
+        <div className="p-4 bg-white border border-slate-100 rounded-xl text-center flex flex-col gap-1 shadow-sm hover:shadow-md transition-all">
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
-            <p className="text-base font-black text-slate-900 tracking-tighter">{value}</p>
+            <p className="text-lg font-black text-slate-900 tracking-tighter">{value}</p>
         </div>
     );
 }

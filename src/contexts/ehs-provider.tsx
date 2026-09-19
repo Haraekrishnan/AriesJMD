@@ -333,7 +333,10 @@ export function EhsProvider({ children }: { children: ReactNode }) {
                     updates[`stages/${nextStage}/assigneeId`] = obs.stages[stage]?.assigneeId || null; 
                 }
             }
-        } else { updates[`${stagePath}/actionedAt`] = null; updates[`${stagePath}/actionedById`] = null; }
+        } else { 
+            updates[`${stagePath}/actionedAt`] = null; 
+            updates[`${stagePath}/actionedById`] = null; 
+        }
         updates['lastUpdated'] = now;
         update(obsRef, sanitizeData(updates));
         toast({ title: `Stage ${status}` });
@@ -422,3 +425,4 @@ export const useEhs = () => {
   if (!context) throw new Error('useEhs must be used within EhsProvider');
   return context;
 };
+
