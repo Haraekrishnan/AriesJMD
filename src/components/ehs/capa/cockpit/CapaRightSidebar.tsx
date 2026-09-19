@@ -7,7 +7,8 @@ import {
     Activity, 
     Clock,
     FileText,
-    History
+    History,
+    Users
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { EhsObservation, CapaStage } from '@/lib/types';

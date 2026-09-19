@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo } from 'react';
@@ -42,7 +43,7 @@ type EhsContextType = {
   updateInitiationDetails: (observationId: string, updates: Partial<EhsObservation>) => Promise<void>;
   splitObservation: (parentId: string, subObservations: { category: any, severity: any, description: string, assigneeId?: string }[]) => void;
   assignStageOwner: (observationId: string, stage: CapaStage, assigneeId: string, targetDate?: string) => void;
-  actionStage: (observationId: string, stage: CapaStage, data: any, isSubmit?: boolean, attachmentUrl?: string) => void;
+  actionStage: (observationId: string, stage: CapaStage, data: any, isSubmit?: boolean) => void;
   reviewStage: (observationId: string, stage: CapaStage, status: 'Completed' | 'Returned', comment: string, nextOwnerData?: { assigneeId: string, targetDate: string }) => void;
   addStageComment: (observationId: string, stage: CapaStage, text: string) => void;
   addCcToObservation: (observationId: string, userIds: string[]) => void;
@@ -287,7 +288,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `ehs/observations/${observationId}`), { lastUpdated: now });
   }, [user]);
 
-  const actionStage = useCallback((observationId: string, stage: CapaStage, data: any, isSubmit: boolean = true, attachmentUrl?: string) => {
+  const actionStage = useCallback((observationId: string, stage: CapaStage, data: any, isSubmit: boolean = true) => {
     if (!user) return;
     const path = `ehs/observations/${observationId}/stages/${stage}`;
     const now = new Date().toISOString();
@@ -299,10 +300,6 @@ export function EhsProvider({ children }: { children: ReactNode }) {
         const commentRef = push(ref(rtdb, `ehs/observations/${observationId}/stages/${stage}/comments`));
         updates[`comments/${commentRef.key}`] = { id: commentRef.key, userId: user.id, text: `Phase findings submitted for verification.`, date: now };
         addObservationActivity(observationId, `Submitted ${stage} data for Higher Official review.`);
-    }
-    if (attachmentUrl) {
-       const attachmentRef = push(ref(rtdb, `${path}/attachments`));
-       updates[`attachments/${attachmentRef.key}`] = { id: attachmentRef.key, name: 'Evidence Attachment', url: attachmentUrl, uploadedBy: user.id, uploadedAt: now };
     }
     if (stage === 'Closure') {
       updates['reviewedById'] = user.id; updates['reviewedAt'] = now;

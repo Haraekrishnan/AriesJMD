@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useRef, MouseEvent } from 'react';
@@ -36,7 +37,9 @@ import {
     Clock,
     UserPlus,
     Check,
-    ChevronsUpDown
+    ChevronsUpDown,
+    Upload,
+    Trash2
 } from 'lucide-react';
 import type { EhsObservation, CapaStage, User as UserType } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
@@ -48,11 +51,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 
@@ -80,7 +85,8 @@ interface CapaStageWorkspaceProps {
 
 export default function CapaStageWorkspace({ observation, stage }: CapaStageWorkspaceProps) {
     const { user, users } = useAuth();
-    const { assignStageOwner } = useEhs();
+    const { assignStageOwner, addStageAttachment, deleteStageAttachment } = useEhs();
+    const { toast } = useToast();
     const sData = observation.stages[stage];
     const assignee = users.find(u => u.id === sData?.assigneeId);
     
@@ -93,6 +99,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
     const [numPages, setNumPages] = useState<number | null>(null);
     const [pageNumber, setPageNumber] = useState(1);
     const [isReassigning, setIsReassigning] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
 
     const isCurrentStage = observation.currentStage === stage;
     const isCompleted = sData?.status === 'Completed';
@@ -119,6 +126,44 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
 
     const handleMouseUpOrLeave = () => setIsPanning(false);
     const isPdf = viewingAttachmentUrl && viewingAttachmentUrl.toLowerCase().endsWith('.pdf');
+
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        toast({ title: 'Transmitting Evidence...', description: 'Syncing technical data to institutional registry.' });
+
+        const formData = new FormData();
+        formData.append("file", file);
+        
+        try {
+            const res = await fetch("/api/upload/dropbox", {
+                method: "POST",
+                body: formData,
+            });
+
+            const uploadData = await res.json();
+            setIsUploading(false);
+
+            if (uploadData.success) {
+                addStageAttachment(observation.id, stage, file.name, uploadData.downloadLink);
+                toast({ title: 'Discovery Sync Successful', description: 'Institutional data archive updated.' });
+            } else {
+                throw new Error(uploadData.error);
+            }
+        } catch (error: any) {
+            setIsUploading(false);
+            toast({ variant: 'destructive', title: 'Registry Error', description: error.message || 'Transmission failure detected.' });
+        }
+    };
+
+    const attachments = useMemo(() => {
+        if (!sData?.attachments) return [];
+        return Object.values(sData.attachments).sort((a, b) => 
+            parseISO(b.uploadedAt).getTime() - parseISO(a.uploadedAt).getTime()
+        );
+    }, [sData]);
 
     const renderStageContent = () => {
         switch (stage) {
@@ -238,14 +283,83 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
 
             <div className="bg-white border border-slate-200 rounded-[2.5rem] shadow-sm overflow-hidden min-h-[400px]">
                 {renderStageContent()}
+                
+                {/* --- UNIVERSAL ATTACHMENT REGISTRY --- */}
+                <div className="px-10 py-8 border-t bg-slate-50/30">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                            <Paperclip className="h-5 w-5 text-blue-600" />
+                            <h4 className="text-[12px] font-black uppercase tracking-[0.2em] text-slate-800">TECHNICAL EVIDENCE LEDGER</h4>
+                        </div>
+                        {!isLocked && (
+                            <div className="relative">
+                                <Button variant="outline" className="h-9 px-6 rounded-lg font-black uppercase tracking-widest text-[9px] border-2 bg-white gap-2 shadow-sm" disabled={isUploading}>
+                                    <Upload className="h-3.5 w-3.5" /> {isUploading ? 'SYNCING...' : 'UPLOAD EVIDENCE'}
+                                </Button>
+                                <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileChange} disabled={isUploading} />
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {attachments.map(att => (
+                            <div key={att.id} className="group p-4 bg-white border border-slate-200 rounded-2xl flex items-center justify-between hover:border-blue-300 transition-all shadow-sm">
+                                <div className="flex items-center gap-4 min-w-0">
+                                    <div className="h-10 w-10 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
+                                        <FileText className="h-5 w-5 text-blue-600" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[11px] font-bold text-slate-900 truncate uppercase tracking-tight">{att.name}</p>
+                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Sync: {format(parseISO(att.uploadedAt), 'dd MMM, HH:mm')}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:bg-blue-50 rounded-lg" onClick={() => setViewingAttachmentUrl(att.url)}>
+                                        <ExternalLink className="h-4 w-4" />
+                                    </Button>
+                                    <a href={att.url} download target="_blank" rel="noopener noreferrer">
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:bg-slate-100 rounded-lg">
+                                            <Download className="h-4 w-4" />
+                                        </Button>
+                                    </a>
+                                    {(!isLocked && (user?.id === att.uploadedBy || user?.role === 'Admin')) && (
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-600 hover:bg-rose-50 rounded-lg">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle className="text-xl font-black uppercase tracking-tight">WIPE EVIDENCE?</AlertDialogTitle>
+                                                    <AlertDialogDescription className="text-sm font-medium">Permanently remove "{att.name}" from the technical registry?</AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel className="font-bold">Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction className="bg-rose-600 hover:bg-rose-700 text-white font-black" onClick={() => deleteStageAttachment(observation.id, stage, att.id)}>DELETE</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                        {attachments.length === 0 && (
+                            <div className="col-span-full py-8 text-center bg-slate-50/50 border-2 border-dashed rounded-[2rem] border-slate-200">
+                                <Paperclip className="h-6 w-6 mx-auto mb-2 opacity-20 text-slate-400" />
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">No attachments indexed for this milestone.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
 
             <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); setNumPages(null); setPageNumber(1); }}>
                 <DialogContent className="max-w-[95vw] md:max-w-7xl w-full h-auto max-h-[90vh] flex flex-col p-0 overflow-hidden bg-black border border-white/10 shadow-2xl">
-                    <div className="sr-only">
-                        <DialogTitle>Evidence Detail Viewer</DialogTitle>
-                        <DialogDescription>Full-resolution forensic evidence viewer.</DialogDescription>
-                    </div>
+                    <DialogHeader className="sr-only">
+                        <DialogTitle>Institutional Evidence Viewer</DialogTitle>
+                        <DialogDescription>Full-resolution technical discovery review.</DialogDescription>
+                    </DialogHeader>
                     <div className="absolute top-16 right-6 z-50 flex items-center gap-3">
                         {!isPdf && (
                             <div className="flex gap-2">
@@ -384,7 +498,7 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
                                 {isEditing ? (
                                     <div className="space-y-2">
                                         <Label className="text-[9px] font-extrabold uppercase tracking-widest text-[#304B68]">Finding Description</Label>
-                                        <Textarea className="min-h-[400px] rounded-[10px] border-[#DCE5EF] bg-slate-50 font-bold p-6 shadow-inner text-[11px]" value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} />
+                                        <Textarea className="min-h-[400px] rounded-[10px] border-[#DCE5EF] bg-white text-[10px]" value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} />
                                         <div className="flex justify-end gap-2 pt-2">
                                             <Button variant="outline" size="sm" className="h-8 text-[9px]" onClick={() => setIsEditing(false)}>CANCEL</Button>
                                             <Button size="sm" className="h-8 text-[9px] bg-[#1769FF]" onClick={handleSave}>SAVE CHANGES</Button>
@@ -440,7 +554,7 @@ function EditableMeta({ label, value, isEditing, type, options, onChange, icon: 
             {isEditing ? (
                 type === 'select' ? (
                     <Select value={value} onValueChange={onChange}>
-                        <SelectTrigger className="h-[42px] rounded-[10px] border-[#DCE5EF] bg-slate-50 shadow-inner px-3.5 text-[10px] font-bold uppercase text-[#243B53]">
+                        <SelectTrigger className="h-[42px] rounded-[10px] border-[#DCE5EF] bg-white px-3.5 text-[10px] font-bold uppercase text-[#243B53]">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -452,10 +566,10 @@ function EditableMeta({ label, value, isEditing, type, options, onChange, icon: 
                         </SelectContent>
                     </Select>
                 ) : (
-                    <Input className="h-[42px] rounded-[10px] border-[#DCE5EF] bg-slate-50 shadow-inner text-[10px] font-bold" value={value} onChange={e => onChange(e.target.value)} />
+                    <Input className="h-[42px] rounded-[10px] border-[#DCE5EF] bg-white text-[10px]" value={value} onChange={e => onChange(e.target.value)} />
                 )
             ) : (
-                <div className="h-[42px] px-3.5 flex items-center bg-slate-50 border border-[#DCE5EF] rounded-[10px] shadow-inner">
+                <div className="h-[42px] px-3.5 flex items-center bg-slate-50 border border-[#DCE5EF] rounded-[10px]">
                     <span className="text-[10px] font-bold text-[#102A43] uppercase truncate">{value}</span>
                 </div>
             )}
