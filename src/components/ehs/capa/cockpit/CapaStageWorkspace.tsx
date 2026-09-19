@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useRef, MouseEvent } from 'react';
@@ -34,7 +33,10 @@ import {
     Zap,
     Activity,
     Target,
-    Clock
+    Clock,
+    UserPlus,
+    Check,
+    ChevronsUpDown
 } from 'lucide-react';
 import type { EhsObservation, CapaStage, User as UserType } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
@@ -49,6 +51,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 
@@ -76,7 +80,7 @@ interface CapaStageWorkspaceProps {
 
 export default function CapaStageWorkspace({ observation, stage }: CapaStageWorkspaceProps) {
     const { user, users } = useAuth();
-    const { reviewStage } = useEhs();
+    const { reviewStage, assignStageOwner } = useEhs();
     const sData = observation.stages[stage];
     const assignee = users.find(u => u.id === sData?.assigneeId);
     
@@ -88,6 +92,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
     const imageContainerRef = useRef<HTMLDivElement>(null);
     const [numPages, setNumPages] = useState<number | null>(null);
     const [pageNumber, setPageNumber] = useState(1);
+    const [isReassigning, setIsReassigning] = useState(false);
 
     const isCurrentStage = observation.currentStage === stage;
     const isCompleted = sData?.status === 'Completed';
@@ -96,6 +101,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
     const isLocked = isCompleted || isSubmitted;
 
     const isSupervisor = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor';
+    const isAuthorizedToReassign = user && ['Admin', 'Project Coordinator', 'Senior Safety Supervisor'].includes(user.role);
 
     const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => setNumPages(numPages);
 
@@ -183,6 +189,41 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                     <AvatarImage src={assignee.avatar} />
                                     <AvatarFallback className="font-black text-xs bg-slate-900 text-white">{assignee.name[0]}</AvatarFallback>
                                 </Avatar>
+                                {isAuthorizedToReassign && isCurrentStage && (
+                                    <Popover open={isReassigning} onOpenChange={setIsReassigning}>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border border-slate-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all">
+                                                <UserPlus className="h-4 w-4" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-64 p-0 z-50" align="end">
+                                            <Command className="bg-white">
+                                                <CommandInput placeholder="Reassign to..." className="h-10 text-sm" />
+                                                <CommandList>
+                                                    <CommandEmpty>No personnel found.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {users.filter(u => u.status !== 'deactivated' && u.role !== 'Manager').map(u => (
+                                                            <CommandItem
+                                                                key={u.id}
+                                                                onSelect={() => {
+                                                                    assignStageOwner(observation.id, stage, u.id);
+                                                                    setIsReassigning(false);
+                                                                }}
+                                                                className="text-xs font-bold uppercase cursor-pointer"
+                                                            >
+                                                                <Check className={cn("mr-2 h-4 w-4", u.id === sData?.assigneeId ? "opacity-100" : "opacity-0")} />
+                                                                <div className="flex flex-col leading-tight">
+                                                                    <span>{u.name}</span>
+                                                                    <span className="text-[8px] opacity-60">{u.role}</span>
+                                                                </div>
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                )}
                             </div>
                         </div>
                     )}
@@ -350,7 +391,7 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
                                 >
                                     <img src={extractedEvidenceUrl} alt="E" className="w-full h-full object-contain" />
                                     <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 flex items-center justify-center transition-all">
-                                        <ClarifyZoomIn className="h-6 w-6 text-white opacity-0 group-hover/img:opacity-100" />
+                                        <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover/img:opacity-100" />
                                     </div>
                                 </div>
                             </div>
@@ -403,5 +444,3 @@ function EditableMeta({ label, value, isEditing, type, options, onChange, icon: 
         </div>
     );
 }
-
-const ClarifyZoomIn = ZoomIn;
