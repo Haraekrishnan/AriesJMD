@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -18,7 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useFormContext } from 'react-hook-form';
 import type { EhsObservation } from '@/lib/types';
 import { format, parseISO, isValid } from 'date-fns';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 export default function CapaInvestigationWorkspace({ observation }: { observation: EhsObservation }) {
     const { register } = useFormContext();

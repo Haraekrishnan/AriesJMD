@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -20,7 +19,9 @@ import {
     ThumbsUp,
     Zap,
     Activity,
-    ShieldAlert
+    ShieldAlert,
+    ExternalLink,
+    Check
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -99,7 +100,7 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                                     CAPA-{observation.id.slice(-6).toUpperCase()}
                                 </h1>
                                 <Badge className="bg-amber-100 text-amber-700 border-none font-black uppercase text-[9px] px-2.5 h-6 rounded-sm tracking-widest">
-                                    MEDIUM RISK
+                                    {observation.severity.toUpperCase()} RISK
                                 </Badge>
                                 <Badge className="bg-blue-600 text-white border-none font-black uppercase text-[9px] px-3 h-6 rounded-sm tracking-widest">
                                     {observation.status.toUpperCase()}
@@ -108,7 +109,7 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                         </div>
 
                         <div className="flex items-center gap-8">
-                            {/* MANAGEMENT VERIFICATION CARD */}
+                            {/* MANAGEMENT VERIFICATION CARD - HEADER ANCHORED */}
                             {isCurrentStage && isSubmitted && isSupervisor && (
                                 <div className="bg-[#0F172A] p-2 rounded-xl flex items-center gap-2 animate-in fade-in zoom-in-95 shadow-xl ring-4 ring-white">
                                     <Button 
@@ -202,49 +203,48 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                         </ScrollArea>
                     </aside>
                 </div>
-            </div>
 
-            {/* Review Dialog */}
-            <Dialog open={!!reviewAction} onOpenChange={(o) => !o && setReviewAction(null)}>
-                <DialogContent className="bg-white border-slate-200 text-slate-900 shadow-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-slate-900 uppercase font-black tracking-tight">
-                            {reviewAction === 'Completed' ? 'Authorize Milestone' : 'Instruct Technical Rework'}
-                        </DialogTitle>
-                        <DialogDescription className="text-slate-500 font-medium">
-                            Validation of lifecycle findings by the Higher Official.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4 text-left">
-                        <div className="space-y-2">
-                            <Label className="text-slate-900 font-black uppercase text-[10px] tracking-widest ml-1">
-                                Validation Notes / Official Instructions
-                            </Label>
-                            <Textarea 
-                                className="bg-slate-50 border-slate-200 text-slate-900 min-h-[120px] rounded-xl font-bold p-4 focus-visible:ring-blue-100 shadow-inner" 
-                                placeholder="Enter technical feedback for the activity log..."
-                                value={reviewComment}
-                                onChange={(e) => setReviewComment(e.target.value)}
-                            />
+                {/* Review Dialog */}
+                <Dialog open={!!reviewAction} onOpenChange={(o) => !o && setReviewAction(null)}>
+                    <DialogContent className="bg-white border-slate-200 text-slate-900 shadow-2xl">
+                        <DialogHeader>
+                            <DialogTitle className="text-slate-900 uppercase font-black tracking-tight">
+                                {reviewAction === 'Completed' ? 'Authorize Milestone' : 'Instruct Technical Rework'}
+                            </DialogTitle>
+                            <DialogDescription className="text-slate-500 font-medium">
+                                Validation of lifecycle findings by the Higher Official.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4 text-left">
+                            <div className="space-y-2">
+                                <Label className="text-slate-900 font-black uppercase text-[10px] tracking-widest ml-1">
+                                    Validation Notes / Official Instructions
+                                </Label>
+                                <Textarea 
+                                    className="bg-slate-50 border-slate-200 text-slate-900 min-h-[120px] rounded-xl font-bold p-4 focus-visible:ring-blue-100 shadow-inner" 
+                                    placeholder="Enter technical feedback for the activity log..."
+                                    value={reviewComment}
+                                    onChange={(e) => setReviewComment(e.target.value)}
+                                />
+                            </div>
                         </div>
-                    </div>
-                    <DialogFooter className="gap-2">
-                        <Button variant="outline" className="h-12 px-6 rounded-xl font-bold" onClick={() => setReviewAction(null)}>
-                            Cancel
-                        </Button>
-                        <Button 
-                            className={cn(
-                                "font-black uppercase text-[10px] h-12 px-8 rounded-xl shadow-lg",
-                                reviewAction === 'Completed' ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-rose-600 hover:bg-rose-700 text-white"
-                            )}
-                            onClick={handleReviewSubmit}
-                        >
-                            {reviewAction === 'Completed' ? 'Authorize Findings' : 'Submit Rework order'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div>
-    </FormProvider>
+                        <DialogFooter className="gap-2">
+                            <Button variant="outline" className="h-12 px-6 rounded-xl font-bold" onClick={() => setReviewAction(null)}>
+                                Cancel
+                            </Button>
+                            <Button 
+                                className={cn(
+                                    "font-black uppercase text-[10px] h-12 px-8 rounded-xl shadow-lg",
+                                    reviewAction === 'Completed' ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-rose-600 hover:bg-rose-700 text-white"
+                                )}
+                                onClick={handleReviewSubmit}
+                            >
+                                {reviewAction === 'Completed' ? 'Authorize Findings' : 'Submit Rework order'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
+        </FormProvider>
     );
 }
