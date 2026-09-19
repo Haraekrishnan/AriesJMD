@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
     ChevronLeft, 
     MessageSquare, 
@@ -8,32 +8,12 @@ import {
     MapPin,
     User,
     Calendar,
-    Paperclip,
-    FileText,
     MoreVertical,
-    ShieldAlert,
-    Target,
-    Download,
-    Share2,
-    CheckCircle2,
-    Activity,
     ShieldCheck,
-    Plus,
-    X,
-    FileSearch,
     UploadCloud,
-    ArrowRight,
-    Search,
-    Info,
-    AlertTriangle,
-    Save,
-    Send,
-    History,
-    CheckCircle,
-    UserCircle,
-    Trash2
+    Target
 } from 'lucide-react';
-import { format, parseISO, differenceInDays, isValid } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -44,14 +24,16 @@ import { useGeneral } from '@/contexts/general-provider';
 import { useForm, FormProvider } from 'react-hook-form';
 
 import CapaStepper from './cockpit/CapaStepper';
-import CapaLeftSidebar from './cockpit/CapaLeftSidebar';
 import CapaRightSidebar from './cockpit/CapaRightSidebar';
 import CapaInvestigationWorkspace from './cockpit/CapaInvestigationWorkspace';
+import { Progress } from '@/components/ui/progress';
 
 interface CapaCockpitProps {
     observation: EhsObservation;
     onClose: () => void;
 }
+
+const STAGES: CapaStage[] = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];
 
 export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) {
     const { users } = useAuth();
@@ -64,6 +46,12 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
     const methods = useForm({
         defaultValues: observation.stages?.[viewingStage]?.data || {}
     });
+
+    const stats = useMemo(() => {
+        const completedCount = STAGES.filter(s => observation.stages[s]?.status === 'Completed').length;
+        const percentage = Math.round((completedCount / STAGES.length) * 100);
+        return { completedCount, percentage };
+    }, [observation]);
 
     return (
         <FormProvider {...methods}>
@@ -128,18 +116,21 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                     </div>
                 </header>
 
-                {/* --- 2. PROGRESS STEPPER --- */}
-                <section className="h-24 shrink-0 bg-[#F8FAFC] border-b px-10 flex items-center z-20">
+                {/* --- 2. PROGRESS & STEPPER TIER --- */}
+                <section className="h-24 shrink-0 bg-[#F8FAFC] border-b px-10 flex items-center gap-16 z-20">
+                    <div className="flex flex-col shrink-0 min-w-[180px]">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] leading-none mb-2">CASE PROGRESS</span>
+                        <div className="flex items-center gap-4">
+                            <span className="text-2xl font-black text-blue-600 tracking-tighter leading-none">{stats.percentage}%</span>
+                            <Progress value={stats.percentage} className="h-1.5 flex-1 bg-slate-200" />
+                        </div>
+                    </div>
+                    <div className="h-12 w-px bg-slate-200 shrink-0" />
                     <CapaStepper currentStage={observation.currentStage} />
                 </section>
 
                 {/* --- 3. CORE CONTENT AREA --- */}
                 <div className="flex-1 flex overflow-hidden">
-                    {/* LEFT SIDEBAR */}
-                    <aside className="w-[280px] shrink-0 border-r bg-white flex flex-col z-20 overflow-y-auto">
-                        <CapaLeftSidebar observation={observation} />
-                    </aside>
-
                     {/* MAIN WORKSPACE */}
                     <main className="flex-1 flex flex-col overflow-hidden relative bg-[#F3F7FB]">
                         <ScrollArea className="flex-1">
@@ -164,16 +155,10 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
 
                             <div className="flex items-center gap-3">
                                 <Button variant="ghost" className="h-11 px-6 font-bold text-xs uppercase tracking-widest border border-slate-200 gap-2">
-                                    <Save className="h-4 w-4" /> Save Draft
+                                    SAVE DRAFT
                                 </Button>
-                                <Button variant="ghost" className="h-11 px-6 font-bold text-xs uppercase tracking-widest border border-slate-200 gap-2">
-                                    <MessageSquare className="h-4 w-4" /> Add Comment
-                                </Button>
-                                <Button variant="outline" className="h-11 px-6 font-bold text-xs uppercase tracking-widest text-blue-700 border-blue-200 bg-blue-50 gap-2">
-                                    <UploadCloud className="h-4 w-4" /> Upload Document
-                                </Button>
-                                <Button className="h-11 px-10 bg-[#2563EB] hover:bg-blue-700 text-white font-black uppercase tracking-[0.2em] text-[11px] gap-3 rounded-lg ml-4">
-                                    <Send className="h-4 w-4" /> Submit Investigation
+                                <Button variant="outline" className="h-11 px-10 bg-[#2563EB] hover:bg-blue-700 text-white font-black uppercase tracking-[0.2em] text-[11px] gap-3 rounded-lg ml-4">
+                                    Submit Investigation
                                 </Button>
                             </div>
                         </footer>
