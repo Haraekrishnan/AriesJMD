@@ -3,7 +3,6 @@
 import React from 'react';
 import { useFormContext } from 'react-hook-form';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Search, ArrowDown, Target, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -15,8 +14,11 @@ interface Props {
 export default function Capa5Why({ isLocked }: Props) {
     const { register } = useFormContext();
 
+    // High visibility style for entry fields
+    const inputClasses = "min-h-[80px] rounded-none border-2 border-slate-200 bg-slate-50 font-bold text-sm px-5 py-4 focus-visible:ring-0 focus-visible:border-blue-600 shadow-inner placeholder:text-slate-300 transition-all";
+
     return (
-        <div className="space-y-10 text-left animate-in fade-in duration-700">
+        <div className="space-y-12 text-left animate-in fade-in duration-700">
             {/* --- INSTRUCTIONAL BOX --- */}
             <div className="p-6 border-2 border-blue-600 bg-blue-50/50 flex items-start gap-4">
                 <div className="bg-blue-600 h-8 w-8 flex items-center justify-center shrink-0">
@@ -31,29 +33,29 @@ export default function Capa5Why({ isLocked }: Props) {
             </div>
 
             {/* --- TECHNICAL LEDGER TABLE --- */}
-            <div className="border-2 border-slate-900 bg-white">
-                <div className="grid grid-cols-[80px,1fr] border-b-2 border-slate-900 bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest">
+            <div className="border-4 border-slate-900 bg-white">
+                <div className="grid grid-cols-[80px,1fr] border-b-4 border-slate-900 bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest">
                     <div className="p-3 border-r-2 border-white/20 text-center">ID</div>
-                    <div className="p-3 pl-6">Causal Analysis / Investigation</div>
+                    <div className="p-3 pl-6">Causal Analysis / Technical Discovery</div>
                 </div>
 
                 {[1, 2, 3, 4, 5].map((i) => (
                     <div key={i} className="grid grid-cols-[80px,1fr] border-b-2 border-slate-900 last:border-b-0 group">
                         <div className={cn(
-                            "flex items-center justify-center bg-slate-100 font-black text-lg border-r-2 border-slate-900",
+                            "flex items-center justify-center bg-slate-100 font-black text-lg border-r-4 border-slate-900",
                             i === 5 && "bg-amber-100"
                         )}>
                             W{i}
                         </div>
                         <div className="p-6 space-y-3">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                            <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">
                                 {i === 1 ? 'Primary Discovery Reasoning' : `Logical connection to W${i-1}`}
                             </Label>
                             <Textarea 
                                 disabled={isLocked}
                                 {...register(`why${i}`)}
                                 placeholder="Enter technical reasoning..."
-                                className="min-h-[80px] rounded-none border-2 border-slate-200 bg-slate-50/30 font-bold text-sm focus-visible:ring-0 focus-visible:border-blue-600 shadow-inner"
+                                className={inputClasses}
                             />
                         </div>
                     </div>
@@ -71,7 +73,7 @@ export default function Capa5Why({ isLocked }: Props) {
                         disabled={isLocked}
                         {...register('rootCauseCandidate')}
                         placeholder="State the final systemic root cause identified in W5..."
-                        className="min-h-[120px] rounded-none border-4 border-slate-900 bg-white p-6 font-black text-lg uppercase tracking-tight text-rose-700 placeholder:text-slate-200 focus-visible:ring-0"
+                        className="min-h-[120px] rounded-none border-4 border-slate-900 bg-white p-6 font-black text-lg uppercase tracking-tight text-rose-700 placeholder:text-slate-100 focus-visible:ring-0 shadow-lg"
                     />
                     <div className="absolute top-4 right-4 flex items-center gap-1.5 text-[9px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-3 py-1 border border-emerald-200">
                         <ShieldCheck className="h-3 w-3" /> Logical Destination
