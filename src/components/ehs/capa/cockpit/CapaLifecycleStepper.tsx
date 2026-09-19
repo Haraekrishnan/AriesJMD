@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo } from 'react';
@@ -23,18 +22,18 @@ export default function CapaLifecycleStepper({ observation, viewingStage, onStag
     }, [observation]);
 
     return (
-        <div className="flex items-center w-full gap-12">
+        <div className="flex items-center w-full gap-16 text-left">
             {/* Progress Display */}
-            <div className="flex flex-col shrink-0 min-w-[180px]">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2">Overall Progress</span>
-                <div className="flex items-center gap-4">
-                    <span className="text-2xl font-black text-blue-700 tracking-tighter leading-none">{stats.percentage}%</span>
-                    <Progress value={stats.percentage} className="h-1.5 flex-1 bg-slate-200" />
+            <div className="flex flex-col shrink-0 min-w-[200px]">
+                <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] leading-none mb-3">Overall Compliance</span>
+                <div className="flex items-center gap-6">
+                    <span className="text-3xl font-black text-[#2563EB] tracking-tighter leading-none">{stats.percentage}%</span>
+                    <Progress value={stats.percentage} className="h-2 flex-1 bg-slate-200 rounded-none border border-slate-300 shadow-inner" />
                 </div>
             </div>
 
             {/* Stepper Chain */}
-            <div className="flex items-center flex-1 justify-between max-w-5xl">
+            <div className="flex items-center flex-1 justify-between max-w-6xl">
                 {STAGES.map((stage, i) => {
                     const sData = observation.stages[stage];
                     const isViewing = viewingStage === stage;
@@ -46,34 +45,34 @@ export default function CapaLifecycleStepper({ observation, viewingStage, onStag
                         <React.Fragment key={stage}>
                             <div 
                                 className={cn(
-                                    "flex items-center gap-3 cursor-pointer transition-all px-2 py-1.5 rounded-lg",
-                                    isViewing ? "bg-blue-50/50" : "hover:bg-slate-100",
+                                    "flex items-center gap-4 cursor-pointer transition-all px-3 py-2 rounded-none border-2",
+                                    isViewing ? "bg-blue-50 border-blue-200 shadow-sm" : "border-transparent hover:bg-slate-100",
                                     isFuture && "opacity-40 grayscale pointer-events-none"
                                 )}
                                 onClick={() => onStageSelect(stage)}
                             >
                                 <div className={cn(
-                                    "h-8 w-8 rounded-full border-2 flex items-center justify-center transition-all text-[11px] font-black shadow-sm",
-                                    isCompleted ? "bg-emerald-500 border-emerald-500 text-white" :
-                                    isViewing ? "bg-[#2563EB] border-[#2563EB] text-white" :
+                                    "h-10 w-10 rounded-none border-4 flex items-center justify-center transition-all text-[12px] font-black shadow-sm",
+                                    isCompleted ? "bg-emerald-500 border-emerald-600 text-white" :
+                                    isViewing ? "bg-[#2563EB] border-blue-700 text-white" :
                                     "bg-white border-slate-200 text-slate-400"
                                 )}>
-                                    {isCompleted ? <Check className="h-4 w-4 stroke-[4]" /> : <span>{i + 1}</span>}
+                                    {isCompleted ? <Check className="h-5 w-5 stroke-[4]" /> : <span>0{i + 1}</span>}
                                 </div>
                                 <div className="flex flex-col leading-none">
                                     <p className={cn(
-                                        "text-[10px] font-black uppercase tracking-wider",
-                                        isViewing ? "text-blue-700" : "text-slate-500"
+                                        "text-[11px] font-black uppercase tracking-[0.15em]",
+                                        isViewing ? "text-[#2563EB]" : "text-slate-500"
                                     )}>
                                         {stage}
                                     </p>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">
-                                        {isCompleted ? 'Completed' : isViewing ? 'In Progress' : 'Pending'}
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-1.5 tracking-widest">
+                                        {isCompleted ? 'VERIFIED' : isViewing ? 'IN PROGRESS' : 'PENDING'}
                                     </p>
                                 </div>
                             </div>
                             {i < STAGES.length - 1 && (
-                                <div className="h-px bg-slate-200 flex-1 mx-2 min-w-[20px]" />
+                                <div className="h-1 bg-slate-200 flex-1 mx-4 min-w-[20px] shadow-inner" />
                             )}
                         </React.Fragment>
                     );
