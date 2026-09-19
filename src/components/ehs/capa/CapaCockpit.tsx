@@ -3,24 +3,17 @@
 import React, { useState, useMemo } from 'react';
 import { 
     ChevronLeft, 
-    MessageSquare, 
     Clock, 
     MapPin,
     User,
     Calendar,
-    ShieldCheck,
     Target,
-    Activity,
-    FileText,
     MoreVertical,
-    Paperclip,
-    ShieldAlert
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { cn } from '@/lib/utils';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
@@ -30,11 +23,6 @@ import CapaLifecycleStepper from './cockpit/CapaLifecycleStepper';
 import CapaRightSidebar from './cockpit/CapaRightSidebar';
 import CapaStageWorkspace from './cockpit/CapaStageWorkspace';
 import CapaActionFooter from './cockpit/CapaActionFooter';
-
-interface CapaCockpitProps {
-    observation: EhsObservation;
-    onClose: () => void;
-}
 
 const STAGES: CapaStage[] = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];
 
@@ -93,12 +81,9 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">A HEALTHIER TOMORROW</p>
                             </div>
                             <div className="flex items-center gap-2">
-                                <Button variant="outline" className="h-9 px-5 gap-2 text-slate-700 rounded-lg font-bold text-xs border-slate-200 bg-white hover:bg-slate-50 shadow-sm">
-                                    <MessageSquare className="h-4 w-4 text-slate-400" /> Comment
-                                </Button>
-                                <Button variant="outline" className="h-9 px-5 gap-2 text-slate-700 rounded-lg font-bold text-xs border-slate-200 bg-white hover:bg-slate-50 shadow-sm">
-                                    <Paperclip className="h-4 w-4 text-slate-400" /> Document
-                                </Button>
+                                <Badge variant="outline" className="h-9 px-4 border-slate-200 text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50/50">
+                                    TECHNICAL GOVERNANCE: OPTIMAL
+                                </Badge>
                                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg">
                                     <MoreVertical className="h-4 w-4 text-slate-400" />
                                 </Button>
@@ -172,7 +157,7 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                     </main>
 
                     {/* INTELLIGENCE SIDEBAR */}
-                    <aside className="w-[380px] shrink-0 border-l bg-white flex flex-col z-20 overflow-hidden relative shadow-lg">
+                    <aside className="w-[380px] shrink-0 border-l bg-white flex flex-col z-20 overflow-hidden relative shadow-lg text-left">
                         <ScrollArea className="h-full no-scrollbar">
                            <CapaRightSidebar observation={observation} activeStage={viewingStage} />
                         </ScrollArea>
