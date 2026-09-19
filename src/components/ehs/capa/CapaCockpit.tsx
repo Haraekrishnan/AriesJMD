@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -15,7 +16,10 @@ import {
     AlertTriangle,
     History,
     FileText,
-    ShieldCheck
+    ShieldCheck,
+    ThumbsUp,
+    Zap,
+    Activity
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -76,9 +80,9 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
         <FormProvider {...methods}>
             <div className="fixed inset-0 z-40 flex flex-col bg-[#F3F7FB] text-slate-900 font-sans overflow-hidden">
                 
-                {/* --- 1. TRIPLE-TIER EXECUTIVE HEADER --- */}
+                {/* --- EXECUTIVE HEADER --- */}
                 <header className="shrink-0 bg-white border-b z-30 shadow-sm flex flex-col text-left">
-                    {/* Tier 1: Case Identity & Brand Status */}
+                    {/* Tier 1: Identity & Action hub */}
                     <div className="px-8 py-3 flex items-center justify-between bg-white border-b">
                         <div className="flex items-center gap-6">
                             <Button 
@@ -91,7 +95,7 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                             </Button>
                             <div className="flex items-center gap-3">
                                 <h1 className="text-xl font-black text-slate-900 tracking-tighter uppercase leading-none">
-                                    {observation.id.slice(-12).toUpperCase()}
+                                    CAPA-{observation.id.slice(-6).toUpperCase()}
                                 </h1>
                                 <Badge className="bg-amber-100 text-amber-700 border-none font-black uppercase text-[9px] px-2.5 h-6 rounded-sm tracking-widest">
                                     MEDIUM RISK
@@ -102,11 +106,31 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-10">
+                        <div className="flex items-center gap-8">
                             <div className="flex flex-col text-right leading-none mr-4">
                                 <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">A SAFER WORKPLACE</p>
                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">A HEALTHIER TOMORROW</p>
                             </div>
+
+                            {/* MANAGEMENT VERIFICATION SUITE */}
+                            {isCurrentStage && isSubmitted && isSupervisor && (
+                                <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-2">
+                                    <Button 
+                                        variant="outline" 
+                                        className="h-9 border-rose-500/30 text-rose-500 hover:bg-rose-50 font-black uppercase tracking-widest text-[9px] px-4 rounded-lg transition-all"
+                                        onClick={() => setReviewAction('Returned')}
+                                    >
+                                        <Undo2 className="mr-2 h-3.5 w-3.5" /> Instruct Rework
+                                    </Button>
+                                    <Button 
+                                        className="h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[9px] px-6 rounded-lg shadow-md"
+                                        onClick={() => setReviewAction('Completed')}
+                                    >
+                                        <CheckCircle2 className="mr-2 h-4 w-4" /> Verify & Continue
+                                    </Button>
+                                </div>
+                            )}
+
                             <div className="flex items-center gap-2">
                                 <Badge variant="outline" className="h-9 px-4 border-slate-200 text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50/50">
                                     TECHNICAL GOVERNANCE: OPTIMAL
@@ -142,10 +166,9 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                         </div>
                     </div>
 
-                    {/* Tier 3: Integrated Progress Tier */}
+                    {/* Tier 3: Progress & Stepper */}
                     <div className="h-20 shrink-0 bg-[#F8FAFC] px-10 flex items-center justify-between border-b shadow-inner">
                         <div className="flex items-center gap-12 w-full">
-                            {/* Progress Meter */}
                             <div className="flex flex-col shrink-0">
                                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2">Overall Progress</span>
                                 <div className="flex items-center gap-3">
@@ -155,8 +178,6 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Stepper */}
                             <div className="flex-1">
                                 <CapaLifecycleStepper 
                                     observation={observation} 
@@ -168,7 +189,6 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                     </div>
                 </header>
 
-                {/* --- 2. MAIN WORKSPACE --- */}
                 <div className="flex-1 flex overflow-hidden">
                     <main className="flex-1 flex flex-col overflow-hidden relative bg-[#F8FAFC]">
                         <ScrollArea className="flex-1 no-scrollbar">
@@ -182,8 +202,6 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                             <CapaActionFooter 
                                 observation={observation} 
                                 stage={viewingStage} 
-                                onVerify={() => setReviewAction('Completed')}
-                                onRework={() => setReviewAction('Returned')}
                             />
                         </footer>
                     </main>
