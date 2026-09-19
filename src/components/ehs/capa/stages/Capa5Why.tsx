@@ -4,7 +4,7 @@ import React from 'react';
 import { useFormContext } from 'react-hook-form';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Target, ShieldCheck, ArrowDown } from 'lucide-react';
+import { Search, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
@@ -15,11 +15,10 @@ interface Props {
 export default function Capa5Why({ isLocked }: Props) {
     const { register } = useFormContext();
 
-    const wellClasses = "min-h-[100px] rounded-2xl border-2 border-slate-200 bg-slate-50 font-bold text-sm px-6 py-5 focus-visible:ring-blue-100 focus-visible:bg-white shadow-inner placeholder:text-slate-300 transition-all leading-relaxed";
+    const wellClasses = "min-h-[80px] rounded-2xl border-2 border-slate-200 bg-slate-50 font-bold text-sm px-6 py-5 focus-visible:ring-blue-100 focus-visible:bg-white shadow-inner placeholder:text-slate-300 transition-all leading-relaxed";
 
     return (
-        <div className="space-y-16 text-left animate-in fade-in duration-700">
-            {/* --- INSTRUCTIONAL CAPTURE --- */}
+        <div className="space-y-12 text-left animate-in fade-in duration-700 p-10">
             <div className="p-8 rounded-[2rem] bg-[#EFF6FF] border border-[#DBEAFE] flex items-start gap-6 shadow-sm">
                 <div className="bg-blue-600 h-11 w-11 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20">
                     <Search className="h-5 w-5 text-white" />
@@ -33,7 +32,6 @@ export default function Capa5Why({ isLocked }: Props) {
                 </div>
             </div>
 
-            {/* --- TECHNICAL CAUSAL CHAIN --- */}
             <div className="max-w-4xl mx-auto space-y-4 pb-10">
                 {[1, 2, 3, 4, 5].map((i) => (
                     <div key={i} className="flex gap-10 group animate-in slide-in-from-left duration-500" style={{ animationDelay: `${i * 100}ms` }}>
@@ -66,25 +64,6 @@ export default function Capa5Why({ isLocked }: Props) {
                         </div>
                     </div>
                 ))}
-            </div>
-
-            {/* --- ROOT CAUSE CONSOLIDATION --- */}
-            <div className="pt-12 border-t-2 border-slate-100">
-                <div className="flex items-center gap-4 mb-8">
-                    <Target className="h-7 w-7 text-blue-600" />
-                    <h4 className="text-xl font-black uppercase tracking-tight text-slate-900">TECHNICAL ROOT CAUSE STATEMENT</h4>
-                </div>
-                <div className="relative group">
-                    <Textarea 
-                        disabled={isLocked}
-                        {...register('rootCauseCandidate')}
-                        placeholder="State the final systemic root cause identified at Level W5 for executive validation..."
-                        className="min-h-[200px] rounded-[2rem] border-2 border-slate-200 bg-slate-50 p-12 font-black text-xl uppercase tracking-tight text-blue-700 placeholder:text-slate-100 focus-visible:bg-white transition-all shadow-inner"
-                    />
-                    <div className="absolute top-8 right-8 flex items-center gap-3 px-5 py-2.5 bg-emerald-600 text-white text-[11px] font-black uppercase tracking-widest rounded-2xl shadow-xl">
-                        <ShieldCheck className="h-4 w-4 text-white" /> ANALYSIS VALIDATED
-                    </div>
-                </div>
             </div>
         </div>
     );

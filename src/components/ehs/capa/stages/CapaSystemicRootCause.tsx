@@ -36,7 +36,6 @@ export default function CapaSystemicRootCause({ isLocked }: Props) {
         <div className="space-y-16 text-left animate-in fade-in duration-700 p-10">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-20">
                 
-                {/* --- LEFT: DOMAIN CATEGORIZATION --- */}
                 <div className="space-y-12">
                     <div className="flex items-center gap-4 border-b-4 border-slate-900 pb-5">
                         <Layers className="h-7 w-7 text-blue-600" />
@@ -68,13 +67,12 @@ export default function CapaSystemicRootCause({ isLocked }: Props) {
                                 disabled={isLocked}
                                 {...register('contributingFactors')}
                                 placeholder="List external or secondary factors that influenced the primary finding..."
-                                className={cn("min-h-[240px] px-8 py-7 leading-relaxed", wellClasses)}
+                                className={cn("min-h-[200px] px-8 py-7 leading-relaxed", wellClasses)}
                             />
                         </div>
                     </div>
                 </div>
 
-                {/* --- RIGHT: ROOT CAUSE DEFINITION --- */}
                 <div className="space-y-12">
                     <div className="flex items-center gap-4 border-b-4 border-slate-900 pb-5">
                         <GitBranch className="h-7 w-7 text-blue-600" />
@@ -89,7 +87,7 @@ export default function CapaSystemicRootCause({ isLocked }: Props) {
                                     disabled={isLocked}
                                     {...register('finalRootCauseStatement')}
                                     placeholder="Provide the definitive, validated root cause statement for institutional archival..."
-                                    className="min-h-[440px] rounded-[2.5rem] border-2 border-slate-200 bg-slate-50 p-12 font-black text-xl uppercase tracking-tight text-rose-700 focus-visible:bg-white transition-all shadow-inner"
+                                    className="min-h-[400px] rounded-[2.5rem] border-2 border-slate-200 bg-slate-50 p-12 font-black text-xl uppercase tracking-tight text-rose-700 focus-visible:bg-white transition-all shadow-inner"
                                 />
                                 <div className="absolute bottom-10 right-10 flex items-center gap-3 px-6 py-3 bg-rose-600 text-white text-[12px] font-black uppercase tracking-widest rounded-2xl shadow-xl ring-4 ring-rose-600/10">
                                     <ShieldAlert className="h-6 w-6 text-white" /> SYSTEMIC BREAKDOWN

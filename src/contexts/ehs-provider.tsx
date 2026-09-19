@@ -17,7 +17,9 @@ import type {
   EhsObservation, 
   CapaStage,
   CapaStageRecord,
-  EhsRevision
+  EhsRevision,
+  User,
+  NotificationSettings
 } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
@@ -71,6 +73,9 @@ const EhsContext = createContext<EhsContextType | undefined>(undefined);
 
 const CAPA_STAGES: CapaStage[] = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];
 
+/**
+ * Utility to sanitize data for Firebase RTDB by converting undefined values to null.
+ */
 const sanitizeData = (data: any) => {
     return JSON.parse(JSON.stringify(data, (key, value) => {
         return value === undefined ? null : value;
@@ -311,7 +316,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
             const nextStage = CAPA_STAGES[CAPA_STAGES.indexOf(stage) + 1];
             if (nextStage) {
                 updates['currentStage'] = nextStage;
-                updates[`stages/${nextStage}/status'] = 'Pending';
+                updates[`stages/${nextStage}/status`] = 'Pending';
                 updates[`stages/${nextStage}/assignedById`] = user.id;
                 updates[`stages/${nextStage}/assignedAt`] = now;
                 if (stage === 'Investigation' && nextOwnerData) { updates[`stages/${nextStage}/assigneeId`] = nextOwnerData.assigneeId; updates[`stages/${nextStage}/targetDate`] = nextOwnerData.targetDate; }

@@ -21,7 +21,6 @@ export default function CapaPhaseConclusion({ isLocked }: Props) {
         <div className="space-y-20 text-left animate-in fade-in duration-700 p-10">
             <div className="max-w-5xl mx-auto space-y-20 py-10">
                 
-                {/* --- TECHNICAL PHASE SUMMARY --- */}
                 <div className="space-y-8">
                     <div className="flex items-center justify-between border-b-4 border-slate-900 pb-5">
                         <div className="flex items-center gap-5">
@@ -35,8 +34,8 @@ export default function CapaPhaseConclusion({ isLocked }: Props) {
                         <Textarea 
                             disabled={isLocked}
                             {...register('investigationConclusion')}
-                            placeholder="Summarize the complete investigation lifecycle, identified breakdowns, and resulting technical determinations for institutional archival..."
-                            className={cn("min-h-[300px] shadow-sm", wellClasses)}
+                            placeholder="Summarize the complete investigation lifecycle for institutional archival..."
+                            className={cn("min-h-[240px] shadow-sm", wellClasses)}
                         />
                         <div className="absolute top-8 right-8 opacity-5 group-hover:opacity-10 transition-opacity">
                             <Target className="h-24 w-24 text-slate-900" />
@@ -44,7 +43,6 @@ export default function CapaPhaseConclusion({ isLocked }: Props) {
                     </div>
                 </div>
 
-                {/* --- SAFETY RECOMMENDATIONS LEDGER --- */}
                 <div className="space-y-8">
                     <div className="flex items-center justify-between border-b-4 border-slate-900 pb-5">
                         <div className="flex items-center gap-5">
@@ -61,8 +59,8 @@ export default function CapaPhaseConclusion({ isLocked }: Props) {
                         <Textarea 
                             disabled={isLocked}
                             {...register('safetyRecommendations')}
-                            placeholder="List mandatory actions, technical corrections, or systemic enhancements required to mitigate future recurrence and achieve institutional safety goals..."
-                            className={cn("min-h-[300px] border-emerald-600/10 bg-emerald-50/50 shadow-sm", wellClasses)}
+                            placeholder="List mandatory actions, technical corrections, or systemic enhancements required to mitigate future recurrence..."
+                            className={cn("min-h-[240px] border-emerald-600/10 bg-emerald-50/50 shadow-sm", wellClasses)}
                         />
                         <div className="absolute bottom-8 right-8 flex items-center gap-4 px-8 py-4 bg-emerald-600 text-white text-[14px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-2xl shadow-emerald-500/30 active:scale-95 transition-all">
                             <CheckCircle2 className="h-6 w-6 text-white" /> PHASE COMPLETE
