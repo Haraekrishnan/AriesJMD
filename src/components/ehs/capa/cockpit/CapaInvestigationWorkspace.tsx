@@ -16,7 +16,10 @@ import {
     Paperclip,
     ExternalLink,
     ShieldAlert,
-    ShieldCheck
+    ShieldCheck,
+    History,
+    UserCircle,
+    CheckCircle
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -219,3 +222,5 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
         </div>
     );
 }
+
+import { UploadCloud } from 'lucide-react';
