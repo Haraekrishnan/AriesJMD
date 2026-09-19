@@ -29,7 +29,9 @@ import {
     Download,
     ChevronLeft,
     ChevronRight,
-    Paperclip
+    Paperclip,
+    Activity,
+    Zap
 } from 'lucide-react';
 import type { EhsObservation, CapaStage, User as UserType } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
