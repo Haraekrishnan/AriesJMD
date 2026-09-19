@@ -49,9 +49,11 @@ export default function CapaActionFooter({ observation, stage }: Props) {
                 <div className="flex flex-col">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] leading-none mb-1.5">Stage Status</p>
                     {isSubmitted ? (
-                        <Badge className="bg-amber-100 text-amber-700 border-none font-black h-6 text-[10px] uppercase tracking-widest px-4 rounded-md animate-pulse shadow-sm">
-                            <Clock className="mr-2 h-3.5 w-3.5" /> Review Pending
-                        </Badge>
+                        <div className="flex items-center">
+                            <Badge className="bg-blue-600 text-white border-none font-black h-7 text-[10px] uppercase tracking-widest px-5 rounded-full animate-pulse shadow-[0_0_15px_rgba(37,99,235,0.6)]">
+                                <Clock className="mr-2 h-3.5 w-3.5" /> REVIEW PENDING
+                            </Badge>
+                        </div>
                     ) : isCompleted ? (
                         <Badge className="bg-emerald-500 text-white border-none font-black h-6 text-[10px] uppercase tracking-widest px-4 rounded-md shadow-sm">
                             <CheckCircle2 className="mr-2 h-3.5 w-3.5" /> Verified Milestone
@@ -67,10 +69,10 @@ export default function CapaActionFooter({ observation, stage }: Props) {
                     )}
                 </div>
                 
-                {isSubmitted && !isPhaseAssignee && (
+                {isSubmitted && (
                     <div className="flex items-center gap-2 pl-4 border-l border-slate-200">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Ownership:</span>
-                        <span className="text-[10px] font-bold text-slate-600 uppercase">Finalized by {actionedByUser?.name}</span>
+                        <span className="text-[10px] font-bold text-slate-600 uppercase">Finalized by {actionedByUser?.name || 'Personnel'}</span>
                     </div>
                 )}
             </div>

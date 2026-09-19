@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -9,11 +10,8 @@ import {
     User,
     FileText,
     Clock,
-    Paperclip,
-    Download,
-    Trash2
+    ShieldAlert
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,31 +19,15 @@ import { useFormContext } from 'react-hook-form';
 import type { EhsObservation } from '@/lib/types';
 import { format, parseISO, isValid } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useEhs } from '@/contexts/ehs-provider';
-import { useAuth } from '@/contexts/auth-provider';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 
 export default function CapaInvestigationWorkspace({ observation }: { observation: EhsObservation }) {
     const { register } = useFormContext();
-    const { user } = useAuth();
-    const { deleteStageAttachment } = useEhs();
 
-    const attachments = observation.stages?.Investigation?.attachments ? Object.values(observation.stages.Investigation.attachments) : [];
     const stageStatus = observation.stages?.Investigation?.status || 'Pending';
     const isLocked = stageStatus === 'Completed' || stageStatus === 'In Progress';
 
     const inputWell = "h-11 rounded-lg border border-slate-200 bg-slate-50 font-bold text-sm px-10 focus-visible:bg-white focus-visible:ring-blue-100 transition-all shadow-inner placeholder:text-slate-300";
-    const areaWell = "min-h-[100px] rounded-lg border border-slate-200 bg-slate-50 font-bold text-sm p-4 focus-visible:bg-white focus-visible:ring-blue-100 transition-all shadow-inner resize-none";
+    const areaWell = "min-h-[120px] rounded-lg border border-slate-200 bg-slate-50 font-bold text-sm p-4 focus-visible:bg-white focus-visible:ring-blue-100 transition-all shadow-inner resize-none leading-relaxed";
 
     return (
         <div className="space-y-8 text-left animate-in fade-in duration-500">
@@ -67,7 +49,6 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                                 <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                                 <Input disabled={isLocked} {...register('who')} placeholder="Enter personnel or teams..." className={inputWell} />
                             </div>
-                            <p className="text-[9px] font-medium text-slate-400 ml-1">List personnel, contractors or departments involved.</p>
                         </div>
 
                         <div className="space-y-2">
@@ -76,7 +57,6 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                                 <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                                 <Input disabled={isLocked} {...register('where')} placeholder="Specific location..." className={inputWell} />
                             </div>
-                            <p className="text-[9px] font-medium text-slate-400 ml-1">Specific deck, unit, workshop or coordinate.</p>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -103,7 +83,7 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                     <div className="flex items-center justify-between border-b pb-4">
                         <div className="flex items-center gap-3">
                             <FileText className="h-5 w-5 text-blue-600" />
-                            <h4 className="text-[12px] font-black uppercase tracking-[0.2em] text-slate-800">NARRATIVE CONTEXT</h4>
+                            <h4 className="text-[12px] font-black uppercase tracking-[0.2em] text-slate-800">SUMMARY</h4>
                         </div>
                         <p className="text-[9px] font-bold text-slate-400 uppercase">Incident sequence & discovery</p>
                     </div>
@@ -111,79 +91,21 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                     <div className="space-y-6">
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-blue-600 ml-1">Sequence of events (How)? <span className="text-rose-600">*</span></Label>
-                            <Textarea disabled={isLocked} {...register('sequence')} placeholder="Chronological flow..." className={areaWell} />
-                            <p className="text-[9px] font-medium text-slate-400 ml-1">Describe the chronological sequence of events leading to this observation.</p>
+                            <Textarea disabled={isLocked} {...register('sequence')} placeholder="Document the chronological flow..." className={areaWell} />
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-blue-600 ml-1">Immediate cause / direct reason <span className="text-rose-600">*</span></Label>
-                            <Textarea disabled={isLocked} {...register('immediateCause')} placeholder="Direct reason for unsafe finding..." className={areaWell} />
-                            <p className="text-[9px] font-medium text-slate-400 ml-1">State the most immediate and direct cause based on available information.</p>
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-blue-600 ml-1">Activity during discovery</Label>
+                            <Textarea disabled={isLocked} {...register('activityAtDiscovery')} placeholder="What was being performed..." className={areaWell} />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-rose-600 ml-1 flex items-center gap-1.5">
+                                <ShieldAlert className="h-3 w-3" /> IMMEDIATE CAUSE / DIRECT REASON <span className="text-rose-600">*</span>
+                            </Label>
+                            <Textarea disabled={isLocked} {...register('immediateCause')} placeholder="State the direct reason for unsafe condition..." className={cn(areaWell, "border-l-4 border-l-rose-500 bg-rose-50/20")} />
                         </div>
                     </div>
-                </div>
-            </div>
-
-            {/* 3. PHASE EVIDENCE LEDGER */}
-            <div className="p-8 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-6">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Paperclip className="h-5 w-5 text-blue-600" />
-                        <h4 className="text-[12px] font-black uppercase tracking-[0.2em] text-slate-800">PHASE EVIDENCE LEDGER</h4>
-                    </div>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Technical documentation registry</p>
-                </div>
-
-                <div className="space-y-3">
-                    {attachments.length > 0 ? attachments.map((file) => (
-                        <div key={file.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50 flex items-center justify-between group hover:bg-white hover:border-blue-200 transition-all shadow-inner">
-                            <div className="flex items-center gap-4">
-                                <div className="h-10 w-10 bg-white rounded-lg border flex items-center justify-center text-rose-500 font-black text-[10px] uppercase">DOC</div>
-                                <div className="flex flex-col text-left">
-                                    <p className="text-xs font-black uppercase text-slate-800 tracking-tight">{file.name}</p>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">
-                                        {isValid(parseISO(file.uploadedAt)) ? format(parseISO(file.uploadedAt), 'dd MMM yyyy, HH:mm') : 'N/A'}
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="flex gap-1">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 bg-white shadow-sm border opacity-0 group-hover:opacity-100 transition-opacity" asChild>
-                                    <a href={file.url} download target="_blank" rel="noopener noreferrer"><Download className="h-3.5 w-3.5" /></a>
-                                </Button>
-                                {!isLocked && (
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-600 bg-white shadow-sm border opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle className="font-black uppercase text-slate-900 tracking-tight">Delete Technical Evidence?</AlertDialogTitle>
-                                                <AlertDialogDescription className="text-slate-500 font-medium leading-relaxed">
-                                                    This action permanently wipes the record <strong>{file.name}</strong> from the institutional documentation registry. This cannot be undone.
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter className="gap-3">
-                                                <AlertDialogCancel className="font-bold rounded-xl h-12">Cancel</AlertDialogCancel>
-                                                <AlertDialogAction 
-                                                    onClick={() => deleteStageAttachment(observation.id, 'Investigation', file.id)}
-                                                    className="bg-rose-600 hover:bg-rose-700 text-white font-black uppercase text-[10px] tracking-widest h-12 px-8 rounded-xl"
-                                                >
-                                                    Delete Document
-                                                </AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                )}
-                            </div>
-                        </div>
-                    )) : (
-                        <div className="p-8 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-3 opacity-30 grayscale text-center">
-                            <FileText className="h-10 w-10" />
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em]">Registry Empty</p>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>

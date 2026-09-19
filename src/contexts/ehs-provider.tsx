@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo } from 'react';
@@ -92,7 +93,7 @@ const generateInitialStages = (creatorId: string): Record<CapaStage, CapaStageRe
 };
 
 export function EhsProvider({ children }: { children: ReactNode }) {
-  const { user, users } = useAuth();
+  const { user, users, addActivityLog } = useAuth();
   const { toast } = useToast();
   const { notificationSettings } = useGeneral();
   

@@ -19,7 +19,8 @@ import {
     ShieldCheck,
     ThumbsUp,
     Zap,
-    Activity
+    Activity,
+    ShieldAlert
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -82,7 +83,7 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                 
                 {/* --- EXECUTIVE HEADER --- */}
                 <header className="shrink-0 bg-white border-b z-30 shadow-sm flex flex-col text-left">
-                    {/* Tier 1: Identity & Action hub */}
+                    {/* Tier 1: Identity & Management Actions */}
                     <div className="px-8 py-3 flex items-center justify-between bg-white border-b">
                         <div className="flex items-center gap-6">
                             <Button 
@@ -107,33 +108,29 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                         </div>
 
                         <div className="flex items-center gap-8">
-                            <div className="flex flex-col text-right leading-none mr-4">
-                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">A SAFER WORKPLACE</p>
-                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">A HEALTHIER TOMORROW</p>
-                            </div>
-
-                            {/* MANAGEMENT VERIFICATION SUITE */}
+                            {/* MANAGEMENT VERIFICATION CARD */}
                             {isCurrentStage && isSubmitted && isSupervisor && (
-                                <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-2">
+                                <div className="bg-[#0F172A] p-2 rounded-xl flex items-center gap-2 animate-in fade-in zoom-in-95 shadow-xl ring-4 ring-white">
                                     <Button 
-                                        variant="outline" 
-                                        className="h-9 border-rose-500/30 text-rose-500 hover:bg-rose-50 font-black uppercase tracking-widest text-[9px] px-4 rounded-lg transition-all"
+                                        variant="ghost" 
+                                        className="h-9 text-rose-400 hover:bg-rose-400/10 font-black uppercase tracking-[0.1em] text-[9px] px-4 rounded-lg transition-all"
                                         onClick={() => setReviewAction('Returned')}
                                     >
-                                        <Undo2 className="mr-2 h-3.5 w-3.5" /> Instruct Rework
+                                        <Undo2 className="mr-2 h-3.5 w-3.5" /> INSTRUCT REWORK
                                     </Button>
+                                    <div className="h-4 w-px bg-white/10" />
                                     <Button 
-                                        className="h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[9px] px-6 rounded-lg shadow-md"
+                                        className="h-9 bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-[0.1em] text-[9px] px-6 rounded-lg shadow-lg"
                                         onClick={() => setReviewAction('Completed')}
                                     >
-                                        <CheckCircle2 className="mr-2 h-4 w-4" /> Verify & Continue
+                                        <CheckCircle2 className="mr-2 h-4 w-4" /> VERIFY & CONTINUE
                                     </Button>
                                 </div>
                             )}
 
                             <div className="flex items-center gap-2">
                                 <Badge variant="outline" className="h-9 px-4 border-slate-200 text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50/50">
-                                    TECHNICAL GOVERNANCE: OPTIMAL
+                                    GOVERNANCE: OPTIMAL
                                 </Badge>
                                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg">
                                     <MoreVertical className="h-4 w-4 text-slate-400" />
@@ -155,14 +152,6 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                         <div className="flex items-center gap-2 border-l pl-8 border-slate-100">
                             <Calendar className="h-4 w-4 text-slate-300" />
                             <span>{format(parseISO(observation.createdAt), 'dd MMM yyyy').toUpperCase()}</span>
-                        </div>
-                        <div className="flex items-center gap-2 border-l pl-8 border-slate-100">
-                            <Clock className="h-4 w-4 text-slate-300" />
-                            <span>1 DAYS OPEN</span>
-                        </div>
-                        <div className="flex items-center gap-2 border-l pl-8 border-slate-100">
-                            <Target className="h-4 w-4 text-slate-300" />
-                            <span>TARGET CLOSURE: —</span>
                         </div>
                     </div>
 
@@ -215,27 +204,25 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                 </div>
             </div>
 
-            {/* Verification Dialog */}
+            {/* Review Dialog */}
             <Dialog open={!!reviewAction} onOpenChange={(o) => !o && setReviewAction(null)}>
                 <DialogContent className="bg-white border-slate-200 text-slate-900 shadow-2xl">
                     <DialogHeader>
                         <DialogTitle className="text-slate-900 uppercase font-black tracking-tight">
-                            {reviewAction === 'Completed' ? 'Verify Milestone' : 'Instruct Technical Rework'}
+                            {reviewAction === 'Completed' ? 'Authorize Milestone' : 'Instruct Technical Rework'}
                         </DialogTitle>
                         <DialogDescription className="text-slate-500 font-medium">
-                            {reviewAction === 'Completed' 
-                                ? 'Authorize the findings and proceed to the next lifecycle stage.' 
-                                : 'Return the case to the assignee for clarification or correction.'}
+                            Validation of lifecycle findings by the Higher Official.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4 text-left">
                         <div className="space-y-2">
                             <Label className="text-slate-900 font-black uppercase text-[10px] tracking-widest ml-1">
-                                {reviewAction === 'Completed' ? 'Validation Notes' : 'Rework Instructions'}
+                                Validation Notes / Official Instructions
                             </Label>
                             <Textarea 
                                 className="bg-slate-50 border-slate-200 text-slate-900 min-h-[120px] rounded-xl font-bold p-4 focus-visible:ring-blue-100 shadow-inner" 
-                                placeholder="Enter technical comments for the audit trail..."
+                                placeholder="Enter technical feedback for the activity log..."
                                 value={reviewComment}
                                 onChange={(e) => setReviewComment(e.target.value)}
                             />
@@ -252,11 +239,12 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                             )}
                             onClick={handleReviewSubmit}
                         >
-                            {reviewAction === 'Completed' ? 'Authorize & Proceed' : 'Submit Rework Order'}
+                            {reviewAction === 'Completed' ? 'Authorize Findings' : 'Submit Rework order'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </FormProvider>
+        </div>
+    </FormProvider>
     );
 }
