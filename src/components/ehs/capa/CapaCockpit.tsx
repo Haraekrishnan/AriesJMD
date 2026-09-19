@@ -29,6 +29,7 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 
 import CapaLifecycleStepper from './cockpit/CapaLifecycleStepper';
 import CapaRightSidebar from './cockpit/CapaRightSidebar';
@@ -254,9 +255,4 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
             </Dialog>
         </FormProvider>
     );
-}
-
-interface CapaCockpitProps {
-    observation: EhsObservation;
-    onClose: () => void;
 }

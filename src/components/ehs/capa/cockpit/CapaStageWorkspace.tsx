@@ -71,7 +71,7 @@ if (typeof window !== 'undefined') {
     pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 }
 
-const STAGES_LIST: CapaStage[] = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];
+const STAGES: CapaStage[] = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];
 
 interface CapaStageWorkspaceProps {
     observation: EhsObservation;
@@ -165,7 +165,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
             <div className="p-8 rounded-[2rem] bg-white border border-slate-200 shadow-sm flex items-center justify-between relative overflow-hidden">
                 <div className="flex items-center gap-8">
                     <div className="h-14 w-14 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-blue-500/20">
-                        {String(STAGES_LIST.indexOf(stage) + 1).padStart(2, '0')}
+                        {String(STAGES.indexOf(stage) + 1).padStart(2, '0')}
                     </div>
                     <div>
                         <h3 className="text-3xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">{stage}</h3>
@@ -252,9 +252,9 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
 
             <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); setNumPages(null); setPageNumber(1); }}>
                 <DialogContent className="max-w-[95vw] md:max-w-7xl w-full h-auto max-h-[90vh] flex flex-col p-0 overflow-hidden bg-black border border-white/10 shadow-2xl">
-                    <DialogHeader className="sr-only">
-                        <DialogTitle>Case Evidence Discovery Attachment</DialogTitle>
-                        <DialogDescription>Full-resolution forensic evidence viewer.</DialogDescription>
+                    <DialogHeader>
+                        <DialogTitle className="sr-only">Evidence Detail Viewer</DialogTitle>
+                        <DialogDescription className="sr-only">Full-resolution forensic evidence viewer.</DialogDescription>
                     </DialogHeader>
                     <div className="absolute top-16 right-6 z-50 flex items-center gap-3">
                         {!isPdf && (
@@ -369,7 +369,7 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
 
                 <div className="p-7 space-y-10">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                        {/* LEFT COLUMN: LOGISTICS */}
+                        {/* LEFT COLUMN: DETAILS */}
                         <div className="space-y-8">
                             <SectionHeading icon={MapPin} title="DETAILS" />
                             <div className="space-y-6">
@@ -380,7 +380,7 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
                             </div>
                         </div>
 
-                        {/* RIGHT COLUMN: NARRATIVE */}
+                        {/* RIGHT COLUMN: SUMMARY */}
                         <div className="space-y-8">
                             <div className="flex justify-between items-center">
                                 <SectionHeading icon={FileText} title="SUMMARY" />
