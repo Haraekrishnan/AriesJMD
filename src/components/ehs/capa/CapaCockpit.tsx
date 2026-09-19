@@ -110,16 +110,16 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                         <div className="flex items-center gap-8">
                             {/* MANAGEMENT VERIFICATION COMMANDS */}
                             {isCurrentStage && isSubmitted && isSupervisor && (
-                                <div className="flex items-center gap-3 animate-in fade-in zoom-in-95">
+                                <div className="flex items-center gap-3 animate-in fade-in zoom-in-95 bg-[#0F172A] p-2 rounded-xl">
                                     <Button 
                                         variant="outline"
-                                        className="h-10 text-rose-600 hover:bg-rose-50 font-black uppercase tracking-[0.1em] text-[9px] px-6 rounded-xl border-2 border-rose-100 transition-all"
+                                        className="h-10 text-rose-400 hover:bg-rose-400/10 border-rose-400/30 font-black uppercase tracking-[0.1em] text-[9px] px-6 rounded-lg transition-all"
                                         onClick={() => setReviewAction('Returned')}
                                     >
                                         <Undo2 className="mr-2 h-4 w-4" /> INSTRUCT REWORK
                                     </Button>
                                     <Button 
-                                        className="h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-[0.1em] text-[9px] px-8 rounded-xl shadow-lg shadow-emerald-500/10"
+                                        className="h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-[0.1em] text-[9px] px-8 rounded-lg shadow-lg shadow-emerald-500/10"
                                         onClick={() => setReviewAction('Completed')}
                                     >
                                         <CheckCircle2 className="mr-2 h-4 w-4" /> VERIFY & CONTINUE

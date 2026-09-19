@@ -132,7 +132,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
         if (!file) return;
 
         setIsUploading(true);
-        toast({ title: 'Transmitting Evidence...', description: 'Syncing technical data to institutional registry.' });
+        toast({ title: 'Transmitting Document...', description: 'Syncing technical data to institutional registry.' });
 
         const formData = new FormData();
         formData.append("file", file);
@@ -148,7 +148,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
 
             if (uploadData.success) {
                 addStageAttachment(observation.id, stage, file.name, uploadData.downloadLink);
-                toast({ title: 'Discovery Sync Successful', description: 'Institutional data archive updated.' });
+                toast({ title: 'Document Sync Successful', description: 'Institutional data archive updated.' });
             } else {
                 throw new Error(uploadData.error);
             }
@@ -289,12 +289,12 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-3">
                             <Paperclip className="h-5 w-5 text-blue-600" />
-                            <h4 className="text-[12px] font-black uppercase tracking-[0.2em] text-slate-800">TECHNICAL EVIDENCE LEDGER</h4>
+                            <h4 className="text-[12px] font-black uppercase tracking-[0.2em] text-slate-800">ATTACH DOCUMENT</h4>
                         </div>
                         {!isLocked && (
                             <div className="relative">
                                 <Button variant="outline" className="h-9 px-6 rounded-lg font-black uppercase tracking-widest text-[9px] border-2 bg-white gap-2 shadow-sm" disabled={isUploading}>
-                                    <Upload className="h-3.5 w-3.5" /> {isUploading ? 'SYNCING...' : 'UPLOAD EVIDENCE'}
+                                    <Upload className="h-3.5 w-3.5" /> {isUploading ? 'SYNCING...' : 'ATTACH DOCUMENT'}
                                 </Button>
                                 <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileChange} disabled={isUploading} />
                             </div>
@@ -331,8 +331,8 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                             </AlertDialogTrigger>
                                             <AlertDialogContent>
                                                 <AlertDialogHeader>
-                                                    <AlertDialogTitle className="text-xl font-black uppercase tracking-tight">WIPE EVIDENCE?</AlertDialogTitle>
-                                                    <AlertDialogDescription className="text-sm font-medium">Permanently remove "{att.name}" from the technical registry?</AlertDialogDescription>
+                                                    <AlertDialogTitle className="text-xl font-black uppercase tracking-tight">DELETE ATTACHMENT?</AlertDialogTitle>
+                                                    <AlertDialogDescription className="text-sm font-medium">Permanently remove "{att.name}" from the institutional registry?</AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
                                                     <AlertDialogCancel className="font-bold">Cancel</AlertDialogCancel>
@@ -347,7 +347,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                         {attachments.length === 0 && (
                             <div className="col-span-full py-8 text-center bg-slate-50/50 border-2 border-dashed rounded-[2rem] border-slate-200">
                                 <Paperclip className="h-6 w-6 mx-auto mb-2 opacity-20 text-slate-400" />
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">No attachments indexed for this milestone.</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">No documents attached for this milestone.</p>
                             </div>
                         )}
                     </div>
@@ -357,8 +357,8 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
             <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); setNumPages(null); setPageNumber(1); }}>
                 <DialogContent className="max-w-[95vw] md:max-w-7xl w-full h-auto max-h-[90vh] flex flex-col p-0 overflow-hidden bg-black border border-white/10 shadow-2xl">
                     <DialogHeader className="sr-only">
-                        <DialogTitle>Institutional Evidence Viewer</DialogTitle>
-                        <DialogDescription>Full-resolution technical discovery review.</DialogDescription>
+                        <DialogTitle>Document Viewer</DialogTitle>
+                        <DialogDescription>Full-resolution technical documentation review.</DialogDescription>
                     </DialogHeader>
                     <div className="absolute top-16 right-6 z-50 flex items-center gap-3">
                         {!isPdf && (
@@ -384,7 +384,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                     </div>
                                 </ScrollArea>
                             ) : (
-                                <img src={viewingAttachmentUrl || ''} alt="Evidence" className={cn("transition-transform duration-200 shadow-2xl", isPanning ? 'cursor-grabbing' : 'cursor-grab')} style={{ transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`, maxWidth: zoom > 1 ? 'none' : '100%', maxHeight: zoom > 1 ? 'none' : '100%', objectFit: 'contain' }} />
+                                <img src={viewingAttachmentUrl || ''} alt="Attachment" className={cn("transition-transform duration-200 shadow-2xl", isPanning ? 'cursor-grabbing' : 'cursor-grab')} style={{ transform: `scale(${zoom}) translate(${translate.x}px, ${translate.y}px)`, maxWidth: zoom > 1 ? 'none' : '100%', maxHeight: zoom > 1 ? 'none' : '100%', objectFit: 'contain' }} />
                             )
                         )}
                     </div>
