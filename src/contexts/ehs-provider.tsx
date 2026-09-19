@@ -360,6 +360,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
             addObservationActivity(observationId, `Returned ${stage} for technical rework.`);
             updates[`${stagePath}/actionedAt`] = null; 
             updates[`${stagePath}/actionedById`] = null; 
+            updates[`${stagePath}/status`] = 'Returned';
         }
         updates['lastUpdated'] = now;
         update(obsRef, sanitizeData(updates));

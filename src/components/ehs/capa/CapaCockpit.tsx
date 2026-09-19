@@ -11,11 +11,11 @@ import {
     MoreVertical,
     CheckCircle2,
     Undo2,
-    ThumbsUp,
     MessageSquare,
     AlertTriangle,
     History,
-    FileText
+    FileText,
+    ShieldCheck
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -103,21 +103,21 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                         </div>
 
                         <div className="flex items-center gap-10">
-                            {/* EXECUTIVE VERIFICATION ACTIONS */}
+                            {/* EXECUTIVE VERIFICATION ACTION CARD (BLACK BOX) */}
                             {isCurrentStage && isSubmitted && isSupervisor && (
-                                <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-2">
+                                <div className="bg-[#0F172A] px-4 py-2 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-right-2 shadow-2xl">
                                     <Button 
                                         variant="outline" 
-                                        className="h-10 border-rose-500/30 text-rose-600 hover:bg-rose-50 font-black uppercase tracking-widest text-[9px] px-6 rounded-xl"
+                                        className="h-8 border-rose-500/30 text-rose-400 hover:bg-rose-600 hover:text-white font-black uppercase tracking-widest text-[8px] px-4 rounded-lg"
                                         onClick={() => setReviewAction('Returned')}
                                     >
-                                        <Undo2 className="mr-2 h-3.5 w-3.5" /> Instruct Rework
+                                        <Undo2 className="mr-2 h-3 w-3" /> Instruct Rework
                                     </Button>
                                     <Button 
-                                        className="h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[9px] px-8 rounded-xl shadow-lg shadow-emerald-500/20"
+                                        className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[8px] px-6 rounded-lg shadow-lg shadow-emerald-500/20"
                                         onClick={() => setReviewAction('Completed')}
                                     >
-                                        <CheckCircle2 className="mr-2 h-4 w-4" /> Verify & Continue
+                                        <CheckCircle2 className="mr-2 h-3.5 w-3.5" /> Verify & Continue
                                     </Button>
                                 </div>
                             )}
@@ -230,7 +230,7 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                                 {reviewAction === 'Completed' ? 'Validation Notes' : 'Rework Instructions'}
                             </Label>
                             <Textarea 
-                                className="bg-slate-50 border-slate-200 text-slate-900 min-h-[120px] rounded-xl font-bold p-4 focus-visible:ring-emerald-600/20 shadow-inner" 
+                                className="bg-slate-50 border-slate-200 text-slate-900 min-h-[120px] rounded-xl font-bold p-4 focus-visible:ring-blue-100 shadow-inner" 
                                 placeholder="Enter technical comments for the audit trail..."
                                 value={reviewComment}
                                 onChange={(e) => setReviewComment(e.target.value)}
