@@ -1,40 +1,80 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
     Clock, 
     FileText, 
     MapPin,
-    User,
     Calendar,
     Target,
     CheckCircle2,
     Activity,
     FileSearch,
     MessageSquare,
-    Users,
     Paperclip,
-    ExternalLink,
     ShieldAlert,
     ShieldCheck,
     History,
     UserCircle,
     CheckCircle,
-    UploadCloud
+    UploadCloud,
+    X,
+    Loader2
 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useFormContext } from 'react-hook-form';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useFormContext, Controller } from 'react-hook-form';
 import type { EhsObservation } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function CapaInvestigationWorkspace({ observation }: { observation: EhsObservation }) {
-    const { register } = useFormContext();
+    const { register, setValue, watch, control } = useFormContext();
+    const { toast } = useToast();
+    const [isUploading, setIsUploading] = useState(false);
+
+    const discoveryAttachment = watch('discoveryAttachmentUrl');
+    const stageStatus = observation.stages?.Investigation?.status;
+    const isLocked = stageStatus === 'In Progress' || stageStatus === 'Completed';
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || isLocked) return;
+
+        setIsUploading(true);
+        toast({ title: 'Transmitting Evidence', description: 'Uploading to Dropbox Technical Registry...' });
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await fetch('/api/upload/dropbox', {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                setValue('discoveryAttachmentUrl', data.downloadLink);
+                toast({ title: 'Upload Successful', description: 'Evidence linked to case.' });
+            } else {
+                throw new Error(data.error);
+            }
+        } catch (error: any) {
+            toast({ 
+                variant: 'destructive', 
+                title: 'Upload Failed', 
+                description: error.message || 'System connectivity error.' 
+            });
+        } finally {
+            setIsUploading(false);
+        }
+    };
 
     return (
         <div className="space-y-6 text-left animate-in fade-in duration-700">
@@ -116,14 +156,12 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                                     <div className="space-y-6">
                                         <div className="space-y-2">
                                             <Label className="text-[11px] font-black uppercase tracking-widest text-slate-600">Who was involved? <span className="text-rose-500">*</span></Label>
-                                            <Input {...register('who')} placeholder="Personnel, contractors, or departments..." className="h-11 rounded-lg border-slate-200 bg-[#F9FAFB] font-medium text-sm px-4" />
-                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight ml-1">List all persons or departments involved in this incident</p>
+                                            <Input disabled={isLocked} {...register('who')} placeholder="Personnel, contractors, or departments..." className="h-11 rounded-lg border-slate-200 bg-[#F9FAFB] font-medium text-sm px-4" />
                                         </div>
 
                                         <div className="space-y-2">
                                             <Label className="text-[11px] font-black uppercase tracking-widest text-slate-600">Exact site position <span className="text-rose-500">*</span></Label>
-                                            <Input {...register('where')} placeholder="Specific deck, unit, workshop or coordinate..." className="h-11 rounded-lg border-slate-200 bg-[#F9FAFB] font-medium text-sm px-4" />
-                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight ml-1">Provide the exact location where the incident occurred</p>
+                                            <Input disabled={isLocked} {...register('where')} placeholder="Specific deck, unit, workshop or coordinate..." className="h-11 rounded-lg border-slate-200 bg-[#F9FAFB] font-medium text-sm px-4" />
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-6">
@@ -131,16 +169,78 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                                                 <Label className="text-[11px] font-black uppercase tracking-widest text-slate-600">Discovery date <span className="text-rose-500">*</span></Label>
                                                 <div className="relative">
                                                     <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                                    <Input type="text" placeholder="dd-mm-yyyy" className="h-11 rounded-lg border-slate-200 bg-[#F9FAFB] font-medium text-sm px-4" />
+                                                    <Input disabled={isLocked} type="text" placeholder="dd-mm-yyyy" className="h-11 rounded-lg border-slate-200 bg-[#F9FAFB] font-medium text-sm px-4" />
                                                 </div>
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="text-[11px] font-black uppercase tracking-widest text-slate-600">Discovery time</Label>
                                                 <div className="relative">
                                                     <Clock className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                                    <Input type="text" placeholder="--:--" className="h-11 rounded-lg border-slate-200 bg-[#F9FAFB] font-medium text-sm px-4" />
+                                                    <Input disabled={isLocked} type="text" placeholder="--:--" className="h-11 rounded-lg border-slate-200 bg-[#F9FAFB] font-medium text-sm px-4" />
                                                 </div>
                                             </div>
+                                        </div>
+
+                                        {/* RELOCATED EVIDENCE MODULE */}
+                                        <div className="space-y-4 pt-4 border-t border-dashed">
+                                            <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-blue-700 flex items-center gap-3">
+                                                <Paperclip className="h-4 w-4" /> INITIAL EVIDENCE
+                                            </h4>
+                                            
+                                            {discoveryAttachment ? (
+                                                <div className="p-4 border-2 border-slate-200 bg-[#F9FAFB] rounded-xl flex items-center justify-between group">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="h-10 w-10 bg-white border rounded flex items-center justify-center overflow-hidden shadow-sm">
+                                                            {discoveryAttachment.toLowerCase().match(/\.(jpg|jpeg|png|gif)$/) ? (
+                                                                <img src={discoveryAttachment} alt="Evidence" className="h-full w-full object-contain" />
+                                                            ) : (
+                                                                <FileText className="h-5 w-5 text-blue-500" />
+                                                            )}
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <p className="text-[11px] font-black text-slate-900 uppercase truncate">Primary Evidence Capture</p>
+                                                            <a href={discoveryAttachment} target="_blank" rel="noopener noreferrer" className="text-[9px] font-bold text-blue-600 uppercase hover:underline">View Document</a>
+                                                        </div>
+                                                    </div>
+                                                    {!isLocked && (
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-8 w-8 text-rose-500 hover:bg-rose-50 rounded-full"
+                                                            onClick={() => setValue('discoveryAttachmentUrl', null)}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className={cn(
+                                                    "border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 gap-3 transition-all",
+                                                    isLocked ? "bg-slate-50 border-slate-200 cursor-not-allowed" : "border-blue-200 bg-[#F9FAFF] hover:bg-blue-50 cursor-pointer"
+                                                )}>
+                                                    {isUploading ? (
+                                                        <Loader2 className="h-6 w-6 text-blue-600 animate-spin" />
+                                                    ) : (
+                                                        <UploadCloud className="h-6 w-6 text-blue-400" />
+                                                    )}
+                                                    <div className="text-center">
+                                                        <p className="text-xs font-bold text-slate-600 uppercase">Transmit Evidence</p>
+                                                        {!isLocked && (
+                                                            <div className="relative mt-2">
+                                                                <input 
+                                                                    type="file" 
+                                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                                                                    onChange={handleFileUpload}
+                                                                    disabled={isUploading}
+                                                                />
+                                                                <Button variant="outline" size="sm" className="h-8 px-4 font-bold text-blue-700 border-blue-200 uppercase tracking-widest text-[9px] bg-white">
+                                                                    Select File
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -153,31 +253,31 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                                     <div className="space-y-6">
                                         <div className="space-y-2">
                                             <Label className="text-[11px] font-black uppercase tracking-widest text-slate-600">Sequence of events (How?) <span className="text-rose-500">*</span></Label>
-                                            <Textarea {...register('sequence')} placeholder="Describe the chronological sequence of events..." className="min-h-[100px] rounded-lg border-slate-200 bg-[#F9FAFB] font-medium text-sm px-4 py-3" />
+                                            <Textarea disabled={isLocked} {...register('sequence')} placeholder="Describe the chronological sequence of events..." className="min-h-[100px] rounded-lg border-slate-200 bg-[#F9FAFB] font-medium text-sm px-4 py-3" />
                                         </div>
 
                                         <div className="space-y-2">
                                             <Label className="text-[11px] font-black uppercase tracking-widest text-slate-600">Activity during discovery</Label>
-                                            <Textarea {...register('how')} placeholder="What was being done at the time of the incident..." className="min-h-[100px] rounded-lg border-slate-200 bg-[#F9FAFB] font-medium text-sm px-4 py-3" />
+                                            <Textarea disabled={isLocked} {...register('how')} placeholder="What was being done at the time of the incident..." className="min-h-[100px] rounded-lg border-slate-200 bg-[#F9FAFB] font-medium text-sm px-4 py-3" />
                                         </div>
 
                                         <div className="space-y-2">
                                             <Label className="text-[11px] font-black uppercase tracking-widest text-slate-600">Immediate finding (Direct cause) <span className="text-rose-500">*</span></Label>
-                                            <Textarea {...register('immediateCause')} placeholder="State the direct reason for the unsafe act/condition..." className="min-h-[100px] rounded-lg border-slate-200 bg-[#F9FAFB] font-medium text-sm px-4 py-3" />
+                                            <Textarea disabled={isLocked} {...register('immediateCause')} placeholder="State the direct reason for the unsafe act/condition..." className="min-h-[100px] rounded-lg border-slate-200 bg-[#F9FAFB] font-medium text-sm px-4 py-3" />
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* INVESTIGATION STATUS & EVIDENCE FOOTER */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-12 pt-12 border-t">
+                            {/* INVESTIGATION STATUS FOOTER ONLY */}
+                            <div className="mt-12 pt-12 border-t">
                                 <div className="space-y-6">
                                     <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-blue-700 flex items-center gap-3 mb-4">
                                         <Activity className="h-4 w-4" /> INVESTIGATION STATUS
                                     </h4>
                                     <div className="p-6 rounded-2xl bg-[#F8FAFC] border border-slate-100 flex flex-col gap-6">
                                         <div className="flex justify-between items-start">
-                                            <Badge className="bg-[#DBEAFE] text-blue-700 border-none px-4 h-7 text-[10px] font-black">IN PROGRESS</Badge>
+                                            <Badge className="bg-[#DBEAFE] text-blue-700 border-none px-4 h-7 text-[10px] font-black">{stageStatus?.toUpperCase() || 'IN PROGRESS'}</Badge>
                                             <div className="flex gap-10">
                                                 <div className="text-left">
                                                     <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Started on</p>
@@ -194,25 +294,6 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                                             </div>
                                         </div>
                                         <p className="text-xs font-bold text-slate-400 leading-relaxed uppercase">Investigation is in progress. Complete all sections and attach relevant evidence before submission.</p>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-6">
-                                    <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-blue-700 flex items-center gap-3 mb-4">
-                                        <Paperclip className="h-4 w-4" /> INITIAL EVIDENCE
-                                    </h4>
-                                    <div className="h-full min-h-[160px] border-2 border-dashed border-blue-200 bg-[#F9FAFF] rounded-2xl flex flex-col items-center justify-center p-8 gap-3 group hover:bg-blue-50 transition-all cursor-pointer">
-                                        <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
-                                            <UploadCloud className="h-5 w-5" />
-                                        </div>
-                                        <div className="text-center">
-                                            <p className="text-sm font-bold text-slate-600">Drag and drop files here</p>
-                                            <p className="text-[10px] font-bold text-slate-400">or <span className="text-blue-600 underline">click to browse</span></p>
-                                        </div>
-                                        <Button variant="outline" size="sm" className="mt-2 h-9 px-6 font-bold text-blue-700 border-blue-200 uppercase tracking-widest text-[9px] bg-white gap-2">
-                                            <UploadCloud className="h-3.5 w-3.5" /> Upload Document
-                                        </Button>
-                                        <p className="text-[9px] font-bold text-slate-300 mt-2 uppercase">Supported formats: PDF, DOC, XLS, JPG, PNG (Max 50MB)</p>
                                     </div>
                                 </div>
                             </div>

@@ -31,7 +31,7 @@ import type { EhsObservation, CapaStage, User as UserType } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
 import { useEhs } from '@/contexts/ehs-provider';
 import { cn } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -113,7 +113,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
         setIsPanning(false);
     };
 
-    const isPdf = viewingAttachmentUrl && viewingAttachmentUrl.toLowerCase().endsWith('.pdf');
+    const isPdf = viewingAttachmentUrl && viewingAttachmentUrl.toLowerCase().includes('.pdf');
 
     const renderStageContent = () => {
         switch (stage) {
@@ -276,7 +276,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                                     This will permanently purge this document from the phase ledger. This action is irreversible.
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
-                                            <AlertDialogFooter className="gap-3">
+                                            <AlertDialogFooter>
                                                 <AlertDialogCancel className="rounded-none font-black uppercase text-[10px] h-12 px-8 border-2 border-slate-200">Cancel</AlertDialogCancel>
                                                 <AlertDialogAction 
                                                     className="bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-widest text-[10px] h-12 px-10 rounded-none shadow-lg"
@@ -292,15 +292,17 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                         </Card>
                     ))}
                     
-                    <div className="h-full border-4 border-dashed border-slate-200 rounded-none bg-white p-10 flex flex-col items-center justify-center gap-5 cursor-pointer hover:bg-slate-50 hover:border-[#2563EB] transition-all group min-h-[140px]">
-                        <div className="h-12 w-12 bg-blue-50 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
-                            <UploadCloud className="h-7 w-7 text-[#2563EB]" />
+                    {!isLocked && (
+                        <div className="h-full border-4 border-dashed border-slate-200 rounded-none bg-white p-10 flex flex-col items-center justify-center gap-5 cursor-pointer hover:bg-slate-50 hover:border-[#2563EB] transition-all group min-h-[140px]">
+                            <div className="h-12 w-12 bg-blue-50 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
+                                <UploadCloud className="h-7 w-7 text-[#2563EB]" />
+                            </div>
+                            <div className="text-center">
+                                <p className="text-[12px] font-black text-slate-900 uppercase tracking-[0.2em]">DROP TECHNICAL DOCUMENT HERE</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">OR CLICK TO BROWSE LOCAL DIRECTORY</p>
+                            </div>
                         </div>
-                        <div className="text-center">
-                            <p className="text-[12px] font-black text-slate-900 uppercase tracking-[0.2em]">DROP TECHNICAL DOCUMENT HERE</p>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">OR CLICK TO BROWSE LOCAL DIRECTORY</p>
-                        </div>
-                    </div>
+                    )}
                 </div>
             </div>
 
