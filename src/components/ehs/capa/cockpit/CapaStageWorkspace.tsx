@@ -53,6 +53,7 @@ import CapaImplementation from '../stages/CapaImplementation';
 import CapaEffectivenessReview from '../stages/CapaEffectivenessReview';
 import CapaReference from '../stages/CapaReference';
 import CapaClosure from '../stages/CapaClosure';
+import CapaInvestigationWorkspace from './CapaInvestigationWorkspace';
 
 interface CapaStageWorkspaceProps {
     observation: EhsObservation;
@@ -61,7 +62,7 @@ interface CapaStageWorkspaceProps {
 
 export default function CapaStageWorkspace({ observation, stage }: CapaStageWorkspaceProps) {
     const { user, users } = useAuth();
-    const { reviewStage, deleteStageAttachment } = useEhs();
+    const { reviewStage, deleteStageAttachment, updateInitiationDetails } = useEhs();
     const sData = observation.stages[stage];
     
     // Viewer State
@@ -83,7 +84,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
     const isSupervisor = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor';
     const currentOwner = users.find(u => u.id === sData?.assigneeId);
     
-    // Deletion Logic
+    // Deletion Logic: Available only to assignor until phase is finalized
     const isAssignor = user?.id === sData?.assignedById;
     const canDeleteDocument = (isAssignor || user?.role === 'Admin') && !isLocked;
 
@@ -118,32 +119,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
     const renderStageContent = () => {
         switch (stage) {
             case 'Investigation':
-                return (
-                    <Tabs defaultValue="summary" className="w-full">
-                        <div className="px-10 bg-slate-50/50 border-b-2">
-                            <TabsList className="h-14 w-full justify-start gap-12 bg-transparent p-0">
-                                {[
-                                    { id: 'summary', label: 'Technical Summary', icon: FileText },
-                                    { id: '5why', label: '5-Why Root Cause', icon: Activity },
-                                    { id: 'systemic', label: 'Systemic Root Cause', icon: Target },
-                                    { id: 'conclusion', label: 'Phase Conclusion', icon: CheckCircle2 },
-                                ].map(tab => (
-                                    <TabsTrigger 
-                                        key={tab.id} 
-                                        value={tab.id}
-                                        className="h-14 rounded-none border-b-4 border-transparent px-0 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 data-[state=active]:border-[#2563EB] data-[state=active]:text-[#2563EB] bg-transparent shadow-none"
-                                    >
-                                        <tab.icon className="mr-3 h-4 w-4" /> {tab.label}
-                                    </TabsTrigger>
-                                ))}
-                            </TabsList>
-                        </div>
-                        <TabsContent value="summary" className="p-12 m-0"><CapaInvestigation observation={observation} isLocked={isLocked} /></TabsContent>
-                        <TabsContent value="5why" className="p-12 m-0"><Capa5Why isLocked={isLocked} /></TabsContent>
-                        <TabsContent value="systemic" className="p-12 m-0"><CapaSystemicRootCause isLocked={isLocked} /></TabsContent>
-                        <TabsContent value="conclusion" className="p-12 m-0"><CapaInvestigationConclusion isLocked={isLocked} /></TabsContent>
-                    </Tabs>
-                );
+                return <CapaInvestigationWorkspace observation={observation} />;
             case 'Resolution': return <div className="p-12"><CapaResolution observation={observation} isLocked={isLocked} /></div>;
             case 'Implementation': return <div className="p-12"><CapaImplementation observation={observation} isLocked={isLocked} /></div>;
             case 'Effectiveness Review': return <div className="p-12"><CapaEffectivenessReview observation={observation} isLocked={isLocked} /></div>;
@@ -166,7 +142,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
             <div className="space-y-8">
                 <div className="flex justify-between items-end">
                     <div className="flex items-center gap-10">
-                        <div className="h-16 w-16 rounded-none border-4 border-slate-900 bg-[#2563EB] flex items-center justify-center text-white text-3xl font-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+                        <div className="h-16 w-16 rounded-none border-4 border-slate-900 bg-blue-600 flex items-center justify-center text-white text-3xl font-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
                             0{['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'].indexOf(stage) + 1}
                         </div>
                         <div>
@@ -188,7 +164,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                             <div className="flex items-center gap-4">
                                 <div className="leading-tight">
                                     <p className="text-sm font-black text-slate-900 uppercase tracking-tight">{currentOwner?.name || 'UNASSIGNED'}</p>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Operational Technical Lead</p>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Operational Lead</p>
                                 </div>
                                 <Avatar className="h-12 w-12 border-2 border-slate-900 rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                                     <AvatarImage src={currentOwner?.avatar} />
@@ -271,9 +247,9 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                         </AlertDialogTrigger>
                                         <AlertDialogContent className="rounded-none border-4 border-slate-900">
                                             <AlertDialogHeader>
-                                                <AlertDialogTitle className="font-black uppercase tracking-tight">DELETE DOCUMENT RECORD?</AlertDialogTitle>
+                                                <AlertDialogTitle className="font-black uppercase tracking-tight text-slate-900">DELETE DOCUMENT RECORD?</AlertDialogTitle>
                                                 <AlertDialogDescription className="font-bold text-slate-500">
-                                                    This will permanently purge this document from the phase ledger. This action is irreversible.
+                                                    This will permanently purge this document from the phase ledger. This action is irreversible and will be logged.
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
@@ -293,13 +269,13 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                     ))}
                     
                     {!isLocked && (
-                        <div className="h-full border-4 border-dashed border-slate-200 rounded-none bg-white p-10 flex flex-col items-center justify-center gap-5 cursor-pointer hover:bg-slate-50 hover:border-[#2563EB] transition-all group min-h-[140px]">
+                        <div className="h-full border-4 border-dashed border-slate-200 rounded-none bg-white p-10 flex flex-col items-center justify-center gap-5 cursor-pointer hover:bg-slate-50 hover:border-blue-600 transition-all group min-h-[140px]">
                             <div className="h-12 w-12 bg-blue-50 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
-                                <UploadCloud className="h-7 w-7 text-[#2563EB]" />
+                                <UploadCloud className="h-7 w-7 text-blue-600" />
                             </div>
                             <div className="text-center">
-                                <p className="text-[12px] font-black text-slate-900 uppercase tracking-[0.2em]">DROP TECHNICAL DOCUMENT HERE</p>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">OR CLICK TO BROWSE LOCAL DIRECTORY</p>
+                                <p className="text-[12px] font-black text-slate-900 uppercase tracking-[0.2em]">TRANSMIT TECHNICAL DOCUMENT</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">DROP FILE OR CLICK TO BROWSE</p>
                             </div>
                         </div>
                     )}
@@ -311,7 +287,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                 <DialogContent className="max-w-[95vw] md:max-w-7xl w-full h-auto max-h-[90vh] flex flex-col p-0 overflow-hidden bg-black border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)] rounded-none">
                     <div className="sr-only">
                         <DialogTitle>Phase Document Viewer</DialogTitle>
-                        <DialogDescription>Full-resolution view for forensic verification.</DialogDescription>
+                        <DialogDescription>Full-resolution view for technical verification.</DialogDescription>
                     </div>
 
                     <div className="absolute top-8 right-8 z-50 flex items-center gap-4">

@@ -25,7 +25,7 @@ import { useForm, FormProvider } from 'react-hook-form';
 
 import CapaStepper from './cockpit/CapaStepper';
 import CapaRightSidebar from './cockpit/CapaRightSidebar';
-import CapaInvestigationWorkspace from './cockpit/CapaInvestigationWorkspace';
+import CapaStageWorkspace from './cockpit/CapaStageWorkspace';
 import { Progress } from '@/components/ui/progress';
 
 interface CapaCockpitProps {
@@ -58,14 +58,14 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
             <div className="fixed inset-0 z-40 flex flex-col bg-[#F3F7FB] text-slate-900 font-sans overflow-hidden select-none">
                 
                 {/* --- 1. EXECUTIVE HEADER --- */}
-                <header className="shrink-0 bg-white border-b px-8 py-4 flex flex-col gap-3 z-30 shadow-sm">
+                <header className="shrink-0 bg-white border-b-4 border-slate-900 px-8 py-4 flex flex-col gap-3 z-30">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <Button 
                                 variant="outline" 
                                 size="sm" 
                                 onClick={onClose} 
-                                className="h-9 px-3 text-slate-600 border-slate-200 bg-slate-50 hover:bg-slate-100"
+                                className="h-9 px-4 rounded-none text-slate-900 border-2 border-slate-900 bg-white hover:bg-slate-50 font-black uppercase text-[10px] tracking-widest"
                             >
                                 <ChevronLeft className="mr-1.5 h-4 w-4" /> Back
                             </Button>
@@ -73,59 +73,56 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                                 <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
                                     {observation.id.slice(-10).toUpperCase()}
                                 </h1>
-                                <Badge variant="outline" className="bg-[#FEF3C7] text-[#92400E] border-[#FDE68A] font-black uppercase text-[10px] px-3 h-6">
-                                    MEDIUM RISK
+                                <Badge variant="outline" className="bg-slate-900 text-white border-none font-black uppercase text-[10px] px-3 h-6 rounded-none">
+                                    {observation.severity.toUpperCase()} RISK
                                 </Badge>
-                                <Badge variant="outline" className="bg-[#DBEAFE] text-[#1E40AF] border-[#BFDBFE] font-black uppercase text-[10px] px-3 h-6">
-                                    OPEN
+                                <Badge variant="outline" className="bg-blue-600 text-white border-none font-black uppercase text-[10px] px-3 h-6 rounded-none">
+                                    {observation.status.toUpperCase()}
                                 </Badge>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-3">
                             <div className="flex items-center gap-2 mr-6">
-                                <div className="bg-[#D1FAE5] p-1.5 rounded-lg">
-                                    <ShieldCheck className="h-4 w-4 text-[#059669]" />
+                                <div className="bg-slate-900 p-1.5 rounded-none border border-slate-700 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                    <ShieldCheck className="h-4 w-4 text-emerald-400" />
                                 </div>
                                 <div className="text-left">
-                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">A SAFER WORKPLACE</p>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1 leading-none">A STRONGER TOMORROW</p>
+                                    <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest leading-none">TECHNICAL GOVERNANCE</p>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1 leading-none">SYSTEM READY</p>
                                 </div>
                             </div>
-                            <Button variant="outline" size="sm" className="h-10 px-4 gap-2 text-blue-700 border-blue-100 bg-blue-50 font-bold text-xs uppercase tracking-wider">
-                                <MessageSquare className="h-4 w-4" /> Add Comment
+                            <Button variant="outline" size="sm" className="h-10 px-6 gap-2 text-slate-900 border-2 border-slate-900 bg-white font-black text-[10px] uppercase tracking-widest rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-slate-50">
+                                <MessageSquare className="h-4 w-4" /> Add Note
                             </Button>
-                            <Button variant="outline" size="sm" className="h-10 px-4 gap-2 text-blue-700 border-blue-100 bg-blue-50 font-bold text-xs uppercase tracking-wider">
+                            <Button variant="outline" size="sm" className="h-10 px-6 gap-2 text-slate-900 border-2 border-slate-900 bg-white font-black text-[10px] uppercase tracking-widest rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-slate-50">
                                 <UploadCloud className="h-4 w-4" /> Upload Document
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-10 w-10 border text-slate-400">
-                                <MoreVertical className="h-5 w-5" />
                             </Button>
                         </div>
                     </div>
 
                     <div className="flex flex-col gap-2">
-                        <p className="text-sm font-bold text-slate-600 uppercase tracking-tight">{observation.description}</p>
+                        <p className="text-sm font-black text-slate-900 uppercase tracking-tight">{observation.description}</p>
                         <div className="flex items-center gap-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pt-1">
-                            <span className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-blue-600" /> {project?.name || 'STORE'}</span>
-                            <span className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-blue-600" /> Reported by {reporter?.name || 'N/A'}</span>
-                            <span className="flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-blue-600" /> {format(parseISO(observation.createdAt), 'dd MMM yyyy')}</span>
-                            <span className="flex items-center gap-2 text-rose-500"><Clock className="h-3.5 w-3.5" /> 0 Days Open</span>
+                            <span className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-slate-900" /> {project?.name || 'SITE TBD'}</span>
+                            <span className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-slate-900" /> Reporter: {reporter?.name || 'N/A'}</span>
+                            <span className="flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-slate-900" /> {format(parseISO(observation.createdAt), 'dd MMM yyyy')}</span>
+                            <span className="flex items-center gap-2 text-rose-600"><Clock className="h-3.5 w-3.5" /> 0 Days Open</span>
                             <span className="flex items-center gap-2"><Target className="h-3.5 w-3.5 text-blue-600" /> Target Closure: 30 Sep 2026</span>
                         </div>
                     </div>
                 </header>
 
                 {/* --- 2. PROGRESS & STEPPER TIER --- */}
-                <section className="h-24 shrink-0 bg-[#F8FAFC] border-b px-10 flex items-center gap-16 z-20">
-                    <div className="flex flex-col shrink-0 min-w-[180px]">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] leading-none mb-2">CASE PROGRESS</span>
-                        <div className="flex items-center gap-4">
-                            <span className="text-2xl font-black text-blue-600 tracking-tighter leading-none">{stats.percentage}%</span>
-                            <Progress value={stats.percentage} className="h-1.5 flex-1 bg-slate-200" />
+                <section className="h-24 shrink-0 bg-white border-b-2 border-slate-900 px-10 flex items-center gap-16 z-20">
+                    <div className="flex flex-col shrink-0 min-w-[200px]">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] leading-none mb-3">Overall Compliance</span>
+                        <div className="flex items-center gap-6">
+                            <span className="text-3xl font-black text-slate-900 tracking-tighter leading-none">{stats.percentage}%</span>
+                            <Progress value={stats.percentage} className="h-2 flex-1 bg-slate-200 rounded-none border-2 border-slate-900 shadow-inner" />
                         </div>
                     </div>
-                    <div className="h-12 w-px bg-slate-200 shrink-0" />
+                    <div className="h-12 w-1 bg-slate-900 shrink-0" />
                     <CapaStepper currentStage={observation.currentStage} />
                 </section>
 
@@ -134,38 +131,41 @@ export default function CapaCockpit({ observation, onClose }: CapaCockpitProps) 
                     {/* MAIN WORKSPACE */}
                     <main className="flex-1 flex flex-col overflow-hidden relative bg-[#F3F7FB]">
                         <ScrollArea className="flex-1">
-                            <div className="p-8 max-w-[1400px] mx-auto w-full pb-40">
-                                <CapaInvestigationWorkspace observation={observation} />
+                            <div className="p-8 max-w-[1600px] mx-auto w-full pb-40">
+                                <CapaStageWorkspace observation={observation} stage={viewingStage} />
                             </div>
                         </ScrollArea>
 
                         {/* BOTTOM ACTION BAR */}
-                        <footer className="h-20 shrink-0 bg-white border-t px-8 flex items-center justify-between z-30 absolute bottom-0 left-0 right-0 shadow-lg">
-                            <div className="flex items-center gap-8">
-                                <div className="flex items-center gap-3">
-                                    <div className="h-2.5 w-2.5 rounded-full bg-blue-600" />
-                                    <span className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Stage: Investigation</span>
+                        <footer className="h-20 shrink-0 bg-white border-t-4 border-slate-900 px-8 flex items-center justify-between z-30 absolute bottom-0 left-0 right-0 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
+                            <div className="flex items-center gap-12">
+                                <div className="flex items-center gap-4">
+                                    <div className="h-3 w-3 rounded-none bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.5)]" />
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Active Milestone</span>
+                                        <span className="text-sm font-black text-slate-900 uppercase tracking-tight">{viewingStage}</span>
+                                    </div>
                                 </div>
-                                <div className="h-6 w-px bg-slate-200" />
-                                <div className="flex items-center gap-3">
-                                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Status: </span>
-                                    <span className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Pending</span>
+                                <div className="h-8 w-px bg-slate-200" />
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Status</span>
+                                    <span className="text-sm font-black text-slate-900 uppercase tracking-tight">{observation.stages[viewingStage]?.status || 'PENDING'}</span>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-3">
-                                <Button variant="ghost" className="h-11 px-6 font-bold text-xs uppercase tracking-widest border border-slate-200 gap-2">
+                            <div className="flex items-center gap-4">
+                                <Button variant="outline" className="h-12 px-8 rounded-none font-black text-[11px] uppercase tracking-widest border-2 border-slate-900 gap-2 hover:bg-slate-50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all">
                                     SAVE DRAFT
                                 </Button>
-                                <Button variant="outline" className="h-11 px-10 bg-[#2563EB] hover:bg-blue-700 text-white font-black uppercase tracking-[0.2em] text-[11px] gap-3 rounded-lg ml-4">
-                                    Submit Investigation
+                                <Button className="h-12 px-12 rounded-none bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-[0.2em] text-[11px] gap-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all ml-4">
+                                    Submit Finalized Findings
                                 </Button>
                             </div>
                         </footer>
                     </main>
 
                     {/* RIGHT SIDEBAR */}
-                    <aside className="w-[360px] shrink-0 border-l bg-white flex flex-col z-20 overflow-y-auto">
+                    <aside className="w-[380px] shrink-0 border-l-2 border-slate-900 bg-white flex flex-col z-20 overflow-y-auto shadow-[-4px_0px_20px_rgba(0,0,0,0.05)]">
                         <CapaRightSidebar observation={observation} />
                     </aside>
                 </div>
