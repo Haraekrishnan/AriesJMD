@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -11,7 +10,8 @@ import {
     FileText,
     Clock,
     Paperclip,
-    Download
+    Download,
+    Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,9 +21,24 @@ import { useFormContext } from 'react-hook-form';
 import type { EhsObservation } from '@/lib/types';
 import { format, parseISO, isValid } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useEhs } from '@/contexts/ehs-provider';
+import { useAuth } from '@/contexts/auth-provider';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 export default function CapaInvestigationWorkspace({ observation }: { observation: EhsObservation }) {
     const { register } = useFormContext();
+    const { user } = useAuth();
+    const { deleteStageAttachment } = useEhs();
 
     const attachments = observation.stages?.Investigation?.attachments ? Object.values(observation.stages.Investigation.attachments) : [];
     const stageStatus = observation.stages?.Investigation?.status || 'Pending';
@@ -135,6 +150,32 @@ export default function CapaInvestigationWorkspace({ observation }: { observatio
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 bg-white shadow-sm border opacity-0 group-hover:opacity-100 transition-opacity" asChild>
                                     <a href={file.url} download target="_blank" rel="noopener noreferrer"><Download className="h-3.5 w-3.5" /></a>
                                 </Button>
+                                {!isLocked && (
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-600 bg-white shadow-sm border opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle className="font-black uppercase text-slate-900 tracking-tight">Delete Technical Evidence?</AlertDialogTitle>
+                                                <AlertDialogDescription className="text-slate-500 font-medium leading-relaxed">
+                                                    This action permanently wipes the record <strong>{file.name}</strong> from the institutional documentation registry. This cannot be undone.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter className="gap-3">
+                                                <AlertDialogCancel className="font-bold rounded-xl h-12">Cancel</AlertDialogCancel>
+                                                <AlertDialogAction 
+                                                    onClick={() => deleteStageAttachment(observation.id, 'Investigation', file.id)}
+                                                    className="bg-rose-600 hover:bg-rose-700 text-white font-black uppercase text-[10px] tracking-widest h-12 px-8 rounded-xl"
+                                                >
+                                                    Delete Document
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                )}
                             </div>
                         </div>
                     )) : (
