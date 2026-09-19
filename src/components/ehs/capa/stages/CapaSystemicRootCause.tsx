@@ -11,16 +11,16 @@ import {
     SelectTrigger, 
     SelectValue 
 } from '@/components/ui/select';
-import { GitBranch, Layers, ShieldAlert } from 'lucide-react';
+import { GitBranch, Layers, ShieldAlert, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const CATEGORIES = [
-    'Human Factor / Individual Error',
-    'Procedural / Documentation Deficiency',
-    'Equipment / Technical Failure',
-    'Material / Resource Quality Issues',
-    'Environmental / Work-site Conditions',
-    'Management System / Organizational Breakdown'
+    'Human Factor / Competency Deficiency',
+    'Procedural / Process Lack',
+    'Equipment / Hardware Failure',
+    'Material / Quality Non-Conformance',
+    'Environmental / Work-site Hazard',
+    'Management System / Governance Breakdown'
 ];
 
 interface Props {
@@ -30,28 +30,28 @@ interface Props {
 export default function CapaSystemicRootCause({ isLocked }: Props) {
     const { register, control } = useFormContext();
 
-    const wellClasses = "rounded-2xl border-2 border-slate-200 bg-slate-50 font-bold text-sm shadow-inner transition-all focus-visible:bg-white focus-visible:border-blue-600 focus-visible:ring-0";
+    const wellClasses = "rounded-xl border border-slate-200 bg-slate-50 font-bold text-sm shadow-sm transition-all focus-visible:bg-white focus-visible:border-blue-600 focus-visible:ring-0 leading-relaxed";
 
     return (
-        <div className="space-y-16 text-left animate-in fade-in duration-700 p-10">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-20">
+        <div className="space-y-16 text-left animate-in fade-in duration-700">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
                 
                 <div className="space-y-12">
-                    <div className="flex items-center gap-4 border-b-4 border-slate-900 pb-5">
-                        <Layers className="h-7 w-7 text-blue-600" />
-                        <h4 className="text-[16px] font-black uppercase tracking-[0.3em] text-slate-900 leading-none">DOMAIN CATEGORIZATION</h4>
+                    <div className="flex items-center gap-4 border-b pb-4">
+                        <Layers className="h-6 w-6 text-blue-600" />
+                        <h4 className="text-[14px] font-black uppercase tracking-[0.2em] text-slate-900 leading-none">FAILURE CLASSIFICATION</h4>
                     </div>
 
-                    <div className="space-y-12">
-                        <div className="space-y-4">
-                            <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">PRIMARY FAILURE DOMAIN <span className="text-rose-600">*</span></Label>
+                    <div className="space-y-10">
+                        <div className="space-y-3">
+                            <Label className="text-[11px] font-black uppercase tracking-widest text-blue-600 ml-1">PRIMARY DOMAIN <span className="text-rose-600">*</span></Label>
                             <Controller
                                 name="rootCauseCategory"
                                 control={control}
                                 render={({ field }) => (
                                     <Select disabled={isLocked} onValueChange={field.onChange} value={field.value}>
-                                        <SelectTrigger className={cn("h-14 px-6 uppercase tracking-widest font-black text-xs shadow-sm", wellClasses)}>
-                                            <SelectValue placeholder="SELECT CAUSAL DOMAIN" />
+                                        <SelectTrigger className={cn("h-12 px-6 uppercase tracking-widest font-black text-xs", wellClasses)}>
+                                            <SelectValue placeholder="SELECT CATEGORY" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {CATEGORIES.map(c => <SelectItem key={c} value={c} className="font-bold text-xs uppercase">{c}</SelectItem>)}
@@ -61,37 +61,35 @@ export default function CapaSystemicRootCause({ isLocked }: Props) {
                             />
                         </div>
 
-                        <div className="space-y-4">
-                            <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">SITUATIONAL CONTRIBUTING FACTORS</Label>
+                        <div className="space-y-3">
+                            <Label className="text-[11px] font-black uppercase tracking-widest text-blue-600 ml-1">CONTRIBUTING SYSTEMIC FACTORS</Label>
                             <Textarea 
                                 disabled={isLocked}
                                 {...register('contributingFactors')}
-                                placeholder="List external or secondary factors that influenced the primary finding..."
-                                className={cn("min-h-[200px] px-8 py-7 leading-relaxed", wellClasses)}
+                                placeholder="List organizational factors that influenced the primary finding..."
+                                className={cn("min-h-[200px] px-6 py-4", wellClasses)}
                             />
                         </div>
                     </div>
                 </div>
 
                 <div className="space-y-12">
-                    <div className="flex items-center gap-4 border-b-4 border-slate-900 pb-5">
-                        <GitBranch className="h-7 w-7 text-blue-600" />
-                        <h4 className="text-[16px] font-black uppercase tracking-[0.3em] text-slate-900 leading-none">ROOT CAUSE DEFINITION</h4>
+                    <div className="flex items-center gap-4 border-b pb-4">
+                        <Target className="h-6 w-6 text-blue-600" />
+                        <h4 className="text-[14px] font-black uppercase tracking-[0.2em] text-slate-900 leading-none">ROOT CAUSE DEFINITION</h4>
                     </div>
 
-                    <div className="space-y-8">
-                        <div className="space-y-4">
-                            <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">OFFICIAL ROOT CAUSE STATEMENT <span className="text-rose-600">*</span></Label>
-                            <div className="relative group">
-                                <Textarea 
-                                    disabled={isLocked}
-                                    {...register('finalRootCauseStatement')}
-                                    placeholder="Provide the definitive, validated root cause statement for institutional archival..."
-                                    className="min-h-[400px] rounded-[2.5rem] border-2 border-slate-200 bg-slate-50 p-12 font-black text-xl uppercase tracking-tight text-rose-700 focus-visible:bg-white transition-all shadow-inner"
-                                />
-                                <div className="absolute bottom-10 right-10 flex items-center gap-3 px-6 py-3 bg-rose-600 text-white text-[12px] font-black uppercase tracking-widest rounded-2xl shadow-xl ring-4 ring-rose-600/10">
-                                    <ShieldAlert className="h-6 w-6 text-white" /> SYSTEMIC BREAKDOWN
-                                </div>
+                    <div className="space-y-3">
+                        <Label className="text-[11px] font-black uppercase tracking-widest text-blue-600 ml-1">OFFICIAL ROOT CAUSE STATEMENT <span className="text-rose-600">*</span></Label>
+                        <div className="relative group">
+                            <Textarea 
+                                disabled={isLocked}
+                                {...register('finalRootCauseStatement')}
+                                placeholder="Define the final, validated root cause for institutional archival..."
+                                className={cn("min-h-[400px] px-8 py-8 font-bold text-lg text-slate-800", wellClasses)}
+                            />
+                            <div className="absolute top-6 right-6 opacity-10">
+                                <GitBranch className="h-20 w-20 text-slate-900" />
                             </div>
                         </div>
                     </div>
@@ -100,3 +98,4 @@ export default function CapaSystemicRootCause({ isLocked }: Props) {
         </div>
     );
 }
+

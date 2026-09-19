@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
 import type { EhsObservation, CapaStage } from '@/lib/types';
@@ -14,78 +14,55 @@ interface Props {
 }
 
 export default function CapaLifecycleStepper({ observation, viewingStage, onStageSelect }: Props) {
-    const stats = useMemo(() => {
-        const completedCount = STAGES.filter(s => observation.stages[s]?.status === 'Completed').length;
-        const percentage = Math.round((completedCount / STAGES.length) * 100);
-        return { completedCount, percentage };
-    }, [observation]);
-
     return (
-        <div className="flex items-center w-full gap-16 text-left">
-            {/* Overall Progress Meter */}
-            <div className="flex flex-col shrink-0">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] leading-none mb-4">Overall Progress</span>
-                <div className="flex items-center gap-6">
-                    <span className="text-4xl font-black text-blue-600 tracking-tighter leading-none">{stats.percentage}%</span>
-                    <div className="w-48 h-2.5 bg-slate-100 rounded-full overflow-hidden border shadow-inner">
-                        <div className="h-full bg-blue-600 transition-all duration-1000 ease-out" style={{ width: `${stats.percentage}%` }} />
-                    </div>
-                </div>
-            </div>
+        <div className="flex items-center w-full">
+            {STAGES.map((stage, i) => {
+                const sData = observation.stages[stage];
+                const isViewing = viewingStage === stage;
+                const isCompleted = sData?.status === 'Completed';
+                const isCurrent = observation.currentStage === stage;
+                const isFuture = STAGES.indexOf(stage) > STAGES.indexOf(observation.currentStage);
 
-            <div className="h-12 w-px bg-slate-200" />
-
-            {/* Stepper Path */}
-            <div className="flex items-center flex-1 justify-between pr-4">
-                {STAGES.map((stage, i) => {
-                    const sData = observation.stages[stage];
-                    const isViewing = viewingStage === stage;
-                    const isCompleted = sData?.status === 'Completed';
-                    const isCurrent = observation.currentStage === stage;
-                    const isFuture = STAGES.indexOf(stage) > STAGES.indexOf(observation.currentStage);
-
-                    return (
-                        <React.Fragment key={stage}>
-                            <div 
-                                className={cn(
-                                    "flex flex-col items-center gap-3 cursor-pointer transition-all px-1 group",
-                                    isViewing ? "scale-110" : "hover:opacity-80",
-                                    isFuture && "opacity-30 grayscale pointer-events-none"
-                                )}
-                                onClick={() => onStageSelect(stage)}
-                            >
-                                <div className={cn(
-                                    "h-12 w-12 rounded-full border-2 flex items-center justify-center transition-all text-[13px] font-black shadow-sm relative",
-                                    isCompleted ? "bg-emerald-500 border-emerald-500 text-white shadow-emerald-500/20" :
-                                    isViewing ? "bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/30" :
-                                    "bg-white border-slate-200 text-slate-400"
-                                )}>
-                                    {isCompleted ? <Check className="h-5 w-5 stroke-[4]" /> : <span>{i + 1}</span>}
-                                    {isCurrent && !isCompleted && (
-                                        <div className="absolute inset-0 rounded-full border-2 border-blue-600 animate-ping opacity-20" />
-                                    )}
-                                </div>
+                return (
+                    <React.Fragment key={stage}>
+                        <div 
+                            className={cn(
+                                "flex items-center gap-3 cursor-pointer transition-all px-4 py-2 rounded-xl group relative",
+                                isViewing ? "bg-blue-50/50" : "hover:bg-slate-50",
+                                isFuture && "opacity-40 grayscale pointer-events-none"
+                            )}
+                            onClick={() => onStageSelect(stage)}
+                        >
+                            <div className={cn(
+                                "h-9 w-9 rounded-full border-2 flex items-center justify-center transition-all text-sm font-black shadow-sm shrink-0",
+                                isCompleted ? "bg-emerald-500 border-emerald-500 text-white shadow-emerald-500/20" :
+                                isViewing ? "bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/30" :
+                                "bg-white border-slate-200 text-slate-400"
+                            )}>
+                                {isCompleted ? <Check className="h-4 w-4 stroke-[4]" /> : <span>{i + 1}</span>}
+                            </div>
+                            <div className="flex flex-col text-left leading-tight">
                                 <p className={cn(
                                     "text-[10px] font-black uppercase tracking-widest whitespace-nowrap",
-                                    isViewing ? "text-blue-600" : "text-slate-400"
+                                    isViewing ? "text-blue-600" : "text-slate-600"
                                 )}>
                                     {stage}
                                 </p>
+                                <p className={cn(
+                                    "text-[8px] font-bold uppercase",
+                                    isCompleted ? "text-emerald-500" : isViewing ? "text-blue-600" : "text-slate-300"
+                                )}>
+                                    {isCompleted ? 'Completed' : isViewing ? 'In Progress' : 'Pending'}
+                                </p>
                             </div>
-                            {i < STAGES.length - 1 && (
-                                <div className="h-0.5 bg-slate-100 flex-1 mx-4 min-w-[30px] relative">
-                                    <div 
-                                        className={cn(
-                                            "absolute inset-0 bg-emerald-500 transition-all duration-1000",
-                                            isCompleted ? "w-full" : "w-0"
-                                        )} 
-                                    />
-                                </div>
-                            )}
-                        </React.Fragment>
-                    );
-                })}
-            </div>
+                        </div>
+                        {i < STAGES.length - 1 && (
+                            <div className="h-px bg-slate-200 flex-1 min-w-[20px] mx-2" />
+                        )}
+                    </React.Fragment>
+                );
+            })}
         </div>
     );
 }
+

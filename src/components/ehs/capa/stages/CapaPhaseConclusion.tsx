@@ -15,43 +15,36 @@ interface Props {
 export default function CapaPhaseConclusion({ isLocked }: Props) {
     const { register } = useFormContext();
 
-    const wellClasses = "rounded-3xl border-2 border-slate-200 bg-slate-50 font-bold text-sm px-8 py-7 focus-visible:ring-blue-100 focus-visible:bg-white shadow-inner transition-all leading-relaxed";
+    const wellClasses = "rounded-2xl border border-slate-200 bg-slate-50 font-bold text-sm px-8 py-6 focus-visible:ring-blue-100 focus-visible:bg-white shadow-sm transition-all leading-relaxed";
 
     return (
-        <div className="space-y-20 text-left animate-in fade-in duration-700 p-10">
-            <div className="max-w-5xl mx-auto space-y-20 py-10">
+        <div className="space-y-16 text-left animate-in fade-in duration-700">
+            <div className="max-w-4xl mx-auto space-y-16">
                 
-                <div className="space-y-8">
-                    <div className="flex items-center justify-between border-b-4 border-slate-900 pb-5">
-                        <div className="flex items-center gap-5">
-                            <FileText className="h-8 w-8 text-blue-600" />
-                            <h4 className="text-[20px] font-black uppercase tracking-tight text-slate-900">TECHNICAL PHASE SUMMARY</h4>
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between border-b pb-4">
+                        <div className="flex items-center gap-4">
+                            <FileText className="h-6 w-6 text-blue-600" />
+                            <h4 className="text-[16px] font-black uppercase tracking-tight text-slate-900">TECHNICAL PHASE SUMMARY</h4>
                         </div>
-                        <Badge variant="outline" className="h-7 px-5 border-none font-black text-[10px] uppercase tracking-widest rounded-full bg-slate-900 text-white">ARCHIVAL READY</Badge>
+                        <Badge variant="outline" className="h-6 px-4 border-none font-black text-[9px] uppercase tracking-widest rounded-md bg-slate-900 text-white">AUDIT READY</Badge>
                     </div>
                     
                     <div className="relative group">
                         <Textarea 
                             disabled={isLocked}
                             {...register('investigationConclusion')}
-                            placeholder="Summarize the complete investigation lifecycle for institutional archival..."
-                            className={cn("min-h-[240px] shadow-sm", wellClasses)}
+                            placeholder="Provide a terminal summary of the investigation lifecycle..."
+                            className={cn("min-h-[200px]", wellClasses)}
                         />
-                        <div className="absolute top-8 right-8 opacity-5 group-hover:opacity-10 transition-opacity">
-                            <Target className="h-24 w-24 text-slate-900" />
-                        </div>
                     </div>
                 </div>
 
-                <div className="space-y-8">
-                    <div className="flex items-center justify-between border-b-4 border-slate-900 pb-5">
-                        <div className="flex items-center gap-5">
-                            <ShieldCheck className="h-8 w-8 text-emerald-600" />
-                            <h4 className="text-[20px] font-black uppercase tracking-tight text-slate-900">SAFETY RECOMMENDATIONS LEDGER</h4>
-                        </div>
-                        <div className="flex items-center gap-3">
-                             <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_12px_rgba(16,185,129,0.6)]" />
-                             <span className="text-[11px] font-black uppercase text-emerald-600 tracking-[0.3em]">Ready for Verification</span>
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between border-b pb-4">
+                        <div className="flex items-center gap-4">
+                            <ShieldCheck className="h-6 w-6 text-emerald-600" />
+                            <h4 className="text-[16px] font-black uppercase tracking-tight text-slate-900">MITIGATION & RECURRENCE LEDGER</h4>
                         </div>
                     </div>
 
@@ -59,11 +52,11 @@ export default function CapaPhaseConclusion({ isLocked }: Props) {
                         <Textarea 
                             disabled={isLocked}
                             {...register('safetyRecommendations')}
-                            placeholder="List mandatory actions, technical corrections, or systemic enhancements required to mitigate future recurrence..."
-                            className={cn("min-h-[240px] border-emerald-600/10 bg-emerald-50/50 shadow-sm", wellClasses)}
+                            placeholder="List mandatory technical corrections or organizational enhancements required to mitigate future recurrence..."
+                            className={cn("min-h-[200px] border-emerald-100 bg-emerald-50/20", wellClasses)}
                         />
-                        <div className="absolute bottom-8 right-8 flex items-center gap-4 px-8 py-4 bg-emerald-600 text-white text-[14px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-2xl shadow-emerald-500/30 active:scale-95 transition-all">
-                            <CheckCircle2 className="h-6 w-6 text-white" /> PHASE COMPLETE
+                        <div className="absolute bottom-6 right-6 flex items-center gap-3 px-5 py-2.5 bg-emerald-600 text-white text-[11px] font-black uppercase tracking-widest rounded-lg shadow-xl shadow-emerald-500/20 active:scale-95 transition-all">
+                            <CheckCircle2 className="h-4 w-4 text-white" /> PHASE COMPLETE
                         </div>
                     </div>
                 </div>
@@ -71,3 +64,4 @@ export default function CapaPhaseConclusion({ isLocked }: Props) {
         </div>
     );
 }
+

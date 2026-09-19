@@ -319,11 +319,23 @@ export function EhsProvider({ children }: { children: ReactNode }) {
                 updates[`stages/${nextStage}/status`] = 'Pending';
                 updates[`stages/${nextStage}/assignedById`] = user.id;
                 updates[`stages/${nextStage}/assignedAt`] = now;
-                if (stage === 'Investigation' && nextOwnerData) { updates[`stages/${nextStage}/assigneeId`] = nextOwnerData.assigneeId; updates[`stages/${nextStage}/targetDate`] = nextOwnerData.targetDate; }
-                else if (stage === 'Resolution') { updates[`stages/${nextStage}/assigneeId`] = obs.stages['Resolution'].assigneeId; updates[`stages/${nextStage}/targetDate`] = obs.stages['Resolution'].targetDate; }
-                else if (['Implementation', 'Effectiveness Review'].includes(stage)) { updates[`stages/${nextStage}/assigneeId`] = obs.stages['Investigation'].assigneeId; }
-                else if (stage === 'Reference') { updates[`stages/${nextStage}/assigneeId`] = obs.stages['Resolution'].assigneeId; }
-                else { updates[`stages/${nextStage}/assigneeId`] = obs.stages[stage].assigneeId; }
+                if (stage === 'Investigation' && nextOwnerData) { 
+                    updates[`stages/${nextStage}/assigneeId`] = nextOwnerData.assigneeId; 
+                    updates[`stages/${nextStage}/targetDate`] = nextOwnerData.targetDate; 
+                }
+                else if (stage === 'Resolution') { 
+                    updates[`stages/${nextStage}/assigneeId`] = obs.stages['Resolution'].assigneeId || null; 
+                    updates[`stages/${nextStage}/targetDate`] = obs.stages['Resolution'].targetDate || null; 
+                }
+                else if (['Implementation', 'Effectiveness Review'].includes(stage)) { 
+                    updates[`stages/${nextStage}/assigneeId`] = obs.stages['Investigation'].assigneeId || null; 
+                }
+                else if (stage === 'Reference') { 
+                    updates[`stages/${nextStage}/assigneeId`] = obs.stages['Resolution'].assigneeId || null; 
+                }
+                else { 
+                    updates[`stages/${nextStage}/assigneeId`] = obs.stages[stage].assigneeId || null; 
+                }
             }
         } else { updates[`${stagePath}/actionedAt`] = null; updates[`${stagePath}/actionedById`] = null; }
         updates['lastUpdated'] = now;
