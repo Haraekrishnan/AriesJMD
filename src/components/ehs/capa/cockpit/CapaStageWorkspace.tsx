@@ -1,27 +1,16 @@
 'use client';
 
 import React, { useState, useMemo, useRef, MouseEvent } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
-    Lock, 
     CheckCircle2, 
-    Undo2, 
-    ThumbsUp,
-    AlertCircle,
-    Info,
-    ShieldCheck,
-    AlertTriangle,
     Edit3,
     X,
-    Save,
-    History,
     FileText,
     MapPin,
-    User,
     Calendar,
     Search,
     ZoomIn,
@@ -30,16 +19,16 @@ import {
     ChevronLeft,
     ChevronRight,
     Paperclip,
-    Zap,
     Activity,
-    Target,
+    Zap,
     Clock,
     UserPlus,
     Check,
     ChevronsUpDown,
     Upload,
     Trash2,
-    ExternalLink
+    ExternalLink,
+    ShieldCheck
 } from 'lucide-react';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';

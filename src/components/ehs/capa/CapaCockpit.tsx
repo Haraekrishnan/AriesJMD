@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
     ChevronLeft, 
     MapPin, 
@@ -70,7 +70,7 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
 
     return (
         <FormProvider {...methods}>
-            <div className="ehs-portal fixed inset-0 z-40 flex flex-col overflow-hidden bg-[#F5F7FB] text-slate-900">
+            <div className="flex flex-col h-full bg-[#F5F7FB] text-slate-900 overflow-hidden">
                 <header className="shrink-0 border-b bg-white">
                     <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 md:px-7">
                         <div className="flex flex-wrap items-center gap-3">

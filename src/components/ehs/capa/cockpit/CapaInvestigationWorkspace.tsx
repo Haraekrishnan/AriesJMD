@@ -16,12 +16,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useFormContext } from 'react-hook-form';
 import type { EhsObservation } from '@/lib/types';
-import { format, parseISO, isValid } from 'date-fns';
 import { useAuth } from '@/contexts/auth-provider';
 import { cn } from '@/lib/utils';
 
 export default function CapaInvestigationWorkspace({ observation }: { observation: EhsObservation }) {
-    const { register, watch } = useFormContext();
+    const { register } = useFormContext();
     const { user } = useAuth();
 
     const stageStatus = observation.stages?.Investigation?.status || 'Pending';
