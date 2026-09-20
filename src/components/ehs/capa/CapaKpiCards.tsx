@@ -1,116 +1,22 @@
 'use client';
-
-import React, { useMemo } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { 
-    FileText, 
-    ShieldAlert, 
-    Clock, 
-    CheckCircle2, 
-    AlertTriangle,
-    Zap,
-    ArrowUpRight
-} from 'lucide-react';
+import { FileText, ShieldAlert, CheckCircle2, AlertTriangle, Zap } from 'lucide-react';
 import type { EhsObservation } from '@/lib/types';
+import { isObservationOverdue } from '@/lib/ehs-observations';
 import { cn } from '@/lib/utils';
-import { parseISO, isAfter, endOfDay, isValid } from 'date-fns';
-
-interface CapaKpiCardsProps {
-    observations: EhsObservation[];
-    onFilterByStatus: (status: string) => void;
-    onFilterByRisk: (risk: string) => void;
-}
-
-export default function CapaKpiCards({ observations, onFilterByStatus, onFilterByRisk }: CapaKpiCardsProps) {
-    const stats = useMemo(() => {
-        const total = observations.length;
-        const open = observations.filter(o => o.status !== 'Closed').length;
-        const highRisk = observations.filter(o => o.severity === 'High' || o.severity === 'Critical').length;
-        const inProgress = observations.filter(o => o.status === 'In Progress' || o.status === 'Open').length;
-        const closed = observations.filter(o => o.status === 'Closed').length;
-        
-        const overdue = observations.filter(o => {
-            if (o.status === 'Closed' || !o.targetDate) return false;
-            const tDate = parseISO(o.targetDate);
-            return isValid(tDate) && isAfter(new Date(), endOfDay(tDate));
-        }).length;
-
-        return { total, open, highRisk, inProgress, closed, overdue };
-    }, [observations]);
-
-    const cards = [
-        { 
-            label: 'TOTAL CASES', 
-            value: stats.total, 
-            icon: FileText, 
-            trend: '+ 12% VS LAST M...', 
-            color: 'text-slate-900', 
-            accent: 'border-t-slate-400',
-            onClick: () => onFilterByStatus('all')
-        },
-        { 
-            label: 'HIGH RISK', 
-            value: stats.highRisk, 
-            icon: ShieldAlert, 
-            trend: 'PRIORITY ACTIONS', 
-            color: 'text-rose-600', 
-            accent: 'border-t-rose-500',
-            onClick: () => onFilterByRisk('High')
-        },
-        { 
-            label: 'IN PROGRESS', 
-            value: stats.inProgress, 
-            icon: Zap, 
-            trend: 'ACTIVE WORKFLOW', 
-            color: 'text-blue-600', 
-            accent: 'border-t-blue-500',
-            onClick: () => onFilterByStatus('In Progress')
-        },
-        { 
-            label: 'CLOSED', 
-            value: stats.closed, 
-            icon: CheckCircle2, 
-            trend: 'VALIDATED COMPL...', 
-            color: 'text-emerald-600', 
-            accent: 'border-t-emerald-500',
-            onClick: () => onFilterByStatus('Closed')
-        },
-        { 
-            label: 'OVERDUE', 
-            value: stats.overdue, 
-            icon: AlertTriangle, 
-            trend: 'IMMEDIATE ACTION', 
-            color: 'text-rose-700', 
-            accent: 'border-t-rose-600',
-            onClick: () => onFilterByStatus('Overdue')
-        },
-    ];
-
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {cards.map((card, index) => (
-                <Card 
-                    key={index} 
-                    className={cn(
-                        "cursor-pointer transition-all duration-300 hover:shadow-md border border-slate-200 border-t-4 bg-white",
-                        card.accent
-                    )}
-                    onClick={card.onClick}
-                >
-                    <CardContent className="p-6 flex items-center justify-between">
-                        <div className="space-y-1">
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{card.label}</p>
-                            <div className="flex items-center gap-3">
-                                <p className="text-3xl font-black text-slate-900 tracking-tighter">{card.value}</p>
-                                <span className="text-[8px] font-bold text-slate-400 uppercase leading-tight max-w-[80px]">{card.trend}</span>
-                            </div>
-                        </div>
-                        <div className="bg-slate-50 p-3 rounded-xl">
-                            <card.icon className={cn("h-6 w-6", card.color)} />
-                        </div>
-                    </CardContent>
-                </Card>
-            ))}
-        </div>
-    );
+export default function CapaKpiCards({ observations, onFilterByStatus, onFilterByRisk }: {
+  observations: EhsObservation[]; onFilterByStatus: (status: string) => void; onFilterByRisk: (risk: string) => void;
+}) {
+  const cards = [
+    { label: 'Total cases', value: observations.length, icon: FileText, detail: 'All observations', tone: 'bg-blue-50 text-blue-600', action: () => onFilterByStatus('all') },
+    { label: 'High risk', value: observations.filter(o => ['High', 'Critical'].includes(o.severity)).length, icon: ShieldAlert, detail: 'High & critical severity', tone: 'bg-rose-50 text-rose-600', action: () => onFilterByRisk('high-priority') },
+    { label: 'In progress', value: observations.filter(o => ['Open', 'In Progress'].includes(o.status)).length, icon: Zap, detail: 'Open & in progress', tone: 'bg-blue-50 text-blue-600', action: () => onFilterByStatus('active') },
+    { label: 'Closed', value: observations.filter(o => o.status === 'Closed').length, icon: CheckCircle2, detail: 'Completed cases', tone: 'bg-emerald-50 text-emerald-600', action: () => onFilterByStatus('Closed') },
+    { label: 'Overdue', value: observations.filter(o => isObservationOverdue(o)).length, icon: AlertTriangle, detail: 'Past the target date', tone: 'bg-rose-50 text-rose-600', action: () => onFilterByStatus('Overdue') },
+  ];
+  return <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5 xl:gap-4">
+    {cards.map(card => <button key={card.label} onClick={card.action} className="flex items-start gap-4 rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+      <span className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl', card.tone)}><card.icon className="h-5 w-5" /></span>
+      <span className="min-w-0"><span className="block text-sm font-medium text-slate-600">{card.label}</span><span className="mt-1 block text-3xl font-semibold tracking-tight text-slate-950">{card.value}</span><span className="mt-1 block text-xs leading-5 text-slate-500">{card.detail}</span></span>
+    </button>)}
+  </div>;
 }

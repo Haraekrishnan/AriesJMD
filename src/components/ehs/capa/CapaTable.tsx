@@ -124,21 +124,21 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
 
     return (
         <>
-        <Table className="w-full border-separate border-spacing-0">
-            <TableHeader className="sticky top-0 z-40 bg-white shadow-sm">
+        <Table className="w-full min-w-[980px] border-separate border-spacing-0">
+            <TableHeader className="bg-slate-50">
                 <TableRow className="hover:bg-transparent border-b border-slate-200">
                     <TableHead className="w-12 px-6 border-b border-slate-200">
-                        <Checkbox />
+                        <span className="sr-only">Select case</span>
                     </TableHead>
-                    <TableHead className="w-[90px] font-black text-slate-900 border-b uppercase tracking-widest text-[9px] h-14">CASE ID</TableHead>
-                    <TableHead className="min-w-[200px] font-black text-slate-900 border-b uppercase tracking-widest text-[9px] h-14">NARRATIVE FINDINGS</TableHead>
-                    <TableHead className="w-[110px] font-black text-slate-900 border-b text-center uppercase tracking-widest text-[9px] h-14">CATEGORY</TableHead>
-                    <TableHead className="w-[90px] font-black text-slate-900 border-b text-center uppercase tracking-widest text-[9px] h-14">RISK</TableHead>
-                    <TableHead className="w-[100px] font-black text-slate-900 border-b text-center uppercase tracking-widest text-[9px] h-14">STATUS</TableHead>
-                    <TableHead className="w-[100px] font-black text-slate-900 border-b uppercase tracking-widest text-[9px] h-14">SITE</TableHead>
-                    <TableHead className="w-[110px] font-black text-slate-900 border-b uppercase tracking-widest text-[9px] h-14">INITIATED</TableHead>
-                    <TableHead className="w-[80px] font-black text-slate-900 border-b text-center uppercase tracking-widest text-[9px] h-14">AGE</TableHead>
-                    <TableHead className="w-[70px] text-right font-black text-slate-900 border-b uppercase tracking-widest text-[9px] px-6 h-14">ACTION</TableHead>
+                    <TableHead className="w-[145px] font-semibold text-slate-900 border-b normal-case tracking-normal text-sm h-14">Case ID</TableHead>
+                    <TableHead className="min-w-[200px] font-semibold text-slate-900 border-b normal-case tracking-normal text-sm h-14">Observation</TableHead>
+                    <TableHead className="w-[110px] font-semibold text-slate-900 border-b text-center normal-case tracking-normal text-sm h-14">Category</TableHead>
+                    <TableHead className="w-[90px] font-semibold text-slate-900 border-b text-center normal-case tracking-normal text-sm h-14">Risk</TableHead>
+                    <TableHead className="w-[100px] font-semibold text-slate-900 border-b text-center normal-case tracking-normal text-sm h-14">Status</TableHead>
+                    <TableHead className="w-[100px] font-semibold text-slate-900 border-b normal-case tracking-normal text-sm h-14">Site</TableHead>
+                    <TableHead className="w-[110px] font-semibold text-slate-900 border-b normal-case tracking-normal text-sm h-14">Created</TableHead>
+                    <TableHead className="w-[80px] font-semibold text-slate-900 border-b text-center normal-case tracking-normal text-sm h-14">Age</TableHead>
+                    <TableHead className="w-[70px] text-right font-semibold text-slate-900 border-b normal-case tracking-normal text-sm px-6 h-14">Actions</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -162,74 +162,74 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
                             onClick={() => onSelect(isSelected ? null : obs.id)}
                         >
                             <TableCell className="px-6 py-4">
-                                <Checkbox checked={isSelected} />
+                                <Checkbox aria-label={"Select case " + obs.id.slice(-6)} checked={isSelected} onClick={e => e.stopPropagation()} onCheckedChange={() => onSelect(isSelected ? null : obs.id)} />
                             </TableCell>
-                            <TableCell className="font-mono text-[10px] font-black text-blue-600">
+                            <TableCell className="font-mono text-sm font-semibold text-blue-600">
                                 <button 
                                     className="hover:underline flex flex-col items-start leading-tight"
                                     onClick={(e) => { e.stopPropagation(); onOpenCockpit(obs.id); }}
                                 >
                                     <span>CAPA-</span>
-                                    <span>{obs.id.slice(-3).toUpperCase()}</span>
+                                    <span>{obs.id.slice(-6).toUpperCase()}</span>
                                 </button>
                             </TableCell>
                             <TableCell className="py-4">
                                 <div className="flex items-start gap-4 max-w-[400px]">
                                     {evidenceUrl && (
                                         <div 
-                                            className="h-16 w-24 shrink-0 rounded border border-slate-200 bg-slate-50 overflow-hidden relative group/thumb cursor-zoom-in shadow-sm"
+                                            className="h-14 w-16 shrink-0 rounded border border-slate-200 bg-slate-50 overflow-hidden relative group/thumb cursor-zoom-in shadow-sm"
                                             onClick={(e) => { e.stopPropagation(); setViewingAttachmentUrl(evidenceUrl); }}
                                         >
-                                            <img src={evidenceUrl} alt="E" className="w-full h-full object-contain" />
+                                            <img src={evidenceUrl} alt="Observation attachment" className="w-full h-full object-contain" />
                                             <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 flex items-center justify-center transition-all">
                                                 <ZoomIn className="h-4 w-4 text-white opacity-0 group-hover/thumb:opacity-100" />
                                             </div>
                                         </div>
                                     )}
                                     <div className="space-y-1 min-w-0">
-                                        <p className="text-[11px] font-bold text-slate-800 line-clamp-3 uppercase tracking-tight leading-tight">
-                                            {sanitizedText}
+                                        <p className="text-sm font-medium text-slate-800 line-clamp-2 leading-6">
+                                            {sanitizedText || "Untitled observation"}
                                         </p>
                                         <div className="flex items-center gap-1.5 opacity-60">
                                             <MapPin className="h-2.5 w-2.5 text-slate-400" />
-                                            <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest truncate">{obs.location || 'SITE POSITION TBD'}</span>
+                                            <span className="text-sm font-semibold text-slate-500 normal-case tracking-normal truncate">{obs.location || 'Location not specified'}</span>
                                         </div>
                                     </div>
                                 </div>
                             </TableCell>
 
                             <TableCell className="text-center">
-                                <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest h-5 px-2 rounded-sm bg-slate-50 border-slate-200 text-slate-600 whitespace-nowrap">
+                                <Badge variant="outline" className="text-sm font-semibold normal-case tracking-normal h-6 px-2 rounded-md bg-slate-50 border-slate-200 text-slate-600 whitespace-nowrap">
                                     {obs.category}
                                 </Badge>
                             </TableCell>
 
                             <TableCell className="text-center">
-                                <Badge variant="outline" className={cn("text-[8px] font-black uppercase tracking-widest h-5 px-2 border rounded-sm", riskStyles[obs.severity])}>
+                                <Badge variant="outline" className={cn("text-sm font-semibold normal-case tracking-normal h-6 px-2 border rounded-md", riskStyles[obs.severity])}>
                                     {obs.severity}
                                 </Badge>
                             </TableCell>
 
                             <TableCell className="text-center">
-                                <Badge className={cn("text-[8px] font-black uppercase tracking-widest h-5 px-3 rounded-sm border", statusStyles[obs.status])}>
+                                <Badge className={cn("text-sm font-semibold normal-case tracking-normal h-6 px-3 rounded-md border", statusStyles[obs.status])}>
                                     {obs.status}
                                 </Badge>
                             </TableCell>
                             
-                            <TableCell className="text-[9px] font-black text-slate-900 uppercase">
+                            <TableCell className="text-sm font-semibold text-slate-900 normal-case">
                                 {project?.name || 'N/A'}
                             </TableCell>
 
-                            <TableCell className="text-[9px] font-bold text-slate-500 uppercase">
+                            <TableCell className="text-sm font-bold text-slate-500 normal-case">
                                 <div className="flex flex-col leading-none gap-0.5">
-                                    <span className="text-slate-900">{format(createdDate, 'dd MMM')}</span>
-                                    <span>{format(createdDate, 'yyyy')}</span>
+                                    <span className="text-slate-900">{isValid(createdDate) ? format(createdDate, 'dd MMM') : 'Unknown'}</span>
+                                    <span>{isValid(createdDate) ? format(createdDate, 'yyyy') : ''}</span>
                                 </div>
                             </TableCell>
                             
                             <TableCell className="text-center">
                                 <div className={cn(
-                                    "text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1",
+                                    "text-sm font-semibold normal-case tracking-normal flex items-center justify-center gap-1",
                                     ageDays > 14 ? "text-rose-600" : "text-slate-500"
                                 )}>
                                     <Clock className="h-3 w-3" />
@@ -245,7 +245,7 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
                                                 <Button 
                                                     variant="ghost" 
                                                     size="icon" 
-                                                    className="h-7 w-7 text-rose-600 hover:bg-rose-50"
+                                                    aria-label="Delete case" className="h-9 w-9 text-rose-600 hover:bg-rose-50"
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <Trash2 className="h-3.5 w-3.5" />
@@ -253,15 +253,15 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
                                             </AlertDialogTrigger>
                                             <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                                                 <AlertDialogHeader>
-                                                    <AlertDialogTitle className="text-xl font-black uppercase tracking-tight text-slate-900">DELETE SAFETY CASE?</AlertDialogTitle>
+                                                    <AlertDialogTitle className="text-xl font-semibold normal-case tracking-tight text-slate-900">DELETE SAFETY CASE?</AlertDialogTitle>
                                                     <AlertDialogDescription className="text-slate-500 font-medium">
-                                                        This action wipes all technical data for Case <strong>CAPA-{obs.id.slice(-3).toUpperCase()}</strong>.
+                                                        This action wipes all technical data for Case <strong>CAPA-{obs.id.slice(-6).toUpperCase()}</strong>.
                                                     </AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter className="gap-3">
                                                     <AlertDialogCancel className="font-bold rounded-xl h-11 px-8">CANCEL</AlertDialogCancel>
                                                     <AlertDialogAction 
-                                                        className="bg-rose-600 hover:bg-rose-700 text-white font-black uppercase tracking-widest text-[10px] h-11 px-10 rounded-xl"
+                                                        className="bg-rose-600 hover:bg-rose-700 text-white font-semibold normal-case tracking-normal text-sm h-11 px-6 rounded-xl"
                                                         onClick={() => deleteObservation(obs.id)}
                                                     >
                                                         DELETE PERMANENTLY
@@ -270,8 +270,8 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
                                             </AlertDialogContent>
                                         </AlertDialog>
                                     )}
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400">
-                                        <MoreVertical className="h-3.5 w-3.5" />
+                                    <Button aria-label="Open case" variant="ghost" size="icon" className="h-9 w-9 text-slate-400" onClick={e => { e.stopPropagation(); onOpenCockpit(obs.id); }}>
+                                        <ExternalLink className="h-4 w-4" />
                                     </Button>
                                 </div>
                             </TableCell>
@@ -324,16 +324,16 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
                 {/* Bottom Status/Download Bar */}
                 <div className="absolute bottom-6 left-6 right-6 z-50 flex justify-between items-center">
                     <div className="bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-5 py-2 flex items-center gap-4">
-                        <p className="text-[11px] font-black text-white uppercase tracking-widest">Case Evidence Detail</p>
+                        <p className="text-sm font-semibold text-white normal-case tracking-normal">Case Evidence Detail</p>
                         {isPdf && numPages && (
-                            <div className="flex items-center gap-3 text-[10px] font-bold text-white border-l border-white/20 pl-4">
+                            <div className="flex items-center gap-3 text-sm font-bold text-white border-l border-white/20 pl-4">
                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/10" onClick={() => setPageNumber(p => Math.max(1, p - 1))} disabled={pageNumber <= 1}><ChevronLeft className="h-4 w-4" /></Button>
-                                <span>PAGE {pageNumber} / {numPages}</span>
+                                <span>PAge {pageNumber} / {numPages}</span>
                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/10" onClick={() => setPageNumber(p => Math.min(numPages, p + 1))} disabled={pageNumber >= numPages}><ChevronRight className="h-4 w-4" /></Button>
                             </div>
                         )}
                     </div>
-                    <Button variant="outline" className="bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white hover:text-black font-black uppercase text-[11px] tracking-widest h-11 px-8 rounded-full gap-3 shadow-2xl" asChild>
+                    <Button variant="outline" className="bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white hover:text-black font-semibold normal-case text-sm tracking-normal h-11 px-8 rounded-full gap-3 shadow-2xl" asChild>
                         <a href={viewingAttachmentUrl || ''} download target="_blank" rel="noopener noreferrer">
                             <Download className="h-4 w-4" /> DOWNLOAD FULL SIZE
                         </a>
