@@ -1,142 +1,86 @@
 'use client';
 
-import React from 'react';
+import { useId, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { format } from 'date-fns';
+import { AlertTriangle, HardHat, ClipboardCheck, GraduationCap, Globe2, Download, CalendarDays, ArrowRight, ShieldCheck, Info, BarChart3 } from 'lucide-react';
+import { AreaChart, Area, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { useEhs } from '@/contexts/ehs-provider';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { 
-  TrendingUp, 
-  AlertTriangle, 
-  ClipboardCheck, 
-  Users, 
-  Target,
-  Zap,
-  ArrowUpRight,
-  ArrowDownRight
-} from 'lucide-react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-} from 'recharts';
+import { useGeneral } from '@/contexts/general-provider';
+import { Button } from '@/components/ui/button';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import CapaInitiateDialog from '@/components/ehs/capa/CapaInitiateDialog';
+import { dashboardSummary, dashboardCsv, type DashboardPeriod } from '@/lib/ehs-dashboard';
 import { cn } from '@/lib/utils';
 
+const tooltipStyle = { border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 13, boxShadow: '0 4px 16px #0f172a0a' };
+const tickStyle = { fill: '#64748b', fontSize: 12 };
+
 export default function EhsDashboard() {
-  const { stats } = useEhs();
+  const { incidents, audits, trainings } = useEhs();
+  const { projects } = useGeneral();
+  const [site, setSite] = useState('all');
+  const [period, setPeriod] = useState<DashboardPeriod>('six-months');
+  const [observationOpen, setObservationOpen] = useState(false);
+  const gradientId = useId().replace(/:/g, '');
+  const summary = useMemo(() => dashboardSummary(incidents, audits, trainings, site, period), [incidents,audits,trainings,site,period]);
+  const cards = [
+    { label: 'Total incidents', value: summary.incidents, detail: 'Across the reporting period', icon: AlertTriangle, color: 'bg-rose-50 text-rose-600' },
+    { label: 'Lost-time injuries', value: summary.ltis, detail: 'Recorded LTI cases', icon: HardHat, color: 'bg-amber-50 text-amber-600' },
+    { label: 'Average audit score', value: summary.auditScore === null ? '—' : summary.auditScore.toFixed(1)+'%', detail: summary.auditCount ? 'Across '+summary.auditCount+' approved audits' : 'No approved audits in this period', icon: ClipboardCheck, color: 'bg-emerald-50 text-emerald-600' },
+    { label: 'Training completed', value: summary.trainingSessions === null ? '—' : summary.trainingSessions, detail: summary.trainingSessions === null ? 'Training records have no site field' : 'Sessions · duration not recorded', icon: GraduationCap, color: 'bg-blue-50 text-blue-600' },
+  ];
+  const exportReport = () => {
+    const url = URL.createObjectURL(new Blob(['\uFEFF',dashboardCsv(summary)],{type:'text/csv;charset=utf-8;'}));
+    const link=document.createElement('a'); link.href=url;link.download='ehs-report-'+(site==='all'?'all-sites':'selected-site')+'-'+format(summary.start,'yyyy-MM')+'.csv';link.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  };
 
-  return (
-    <div className="space-y-8 text-slate-900">
-      <div className="flex justify-between items-end">
-        <div>
-          <h1 className="text-4xl font-black tracking-tight text-slate-900">Safety Command Center</h1>
-          <p className="text-slate-600 text-lg mt-1 font-medium">Holistic view of organizational safety performance.</p>
+  return <div className="mx-auto max-w-[1800px] space-y-6 p-5 text-slate-900 md:p-8">
+    <header className="flex flex-wrap items-center justify-between gap-5">
+      <div><p className="mb-3 text-sm text-slate-500">Workspace <span className="mx-1 text-slate-300">/</span> Safety management</p><h1 className="text-3xl font-semibold tracking-tight text-slate-950 lg:text-4xl">Safety command center</h1><p className="mt-2 text-sm text-slate-500 md:text-base">A clear view of safety performance across your sites.</p></div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Select value={site} onValueChange={setSite}><SelectTrigger aria-label="Filter dashboard by site" className="h-10 w-[180px] gap-2 bg-white"><Globe2 className="h-4 w-4 shrink-0 text-slate-500" /><SelectValue placeholder="All sites" /></SelectTrigger><SelectContent><SelectItem value="all">All sites</SelectItem>{projects.map(project=><SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}</SelectContent></Select>
+        <Button variant="outline" onClick={exportReport} className="h-10 gap-2 border-blue-200 bg-white text-blue-600 hover:bg-blue-50"><Download className="h-4 w-4" />Export report</Button>
+      </div>
+    </header>
+
+    <section aria-label="Reporting period" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
+      <div className="flex flex-wrap items-center gap-3"><CalendarDays className="h-5 w-5 text-slate-500" /><span className="text-sm font-medium text-slate-600">Reporting period</span><Select value={period} onValueChange={value=>setPeriod(value as DashboardPeriod)}><SelectTrigger aria-label="Reporting period" className="h-10 w-[220px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="six-months">Last 6 months</SelectItem><SelectItem value="twelve-months">Last 12 months</SelectItem><SelectItem value="this-year">This year</SelectItem></SelectContent></Select><span className="text-sm text-slate-500">{summary.periodLabel}</span></div>
+      <span className="inline-flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700"><Info className="h-3.5 w-3.5" />Recorded EHS data</span>
+    </section>
+
+    <section aria-label="Safety metrics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {cards.map(card=><article key={card.label} className="flex items-start gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:p-6"><span className={cn('flex h-12 w-12 shrink-0 items-center justify-center rounded-xl',card.color)}><card.icon className="h-6 w-6" /></span><div className="min-w-0"><h2 className="text-sm font-medium text-slate-600">{card.label}</h2><p aria-live="polite" className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{card.value}</p><p className="mt-1.5 text-xs leading-5 text-slate-500">{card.detail}</p></div></article>)}
+    </section>
+
+    <section aria-label="Performance charts" className="grid grid-cols-1 gap-5 xl:grid-cols-[1.15fr_1fr]">
+      <article className="min-w-0 rounded-xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+        <div className="flex items-start justify-between gap-4"><div><h2 className="text-xl font-semibold tracking-tight">Incident trend</h2><p className="mt-1 text-sm text-slate-500">Monthly incidents · {summary.periodLabel}</p></div><span className="rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-500">Monthly</span></div>
+        <div role="img" aria-label={'Monthly incident trend: '+summary.months.map(m=>m.label+' '+m.incidents).join(', ')} className="mt-6 h-[290px] w-full md:h-[310px]">
+          <ResponsiveContainer width="100%" height="100%"><AreaChart data={summary.months} margin={{top:22,right:15,left:-15,bottom:5}} accessibilityLayer>
+            <defs><linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#2563eb" stopOpacity={0.2} /><stop offset="100%" stopColor="#2563eb" stopOpacity={0.015} /></linearGradient></defs>
+            <CartesianGrid strokeDasharray="3 4" stroke="#e2e8f0" /><XAxis dataKey="month" tick={tickStyle} axisLine={false} tickLine={false} dy={9} minTickGap={15} /><YAxis tick={tickStyle} allowDecimals={false} axisLine={false} tickLine={false} domain={[0,'auto']} /><Tooltip contentStyle={tooltipStyle} formatter={value=>[value,'Incidents']} />
+            <Area type="monotone" dataKey="incidents" stroke="#2563eb" strokeWidth={2.5} fill={'url(#'+gradientId+')'} dot={{r:4,fill:'#2563eb',stroke:'#fff',strokeWidth:2}} activeDot={{r:6}} isAnimationActive={false}><LabelList dataKey="incidents" position="top" fill="#1e3a5f" fontSize={12} /></Area>
+          </AreaChart></ResponsiveContainer>
         </div>
-        <div className="bg-white border border-slate-200 px-4 py-2 rounded-full text-xs font-black text-emerald-600 tracking-widest uppercase shadow-sm">
-          SYSTEM STATUS: OPTIMAL
-        </div>
-      </div>
+        {summary.incidents===0&&<p className="mt-2 text-xs text-slate-500">No incidents recorded for this site and period.</p>}
+      </article>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { label: 'Total Incidents', value: stats.totalIncidents, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50', trend: -12 },
-          { label: 'Total LTIs', value: stats.totalLTIs, icon: Target, color: 'text-amber-600', bg: 'bg-amber-50', trend: 0 },
-          { label: 'Avg Audit Score', value: `${stats.avgAuditScore.toFixed(1)}%`, icon: ClipboardCheck, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: 5.2 },
-          { label: 'Training Hours', value: stats.trainingHours, icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50', trend: 8 },
-        ].map((kpi, i) => (
-          <Card key={i} className="bg-white border-slate-200 overflow-hidden relative shadow-sm hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{kpi.label}</CardTitle>
-              <div className={cn("p-2 rounded-lg", kpi.bg)}>
-                <kpi.icon className={cn("h-4 w-4", kpi.color)} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-black text-slate-900">{kpi.value}</div>
-              <div className="mt-2 flex items-center gap-1">
-                {kpi.trend !== 0 && (
-                  <>
-                    {kpi.trend > 0 ? <ArrowUpRight className="h-3 w-3 text-emerald-600" /> : <ArrowDownRight className="h-3 w-3 text-rose-600" />}
-                    <span className={cn("text-[10px] font-black uppercase", kpi.trend > 0 ? "text-emerald-600" : "text-rose-600")}>
-                      {Math.abs(kpi.trend)}% VS LAST MONTH
-                    </span>
-                  </>
-                )}
-              </div>
-            </CardContent>
-            <div className={cn("absolute bottom-0 left-0 w-full h-1", kpi.bg)} />
-          </Card>
-        ))}
-      </div>
+      <article className="min-w-0 rounded-xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+        <h2 className="text-xl font-semibold tracking-tight">Audit performance</h2><p className="mt-1 text-sm text-slate-500">Average approved inspection score by month</p>
+        {summary.auditCount ? <div role="img" aria-label={'Monthly audit scores: '+summary.months.map(m=>m.label+' '+(m.auditScore===null?'no audits':m.auditScore+'%')).join(', ')} className="mt-6 h-[290px] w-full md:h-[310px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={summary.months} margin={{top:25,right:15,left:-15,bottom:5}} accessibilityLayer><CartesianGrid strokeDasharray="3 4" stroke="#e2e8f0" vertical={false} /><XAxis dataKey="month" tick={tickStyle} axisLine={false} tickLine={false} dy={9} minTickGap={15} /><YAxis domain={[0,100]} ticks={[0,25,50,75,100]} tick={tickStyle} axisLine={false} tickLine={false} /><Tooltip contentStyle={tooltipStyle} cursor={{fill:'#f8fafc'}} formatter={value=>[value+'%','Audit score']} /><Bar dataKey="auditScore" fill="#059669" radius={[5,5,0,0]} maxBarSize={36} isAnimationActive={false}><LabelList dataKey="auditScore" position="top" formatter={(value: unknown)=>typeof value==='number'?value+'%':''} fill="#1e3a5f" fontSize={12} /></Bar></BarChart></ResponsiveContainer></div> : <div className="mt-6 flex h-[290px] flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50/50 px-5 text-center md:h-[310px]"><BarChart3 className="mb-3 h-9 w-9 text-slate-300" /><p className="text-sm font-medium text-slate-700">No approved audits yet</p><p className="mt-1 max-w-xs text-sm leading-6 text-slate-500">Completed and approved inspections will appear here for the selected site and period.</p></div>}
+      </article>
+    </section>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="bg-white border-slate-200 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-slate-900 text-xl font-black uppercase tracking-tight">Incident Trend (6 Months)</CardTitle>
-            <CardDescription className="text-slate-500 font-medium">Correlation between reports and time.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px] w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={dummyData}>
-                  <defs>
-                    <linearGradient id="colorInc" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#e11d48" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#e11d48" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                  <XAxis dataKey="name" stroke="#64748b" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} />
-                  <YAxis stroke="#64748b" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', color: '#0f172a' }}
-                    itemStyle={{ color: '#e11d48', fontWeight: 'bold' }}
-                  />
-                  <Area type="monotone" dataKey="incidents" stroke="#e11d48" fillOpacity={1} fill="url(#colorInc)" strokeWidth={4} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-slate-200 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-slate-900 text-xl font-black uppercase tracking-tight">Audit Performance</CardTitle>
-            <CardDescription className="text-slate-500 font-medium">Compliance scores across inspection cycles.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px] w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dummyData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                  <XAxis dataKey="name" stroke="#64748b" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} />
-                  <YAxis stroke="#64748b" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', color: '#0f172a' }}
-                    cursor={{ fill: '#f1f5f9' }}
-                  />
-                  <Bar dataKey="audits" fill="#059669" radius={[4, 4, 0, 0]} barSize={40} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+    <section aria-label="Quick actions" className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+      <h2 className="text-xl font-semibold tracking-tight">Quick actions</h2><p className="mt-1 text-sm text-slate-500">Common tasks to keep your sites safe and compliant.</p>
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <button onClick={()=>setObservationOpen(true)} className="group flex items-center gap-4 rounded-lg border border-slate-200 p-4 text-left transition hover:border-blue-300 hover:bg-blue-50/30"><span className="rounded-xl bg-blue-50 p-3 text-blue-600"><ShieldCheck className="h-5 w-5" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Report an observation</span><span className="mt-1 block text-xs leading-5 text-slate-500">Record a hazard or unsafe condition</span></span><ArrowRight className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-blue-600" /></button>
+        <Link href="/ehs/audits?new=1" className="group flex items-center gap-4 rounded-lg border border-slate-200 p-4 transition hover:border-emerald-300 hover:bg-emerald-50/30"><span className="rounded-xl bg-emerald-50 p-3 text-emerald-600"><ClipboardCheck className="h-5 w-5" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Start an audit</span><span className="mt-1 block text-xs leading-5 text-slate-500">Review site safety and compliance</span></span><ArrowRight className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-emerald-600" /></Link>
+        <Link href="/ehs/trainings?new=1" className="group flex items-center gap-4 rounded-lg border border-slate-200 p-4 transition hover:border-violet-300 hover:bg-violet-50/30"><span className="rounded-xl bg-violet-50 p-3 text-violet-600"><GraduationCap className="h-5 w-5" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Log a training session</span><span className="mt-1 block text-xs leading-5 text-slate-500">Keep competency records up to date</span></span><ArrowRight className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-violet-600" /></Link>
       </div>
-    </div>
-  );
+    </section>
+    <CapaInitiateDialog isOpen={observationOpen} onOpenChange={setObservationOpen} />
+  </div>;
 }
-
-const dummyData = [
-  { name: 'Jan', incidents: 4, audits: 85 },
-  { name: 'Feb', incidents: 3, audits: 88 },
-  { name: 'Mar', incidents: 5, audits: 82 },
-  { name: 'Apr', incidents: 2, audits: 91 },
-  { name: 'May', incidents: 1, audits: 94 },
-  { name: 'Jun', incidents: 0, audits: 96 },
-];
