@@ -30,14 +30,14 @@ export default function EhsDashboard() {
   const { stats } = useEhs();
 
   return (
-    <div className="space-y-8 text-slate-900">
+    <div className="p-5 md:p-8 max-w-[1600px] mx-auto space-y-8 text-slate-900">
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-slate-900">Safety Command Center</h1>
+          <h1 className="text-4xl font-semibold tracking-tight text-slate-900">Safety Command Center</h1>
           <p className="text-slate-600 text-lg mt-1 font-medium">Holistic view of organizational safety performance.</p>
         </div>
-        <div className="bg-white border border-slate-200 px-4 py-2 rounded-full text-xs font-black text-emerald-600 tracking-widest uppercase shadow-sm">
-          SYSTEM STATUS: OPTIMAL
+        <div className="bg-white border border-slate-200 px-4 py-2 rounded-full text-xs font-semibold text-emerald-600 tracking-normal normal-case shadow-sm">
+          Safety overview
         </div>
       </div>
 
@@ -51,18 +51,18 @@ export default function EhsDashboard() {
         ].map((kpi, i) => (
           <Card key={i} className="bg-white border-slate-200 overflow-hidden relative shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{kpi.label}</CardTitle>
+              <CardTitle className="text-sm font-semibold normal-case tracking-normal text-slate-500">{kpi.label}</CardTitle>
               <div className={cn("p-2 rounded-lg", kpi.bg)}>
                 <kpi.icon className={cn("h-4 w-4", kpi.color)} />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-black text-slate-900">{kpi.value}</div>
+              <div className="text-3xl font-semibold text-slate-900">{kpi.value}</div>
               <div className="mt-2 flex items-center gap-1">
                 {kpi.trend !== 0 && (
                   <>
                     {kpi.trend > 0 ? <ArrowUpRight className="h-3 w-3 text-emerald-600" /> : <ArrowDownRight className="h-3 w-3 text-rose-600" />}
-                    <span className={cn("text-[10px] font-black uppercase", kpi.trend > 0 ? "text-emerald-600" : "text-rose-600")}>
+                    <span className={cn("text-sm font-semibold normal-case", kpi.trend > 0 ? "text-emerald-600" : "text-rose-600")}>
                       {Math.abs(kpi.trend)}% VS LAST MONTH
                     </span>
                   </>
@@ -78,7 +78,7 @@ export default function EhsDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Card className="bg-white border-slate-200 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-slate-900 text-xl font-black uppercase tracking-tight">Incident Trend (6 Months)</CardTitle>
+            <CardTitle className="text-slate-900 text-xl font-semibold normal-case tracking-tight">Incident Trend (6 Months)</CardTitle>
             <CardDescription className="text-slate-500 font-medium">Correlation between reports and time.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -107,7 +107,7 @@ export default function EhsDashboard() {
 
         <Card className="bg-white border-slate-200 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-slate-900 text-xl font-black uppercase tracking-tight">Audit Performance</CardTitle>
+            <CardTitle className="text-slate-900 text-xl font-semibold normal-case tracking-tight">Audit Performance</CardTitle>
             <CardDescription className="text-slate-500 font-medium">Compliance scores across inspection cycles.</CardDescription>
           </CardHeader>
           <CardContent>

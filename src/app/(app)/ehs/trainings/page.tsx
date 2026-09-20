@@ -65,33 +65,33 @@ export default function EhsTrainingsPage() {
   }, [trainings]);
 
   return (
-    <div className="space-y-8 text-slate-900">
+    <div className="p-5 md:p-8 max-w-[1600px] mx-auto space-y-8 text-slate-900">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Safety Trainings</h1>
+          <h1 className="text-3xl font-semibold text-slate-900 tracking-tight">Safety Trainings</h1>
           <p className="text-slate-600 font-medium">Track workforce competency and toolbox talk records.</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-lg shadow-indigo-600/20 px-8 h-12 rounded-xl uppercase text-xs tracking-widest">
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-lg shadow-indigo-600/20 px-8 h-12 rounded-xl normal-case text-xs tracking-normal">
                <GraduationCap className="mr-2 h-4 w-4" /> Register Session
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-white border-slate-200 text-slate-900 sm:max-w-lg shadow-2xl">
             <DialogHeader>
-              <DialogTitle className="text-slate-900 font-black uppercase">Log Training Session</DialogTitle>
+              <DialogTitle className="text-slate-900 font-semibold normal-case">Log Training Session</DialogTitle>
               <DialogDescription className="text-slate-500 font-medium">Record a safety induction, toolbox talk, or specialized training event.</DialogDescription>
             </DialogHeader>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label className="text-slate-900 font-black uppercase text-[10px] tracking-widest ml-1">Training Module Title</Label>
+                <Label className="text-slate-900 font-semibold normal-case text-sm tracking-normal ml-1">Training Module Title</Label>
                 <Input {...form.register('topic')} className="h-12 rounded-xl font-bold" placeholder="e.g., Fire Safety Level 1" />
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-slate-900 font-black uppercase text-[10px] tracking-widest ml-1">Session Type</Label>
+                  <Label className="text-slate-900 font-semibold normal-case text-sm tracking-normal ml-1">Session Type</Label>
                   <Controller
                     control={form.control}
                     name="type"
@@ -110,13 +110,13 @@ export default function EhsTrainingsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-slate-900 font-black uppercase text-[10px] tracking-widest ml-1">Date Held</Label>
+                  <Label className="text-slate-900 font-semibold normal-case text-sm tracking-normal ml-1">Date Held</Label>
                   <Input type="date" {...form.register('date')} className="h-12 rounded-xl font-bold" />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-slate-900 font-black uppercase text-[10px] tracking-widest ml-1">Participants ({selectedAttendeeIds.length})</Label>
+                <Label className="text-slate-900 font-semibold normal-case text-sm tracking-normal ml-1">Participants ({selectedAttendeeIds.length})</Label>
                 <Controller
                   control={form.control}
                   name="attendees"
@@ -145,7 +145,7 @@ export default function EhsTrainingsPage() {
                                     className="hover:bg-slate-50 cursor-pointer font-bold"
                                   >
                                     <Check className={cn("mr-2 h-4 w-4 text-emerald-600", selectedAttendeeIds.includes(p.id) ? "opacity-100" : "opacity-0")} />
-                                    {p.name} <span className="text-[10px] text-slate-400 font-black ml-2 uppercase">({p.trade})</span>
+                                    {p.name} <span className="text-sm text-slate-400 font-semibold ml-2 normal-case">({p.trade})</span>
                                   </CommandItem>
                                 ))}
                               </ScrollArea>
@@ -159,17 +159,17 @@ export default function EhsTrainingsPage() {
               </div>
 
               <DialogFooter className="pt-4 gap-4">
-                <Button variant="outline" type="button" onClick={() => setIsOpen(false)} className="h-12 rounded-xl font-bold px-8">Cancel</Button>
-                <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 font-black h-12 rounded-xl px-10 shadow-lg shadow-indigo-600/10 uppercase text-xs tracking-widest text-white">Register Session</Button>
+                <Button variant="outline" type="button" onClick={() => setIsDialogOpen(false)} className="h-12 rounded-xl font-bold px-8">Cancel</Button>
+                <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 font-semibold h-12 rounded-xl px-6 shadow-lg shadow-indigo-600/10 normal-case text-xs tracking-normal text-white">Register Session</Button>
               </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-8 text-left">
-           <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] flex items-center gap-3">
+           <h2 className="text-sm font-semibold text-slate-400 normal-case tracking-normal flex items-center gap-3">
              <Play className="h-4 w-4 text-emerald-600 fill-emerald-600" /> Active Programs
            </h2>
            
@@ -182,18 +182,18 @@ export default function EhsTrainingsPage() {
                <CardContent className="p-8">
                  <div className="flex justify-between items-start mb-8">
                    <div>
-                     <h3 className="text-slate-900 font-black text-xl group-hover:text-emerald-600 transition-colors uppercase tracking-tight">{course.title}</h3>
-                     <p className="text-[10px] text-slate-500 mt-2 uppercase font-black tracking-widest">
+                     <h3 className="text-slate-900 font-semibold text-xl group-hover:text-emerald-600 transition-colors normal-case tracking-tight">{course.title}</h3>
+                     <p className="text-sm text-slate-500 mt-2 normal-case font-semibold tracking-normal">
                        {course.attendees} Employees Enrolled &middot; Org Certified
                      </p>
                    </div>
-                   <Badge variant="outline" className="text-[10px] font-black border-slate-200 bg-slate-50 text-slate-700 px-4 py-1.5 uppercase tracking-widest">
+                   <Badge variant="outline" className="text-sm font-semibold border-slate-200 bg-slate-50 text-slate-700 px-4 py-1.5 normal-case tracking-normal">
                      Cycle: {course.expires}
                    </Badge>
                  </div>
                  
                  <div className="space-y-4">
-                   <div className="flex justify-between text-[11px] font-black uppercase tracking-widest">
+                   <div className="flex justify-between text-sm font-semibold normal-case tracking-normal">
                      <span className="text-slate-400">Total Compliance Health</span>
                      <span className="text-slate-900">{course.progress}%</span>
                    </div>
@@ -205,40 +205,40 @@ export default function EhsTrainingsPage() {
         </div>
 
         <div className="space-y-8 text-left">
-           <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] flex items-center gap-3">
+           <h2 className="text-sm font-semibold text-slate-400 normal-case tracking-normal flex items-center gap-3">
              <Clock className="h-4 w-4 text-indigo-600" /> Activity Log
            </h2>
            
            <div className="space-y-4">
               {sortedTrainings.map(t => (
-                <div key={t.id} className="bg-white border border-slate-200 rounded-3xl p-6 flex gap-6 items-start hover:shadow-md transition-all shadow-sm">
+                <div key={t.id} className="bg-white border border-slate-200 rounded-xl p-6 flex gap-6 items-start hover:shadow-md transition-all shadow-sm">
                   <div className="bg-slate-100 p-3 rounded-2xl">
                     <GraduationCap className="h-6 w-6 text-indigo-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-base font-black text-slate-900 truncate tracking-tight uppercase">{t.topic}</p>
-                    <p className="text-[10px] text-slate-500 mt-2 font-black uppercase tracking-widest">{t.trainer} &middot; {format(parseISO(t.date), 'dd MMM')}</p>
+                    <p className="text-base font-semibold text-slate-900 truncate tracking-tight normal-case">{t.topic}</p>
+                    <p className="text-sm text-slate-500 mt-2 font-semibold normal-case tracking-normal">{t.trainer} &middot; {format(parseISO(t.date), 'dd MMM')}</p>
                     <div className="mt-4 flex items-center gap-2">
                       <Users className="h-3 w-3 text-emerald-600" />
-                      <span className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.2em]">{t.attendees.length} PARTICIPANTS</span>
+                      <span className="text-sm font-semibold text-emerald-600 normal-case tracking-normal">{t.attendees.length} PARTICIPANTS</span>
                     </div>
                   </div>
                 </div>
               ))}
               
               {trainings.length === 0 && (
-                <div className="text-center py-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl">
-                   <p className="text-slate-400 font-black text-[10px] uppercase tracking-widest">No recent sessions.</p>
+                <div className="text-center py-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl">
+                   <p className="text-slate-400 font-semibold text-sm normal-case tracking-normal">No recent sessions.</p>
                 </div>
               )}
            </div>
            
-           <Card className="bg-indigo-600 border-none text-white overflow-hidden relative shadow-2xl rounded-3xl">
+           <Card className="bg-indigo-600 border-none text-white overflow-hidden relative shadow-2xl rounded-xl">
               <CardContent className="p-8 relative z-10">
                 <Trophy className="h-12 w-12 mb-6 opacity-30" />
-                <h3 className="text-2xl font-black tracking-tighter leading-none uppercase">Org Achievement</h3>
+                <h3 className="text-2xl font-semibold tracking-normal leading-none normal-case">Org Achievement</h3>
                 <p className="text-sm opacity-80 mt-2 font-bold leading-relaxed">98% of workforce is currently safety induction compliant for Q1 2026.</p>
-                <Button variant="outline" className="mt-8 border-white/20 bg-white/10 hover:bg-white text-indigo-600 hover:text-indigo-600 text-[10px] font-black uppercase tracking-[0.2em] h-12 px-8 rounded-xl w-full">
+                <Button variant="outline" className="mt-8 border-white/20 bg-white/10 hover:bg-white text-indigo-600 hover:text-indigo-600 text-sm font-semibold normal-case tracking-normal h-12 px-8 rounded-xl w-full">
                   View Awards
                 </Button>
               </CardContent>

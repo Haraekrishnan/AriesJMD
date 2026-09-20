@@ -1,22 +1,9 @@
 'use client';
-
-import React, { useState, useMemo, useEffect } from 'react';
-import { 
-    ChevronLeft, 
-    Clock, 
-    MapPin,
-    User,
-    Calendar,
-    MoreVertical,
-    CheckCircle2,
-    Undo2,
-    ShieldCheck,
-    ThumbsUp,
-} from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, MapPin, User, Calendar, CheckCircle2, Undo2, PanelRight } from 'lucide-react';
+import { format, parseISO, isValid } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import type { EhsObservation, CapaStage } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
@@ -25,224 +12,42 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
-
+import { CAPA_STAGES } from '@/lib/ehs-observations';
 import CapaLifecycleStepper from './cockpit/CapaLifecycleStepper';
 import CapaRightSidebar from './cockpit/CapaRightSidebar';
 import CapaStageWorkspace from './cockpit/CapaStageWorkspace';
 import CapaActionFooter from './cockpit/CapaActionFooter';
 
-const STAGES: CapaStage[] = ['Initiation', 'Investigation', 'Resolution', 'Implementation', 'Effectiveness Review', 'Reference', 'Closure'];
-
-export default function CapaCockpit({ observation, onClose }: { observation: EhsObservation; onClose: () => void; }) {
-    const { user, users } = useAuth();
-    const { projects } = useGeneral();
-    const { reviewStage } = useEhs();
-    const [viewingStage, setViewingStage] = useState<CapaStage>(observation.currentStage || 'Initiation');
-    
-    // Review Dialog State
-    const [reviewAction, setReviewAction] = useState<'Completed' | 'Returned' | null>(null);
-    const [reviewComment, setReviewComment] = useState('');
-
-    const project = projects.find(p => p.id === observation.projectId);
-    const reporter = users.find(u => u.id === observation.reporterId);
-    
-    const sData = observation.stages[viewingStage];
-    const isCurrentStage = observation.currentStage === viewingStage;
-    const isSubmitted = sData?.status === 'In Progress';
-    const isSupervisor = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor' || user?.role === 'Project Coordinator';
-
-    const methods = useForm({
-        defaultValues: sData?.data || {}
-    });
-
-    // CRITICAL: Reset form when switching stages to ensure historical data loads
-    useEffect(() => {
-        if (sData?.data) {
-            methods.reset(sData.data);
-        } else {
-            methods.reset({});
-        }
-    }, [viewingStage, sData, methods]);
-
-    const progress = useMemo(() => {
-        const completedCount = STAGES.filter(s => observation.stages[s]?.status === 'Completed').length;
-        return Math.round((completedCount / STAGES.length) * 100);
-    }, [observation]);
-
-    const handleReviewSubmit = () => {
-        if (!reviewAction) return;
-        reviewStage(observation.id, viewingStage, reviewAction, reviewComment);
-        setReviewAction(null);
-        setReviewComment('');
-    };
-
-    return (
-        <FormProvider {...methods}>
-            <div className="fixed inset-0 z-40 flex flex-col bg-[#F3F7FB] text-slate-900 font-sans overflow-hidden">
-                
-                {/* --- EXECUTIVE HEADER --- */}
-                <header className="shrink-0 bg-white border-b z-30 shadow-sm flex flex-col text-left">
-                    {/* Tier 1: Identity & Management Actions */}
-                    <div className="px-8 py-3 flex items-center justify-between bg-white border-b">
-                        <div className="flex items-center gap-6">
-                            <Button 
-                                variant="outline" 
-                                size="icon" 
-                                onClick={onClose} 
-                                className="h-8 w-8 rounded-md text-slate-400 hover:bg-slate-50 border-slate-200"
-                            >
-                                <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <div className="flex items-center gap-3">
-                                <h1 className="text-xl font-black text-slate-900 tracking-tighter uppercase leading-none">
-                                    CAPA-{observation.id.slice(-6).toUpperCase()}
-                                </h1>
-                                <Badge className="bg-amber-100 text-amber-700 border-none font-black uppercase text-[9px] px-2.5 h-6 rounded-sm tracking-widest">
-                                    {observation.severity.toUpperCase()} RISK
-                                </Badge>
-                                <Badge className="bg-blue-600 text-white border-none font-black uppercase text-[9px] px-3 h-6 rounded-sm tracking-widest">
-                                    {observation.status.toUpperCase()}
-                                </Badge>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-8">
-                            {/* MANAGEMENT VERIFICATION COMMANDS */}
-                            {isCurrentStage && isSubmitted && isSupervisor && (
-                                <div className="flex items-center gap-3 animate-in fade-in zoom-in-95 bg-[#0F172A] p-2 rounded-xl">
-                                    <Button 
-                                        variant="outline"
-                                        className="h-10 text-rose-400 hover:bg-rose-400/10 border-rose-400/30 font-black uppercase tracking-[0.1em] text-[9px] px-6 rounded-lg transition-all"
-                                        onClick={() => setReviewAction('Returned')}
-                                    >
-                                        <Undo2 className="mr-2 h-4 w-4" /> INSTRUCT REWORK
-                                    </Button>
-                                    <Button 
-                                        className="h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-[0.1em] text-[9px] px-8 rounded-lg shadow-lg shadow-emerald-500/10"
-                                        onClick={() => setReviewAction('Completed')}
-                                    >
-                                        <CheckCircle2 className="mr-2 h-4 w-4" /> VERIFY & CONTINUE
-                                    </Button>
-                                </div>
-                            )}
-
-                            <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="h-9 px-4 border-slate-200 text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50/50">
-                                    GOVERNANCE: OPTIMAL
-                                </Badge>
-                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg">
-                                    <MoreVertical className="h-4 w-4 text-slate-400" />
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Tier 2: Metadata Registry */}
-                    <div className="px-8 py-2.5 flex items-center gap-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] bg-white border-b">
-                        <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-slate-300" />
-                            <span className="text-slate-600 font-black">{project?.name?.toUpperCase() || 'N/A'}</span>
-                        </div>
-                        <div className="flex items-center gap-2 border-l pl-8 border-slate-100">
-                            <User className="h-4 w-4 text-slate-300" />
-                            <span><span className="text-slate-400">REPORTER:</span> <span className="text-slate-600 font-black">{reporter?.name?.toUpperCase() || 'OFFICIAL RECORD'}</span></span>
-                        </div>
-                        <div className="flex items-center gap-2 border-l pl-8 border-slate-100">
-                            <Calendar className="h-4 w-4 text-slate-300" />
-                            <span>{format(parseISO(observation.createdAt), 'dd MMM yyyy').toUpperCase()}</span>
-                        </div>
-                    </div>
-
-                    {/* Tier 3: Progress & Stepper */}
-                    <div className="h-20 shrink-0 bg-[#F8FAFC] px-10 flex items-center justify-between border-b shadow-inner">
-                        <div className="flex items-center gap-12 w-full">
-                            <div className="flex flex-col shrink-0">
-                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2">Overall Progress</span>
-                                <div className="flex items-center gap-3">
-                                    <span className="text-2xl font-black text-blue-600 tracking-tighter leading-none">{progress}%</span>
-                                    <div className="w-40 h-1.5 bg-slate-200 rounded-full overflow-hidden border border-white shadow-inner">
-                                        <div className="h-full bg-blue-600 transition-all duration-1000 shadow-[0_0_8px_rgba(37,99,235,0.4)]" style={{ width: `${progress}%` }} />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="flex-1">
-                                <CapaLifecycleStepper 
-                                    observation={observation} 
-                                    viewingStage={viewingStage} 
-                                    onStageSelect={setViewingStage} 
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </header>
-
-                <div className="flex-1 flex overflow-hidden">
-                    <main className="flex-1 flex flex-col overflow-hidden relative bg-[#F8FAFC]">
-                        <ScrollArea className="flex-1 no-scrollbar">
-                            <div className="p-10 space-y-10">
-                                <CapaStageWorkspace observation={observation} stage={viewingStage} />
-                            </div>
-                        </ScrollArea>
-
-                        {/* FIXED ACTION FOOTER */}
-                        <footer className="h-20 shrink-0 bg-white border-t px-10 flex items-center z-40 shadow-2xl">
-                            <CapaActionFooter 
-                                observation={observation} 
-                                stage={viewingStage} 
-                            />
-                        </footer>
-                    </main>
-
-                    {/* INTELLIGENCE SIDEBAR */}
-                    <aside className="w-[380px] shrink-0 border-l bg-white flex flex-col z-20 overflow-hidden relative shadow-lg text-left">
-                        <ScrollArea className="h-full no-scrollbar">
-                           <CapaRightSidebar observation={observation} activeStage={viewingStage} />
-                        </ScrollArea>
-                    </aside>
-                </div>
-
-                {/* Review Dialog */}
-                <Dialog open={!!reviewAction} onOpenChange={(o) => !o && setReviewAction(null)}>
-                    <DialogContent className="bg-white border-slate-200 text-slate-900 shadow-2xl">
-                        <DialogHeader>
-                            <DialogTitle className="text-slate-900 uppercase font-black tracking-tight">
-                                {reviewAction === 'Completed' ? 'Authorize Milestone' : 'Instruct Technical Rework'}
-                            </DialogTitle>
-                            <DialogDescription className="text-slate-500 font-medium">
-                                Validation of lifecycle findings by the Higher Official.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4 text-left">
-                            <div className="space-y-2">
-                                <Label className="text-slate-900 font-black uppercase text-[10px] tracking-widest ml-1">
-                                    Validation Notes / Official Instructions
-                                </Label>
-                                <Textarea 
-                                    className="bg-slate-50 border-slate-200 text-slate-900 min-h-[120px] rounded-xl font-bold p-4 focus-visible:ring-blue-100 shadow-inner" 
-                                    placeholder="Enter technical feedback for the activity log..."
-                                    value={reviewComment}
-                                    onChange={(e) => setReviewComment(e.target.value)}
-                                />
-                            </div>
-                        </div>
-                        <DialogFooter className="gap-2">
-                            <Button variant="outline" className="h-12 px-6 rounded-xl font-bold" onClick={() => setReviewAction(null)}>
-                                Cancel
-                            </Button>
-                            <Button 
-                                className={cn(
-                                    "font-black uppercase text-[10px] h-12 px-8 rounded-xl shadow-lg",
-                                    reviewAction === 'Completed' ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-rose-600 hover:bg-rose-700 text-white"
-                                )}
-                                onClick={handleReviewSubmit}
-                            >
-                                {reviewAction === 'Completed' ? 'Authorize Findings' : 'Submit Rework order'}
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-            </div>
-        </FormProvider>
-    );
+export default function CapaCockpit({observation,onClose}: {observation:EhsObservation;onClose:()=>void}) {
+ const {user,users}=useAuth(); const {projects}=useGeneral(); const {reviewStage}=useEhs();
+ const [viewingStage,setViewingStage]=useState<CapaStage>(observation.currentStage||'Initiation');
+ const [reviewAction,setReviewAction]=useState<'Completed'|'Returned'|null>(null);
+ const [reviewComment,setReviewComment]=useState('');
+ const [detailsOpen,setDetailsOpen]=useState(false);
+ const sData=observation.stages[viewingStage];
+ const isSupervisor=user?.role==='Admin'||user?.role==='Senior Safety Supervisor'||user?.role==='Project Coordinator';
+ const canReview=observation.currentStage===viewingStage && sData?.status==='In Progress' && isSupervisor;
+ const methods=useForm({defaultValues:sData?.data||{}});
+ useEffect(()=>{methods.reset(sData?.data||{});},[viewingStage,sData,methods]);
+ const completed=CAPA_STAGES.filter(s=>observation.stages[s]?.status==='Completed').length;
+ const progress=Math.round(completed/CAPA_STAGES.length*100);
+ const project=projects.find(p=>p.id===observation.projectId);
+ const reporter=users.find(u=>u.id===observation.reporterId);
+ const changeStage=(next:CapaStage)=>{setViewingStage(next);};
+ const nextStage=CAPA_STAGES[CAPA_STAGES.indexOf(viewingStage)+1];
+ return <FormProvider {...methods}><div className="ehs-portal fixed inset-0 z-40 flex flex-col overflow-hidden bg-[#F5F7FB] text-slate-900">
+  <header className="shrink-0 border-b bg-white">
+   <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 md:px-7">
+    <div className="flex flex-wrap items-center gap-3"><Button variant="ghost" onClick={onClose} className="gap-1 px-2 text-blue-600"><ChevronLeft className="h-4 w-4" /><span className="hidden sm:inline">Observations</span></Button><span className="hidden h-6 w-px bg-slate-200 sm:block" /><h1 className="text-xl font-semibold tracking-tight">CAPA-{observation.id.slice(-6).toUpperCase()}</h1><Badge variant="outline" className={cn('rounded-md px-2.5 py-1 text-xs font-medium',observation.severity==='Low'?'border-emerald-100 bg-emerald-50 text-emerald-700':observation.severity==='Medium'?'border-amber-100 bg-amber-50 text-amber-700':'border-rose-100 bg-rose-50 text-rose-700')}>{observation.severity} risk</Badge><Badge className="rounded-md border-blue-100 bg-blue-50 px-2.5 py-1 font-medium text-blue-700">{observation.status}</Badge></div>
+    <div className="flex items-center gap-2">{canReview&&<><Button variant="outline" onClick={()=>setReviewAction('Returned')} className="gap-2 text-rose-600"><Undo2 className="h-4 w-4" />Request rework</Button><Button onClick={()=>setReviewAction('Completed')} className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"><CheckCircle2 className="h-4 w-4" />Verify & continue</Button></>}<Button variant="outline" aria-label="Show case details" className="gap-2 xl:hidden" onClick={()=>setDetailsOpen(true)}><PanelRight className="h-4 w-4" />Details</Button></div>
+   </div>
+   <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-3 text-xs text-slate-500 md:px-8 md:text-sm"><span className="flex items-center gap-2"><MapPin className="h-4 w-4" />{project?.name||'Site not provided'}</span><span className="flex items-center gap-2"><User className="h-4 w-4" />Reported by {reporter?.name||'Unknown'}</span><span className="flex items-center gap-2"><Calendar className="h-4 w-4" />{isValid(parseISO(observation.createdAt))?format(parseISO(observation.createdAt),'dd MMM yyyy'):'Date unavailable'}</span></div>
+   <div className="flex items-center overflow-x-auto border-t bg-slate-50/60 px-4 md:px-7"><div className="mr-5 hidden w-[150px] shrink-0 md:block"><p className="mb-2 text-xs text-slate-500">{completed} of 7 complete <strong className="ml-2 text-blue-600">{progress}%</strong></p><div role="progressbar" aria-label="Case completion" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} className="h-1.5 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-blue-600" style={{width:progress+'%'}} /></div></div><CapaLifecycleStepper observation={observation} viewingStage={viewingStage} onStageSelect={changeStage} /></div>
+  </header>
+  <div className="flex min-h-0 flex-1 overflow-hidden"><main className="flex min-w-0 flex-1 flex-col"><div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6"><CapaStageWorkspace key={viewingStage} observation={observation} stage={viewingStage} /></div><footer className="shrink-0 border-t bg-white px-4 py-4 md:px-6"><CapaActionFooter observation={observation} stage={viewingStage} onNext={nextStage && (CAPA_STAGES.indexOf(nextStage)<=CAPA_STAGES.indexOf(observation.currentStage)||observation.stages[nextStage]?.status==='Completed')?()=>changeStage(nextStage):undefined} /></footer></main><aside className="hidden w-[330px] shrink-0 overflow-y-auto pb-6 pr-6 pt-6 xl:block"><CapaRightSidebar observation={observation} activeStage={viewingStage} /></aside></div>
+  <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}><SheetContent className="overflow-y-auto bg-slate-50"><SheetTitle className="mb-1">Case overview</SheetTitle><SheetDescription className="mb-5">Details and recorded activity for this case.</SheetDescription><CapaRightSidebar observation={observation} activeStage={viewingStage} /></SheetContent></Sheet>
+  <Dialog open={!!reviewAction} onOpenChange={open=>!open&&setReviewAction(null)}><DialogContent><DialogHeader><DialogTitle>{reviewAction==='Completed'?'Verify this stage':'Request rework'}</DialogTitle><DialogDescription>Record your findings and feedback in the case activity log.</DialogDescription></DialogHeader><div className="space-y-2 py-3"><Label htmlFor="review-comment">Review notes</Label><Textarea id="review-comment" value={reviewComment} onChange={e=>setReviewComment(e.target.value)} placeholder="Explain your decision…" className="min-h-[130px]" /></div><DialogFooter><Button variant="outline" onClick={()=>setReviewAction(null)}>Cancel</Button><Button className={reviewAction==='Completed'?'bg-emerald-600 hover:bg-emerald-700':'bg-rose-600 hover:bg-rose-700'} onClick={()=>{if(!reviewAction||!canReview)return;reviewStage(observation.id,viewingStage,reviewAction,reviewComment);setReviewAction(null);setReviewComment('');}}>{reviewAction==='Completed'?'Verify stage':'Send for rework'}</Button></DialogFooter></DialogContent></Dialog>
+ </div></FormProvider>;
 }

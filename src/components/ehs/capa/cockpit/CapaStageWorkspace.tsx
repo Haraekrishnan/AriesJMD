@@ -105,7 +105,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
     const isCompleted = sData?.status === 'Completed';
     const isSubmitted = sData?.status === 'In Progress';
     const isReturned = sData?.status === 'Returned';
-    const isLocked = isCompleted || isSubmitted;
+    const isLocked = isCompleted || isSubmitted || !isCurrentStage || user?.id !== sData?.assigneeId;
 
     const isAuthorizedToReassign = user && ['Admin', 'Project Coordinator', 'Senior Safety Supervisor'].includes(user.role);
 
@@ -132,7 +132,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
         if (!file) return;
 
         setIsUploading(true);
-        toast({ title: 'Transmitting Document...', description: 'Syncing technical data to institutional registry.' });
+        toast({ title: 'Uploading document…', description: 'Adding your attachment to this stage.' });
 
         const formData = new FormData();
         formData.append("file", file);
@@ -148,13 +148,13 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
 
             if (uploadData.success) {
                 addStageAttachment(observation.id, stage, file.name, uploadData.downloadLink);
-                toast({ title: 'Document Sync Successful', description: 'Institutional data archive updated.' });
+                toast({ title: 'Document uploaded', description: 'The attachment is available in this case.' });
             } else {
                 throw new Error(uploadData.error);
             }
         } catch (error: any) {
             setIsUploading(false);
-            toast({ variant: 'destructive', title: 'Registry Error', description: error.message || 'Transmission failure detected.' });
+            toast({ variant: 'destructive', title: 'Upload failed', description: error.message || 'Please try uploading the document again.' });
         }
     };
 
@@ -170,18 +170,18 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
             case 'Initiation': return <CapaInitiation observation={observation} onViewImage={setViewingAttachmentUrl} />;
             case 'Investigation': return (
                 <Tabs defaultValue="summary" className="w-full">
-                    <div className="bg-slate-50/50 border-b px-10">
-                        <TabsList className="h-16 w-full justify-start gap-12 bg-transparent p-0">
+                    <div className="bg-slate-50/50 border-b px-6">
+                        <TabsList className="h-14 w-full justify-start gap-6 bg-transparent p-0">
                             {[
                                 { id: 'summary', label: 'Summary', icon: FileText },
                                 { id: '5why', label: '5-Why Analysis', icon: Activity },
-                                { id: 'rootcause', label: 'Systemic Root Cause', icon: Zap },
-                                { id: 'conclusion', label: 'Phase Conclusion', icon: CheckCircle2 },
+                                { id: 'rootcause', label: 'Root cause', icon: Zap },
+                                { id: 'conclusion', label: 'Conclusion', icon: CheckCircle2 },
                             ].map(tab => (
                                 <TabsTrigger 
                                     key={tab.id} 
                                     value={tab.id}
-                                    className="h-16 rounded-none border-b-4 border-transparent px-0 text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 bg-transparent shadow-none"
+                                    className="h-14 rounded-none border-b-2 border-transparent px-0 text-sm font-semibold normal-case tracking-normal text-slate-400 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 bg-transparent shadow-none"
                                 >
                                     <tab.icon className="mr-3 h-4 w-4" /> {tab.label}
                                 </TabsTrigger>
@@ -189,54 +189,54 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                         </TabsList>
                     </div>
                     <div className="outline-none">
-                        <TabsContent value="summary" className="m-0 focus-visible:ring-0 p-10"><CapaInvestigationWorkspace observation={observation} /></TabsContent>
-                        <TabsContent value="5why" className="m-0 focus-visible:ring-0 p-10"><Capa5Why isLocked={isLocked} /></TabsContent>
-                        <TabsContent value="rootcause" className="m-0 focus-visible:ring-0 p-10"><CapaSystemicRootCause isLocked={isLocked} /></TabsContent>
-                        <TabsContent value="conclusion" className="m-0 focus-visible:ring-0 p-10"><CapaPhaseConclusion isLocked={isLocked} /></TabsContent>
+                        <TabsContent value="summary" className="m-0 focus-visible:ring-0 p-6"><CapaInvestigationWorkspace observation={observation} /></TabsContent>
+                        <TabsContent value="5why" className="m-0 focus-visible:ring-0 p-6"><Capa5Why isLocked={isLocked} /></TabsContent>
+                        <TabsContent value="rootcause" className="m-0 focus-visible:ring-0 p-6"><CapaSystemicRootCause isLocked={isLocked} /></TabsContent>
+                        <TabsContent value="conclusion" className="m-0 focus-visible:ring-0 p-6"><CapaPhaseConclusion isLocked={isLocked} /></TabsContent>
                     </div>
                 </Tabs>
             );
-            case 'Resolution': return <div className="p-10"><CapaResolution observation={observation} isLocked={isLocked} /></div>;
-            case 'Implementation': return <div className="p-10"><CapaImplementation observation={observation} isLocked={isLocked} /></div>;
-            case 'Effectiveness Review': return <div className="p-10"><CapaEffectivenessReview observation={observation} isLocked={isLocked} /></div>;
-            case 'Reference': return <div className="p-10"><CapaReference observation={observation} isLocked={isLocked} /></div>;
-            case 'Closure': return <div className="p-10"><CapaClosure observation={observation} isLocked={isLocked} /></div>;
+            case 'Resolution': return <div className="p-6"><CapaResolution observation={observation} isLocked={isLocked} /></div>;
+            case 'Implementation': return <div className="p-6"><CapaImplementation observation={observation} isLocked={isLocked} /></div>;
+            case 'Effectiveness Review': return <div className="p-6"><CapaEffectivenessReview observation={observation} isLocked={isLocked} /></div>;
+            case 'Reference': return <div className="p-6"><CapaReference observation={observation} isLocked={isLocked} /></div>;
+            case 'Closure': return <div className="p-6"><CapaClosure observation={observation} isLocked={isLocked} /></div>;
             default: return null;
         }
     };
 
     return (
-        <div className="space-y-8 text-left">
-            <div className="p-8 rounded-[2rem] bg-white border border-slate-200 shadow-sm flex items-center justify-between relative overflow-hidden">
-                <div className="flex items-center gap-8">
-                    <div className="h-14 w-14 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-blue-500/20">
+        <div className="ehs-stage-content space-y-5 text-left">
+            <div className="p-5 rounded-xl bg-white border border-slate-200 shadow-sm flex flex-wrap gap-5 items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-xl bg-blue-600 flex items-center justify-center text-white font-semibold text-2xl shadow-xl shadow-blue-500/20">
                         {String(STAGES.indexOf(stage) + 1).padStart(2, '0')}
                     </div>
                     <div>
-                        <h3 className="text-3xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">{stage}</h3>
-                        <p className="text-sm font-medium text-slate-500 leading-none">Institutional governance lifecycle stage.</p>
+                        <h3 className="text-2xl font-semibold text-slate-900 normal-case tracking-tight leading-none mb-2">{stage}</h3>
+                        <p className="text-sm font-medium text-slate-500 leading-none">Review the findings and evidence for this stage.</p>
                     </div>
                 </div>
                 
-                <div className="flex items-center gap-12 text-right">
+                <div className="flex flex-wrap items-center gap-5 text-right">
                     {assignee && (
                         <div className="flex flex-col items-end">
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
-                                {stage === 'Initiation' ? 'REPORTER / CREATOR' : 'PHASE ASSIGNEE'}
+                            <p className="text-sm font-semibold text-slate-400 normal-case tracking-normal mb-1.5">
+                                {stage === 'Initiation' ? 'Reported by' : 'Stage assignee'}
                             </p>
                             <div className="flex items-center gap-3">
                                 <div className="flex flex-col">
-                                    <p className="text-xs font-black text-slate-900 uppercase leading-none">{assignee.name}</p>
-                                    <p className="text-[9px] font-bold text-blue-600 uppercase tracking-widest mt-1">{assignee.role || 'Personnel'}</p>
+                                    <p className="text-xs font-semibold text-slate-900 normal-case leading-none">{assignee.name}</p>
+                                    <p className="text-sm font-bold text-blue-600 normal-case tracking-normal mt-1">{assignee.role || 'Personnel'}</p>
                                 </div>
                                 <Avatar className="h-10 w-10 border-2 border-slate-100 shadow-sm">
                                     <AvatarImage src={assignee.avatar} />
-                                    <AvatarFallback className="font-black text-xs bg-slate-900 text-white">{assignee.name[0]}</AvatarFallback>
+                                    <AvatarFallback className="font-semibold text-xs bg-slate-900 text-white">{assignee.name[0]}</AvatarFallback>
                                 </Avatar>
                                 {isAuthorizedToReassign && isCurrentStage && (
                                     <Popover open={isReassigning} onOpenChange={setIsReassigning}>
                                         <PopoverTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border border-slate-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all">
+                                            <Button aria-label="Reassign stage owner" variant="ghost" size="icon" className="h-8 w-8 rounded-full border border-slate-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all">
                                                 <UserPlus className="h-4 w-4" />
                                             </Button>
                                         </PopoverTrigger>
@@ -253,12 +253,12 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                                                     assignStageOwner(observation.id, stage, u.id);
                                                                     setIsReassigning(false);
                                                                 }}
-                                                                className="text-xs font-bold uppercase cursor-pointer"
+                                                                className="text-xs font-bold normal-case cursor-pointer"
                                                             >
                                                                 <Check className={cn("mr-2 h-4 w-4", u.id === sData?.assigneeId ? "opacity-100" : "opacity-0")} />
                                                                 <div className="flex flex-col leading-tight">
                                                                     <span>{u.name}</span>
-                                                                    <span className="text-[8px] opacity-60">{u.role}</span>
+                                                                    <span className="text-sm opacity-60">{u.role}</span>
                                                                 </div>
                                                             </CommandItem>
                                                         ))}
@@ -272,31 +272,31 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                         </div>
                     )}
                     <div className="flex flex-col items-end">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">TARGET DELIVERY</p>
+                        <p className="text-sm font-semibold text-slate-400 normal-case tracking-normal mb-1.5">Target date</p>
                         <div className="flex items-center gap-2 text-blue-600">
                             <Clock className="h-5 w-5" />
-                            <span className="text-xl font-black tracking-tighter">TBD</span>
+                            <span className="text-sm font-medium">{sData?.targetDate && isValid(parseISO(sData.targetDate)) ? format(parseISO(sData.targetDate), 'dd MMM yyyy') : 'Not set'}</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-[2.5rem] shadow-sm overflow-hidden min-h-[400px]">
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden min-h-[280px]">
                 {renderStageContent()}
                 
                 {/* --- UNIVERSAL ATTACHMENT REGISTRY --- */}
-                <div className="px-10 py-8 border-t bg-slate-50/30">
+                <div className="px-6 py-8 border-t bg-slate-50/30">
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-3">
                             <Paperclip className="h-5 w-5 text-blue-600" />
-                            <h4 className="text-[12px] font-black uppercase tracking-[0.2em] text-slate-800">ATTACH DOCUMENT</h4>
+                            <h4 className="text-sm font-semibold normal-case tracking-normal text-slate-800">Attach document</h4>
                         </div>
                         {!isLocked && (
                             <div className="relative">
-                                <Button variant="outline" className="h-9 px-6 rounded-lg font-black uppercase tracking-widest text-[9px] border-2 bg-white gap-2 shadow-sm" disabled={isUploading}>
-                                    <Upload className="h-3.5 w-3.5" /> {isUploading ? 'SYNCING...' : 'ATTACH DOCUMENT'}
+                                <Button variant="outline" className="h-9 px-6 rounded-lg font-semibold normal-case tracking-normal text-sm border-2 bg-white gap-2 shadow-sm" disabled={isUploading}>
+                                    <Upload className="h-3.5 w-3.5" /> {isUploading ? 'SYNCING...' : 'Attach document'}
                                 </Button>
-                                <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileChange} disabled={isUploading} />
+                                <input type="file" aria-label="Attach document" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileChange} disabled={isUploading} />
                             </div>
                         )}
                     </div>
@@ -309,11 +309,11 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                         <FileText className="h-5 w-5 text-blue-600" />
                                     </div>
                                     <div className="min-w-0">
-                                        <p className="text-[11px] font-bold text-slate-900 truncate uppercase tracking-tight">{att.name}</p>
-                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Sync: {format(parseISO(att.uploadedAt), 'dd MMM, HH:mm')}</p>
+                                        <p className="text-sm font-bold text-slate-900 truncate normal-case tracking-tight">{att.name}</p>
+                                        <p className="text-sm font-semibold text-slate-400 normal-case tracking-normal mt-0.5">Sync: {format(parseISO(att.uploadedAt), 'dd MMM, HH:mm')}</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex items-center gap-1 opacity-100 transition-opacity">
                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:bg-blue-50 rounded-lg" onClick={() => setViewingAttachmentUrl(att.url)}>
                                         <ExternalLink className="h-4 w-4" />
                                     </Button>
@@ -331,12 +331,12 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                                             </AlertDialogTrigger>
                                             <AlertDialogContent>
                                                 <AlertDialogHeader>
-                                                    <AlertDialogTitle className="text-xl font-black uppercase tracking-tight">DELETE ATTACHMENT?</AlertDialogTitle>
+                                                    <AlertDialogTitle className="text-xl font-semibold normal-case tracking-tight">DELETE ATTACHMENT?</AlertDialogTitle>
                                                     <AlertDialogDescription className="text-sm font-medium">Permanently remove "{att.name}" from the institutional registry?</AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
                                                     <AlertDialogCancel className="font-bold">Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction className="bg-rose-600 hover:bg-rose-700 text-white font-black" onClick={() => deleteStageAttachment(observation.id, stage, att.id)}>DELETE</AlertDialogAction>
+                                                    <AlertDialogAction className="bg-rose-600 hover:bg-rose-700 text-white font-semibold" onClick={() => deleteStageAttachment(observation.id, stage, att.id)}>DELETE</AlertDialogAction>
                                                 </AlertDialogFooter>
                                             </AlertDialogContent>
                                         </AlertDialog>
@@ -345,9 +345,9 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                             </div>
                         ))}
                         {attachments.length === 0 && (
-                            <div className="col-span-full py-8 text-center bg-slate-50/50 border-2 border-dashed rounded-[2rem] border-slate-200">
+                            <div className="col-span-full py-8 text-center bg-slate-50/50 border-2 border-dashed rounded-xl border-slate-200">
                                 <Paperclip className="h-6 w-6 mx-auto mb-2 opacity-20 text-slate-400" />
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">No documents attached for this milestone.</p>
+                                <p className="text-sm font-semibold normal-case tracking-normal text-slate-400">No documents attached for this milestone.</p>
                             </div>
                         )}
                     </div>
@@ -428,25 +428,25 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
 
     return (
         <div className="w-full text-left">
-            <div className="p-10 space-y-10">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="p-6 space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* LEFT COLUMN: LOGISTICS */}
                     <div className="space-y-8">
-                        <SectionHeading icon={MapPin} title="DETAILS" />
+                        <SectionHeading icon={MapPin} title="Details" />
                         <div className="space-y-6">
-                            <EditableMeta label="Discovery Category" value={observation.category} isEditing={isEditing} type="select" options={['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']} onChange={val => setFormData(p => ({ ...p, category: val }))} icon={Search} />
-                            <EditableMeta label="Risk Severity" value={observation.severity} isEditing={isEditing} type="select" options={['Low', 'Medium', 'High', 'Critical']} onChange={val => setFormData(p => ({ ...p, severity: val }))} icon={ShieldCheck} />
-                            <EditableMeta label="Operational Site" value={project?.name || observation.projectId} isEditing={isEditing} type="select" options={projects.map(p => ({ id: p.id, name: p.name }))} onChange={val => setFormData(p => ({ ...p, projectId: val }))} icon={MapPin} />
-                            <EditableMeta label="Specific Location" value={observation.location} isEditing={isEditing} type="text" onChange={val => setFormData(p => ({ ...p, location: val }))} icon={MapPin} />
+                            <EditableMeta label="Discovery Category" value={isEditing ? formData.category : observation.category} isEditing={isEditing} type="select" options={['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental']} onChange={val => setFormData(p => ({ ...p, category: val }))} icon={Search} />
+                            <EditableMeta label="Risk Severity" value={isEditing ? formData.severity : observation.severity} isEditing={isEditing} type="select" options={['Low', 'Medium', 'High', 'Critical']} onChange={val => setFormData(p => ({ ...p, severity: val }))} icon={ShieldCheck} />
+                            <EditableMeta label="Operational Site" value={isEditing ? formData.projectId : (project?.name || observation.projectId)} isEditing={isEditing} type="select" options={projects.map(p => ({ id: p.id, name: p.name }))} onChange={val => setFormData(p => ({ ...p, projectId: val }))} icon={MapPin} />
+                            <EditableMeta label="Specific Location" value={isEditing ? formData.location : observation.location} isEditing={isEditing} type="text" onChange={val => setFormData(p => ({ ...p, location: val }))} icon={MapPin} />
                         </div>
                     </div>
 
                     {/* RIGHT COLUMN: NARRATIVE */}
                     <div className="space-y-8">
                         <div className="flex justify-between items-center">
-                            <SectionHeading icon={FileText} title="SUMMARY" />
+                            <SectionHeading icon={FileText} title="Summary" />
                             {isAuthorized && !isEditing && (
-                                <Button variant="ghost" size="sm" className="h-7 px-3 text-[9px] font-black uppercase border border-slate-200" onClick={() => setIsEditing(true)}>
+                                <Button variant="ghost" size="sm" className="h-7 px-3 text-sm font-semibold normal-case border border-slate-200" onClick={() => setIsEditing(true)}>
                                     <Edit3 className="h-3 w-3 mr-1.5" /> OVERWRITE
                                 </Button>
                             )}
@@ -454,24 +454,24 @@ function CapaInitiation({ observation, onViewImage }: { observation: EhsObservat
                         <div className="space-y-6">
                             {isEditing ? (
                                 <div className="space-y-2">
-                                    <Label className="text-[9px] font-extrabold uppercase tracking-widest text-[#304B68]">Finding Description</Label>
-                                    <Textarea className="min-h-[400px] rounded-[10px] border-[#DCE5EF] bg-white text-[10px]" value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} />
+                                    <Label className="text-sm font-semibold normal-case tracking-normal text-[#304B68]">Finding Description</Label>
+                                    <Textarea aria-label="Finding description" className="min-h-[180px] rounded-[10px] border-[#DCE5EF] bg-white text-sm" value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} />
                                     <div className="flex justify-end gap-2 pt-2">
-                                        <Button variant="outline" size="sm" className="h-8 text-[9px]" onClick={() => setIsEditing(false)}>CANCEL</Button>
-                                        <Button size="sm" className="h-8 text-[9px] bg-[#1769FF]" onClick={handleSave}>SAVE CHANGES</Button>
+                                        <Button variant="outline" size="sm" className="h-8 text-sm" onClick={() => setIsEditing(false)}>Cancel</Button>
+                                        <Button size="sm" className="h-8 text-sm bg-[#1769FF]" onClick={handleSave}>Save changes</Button>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="p-8 rounded-xl bg-slate-50 border border-[#DCE5EF] shadow-inner min-h-[400px]">
-                                    <p className="text-sm font-bold text-slate-700 leading-relaxed uppercase tracking-tight">
-                                        {sanitizedDescription}
+                                <div className="p-8 rounded-xl bg-slate-50 border border-[#DCE5EF] shadow-none min-h-[180px]">
+                                    <p className="text-sm font-bold text-slate-700 leading-relaxed normal-case tracking-tight">
+                                        {sanitizedDescription || "No summary provided."}
                                     </p>
                                 </div>
                             )}
 
                             {extractedEvidenceUrl && (
                                 <div className="space-y-2">
-                                    <Label className="text-[9px] font-extrabold uppercase tracking-widest text-[#304B68]">Discovery Evidence</Label>
+                                    <Label className="text-sm font-semibold normal-case tracking-normal text-[#304B68]">Discovery Evidence</Label>
                                     <div 
                                         className="h-32 w-48 rounded-lg border-2 border-slate-200 bg-white overflow-hidden relative group/img cursor-zoom-in"
                                         onClick={() => onViewImage(extractedEvidenceUrl)}
@@ -495,7 +495,7 @@ function SectionHeading({ icon: Icon, title }: { icon: any, title: string }) {
     return (
         <div className="flex items-center gap-3">
             <Icon className="h-4 w-4 text-[#1769FF]" />
-            <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-[#304B68]">{title}</h4>
+            <h4 className="text-sm font-semibold normal-case tracking-normal text-[#304B68]">{title}</h4>
         </div>
     );
 }
@@ -503,14 +503,14 @@ function SectionHeading({ icon: Icon, title }: { icon: any, title: string }) {
 function EditableMeta({ label, value, isEditing, type, options, onChange, icon: Icon }: { label: string, value: string, isEditing: boolean, type: 'text' | 'select', options?: any[], onChange: (val: any) => void, icon?: any }) {
     return (
         <div className="space-y-2.5">
-            <Label className="flex items-center gap-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#304B68] ml-1">
+            <Label className="flex items-center gap-2 text-sm font-semibold normal-case tracking-normal text-[#304B68] ml-1">
                 {Icon && <Icon className="h-3 w-3 text-[#7A9ABB]" />}
                 {label}
             </Label>
             {isEditing ? (
                 type === 'select' ? (
                     <Select value={value} onValueChange={onChange}>
-                        <SelectTrigger className="h-[42px] rounded-[10px] border-[#DCE5EF] bg-white px-3.5 text-[10px] font-bold uppercase text-[#243B53]">
+                        <SelectTrigger aria-label={label} className="h-[42px] rounded-[10px] border-[#DCE5EF] bg-white px-3.5 text-sm font-bold normal-case text-[#243B53]">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -522,11 +522,11 @@ function EditableMeta({ label, value, isEditing, type, options, onChange, icon: 
                         </SelectContent>
                     </Select>
                 ) : (
-                    <Input className="h-[42px] rounded-[10px] border-[#DCE5EF] bg-white text-[10px]" value={value} onChange={e => onChange(e.target.value)} />
+                    <Input aria-label={label} className="h-[42px] rounded-[10px] border-[#DCE5EF] bg-white text-sm" value={value} onChange={e => onChange(e.target.value)} />
                 )
             ) : (
                 <div className="h-[42px] px-3.5 flex items-center bg-slate-50 border border-[#DCE5EF] rounded-[10px]">
-                    <span className="text-[10px] font-bold text-[#102A43] uppercase truncate">{value}</span>
+                    <span className="text-sm font-bold text-[#102A43] normal-case truncate">{value}</span>
                 </div>
             )}
         </div>

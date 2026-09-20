@@ -23,6 +23,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { useAuth } from '@/contexts/auth-provider';
 import { useEhs } from '@/contexts/ehs-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { useToast } from '@/hooks/use-toast';
@@ -61,6 +62,7 @@ type FormValues = z.infer<typeof initiateSchema>;
 
 export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChange: (open: boolean) => void }) {
   const { addObservation } = useEhs();
+  const { user } = useAuth();
   const { projects } = useGeneral();
   const { toast } = useToast();
   const [pastedImage, setPastedImage] = useState<string | null>(null);
@@ -97,7 +99,8 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
   }, [form, toast]);
 
   const onSubmit = (data: FormValues) => {
-    addObservation(data);
+    if (!user) return;
+    addObservation({ ...data, reporterId: user.id });
     onOpenChange(false);
     setPastedImage(null);
     form.reset();
@@ -107,8 +110,8 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
     <Dialog open={isOpen} onOpenChange={(v) => { onOpenChange(v); if(!v) { setPastedImage(null); form.reset(); } }}>
       <DialogContent className="sm:max-w-3xl bg-white p-0 overflow-hidden border-none shadow-2xl rounded-2xl">
         <DialogHeader className="p-8 pb-4">
-          <DialogTitle className="text-2xl font-black text-[#0F172A] uppercase tracking-tight">INITIATE SAFETY OBSERVATION</DialogTitle>
-          <DialogDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest">PHASE 01: INITIAL DISCOVERY & CAPTURE</DialogDescription>
+          <DialogTitle className="text-2xl font-semibold text-[#0F172A] normal-case tracking-tight">New safety observation</DialogTitle>
+          <DialogDescription className="text-xs font-bold text-slate-400 normal-case tracking-normal">PHASE 01: INITIAL DISCOVERY & CAPTURE</DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="max-h-[80vh]">
@@ -123,16 +126,16 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
                 </p>
             </div>
 
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               
               {/* Step 1: Narrative */}
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                        <div className="h-6 w-6 rounded-full bg-[#2563EB] text-white flex items-center justify-center text-[10px] font-black">1</div>
-                        <Label className="text-[11px] font-black uppercase tracking-widest text-[#0F172A]">Safety Finding Narrative <span className="text-rose-500">*</span></Label>
+                        <div className="h-6 w-6 rounded-full bg-[#2563EB] text-white flex items-center justify-center text-sm font-semibold">1</div>
+                        <Label className="text-sm font-semibold normal-case tracking-normal text-[#0F172A]">Safety Finding Narrative <span className="text-rose-500">*</span></Label>
                     </div>
-                    <span className="text-[10px] font-medium text-slate-400">Provide a clear and concise description.</span>
+                    <span className="text-sm font-medium text-slate-400">Provide a clear and concise description.</span>
                 </div>
                 <div className="relative group">
                     <Textarea 
@@ -141,7 +144,7 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
                         placeholder="Describe the unsafe act or condition precisely..." 
                         className="min-h-[140px] rounded-xl p-6 font-medium text-sm bg-white border border-slate-200 focus-visible:ring-blue-100 focus-visible:border-blue-500 transition-all resize-none shadow-sm"
                     />
-                    <div className="absolute bottom-3 right-4 flex items-center gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                    <div className="absolute bottom-3 right-4 flex items-center gap-4 text-sm font-bold text-slate-400 normal-case tracking-tight">
                         <div className="flex items-center gap-1.5 opacity-60">
                             <Paperclip className="h-3 w-3" /> 
                             <span>Paste images supported</span>
@@ -154,7 +157,7 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
                         <div className="h-10 w-14 rounded border bg-white overflow-hidden shrink-0 flex items-center justify-center">
                             <img src={pastedImage} alt="Pasted" className="max-w-full max-h-full object-contain" />
                         </div>
-                        <p className="flex-1 text-[10px] font-black text-emerald-700 uppercase tracking-widest">EHS DISCOVERY IMAGE ATTACHED</p>
+                        <p className="flex-1 text-sm font-semibold text-emerald-700 normal-case tracking-normal">EHS DISCOVERY IMAGE ATTACHED</p>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-500" onClick={() => { setPastedImage(null); form.setValue('discoveryAttachmentUrl', null); }}>
                             <X className="h-4 w-4" />
                         </Button>
@@ -168,10 +171,10 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
                 <div className="space-y-4">
                     <div className="flex flex-col">
                         <div className="flex items-center gap-3 mb-1">
-                            <div className="h-6 w-6 rounded-full bg-[#2563EB] text-white flex items-center justify-center text-[10px] font-black">2</div>
-                            <Label className="text-[11px] font-black uppercase tracking-widest text-[#0F172A]">Observation Category <span className="text-rose-500">*</span></Label>
+                            <div className="h-6 w-6 rounded-full bg-[#2563EB] text-white flex items-center justify-center text-sm font-semibold">2</div>
+                            <Label className="text-sm font-semibold normal-case tracking-normal text-[#0F172A]">Observation Category <span className="text-rose-500">*</span></Label>
                         </div>
-                        <span className="text-[10px] font-medium text-slate-400 ml-9">Select the category that best describes this observation.</span>
+                        <span className="text-sm font-medium text-slate-400 ml-9">Select the category that best describes this observation.</span>
                     </div>
                     <Controller
                         control={form.control}
@@ -199,10 +202,10 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
                 <div className="space-y-4">
                     <div className="flex flex-col">
                         <div className="flex items-center gap-3 mb-1">
-                            <div className="h-6 w-6 rounded-full bg-[#2563EB] text-white flex items-center justify-center text-[10px] font-black">3</div>
-                            <Label className="text-[11px] font-black uppercase tracking-widest text-[#0F172A]">Risk Severity Index <span className="text-rose-500">*</span></Label>
+                            <div className="h-6 w-6 rounded-full bg-[#2563EB] text-white flex items-center justify-center text-sm font-semibold">3</div>
+                            <Label className="text-sm font-semibold normal-case tracking-normal text-[#0F172A]">Risk Severity Index <span className="text-rose-500">*</span></Label>
                         </div>
-                        <span className="text-[10px] font-medium text-slate-400 ml-9">Select the assessed risk level.</span>
+                        <span className="text-sm font-medium text-slate-400 ml-9">Select the assessed risk level.</span>
                     </div>
                     <Controller
                         control={form.control}
@@ -232,10 +235,10 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
                 <div className="space-y-4">
                     <div className="flex flex-col">
                         <div className="flex items-center gap-3 mb-1">
-                            <div className="h-6 w-6 rounded-full bg-[#2563EB] text-white flex items-center justify-center text-[10px] font-black">4</div>
-                            <Label className="text-[11px] font-black uppercase tracking-widest text-[#0F172A]">Operational Site <span className="text-rose-500">*</span></Label>
+                            <div className="h-6 w-6 rounded-full bg-[#2563EB] text-white flex items-center justify-center text-sm font-semibold">4</div>
+                            <Label className="text-sm font-semibold normal-case tracking-normal text-[#0F172A]">Operational Site <span className="text-rose-500">*</span></Label>
                         </div>
-                        <span className="text-[10px] font-medium text-slate-400 ml-9">Select the site where the observation occurred.</span>
+                        <span className="text-sm font-medium text-slate-400 ml-9">Select the site where the observation occurred.</span>
                     </div>
                     <Controller
                         control={form.control}
@@ -259,10 +262,10 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
                 <div className="space-y-4">
                     <div className="flex flex-col">
                         <div className="flex items-center gap-3 mb-1">
-                            <div className="h-6 w-6 rounded-full bg-[#2563EB] text-white flex items-center justify-center text-[10px] font-black">5</div>
-                            <Label className="text-[11px] font-black uppercase tracking-widest text-[#0F172A]">Specific Area / Unit</Label>
+                            <div className="h-6 w-6 rounded-full bg-[#2563EB] text-white flex items-center justify-center text-sm font-semibold">5</div>
+                            <Label className="text-sm font-semibold normal-case tracking-normal text-[#0F172A]">Specific Area / Unit</Label>
                         </div>
-                        <span className="text-[10px] font-medium text-slate-400 ml-9">Provide the specific area, unit or equipment (if applicable).</span>
+                        <span className="text-sm font-medium text-slate-400 ml-9">Provide the specific area, unit or equipment (if applicable).</span>
                     </div>
                     <div className="relative">
                         <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#2563EB] z-10" />
@@ -281,13 +284,13 @@ export default function CapaInitiateDialog({ isOpen, onOpenChange }: { isOpen: b
                     type="button" 
                     variant="outline" 
                     onClick={() => onOpenChange(false)}
-                    className="h-12 px-8 rounded-xl font-black uppercase tracking-widest text-[10px] border-2"
+                    className="h-12 px-8 rounded-xl font-semibold normal-case tracking-normal text-sm border-2"
                 >
                     Cancel
                 </Button>
                 <Button 
                     type="submit" 
-                    className="h-12 px-8 bg-[#2563EB] hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[10px] rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+                    className="h-12 px-8 bg-[#2563EB] hover:bg-blue-700 text-white font-semibold normal-case tracking-normal text-sm rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
                 >
                     <Send className="mr-2 h-4 w-4" /> Create Observation
                 </Button>

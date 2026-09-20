@@ -1,0 +1,10 @@
+.ehs-portal { color-scheme: light; --background: 0 0% 100%; --foreground: 222 47% 11%; --card: 0 0% 100%; --card-foreground: 222 47% 11%; --border: 214 32% 91%; --input: 214 32% 91%; --primary: 221 83% 53%; --primary-foreground: 0 0% 100%; --muted: 210 40% 96%; --muted-foreground: 215 16% 47%; --ring: 221 83% 53%; }
+.ehs-portal input:disabled, .ehs-portal textarea:disabled, .ehs-portal button[role="combobox"]:disabled { opacity: 1; color: #475569; background-color: #f8fafc; }
+.ehs-portal textarea { line-height: 1.6; }
+.ehs-portal :is(h1,h2,h3,h4) { text-wrap: balance; }
+.ehs-portal button:focus-visible, .ehs-portal a:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+.ehs-stage-content label { color: #475569; font-weight: 500; }
+.ehs-stage-content :is(input,textarea,[role="combobox"]) { font-weight: 400; font-size: 14px; }
+.ehs-stage-content [role="tablist"] { overflow-x: auto; }
+.ehs-stage-content [role="tab"] { white-space: nowrap; flex-shrink: 0; }
+@media (prefers-reduced-motion: reduce) { .ehs-portal *, .ehs-portal *::before, .ehs-portal *::after { animation: none !important; transition: none !important; } }
