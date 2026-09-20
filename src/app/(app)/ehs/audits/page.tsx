@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useEhs } from '@/contexts/ehs-provider';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
@@ -37,6 +37,14 @@ export default function EhsAuditsPage() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('new') === '1') {
+      setIsDialogOpen(true);
+      url.searchParams.delete('new');
+      window.history.replaceState(window.history.state, '', url.toString());
+    }
+  }, []);
   
   const [reviewingAuditId, setReviewingAuditId] = useState<string | null>(null);
   const [supervisorComment, setSupervisorComment] = useState('');

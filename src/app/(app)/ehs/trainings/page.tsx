@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useEhs } from '@/contexts/ehs-provider';
 import { useAuth } from '@/contexts/auth-provider';
 import { useManpower } from '@/contexts/manpower-provider';
@@ -38,6 +38,14 @@ export default function EhsTrainingsPage() {
   const { manpowerProfiles } = useManpower();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('new') === '1') {
+      setIsDialogOpen(true);
+      url.searchParams.delete('new');
+      window.history.replaceState(window.history.state, '', url.toString());
+    }
+  }, []);
   const [isAttendeePopoverOpen, setIsAttendeePopoverOpen] = useState(false);
 
   const form = useForm<TrainingFormValues>({
