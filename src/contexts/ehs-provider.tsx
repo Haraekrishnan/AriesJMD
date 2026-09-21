@@ -18,7 +18,8 @@ import type {
   CapaStage,
   CapaStageRecord,
   User,
-  NotificationSettings
+  NotificationSettings,
+  Comment
 } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
@@ -92,7 +93,7 @@ const generateInitialStages = (creatorId: string): Record<CapaStage, CapaStageRe
 };
 
 export function EhsProvider({ children }: { children: ReactNode }) {
-  const { user, users, addActivityLog } = useAuth();
+  const { user, users } = useAuth();
   const { toast } = useToast();
   const { notificationSettings } = useGeneral();
   

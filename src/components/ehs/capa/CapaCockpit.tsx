@@ -37,7 +37,7 @@ export default function CapaCockpit({observation,onClose}: {observation:EhsObser
  const reporter=users.find(u=>u.id===observation.reporterId);
  const changeStage=(next:CapaStage)=>{setViewingStage(next);};
  const nextStage=CAPA_STAGES[CAPA_STAGES.indexOf(viewingStage)+1];
- return <FormProvider {...methods}><div className="ehs-portal fixed inset-0 z-40 flex flex-col overflow-hidden bg-[#F5F7FB] text-slate-900">
+ return <FormProvider {...methods}><div className="ehs-portal absolute inset-0 z-40 flex flex-col overflow-hidden bg-[#F5F7FB] text-slate-900">
   <header className="shrink-0 border-b bg-white">
    <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 md:px-7">
     <div className="flex flex-wrap items-center gap-3"><Button variant="ghost" onClick={onClose} className="gap-1 px-2 text-blue-600"><ChevronLeft className="h-4 w-4" /><span className="hidden sm:inline">Observations</span></Button><span className="hidden h-6 w-px bg-slate-200 sm:block" /><h1 className="text-xl font-semibold tracking-tight">CAPA-{observation.id.slice(-6).toUpperCase()}</h1><Badge variant="outline" className={cn('rounded-md px-2.5 py-1 text-xs font-medium',observation.severity==='Low'?'border-emerald-100 bg-emerald-50 text-emerald-700':observation.severity==='Medium'?'border-amber-100 bg-amber-50 text-amber-700':'border-rose-100 bg-rose-50 text-rose-700')}>{observation.severity} risk</Badge><Badge className="rounded-md border-blue-100 bg-blue-50 px-2.5 py-1 font-medium text-blue-700">{observation.status}</Badge></div>
