@@ -47,7 +47,10 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
 
     const sData = observation.stages[viewingStage];
     const isSupervisor = user?.role === 'Admin' || user?.role === 'Senior Safety Supervisor' || user?.role === 'Project Coordinator';
+    
+    // A phase can be reviewed if it's the current one and in "In Progress" status
     const canReview = observation.currentStage === viewingStage && sData?.status === 'In Progress' && isSupervisor;
+    
     const isSubmitted = sData?.status === 'In Progress';
     const isAssignee = user?.id === sData?.assigneeId;
 
@@ -55,12 +58,13 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
         defaultValues: sData?.data || {}
     });
 
+    // CRITICAL: Synchronize form data when stage or observation changes
     useEffect(() => {
         methods.reset(sData?.data || {});
     }, [viewingStage, sData, methods]);
 
-    const completed = CAPA_STAGES.filter(s => observation.stages[s]?.status === 'Completed').length;
-    const progress = Math.round(completed / CAPA_STAGES.length * 100);
+    const completedCount = CAPA_STAGES.filter(s => observation.stages[s]?.status === 'Completed').length;
+    const progress = Math.round(completedCount / CAPA_STAGES.length * 100);
     const project = projects.find(p => p.id === observation.projectId);
     const reporter = users.find(u => u.id === observation.reporterId);
     
@@ -79,9 +83,9 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                                 <span className="hidden sm:inline">Observations</span>
                             </Button>
                             <span className="hidden h-6 w-px bg-slate-200 sm:block" />
-                            <h1 className="text-xl font-semibold tracking-tight uppercase">CAPA-{observation.id.slice(-6).toUpperCase()}</h1>
+                            <h1 className="text-xl font-bold tracking-tight uppercase">CAPA-{observation.id.slice(-6).toUpperCase()}</h1>
                             <Badge variant="outline" className={cn(
-                                'rounded-md px-2.5 py-1 text-xs font-black uppercase tracking-widest',
+                                'rounded-md px-2.5 py-1 text-[10px] font-black uppercase tracking-widest',
                                 observation.severity === 'Low' ? 'border-emerald-100 bg-emerald-50 text-emerald-700' :
                                 observation.severity === 'Medium' ? 'border-amber-100 bg-amber-50 text-amber-700' :
                                 'border-rose-100 bg-rose-50 text-rose-700'
@@ -113,7 +117,7 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                             </Button>
                         </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-3 text-xs text-slate-500 md:px-8 md:text-sm font-bold uppercase tracking-widest">
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-3 text-xs text-slate-500 md:px-8 font-bold uppercase tracking-widest">
                         <span className="flex items-center gap-2 text-slate-400">
                             <MapPin className="h-4 w-4 text-blue-600" />
                             {project?.name || 'Site not provided'}
@@ -130,7 +134,7 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                     <div className="flex items-center overflow-x-auto border-t bg-slate-50/60 px-4 md:px-7">
                         <div className="mr-5 hidden w-[150px] shrink-0 md:block">
                             <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                {completed} of 7 complete <strong className="ml-2 text-blue-600">{progress}%</strong>
+                                {completedCount} of 7 complete <strong className="ml-2 text-blue-600">{progress}%</strong>
                             </p>
                             <div role="progressbar" aria-label="Case completion" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} className="h-1.5 overflow-hidden rounded-full bg-slate-200">
                                 <div className="h-full rounded-full bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.5)]" style={{ width: progress + '%' }} />
@@ -149,18 +153,18 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                                 <div className="flex items-center gap-3">
                                     {isSubmitted ? (
-                                        <div className="flex items-center gap-3 bg-blue-600 text-white px-6 py-2.5 rounded-full shadow-[0_0_20px_rgba(37,99,235,0.8)] animate-pulse border-2 border-blue-400/30">
-                                            <Clock className="h-5 w-5 text-white" />
-                                            <span className="text-[11px] font-black uppercase tracking-[0.2em]">STAGE STATUS: REVIEW PENDING</span>
+                                        <div className="flex items-center gap-3 bg-blue-600 text-white px-6 py-2.5 rounded-full shadow-[0_0_20px_rgba(37,99,235,0.6)] animate-pulse border-2 border-blue-400/30">
+                                            <Clock className="h-4 w-4 text-white" />
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">REVIEW PENDING</span>
                                         </div>
                                     ) : (
                                         <div className="flex items-center gap-3">
                                             <div className="p-2 rounded-full bg-blue-50">
-                                                <RotateCcw className="h-5 w-5 text-blue-600" />
+                                                <RotateCcw className="h-4 w-4 text-blue-600" />
                                             </div>
                                             <div>
-                                                <p className="text-sm font-black uppercase tracking-tight">STAGE IN PROGRESS</p>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Technical findings under development</p>
+                                                <p className="text-xs font-black uppercase tracking-tight">PHASE IN PROGRESS</p>
+                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Findings under development</p>
                                             </div>
                                         </div>
                                     )}
@@ -169,7 +173,7 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                                 <div className="flex items-center gap-3">
                                     {isAssignee && !isSubmitted && viewingStage !== 'Initiation' && (
                                         <div className="flex items-center gap-2">
-                                            <Button variant="outline" className="font-black uppercase text-[10px] h-11 tracking-widest px-6" onClick={() => actionStage(observation.id, viewingStage, methods.getValues(), false)}>
+                                            <Button variant="outline" className="font-black uppercase text-[10px] h-11 tracking-widest px-6 border-2" onClick={() => actionStage(observation.id, viewingStage, methods.getValues(), false)}>
                                                 <Save className="mr-2 h-4 w-4" /> Save as Draft
                                             </Button>
                                             <Button className="bg-[#2563EB] hover:bg-blue-700 text-white font-black uppercase text-[10px] h-11 tracking-widest px-8 shadow-lg shadow-blue-500/20" onClick={() => actionStage(observation.id, viewingStage, methods.getValues(), true)}>
@@ -197,11 +201,13 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                 <Dialog open={!!reviewAction} onOpenChange={open => !open && setReviewAction(null)}>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle className="font-black uppercase tracking-tight text-slate-900">{reviewAction === 'Completed' ? 'Verify Phase Findings' : 'Instruct Technical Rework'}</DialogTitle>
-                            <DialogDescription className="text-slate-500 font-bold text-xs uppercase tracking-widest">Record your validation notes for the permanent institutional ledger.</DialogDescription>
+                            <DialogTitle className="font-black uppercase tracking-tight text-slate-900">
+                                {reviewAction === 'Completed' ? 'Verify Phase Findings' : 'Instruct Technical Rework'}
+                            </DialogTitle>
+                            <DialogDescription className="text-slate-500 font-bold text-[10px] uppercase tracking-widest">Record your validation notes for the permanent institutional ledger.</DialogDescription>
                         </DialogHeader>
                         <div className="space-y-2 py-3 text-left">
-                            <Label htmlFor="review-comment" className="font-black text-[10px] uppercase tracking-widest text-blue-600">Verification Notes / Instructions</Label>
+                            <Label htmlFor="review-comment" className="font-black text-[9px] uppercase tracking-widest text-blue-600">Verification Notes / Instructions</Label>
                             <Textarea id="review-comment" value={reviewComment} onChange={e => setReviewComment(e.target.value)} placeholder="Explain your decision…" className="min-h-[130px] rounded-xl bg-slate-50 border-slate-200 font-bold text-sm shadow-inner p-4" />
                         </div>
                         <DialogFooter>
@@ -209,7 +215,7 @@ export default function CapaCockpit({ observation, onClose }: { observation: Ehs
                             <Button 
                                 className={cn(
                                     "h-12 px-8 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg",
-                                    reviewAction === 'Completed' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-rose-600 hover:bg-rose-700 text-white'
+                                    reviewAction === 'Completed' ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-rose-600 hover:bg-rose-700 text-white"
                                 )}
                                 onClick={() => {
                                     if (!reviewAction || !canReview) return;

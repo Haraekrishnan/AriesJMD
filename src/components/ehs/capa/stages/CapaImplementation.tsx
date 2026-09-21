@@ -24,33 +24,33 @@ export default function CapaImplementation({ observation, isLocked }: Props) {
     const { register } = useFormContext();
 
     return (
-        <div className="p-8 space-y-10">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* LEFT COLUMN */}
                 <div className="space-y-6">
                     <SectionHeading icon={ShieldCheck} title="Corrective Actions (CA)" />
                     <div className="space-y-6">
                         <div className="space-y-2">
-                            <Label className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500 ml-1">
+                            <Label className="flex items-center gap-1.5 text-sm font-semibold normal-case tracking-normal text-slate-500 ml-1">
                                 Action Execution Details <span className="text-red-500">*</span>
                             </Label>
                             <Textarea 
                                 disabled={isLocked}
                                 placeholder="Technical steps taken to eliminate root cause locally..."
-                                {...register('corrective')}
-                                className="min-h-[140px] rounded-xl border-slate-200 bg-white px-4 py-3 text-xs font-bold leading-relaxed text-slate-900 shadow-sm focus-visible:ring-blue-100"
+                                aria-label="Corrective action details" {...register('corrective')}
+                                className="min-h-[140px] rounded-xl border-slate-200 bg-white px-4 py-3 text-xs font-normal leading-relaxed text-slate-900 shadow-sm focus-visible:ring-blue-100"
                             />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                              <div className="space-y-2">
-                                <Label className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500 ml-1">
+                                <Label className="flex items-center gap-1.5 text-sm font-semibold normal-case tracking-normal text-slate-500 ml-1">
                                     <Calendar className="h-3.5 w-3.5 text-slate-300" />
                                     Target Date
                                 </Label>
                                 <Input 
                                     type="date"
                                     disabled={isLocked}
-                                    {...register('targetDate')}
+                                    aria-label="Target date" {...register('targetDate')}
                                     className="h-10 rounded-lg border-slate-200 bg-white px-3 text-xs font-bold text-slate-900 focus-visible:ring-blue-100 shadow-sm"
                                 />
                             </div>
@@ -63,13 +63,13 @@ export default function CapaImplementation({ observation, isLocked }: Props) {
                     <SectionHeading icon={Zap} title="Preventive Actions (PA)" />
                     <div className="space-y-6">
                         <div className="space-y-2">
-                            <Label className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500 ml-1">
+                            <Label className="flex items-center gap-1.5 text-sm font-semibold normal-case tracking-normal text-slate-500 ml-1">
                                 Systemic Recurrence Controls <span className="text-red-500">*</span>
                             </Label>
                             <Textarea 
                                 disabled={isLocked}
                                 placeholder="Organizational changes to prevent global recurrence..."
-                                {...register('preventive')}
+                                aria-label="Preventive controls" {...register('preventive')}
                                 className="min-h-[140px] rounded-xl border-slate-200 bg-white px-4 py-3 text-xs font-bold leading-relaxed text-slate-900 shadow-sm focus-visible:ring-blue-100"
                             />
                         </div>
@@ -84,7 +84,7 @@ function SectionHeading({ icon: Icon, title }: { icon: any, title: string }) {
     return (
         <div className="flex items-center gap-2">
             <Icon className="h-4 w-4 text-blue-600" />
-            <h4 className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-500">{title}</h4>
+            <h4 className="text-sm font-semibold normal-case tracking-normal text-slate-500">{title}</h4>
         </div>
     );
 }

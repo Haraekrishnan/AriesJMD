@@ -1377,3 +1377,5 @@ export type JobSchedule = {
   isLocked?: boolean;
   name?: string;
 };
+
+export type { EhsAudit, EhsAuditStatus, EhsIncident, EhsIncidentStatus, EhsRiskAssessment, EhsTraining, EhsSupportTicket, EhsContactInfo } from './ehs-types';

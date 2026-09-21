@@ -64,14 +64,14 @@ export default function CapaResolution({ observation, isLocked }: Props) {
     }, [isLocked, observation.id, addStageAttachment, toast]);
 
     return (
-        <div className="p-8 space-y-10">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-6 text-left">
-                    <SectionHeading icon={Activity} title="TECHNICAL STRATEGY" />
+                    <SectionHeading icon={Activity} title="Root cause summary" />
                     <div className="space-y-6">
-                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 shadow-inner space-y-2">
-                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Root Cause Summary (W5)</p>
-                            <p className="text-[11px] font-bold text-slate-800 leading-relaxed uppercase italic">
+                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 shadow-none space-y-2">
+                            <p className="text-sm font-semibold text-slate-400 normal-case tracking-normal">Root Cause Summary (W5)</p>
+                            <p className="text-sm font-bold text-slate-800 leading-relaxed normal-case italic">
                                 {observation.stages['Investigation']?.data?.why5 || 'Technical investigation findings pending verification.'}
                             </p>
                         </div>
@@ -79,19 +79,19 @@ export default function CapaResolution({ observation, isLocked }: Props) {
                 </div>
 
                 <div className="space-y-6 text-left">
-                    <SectionHeading icon={Zap} title="REMEDIATION CONTEXT" />
+                    <SectionHeading icon={Zap} title="Remediation plan" />
                     <div className="space-y-6">
                         <div className="space-y-2">
-                            <Label className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500 ml-1">
+                            <Label className="flex items-center gap-1.5 text-sm font-semibold normal-case tracking-normal text-slate-500 ml-1">
                                 <ShieldAlert className="h-3.5 w-3.5 text-rose-500" />
                                 Remediation Plan <span className="text-rose-500">*</span>
                             </Label>
                             <Textarea 
                                 disabled={isLocked}
                                 placeholder="Describe technical strategy for containment and long-term resolution..."
-                                {...register('action')}
+                                aria-label="Remediation plan" {...register('action')}
                                 onPaste={handlePaste}
-                                className="min-h-[140px] rounded-xl border-slate-200 bg-white px-4 py-3 text-xs font-bold leading-relaxed text-slate-900 shadow-sm focus-visible:ring-blue-100"
+                                className="min-h-[140px] rounded-xl border-slate-200 bg-white px-4 py-3 text-xs font-normal leading-relaxed text-slate-900 shadow-sm focus-visible:ring-blue-100"
                             />
                         </div>
                     </div>
@@ -105,7 +105,7 @@ function SectionHeading({ icon: Icon, title }: { icon: any; title: string }) {
     return (
         <div className="flex items-center gap-2">
             <Icon className="h-4 w-4 text-[#1769FF]" />
-            <h4 className="text-[9px] font-black uppercase tracking-[0.25em] text-[#304B68]">{title}</h4>
+            <h4 className="text-sm font-semibold normal-case tracking-normal text-[#304B68]">{title}</h4>
         </div>
     );
 }

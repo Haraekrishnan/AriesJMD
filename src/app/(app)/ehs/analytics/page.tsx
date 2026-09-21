@@ -1,163 +1,258 @@
 'use client';
-
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  BarChart3, 
-  Activity, 
-  Target, 
-  TrendingUp, 
-  Download,
-  Calendar,
-  Users,
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { useEhs } from '@/contexts/ehs-provider';
+import { useGeneral } from '@/contexts/general-provider';
+import { RecordSelect, RecordMetrics } from '@/components/ehs/RecordToolbar';
+import { dashboardSummary, type DashboardPeriod } from '@/lib/ehs-dashboard';
+import { downloadRecords } from '@/lib/ehs-records';
 import { Button } from '@/components/ui/button';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import { Download, BarChart3 } from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
 } from 'recharts';
 
-const dummyStats = [
-  { name: 'Mechanical', value: 45, color: '#2563eb' },
-  { name: 'Electrical', value: 25, color: '#059669' },
-  { name: 'Operational', value: 20, color: '#d97706' },
-  { name: 'Structural', value: 10, color: '#e11d48' },
-];
-
-const complianceHistory = [
-  { month: 'Oct', score: 82 },
-  { month: 'Nov', score: 85 },
-  { month: 'Dec', score: 84 },
-  { month: 'Jan', score: 89 },
-  { month: 'Feb', score: 91 },
-  { month: 'Mar', score: 94 },
-];
-
 export default function EhsAnalyticsPage() {
+  const { incidents, audits, trainings, observations } = useEhs();
+  const { projects } = useGeneral();
+  const [site, setSite] = useState('all');
+  const [period, setPeriod] = useState<DashboardPeriod>('twelve-months');
+  const summary = dashboardSummary(incidents, audits, trainings, site, period);
+  const now = new Date();
+  const selected = observations.filter((o) => {
+    const date = new Date(o.createdAt);
+    return (
+      date >= summary.start &&
+      date <= now &&
+      (site === 'all' || o.projectId === site)
+    );
+  });
+  const closed = selected.filter((o) => o.status === 'Closed').length;
+  const categories = [...new Set(selected.map((o) => o.category))].map(
+    (name) => ({
+      name,
+      count: selected.filter((o) => o.category === name).length,
+    }),
+  );
+  const highRisk = selected.filter(
+    (o) =>
+      o.status !== 'Closed' &&
+      (o.severity === 'High' || o.severity === 'Critical'),
+  ).length;
   return (
-    <div className="space-y-8 text-slate-900">
-      <div className="flex justify-between items-center">
+    <div className="mx-auto max-w-[1600px] space-y-6 p-5 text-slate-900 md:p-8">
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight">EHS Analytics</h1>
-          <p className="text-slate-600 font-medium">Advanced statistical insights into organizational safety health.</p>
+          <p className="mb-2 text-xs text-slate-500">
+            Workspace / Safety management
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight">
+            EHS analytics
+          </h1>
+          <p className="mt-2 text-sm text-slate-500">
+            Recorded trends, observation categories and case outcomes.
+          </p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline" className="bg-white border-slate-200 text-slate-700 font-bold rounded-xl h-11 px-6 shadow-sm hover:bg-slate-50">
-            <Calendar className="mr-2 h-4 w-4" /> Last 12 Months
-          </Button>
-          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] tracking-widest h-11 px-8 rounded-xl shadow-lg shadow-emerald-600/10">
-            <Download className="mr-2 h-4 w-4" /> Export PowerBI
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Trend Chart */}
-        <Card className="lg:col-span-2 bg-white border-slate-200 shadow-sm rounded-3xl">
-          <CardHeader>
-            <CardTitle className="text-slate-900 text-lg flex items-center gap-2 font-black uppercase tracking-tight">
-              <TrendingUp className="h-5 w-5 text-emerald-600" /> Safety Compliance Growth
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[400px] w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={complianceHistory}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="month" stroke="#94a3b8" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} />
-                  <YAxis domain={[0, 100]} stroke="#94a3b8" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                  />
-                  <Line type="monotone" dataKey="score" stroke="#059669" strokeWidth={5} dot={{ fill: '#059669', r: 6, strokeWidth: 3, stroke: '#fff' }} activeDot={{ r: 8 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Hazard Categories Pie */}
-        <Card className="bg-white border-slate-200 shadow-sm rounded-3xl">
-          <CardHeader>
-            <CardTitle className="text-slate-900 text-lg flex items-center gap-2 font-black uppercase tracking-tight">
-              <Target className="h-5 w-5 text-indigo-600" /> Hazard Distribution
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px] w-full flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={dummyStats}
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={8}
-                    dataKey="value"
-                  >
-                    {dummyStats.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="space-y-3 mt-6">
-              {dummyStats.map((stat, i) => (
-                <div key={i} className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-md" style={{ backgroundColor: stat.color }} />
-                    <span className="text-slate-500">{stat.name}</span>
+        <Button
+          variant="outline"
+          className="gap-2 bg-white"
+          onClick={() =>
+            downloadRecords('ehs-analytics', [
+              ['Reporting period', summary.periodLabel],
+              [
+                'Site',
+                site === 'all'
+                  ? 'All sites'
+                  : projects.find((p) => p.id === site)?.name || site,
+              ],
+              [
+                'Month',
+                'Incidents',
+                'Approved audit score',
+                'Approved audit count',
+              ],
+              ...summary.months.map((m) => [
+                m.label,
+                m.incidents,
+                m.auditScore ?? '',
+                m.auditCount,
+              ]),
+              [],
+              ['Observation category', 'Count'],
+              ...categories.map((c) => [c.name, c.count]),
+              [],
+              ['Cases reported', selected.length],
+              ['Closed', closed],
+              ['Open high / critical risk', highRisk],
+            ])
+          }
+        >
+          <Download className="h-4 w-4" />
+          Export CSV
+        </Button>
+      </header>
+      <section className="flex flex-wrap items-end gap-4 rounded-xl border bg-white p-4 shadow-sm">
+        <RecordSelect
+          label="Reporting period"
+          value={period}
+          onChange={(value) => setPeriod(value as DashboardPeriod)}
+          options={[
+            { value: 'six-months', label: 'Last 6 months' },
+            { value: 'twelve-months', label: 'Last 12 months' },
+            { value: 'this-year', label: 'This year' },
+          ]}
+        />
+        <RecordSelect
+          label="Site"
+          value={site}
+          onChange={setSite}
+          options={[
+            { value: 'all', label: 'All sites' },
+            ...projects.map((p) => ({ value: p.id, label: p.name })),
+          ]}
+        />
+        <p className="pb-3 text-sm text-slate-500">{summary.periodLabel}</p>
+        <span className="ml-auto rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-700">
+          Recorded EHS data
+        </span>
+      </section>
+      <RecordMetrics
+        items={[
+          { label: 'Observations reported', value: selected.length },
+          {
+            label: 'Cases closed',
+            value: closed,
+            note: 'Among observations reported in this period',
+          },
+          { label: 'Open high / critical risk', value: highRisk },
+          {
+            label: 'Average approved audit score',
+            value:
+              summary.auditScore === null
+                ? '—'
+                : summary.auditScore.toFixed(1) + '%',
+            note: summary.auditCount + ' approved audits',
+          },
+        ]}
+      />
+      <div className="grid gap-6 xl:grid-cols-3">
+        <section className="rounded-xl border bg-white p-6 shadow-sm xl:col-span-2">
+          <h2 className="font-semibold">Incident trend</h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Monthly reports across the selected period
+          </p>
+          <div className="mt-6 h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={summary.months}>
+                <CartesianGrid
+                  stroke="#e2e8f0"
+                  strokeDasharray="3 3"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="month"
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={12}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={12}
+                />
+                <Tooltip
+                  labelFormatter={(_, payload) =>
+                    payload?.[0]?.payload?.label || ''
+                  }
+                />
+                <Bar
+                  dataKey="incidents"
+                  name="Incidents"
+                  fill="#2563eb"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={36}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="mt-3 text-xs text-slate-500">
+            {summary.incidents} incidents recorded in this period.
+          </p>
+        </section>
+        <section className="rounded-xl border bg-white p-6 shadow-sm">
+          <h2 className="font-semibold">Observation categories</h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Share of cases reported in the selected period
+          </p>
+          <div className="mt-8 space-y-6">
+            {categories.length ? (
+              categories.map((c) => (
+                <div key={c.name}>
+                  <div className="mb-2 flex justify-between gap-3 text-sm">
+                    <span>{c.name}</span>
+                    <span className="font-medium">
+                      {c.count} ·{' '}
+                      {Math.round((c.count / selected.length) * 100)}%
+                    </span>
                   </div>
-                  <span className="text-slate-900">{stat.value}%</span>
+                  <div className="h-2 rounded-full bg-slate-100">
+                    <div
+                      className="h-2 rounded-full bg-blue-600"
+                      style={{ width: (c.count / selected.length) * 100 + '%' }}
+                    />
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="py-12 text-center text-sm text-slate-500">
+                <BarChart3 className="mx-auto mb-4 h-10 w-10 text-slate-300" />
+                No observations in this period.
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+      <section className="overflow-hidden rounded-xl border bg-white shadow-sm">
+        <div className="p-5">
+          <h2 className="font-semibold">Monthly performance</h2>
+          <p className="mt-1 text-xs text-slate-500">
+            An empty audit score means no valid approved audit was recorded.
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[520px] text-left text-sm">
+            <thead className="border-y bg-slate-50 text-slate-500">
+              <tr>
+                {['Month', 'Incidents', 'Approved audits', 'Average score'].map(
+                  (t) => (
+                    <th key={t} className="px-5 py-3 font-medium">
+                      {t}
+                    </th>
+                  ),
+                )}
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {summary.months.map((m) => (
+                <tr key={m.key}>
+                  <td className="px-5 py-3">{m.label}</td>
+                  <td className="px-5 py-3">{m.incidents}</td>
+                  <td className="px-5 py-3">{m.auditCount}</td>
+                  <td className="px-5 py-3">
+                    {m.auditScore === null ? '—' : m.auditScore + '%'}
+                  </td>
+                </tr>
               ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-white border-slate-200 p-8 flex items-center gap-6 shadow-sm rounded-3xl">
-          <div className="bg-emerald-50 p-5 rounded-2xl">
-            <Activity className="h-8 w-8 text-emerald-600" />
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Safe Work Days</p>
-            <p className="text-4xl font-black text-slate-900 tracking-tighter">452</p>
-          </div>
-        </Card>
-        
-        <Card className="bg-white border-slate-200 p-8 flex items-center gap-6 shadow-sm rounded-3xl">
-          <div className="bg-rose-50 p-5 rounded-2xl">
-            <BarChart3 className="h-8 w-8 text-rose-600" />
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Hazard Ratio</p>
-            <p className="text-4xl font-black text-slate-900 tracking-tighter">0.42</p>
-          </div>
-        </Card>
-
-        <Card className="bg-white border-slate-200 p-8 flex items-center gap-6 shadow-sm rounded-3xl">
-          <div className="bg-indigo-50 p-5 rounded-2xl">
-            <Users className="h-8 w-8 text-indigo-600" />
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Officers</p>
-            <p className="text-4xl font-black text-slate-900 tracking-tighter">24</p>
-          </div>
-        </Card>
-      </div>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }
