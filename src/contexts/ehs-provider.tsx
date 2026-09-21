@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo } from 'react';
 import { rtdb } from '@/lib/rtdb';
-import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
+import { ref, onValue, set, push, remove, update, get, runTransaction } from 'firebase/database';
 import { useAuth } from './auth-provider';
 import { useGeneral } from './general-provider';
 import type { 
@@ -23,6 +23,7 @@ import type {
 } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
+import { transitionCase, validateHandoff, type CapaHandoff } from '@/lib/capa-handoff';
 import { addHours, format } from 'date-fns';
 
 type EhsContextType = {
@@ -39,12 +40,12 @@ type EhsContextType = {
   addRiskAssessment: (ra: Omit<EhsRiskAssessment, 'id'>) => Promise<void>;
   addTraining: (training: Omit<EhsTraining, 'id'>) => Promise<void>;
   
-  addObservation: (observation: Omit<EhsObservation, 'id' | 'createdAt' | 'status' | 'currentStage' | 'stages'>) => void;
+  addObservation: (observation: Omit<EhsObservation, 'id' | 'createdAt' | 'status' | 'currentStage' | 'stages'>, handoff: CapaHandoff) => Promise<void>;
   updateInitiationDetails: (observationId: string, updates: Partial<EhsObservation>) => Promise<void>;
   splitObservation: (parentId: string, subObservations: { category: any, severity: any, description: string, assigneeId?: string }[]) => void;
   assignStageOwner: (observationId: string, stage: CapaStage, assigneeId: string, targetDate?: string) => void;
-  actionStage: (observationId: string, stage: CapaStage, data: any, isSubmit?: boolean) => void;
-  reviewStage: (observationId: string, stage: CapaStage, status: 'Completed' | 'Returned', comment: string, nextOwnerData?: { assigneeId: string, targetDate: string }) => void;
+  actionStage: (observationId: string, stage: CapaStage, data: any, isSubmit?: boolean, handoff?: CapaHandoff) => Promise<void>;
+  reviewStage: (observationId: string, stage: CapaStage, status: 'Completed' | 'Returned', comment: string, nextOwnerData?: CapaHandoff) => Promise<void>;
   addStageComment: (observationId: string, stage: CapaStage, text: string) => void;
   addCcToObservation: (observationId: string, userIds: string[]) => void;
   addStageAttachment: (observationId: string, stage: CapaStage, name: string, url: string) => void;
@@ -163,13 +164,12 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     await push(ref(rtdb, 'ehs/riskAssessments'), data);
   }, []);
 
-  const addObservation = useCallback((data: Omit<EhsObservation, 'id' | 'createdAt' | 'status' | 'currentStage' | 'stages'>) => {
+  const addObservation = useCallback(async (data: Omit<EhsObservation, 'id' | 'createdAt' | 'status' | 'currentStage' | 'stages'>, handoff: CapaHandoff) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'ehs/observations'));
     const now = new Date();
     const nowISO = now.toISOString();
-    const seniorSafetySupervisor = users.find(u => u.role === 'Senior Safety Supervisor' && u.status !== 'deactivated');
-    const initialAssigneeId = seniorSafetySupervisor ? seniorSafetySupervisor.id : user.id;
+    const initialHandoff = validateHandoff(handoff, users, false, now);
     const stages = generateInitialStages(user.id);
     
     stages['Initiation'].status = 'Completed';
@@ -181,8 +181,8 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     stages['Investigation'].status = 'Pending';
     stages['Investigation'].assignedById = user.id;
     stages['Investigation'].assignedAt = nowISO;
-    stages['Investigation'].assigneeId = initialAssigneeId;
-    stages['Investigation'].targetDate = addHours(now, 24).toISOString();
+    stages['Investigation'].assigneeId = initialHandoff.assigneeId;
+    stages['Investigation'].targetDate = initialHandoff.targetDate;
 
     const newObservation: Omit<EhsObservation, 'id'> = { 
         ...data, 
@@ -193,11 +193,11 @@ export function EhsProvider({ children }: { children: ReactNode }) {
         stages, 
         ccUserIds: [],
         activities: {
-            'init': { id: 'init', userId: user.id, action: 'Case initiated and discovery captured.', date: nowISO }
+            'init': { id: 'init', userId: user.id, action: 'Case initiated. Investigation assigned to ' + users.find(u=>u.id===initialHandoff.assigneeId)?.name + '. Deadline: ' + initialHandoff.targetDate, date: nowISO }
         }
     };
-    set(newRef, sanitizeData(newObservation));
-    toast({ title: 'Safety Case Opened', description: `Investigation deadline: ${format(addHours(now, 24), 'dd MMM, HH:mm')}` });
+    await set(newRef, sanitizeData(newObservation));
+    toast({ title: 'Safety Case Opened', description: `Investigation deadline: ${format(new Date(initialHandoff.targetDate), 'dd MMM, HH:mm')}` });
   }, [user, users, toast]);
 
   const updateInitiationDetails = useCallback(async (observationId: string, updates: Partial<EhsObservation>) => {
@@ -288,82 +288,23 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     update(ref(rtdb, `ehs/observations/${observationId}`), { lastUpdated: now });
   }, [user]);
 
-  const actionStage = useCallback((observationId: string, stage: CapaStage, data: any, isSubmit: boolean = true) => {
-    if (!user) return;
-    const path = `ehs/observations/${observationId}/stages/${stage}`;
-    const now = new Date().toISOString();
-    const updates: any = { data: sanitizeData(data) || null };
-    if (isSubmit || stage === 'Closure') {
-        updates.actionedById = user.id;
-        updates.actionedAt = now;
-        updates.status = stage === 'Closure' ? 'Completed' : 'In Progress';
-        const commentRef = push(ref(rtdb, `ehs/observations/${observationId}/stages/${stage}/comments`));
-        updates[`comments/${commentRef.key}`] = { id: commentRef.key, userId: user.id, text: `Phase findings submitted for verification.`, date: now };
-        addObservationActivity(observationId, `Submitted ${stage} data for Higher Official review.`);
-    }
-    if (stage === 'Closure') {
-      updates['reviewedById'] = user.id; updates['reviewedAt'] = now;
-      update(ref(rtdb, `ehs/observations/${observationId}`), { status: 'Closed', closedAt: now, lastUpdated: now });
-      addObservationActivity(observationId, `Final safety case closure validated.`);
-    }
-    update(ref(rtdb, path), updates);
-    update(ref(rtdb, `ehs/observations/${observationId}`), { lastUpdated: now });
-    toast({ title: isSubmit ? 'Action Recorded' : 'Draft Saved' });
-  }, [user, toast, addObservationActivity]);
+  const actionStage = useCallback(async (observationId: string, stage: CapaStage, data: any, isSubmit = true, handoff?: CapaHandoff) => {
+    if (!user) throw new Error('Please sign in again.');
+    const now = new Date();
+    const eventId = push(ref(rtdb, 'ehs/observations/'+observationId+'/activities')).key!;
+    const result = await runTransaction(ref(rtdb, 'ehs/observations/'+observationId), current => current ? sanitizeData(transitionCase(current, stage, user, users, isSubmit ? 'submit' : 'draft', handoff, data, '', now, eventId)) : current, {applyLocally:false});
+    if (!result.committed || !result.snapshot.exists()) throw new Error('Case unavailable. Refresh and try again.');
+    toast({title:isSubmit ? (stage === 'Closure' ? 'Case closed' : 'Sent for review') : 'Draft saved'});
+  }, [user, users, toast]);
 
-  const reviewStage = useCallback((observationId: string, stage: CapaStage, status: 'Completed' | 'Returned', comment: string, nextOwnerData?: { assigneeId: string, targetDate: string }) => {
-    if (!user) return;
-    const now = new Date().toISOString();
-    const obsRef = ref(rtdb, `ehs/observations/${observationId}`);
-    get(obsRef).then(snap => {
-        const obs = snap.val() as EhsObservation;
-        if (!obs) return;
-        const updates: any = {};
-        const stagePath = `stages/${stage}`;
-        updates[`${stagePath}/status`] = status;
-        updates[`${stagePath}/reviewedById`] = user.id;
-        updates[`${stagePath}/reviewedAt`] = now;
-        if (comment) {
-            const commentRef = push(ref(rtdb, `ehs/observations/${observationId}/${stagePath}/comments`));
-            updates[`${stagePath}/comments/${commentRef.key}`] = { id: commentRef.key, userId: user.id, text: status === 'Returned' ? `REWORK REQUIRED: ${comment}` : comment, date: now };
-        }
-        if (status === 'Completed') {
-            addObservationActivity(observationId, `Verified ${stage} findings. Milestone complete.`);
-            const nextStage = CAPA_STAGES[CAPA_STAGES.indexOf(stage) + 1];
-            if (nextStage) {
-                updates['currentStage'] = nextStage;
-                updates[`stages/${nextStage}/status`] = 'Pending';
-                updates[`stages/${nextStage}/assignedById`] = user.id;
-                updates[`stages/${nextStage}/assignedAt`] = now;
-                if (stage === 'Investigation' && nextOwnerData) { 
-                    updates[`stages/${nextStage}/assigneeId`] = nextOwnerData.assigneeId; 
-                    updates[`stages/${nextStage}/targetDate`] = nextOwnerData.targetDate; 
-                }
-                else if (stage === 'Resolution') { 
-                    updates[`stages/${nextStage}/assigneeId`] = obs.stages['Resolution']?.assigneeId || null; 
-                    updates[`stages/${nextStage}/targetDate`] = obs.stages['Resolution']?.targetDate || null; 
-                }
-                else if (['Implementation', 'Effectiveness Review'].includes(stage)) { 
-                    updates[`stages/${nextStage}/assigneeId`] = obs.stages['Investigation']?.assigneeId || null; 
-                }
-                else if (stage === 'Reference') { 
-                    updates[`stages/${nextStage}/assigneeId`] = obs.stages['Resolution']?.assigneeId || null; 
-                }
-                else { 
-                    updates[`stages/${nextStage}/assigneeId`] = obs.stages[stage]?.assigneeId || null; 
-                }
-            }
-        } else { 
-            addObservationActivity(observationId, `Returned ${stage} for technical rework.`);
-            updates[`${stagePath}/actionedAt`] = null; 
-            updates[`${stagePath}/actionedById`] = null; 
-            updates[`${stagePath}/status`] = 'Returned';
-        }
-        updates['lastUpdated'] = now;
-        update(obsRef, sanitizeData(updates));
-        toast({ title: `Stage ${status}` });
-    });
-  }, [user, toast, addObservationActivity]);
+  const reviewStage = useCallback(async (observationId: string, stage: CapaStage, status: 'Completed' | 'Returned', comment: string, nextOwnerData?: CapaHandoff) => {
+    if (!user) throw new Error('Please sign in again.');
+    const now = new Date();
+    const eventId = push(ref(rtdb, 'ehs/observations/'+observationId+'/activities')).key!;
+    const result = await runTransaction(ref(rtdb, 'ehs/observations/'+observationId), current => current ? sanitizeData(transitionCase(current, stage, user, users, status === 'Completed' ? 'approve' : 'return', nextOwnerData, undefined, comment, now, eventId)) : current, {applyLocally:false});
+    if (!result.committed || !result.snapshot.exists()) throw new Error('Case unavailable. Refresh and try again.');
+    toast({title:status === 'Completed' ? 'Phase approved and handoff saved' : 'Rework assigned'});
+  }, [user, users, toast]);
 
   const addCcToObservation = useCallback((observationId: string, userIds: string[]) => {
     if (!user) return;
