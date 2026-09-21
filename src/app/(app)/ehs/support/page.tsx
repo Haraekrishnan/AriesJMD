@@ -159,7 +159,7 @@ export default function EhsSupportPage() {
         .includes(ticketSearch.toLowerCase()),
   );
   return (
-    <div className="p-5 md:p-8 max-w-[1600px] mx-auto space-y-6 text-slate-900">
+    <div className="ehs-page text-slate-900">
       <header>
         <p className="mb-2 text-xs text-slate-500">
           Workspace / Safety management
@@ -172,7 +172,7 @@ export default function EhsSupportPage() {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,320px)_minmax(0,1fr)] gap-4">
         <div className="space-y-6">
           <h3 className="text-sm font-semibold text-slate-400 normal-case tracking-normal mb-6">
             Immediate Contact
@@ -221,7 +221,7 @@ export default function EhsSupportPage() {
           />
         </div>
 
-        <div className="lg:col-span-2 space-y-6 text-left">
+        <div className="min-w-0 space-y-4 text-left">
           <Card className="bg-white border-slate-200 shadow-sm overflow-hidden rounded-xl">
             <CardHeader className="p-6 pb-6 border-b border-slate-100 bg-slate-50/50">
               <CardTitle className="text-slate-900 text-2xl font-semibold normal-case tracking-tight">
@@ -233,8 +233,8 @@ export default function EhsSupportPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6">
-              <form onSubmit={handleSubmit} className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-3">
                     <Label className="text-slate-900 font-semibold text-xs normal-case tracking-normal ml-1">
                       Query Category
@@ -301,7 +301,7 @@ export default function EhsSupportPage() {
                   </Label>
                   <Textarea
                     placeholder="Provide specific details including Site, Date, and Case IDs if applicable..."
-                    className="bg-white border-slate-200 text-slate-900 min-h-[180px] rounded-xl p-6 font-bold focus-visible:ring-emerald-600/20 text-base"
+                    className="bg-white border-slate-200 text-slate-900 min-h-[120px] rounded-xl p-6 font-bold focus-visible:ring-emerald-600/20 text-base"
                     value={formData.description || ''}
                     onChange={(e) =>
                       setFormData((prev) => ({

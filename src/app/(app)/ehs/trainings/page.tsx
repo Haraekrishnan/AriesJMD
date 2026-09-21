@@ -134,7 +134,7 @@ export default function EhsTrainingsPage() {
   }, [trainings, search, typeFilter]);
 
   return (
-    <div className="p-5 md:p-8 max-w-[1600px] mx-auto space-y-8 text-slate-900">
+    <div className="ehs-page text-slate-900">
       <div className="flex flex-wrap justify-between items-center gap-4">
         <div>
           <h1 className="text-3xl font-semibold text-slate-900 tracking-tight">
@@ -410,7 +410,7 @@ export default function EhsTrainingsPage() {
           ))}
         </div>
         {!sortedTrainings.length && (
-          <div className="py-16 text-center">
+          <div className="px-4 py-8 text-center">
             <GraduationCap className="mx-auto mb-3 h-10 w-10 text-slate-300" />
             <h3 className="font-medium">No matching training sessions</h3>
             <p className="mt-2 text-sm text-slate-500">

@@ -161,7 +161,7 @@ export default function EhsIncidentsPage() {
   };
 
   return (
-    <div className="p-5 md:p-8 max-w-[1600px] mx-auto space-y-8 text-slate-900">
+    <div className="ehs-page text-slate-900">
       <div className="flex flex-wrap justify-between items-center gap-4 text-left">
         <div>
           <h1 className="text-3xl font-semibold text-slate-900 tracking-tight">
@@ -595,9 +595,9 @@ export default function EhsIncidentsPage() {
         </DialogContent>
       </Dialog>
       {filteredIncidents.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-32 text-slate-400 bg-white border-2 border-dashed border-slate-200 rounded-xl">
-          <div className="p-8 bg-slate-50 rounded-full mb-6 shadow-none border border-slate-100">
-            <FileWarning className="h-14 w-14 opacity-40 text-rose-600" />
+        <div className="flex flex-col items-center justify-center px-4 py-8 text-center text-slate-500 bg-white border border-dashed border-slate-200 rounded-xl">
+          <div className="p-3 bg-slate-50 rounded-full mb-3 shadow-none border border-slate-100">
+            <FileWarning className="h-8 w-8 opacity-60 text-rose-600" />
           </div>
           <p className="text-2xl font-semibold text-slate-900 tracking-tight normal-case">
             No incident logs found

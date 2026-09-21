@@ -45,7 +45,7 @@ export default function SafetyObservationsPage() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
   if (cockpitObservation) return <CapaCockpit observation={cockpitObservation} onClose={() => setCockpitId(null)} />;
-  return <div className="mx-auto max-w-[1800px] space-y-7 p-5 md:p-8">
+  return <div className="ehs-page text-slate-900">
     <header className="flex flex-wrap items-center justify-between gap-5">
       <div><p className="mb-3 text-sm text-slate-500">Workspace <span className="mx-2 text-slate-300">/</span> Safety management</p>
         <div className="flex flex-wrap items-center gap-3"><h1 className="text-3xl font-semibold tracking-tight text-slate-950">Safety observations</h1><span className="rounded-lg bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-700">CAPA</span></div>
@@ -60,7 +60,7 @@ export default function SafetyObservationsPage() {
         {tabs.map(item => <button key={item.id} aria-pressed={tab === item.id} onClick={() => {setTab(item.id);setPage(1);setSelectedId(null);}} className={cn('flex shrink-0 items-center gap-2 border-b-2 px-4 py-4 text-sm font-medium focus-visible:outline-blue-600',tab === item.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-900')}>{item.label}<span className={cn('rounded-full px-2 py-0.5 text-xs',tab === item.id ? 'bg-blue-50' : 'bg-slate-100')}>{item.count}</span></button>)}
       </div>
       <div className="p-5"><CapaFilters filters={filters} onFilterChange={updateFilters} /></div>
-      {filtered.length ? <CapaTable observations={pageRows} selectedId={selectedId} onSelect={setSelectedId} onOpenCockpit={setCockpitId} /> : <div className="flex flex-col items-center px-6 py-16 text-center"><ShieldCheck className="mb-4 h-10 w-10 text-slate-300" /><h3 className="font-semibold">No observations found</h3><p className="mt-2 text-sm text-slate-500">Try another view or adjust your search and filters.</p><Button variant="outline" className="mt-5" onClick={() => {setTab('all');updateFilters({...EMPTY_OBSERVATION_FILTERS});}}>Clear filters</Button></div>}
+      {filtered.length ? <CapaTable observations={pageRows} selectedId={selectedId} onSelect={setSelectedId} onOpenCockpit={setCockpitId} /> : <div className="flex flex-col items-center px-6 py-8 text-center"><ShieldCheck className="mb-4 h-10 w-10 text-slate-300" /><h3 className="font-semibold">No observations found</h3><p className="mt-2 text-sm text-slate-500">Try another view or adjust your search and filters.</p><Button variant="outline" className="mt-5" onClick={() => {setTab('all');updateFilters({...EMPTY_OBSERVATION_FILTERS});}}>Clear filters</Button></div>}
       <div className="flex items-center justify-between gap-3 border-t px-6 py-4 text-sm text-slate-500"><p aria-live="polite">Showing {filtered.length ? (currentPage-1)*10+1 : 0}–{Math.min(currentPage*10,filtered.length)} of {filtered.length} observations</p><div className="flex items-center gap-3"><Button aria-label="Previous page" variant="outline" size="icon" disabled={currentPage === 1} onClick={() => setPage(currentPage-1)}><ChevronLeft className="h-4 w-4" /></Button><span>{currentPage} / {pageCount}</span><Button aria-label="Next page" variant="outline" size="icon" disabled={currentPage === pageCount} onClick={() => setPage(currentPage+1)}><ChevronRight className="h-4 w-4" /></Button></div></div>
     </section>
     <CapaInitiateDialog isOpen={isInitiateOpen} onOpenChange={setIsInitiateOpen} />

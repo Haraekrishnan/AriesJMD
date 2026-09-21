@@ -8,3 +8,9 @@
 .ehs-stage-content [role="tablist"] { overflow-x: auto; }
 .ehs-stage-content [role="tab"] { white-space: nowrap; flex-shrink: 0; }
 @media (prefers-reduced-motion: reduce) { .ehs-portal *, .ehs-portal *::before, .ehs-portal *::after { animation: none !important; transition: none !important; } }
+
+/* Fluid page shell: use the available workspace instead of centered fixed widths. */
+.ehs-page { width: 100%; min-width: 0; padding: 16px; }
+.ehs-page > * + * { margin-top: 16px; }
+.ehs-page > .grid:empty { display: none; }
+@media (min-width: 768px) { .ehs-page { padding: 24px; } }

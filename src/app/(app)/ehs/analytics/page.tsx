@@ -45,7 +45,7 @@ export default function EhsAnalyticsPage() {
       (o.severity === 'High' || o.severity === 'Critical'),
   ).length;
   return (
-    <div className="mx-auto max-w-[1600px] space-y-6 p-5 text-slate-900 md:p-8">
+    <div className="ehs-page text-slate-900">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="mb-2 text-xs text-slate-500">
@@ -146,7 +146,7 @@ export default function EhsAnalyticsPage() {
           <p className="mt-1 text-xs text-slate-500">
             Monthly reports across the selected period
           </p>
-          <div className="mt-6 h-[300px]">
+          <div className="mt-4 h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={summary.months}>
                 <CartesianGrid

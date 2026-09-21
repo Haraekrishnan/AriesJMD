@@ -25,7 +25,7 @@ export default function EhsDocumentsPage() {
         .includes(search.toLowerCase()),
   );
   return (
-    <div className="mx-auto max-w-[1600px] space-y-6 p-5 text-slate-900 md:p-8">
+    <div className="ehs-page text-slate-900">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="mb-2 text-xs text-slate-500">
@@ -157,7 +157,7 @@ export default function EhsDocumentsPage() {
             </table>
           </div>
         ) : (
-          <div className="px-6 py-20 text-center">
+          <div className="px-6 py-8 text-center">
             <BookOpen className="mx-auto mb-4 h-10 w-10 text-slate-300" />
             <h3 className="font-medium">No documents found</h3>
             <p className="mt-2 text-sm text-slate-500">
