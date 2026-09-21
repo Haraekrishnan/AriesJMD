@@ -149,7 +149,7 @@ export default function EhsAuditsPage() {
   };
 
   return (
-    <div className="p-5 md:p-8 max-w-[1600px] mx-auto space-y-8 text-slate-900">
+    <div className="ehs-page text-slate-900">
       <div className="flex flex-wrap justify-between items-center gap-4 text-left">
         <div>
           <h1 className="text-3xl font-semibold text-slate-900 tracking-tight">
@@ -551,8 +551,8 @@ export default function EhsAuditsPage() {
         </DialogContent>
       </Dialog>
       {filteredAudits.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-24 text-slate-400 bg-white border-2 border-dashed border-slate-200 rounded-xl">
-          <ClipboardList className="h-16 w-16 mb-6 opacity-20 text-emerald-600" />
+        <div className="flex flex-col items-center justify-center px-4 py-8 text-center text-slate-500 bg-white border border-dashed border-slate-200 rounded-xl">
+          <ClipboardList className="h-9 w-9 mb-3 opacity-60 text-emerald-600" />
           <p className="text-xl font-semibold text-slate-900 normal-case tracking-normal">
             No audit records found
           </p>
