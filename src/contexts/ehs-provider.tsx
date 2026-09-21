@@ -34,10 +34,10 @@ type EhsContextType = {
   supportTickets: EhsSupportTicket[];
   contactInfo: EhsContactInfo;
   
-  addAudit: (audit: Omit<EhsAudit, 'id'>) => void;
-  addIncident: (incident: Omit<EhsIncident, 'id'>) => void;
-  addRiskAssessment: (ra: Omit<EhsRiskAssessment, 'id'>) => void;
-  addTraining: (training: Omit<EhsTraining, 'id'>) => void;
+  addAudit: (audit: Omit<EhsAudit, 'id'>) => Promise<void>;
+  addIncident: (incident: Omit<EhsIncident, 'id'>) => Promise<void>;
+  addRiskAssessment: (ra: Omit<EhsRiskAssessment, 'id'>) => Promise<void>;
+  addTraining: (training: Omit<EhsTraining, 'id'>) => Promise<void>;
   
   addObservation: (observation: Omit<EhsObservation, 'id' | 'createdAt' | 'status' | 'currentStage' | 'stages'>) => void;
   updateInitiationDetails: (observationId: string, updates: Partial<EhsObservation>) => Promise<void>;
@@ -151,16 +151,16 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     set(actRef, { id: actRef.key, userId: user.id, action, date: now });
   }, [user]);
 
-  const addAudit = useCallback((data: Omit<EhsAudit, 'id'>) => {
-    push(ref(rtdb, 'ehs/audits'), { ...data, status: 'Pending Review' as EhsAuditStatus });
+  const addAudit = useCallback(async (data: Omit<EhsAudit, 'id'>) => {
+    await push(ref(rtdb, 'ehs/audits'), { ...data, status: 'Pending Review' as EhsAuditStatus });
   }, []);
 
-  const addIncident = useCallback((data: Omit<EhsIncident, 'id'>) => {
-    push(ref(rtdb, 'ehs/incidents'), { ...data, status: 'Open' as EhsIncidentStatus });
+  const addIncident = useCallback(async (data: Omit<EhsIncident, 'id'>) => {
+    await push(ref(rtdb, 'ehs/incidents'), { ...data, status: 'Open' as EhsIncidentStatus });
   }, []);
 
-  const addRiskAssessment = useCallback((data: Omit<EhsRiskAssessment, 'id'>) => {
-    push(ref(rtdb, 'ehs/riskAssessments'), data);
+  const addRiskAssessment = useCallback(async (data: Omit<EhsRiskAssessment, 'id'>) => {
+    await push(ref(rtdb, 'ehs/riskAssessments'), data);
   }, []);
 
   const addObservation = useCallback((data: Omit<EhsObservation, 'id' | 'createdAt' | 'status' | 'currentStage' | 'stages'>) => {
@@ -427,8 +427,8 @@ export function EhsProvider({ children }: { children: ReactNode }) {
 
   const updateContactInfo = useCallback((info: Partial<EhsContactInfo>) => update(ref(rtdb, 'ehs/contactInfo'), info), []);
 
-  const addTraining = useCallback((data: Omit<EhsTraining, 'id'>) => {
-    push(ref(rtdb, 'ehs/trainings'), data);
+  const addTraining = useCallback(async (data: Omit<EhsTraining, 'id'>) => {
+    await push(ref(rtdb, 'ehs/trainings'), data);
   }, []);
 
   const stats = useMemo(() => {
