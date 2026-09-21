@@ -275,7 +275,7 @@ export default function CapaStageWorkspace({ observation, stage }: CapaStageWork
                         <p className="text-sm font-semibold text-slate-400 normal-case tracking-normal mb-1.5">Target date</p>
                         <div className="flex items-center gap-2 text-blue-600">
                             <Clock className="h-5 w-5" />
-                            <span className="text-sm font-medium">{sData?.targetDate && isValid(parseISO(sData.targetDate)) ? format(parseISO(sData.targetDate), 'dd MMM yyyy') : 'Not set'}</span>
+                            <span className="text-sm font-medium">{sData?.targetDate && isValid(parseISO(sData.targetDate)) ? format(parseISO(sData.targetDate), 'dd MMM yyyy, HH:mm') : 'Not set'}</span>
                         </div>
                     </div>
                 </div>

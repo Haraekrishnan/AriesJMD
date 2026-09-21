@@ -1179,6 +1179,8 @@ export type CapaAttachment = {
 };
 
 export type CapaStageRecord = {
+  reviewAssigneeId?: string;
+  reviewTargetDate?: string;
   status: 'Pending' | 'In Progress' | 'Completed' | 'Returned';
   assigneeId?: string;
   assignedById?: string;
