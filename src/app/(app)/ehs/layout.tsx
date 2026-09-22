@@ -29,6 +29,8 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import './ehs.css';
+import { ehsEntryDestination } from '@/lib/capa-workflow';
+import { useEhs } from '@/contexts/ehs-provider';
 const items = [
   { href: '/ehs', icon: LayoutDashboard, label: 'Dashboard' },
   {
@@ -46,6 +48,7 @@ const items = [
 ];
 export default function EhsLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, can, markFeatureAsViewed, logout } = useAuth();
+  const { observationActionCount, observationsLoaded } = useEhs();
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -58,6 +61,11 @@ export default function EhsLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
+  useEffect(() => {
+    if (loading || !user || !can.access_ehs_portal || !observationsLoaded || pathname !== '/ehs') return;
+    if (new URLSearchParams(window.location.search).get('entry') !== 'notifications') return;
+    router.replace(ehsEntryDestination(observationActionCount));
+  }, [loading, user, can.access_ehs_portal, observationsLoaded, pathname, observationActionCount, router]);
   if (loading || !can.access_ehs_portal) return null;
   const navigation = (
     <div className="flex h-full flex-col bg-[#101d35] text-slate-300">
@@ -95,7 +103,8 @@ export default function EhsLayout({ children }: { children: React.ReactNode }) {
               )}
             >
               <item.icon className="h-5 w-5 shrink-0" />
-              {item.label}
+              <span className="min-w-0 flex-1">{item.label}</span>
+              {item.href === '/ehs/observations' && observationActionCount > 0 && <span aria-label={`${observationActionCount} observations need your action`} className="shrink-0 rounded-full bg-rose-500 px-2 py-0.5 text-xs font-semibold text-white">{observationActionCount}</span>}
             </Link>
           );
         })}

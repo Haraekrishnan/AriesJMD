@@ -25,7 +25,7 @@ export default function CapaPhaseConclusion({ isLocked }: Props) {
                     <div className="flex items-center justify-between border-b pb-4">
                         <div className="flex items-center gap-4">
                             <FileText className="h-6 w-6 text-blue-600" />
-                            <h4 className="text-[16px] font-semibold normal-case tracking-tight text-slate-900">Technical phase summary</h4>
+                            <h4 className="text-[16px] font-semibold normal-case tracking-tight text-slate-900">Technical phase summary *</h4>
                         </div>
                     </div>
                     
@@ -43,7 +43,7 @@ export default function CapaPhaseConclusion({ isLocked }: Props) {
                     <div className="flex items-center justify-between border-b pb-4">
                         <div className="flex items-center gap-4">
                             <ShieldCheck className="h-6 w-6 text-emerald-600" />
-                            <h4 className="text-[16px] font-semibold normal-case tracking-tight text-slate-900">Mitigation & recurrence prevention</h4>
+                            <h4 className="text-[16px] font-semibold normal-case tracking-tight text-slate-900">Mitigation & recurrence prevention *</h4>
                         </div>
                     </div>
 

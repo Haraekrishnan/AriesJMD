@@ -1,4 +1,5 @@
 'use client';
+import { validateStageData } from '@/lib/capa-workflow';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Save, CheckCircle2, Clock, RotateCcw } from 'lucide-react';
@@ -59,6 +60,7 @@ export default function CapaActionFooter({
     if (!canAct || saving) return;
     setError('');
     try {
+      if (submit) validateStageData(stage, getValues());
       const target =
         submit && !closing ? validateHandoff(handoff, users, true) : undefined;
       setSaving(true);
@@ -116,6 +118,7 @@ export default function CapaActionFooter({
                 disabled={saving}
                 className="gap-2"
                 onClick={() => {
+                  try { validateStageData(stage, getValues()); } catch (err) { setError((err as Error).message); return; }
                   setHandoff({ assigneeId: '', targetDate: '' });
                   setError('');
                   setOpen(true);
@@ -135,7 +138,7 @@ export default function CapaActionFooter({
         </div>
       </div>
       {error && !open && (
-        <p role="alert" className="mt-2 text-sm text-rose-600">
+        <p role="alert" className="mt-2 max-h-28 overflow-y-auto rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
           {error}
         </p>
       )}
@@ -150,7 +153,7 @@ export default function CapaActionFooter({
             <DialogDescription>
               {closing
                 ? 'This completes the case. There is no next phase or deadline to assign.'
-                : 'Choose who will review your findings and when the review is due. The next phase is assigned after approval.'}
+                : 'Choose who will review your findings. The review deadline is automatically 24 hours after submission.'}
             </DialogDescription>
           </DialogHeader>
           <form

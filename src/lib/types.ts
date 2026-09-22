@@ -214,7 +214,11 @@ export type NotificationEventKey =
   | 'onPpeRequestUpdate'
   | 'onManagementRequest'
   | 'onPasswordReset'
-  | 'onEhsSupportTicket';
+  | 'onEhsSupportTicket'
+  | 'onEhsObservation'
+  | 'onEhsStageSubmitted'
+  | 'onEhsStageApproved'
+  | 'onEhsStageReturned';
 
 export type NotificationSettings = {
   additionalRecipients?: string;
@@ -1179,6 +1183,7 @@ export type CapaAttachment = {
 };
 
 export type CapaStageRecord = {
+  reworkReason?: string;
   reviewAssigneeId?: string;
   reviewTargetDate?: string;
   status: 'Pending' | 'In Progress' | 'Completed' | 'Returned';

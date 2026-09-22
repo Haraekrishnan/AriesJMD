@@ -14,7 +14,7 @@ export default function CapaFilters({ filters, onFilterChange }: { filters: Obse
   const options = [
     { key: 'category' as const, label: 'Category', all: 'All categories', items: ['Unsafe Act', 'Unsafe Condition', 'Safe Act', 'Near Miss', 'Environmental'].map(v => [v,v]) },
     { key: 'risk' as const, label: 'Risk level', all: 'All risk levels', items: [['high-priority','High & critical'], ...['Low','Medium','High','Critical'].map(v => [v,v])] },
-    { key: 'status' as const, label: 'Status', all: 'All statuses', items: [['active','Open & in progress'], ...['Open','In Progress','Returned','Closed','Overdue'].map(v => [v,v])] },
+    { key: 'status' as const, label: 'Status', all: 'All statuses', items: [['active','Open & in progress'], ...['Open','Awaiting review','Rework required','Closed','Overdue'].map(v => [v,v])] },
     { key: 'site' as const, label: 'Site', all: 'All sites', items: projects.map(p => [p.id,p.name]) },
   ];
   return <div className="flex flex-wrap items-center gap-3">
