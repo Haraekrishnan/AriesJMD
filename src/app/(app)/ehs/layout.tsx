@@ -29,6 +29,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import './ehs.css';
+import { useEhs } from '@/contexts/ehs-provider';
 const items = [
   { href: '/ehs', icon: LayoutDashboard, label: 'Dashboard' },
   {
@@ -46,6 +47,7 @@ const items = [
 ];
 export default function EhsLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, can, markFeatureAsViewed, logout } = useAuth();
+  const { observationActionCount } = useEhs();
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -95,7 +97,8 @@ export default function EhsLayout({ children }: { children: React.ReactNode }) {
               )}
             >
               <item.icon className="h-5 w-5 shrink-0" />
-              {item.label}
+              <span className="min-w-0 flex-1">{item.label}</span>
+              {item.href === '/ehs/observations' && observationActionCount > 0 && <span aria-label={`${observationActionCount} observations need your action`} className="shrink-0 rounded-full bg-rose-500 px-2 py-0.5 text-xs font-semibold text-white">{observationActionCount}</span>}
             </Link>
           );
         })}

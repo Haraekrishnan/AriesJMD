@@ -1,4 +1,6 @@
 'use client';
+import CapaStatusBanner from './cockpit/CapaStatusBanner';
+import { validateStageData, workflowStatus } from '@/lib/capa-workflow';
 import CapaHandoffFields from './CapaHandoffFields';
 import { validateHandoff, type CapaHandoff } from '@/lib/capa-handoff';
 import React, { useState, useEffect } from 'react';
@@ -66,7 +68,7 @@ export default function CapaCockpit({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const beginReview = (action: 'Completed' | 'Returned') => {
-    setHandoff({ assigneeId: '', targetDate: '' });
+    setHandoff({ assigneeId: action === 'Returned' ? observation.stages[viewingStage]?.assigneeId || '' : '', targetDate: '' });
     setReviewComment('');
     setError('');
     setReviewAction(action);
@@ -127,7 +129,7 @@ export default function CapaCockpit({
                 {observation.severity} risk
               </Badge>
               <Badge className="rounded-md border-blue-100 bg-blue-50 px-2.5 py-1 font-medium text-blue-700">
-                {observation.status}
+                {workflowStatus(observation)}
               </Badge>
             </div>
             <div className="flex items-center gap-2">
@@ -207,6 +209,7 @@ export default function CapaCockpit({
         <div className="flex min-h-0 flex-1 overflow-hidden">
           <main className="flex min-w-0 flex-1 flex-col">
             <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
+              <CapaStatusBanner observation={observation} stage={viewingStage} canReview={canReview} onReview={beginReview} />
               <CapaStageWorkspace
                 key={viewingStage}
                 observation={observation}
@@ -214,6 +217,7 @@ export default function CapaCockpit({
               />
             </div>
             <footer className="shrink-0 border-t bg-white px-4 py-4 md:px-6">
+              {canReview && <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-amber-50 p-3"><p className="text-sm font-semibold">Review decision required</p><div className="flex flex-wrap gap-2"><Button variant="outline" className="border-rose-300 text-rose-700" onClick={()=>beginReview('Returned')}>Request rework</Button><Button className="bg-emerald-700 text-white" onClick={()=>beginReview('Completed')}>Verify & approve stage</Button></div></div>}
               <CapaActionFooter
                 observation={observation}
                 stage={viewingStage}
@@ -273,6 +277,7 @@ export default function CapaCockpit({
                 if (!reviewAction || !canReview || saving) return;
                 setError('');
                 try {
+                  if (reviewAction === 'Completed') validateStageData(viewingStage, sData?.data);
                   const target =
                     reviewAction === 'Returned' || nextStage
                       ? validateHandoff(handoff, users)

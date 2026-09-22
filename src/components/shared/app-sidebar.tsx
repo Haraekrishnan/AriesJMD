@@ -1,5 +1,6 @@
 'use client';
 
+import { useEhs } from '@/contexts/ehs-provider';
 import { usePathname } from 'next/navigation';
 import React, { useMemo } from 'react';
 import {
@@ -62,6 +63,7 @@ export function AppSidebar() {
   } = usePlanner();
   const { payments } = usePurchase();
   const { pendingFinalizationCount } = useInwardOutward();
+  const { observationActionCount } = useEhs();
   const pathname = usePathname();
 
   const notificationCounts = useMemo(() => {
@@ -177,7 +179,7 @@ export function AppSidebar() {
   
   const navItems = useMemo(() => [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', notificationCount: 0, show: true },
-    { href: '/ehs', icon: ShieldAlert, label: 'EHS Portal', notificationCount: 0, show: can.access_ehs_portal },
+    { href: '/ehs', icon: ShieldAlert, label: 'EHS Portal', notificationCount: observationActionCount, show: can.access_ehs_portal },
     { href: '/my-requests', icon: Send, label: 'My Requests', notificationCount: notificationCounts.myRequests || 0, show: true },
     { href: '/management-requests', icon: MessageSquare, label: 'Management Requests', notificationCount: notificationCounts.managementRequests || 0, show: can.manage_directives },
     { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: notificationCounts.manageTasks || 0, show: true },
@@ -199,7 +201,7 @@ export function AppSidebar() {
     { href: '/achievements', icon: Trophy, label: 'Achievements', notificationCount: 0, show: true },
     { href: '/account', icon: UserIcon, label: 'Account', notificationCount: notificationCounts.account || 0, show: true },
     { href: '/help', icon: HelpCircle, label: 'Help', notificationCount: 0, show: true },
-  ], [can, notificationCounts]);
+  ], [can, notificationCounts, observationActionCount]);
 
   return (
     <aside className="hidden md:fixed md:flex flex-col h-full w-64 border-r bg-sidebar text-sidebar-foreground">

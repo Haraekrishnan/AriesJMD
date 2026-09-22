@@ -24,6 +24,8 @@ import type {
 import { useToast } from '@/hooks/use-toast';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { transitionCase, validateHandoff, type CapaHandoff } from '@/lib/capa-handoff';
+import { capaEmail, type CapaMailEvent } from '@/lib/capa-email';
+import { needsAction } from '@/lib/capa-workflow';
 import { addHours, format } from 'date-fns';
 
 type EhsContextType = {
@@ -32,6 +34,7 @@ type EhsContextType = {
   riskAssessments: EhsRiskAssessment[];
   trainings: EhsTraining[];
   observations: EhsObservation[];
+  observationActionCount: number;
   supportTickets: EhsSupportTicket[];
   contactInfo: EhsContactInfo;
   
@@ -96,7 +99,7 @@ const generateInitialStages = (creatorId: string): Record<CapaStage, CapaStageRe
 export function EhsProvider({ children }: { children: ReactNode }) {
   const { user, users } = useAuth();
   const { toast } = useToast();
-  const { notificationSettings } = useGeneral();
+  const { notificationSettings, projects } = useGeneral();
   
   const [audits, setAudits] = useState<EhsAudit[]>([]);
   const [incidents, setIncidents] = useState<EhsIncident[]>([]);
@@ -164,6 +167,17 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     await push(ref(rtdb, 'ehs/riskAssessments'), data);
   }, []);
 
+  const notifyCapa = useCallback(async (observation: EhsObservation, event: CapaMailEvent, stage = observation.currentStage) => {
+    const events = { created: 'onEhsObservation', submitted: 'onEhsStageSubmitted', approved: 'onEhsStageApproved', returned: 'onEhsStageReturned' } as const;
+    try {
+      const email = capaEmail(observation, users, event, projects.find(p=>p.id===observation.projectId)?.name || observation.projectId, window.location.origin, stage);
+      const result = await sendNotificationEmail({ ...email, notificationSettings, event: events[event] });
+      if (!result.success || !email.to.length || email.missingEmails.length) toast({ variant: 'destructive', title: 'Case saved — email delivery needs attention', description: !result.success ? 'The mail service could not send this notification. Check the existing mail configuration.' : email.missingEmails.length ? 'Missing email address: ' + email.missingEmails.join(', ') : 'No recipient email addresses are configured.' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Case saved — notification email failed', description: 'The workflow was saved. Do not submit it again; check the mail service.' });
+    }
+  }, [users, projects, notificationSettings, toast]);
+
   const addObservation = useCallback(async (data: Omit<EhsObservation, 'id' | 'createdAt' | 'status' | 'currentStage' | 'stages'>, handoff: CapaHandoff) => {
     if (!user) return;
     const newRef = push(ref(rtdb, 'ehs/observations'));
@@ -198,7 +212,8 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     };
     await set(newRef, sanitizeData(newObservation));
     toast({ title: 'Safety Case Opened', description: `Investigation deadline: ${format(new Date(initialHandoff.targetDate), 'dd MMM, HH:mm')}` });
-  }, [user, users, toast]);
+    await notifyCapa({ ...newObservation, id: newRef.key! }, 'created');
+  }, [user, users, toast, notifyCapa]);
 
   const updateInitiationDetails = useCallback(async (observationId: string, updates: Partial<EhsObservation>) => {
     if (!user) return;
@@ -295,7 +310,8 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     const result = await runTransaction(ref(rtdb, 'ehs/observations/'+observationId), current => current ? sanitizeData(transitionCase(current, stage, user, users, isSubmit ? 'submit' : 'draft', handoff, data, '', now, eventId)) : current, {applyLocally:false});
     if (!result.committed || !result.snapshot.exists()) throw new Error('Case unavailable. Refresh and try again.');
     toast({title:isSubmit ? (stage === 'Closure' ? 'Case closed' : 'Sent for review') : 'Draft saved'});
-  }, [user, users, toast]);
+    if (isSubmit) await notifyCapa({ ...result.snapshot.val(), id: observationId }, stage === 'Closure' ? 'approved' : 'submitted', stage);
+  }, [user, users, toast, notifyCapa]);
 
   const reviewStage = useCallback(async (observationId: string, stage: CapaStage, status: 'Completed' | 'Returned', comment: string, nextOwnerData?: CapaHandoff) => {
     if (!user) throw new Error('Please sign in again.');
@@ -304,7 +320,8 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     const result = await runTransaction(ref(rtdb, 'ehs/observations/'+observationId), current => current ? sanitizeData(transitionCase(current, stage, user, users, status === 'Completed' ? 'approve' : 'return', nextOwnerData, undefined, comment, now, eventId)) : current, {applyLocally:false});
     if (!result.committed || !result.snapshot.exists()) throw new Error('Case unavailable. Refresh and try again.');
     toast({title:status === 'Completed' ? 'Phase approved and handoff saved' : 'Rework assigned'});
-  }, [user, users, toast]);
+    await notifyCapa({ ...result.snapshot.val(), id: observationId }, status === 'Returned' ? 'returned' : 'approved', stage);
+  }, [user, users, toast, notifyCapa]);
 
   const addCcToObservation = useCallback((observationId: string, userIds: string[]) => {
     if (!user) return;
@@ -384,6 +401,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     <EhsContext.Provider value={{ 
         audits, incidents, riskAssessments, trainings, observations, supportTickets, contactInfo, 
         addAudit, addIncident, addRiskAssessment, addTraining, 
+        observationActionCount: observations.filter(o => needsAction(o, user?.id)).length,
         addObservation, updateInitiationDetails, splitObservation, assignStageOwner, actionStage, reviewStage, addStageComment, addStageAttachment, deleteStageAttachment, addCcToObservation, deleteObservation,
         reviewAudit, updateIncidentStatus, addSupportTicket, updateTicketStatus, addTicketComment, deleteSupportTicket, updateContactInfo, stats 
     }}>{children}</EhsContext.Provider>

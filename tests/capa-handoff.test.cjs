@@ -6,7 +6,7 @@ const fs = require('fs'),
 require.extensions['.ts'] = (mod, file) =>
   mod._compile(
     ts.transpileModule(fs.readFileSync(file, 'utf8'), {
-      compilerOptions: { module: ts.ModuleKind.CommonJS },
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
     }).outputText,
     file,
   );
@@ -35,6 +35,8 @@ const users = [
 ];
 const handoff = { assigneeId: 'next', targetDate: '2026-09-22T10:00:00.000Z' };
 const review = { ...handoff, assigneeId: 'reviewer' };
+const {REQUIRED_STAGE_FIELDS}=require('../src/lib/capa-workflow.ts');
+const validData=stage=>({...Object.fromEntries(Object.keys(REQUIRED_STAGE_FIELDS[stage]||{}).map(k=>[k,'Completed finding'])),whenDate:'2026-09-21',whenTime:'10:00',verdict:'Effective'});
 const obs = (stage, status = 'In Progress') => ({
   id: 'case',
   status: 'Open',
@@ -45,7 +47,7 @@ const obs = (stage, status = 'In Progress') => ({
       {
         status: s === stage ? status : 'Pending',
         assigneeId: 'worker',
-        data: { existing: true },
+        data: { ...validData(s), existing: true },
       },
     ]),
   ),
@@ -108,7 +110,7 @@ test('submission assigns a reviewer without advancing the phase', () => {
     users,
     'submit',
     review,
-    { finding: 'Saved' },
+    { ...validData('Implementation'), finding: 'Saved' },
     '',
     now,
     'event',
@@ -180,7 +182,7 @@ test('Closure draft cannot close case; confirmed closure has no next assignment'
     users,
     'submit',
     undefined,
-    { notes: 'Final' },
+    { finalSummary: 'Final declaration' },
     '',
     now,
     'event',

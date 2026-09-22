@@ -45,6 +45,7 @@ export default function CapaHandoffFields({
           </option>
         ))}
       </select>
+      {review ? <p className="rounded-lg bg-blue-100 p-3 text-sm text-blue-900">Review is due automatically 24 hours after submission.</p> : <>
       <label htmlFor={id + '-date'} className="block text-sm font-medium">
         {review ? 'Review deadline' : 'Completion deadline'}{' '}
         <span aria-hidden="true">*</span>
@@ -62,6 +63,7 @@ export default function CapaHandoffFields({
         Deadline uses your local time. Both fields are required before this
         handoff.
       </p>
+      </>}
       {!candidates.length && (
         <p role="alert" className="text-sm text-rose-600">
           No eligible active users are available.
