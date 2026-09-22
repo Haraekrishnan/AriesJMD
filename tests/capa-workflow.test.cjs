@@ -48,3 +48,27 @@ test('mail includes required roles, assignee and reporter once, excludes inactiv
  const reviewed=submit(o);reviewed.stages.Investigation.status='Returned';reviewed.stages.Investigation.reworkReason='<script>alert(1)</script>';
  const rework=capaEmail(reviewed,users,'returned','Site','https://portal.example');assert.match(rework.htmlBody,/&lt;script&gt;/);assert.ok(!rework.htmlBody.includes('<script>'));
 });
+
+test('personal landing queue prioritizes rework, then review, then assignments, then all',()=>{
+ const {observationAttention,ehsEntryDestination}=require('../src/lib/capa-workflow.ts');
+ const pending=observation();
+ const review=submit(observation());review.stages.Investigation.reviewAssigneeId='owner';
+ const returned=observation();returned.stages.Investigation.status='Returned';
+ assert.equal(observationAttention([], 'owner').defaultTab,'all');
+ assert.equal(observationAttention([pending], 'owner').defaultTab,'mine');
+ assert.equal(observationAttention([pending,review], 'owner').defaultTab,'review');
+ const attention=observationAttention([pending,review,returned], 'owner');
+ assert.deepEqual(attention,{count:3,review:1,rework:1,defaultTab:'rework'});
+ assert.equal(ehsEntryDestination(attention.count),'/ehs/observations');
+ assert.equal(ehsEntryDestination(0),'/ehs');
+ const closed={...pending,status:'Closed'};
+ assert.equal(observationAttention([closed,{...pending,parentId:'parent'}], 'owner').count,0);
+ assert.equal(observationAttention([pending], 'reviewer').defaultTab,'all');
+ assert.equal(observationAttention([pending], undefined).count,0);
+});
+test('personal rework view excludes rework assigned to other people while status filter supports oversight',()=>{
+ const mine=observation();mine.stages.Investigation.status='Returned';
+ const other=observation();other.stages.Investigation.status='Returned';other.stages.Investigation.assigneeId='pc';
+ assert.equal(filterObservations([mine,other],EMPTY_OBSERVATION_FILTERS,'rework','owner').length,1);
+ assert.equal(filterObservations([mine,other],{...EMPTY_OBSERVATION_FILTERS,status:'Rework required'},'all','owner').length,2);
+});

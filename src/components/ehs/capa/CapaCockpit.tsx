@@ -9,8 +9,6 @@ import {
   MapPin,
   User,
   Calendar,
-  CheckCircle2,
-  Undo2,
   PanelRight,
 } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
@@ -133,25 +131,6 @@ export default function CapaCockpit({
               </Badge>
             </div>
             <div className="flex items-center gap-2">
-              {canReview && (
-                <>
-                  <Button
-                    variant="outline"
-                    onClick={() => beginReview('Returned')}
-                    className="gap-2 text-rose-600"
-                  >
-                    <Undo2 className="h-4 w-4" />
-                    Request rework
-                  </Button>
-                  <Button
-                    onClick={() => beginReview('Completed')}
-                    className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    Verify & continue
-                  </Button>
-                </>
-              )}
               <Button
                 variant="outline"
                 aria-label="Show case details"

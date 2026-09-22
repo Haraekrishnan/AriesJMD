@@ -1,6 +1,6 @@
 'use client';
 import React, { useMemo, useState, useEffect } from 'react';
-import { needsAction, workflowStatus } from '@/lib/capa-workflow';
+import { needsAction, workflowStatus, observationAttention } from '@/lib/capa-workflow';
 import { useEhs } from '@/contexts/ehs-provider';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
@@ -25,7 +25,9 @@ export default function SafetyObservationsPage() {
   useEffect(() => { const id = new URLSearchParams(window.location.search).get('case'); if (id) setCockpitId(id); }, []);
   const [isInitiateOpen, setIsInitiateOpen] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
-  const [tab, setTab] = useState('all');
+  const [selectedTab, setTab] = useState<string | null>(null);
+  const attention = observationAttention(observations, user?.id);
+  const tab = selectedTab ?? attention.defaultTab;
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<ObservationFilters>({...EMPTY_OBSERVATION_FILTERS});
   const masterObservations = useMemo(() => observations.filter(o => !o.parentId), [observations]);
@@ -37,9 +39,9 @@ export default function SafetyObservationsPage() {
   const updateFilters = (next: ObservationFilters) => { setFilters(next); setPage(1); setSelectedId(null); };
   const tabs = [
     { id: 'all', label: 'All observations', count: masterObservations.length },
-    { id: 'mine', label: 'Assigned to me', count: masterObservations.filter(o => needsAction(o, user?.id)).length },
-    { id: 'review', label: 'My reviews', count: masterObservations.filter(o => needsAction(o, user?.id) && workflowStatus(o) === 'Awaiting review').length },
-    { id: 'rework', label: 'Rework required', count: masterObservations.filter(o => workflowStatus(o) === 'Rework required').length },
+    { id: 'mine', label: 'Assigned to me', count: attention.count },
+    { id: 'review', label: 'My reviews', count: attention.review },
+    { id: 'rework', label: 'My rework', count: attention.rework },
     { id: 'closed', label: 'Closed', count: masterObservations.filter(o => o.status === 'Closed').length },
   ];
   const activity = useMemo(() => filtered.flatMap(o => Object.values(o.activities || {}).map(a => ({...a, observationId:o.id}))).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [filtered]);

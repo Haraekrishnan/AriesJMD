@@ -107,3 +107,14 @@ export function reworkNote(record?: CapaStageRecord) {
       .sort((a, b) => b.date.localeCompare(a.date))[0]?.text || ''
   );
 }
+
+/** One source for personal queues, sidebar badges, and the initial register view. */
+export function observationAttention(observations: EhsObservation[], userId?: string) {
+  const mine = observations.filter(o => !o.parentId && needsAction(o, userId));
+  const rework = mine.filter(o => workflowStatus(o) === 'Rework required').length;
+  const review = mine.filter(o => workflowStatus(o) === 'Awaiting review').length;
+  return { count: mine.length, rework, review, defaultTab: rework ? 'rework' : review ? 'review' : mine.length ? 'mine' : 'all' };
+}
+export function ehsEntryDestination(actionCount: number) {
+  return actionCount > 0 ? '/ehs/observations' : '/ehs';
+}

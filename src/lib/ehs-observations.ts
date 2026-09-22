@@ -22,7 +22,7 @@ export function filterObservations(observations: EhsObservation[], filters: Obse
     if (o.parentId) return false;
     if (tab === 'mine' && !needsAction(o, userId)) return false;
     if (tab === 'review' && (!needsAction(o, userId) || workflowStatus(o) !== 'Awaiting review')) return false;
-    if (tab === 'rework' && workflowStatus(o) !== 'Rework required') return false;
+    if (tab === 'rework' && (!needsAction(o, userId) || workflowStatus(o) !== 'Rework required')) return false;
     if (tab === 'closed' && o.status !== 'Closed') return false;
     const statusMatches = filters.status === 'all' || filters.status === workflowStatus(o) || (filters.status === 'Returned' && workflowStatus(o) === 'Rework required') ||
       (filters.status === 'active' ? ['Open', 'In Progress'].includes(o.status) :

@@ -227,13 +227,13 @@ export function AppSidebar() {
                     variant={pathname.startsWith(item.href) ? 'secondary' : 'ghost'}
                     className="w-full justify-start"
                     >
-                    <Link href={item.href} className="flex items-center justify-between w-full">
+                    <Link href={item.href === '/ehs' ? '/ehs?entry=notifications' : item.href} className="flex items-center justify-between w-full">
                         <div className="flex items-center gap-3">
                         <item.icon className="h-5 w-5" />
                         <span>{item.label}</span>
                         </div>
                         {item.notificationCount > 0 && (
-                        <Badge variant="destructive" className="h-6 w-6 flex items-center justify-center p-0">{item.notificationCount}</Badge>
+                        <Badge variant="destructive" aria-label={`${item.notificationCount} pending actions in ${item.label}`} className="h-6 min-w-6 shrink-0 flex items-center justify-center px-1.5">{item.notificationCount}</Badge>
                         )}
                     </Link>
                     </Button>

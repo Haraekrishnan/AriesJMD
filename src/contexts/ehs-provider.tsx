@@ -25,7 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { transitionCase, validateHandoff, type CapaHandoff } from '@/lib/capa-handoff';
 import { capaEmail, type CapaMailEvent } from '@/lib/capa-email';
-import { needsAction } from '@/lib/capa-workflow';
+import { observationAttention } from '@/lib/capa-workflow';
 import { addHours, format } from 'date-fns';
 
 type EhsContextType = {
@@ -35,6 +35,7 @@ type EhsContextType = {
   trainings: EhsTraining[];
   observations: EhsObservation[];
   observationActionCount: number;
+  observationsLoaded: boolean;
   supportTickets: EhsSupportTicket[];
   contactInfo: EhsContactInfo;
   
@@ -105,6 +106,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
   const [incidents, setIncidents] = useState<EhsIncident[]>([]);
   const [riskAssessments, setRiskAssessments] = useState<EhsRiskAssessment[]>([]);
   const [trainings, setTrainings] = useState<EhsTraining[]>([]);
+  const [observationsLoaded, setObservationsLoaded] = useState(false);
   const [observations, setObservations] = useState<EhsObservation[]>([]);
   const [supportTickets, setSupportTickets] = useState<EhsSupportTicket[]>([]);
   const [contactInfo, setContactInfo] = useState<EhsContactInfo>({
@@ -133,6 +135,7 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     const unsubObservations = onValue(ref(rtdb, 'ehs/observations'), (snap) => {
       const val = snap.val() || {};
       setObservations(Object.keys(val).map(k => ({ ...val[k], id: k })));
+      setObservationsLoaded(true);
     });
     const unsubTickets = onValue(ref(rtdb, 'ehs/supportTickets'), (snap) => {
       const val = snap.val() || {};
@@ -401,7 +404,8 @@ export function EhsProvider({ children }: { children: ReactNode }) {
     <EhsContext.Provider value={{ 
         audits, incidents, riskAssessments, trainings, observations, supportTickets, contactInfo, 
         addAudit, addIncident, addRiskAssessment, addTraining, 
-        observationActionCount: observations.filter(o => needsAction(o, user?.id)).length,
+        observationsLoaded,
+        observationActionCount: observationAttention(observations, user?.id).count,
         addObservation, updateInitiationDetails, splitObservation, assignStageOwner, actionStage, reviewStage, addStageComment, addStageAttachment, deleteStageAttachment, addCcToObservation, deleteObservation,
         reviewAudit, updateIncidentStatus, addSupportTicket, updateTicketStatus, addTicketComment, deleteSupportTicket, updateContactInfo, stats 
     }}>{children}</EhsContext.Provider>
