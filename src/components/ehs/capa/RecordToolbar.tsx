@@ -8,7 +8,6 @@ export type RecordFilter = {
   onChange: (value: string) => void;
   options: { value: string; label: string }[];
 };
-
 export function RecordSelect({
   label,
   value,
@@ -21,7 +20,7 @@ export function RecordSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:outline-blue-600 font-bold uppercase tracking-tight"
+        className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:outline-blue-600"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -32,7 +31,6 @@ export function RecordSelect({
     </label>
   );
 }
-
 export default function RecordToolbar({
   search,
   onSearch,
@@ -54,23 +52,23 @@ export default function RecordToolbar({
       className="space-y-3 rounded-xl border bg-white p-4 shadow-sm"
     >
       <div className="flex flex-wrap items-end gap-3">
-        <label className="min-w-[180px] flex-1 text-xs font-bold text-slate-400 uppercase tracking-widest">
+        <label className="min-w-[180px] flex-1 text-xs text-slate-500">
           Search records
           <div className="relative mt-1">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-300" />
+            <Search className="absolute left-3 top-3 h-4 w-4" />
             <input
               value={search}
               onChange={(e) => onSearch(e.target.value)}
-              placeholder="Search registry…"
-              className="h-10 w-full rounded-lg border bg-white pl-9 pr-3 text-sm text-slate-900 focus:outline-blue-600 font-bold"
+              placeholder="Search records…"
+              className="h-10 w-full rounded-lg border bg-white pl-9 pr-3 text-sm text-slate-900 focus:outline-blue-600"
             />
           </div>
         </label>
         {filters.map((filter) => (
           <RecordSelect key={filter.label} {...filter} />
         ))}
-        <Button variant="ghost" onClick={onReset} className="gap-2 font-black uppercase text-[10px] tracking-widest text-slate-500 hover:bg-slate-50">
-          <RotateCcw className="h-3.5 w-3.5" />
+        <Button variant="ghost" onClick={onReset} className="gap-2">
+          <RotateCcw className="h-4 w-4" />
           Reset
         </Button>
         {onExport && (
@@ -78,15 +76,15 @@ export default function RecordToolbar({
             variant="outline"
             onClick={onExport}
             disabled={!count}
-            className="gap-2 font-black uppercase text-[10px] tracking-widest border-2"
+            className="gap-2"
           >
-            <Download className="h-3.5 w-3.5" />
+            <Download className="h-4 w-4" />
             Export CSV
           </Button>
         )}
       </div>
-      <p role="status" className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-        {count} matching {count === 1 ? 'record' : 'records'} found
+      <p role="status" className="text-xs text-slate-500">
+        {count} matching {count === 1 ? 'record' : 'records'}
       </p>
     </section>
   );
@@ -104,12 +102,12 @@ export function RecordMetrics({
           key={item.label}
           className="rounded-xl border bg-white p-5 shadow-sm"
         >
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.label}</p>
-          <p className="mt-2 text-2xl font-black text-slate-900 tracking-tighter tabular-nums">
+          <p className="text-sm text-slate-500">{item.label}</p>
+          <p className="mt-2 text-2xl font-semibold tabular-nums">
             {item.value}
           </p>
           {item.note && (
-            <p className="mt-1 text-[9px] font-bold text-slate-400 uppercase tracking-tight">{item.note}</p>
+            <p className="mt-1 text-xs text-slate-500">{item.note}</p>
           )}
         </div>
       ))}

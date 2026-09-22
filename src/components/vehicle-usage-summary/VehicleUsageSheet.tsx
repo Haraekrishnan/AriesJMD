@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
@@ -162,8 +163,17 @@ export default function VehicleUsageSheet() {
 
     const sortedVehicles = useMemo(() => {
         if (!vehicles || !Array.isArray(vehicles)) return [];
+        const monthKey = format(currentMonth, 'yyyy-MM');
+        const monthRecords = vehicleUsageRecords?.[monthKey]?.records || {};
+
         return [...vehicles]
-            .filter(v => v.status === 'Active' || v.status === 'In Maintenance')
+            .filter(v => {
+                // Rule 1: Always show vehicles that have a record for THIS month (even if inactive now)
+                if (monthRecords[v.id]) return true;
+
+                // Rule 2: Show only Active or In Maintenance vehicles if no record exists for this month
+                return v.status === 'Active' || v.status === 'In Maintenance';
+            })
             .map(v => ({ ...v, status: getVehicleStatus(v.id) }))
             .sort((a,b) => a.vehicleNumber.localeCompare(b.vehicleNumber));
     }, [vehicles, currentMonth, vehicleUsageRecords]);
@@ -205,3 +215,4 @@ export default function VehicleUsageSheet() {
         </div>
     );
 }
+

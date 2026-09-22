@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -6,12 +5,12 @@ import { useAuth } from '@/contexts/auth-provider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import type { Task, User, Role } from '@/lib/types';
+import type { Task, Role } from '@/lib/types';
+import { isAfter, endOfDay, parseISO, isValid } from 'date-fns';
 
 const COLORS: Record<string, string> = {
   'To Do': 'hsl(var(--chart-1))',
   'In Progress': 'hsl(var(--chart-3))',
-  'In Review': 'hsl(var(--chart-4))',
   'Completed': 'hsl(var(--chart-2))',
   'Overdue': 'hsl(var(--destructive))',
 };
@@ -51,15 +50,22 @@ export default function TeamTaskDistributionChart({ tasks }: TeamTaskDistributio
       ? tasks
       : tasks.filter(t => t.assigneeIds.includes(selectedUserId));
 
-    const statuses = {
-      'To Do': relevantTasks.filter(t => t.status === 'To Do').length,
-      'In Progress': relevantTasks.filter(t => t.status === 'In Progress').length,
-      'In Review': relevantTasks.filter(t => t.status === 'In Review').length,
-      'Completed': relevantTasks.filter(t => t.status === 'Done').length,
-      'Overdue': relevantTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'Done').length,
+    const isOverdue = (task: Task) => {
+        if (task.status === 'Done' || task.status === 'Completed') return false;
+        if (!task.dueDate) return false;
+        const dueDate = parseISO(task.dueDate);
+        if (!isValid(dueDate)) return false;
+        return isAfter(new Date(), endOfDay(dueDate));
+    };
+
+    const counts = {
+      'To Do': relevantTasks.filter(t => t.status === 'To Do' && !isOverdue(t)).length,
+      'In Progress': relevantTasks.filter(t => (t.status === 'In Progress' || t.status === 'In Review' || t.status === 'Pending Approval') && !isOverdue(t)).length,
+      'Completed': relevantTasks.filter(t => t.status === 'Done' || t.status === 'Completed').length,
+      'Overdue': relevantTasks.filter(t => isOverdue(t)).length,
     };
     
-    return Object.entries(statuses)
+    return Object.entries(counts)
       .map(([name, value]) => ({ name, value }))
       .filter(d => d.value > 0);
   }, [tasks, selectedUserId]);
