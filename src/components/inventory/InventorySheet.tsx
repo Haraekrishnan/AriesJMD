@@ -310,6 +310,7 @@ const InventorySheet = ({ category }: { category: string }) => {
         size: 180,
       },
       { accessorKey: 'purchaseDate', header: ({column}) => <FilterableHeader title="Purchase Date" column={column} />, cell: DateCell, size: 150 },
+      { accessorKey: 'inspectionDate', header: ({column}) => <FilterableHeader title="Inspection Date" column={column} />, cell: DateCell, size: 150 },
       { accessorKey: 'inspectionDueDate', header: ({column}) => <FilterableHeader title="Insp. Due" column={column} />, cell: DateCell, size: 150 },
       { accessorKey: 'tpInspectionDueDate', header: ({column}) => <FilterableHeader title="TP Insp. Due" column={column} />, cell: DateCell, size: 150 },
       { accessorKey: 'certificateUrl', header: ({column}) => <FilterableHeader title="TP Cert Link" column={column} />, cell: EditableCell, size: 250 },
