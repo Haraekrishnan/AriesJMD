@@ -1,5 +1,6 @@
 'use client';
 
+import { workflowStatus, responsibleUserId, reworkNote, needsAction } from '@/lib/capa-workflow';
 import React, { useMemo, useState, useRef, MouseEvent } from 'react';
 import { 
     Table, 
@@ -81,7 +82,7 @@ const statusStyles: Record<string, string> = {
 
 export default function CapaTable({ observations, selectedId, onSelect, onOpenCockpit }: CapaTableProps) {
     const { projects } = useGeneral();
-    const { user } = useAuth();
+    const { user, users } = useAuth();
     const { deleteObservation } = useEhs();
 
     // Lightbox State
@@ -124,7 +125,8 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
 
     return (
         <>
-        <Table className="w-full min-w-[980px] border-separate border-spacing-0">
+        <div className="w-full overflow-x-auto" role="region" aria-label="Observation register table" tabIndex={0}>
+        <Table className="w-full min-w-[1380px] border-separate border-spacing-0">
             <TableHeader className="bg-slate-50">
                 <TableRow className="hover:bg-transparent border-b border-slate-200">
                     <TableHead className="w-12 px-6 border-b border-slate-200">
@@ -132,6 +134,7 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
                     </TableHead>
                     <TableHead className="w-[145px] font-semibold text-slate-900 border-b normal-case tracking-normal text-sm h-14">Case ID</TableHead>
                     <TableHead className="min-w-[200px] font-semibold text-slate-900 border-b normal-case tracking-normal text-sm h-14">Observation</TableHead>
+                    <TableHead className="min-w-[190px] font-semibold text-slate-900 border-b text-sm">People</TableHead>
                     <TableHead className="w-[110px] font-semibold text-slate-900 border-b text-center normal-case tracking-normal text-sm h-14">Category</TableHead>
                     <TableHead className="w-[90px] font-semibold text-slate-900 border-b text-center normal-case tracking-normal text-sm h-14">Risk</TableHead>
                     <TableHead className="w-[100px] font-semibold text-slate-900 border-b text-center normal-case tracking-normal text-sm h-14">Status</TableHead>
@@ -143,6 +146,10 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
             </TableHeader>
             <TableBody>
                 {observations.map((obs) => {
+                    const stage = obs.stages?.[obs.currentStage];
+                    const state = workflowStatus(obs);
+                    const owner = users.find(u => u.id === responsibleUserId(obs));
+                    const reporter = users.find(u => u.id === obs.reporterId);
                     const project = projects.find(p => p.id === obs.projectId);
                     const isSelected = selectedId === obs.id;
                     const createdDate = parseISO(obs.createdAt);
@@ -198,6 +205,12 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
                                 </div>
                             </TableCell>
 
+                            <TableCell className="min-w-[190px] max-w-[240px] text-sm align-top py-4">
+                              <p className="text-xs text-slate-500">Currently assigned to</p><p className="break-words font-medium">{owner?.name || (obs.status === 'Closed' ? 'Completed' : 'Not assigned')}</p>
+                              <p className="mt-2 text-xs text-slate-500">Reported / created by</p><p className="break-words">{reporter?.name || 'Unknown'}</p>
+                              {stage?.status === 'In Progress' && <p className="mt-2 text-xs text-slate-500">Stage owner: {users.find(u=>u.id===stage.assigneeId)?.name || 'Not assigned'}</p>}
+                            </TableCell>
+
                             <TableCell className="text-center">
                                 <Badge variant="outline" className="text-sm font-semibold normal-case tracking-normal h-6 px-2 rounded-md bg-slate-50 border-slate-200 text-slate-600 whitespace-nowrap">
                                     {obs.category}
@@ -211,9 +224,12 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
                             </TableCell>
 
                             <TableCell className="text-center">
-                                <Badge className={cn("text-sm font-semibold normal-case tracking-normal h-6 px-3 rounded-md border", statusStyles[obs.status])}>
-                                    {obs.status}
+                                <Badge className={cn("whitespace-nowrap text-xs font-semibold px-2 py-1 rounded-md border", state === 'Rework required' ? 'bg-rose-50 text-rose-700 border-rose-200' : state === 'Awaiting review' ? 'bg-amber-50 text-amber-800 border-amber-200' : statusStyles[obs.status])}>
+                                    {state}
                                 </Badge>
+                                <p className="mt-1 text-xs text-slate-500">{obs.currentStage}</p>
+                                {needsAction(obs, user?.id) && <p className="mt-1 text-xs font-semibold text-blue-700">Your action required</p>}
+                                {state === 'Rework required' && <p className="mt-2 max-w-[200px] whitespace-normal break-words text-left text-xs text-rose-700">{reworkNote(stage) || 'Open case for rework details.'}</p>}
                             </TableCell>
                             
                             <TableCell className="text-sm font-semibold text-slate-900 normal-case">
@@ -280,6 +296,7 @@ export default function CapaTable({ observations, selectedId, onSelect, onOpenCo
                 })}
             </TableBody>
         </Table>
+        </div>
 
         {/* --- LIGHTBOX EVIDENCE VIEWER --- */}
         <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); setNumPages(null); setPageNumber(1); }}>

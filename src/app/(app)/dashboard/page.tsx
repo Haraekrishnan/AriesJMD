@@ -238,7 +238,7 @@ export default function DashboardPage() {
                     Dismiss
                 </Button>
                 <Button asChild size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                    <Link href="/ehs">Explore Portal</Link>
+                    <Link href="/ehs?entry=notifications">Explore Portal</Link>
                 </Button>
             </div>
           </div>

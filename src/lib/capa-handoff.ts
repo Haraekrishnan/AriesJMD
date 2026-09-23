@@ -1,4 +1,5 @@
 import type { CapaStage, EhsObservation } from './types';
+import { validateStageData } from './capa-workflow';
 import { CAPA_STAGES } from './ehs-observations';
 
 export type CapaHandoff = { assigneeId: string; targetDate: string };
@@ -29,7 +30,7 @@ export function validateHandoff(
         ? 'Select an active supervisor to review this phase.'
         : 'Select an active owner for the next step.',
     );
-  const deadline = new Date(value?.targetDate || '');
+  const deadline = review ? new Date(now.getTime() + 24 * 60 * 60 * 1000) : new Date(value?.targetDate || '');
   if (!Number.isFinite(deadline.getTime()) || deadline <= now)
     throw new Error('Choose a deadline in the future.');
   return { assigneeId: owner.id, targetDate: deadline.toISOString() };
@@ -58,6 +59,7 @@ export function transitionCase(
         !['Pending', 'Returned'].includes(record.status)
   )
     throw new Error('You cannot perform this action on the current phase.');
+  if (action === 'submit' || action === 'approve') validateStageData(stage, action === 'submit' ? data : record.data);
   const iso = now.toISOString();
   const next: EhsObservation = {
     ...obs,
@@ -124,7 +126,11 @@ export function transitionCase(
       next.closedAt = iso;
       message = 'Final safety case closure approved.';
     }
-    if (action === 'return') next.reworkCount = (next.reworkCount || 0) + 1;
+    if (action === 'return') {
+      next.reworkCount = (next.reworkCount || 0) + 1;
+      next.stages[stage].reworkReason = comment.trim();
+      message += ' Rework reason: ' + comment.trim();
+    }
     if (comment.trim())
       next.stages[stage].comments = {
         ...record.comments,
