@@ -234,7 +234,17 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     return history.sort((a,b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
   }, [liveProfile]);
 
+  const initializedProfile = useRef<string | null>(null);
+
   useEffect(() => {
+    if (!isOpen) {
+        initializedProfile.current = null;
+        return;
+    }
+    const profileKey = profile ? `edit:${profile.id}` : 'new';
+    // Live updates must not replace the draft during an open editing session.
+    if (initializedProfile.current === profileKey) return;
+    initializedProfile.current = profileKey;
     if (isOpen) {
         setIsChangingEp(false);
         const defaultValues = liveProfile ? {
@@ -276,7 +286,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
             form.setValue('otherTrade', defaultValues.otherTrade);
         }
     }
-  }, [isOpen, liveProfile, form]);
+  }, [isOpen, profile?.id, liveProfile, form]);
 
   useEffect(() => {
     const documents = form.getValues('documents') || [];
@@ -300,6 +310,11 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
 
     try {
         const dataToSubmit: { [key: string]: any } = { ...data };
+        // These records are managed separately while the profile draft stays open.
+        // Do not write an older form snapshot over newly added/deleted history.
+        dataToSubmit.memoHistory = liveProfile?.memoHistory || [];
+        dataToSubmit.ppeHistory = liveProfile?.ppeHistory || [];
+        dataToSubmit.logbook = liveProfile?.logbook || null;
 
         if (data.trade === 'Others' && data.otherTrade) {
             dataToSubmit.trade = data.otherTrade.trim();
