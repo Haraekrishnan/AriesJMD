@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { format, getYear, getMonth, parseISO } from 'date-fns';
+import { format, getYear, getMonth, parseISO, isValid } from 'date-fns';
 import type { Task } from '@/lib/types';
 
 interface TasksCompletedChartProps {
@@ -15,7 +15,7 @@ export default function TasksCompletedChart({ tasks }: TasksCompletedChartProps)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
 
   const availableYears = useMemo(() => {
-    const years = new Set(tasks.map(t => getYear(parseISO(t.dueDate))));
+    const years = new Set(tasks.map(t => t.completionDate ? parseISO(t.completionDate) : null).filter((date): date is Date => !!date && isValid(date)).map(date => getYear(date)));
     if (!years.has(new Date().getFullYear())) {
       years.add(new Date().getFullYear());
     }
@@ -41,11 +41,11 @@ export default function TasksCompletedChart({ tasks }: TasksCompletedChartProps)
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="p-4 pb-2">
         <div className="flex justify-between items-center">
-          <CardTitle>Tasks Completed per Month</CardTitle>
+          <CardTitle className="text-base font-semibold">Tasks Completed per Month</CardTitle>
           <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="w-[120px]">
+            <SelectTrigger className="w-[100px] h-8">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -56,8 +56,8 @@ export default function TasksCompletedChart({ tasks }: TasksCompletedChartProps)
           </Select>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="h-[350px]">
+      <CardContent className="px-3 pb-3">
+        <div className="h-[200px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 20, left: -10 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />

@@ -1,5 +1,6 @@
-
 'use client';
+import styles from './my-requests.module.css';
+import RequestPagination, { useRequestPages } from './RequestPagination';
 
 import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -147,7 +148,7 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false, showAckno
 
     return (
         <>
-            <Card className={cn("relative flex flex-col", (hasUpdate || hasUnreadCommentForApprover) && "border-blue-500")}>
+            <Card className={cn(styles.requestCard, (hasUpdate || hasUnreadCommentForApprover) && "border-blue-500")}>
                 {(hasUpdate || hasUnreadCommentForApprover) && <div className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse" title="Unread update"></div>}
                 <CardHeader className="p-4">
                     <div className="flex justify-between items-start">
@@ -221,12 +222,12 @@ const RequestCard = ({ req, onEditRequest, isCompletedSection = false, showAckno
                                         )
                                     }) : <p className="text-xs text-muted-foreground">No comments yet.</p>}
                                 </div>
-                                </AccordionContent>
+            </AccordionContent>
                             </AccordionItem>
                         </Accordion>
                     </ScrollArea>
                 </CardContent>
-                <CardFooter className="p-2 bg-muted/50 flex flex-col items-stretch gap-2 mt-auto">
+                <CardFooter className={styles.storeActions}>
                     {canAddComments && (
                         <div className="relative px-2 pb-2">
                             <Textarea
@@ -350,9 +351,12 @@ export default function InternalRequestTable({ requests, showAcknowledge = true,
     return { activeRequests: active, completedRequests: completed };
   }, [requests]);
 
+  const activePages = useRequestPages(activeRequests);
+  const completedPages = useRequestPages(completedRequests);
+
   useEffect(() => {
     if (isCompletedOpen && user) {
-        completedRequests.forEach(req => {
+        completedPages.items.forEach(req => {
             const comments = Array.isArray(req.comments) ? req.comments : Object.values(req.comments || {});
             const hasUnread = comments.some(c => c.userId !== user.id && !c.viewedBy?.[user.id]);
             if (req.requesterId === user.id && (!req.acknowledgedByRequester || hasUnread)) {
@@ -360,7 +364,7 @@ export default function InternalRequestTable({ requests, showAcknowledge = true,
             }
         });
     }
-  }, [isCompletedOpen, completedRequests, user, markInternalRequestAsViewed]);
+  }, [isCompletedOpen, completedPages.items, user, markInternalRequestAsViewed]);
 
 
   if (requests.length === 0) {
@@ -374,25 +378,27 @@ export default function InternalRequestTable({ requests, showAcknowledge = true,
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <h3 className="font-semibold text-lg">Active Requests ({activeRequests.length})</h3>
+        <h3 className={styles.activeHeading}>Active Requests ({activeRequests.length})</h3>
         {activeRequests.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {activeRequests.map((req, index) => <RequestCard key={req.id || index} req={req} onEditRequest={handleEditItem} showAcknowledge={showAcknowledge} isConsumable={isConsumable} />)}
+          <div className={styles.requestGrid}>
+            {activePages.items.map((req, index) => <RequestCard key={req.id || index} req={req} onEditRequest={handleEditItem} showAcknowledge={showAcknowledge} isConsumable={isConsumable} />)}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">No active requests.</p>
         )}
+        <RequestPagination {...activePages} label="Active requests" />
       </div>
        {completedRequests.length > 0 && (
         <Accordion type="single" collapsible className="w-full" onValueChange={(value) => setIsCompletedOpen(!!value)}>
           <AccordionItem value="completed-requests" className="border rounded-md">
-            <AccordionTrigger className="p-4 bg-muted/50 hover:no-underline font-semibold text-lg">
+            <AccordionTrigger className={styles.completedHeading}>
                Completed & Acknowledged Requests ({completedRequests.length})
             </AccordionTrigger>
             <AccordionContent className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {completedRequests.map((req, index) => <RequestCard key={req.id || index} req={req} onEditRequest={handleEditItem} isCompletedSection={true} showAcknowledge={showAcknowledge} isConsumable={isConsumable}/>)}
+              <div className={styles.requestGrid}>
+                {completedPages.items.map((req, index) => <RequestCard key={req.id || index} req={req} onEditRequest={handleEditItem} isCompletedSection={true} showAcknowledge={showAcknowledge} isConsumable={isConsumable}/>)}
               </div>
+            <RequestPagination {...completedPages} label="Completed requests" />
             </AccordionContent>
           </AccordionItem>
         </Accordion>

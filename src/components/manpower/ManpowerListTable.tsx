@@ -1,6 +1,7 @@
 
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import ManpowerPagination from './ManpowerPagination';
 import type { ManpowerProfile, EpNumberRecord } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -96,6 +97,14 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
     const { toast } = useToast();
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const resultKey = JSON.stringify(profiles.map(profile => profile.id));
+    useEffect(() => { setPage(1); }, [resultKey]);
+    const pageCount = Math.max(1, Math.ceil(profiles.length / pageSize));
+    const currentPage = Math.min(page, pageCount);
+    const visibleProfiles = profiles.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
     const toggleRow = (id: string) => {
         const newExpandedRows = new Set(expandedRows);
         if (newExpandedRows.has(id)) {
@@ -185,7 +194,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {profiles.map((profile) => {
+                    {visibleProfiles.map((profile) => {
                         const isExpanded = expandedRows.has(profile.id);
                         const nextExpiry = getNextExpiry(profile);
                         const daysToExpiry = nextExpiry ? differenceInDays(nextExpiry.date, new Date()) : null;
@@ -321,6 +330,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                 </TableBody>
             </Table>
         </TooltipProvider>
+        <ManpowerPagination total={profiles.length} page={currentPage} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={size => { setPageSize(size); setPage(1); }} />
         </div>
     );
 }

@@ -7,7 +7,8 @@ import { useInventory } from '@/contexts/inventory-provider';
 import { useConsumable } from '@/contexts/consumable-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, HardHat, Package, Store, ChevronRight } from 'lucide-react';
+import styles from '@/components/requests/my-requests.module.css';
 import NewInternalRequestDialog from '@/components/requests/new-internal-request-dialog';
 import InternalRequestTable from '@/components/requests/internal-request-table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -32,6 +33,7 @@ export default function MyRequestsPage() {
      } = useInventory();
     const { consumableItems } = useConsumable();
 
+    const [requestType, setRequestType] = useState('ppe-requests');
     const [isNewRequestDialogOpen, setIsNewRequestDialogOpen] = useState(false);
     const [isNewConsumableRequestDialogOpen, setIsNewConsumableRequestDialogOpen] = useState(false);
     const [isNewPpeRequestDialogOpen, setIsNewPpeRequestDialogOpen] = useState(false);
@@ -83,39 +85,31 @@ export default function MyRequestsPage() {
     const ppeNotifCount = pendingPpeRequestCount + updatedPpeRequestCount;
 
     return (
-        <div className="space-y-8">
+        <div className={styles.page}>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">My Requests</h1>
                     <p className="text-muted-foreground">
-                        Track your submitted requests or create a new PPE request.
+                        Track, manage and create PPE and store requests easily.
                     </p>
                 </div>
+                <Button className={styles.create} onClick={() => requestType === 'ppe-requests' ? setIsNewPpeRequestDialogOpen(true) : requestType === 'consumable-requests' ? setIsNewConsumableRequestDialogOpen(true) : setIsNewRequestDialogOpen(true)}><PlusCircle size={17}/>{requestType === 'ppe-requests' ? 'New PPE Request' : requestType === 'consumable-requests' ? 'Request Consumables' : 'New General Request'}</Button>
             </div>
             
-            <Tabs defaultValue="ppe-requests">
-                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto sm:h-10">
-                    <TabsTrigger value="ppe-requests" className="flex items-center gap-2">
-                        PPE Requests
-                        {ppeNotifCount > 0 && (
-                           <Badge variant="destructive">{ppeNotifCount}</Badge>
-                        )}
-                    </TabsTrigger>
-                     <TabsTrigger value="consumable-requests" className="flex items-center gap-2">
-                        Consumable Requests
-                         {consumableNotifCount > 0 && (
-                            <Badge variant="destructive">{consumableNotifCount}</Badge>
-                         )}
-                    </TabsTrigger>
-                    <TabsTrigger value="store-requests" className="flex items-center gap-2">
-                        General Store Requests
-                         {generalNotifCount > 0 && (
-                            <Badge variant="destructive">{generalNotifCount}</Badge>
-                         )}
-                    </TabsTrigger>
+            <Tabs value={requestType} onValueChange={setRequestType}>
+                <TabsList className={styles.categories} aria-label="Request category">
+                    {[
+                        {value:'ppe-requests',title:'PPE Requests',count:visiblePpeRequests.length,notifications:ppeNotifCount,icon:HardHat,tone:'blue'},
+                        {value:'consumable-requests',title:'Consumable Requests',count:consumableRequests.length,notifications:consumableNotifCount,icon:Package,tone:'green'},
+                        {value:'store-requests',title:'General Store Requests',count:generalStoreRequests.length,notifications:generalNotifCount,icon:Store,tone:'purple'},
+                    ].map(({value,title,count,notifications,icon:Icon,tone}) => <TabsTrigger key={value} value={value} className={styles.category+' '+styles[tone]}>
+                        <span className={styles.categoryIcon}><Icon aria-hidden="true" /></span>
+                        <span className={styles.categoryText}><span>{title}</span><strong>{count.toLocaleString()} <ChevronRight aria-hidden="true" size={18}/></strong></span>
+                        {notifications > 0 && <Badge variant="destructive" className={styles.notification} aria-label={notifications+' notifications'}>{notifications}</Badge>}
+                    </TabsTrigger>)}
                 </TabsList>
                 <TabsContent value="ppe-requests">
-                    <Card>
+                    <Card className={styles.register}>
                         <CardHeader className="flex flex-row items-center justify-between">
                             <div>
                                 <CardTitle>PPE Requests</CardTitle>
@@ -123,10 +117,7 @@ export default function MyRequestsPage() {
                                     Request coveralls and safety shoes for personnel.
                                 </CardDescription>
                             </div>
-                            <Button onClick={() => setIsNewPpeRequestDialogOpen(true)}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                New PPE Request
-                            </Button>
+
                         </CardHeader>
                         <CardContent>
                             <PpeRequestTable requests={visiblePpeRequests} />
@@ -134,7 +125,7 @@ export default function MyRequestsPage() {
                     </Card>
                 </TabsContent>
                 <TabsContent value="consumable-requests">
-                    <Card>
+                    <Card className={styles.register}>
                         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                             <div>
                                 <CardTitle>Consumable Requests</CardTitle>
@@ -142,10 +133,7 @@ export default function MyRequestsPage() {
                                     Request daily or job-specific consumables.
                                 </CardDescription>
                             </div>
-                            <Button onClick={() => setIsNewConsumableRequestDialogOpen(true)}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Request Consumables
-                            </Button>
+
                         </CardHeader>
                         <CardContent>
                             <InternalRequestTable requests={consumableRequests} showAcknowledge={false} isConsumable={true} />
@@ -153,7 +141,7 @@ export default function MyRequestsPage() {
                     </Card>
                 </TabsContent>
                 <TabsContent value="store-requests">
-                    <Card>
+                    <Card className={styles.register}>
                         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                             <div>
                                 <CardTitle>General Store Requests</CardTitle>
@@ -161,10 +149,7 @@ export default function MyRequestsPage() {
                                     Request general items from the store inventory.
                                 </CardDescription>
                             </div>
-                            <Button onClick={() => setIsNewRequestDialogOpen(true)}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                New General Request
-                            </Button>
+
                         </CardHeader>
                         <CardContent>
                             <InternalRequestTable requests={generalStoreRequests} />

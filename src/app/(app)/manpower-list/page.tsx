@@ -1,5 +1,6 @@
 'use client';
 import { useState, useMemo } from 'react';
+import styles from '@/components/manpower/manpower-list.module.css';
 import type { DateRange } from 'react-day-picker';
 import { useAuth } from '@/contexts/auth-provider';
 import { useManpower } from '@/contexts/manpower-provider';
@@ -237,13 +238,13 @@ export default function ManpowerListPage() {
 
 
     return (
-        <div className="space-y-8">
+        <div className={styles.page}>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Manpower List</h1>
                     <p className="text-muted-foreground">Manage manpower profiles and documentation.</p>
                 </div>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                <div className={styles.toolbar}>
                     <ManpowerReportDownloads profiles={filteredProfiles} />
                     {can.manage_manpower_list && (
                         <>
@@ -269,7 +270,7 @@ export default function ManpowerListPage() {
             <TradeSummary />
             
             {can.manage_manpower_list && overdueLeaves.length > 0 && (
-                <Card className="border-orange-500">
+                <Card className={styles.overdue}>
                     <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                         <div>
                             <CardTitle className="flex items-center gap-2"><Clock className="text-orange-500"/>Leave Period Ended</CardTitle>
@@ -313,7 +314,7 @@ export default function ManpowerListPage() {
             )}
 
             {can.manage_manpower_list && upcomingLeaves.length > 0 && (
-                 <Card className="border-amber-500">
+                 <Card className={styles.upcoming}>
                     <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                         <div>
                             <CardTitle className="flex items-center gap-2"><Plane className="text-amber-500"/>Upcoming Leave Within 30 Days</CardTitle>
@@ -343,7 +344,7 @@ export default function ManpowerListPage() {
             )}
 
             {can.manage_manpower_list && leavesStartingToday.length > 0 && (
-                 <Card className="border-blue-500">
+                 <Card className={styles.starting}>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2"><Plane className="text-blue-500"/>Leave Starting Soon</CardTitle>
                         <CardDescription>The following employees are scheduled for leave. Please confirm or modify their status.</CardDescription>

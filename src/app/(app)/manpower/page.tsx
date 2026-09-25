@@ -1,5 +1,6 @@
 'use client';
 import { useState, useMemo } from 'react';
+import styles from '@/components/manpower/manpower-page.module.css';
 import type { DateRange } from 'react-day-picker';
 import { useAuth } from '@/contexts/auth-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -32,7 +33,7 @@ export default function ManpowerPage() {
     }, [user]);
 
     return (
-        <div className="space-y-8">
+        <div className={styles.page}>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Manpower Details</h1>
@@ -56,7 +57,7 @@ export default function ManpowerPage() {
 
             <ManpowerSummary />
 
-            <Card>
+            <Card className={styles.panel}>
                 <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <div className="flex-1">
                         <CardTitle>
@@ -92,7 +93,7 @@ export default function ManpowerPage() {
                 </CardContent>
             </Card>
             
-            <Card>
+            <Card className={styles.panel}>
                 <CardHeader>
                     <CardTitle>Generate Manpower Report</CardTitle>
                     <CardDescription>Select a date range to generate downloadable reports.</CardDescription>

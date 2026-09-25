@@ -11,8 +11,8 @@ import { isAfter, endOfDay, parseISO, isValid } from 'date-fns';
 const COLORS: Record<string, string> = {
   'To Do': 'hsl(var(--chart-1))',
   'In Progress': 'hsl(var(--chart-3))',
-  'Completed': 'hsl(var(--chart-2))',
-  'Overdue': 'hsl(var(--destructive))',
+  'Completed': '#14be60',
+  'Overdue': '#f43e51',
 };
 
 interface TeamTaskDistributionChartProps {
@@ -70,64 +70,26 @@ export default function TeamTaskDistributionChart({ tasks }: TeamTaskDistributio
       .filter(d => d.value > 0);
   }, [tasks, selectedUserId]);
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Task Distribution</CardTitle>
-        <div className="flex flex-col gap-2 pt-2">
-            <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-            <SelectTrigger className="w-[240px]">
-                <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-                {canSelectAll && <SelectItem key="all" value="all">All Visible Members</SelectItem>}
-                {visibleUsers.map(u => (
-                  <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                ))}
-            </SelectContent>
-            </Select>
-            <CardDescription>Showing task distribution for {selectedUserName}.</CardDescription>
+
+  const total = chartData.reduce((sum, item) => sum + item.value, 0);
+  const completed = chartData.find(item => item.name === 'Completed')?.value || 0;
+  const completionRate = total ? Math.round(completed / total * 100) : 0;
+  return <Card>
+    <CardHeader className="p-4 pb-2"><div className="flex flex-wrap items-center justify-between gap-2">
+      <CardTitle className="text-base font-semibold">Task Distribution</CardTitle>
+      <Select value={selectedUserId} onValueChange={setSelectedUserId}><SelectTrigger className="h-8 w-[180px]" aria-label="Filter task distribution by member"><SelectValue /></SelectTrigger><SelectContent>
+        {canSelectAll && <SelectItem value="all">All Visible Members</SelectItem>}
+        {visibleUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+      </SelectContent></Select>
+    </div></CardHeader>
+    <CardContent className="p-4 pt-0">
+      {total ? <div className="flex flex-wrap items-center justify-center gap-4">
+        <div className="relative h-[190px] w-[190px] shrink-0">
+          <ResponsiveContainer width="100%" height="100%"><PieChart><Tooltip /><Pie data={chartData} innerRadius={57} outerRadius={78} paddingAngle={3} dataKey="value" nameKey="name">{chartData.map(entry => <Cell key={entry.name} fill={COLORS[entry.name]} />)}</Pie></PieChart></ResponsiveContainer>
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"><strong className="text-2xl">{completionRate}%</strong><span className="text-xs text-muted-foreground">Completed</span></div>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="h-[350px]">
-          {chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Tooltip
-                  cursor={{fill: 'hsl(var(--muted))'}}
-                  contentStyle={{ 
-                      backgroundColor: 'hsl(var(--background))',
-                      borderColor: 'hsl(var(--border))',
-                      borderRadius: 'var(--radius)'
-                  }}
-                />
-                <Legend verticalAlign="bottom" height={36}/>
-                <Pie
-                  data={chartData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  innerRadius={80}
-                  outerRadius={120}
-                  fill="#8884d8"
-                  paddingAngle={5}
-                  dataKey="value"
-                  nameKey="name"
-                >
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[entry.name]} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
-                No tasks found for {selectedUserName}.
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
+        <ul className="min-w-[150px] flex-1 divide-y" aria-label="Task distribution values">{chartData.map(item => <li key={item.name} className="flex items-center gap-3 py-2 text-xs"><span className="h-3 w-3 rounded-full" style={{background: COLORS[item.name]}} /><div className="flex-1"><strong>{item.name}</strong><p className="text-muted-foreground">{item.value} tasks</p></div><strong>{Math.round(item.value / total * 100)}%</strong></li>)}</ul>
+      </div> : <div className="flex h-[190px] items-center justify-center text-center text-sm text-muted-foreground">No tasks found for {selectedUserName}.</div>}
+    </CardContent>
+  </Card>;
 }

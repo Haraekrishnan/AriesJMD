@@ -4,7 +4,7 @@ import { useManpower } from '@/contexts/manpower-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { usePlanner } from '@/contexts/planner-provider';
 import { Users, UserCheck, UserX } from 'lucide-react';
-import StatCard from '../dashboard/stat-card';
+import styles from './manpower-page.module.css';
 import { format, formatDistanceToNow } from 'date-fns';
 
 export default function ManpowerSummary() {
@@ -74,26 +74,27 @@ export default function ManpowerSummary() {
     </>
   );
 
+  const chartActive = Math.max(0, totalActive);
+  const chartLeave = Math.max(0, totalOnLeave);
+  const chartTotal = chartActive + chartLeave;
+  const activePercent = chartTotal ? Math.round(chartActive / chartTotal * 100) : 0;
+
   return (
-    <div className="grid gap-6 md:grid-cols-3">
-       <StatCard 
-          title="Total Working" 
-          value={totalWorking}
-          icon={Users} 
-          description={workingDescription}
-        />
-        <StatCard 
-          title="Today's Active" 
-          value={totalActive}
-          icon={UserCheck} 
-          description={activeDescription}
-        />
-        <StatCard 
-          title="Today's Leave" 
-          value={totalOnLeave}
-          icon={UserX} 
-          description={leaveDescription}
-        />
-    </div>
+    <section className={styles.metrics} aria-label="Today's manpower totals">
+      {[
+        { title: 'Total Working', value: totalWorking, icon: Users, description: workingDescription, tone: 'blue' },
+        { title: "Today's Active", value: totalActive, icon: UserCheck, description: activeDescription, tone: 'green' },
+        { title: "Today's Leave", value: totalOnLeave, icon: UserX, description: leaveDescription, tone: 'rose' },
+      ].map(({title,value,icon:Icon,description,tone}) => <article key={title} className={styles.metric+' '+styles[tone]}>
+        <span className={styles.metricIcon}><Icon aria-hidden="true"/></span>
+        <div><h2>{title}</h2><strong>{value.toLocaleString()}</strong><div className={styles.description}>{description}</div></div>
+      </article>)}
+      <article className={styles.distribution} aria-label="Today's active and on-leave manpower">
+        <div className={styles.ring} role="img" aria-label={'Active: '+totalActive+', on leave: '+totalOnLeave} style={{background: chartTotal ? 'conic-gradient(#1264ff 0% '+activePercent+'%, #fa3657 '+activePercent+'% 100%)' : '#e6edf7'}}>
+          <div><strong>{totalWorking.toLocaleString()}</strong><span>Total working</span></div>
+        </div>
+        <div className={styles.legend}><div><i className={styles.activeDot}/>Active <strong>{totalActive}</strong><span>{chartTotal ? activePercent+'%' : '—'}</span></div><div><i className={styles.leaveDot}/>On leave <strong>{totalOnLeave}</strong><span>{chartTotal ? (100-activePercent)+'%' : '—'}</span></div><small>{chartTotal ? 'Today’s workforce distribution' : 'No manpower recorded today'}</small></div>
+      </article>
+    </section>
   );
 }

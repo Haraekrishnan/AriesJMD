@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useManpower } from '@/contexts/manpower-provider';
 import { HardHat, Users } from 'lucide-react';
-import StatCard from '../dashboard/stat-card';
+import styles from './manpower-list.module.css';
 import { TRADES } from '@/lib/mock-data';
 
 export default function TradeSummary() {
@@ -27,25 +27,9 @@ export default function TradeSummary() {
   
   const allTradesToDisplay = [...TRADES];
 
-  return (
-    <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
-       <StatCard 
-          title="Total Working" 
-          value={totalWorkingManpower} 
-          icon={Users} 
-          description="Total active workforce"
-        />
-        {allTradesToDisplay.filter(trade => tradeCounts.has(trade)).map(trade => (
-             <StatCard 
-                key={trade}
-                title={trade}
-                value={tradeCounts.get(trade) || 0}
-                icon={HardHat}
-                description={`Total working in ${trade} trade`}
-            />
-        ))}
-    </div>
-  );
+  const cards = [{title: 'Total Working', value: totalWorkingManpower, description: 'Total active workforce'}, ...allTradesToDisplay.filter(trade => tradeCounts.has(trade)).map(trade => ({title: trade, value: tradeCounts.get(trade) || 0, description: 'Total working in '+trade+' trade'}))];
+  return <section className={styles.metrics} aria-label="Working manpower by trade">{cards.map((card,index) => {
+    const Icon=index===0?Users:HardHat;
+    return <article className={styles.metric} key={card.title} data-tone={index%5}><span className={styles.metricIcon}><Icon aria-hidden="true" /></span><div><h2>{card.title}</h2><strong>{card.value.toLocaleString()}</strong><p>{card.description}</p></div></article>;
+  })}</section>;
 }
-
-    

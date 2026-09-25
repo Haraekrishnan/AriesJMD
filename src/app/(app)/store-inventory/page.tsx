@@ -3,6 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import styles from '@/components/inventory/store-inventory.module.css';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { useInventory } from '@/contexts/inventory-provider';
@@ -76,7 +77,7 @@ export default function StoreInventoryPage() {
 
     const [filters, setFilters] = useState({
         name: 'all',
-        status: 'Active',
+        status: 'all',
         projectId: 'all',
         search: '',
         updatedDateRange: undefined,
@@ -231,6 +232,14 @@ export default function StoreInventoryPage() {
         });
     }, [inventoryItems, filters, user, projects, canViewAllProjects]);
 
+    const checkedSummaryItems = useMemo(() => {
+        const selectedIds = new Set(selectedItemsForTransfer.map(item => item.id));
+        // Use current visible records so live status changes and filters stay accurate.
+        return filteredItems.filter(item => selectedIds.has(item.id));
+    }, [filteredItems, selectedItemsForTransfer]);
+    const cardSummaryItems = checkedSummaryItems.length > 0 ? checkedSummaryItems : filteredItems;
+    const cardSummaryLabel = checkedSummaryItems.length > 0 ? 'Checked items' : 'Current filtered selection';
+
     const summaryData = useMemo(() => {
         const data: {[itemName: string]: {[projectId: string]: number, total: number}} = {};
         filteredItems.forEach(item => {
@@ -260,56 +269,26 @@ export default function StoreInventoryPage() {
     }
 
     return (
-        <div className="space-y-8">
+        <div className={styles.page}>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Store Inventory</h1>
                     <p className="text-muted-foreground">Manage and track all equipment and items.</p>
                 </div>
-                <div className="flex items-center flex-wrap gap-2">
-                    <Button asChild variant="outline"><Link href="/inventory-database"><Database className="mr-2 h-4 w-4"/> Inventory DB</Link></Button>
-                    <Button asChild variant="outline"><Link href="/consumables"><Package className="mr-2 h-4 w-4"/> Consumables</Link></Button>
-                    <Button asChild variant="outline"><Link href="/ppe-stock"><Package className="mr-2 h-4 w-4"/> PPE Stock</Link></Button>
-                    <Button asChild variant="outline"><Link href="/igp-ogp"><ArrowRightLeft className="mr-2 h-4 w-4"/> IGP/OGP Register</Link></Button>
-                    <Button asChild variant="outline"><Link href="/delivery-notes"><Truck className="mr-2 h-4 w-4"/> Delivery Notes</Link></Button>
-                    <Button asChild variant="outline"><Link href="/tp-certification"><FileText className="mr-2 h-4 w-4"/> TP Cert Lists</Link></Button>
-                    
-                    <Button onClick={() => setIsNewDamageReportOpen(true)} variant="destructive">
-                        <Hammer className="mr-2 h-4 w-4 stroke-black fill-white" /> Report Damage
-                    </Button>
-
-                    <Button onClick={() => setView(v => v === 'list' ? 'summary' : 'list')} variant="outline"><ChevronsUpDown className="mr-2 h-4 w-4" />{view === 'list' ? 'View Summary' : 'View List'}</Button>
-                    {selectedItemsForTransfer.length > 0 ? (
-                        <Button onClick={() => openTransferRequestDialog(null)}>
-                            <ArrowRightLeft className="mr-2 h-4 w-4" /> Transfer Selected ({selectedItemsForTransfer.length})
-                        </Button>
-                    ) : (
-                        <Button variant="outline" onClick={() => openTransferRequestDialog(null)}>
-                            <ArrowRightLeft className="mr-2 h-4 w-4" /> Transfer Items
-                        </Button>
-                    )}
-                    {canManageInventory && (
-                        <>
-                            {can.manage_inward_outward && (
-                                <>
-                                <Button onClick={() => setIsInwardOpen(true)} variant="outline"><Inbox className="mr-2 h-4 w-4"/>New Inward</Button>
-                                <Button onClick={() => setIsOutwardOpen(true)} variant="outline"><ArrowRightLeft className="mr-2 h-4 w-4"/>New Outward</Button>
-                                </>
-                            )}
-                            <Button onClick={revalidateExpiredItems} variant="outline"><CheckCircle className="mr-2 h-4 w-4" />Check Validity</Button>
-                            <Button onClick={() => setIsBulkInspectionUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4"/>Bulk Update Insp. Cert</Button>
-                            <Button onClick={() => setIsBulkUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4" /> Bulk Update TP Cert</Button>
-                            <Button onClick={() => setIsGenerateCertOpen(true)} variant="outline"><FilePlus className="mr-2 h-4 w-4" /> Generate TP Cert List</Button>
-                            <Button onClick={() => setIsImportOpen(true)} variant="outline"><Upload className="mr-2 h-4 w-4" /> Import</Button>
-                            <Button onClick={() => setIsAddItemOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Add Item</Button>
-                        </>
-                    )}
-                </div>
+                {canManageInventory && (<Button onClick={() => setIsAddItemOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Add Item</Button>)}
             </div>
-            
-            <Accordion type="multiple" className="w-full space-y-4">
+            <div className={styles.actionGroups}>
+<section className={styles.actionGroup+" "+styles.blue}><h2><Database aria-hidden="true"/>Master Data</h2><div className={styles.groupButtons}><Button asChild variant="outline"><Link href="/inventory-database"><Database className="mr-2 h-4 w-4"/> Inventory DB</Link></Button><Button asChild variant="outline"><Link href="/consumables"><Package className="mr-2 h-4 w-4"/> Consumables</Link></Button><Button asChild variant="outline"><Link href="/ppe-stock"><Package className="mr-2 h-4 w-4"/> PPE Stock</Link></Button></div></section><section className={styles.actionGroup+" "+styles.purple}><h2><FileText aria-hidden="true"/>Registers & Certificates</h2><div className={styles.groupButtons}><Button asChild variant="outline"><Link href="/igp-ogp"><ArrowRightLeft className="mr-2 h-4 w-4"/> IGP/OGP Register</Link></Button><Button asChild variant="outline"><Link href="/delivery-notes"><Truck className="mr-2 h-4 w-4"/> Delivery Notes</Link></Button><Button asChild variant="outline"><Link href="/tp-certification"><FileText className="mr-2 h-4 w-4"/> TP Cert Lists</Link></Button></div></section><section className={styles.actionGroup+" "+styles.green}><h2><Truck aria-hidden="true"/>Operations</h2><div className={styles.groupButtons}>{canManageInventory && can.manage_inward_outward && <><Button onClick={() => setIsInwardOpen(true)} variant="outline"><Inbox className="mr-2 h-4 w-4"/>New Inward</Button><Button onClick={() => setIsOutwardOpen(true)} variant="outline"><ArrowRightLeft className="mr-2 h-4 w-4"/>New Outward</Button></>}{selectedItemsForTransfer.length > 0 ? (<Button onClick={() => openTransferRequestDialog(null)}>
+                            <ArrowRightLeft className="mr-2 h-4 w-4" /> Transfer Selected ({selectedItemsForTransfer.length})
+                        </Button>) : (<Button variant="outline" onClick={() => openTransferRequestDialog(null)}>
+                            <ArrowRightLeft className="mr-2 h-4 w-4" /> Transfer Items
+                        </Button>)}</div></section><section className={styles.actionGroup+" "+styles.rose}><h2><AlertTriangle aria-hidden="true"/>Compliance & Reports</h2><div className={styles.groupButtons}><Button onClick={() => setIsNewDamageReportOpen(true)} variant="destructive">
+                        <Hammer className="mr-2 h-4 w-4 stroke-black fill-white" /> Report Damage
+                    </Button>{canManageInventory && <><Button onClick={revalidateExpiredItems} variant="outline"><CheckCircle className="mr-2 h-4 w-4" />Check Validity</Button><Button onClick={() => setIsBulkInspectionUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4"/>Bulk Update Insp. Cert</Button><Button onClick={() => setIsBulkUpdateOpen(true)} variant="outline"><FilePen className="mr-2 h-4 w-4" /> Bulk Update TP Cert</Button></>}</div></section><section className={styles.actionGroup+" "+styles.amber}><h2><ChevronsUpDown aria-hidden="true"/>More Actions</h2><div className={styles.groupButtons}>{canManageInventory && <><Button onClick={() => setIsGenerateCertOpen(true)} variant="outline"><FilePlus className="mr-2 h-4 w-4" /> Generate TP Cert List</Button><Button onClick={() => setIsImportOpen(true)} variant="outline"><Upload className="mr-2 h-4 w-4" /> Import</Button></>}<Button onClick={() => setView(v => v === 'list' ? 'summary' : 'list')} variant="outline"><ChevronsUpDown className="mr-2 h-4 w-4" />{view === 'list' ? 'View Summary' : 'View List'}</Button></div></section>
+            </div>
+            <Accordion type="multiple" className={styles.alerts}>
                 <AccordionItem value="inventory-transfers">
-                    <AccordionTrigger className={cn("text-lg font-semibold border rounded-lg p-4", pendingInventoryTransferRequestCount > 0 && "text-destructive border-destructive")}>
+                    <AccordionTrigger className={cn(styles.transferBar, pendingInventoryTransferRequestCount > 0 && "text-destructive border-destructive")}>
                         <div className="flex items-center gap-2">
                            {pendingInventoryTransferRequestCount > 0 && <AlertTriangle />}
                             Inventory Transfers
@@ -323,7 +302,7 @@ export default function StoreInventoryPage() {
                 
                 {can.manage_inward_outward && (
                     <AccordionItem value="inward-outward-register">
-                        <AccordionTrigger className={cn("text-lg font-semibold border rounded-lg p-4", pendingFinalizationCount > 0 && "text-destructive border-destructive")}>
+                        <AccordionTrigger className={cn(styles.inwardBar, pendingFinalizationCount > 0 && "text-destructive border-destructive")}>
                             <div className="flex items-center gap-2">
                                 <Inbox />
                                 Inward/Outward Register
@@ -338,7 +317,7 @@ export default function StoreInventoryPage() {
                 
                  {actionRequiredNotifications.length > 0 && (
                 <AccordionItem value="action-required">
-                    <AccordionTrigger className="text-lg font-semibold text-destructive border rounded-lg p-4 border-destructive">
+                    <AccordionTrigger className={styles.attentionBar}>
                         <div className="flex items-center gap-2">
                             <AlertTriangle />
                             Action Required
@@ -381,8 +360,18 @@ export default function StoreInventoryPage() {
             )}
             </Accordion>
             
-            <Card>
-                <CardHeader>
+            <section className={styles.metrics} aria-label={"Inventory summary: " + cardSummaryLabel}>
+                {[
+                    {label:'Total Items',value:cardSummaryItems.length,icon:Package,tone:'blue'},
+                    {label:'Active Items',value:cardSummaryItems.filter(item => !['Damaged','Quarantine','Moved to another project'].includes(item.status)).length,icon:CheckCircle,tone:'green'},
+                    {label:'Quarantine',value:cardSummaryItems.filter(item => item.status === 'Quarantine').length,icon:Hammer,tone:'amber'},
+                    {label:'Damaged Items',value:cardSummaryItems.filter(item => item.status === 'Damaged').length,icon:AlertTriangle,tone:'rose'},
+                    {label:'Projects Represented',value:new Set(cardSummaryItems.map(item => item.projectId).filter(Boolean)).size,icon:Database,tone:'purple'},
+                    {label:'TP Certificate Links',value:cardSummaryItems.filter(item => !!item.certificateUrl).length,icon:FileText,tone:'blue'},
+                ].map(({label,value,icon:Icon,tone}) => <article key={label} className={styles.metric+' '+styles[tone]}><span><Icon aria-hidden="true"/></span><div><h2>{label}</h2><strong>{value.toLocaleString()}</strong><small>{cardSummaryLabel}</small></div></article>)}
+            </section>
+            <Card className={styles.inventory}>
+                <CardHeader className={styles.filterHeader}>
                     <div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-4'>
                     {view === 'list' ? (
                         <InventoryFilters onApplyFilters={setFilters} initialFilters={filters} />
@@ -390,7 +379,8 @@ export default function StoreInventoryPage() {
                     <InventoryReportDownloads items={filteredItems} isSummary={view === 'summary'} summaryData={summaryData} />
                     </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className={styles.tableContent}>
+                    <div className={styles.listHeading}><h2><FileText aria-hidden="true"/>{view === 'list' ? 'Inventory List' : 'Inventory Summary'}</h2><span>{filteredItems.length.toLocaleString()} items · Current filters</span></div>
                     {view === 'list' ? <InventoryTable items={filteredItems} selectedItems={selectedItemsForTransfer} onSelectionChange={setSelectedItemsForTransfer} /> : <InventorySummary items={filteredItems} />}
                 </CardContent>
             </Card>

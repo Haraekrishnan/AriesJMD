@@ -208,7 +208,6 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
                                         <AccordionTrigger className="p-0 hover:no-underline flex-1 text-left">
                                             <div className="flex items-center gap-4">
                                                 <h3 className="font-semibold text-lg">{itemName}</h3>
-                                                <Badge variant="secondary">Total: {itemList.length}</Badge>
                                             </div>
                                         </AccordionTrigger>
                                     </div>
