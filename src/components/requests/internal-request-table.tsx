@@ -1,6 +1,7 @@
 'use client';
 import styles from './my-requests.module.css';
 import RequestPagination, { useRequestPages } from './RequestPagination';
+import { approvalPendingFirst } from './approval-priority';
 
 import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -348,7 +349,7 @@ export default function InternalRequestTable({ requests, showAcknowledge = true,
         active.push(req);
       }
     });
-    return { activeRequests: active, completedRequests: completed };
+    return { activeRequests: approvalPendingFirst(active), completedRequests: completed };
   }, [requests]);
 
   const activePages = useRequestPages(activeRequests);

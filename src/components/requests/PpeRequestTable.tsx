@@ -1,6 +1,7 @@
 'use client';
 import styles from './my-requests.module.css';
 import RequestPagination, { useRequestPages } from './RequestPagination';
+import { approvalPendingFirst } from './approval-priority';
 
 import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
@@ -171,7 +172,8 @@ const RequestCard = ({ req, onEditRequest }: { req: PpeRequest; onEditRequest: (
         setIsPanning(false);
     };
 
-    const isPdf = viewingAttachmentUrl && viewingAttachmentUrl.toLowerCase().endsWith('.pdf');
+    const attachmentUrl = viewingAttachmentUrl?.trim() || null;
+    const isPdf = attachmentUrl?.toLowerCase().endsWith('.pdf');
 
     return (
         <Card className={cn(styles.requestCard, hasUpdate && "border-blue-500")}>
@@ -300,7 +302,8 @@ const RequestCard = ({ req, onEditRequest }: { req: PpeRequest; onEditRequest: (
                  )}
             </CardFooter>
 
-            <Dialog open={!!viewingAttachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); }}>
+            {attachmentUrl && (
+            <Dialog open={!!attachmentUrl} onOpenChange={() => { setViewingAttachmentUrl(null); setZoom(1); setTranslate({x: 0, y: 0}); }}>
                 <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
                     <DialogHeader>
                         <DialogTitle>Attachment Viewer</DialogTitle>
@@ -311,7 +314,7 @@ const RequestCard = ({ req, onEditRequest }: { req: PpeRequest; onEditRequest: (
                                     <Button variant="outline" size="icon" onClick={() => setZoom(z => Math.max(0.2, z - 0.2))}><ZoomOut className="h-4 w-4" /></Button>
                                 </>
                             )}
-                            <a href={viewingAttachmentUrl || ''} download target="_blank" rel="noopener noreferrer">
+                            <a href={attachmentUrl} download target="_blank" rel="noopener noreferrer">
                                 <Button variant="outline"><Download className="mr-2 h-4 w-4" /> Download</Button>
                             </a>
                         </div>
@@ -325,12 +328,12 @@ const RequestCard = ({ req, onEditRequest }: { req: PpeRequest; onEditRequest: (
                       onMouseLeave={handleMouseUpOrLeave}
                     >
                         {isPdf ? (
-                            <object data={viewingAttachmentUrl} type="application/pdf" width="100%" height="100%">
-                                <p>It appears you don't have a PDF plugin for this browser. You can <a href={viewingAttachmentUrl || ''} className="text-blue-600 hover:underline">click here to download the PDF file.</a></p>
+                            <object data={attachmentUrl} type="application/pdf" width="100%" height="100%">
+                                <p>It appears you don't have a PDF plugin for this browser. You can <a href={attachmentUrl} className="text-blue-600 hover:underline">click here to download the PDF file.</a></p>
                             </object>
                         ) : (
                             <img 
-                                src={viewingAttachmentUrl || ''} 
+                                src={attachmentUrl}
                                 alt="Attachment" 
                                 className={cn("transition-transform duration-200", isPanning ? 'cursor-grabbing' : 'cursor-grab')}
                                 style={{
@@ -344,6 +347,7 @@ const RequestCard = ({ req, onEditRequest }: { req: PpeRequest; onEditRequest: (
                     </div>
                 </DialogContent>
             </Dialog>
+            )}
 
             {selectedRequest && action && (
                 <AlertDialog open={!!(selectedRequest && action)} onOpenChange={() => setSelectedRequest(null)}>
@@ -438,7 +442,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
         active.push(req);
       }
     });
-    return { activeRequests: active, completedRequests: completed };
+    return { activeRequests: approvalPendingFirst(active), completedRequests: completed };
   }, [requests]);
 
   const activePages = useRequestPages(activeRequests);
@@ -499,4 +503,3 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
     </div>
   );
 }
-
