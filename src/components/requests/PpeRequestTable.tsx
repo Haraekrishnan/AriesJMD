@@ -1,7 +1,7 @@
 'use client';
 import styles from './my-requests.module.css';
 import RequestPagination, { useRequestPages } from './RequestPagination';
-import { approvalPendingFirst } from './approval-priority';
+import { summarizeRequests } from './request-summary';
 
 import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
@@ -431,19 +431,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
   const [editingRequest, setEditingRequest] = useState<PpeRequest | null>(null);
 
-  const { activeRequests, completedRequests } = useMemo(() => {
-    const active: PpeRequest[] = [];
-    const completed: PpeRequest[] = [];
-    requests.forEach(req => {
-      const completedStatuses: PpeRequestStatus[] = ['Issued', 'Rejected'];
-      if (completedStatuses.includes(req.status)) {
-        completed.push(req);
-      } else {
-        active.push(req);
-      }
-    });
-    return { activeRequests: approvalPendingFirst(active), completedRequests: completed };
-  }, [requests]);
+  const { activeRequests, completedRequests } = useMemo(() => summarizeRequests(requests), [requests]);
 
   const activePages = useRequestPages(activeRequests);
   const completedPages = useRequestPages(completedRequests);

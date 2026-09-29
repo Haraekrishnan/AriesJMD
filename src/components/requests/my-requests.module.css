@@ -32,3 +32,8 @@
 .pageButtons > span { padding: 0 3px; color: #687e9c; }
 :global(.dark) .pageButtons button { background: #17283f; color: #e0ebff; border-color: #30435e; }
 :global(.dark) .pageButtons button[aria-current='page'] { background: #1357f5; }
+
+.countDetails { display:block; font-size:10px; line-height:1.5; font-weight:400; color:#516988; white-space:normal; }
+:global(.dark) .countDetails { color:#a9bbd5; }
+
+.categoryText > span:first-child { padding-right:58px; }

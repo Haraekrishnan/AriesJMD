@@ -1,7 +1,7 @@
 'use client';
 import styles from './my-requests.module.css';
 import RequestPagination, { useRequestPages } from './RequestPagination';
-import { approvalPendingFirst } from './approval-priority';
+import { summarizeRequests } from './request-summary';
 
 import { useState, useMemo, useEffect, MouseEvent, useRef } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -338,19 +338,7 @@ export default function InternalRequestTable({ requests, showAcknowledge = true,
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
   const [editingRequestItem, setEditingRequestItem] = useState<{ request: InternalRequest, item: InternalRequestItem } | null>(null);
 
-  const { activeRequests, completedRequests } = useMemo(() => {
-    const active: InternalRequest[] = [];
-    const completed: InternalRequest[] = [];
-    requests.forEach(req => {
-      const completedStatuses: InternalRequestStatus[] = ['Issued', 'Rejected'];
-      if (completedStatuses.includes(req.status)) {
-        completed.push(req);
-      } else {
-        active.push(req);
-      }
-    });
-    return { activeRequests: approvalPendingFirst(active), completedRequests: completed };
-  }, [requests]);
+  const { activeRequests, completedRequests } = useMemo(() => summarizeRequests(requests), [requests]);
 
   const activePages = useRequestPages(activeRequests);
   const completedPages = useRequestPages(completedRequests);

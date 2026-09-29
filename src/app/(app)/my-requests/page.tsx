@@ -8,6 +8,7 @@ import { useConsumable } from '@/contexts/consumable-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, HardHat, Package, Store, ChevronRight } from 'lucide-react';
+import { summarizeRequests } from '@/components/requests/request-summary';
 import styles from '@/components/requests/my-requests.module.css';
 import NewInternalRequestDialog from '@/components/requests/new-internal-request-dialog';
 import InternalRequestTable from '@/components/requests/internal-request-table';
@@ -73,7 +74,7 @@ export default function MyRequestsPage() {
     const visiblePpeRequests = useMemo(() => {
         if (!user || !ppeRequests) return [];
         if (can.view_ppe_requests || can.manage_ppe_request) {
-            return ppeRequests.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            return [...ppeRequests].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         }
         return ppeRequests
             .filter(req => req.requesterId === user.id)
@@ -99,13 +100,13 @@ export default function MyRequestsPage() {
             <Tabs value={requestType} onValueChange={setRequestType}>
                 <TabsList className={styles.categories} aria-label="Request category">
                     {[
-                        {value:'ppe-requests',title:'PPE Requests',count:visiblePpeRequests.length,notifications:ppeNotifCount,icon:HardHat,tone:'blue'},
-                        {value:'consumable-requests',title:'Consumable Requests',count:consumableRequests.length,notifications:consumableNotifCount,icon:Package,tone:'green'},
-                        {value:'store-requests',title:'General Store Requests',count:generalStoreRequests.length,notifications:generalNotifCount,icon:Store,tone:'purple'},
-                    ].map(({value,title,count,notifications,icon:Icon,tone}) => <TabsTrigger key={value} value={value} className={styles.category+' '+styles[tone]}>
+                        {value:'ppe-requests',title:'PPE Requests',summary:summarizeRequests(visiblePpeRequests),notifications:ppeNotifCount,icon:HardHat,tone:'blue'},
+                        {value:'consumable-requests',title:'Consumable Requests',summary:summarizeRequests(consumableRequests),notifications:consumableNotifCount,icon:Package,tone:'green'},
+                        {value:'store-requests',title:'General Store Requests',summary:summarizeRequests(generalStoreRequests),notifications:generalNotifCount,icon:Store,tone:'purple'},
+                    ].map(({value,title,summary,notifications,icon:Icon,tone}) => <TabsTrigger key={value} value={value} className={styles.category+' '+styles[tone]}>
                         <span className={styles.categoryIcon}><Icon aria-hidden="true" /></span>
-                        <span className={styles.categoryText}><span>{title}</span><strong>{count.toLocaleString()} <ChevronRight aria-hidden="true" size={18}/></strong></span>
-                        {notifications > 0 && <Badge variant="destructive" className={styles.notification} aria-label={notifications+' notifications'}>{notifications}</Badge>}
+                        <span className={styles.categoryText}><span>{title}</span><strong>{summary.total.toLocaleString()} <ChevronRight aria-hidden="true" size={18}/></strong><small className={styles.countDetails}>Total requests · {summary.completed.toLocaleString()} completed</small><small className={styles.countDetails} title="Personal notifications include pending actions and unread updates; they are separate from active requests.">{notifications.toLocaleString()} personal notifications</small></span>
+                        <Badge variant={summary.active > 0 ? 'destructive' : 'secondary'} className={styles.notification} aria-label={summary.active+' active requests'}>{summary.active} active</Badge>
                     </TabsTrigger>)}
                 </TabsList>
                 <TabsContent value="ppe-requests">
