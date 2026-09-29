@@ -5,3 +5,5 @@
 :global(.dark) .page { color:#e2edff;background:none; }:global(.dark) .metric,:global(.dark) .movePanel,:global(.dark) .tabs button,:global(.dark) .register input,:global(.dark) .register select,:global(.dark) .register th,:global(.dark) .originalType { background:#192d45;color:#deebff;border-color:#3b536e; }:global(.dark) .tabs button[aria-selected='true'] { background:#1260ff; }
 
 .page > div > div:first-child > div[class*='font-semibold'] { font-size:18px; }.metric { padding:15px 14px; }.tabs button:focus-visible { outline:2px solid #1260ff; outline-offset:2px; }
+
+.unifiedTable { width:100%; border-collapse:collapse; text-align:left; }.unifiedTable th,.unifiedTable td { padding:10px 12px; border-bottom:1px solid #dce7f5; }.unifiedTable td { vertical-align:middle; }.unifiedTable td:nth-child(2),.unifiedTable td:nth-child(8) { min-width:160px; overflow-wrap:anywhere; }.unifiedTable td:last-child { white-space:nowrap; }

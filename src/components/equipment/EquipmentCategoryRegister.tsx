@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { addEquipmentCategory, moveEquipmentCategories, renameEquipmentCategory, deleteEquipmentCategory, equipmentKey } from './equipment-categories';
 import { useEquipmentOrganization } from './use-equipment-organization';
 import styles from './equipment.module.css';
+import UnifiedEquipmentTable from './UnifiedEquipmentTable';
 export interface EquipmentGroup { id: string; source: string; name: string; items: any[]; searchText?: (item: any) => string; render: (items: any[]) => ReactNode; }
 export default function EquipmentCategoryRegister({groups, activeTab, onTabChange}: {groups: EquipmentGroup[]; activeTab: string; onTabChange: (id: string) => void}) {
   const {can, user} = useAuth();
@@ -81,7 +82,6 @@ export default function EquipmentCategoryRegister({groups, activeTab, onTabChang
     } catch(error) { fail(error); } finally { setBusy(false); }
   }
   const changeTab=(id:string)=>{onTabChange(id);setSelected([]);setSearch('');setDestination('');};
-  const renderedKeys = new Set<string>();
   return <section className={styles.register}>
     <div className={styles.categoryTools}>{can.manage_equipments && <><Button variant="outline" disabled={!ready||!!error} onClick={()=>setCreating(true)}>+ Add category</Button><Button variant="outline" disabled={!ready||!!error} onClick={()=>{setMoving(!moving);setSelected([]);}}>Select &amp; move equipment</Button></>}</div>
     {isAdmin && state.categories?.[activeTab] && <div className={styles.categoryTools}>
@@ -96,10 +96,10 @@ export default function EquipmentCategoryRegister({groups, activeTab, onTabChang
         <div className={styles.categoryTools}><strong>{selectedVisible.length} selected</strong><select aria-label="Destination category" value={destination} onChange={e=>setDestination(e.target.value)}><option value="">Move to category…</option>{categories.filter(c=>c.id!==activeTab).map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select><Button disabled={busy||!destination||!selectedVisible.length||!!error} onClick={moveSelected}>{busy?'Moving…':'Move selected'}</Button><Button variant="outline" disabled={busy} onClick={()=>{setMoving(false);setSelected([]);}}>Cancel</Button></div>
         <p>This changes category only. Equipment details, documents and usage history stay with each record.</p>
         <label><input type="checkbox" disabled={busy||!unique.length} checked={!!unique.length&&selectedVisible.length===unique.length} onChange={e=>setSelected(e.target.checked?unique.map(r=>r.key):[])}/> Select all shown ({unique.length})</label>
-        <div className={styles.selectionList}>{unique.map(({key,item,g})=><label key={key}><input type="checkbox" disabled={busy} checked={selected.includes(key)} onChange={e=>setSelected(prev=>e.target.checked?[...prev,key]:prev.filter(k=>k!==key))}/><strong>{item.equipmentName||item.name||item.machineName||item.ariesId||item.id}</strong><span>{item.serialNumber||item.serialNo||item.imei||'—'} · {g.name}</span></label>)}</div>
+        <div className={styles.selectionList}>{unique.map(({key,item,g})=><label key={key}><input type="checkbox" disabled={busy} checked={selected.includes(key)} onChange={e=>setSelected(prev=>e.target.checked?[...prev,key]:prev.filter(k=>k!==key))}/><strong>{item.equipmentName||item.name||item.machineName||item.ariesId||item.id}</strong><span>{item.serialNumber||item.serialNo||item.imei||'—'} · {category?.name}</span></label>)}</div>
       </div>}
       {!unique.length && <p className={styles.empty}>No equipment in this category matches the filters. Add equipment or move items here from another category.</p>}
-      {groups.map(g=>{const items=g.items.filter(item=>{const key=equipmentKey(g.source,item.id); if (assigned(g,item)!==activeTab||!matches(item,g)||renderedKeys.has(key)) return false; renderedKeys.add(key); return true;});return items.length?<div key={g.id} className={styles.tableGroup}>{activeTab!==g.id&&<p className={styles.originalType}>Record type: {g.name}</p>}{g.render(items)}</div>:null;})}
+      {unique.some(row=>row.g.id!==activeTab) ? <UnifiedEquipmentTable key={activeTab} rows={unique} categoryName={category?.name || 'Equipment'} /> : groups.map(g=>{const items=unique.filter(row=>row.g.id===g.id).map(row=>row.item);return items.length?<div key={g.id} className={styles.tableGroup}>{g.render(items)}</div>:null;})}
     </>}
     <Dialog open={!!editing && isAdmin} onOpenChange={open=>{if(!busy&&!open)setEditing(null);}}><DialogContent><DialogHeader><DialogTitle>Edit equipment category</DialogTitle><DialogDescription>Rename the category. Equipment and assignments remain unchanged.</DialogDescription></DialogHeader><form onSubmit={e=>{e.preventDefault();saveCategoryName();}}><label>Category name<input aria-label="Edit category name" required maxLength={60} value={editName} onChange={e=>setEditName(e.target.value)} className={styles.nameInput}/></label><Button type="submit" disabled={busy||!editName.trim()}>Save category name</Button></form></DialogContent></Dialog>
     <Dialog open={!!deleting && isAdmin} onOpenChange={open=>{if(!busy&&!open)setDeleting(null);}}><DialogContent><DialogHeader><DialogTitle>{deleteStep===1?'Delete category — confirmation 1 of 2':'Delete category — final confirmation'}</DialogTitle><DialogDescription>Delete {deleting?.name}? All equipment assigned here will return to its original equipment type, including items hidden by filters. No equipment, certificates or history will be deleted.</DialogDescription></DialogHeader>
