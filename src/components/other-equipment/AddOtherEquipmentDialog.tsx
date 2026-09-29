@@ -1,4 +1,8 @@
 'use client';
+import { ref, push, update } from 'firebase/database';
+import { rtdb } from '@/lib/rtdb';
+import { useState } from 'react';
+import { useAuth } from '@/contexts/auth-provider';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -27,11 +31,15 @@ const itemSchema = z.object({
 type FormValues = z.infer<typeof itemSchema>;
 
 interface AddOtherEquipmentDialogProps {
+  categoryId?: string;
+  categoryName?: string;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
 }
 
-export default function AddOtherEquipmentDialog({ isOpen, setIsOpen }: AddOtherEquipmentDialogProps) {
+export default function AddOtherEquipmentDialog({ isOpen, setIsOpen, categoryId, categoryName }: AddOtherEquipmentDialogProps) {
+  const [saving, setSaving] = useState(false);
+  const {can, user} = useAuth();
   const { projects } = useGeneral();
   const { addOtherEquipment } = useInventory();
   const { toast } = useToast();
@@ -40,17 +48,24 @@ export default function AddOtherEquipmentDialog({ isOpen, setIsOpen }: AddOtherE
     resolver: zodResolver(itemSchema),
   });
 
-  const onSubmit = (data: FormValues) => {
-    addOtherEquipment({
-      ...data,
-      tpInspectionDueDate: data.tpInspectionDueDate?.toISOString(),
-    });
-    toast({
-      title: 'Equipment Added',
-      description: `${data.equipmentName} has been added.`,
-    });
-    setIsOpen(false);
-    form.reset();
+  const onSubmit = async (data: FormValues) => {
+    if (!user || !can.manage_equipments || saving) return;
+    setSaving(true);
+    try {
+      const payload = JSON.parse(JSON.stringify({...data, ...(categoryName ? {category: categoryName} : {}), tpInspectionDueDate: data.tpInspectionDueDate?.toISOString()}));
+      if (categoryId) {
+        const itemRef = push(ref(rtdb, 'otherEquipments'));
+        await update(ref(rtdb), {
+          ['otherEquipments/'+itemRef.key]: payload,
+          ['equipmentOrganization/assignments/otherEquipments:'+itemRef.key]: categoryId,
+        });
+      } else {
+        await addOtherEquipment(payload);
+      }
+      toast({title:'Equipment Added',description:data.equipmentName+' has been added.'});
+      setIsOpen(false);form.reset();
+    } catch(error) { toast({variant:'destructive',title:'Unable to add equipment',description:error instanceof Error?error.message:'Please retry.'}); }
+    finally { setSaving(false); }
   };
   
   const handleOpenChange = (open: boolean) => {
@@ -62,7 +77,7 @@ export default function AddOtherEquipmentDialog({ isOpen, setIsOpen }: AddOtherE
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add New General Equipment</DialogTitle>
+          <DialogTitle>Add {categoryName || 'General'} Equipment</DialogTitle>
           <DialogDescription>Fill in the details for the new equipment.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
@@ -109,7 +124,7 @@ export default function AddOtherEquipmentDialog({ isOpen, setIsOpen }: AddOtherE
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit">Add Equipment</Button>
+            <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Add Equipment'}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

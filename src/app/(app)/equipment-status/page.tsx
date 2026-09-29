@@ -1,5 +1,8 @@
 'use client';
 import { useState, useMemo, useEffect } from 'react';
+import EquipmentCategoryRegister from '@/components/equipment/EquipmentCategoryRegister';
+import { useEquipmentOrganization } from '@/components/equipment/use-equipment-organization';
+import styles from '@/components/equipment/equipment.module.css';
 import { useInventory } from '@/contexts/inventory-provider';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
@@ -86,16 +89,18 @@ import AddSimDialog from '@/components/mobile-sim/AddSimDialog';
 export default function EquipmentStatusPage() {
     const { user, users, can } = useAuth();
     const { projects } = useGeneral();
-    const { 
-        utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments, 
+    const {
+        utMachines, dftMachines, mobileSims, laptopsDesktops, digitalCameras, anemometers, otherEquipments,
         pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines,
         wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws, weldingMachines, walkieTalkies,
-        certificateRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, machineLogs, inventoryItems 
+        certificateRequests, markFulfilledRequestsAsViewed, acknowledgeFulfilledRequest, machineLogs, inventoryItems
     } = useInventory();
     const { toast } = useToast();
     const { manpowerProfiles } = useManpower();
     const [activeTab, setActiveTab] = useState('ut-machines');
-    
+    const {state: equipmentOrganization} = useEquipmentOrganization();
+    const selectedCustomCategory = equipmentOrganization.categories?.[activeTab];
+
     // UT Machine State
     const [isAddUTMachineOpen, setIsAddUTMachineOpen] = useState(false);
     const [isEditUTMachineOpen, setIsEditUTMachineOpen] = useState(false);
@@ -107,13 +112,13 @@ export default function EquipmentStatusPage() {
     const [isEditDftMachineOpen, setIsEditDftMachineOpen] = useState(false);
     const [isDftLogManagerOpen, setIsDftLogManagerOpen] = useState(false);
     const [selectedDftMachine, setSelectedDftMachine] = useState<DftMachine | null>(null);
-    
+
     // Mobile/SIM State
     const [isAddMobileOpen, setIsAddMobileOpen] = useState(false);
     const [isAddSimOpen, setIsAddSimOpen] = useState(false);
     const [isEditMobileSimOpen, setIsEditMobileSimOpen] = useState(false);
     const [selectedMobileSim, setSelectedMobileSim] = useState<MobileSim | null>(null);
-    
+
     // Laptop/Desktop State
     const [isAddLaptopDesktopOpen, setIsAddLaptopDesktopOpen] = useState(false);
     const [isEditLaptopDesktopOpen, setIsEditLaptopDesktopOpen] = useState(false);
@@ -171,10 +176,10 @@ export default function EquipmentStatusPage() {
     const [editingWalkieTalkie, setEditingWalkieTalkie] = useState<WalkieTalkie | null>(null);
 
     const [isUpdateItemsOpen, setIsUpdateItemsOpen] = useState(false);
-    
+
     const [viewingCertRequest, setViewingCertRequest] = useState<CertificateRequest | null>(null);
     const [isGenerateCertOpen, setIsGenerateCertOpen] = useState(false);
-    
+
     // Report State
     const [activeDaysDateRange, setActiveDaysDateRange] = useState<DateRange | undefined>();
     const [selectedMachineIds, setSelectedMachineIds] = useState<string[]>([]);
@@ -183,7 +188,7 @@ export default function EquipmentStatusPage() {
         projectId: 'all',
         status: 'all',
     });
-    
+
     const [mobileSearchTerm, setMobileSearchTerm] = useState('');
 
     const applyFilters = (items: any[]) => {
@@ -200,7 +205,7 @@ export default function EquipmentStatusPage() {
     const filteredDftMachines = useMemo(() => applyFilters(dftMachines), [dftMachines, filters]);
     const filteredDigitalCameras = useMemo(() => applyFilters(digitalCameras), [digitalCameras, filters]);
     const filteredAnemometers = useMemo(() => applyFilters(anemometers), [anemometers, filters]);
-    
+
     const baseFilteredMobileSims = useMemo(() => {
         let items = applyFilters(mobileSims);
         if (mobileSearchTerm) {
@@ -213,8 +218,8 @@ export default function EquipmentStatusPage() {
                 const allottedTo = allPersonnel.find(p => p.id === item.allottedToUserId);
                 const allottedToName = (allottedTo?.name || '').toLowerCase();
 
-                return numberToSearch.includes(lowercasedTerm) || 
-                       imeiToSearch.includes(lowercasedTerm) || 
+                return numberToSearch.includes(lowercasedTerm) ||
+                       imeiToSearch.includes(lowercasedTerm) ||
                        ariesIdToSearch.includes(lowercasedTerm) ||
                        allottedToName.includes(lowercasedTerm);
             });
@@ -265,7 +270,7 @@ export default function EquipmentStatusPage() {
         if (!user) return [];
         return certificateRequests.filter(req => req.requesterId === user.id && (req.utMachineId || req.dftMachineId));
     }, [certificateRequests, user]);
-    
+
     const pendingCertRequestsForMe = useMemo(() => {
         if (!canManageStore) return [];
         return certificateRequests.filter(req => req.status === 'Pending' && (req.utMachineId || req.dftMachineId));
@@ -287,7 +292,7 @@ export default function EquipmentStatusPage() {
             const userProjectIds = new Set(user.projectIds);
             relevantMachines = relevantMachines.filter(m => m.projectId && userProjectIds.has(m.projectId));
         }
-        
+
         return relevantMachines
             .map(m => ({ machine: m, calibrationDueDate: m.calibrationDueDate ? new Date(m.calibrationDueDate) : null }))
             .filter(item => item.calibrationDueDate && isBefore(item.calibrationDueDate, thirtyDaysFromNow));
@@ -296,7 +301,7 @@ export default function EquipmentStatusPage() {
     // UT Handlers
     const handleEditUT = (machine: UTMachine) => { setSelectedUTMachine(machine); setIsEditUTMachineOpen(true); };
     const handleLogManagerUT = (machine: UTMachine) => { setSelectedUTMachine(machine); setIsUTLogManagerOpen(true); };
-    
+
     // DFT Handlers
     const handleEditDft = (machine: DftMachine) => { setSelectedDftMachine(machine); setIsEditDftMachineOpen(true); };
     const handleLogManagerDft = (machine: DftMachine) => { setSelectedDftMachine(machine); setIsDftLogManagerOpen(true); };
@@ -332,14 +337,14 @@ export default function EquipmentStatusPage() {
             return { dates: [], machineData: [] };
         }
 
-        const machinesToReport = selectedMachineIds.length > 0 
+        const machinesToReport = selectedMachineIds.length > 0
             ? allMachines.filter(m => selectedMachineIds.includes(m.id))
             : allMachines;
 
         if (machinesToReport.length === 0) {
             return { dates: [], machineData: [] };
         }
-            
+
         const { from, to = from } = activeDaysDateRange;
         const daysInRange = eachDayOfInterval({ start: from, end: to });
 
@@ -352,7 +357,7 @@ export default function EquipmentStatusPage() {
         daysInRange.forEach(day => {
             const dayStr = format(day, 'yyyy-MM-dd');
             machinesToReport.forEach(machine => {
-                const dayLog = machineLogs.find(log => 
+                const dayLog = machineLogs.find(log =>
                     log.machineId === machine.id && isSameDay(new Date(log.date), day)
                 );
                 data[machine.id].statuses[dayStr] = dayLog ? dayLog.status : 'Idle';
@@ -380,9 +385,9 @@ export default function EquipmentStatusPage() {
 
     const handleExportActiveDays = () => {
         if (!detailedUsageData || !activeDaysSummary || activeDaysSummary.length === 0 || !activeDaysDateRange?.from) return;
-    
+
         const wb = new ExcelJS.Workbook();
-        
+
         // Summary Sheet
         const summaryWorksheet = wb.addWorksheet('Summary Report');
         summaryWorksheet.columns = [
@@ -397,14 +402,14 @@ export default function EquipmentStatusPage() {
                 activeDays: item.activeDays,
             });
         });
-    
+
         // Detailed Log Sheet
         const machinesToReport = selectedMachineIds.length > 0
             ? allMachines.filter(m => selectedMachineIds.includes(m.id))
             : allMachines;
-        
+
         const { from, to = from } = activeDaysDateRange;
-        
+
         const logsInRange = machineLogs.filter(log => {
             const logDate = parseISO(log.date);
             return machinesToReport.some(m => m.id === log.machineId) && (isSameDay(logDate, from) || (isAfter(logDate, from) && isBefore(logDate, to)));
@@ -425,7 +430,7 @@ export default function EquipmentStatusPage() {
             { header: 'Cable Details', key: 'cable', width: 20 },
             { header: 'Calibration Due Date', key: 'calibDue', width: 20 },
         ];
-        
+
         logsInRange.forEach(log => {
             const machine = machinesToReport.find(m => m.id === log.machineId);
             if (!machine) return null;
@@ -444,7 +449,7 @@ export default function EquipmentStatusPage() {
                 calibDue: format(new Date(machine.calibrationDueDate), 'dd-MM-yyyy')
             });
         });
-    
+
         // Save the workbook
         wb.xlsx.writeBuffer().then(buffer => {
             saveAs(new Blob([buffer]), 'Machine_Usage_Report.xlsx');
@@ -454,13 +459,13 @@ export default function EquipmentStatusPage() {
     const handleExportAllEquipment = async () => {
         const workbook = new ExcelJS.Workbook();
         const allPersonnel = [...users, ...manpowerProfiles];
-        
+
         const createSheet = (sheetName: string, headers: any[], data: any[]) => {
             const worksheet = workbook.addWorksheet(sheetName);
             worksheet.columns = headers;
             worksheet.addRows(data);
         };
-    
+
         // UT Machines
         createSheet('UT Machines', [
             { header: 'Sl. No.', key: 'sl', width: 10 },
@@ -489,7 +494,7 @@ export default function EquipmentStatusPage() {
             status: m.status,
             remarks: m.remarks || 'N/A',
         })));
-    
+
         // DFT Machines
         createSheet('DFT Machines', [
             { header: 'Sl. No.', key: 'sl', width: 10 },
@@ -550,7 +555,7 @@ export default function EquipmentStatusPage() {
             calibDue: item.calibrationDueDate ? format(parseISO(item.calibrationDueDate), 'dd-MM-yyyy') : 'N/A',
             remarks: item.remarks || 'N/A',
         })));
-        
+
         // Laptops & Desktops
         createSheet('Laptops Desktops', [
             { header: 'Sl. No.', key: 'sl', width: 10 },
@@ -611,13 +616,19 @@ export default function EquipmentStatusPage() {
             project: projects.find(p => p.id === item.projectId)?.name || 'N/A',
             remarks: item.remarks || 'N/A',
         })));
-    
+
+        const categorySheet = workbook.addWorksheet('Category Assignments');
+        categorySheet.columns = [{header:'Record key',key:'key',width:48},{header:'Category',key:'category',width:30}];
+        Object.entries(equipmentOrganization.assignments || {}).forEach(([key, category]) => {
+            categorySheet.addRow({key, category: equipmentOrganization.categories?.[category]?.name || category});
+        });
         const buffer = await workbook.xlsx.writeBuffer();
         saveAs(new Blob([buffer]), 'All_Equipment_Report.xlsx');
     };
 
     const handleAddClick = () => {
         if (!canAddEquipment) return;
+        if (selectedCustomCategory) { setIsAddOtherEquipmentOpen(true); return; }
         switch (activeTab) {
             case 'ut-machines': setIsAddUTMachineOpen(true); break;
             case 'dft-machines': setIsAddDftMachineOpen(true); break;
@@ -641,7 +652,7 @@ export default function EquipmentStatusPage() {
 
 
     return (
-        <div className="space-y-8">
+        <div className={styles.page}>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Equipment</h1>
@@ -660,7 +671,7 @@ export default function EquipmentStatusPage() {
             </div>
 
             <EquipmentSummary />
-            
+
             {expiringMachines.length > 0 && (
                 <Card>
                     <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
@@ -764,7 +775,7 @@ export default function EquipmentStatusPage() {
             </Card>
 
             <EquipmentFilters onFiltersChange={setFilters} />
-            
+
             <Card>
                 <CardHeader>
                     <div className="flex justify-end gap-2">
@@ -779,151 +790,25 @@ export default function EquipmentStatusPage() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <Tabs defaultValue="ut-machines" className="w-full" onValueChange={setActiveTab}>
-                        <TabsList className="h-auto flex-wrap justify-start">
-                            <TabsTrigger value="ut-machines">UT Machines</TabsTrigger>
-                            <TabsTrigger value="dft-machines">DFT Machines</TabsTrigger>
-                            <TabsTrigger value="welding-machines">Welding Machines</TabsTrigger>
-                            <TabsTrigger value="walkie-talkie">Walkie Talkie</TabsTrigger>
-                            <TabsTrigger value="digital-camera">Digital Camera</TabsTrigger>
-                            <TabsTrigger value="anemometer">Anemometer</TabsTrigger>
-                            <TabsTrigger value="mobiles">Mobiles</TabsTrigger>
-                            <TabsTrigger value="sims">SIMs</TabsTrigger>
-                            <TabsTrigger value="laptops-desktops">Laptops &amp; Desktops</TabsTrigger>
-                            <TabsTrigger value="pneumatic-drilling-machine">Pneumatic Drilling</TabsTrigger>
-                            <TabsTrigger value="pneumatic-angle-grinder">Pneumatic Grinder</TabsTrigger>
-                            <TabsTrigger value="wired-drilling-machine">Wired Drilling</TabsTrigger>
-                            <TabsTrigger value="cordless-drilling-machine">Cordless Drilling</TabsTrigger>
-                            <TabsTrigger value="wired-angle-grinder">Wired Grinder</TabsTrigger>
-                            <TabsTrigger value="cordless-angle-grinder">Cordless Grinder</TabsTrigger>
-                            <TabsTrigger value="cordless-reciprocating-saw">Reciprocating Saw</TabsTrigger>
-                            <TabsTrigger value="general-equipments">General Equipments</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="ut-machines" className="mt-4 space-y-4">
-                            <Card>
-                                <CardHeader><CardTitle>UT Machine List</CardTitle><CardDescription>A comprehensive list of all UT machines.</CardDescription></CardHeader>
-                                <CardContent><UTMachineTable items={filteredUtMachines} onEdit={handleEditUT} onLogManager={handleLogManagerUT} /></CardContent>
-                            </Card>
-                        </TabsContent>
-                        <TabsContent value="dft-machines" className="mt-4 space-y-4">
-                            <Card>
-                                <CardHeader><CardTitle>DFT Machine List</CardTitle><CardDescription>A comprehensive list of all DFT machines.</CardDescription></CardHeader>
-                                <CardContent><DftMachineTable items={filteredDftMachines} onEdit={handleEditDft} onLogManager={handleLogManagerDft} /></CardContent>
-                            </Card>
-                        </TabsContent>
-                         <TabsContent value="welding-machines" className="mt-4">
-                            <Card>
-                                <CardHeader><CardTitle>Welding Machines</CardTitle></CardHeader>
-                                <CardContent><WeldingMachineTable items={filteredWeldingMachines} onEdit={handleEditWeldingMachine} /></CardContent>
-                            </Card>
-                        </TabsContent>
-                        <TabsContent value="walkie-talkie" className="mt-4">
-                            <Card>
-                                <CardHeader><CardTitle>Walkie Talkies</CardTitle></CardHeader>
-                                <CardContent><WalkieTalkieTable items={filteredWalkieTalkies} onEdit={handleEditWalkieTalkie} /></CardContent>
-                            </Card>
-                        </TabsContent>
-                        <TabsContent value="digital-camera" className="mt-4 space-y-4">
-                            <Card>
-                                <CardHeader><CardTitle>Digital Cameras</CardTitle><CardDescription>List of all company-provided digital cameras.</CardDescription></CardHeader>
-                                <CardContent><DigitalCameraTable items={filteredDigitalCameras} onEdit={handleEditDigitalCamera} /></CardContent>
-                            </Card>
-                        </TabsContent>
-                        <TabsContent value="anemometer" className="mt-4 space-y-4">
-                            <Card>
-                                <CardHeader><CardTitle>Anemometers</CardTitle><CardDescription>List of all company-provided anemometers.</CardDescription></CardHeader>
-                                <CardContent><AnemometerTable items={filteredAnemometers} onEdit={handleEditAnemometer} /></CardContent>
-                            </Card>
-                        </TabsContent>
-                        <TabsContent value="mobiles" className="mt-4 space-y-4">
-                            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        placeholder="Search by IMEI, Aries ID, or name..."
-                                        className="pl-9"
-                                        value={mobileSearchTerm}
-                                        onChange={(e) => setMobileSearchTerm(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                            <Card>
-                                <CardHeader><CardTitle>Mobile Allotment</CardTitle><CardDescription>List of all company-provided mobile devices.</CardDescription></CardHeader>
-                                <CardContent><MobileSimTable items={filteredMobiles} onEdit={handleEditMobileSim} /></CardContent>
-                            </Card>
-                        </TabsContent>
-                        <TabsContent value="sims" className="mt-4 space-y-4">
-                            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        placeholder="Search by number, Aries ID, or name..."
-                                        className="pl-9"
-                                        value={mobileSearchTerm}
-                                        onChange={(e) => setMobileSearchTerm(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                            <Card>
-                                <CardHeader><CardTitle>SIM Card Allotment</CardTitle><CardDescription>List of all company-provided SIM cards.</CardDescription></CardHeader>
-                                <CardContent><MobileSimTable items={filteredSims} onEdit={handleEditMobileSim} /></CardContent>
-                            </Card>
-                        </TabsContent>
-                        <TabsContent value="laptops-desktops" className="mt-4 space-y-4">
-                            <Card>
-                                <CardHeader><CardTitle>Laptops &amp; Desktops</CardTitle><CardDescription>List of all company-provided laptops and desktops.</CardDescription></CardHeader>
-                                <CardContent><LaptopDesktopTable items={filteredLaptopsDesktops} onEdit={handleEditLaptopDesktop} /></CardContent>
-                            </Card>
-                        </TabsContent>
-                         <TabsContent value="pneumatic-drilling-machine" className="mt-4">
-                            <Card>
-                                <CardHeader><CardTitle>Pneumatic Drilling Machines</CardTitle></CardHeader>
-                                <CardContent><PneumaticDrillingMachineTable items={filteredPneumaticDrillingMachines} onEdit={handleEditPneumaticDrillingMachine} /></CardContent>
-                            </Card>
-                        </TabsContent>
-                        <TabsContent value="pneumatic-angle-grinder" className="mt-4">
-                            <Card>
-                                <CardHeader><CardTitle>Pneumatic Angle Grinders</CardTitle></CardHeader>
-                                <CardContent><PneumaticAngleGrinderTable items={filteredPneumaticAngleGrinders} onEdit={handleEditPneumaticAngleGrinder} /></CardContent>
-                            </Card>
-                        </TabsContent>
-                        <TabsContent value="wired-drilling-machine" className="mt-4">
-                            <Card>
-                                <CardHeader><CardTitle>Wired Drilling Machines</CardTitle></CardHeader>
-                                <CardContent><WiredDrillingMachineTable items={filteredWiredDrillingMachines} onEdit={handleEditWiredDrillingMachine} /></CardContent>
-                            </Card>
-                        </TabsContent>
-                        <TabsContent value="cordless-drilling-machine" className="mt-4">
-                            <Card>
-                                <CardHeader><CardTitle>Cordless Drilling Machines</CardTitle></CardHeader>
-                                <CardContent><CordlessDrillingMachineTable items={filteredCordlessDrillingMachines} onEdit={handleEditCordlessDrillingMachine} /></CardContent>
-                            </Card>
-                        </TabsContent>
-                        <TabsContent value="wired-angle-grinder" className="mt-4">
-                            <Card>
-                                <CardHeader><CardTitle>Wired Angle Grinders</CardTitle></CardHeader>
-                                <CardContent><WiredAngleGrinderTable items={filteredWiredAngleGrinders} onEdit={handleEditWiredAngleGrinder} /></CardContent>
-                            </Card>
-                        </TabsContent>
-                        <TabsContent value="cordless-angle-grinder" className="mt-4">
-                            <Card>
-                                <CardHeader><CardTitle>Cordless Angle Grinders</CardTitle></CardHeader>
-                                <CardContent><CordlessAngleGrinderTable items={filteredCordlessAngleGrinders} onEdit={handleEditCordlessAngleGrinder} /></CardContent>
-                            </Card>
-                        </TabsContent>
-                        <TabsContent value="cordless-reciprocating-saw" className="mt-4">
-                            <Card>
-                                <CardHeader><CardTitle>Cordless Reciprocating Saws</CardTitle></CardHeader>
-                                <CardContent><CordlessReciprocatingSawTable items={filteredCordlessReciprocatingSaws} onEdit={handleEditCordlessReciprocatingSaw} /></CardContent>
-                            </Card>
-                        </TabsContent>
-                        <TabsContent value="general-equipments" className="mt-4 space-y-4">
-                            <Card>
-                                <CardHeader><CardTitle>General Equipments</CardTitle><CardDescription>List of all other company-provided equipments.</CardDescription></CardHeader>
-                                <CardContent><OtherEquipmentTable items={filteredOtherEquipments} onEdit={handleEditOtherEquipment} /></CardContent>
-                            </Card>
-                        </TabsContent>
-                    </Tabs>
+                    <EquipmentCategoryRegister activeTab={activeTab} onTabChange={setActiveTab} groups={[
+{id:'ut-machines', source:'utMachines', name:'UT Machines', items:filteredUtMachines, render: items => <UTMachineTable items={items} onEdit={handleEditUT} onLogManager={handleLogManagerUT} />} ,
+{id:'dft-machines', source:'dftMachines', name:'DFT Machines', items:filteredDftMachines, render: items => <DftMachineTable items={items} onEdit={handleEditDft} onLogManager={handleLogManagerDft} />} ,
+{id:'welding-machines', source:'weldingMachines', name:'Welding Machines', items:filteredWeldingMachines, render: items => <WeldingMachineTable items={items} onEdit={handleEditWeldingMachine} />} ,
+{id:'walkie-talkie', source:'walkieTalkies', name:'Walkie Talkie', items:filteredWalkieTalkies, render: items => <WalkieTalkieTable items={items} onEdit={handleEditWalkieTalkie} />} ,
+{id:'digital-camera', source:'digitalCameras', name:'Digital Camera', items:filteredDigitalCameras, render: items => <DigitalCameraTable items={items} onEdit={handleEditDigitalCamera} />} ,
+{id:'anemometer', source:'anemometers', name:'Anemometer', items:filteredAnemometers, render: items => <AnemometerTable items={items} onEdit={handleEditAnemometer} />} ,
+{id:'mobiles', source:'mobileSims', name:'Mobiles', items:filteredMobiles, searchText: item => [...users,...manpowerProfiles].find(person=>person.id===item.allottedToUserId)?.name || '', render: items => <MobileSimTable items={items} onEdit={handleEditMobileSim} />} ,
+{id:'sims', source:'mobileSims', name:'SIMs', items:filteredSims, searchText: item => [...users,...manpowerProfiles].find(person=>person.id===item.allottedToUserId)?.name || '', render: items => <MobileSimTable items={items} onEdit={handleEditMobileSim} />} ,
+{id:'laptops-desktops', source:'laptopsDesktops', name:'Laptops & Desktops', items:filteredLaptopsDesktops, render: items => <LaptopDesktopTable items={items} onEdit={handleEditLaptopDesktop} />} ,
+{id:'pneumatic-drilling-machine', source:'pneumaticDrillingMachines', name:'Pneumatic Drilling', items:filteredPneumaticDrillingMachines, render: items => <PneumaticDrillingMachineTable items={items} onEdit={handleEditPneumaticDrillingMachine} />} ,
+{id:'pneumatic-angle-grinder', source:'pneumaticAngleGrinders', name:'Pneumatic Grinder', items:filteredPneumaticAngleGrinders, render: items => <PneumaticAngleGrinderTable items={items} onEdit={handleEditPneumaticAngleGrinder} />} ,
+{id:'wired-drilling-machine', source:'wiredDrillingMachines', name:'Wired Drilling', items:filteredWiredDrillingMachines, render: items => <WiredDrillingMachineTable items={items} onEdit={handleEditWiredDrillingMachine} />} ,
+{id:'cordless-drilling-machine', source:'cordlessDrillingMachines', name:'Cordless Drilling', items:filteredCordlessDrillingMachines, render: items => <CordlessDrillingMachineTable items={items} onEdit={handleEditCordlessDrillingMachine} />} ,
+{id:'wired-angle-grinder', source:'wiredAngleGrinders', name:'Wired Grinder', items:filteredWiredAngleGrinders, render: items => <WiredAngleGrinderTable items={items} onEdit={handleEditWiredAngleGrinder} />} ,
+{id:'cordless-angle-grinder', source:'cordlessAngleGrinders', name:'Cordless Grinder', items:filteredCordlessAngleGrinders, render: items => <CordlessAngleGrinderTable items={items} onEdit={handleEditCordlessAngleGrinder} />} ,
+{id:'cordless-reciprocating-saw', source:'cordlessReciprocatingSaws', name:'Reciprocating Saw', items:filteredCordlessReciprocatingSaws, render: items => <CordlessReciprocatingSawTable items={items} onEdit={handleEditCordlessReciprocatingSaw} />} ,
+{id:'general-equipments', source:'otherEquipments', name:'General Equipments', items:filteredOtherEquipments, render: items => <OtherEquipmentTable items={items} onEdit={handleEditOtherEquipment} />}
+]} />
                 </CardContent>
             </Card>
 
@@ -938,25 +823,25 @@ export default function EquipmentStatusPage() {
             <AddMobileDialog isOpen={isAddMobileOpen} setIsOpen={setIsAddMobileOpen} />
             <AddSimDialog isOpen={isAddSimOpen} setIsOpen={setIsAddSimOpen} />
             {selectedMobileSim && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && (<EditMobileSimDialog isOpen={isEditMobileSimOpen} setIsOpen={setIsEditMobileSimOpen} item={selectedMobileSim} />)}
-        
+
             <AddLaptopDesktopDialog isOpen={isAddLaptopDesktopOpen} setIsOpen={setIsAddLaptopDesktopOpen} />
             {selectedLaptopDesktop && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && (<EditLaptopDesktopDialog isOpen={isEditLaptopDesktopOpen} setIsOpen={setIsEditLaptopDesktopOpen} item={selectedLaptopDesktop} />)}
-            
+
             <AddDigitalCameraDialog isOpen={isAddDigitalCameraOpen} setIsOpen={setIsAddDigitalCameraOpen} />
             {selectedDigitalCamera && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && <EditDigitalCameraDialog isOpen={isEditDigitalCameraOpen} setIsOpen={setIsEditDigitalCameraOpen} item={selectedDigitalCamera} />}
 
             <AddAnemometerDialog isOpen={isAddAnemometerOpen} setIsOpen={setIsAddAnemometerOpen} />
             {selectedAnemometer && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && <EditAnemometerDialog isOpen={isEditAnemometerOpen} setIsOpen={setIsEditAnemometerOpen} item={selectedAnemometer} />}
 
-            <AddOtherEquipmentDialog isOpen={isAddOtherEquipmentOpen} setIsOpen={setIsAddOtherEquipmentOpen} />
+            <AddOtherEquipmentDialog categoryId={selectedCustomCategory?.id} categoryName={selectedCustomCategory?.name} isOpen={isAddOtherEquipmentOpen} setIsOpen={setIsAddOtherEquipmentOpen} />
             {selectedOtherEquipment && (can.manage_equipment_status || user?.role === 'NDT Supervisor') && <EditOtherEquipmentDialog isOpen={isEditOtherEquipmentOpen} setIsOpen={setIsEditOtherEquipmentOpen} item={selectedOtherEquipment} />}
-            
+
             <AddPneumaticDrillingMachineDialog isOpen={isAddPneumaticDrillingMachineOpen} setIsOpen={setIsAddPneumaticDrillingMachineOpen} />
             {editingPneumaticDrillingMachine && <EditPneumaticDrillingMachineDialog isOpen={!!editingPneumaticDrillingMachine} setIsOpen={() => setEditingPneumaticDrillingMachine(null)} item={editingPneumaticDrillingMachine} />}
 
             <AddPneumaticAngleGrinderDialog isOpen={isAddPneumaticAngleGrinderOpen} setIsOpen={setIsAddPneumaticAngleGrinderOpen} />
             {editingPneumaticAngleGrinder && <EditPneumaticAngleGrinderDialog isOpen={!!editingPneumaticAngleGrinder} setIsOpen={() => setEditingPneumaticAngleGrinder(null)} item={editingPneumaticAngleGrinder} />}
-            
+
             <AddWiredDrillingMachineDialog isOpen={isAddWiredDrillingMachineOpen} setIsOpen={setIsAddWiredDrillingMachineOpen} />
             {editingWiredDrillingMachine && <EditWiredDrillingMachineDialog isOpen={!!editingWiredDrillingMachine} setIsOpen={() => setEditingWiredDrillingMachine(null)} item={editingWiredDrillingMachine} />}
 

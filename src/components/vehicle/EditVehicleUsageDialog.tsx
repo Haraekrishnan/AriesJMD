@@ -28,6 +28,8 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
     const { user, saveVehicleUsageRecord, vehicleUsageRecords } = useAppContext();
     const { toast } = useToast();
     
+    // Snapshot saved data once per open vehicle/month session. Live updates must not replace the draft.
+    const initializedSession = useRef<string | null>(null);
     const [cellStates, setCellStates] = useState<Record<string, any>>({});
     const [headerStates, setHeaderStates] = useState({
       jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0,
@@ -39,6 +41,13 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
     const dayHeaders = useMemo(() => Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => i + 1), [currentMonth]);
 
     useEffect(() => {
+        if (!isOpen) {
+            initializedSession.current = null;
+            return;
+        }
+        const sessionKey = JSON.stringify([vehicle.id, monthKey]);
+        if (initializedSession.current === sessionKey) return;
+        initializedSession.current = sessionKey;
       if (isOpen) {
         const record = vehicleUsageRecords?.[monthKey];
         const vehicleRecord = record?.records?.[vehicle.id];
