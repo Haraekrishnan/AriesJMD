@@ -1,4 +1,5 @@
 'use client';
+import { inwardRecordItemIds } from '@/components/inventory/inward-record-items';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo } from 'react';
 import { rtdb } from '@/lib/rtdb';
@@ -56,8 +57,8 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
 
   const pendingFinalizationCount = useMemo(() => {
     if (!can.manage_inward_outward) return 0;
-    return inwardOutwardRecords.filter(r => r.status === 'Pending Details').length;
-  }, [inwardOutwardRecords, can.manage_inward_outward]);
+    return inwardOutwardRecords.filter(r => r.status === 'Pending Details' && inwardRecordItemIds(r, inventoryItems).length === 0).length;
+  }, [inwardOutwardRecords, can.manage_inward_outward, inventoryItems]);
 
   const batchCreateAndLogItems = useCallback(async (itemsToCreate: Omit<InventoryItem, 'id' | 'lastUpdated'>[], source: string, projectId: string) => {
     if (!user) return 0;
@@ -66,6 +67,7 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
     const now = new Date().toISOString();
     let totalQuantity = 0;
     const itemSummary: Record<string, number> = {};
+    const createdItemIds: string[] = [];
 
     itemsToCreate.forEach(itemData => {
       const newRef = push(ref(rtdb, 'inventoryItems'));
@@ -84,6 +86,7 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
         status: 'In Store',
         projectId: projectId,
       };
+      createdItemIds.push(newId);
       totalQuantity += 1;
       itemSummary[itemData.name] = (itemSummary[itemData.name] || 0) + 1;
     });
@@ -96,8 +99,9 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
         date: now,
         source: source,
         userId: user.id,
-        status: 'Pending Details',
-        itemName: Object.keys(itemSummary).join(', '),
+        status: 'Completed',
+        finalizedItemIds: createdItemIds,
+        itemName: itemsToCreate.map(item => item.name).join(', '),
       };
       updates[`/inwardOutwardRecords/${newRecordRef.key}`] = record;
       
@@ -116,6 +120,11 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const updates: { [key: string]: any } = {};
     const now = new Date().toISOString();
+    const existingRecord = inwardOutwardRecordsById[recordId];
+    if (!existingRecord || existingRecord.isLocked || inwardRecordItemIds(existingRecord, inventoryItems).length) {
+      toast({ title: 'Cannot finalize', description: 'This record is locked or already has inventory items. Use Edit for existing items.', variant: 'destructive' });
+      return;
+    }
     const storeProject = projects.find(p => p.name === 'Store');
     const newFinalizedItemIds: string[] = [];
 
@@ -144,7 +153,7 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
         console.error(error);
         toast({ title: 'Error', description: 'Failed to finalize inward record.', variant: 'destructive' });
     }
-  }, [user, addActivityLog, projects, toast]);
+  }, [user, addActivityLog, projects, toast, inwardOutwardRecordsById, inventoryItems]);
   
   const updateInwardOutwardRecord = useCallback(async (record: InwardOutwardRecord, itemsData: Partial<InventoryItem>[], projectId: string) => {
     if (!user) return;
@@ -153,6 +162,10 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
 
     const originalRecord = inwardOutwardRecordsById[record.id];
     if (!originalRecord) return;
+    if (originalRecord.isLocked) {
+      toast({ title: "Record locked", description: "Unlock the record before editing.", variant: "destructive" });
+      return;
+    }
     
     const finalizedItemIds: string[] = [];
 

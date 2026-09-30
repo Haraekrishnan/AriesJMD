@@ -1,4 +1,5 @@
 'use client';
+import { inwardRecordItemIds } from './inward-record-items';
 import React, { useMemo, useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -49,7 +50,10 @@ export default function InwardOutwardHistory({ records }: { records: InwardOutwa
     };
 
     const filteredRecords = useMemo(() => {
-        let sorted = [...records].sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+        let sorted = records.map(record => {
+            const ids = inwardRecordItemIds(record, inventoryItems);
+            return ids.length ? {...record, finalizedItemIds: ids} : record;
+        }).sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
         
         if (!searchTerm.trim()) {
             return sorted;
@@ -135,7 +139,7 @@ export default function InwardOutwardHistory({ records }: { records: InwardOutwa
                                     <TableCell>
                                         <Badge variant={record.type === 'Inward' ? 'success' : 'destructive'} className="text-[10px] h-5">{record.type}</Badge>
                                     </TableCell>
-                                    <TableCell className="max-w-[200px] truncate text-xs font-medium">{formatItemNames(record.itemName)}</TableCell>
+                                    <TableCell className="max-w-[200px] truncate text-xs font-medium">{record.type === 'Inward' && record.status === 'Pending Details' && !record.itemName?.includes(',') ? `${record.itemName || 'Items'} - ${record.quantity} nos` : formatItemNames(record.itemName)}</TableCell>
                                     <TableCell className="text-center font-bold">{record.quantity}</TableCell>
                                     <TableCell className="max-w-[200px] truncate text-xs">
                                         <p className="font-semibold">{record.source}</p>
@@ -145,12 +149,12 @@ export default function InwardOutwardHistory({ records }: { records: InwardOutwa
                                     {(can.manage_inward_outward || user?.role === 'Admin') && (
                                         <TableCell className="text-right">
                                             <div className="flex gap-1 justify-end">
-                                            {record.status === 'Pending Details' ? (
-                                                <Button variant="secondary" size="sm" className="h-7 text-[10px] font-bold" onClick={() => setFinalizingRecord(record)}>
+                                            {record.status === 'Pending Details' && !record.finalizedItemIds?.length ? (
+                                                <Button variant="secondary" size="sm" className="h-7 text-[10px] font-bold" onClick={() => setFinalizingRecord(record)} disabled={!!isLocked}>
                                                 FINALIZE
                                                 </Button>
                                             ) : (
-                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingRecord(record)} disabled={isLocked && user?.role !== 'Admin'}>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingRecord(record)} disabled={!!isLocked} aria-label="Edit transaction" title={isLocked ? 'Unlock this record before editing' : 'Edit transaction'}>
                                                     <Edit className="h-4 w-4" />
                                                 </Button>
                                             )}
@@ -212,6 +216,7 @@ export default function InwardOutwardHistory({ records }: { records: InwardOutwa
                                                     <PackageCheck className="h-4 w-4 text-primary/60" />
                                                     <h4 className="text-xs font-black uppercase tracking-widest text-slate-500">Transaction Item Details</h4>
                                                 </div>
+                                                {!record.finalizedItemIds?.length && !record.itemId && !record.movedItemsDetails?.length && <p className="text-sm text-muted-foreground">{record.itemName || "Items"}: {record.quantity} items from {record.source}. Individual item links are unavailable for this entry.</p>}
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                                     {record.type === 'Outward' && record.movedItemsDetails ? (
                                                         record.movedItemsDetails.map((item, idx) => (
