@@ -1,5 +1,6 @@
 'use client';
 
+import { myRequestLists } from '@/components/requests/request-summary';
 import { useEhs } from '@/contexts/ehs-provider';
 import { usePathname } from 'next/navigation';
 import React, { useMemo } from 'react';
@@ -101,16 +102,6 @@ export function AppSidebar() {
       unreadCommentsForUser.length + newDelegatedEventsCount;
 
 
-    const pendingInternalRequestCount = isStoreManager ? (internalRequests || []).filter(r => r.status === 'Pending' || r.status === 'Partially Approved').length : 0;
-    
-    const updatedInternalRequestCount = (internalRequests || []).filter(r => {
-        const isMyRequest = r.requesterId === user.id;
-        if (!isMyRequest) return false;
-        const isRejectedButActive = r.status === 'Rejected' && !r.acknowledgedByRequester;
-        const isStandardUpdate = (r.status === 'Approved' || r.status === 'Issued' || r.status === 'Partially Issued' || r.status === 'Partially Approved') && !r.acknowledgedByRequester;
-        return isRejectedButActive || isStandardUpdate;
-    }).length;
-
     const unreadDirectivesCount = (managementRequests || []).filter(d => {
         const isRecipient = d.toUserId === user.id || (d.ccUserIds || []).includes(user.id);
         return isRecipient && !d.readBy?.[user.id];
@@ -126,23 +117,6 @@ export function AppSidebar() {
       return hasUnreadUpdate || hasUnreadComment;
     }).length;
     
-    const canApprovePpe = ['Admin', 'Manager'].includes(user.role);
-    const canIssuePpe = ['Store in Charge', 'Assistant Store Incharge', 'Admin', 'Project Coordinator'].includes(user.role);
-    
-    const pendingApproval = canApprovePpe ? (ppeRequests || []).filter(r => r.status === 'Pending').length : 0;
-    const pendingIssuance = canIssuePpe ? (ppeRequests || []).filter(r => r.status === 'Approved').length : 0;
-    const pendingDisputes = (canApprovePpe || canIssuePpe) ? (ppeRequests || []).filter(r => r.status === 'Disputed').length : 0;
-    const pendingPpeRequestCount = pendingApproval + pendingIssuance + pendingDisputes;
-
-    const myPpeRequests = (ppeRequests || []).filter(r => r.requesterId === user.id);
-    const ppeQueries = myPpeRequests.filter(req => {
-      const comments = req.comments ? (Array.isArray(req.comments) ? req.comments : Object.values(req.comments)) : [];
-      const lastComment = comments[comments.length - 1];
-      return lastComment && lastComment.userId !== user.id && !req.viewedByRequester;
-    }).length;
-
-    const updatedPpeRequestCount = myPpeRequests.filter(r => (r.status === 'Approved' || r.status === 'Rejected' || r.status === 'Issued') && !r.viewedByRequester).length + ppeQueries;
-    
     const canApprovePayments = user.role === 'Admin' || user.role === 'Manager';
     const pendingPaymentApprovalCount = canApprovePayments ? (payments || []).filter(p => p.status === 'Pending').length : 0;
     const pendingFeedbackCount = can.manage_feedback ? (feedback || []).filter(f => !f.viewedBy?.[user.id]).length : 0;
@@ -154,7 +128,7 @@ export function AppSidebar() {
     const pendingDamageReportCount = can.manage_inventory ? (damageReports || []).filter(r => r.status === 'Pending').length : 0;
 
     return {
-      myRequests: pendingInternalRequestCount + updatedInternalRequestCount + pendingPpeRequestCount + updatedPpeRequestCount,
+      myRequests: myRequestLists(ppeRequests || [], internalRequests || [], user.id, can).activeCount,
       manageTasks: myNewTaskCount + pendingTaskApprovalCount,
       jmsTracker: trackerNotificationCount || 0,
       storeInventory: pendingStoreCertRequestCount + myFulfilledStoreCertRequestCount + pendingInventoryTransferRequestCount + pendingFinalizationCount,

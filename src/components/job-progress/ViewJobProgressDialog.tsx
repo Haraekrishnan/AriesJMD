@@ -1,4 +1,5 @@
 'use client';
+import { jmsAssignees, canReassignJms } from '@/components/job-progress/jms-users';
 import { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -78,7 +79,7 @@ const ReopenJobDialog = ({ isOpen, setIsOpen, job, reopenJob }: { isOpen: boolea
       const [popoverOpen, setPopoverOpen] = useState(false);
     
       const assignableUsers = useMemo(() => {
-          return users.filter(u => u.role !== 'Manager');
+          return jmsAssignees(users);
       }, [users]);
     
       const form = useForm<ReopenFormValues>({
@@ -207,14 +208,14 @@ type NextStepFormValues = z.infer<typeof nextStepSchema>;
 
 
 const AddNextStepForm = ({ job, currentStep, onCancel, onSave }: { job: JobProgress; currentStep: JobStep; onCancel: () => void; onSave: () => void; }) => {
-    const { user, getAssignableUsers } = useAuth();
+    const { user, users } = useAuth();
     const { addAndCompleteStep, finalizeJob } = usePlanner();
     const [completionComment, setCompletionComment] = useState('');
    
     const assignableUsersForNextStep = useMemo(() => {
         if (!user) return [];
-        return getAssignableUsers();
-    }, [user, getAssignableUsers]);
+        return jmsAssignees(users);
+    }, [user, users]);
    
     const form = useForm<NextStepFormValues>({
         resolver: zodResolver(nextStepSchema),
@@ -406,9 +407,8 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
     
     const canReassign = useMemo(() => {
       if (!user || job.status === 'Completed') return false;
-      const allowedRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
-      return allowedRoles.includes(user.role);
-    }, [user, job.status]);
+      return canReassignJms(user, can.manage_job_progress);
+    }, [user, job.status, can.manage_job_progress]);
 
     const canReopenJob = useMemo(() => {
         if (!user || !job) return false;
@@ -554,9 +554,9 @@ export default function ViewJobProgressDialog({ isOpen, setIsOpen, job: initialJ
                                                     <p className="flex items-center gap-2">
                                                         <strong>Assignee:</strong> 
                                                         {assignee ? (
-                                                            <span className="flex items-center gap-1"><Avatar className="h-5 w-5"><AvatarImage src={assignee.avatar} /><AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback></Avatar>{assignee.name}</span>
+                                                            <span className="flex items-center gap-1"><Avatar className="h-5 w-5"><AvatarImage src={assignee.avatar} /><AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback></Avatar>{assignee.name}{assignee.status === 'locked' ? ' (Locked)' : assignee.status === 'deactivated' ? ' (Access removed)' : ''}</span>
                                                         ) : 'Unassigned'}
-                                                        {canReassign && <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReassigningStep(step)}><UserRoundCog className="h-4 w-4 text-blue-600"/></Button>}
+                                                        {canReassign && <Button variant="outline" size="sm" title="Reassign this step" onClick={() => setReassigningStep(step)}>Reassign <UserRoundCog className="h-4 w-4 text-blue-600"/></Button>}
                                                     </p>
                                                     {assigner && (
                                                         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">

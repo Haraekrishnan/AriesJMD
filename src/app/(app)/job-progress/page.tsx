@@ -1,5 +1,6 @@
 
 'use client';
+import { jmsAssignees } from '@/components/job-progress/jms-users';
 
 import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -33,7 +34,7 @@ import CompletedJmsDialog from '@/components/job-progress/CompletedJmsDialog';
 const implementationStartDate = new Date(2025, 9, 1); // October 2025
 
 export default function JobProgressPage() {
-  const { user, users, getVisibleUsers, can } = useAuth();
+  const { user, users, can } = useAuth();
   const { projects, workOrders } = useGeneral();
   const { jobProgress, timesheets, trackerNotificationCount, documentMovements } = usePlanner();
 
@@ -65,8 +66,8 @@ export default function JobProgressPage() {
   const [activeTab, setActiveTab] = useState('jms');
 
   const assignableUsers = useMemo(() => {
-    return getVisibleUsers().filter(u => u.role !== 'Manager');
-  }, [getVisibleUsers]);
+    return jmsAssignees(users);
+  }, [users]);
 
   const canGoToPreviousMonth = useMemo(() => {
     const firstDayOfCurrentMonth = startOfMonth(currentMonth);
@@ -267,7 +268,7 @@ export default function JobProgressPage() {
 
   const allSubmitters = useMemo(() => {
     const submitterIds = new Set(timesheets.map(ts => ts.submitterId));
-    return users.filter(u => submitterIds.has(u.id));
+    return jmsAssignees(users).filter(u => submitterIds.has(u.id));
   }, [timesheets, users]);
     
   if (!can.view_job_progress && !can.view_all) {

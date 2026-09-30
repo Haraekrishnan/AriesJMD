@@ -1,5 +1,6 @@
 
 'use client';
+import { jmsAssignees } from '@/components/job-progress/jms-users';
 import { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
 import { usePlanner } from '@/contexts/planner-provider';
@@ -88,7 +89,7 @@ export default function ViewDocumentMovementDialog({ isOpen, setIsOpen, movement
   const assignableUsers = useMemo(() => {
     if (!user) return [];
     const currentParticipantIds = new Set([request.creatorId, request.assigneeId, ...(request.comments || []).map(c => c.userId)]);
-    return users.filter(u => !currentParticipantIds.has(u.id));
+    return jmsAssignees(users).filter(u => !currentParticipantIds.has(u.id));
   }, [user, users, request]);
   
   const canTakeAction = user?.id === request.assigneeId;

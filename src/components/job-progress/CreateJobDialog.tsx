@@ -1,4 +1,5 @@
 'use client';
+import { jmsAssignees } from '@/components/job-progress/jms-users';
 
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -88,7 +89,7 @@ export default function CreateJobDialog({ isOpen, setIsOpen }: Props) {
   const watchedStepName = form.watch('steps.0.name');
 
   const assignableUsers = useMemo(() => {
-    return users.filter(u => u.role !== 'Manager' && u.status !== 'deactivated');
+    return jmsAssignees(users);
   }, [users]);
 
   const checkForDuplicates = (data: JobFormValues): string[] => {

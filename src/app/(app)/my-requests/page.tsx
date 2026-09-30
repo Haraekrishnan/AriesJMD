@@ -8,7 +8,7 @@ import { useConsumable } from '@/contexts/consumable-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, HardHat, Package, Store, ChevronRight } from 'lucide-react';
-import { summarizeRequests } from '@/components/requests/request-summary';
+import { summarizeRequests, myRequestLists } from '@/components/requests/request-summary';
 import styles from '@/components/requests/my-requests.module.css';
 import NewInternalRequestDialog from '@/components/requests/new-internal-request-dialog';
 import InternalRequestTable from '@/components/requests/internal-request-table';
@@ -22,16 +22,7 @@ import { usePurchase } from '@/contexts/purchase-provider';
 
 export default function MyRequestsPage() {
     const { user, roles, can } = useAuth();
-    const { 
-        internalRequests, 
-        ppeRequests,
-        pendingConsumableRequestCount,
-        updatedConsumableRequestCount,
-        pendingGeneralRequestCount,
-        updatedGeneralRequestCount,
-        pendingPpeRequestCount,
-        updatedPpeRequestCount,
-     } = useInventory();
+    const { internalRequests, ppeRequests } = useInventory();
     const { consumableItems } = useConsumable();
 
     const [requestType, setRequestType] = useState('ppe-requests');
@@ -41,49 +32,12 @@ export default function MyRequestsPage() {
 
     const consumableItemIds = useMemo(() => new Set(consumableItems.map(item => item.id)), [consumableItems]);
 
-    const { consumableRequests, generalStoreRequests } = useMemo(() => {
-        const consumables: any[] = [];
-        const general: any[] = [];
-        const corruptedRequestId = "-OaA1ma81MdDVw62D8Xg";
-
-        internalRequests
-            .filter(req => req.id !== corruptedRequestId)
-            .forEach(req => {
-                const isConsumableReq = req.items?.some(item => item.inventoryItemId && consumableItemIds.has(item.inventoryItemId));
-                
-                if (isConsumableReq) {
-                    consumables.push(req);
-                } else {
-                    general.push(req);
-                }
-            });
-
-        const filterAndSort = (requests: any[]) => {
-          if (!user) return [];
-          return requests
-              .filter(req => req.requesterId === user.id || can.view_internal_store_request || can.manage_store_requests)
-              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        }
-
-        return {
-            consumableRequests: filterAndSort(consumables),
-            generalStoreRequests: filterAndSort(general),
-        };
-    }, [internalRequests, consumableItemIds, user, can.view_internal_store_request, can.manage_store_requests]);
-    
-    const visiblePpeRequests = useMemo(() => {
-        if (!user || !ppeRequests) return [];
-        if (can.view_ppe_requests || can.manage_ppe_request) {
-            return [...ppeRequests].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        }
-        return ppeRequests
-            .filter(req => req.requesterId === user.id)
-            .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [ppeRequests, user, can.view_ppe_requests, can.manage_ppe_request]);
-
-    const consumableNotifCount = pendingConsumableRequestCount + updatedConsumableRequestCount;
-    const generalNotifCount = pendingGeneralRequestCount + updatedGeneralRequestCount;
-    const ppeNotifCount = pendingPpeRequestCount + updatedPpeRequestCount;
+    const visible = useMemo(() => myRequestLists(ppeRequests || [], internalRequests || [], user?.id, can), [ppeRequests, internalRequests, user?.id, can]);
+    const visiblePpeRequests = visible.ppeRequests;
+    const {consumableRequests, generalStoreRequests} = useMemo(() => ({
+        consumableRequests: visible.internalRequests.filter(req => req.items?.some(item => item.inventoryItemId && consumableItemIds.has(item.inventoryItemId))),
+        generalStoreRequests: visible.internalRequests.filter(req => !req.items?.some(item => item.inventoryItemId && consumableItemIds.has(item.inventoryItemId))),
+    }), [visible.internalRequests, consumableItemIds]);
 
     return (
         <div className={styles.page}>
@@ -100,12 +54,12 @@ export default function MyRequestsPage() {
             <Tabs value={requestType} onValueChange={setRequestType}>
                 <TabsList className={styles.categories} aria-label="Request category">
                     {[
-                        {value:'ppe-requests',title:'PPE Requests',summary:summarizeRequests(visiblePpeRequests),notifications:ppeNotifCount,icon:HardHat,tone:'blue'},
-                        {value:'consumable-requests',title:'Consumable Requests',summary:summarizeRequests(consumableRequests),notifications:consumableNotifCount,icon:Package,tone:'green'},
-                        {value:'store-requests',title:'General Store Requests',summary:summarizeRequests(generalStoreRequests),notifications:generalNotifCount,icon:Store,tone:'purple'},
-                    ].map(({value,title,summary,notifications,icon:Icon,tone}) => <TabsTrigger key={value} value={value} className={styles.category+' '+styles[tone]}>
+                        {value:'ppe-requests',title:'PPE Requests',summary:summarizeRequests(visiblePpeRequests),icon:HardHat,tone:'blue'},
+                        {value:'consumable-requests',title:'Consumable Requests',summary:summarizeRequests(consumableRequests),icon:Package,tone:'green'},
+                        {value:'store-requests',title:'General Store Requests',summary:summarizeRequests(generalStoreRequests),icon:Store,tone:'purple'},
+                    ].map(({value,title,summary,icon:Icon,tone}) => <TabsTrigger key={value} value={value} className={styles.category+' '+styles[tone]}>
                         <span className={styles.categoryIcon}><Icon aria-hidden="true" /></span>
-                        <span className={styles.categoryText}><span>{title}</span><strong>{summary.total.toLocaleString()} <ChevronRight aria-hidden="true" size={18}/></strong><small className={styles.countDetails}>Total requests · {summary.completed.toLocaleString()} completed</small><small className={styles.countDetails} title="Personal notifications include pending actions and unread updates; they are separate from active requests.">{notifications.toLocaleString()} personal notifications</small></span>
+                        <span className={styles.categoryText}><span>{title}</span><strong>{summary.total.toLocaleString()} <ChevronRight aria-hidden="true" size={18}/></strong><small className={styles.countDetails}>Total requests · {summary.completed.toLocaleString()} completed</small></span>
                         <Badge variant={summary.active > 0 ? 'destructive' : 'secondary'} className={styles.notification} aria-label={summary.active+' active requests'}>{summary.active} active</Badge>
                     </TabsTrigger>)}
                 </TabsList>

@@ -1,5 +1,6 @@
 
 'use client';
+import { jmsAssignees } from '@/components/job-progress/jms-users';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -91,7 +92,7 @@ const generateDefaultSorItem = (): SorItem => ({
 
 
 export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderDialogProps) {
-  const { user, users, getVisibleUsers } = useAuth();
+  const { user, users } = useAuth();
   const { projects, workOrders, serviceCodes } = useGeneral();
   const { createJobProgress, updateJobProgress } = usePlanner();
   const { toast } = useToast();
@@ -99,8 +100,8 @@ export default function JmsBuilderDialog({ isOpen, setIsOpen, job }: JmsBuilderD
   const [popoverOpenState, setPopoverOpenState] = useState<Record<number, boolean>>({});
 
   const assignableUsers = useMemo(() => {
-    return getVisibleUsers().filter(u => u.role !== 'Manager');
-  }, [getVisibleUsers]);
+    return jmsAssignees(users);
+  }, [users]);
 
   const form = useForm<BuilderFormValues>({
     resolver: zodResolver(builderSchema),

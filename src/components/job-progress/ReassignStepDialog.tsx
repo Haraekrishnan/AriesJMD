@@ -1,4 +1,5 @@
 'use client';
+import { jmsAssignees } from '@/components/job-progress/jms-users';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -32,14 +33,14 @@ interface ReassignStepDialogProps {
 }
 
 export default function ReassignStepDialog({ isOpen, setIsOpen, job, step }: ReassignStepDialogProps) {
-    const { user, getAssignableUsers } = useAuth();
+    const { user, users } = useAuth();
     const { reassignJobStep } = usePlanner();
     const { toast } = useToast();
     const [popoverOpen, setPopoverOpen] = useState(false);
 
     const assignableUsers = useMemo(() => {
-        return getAssignableUsers();
-    }, [getAssignableUsers]);
+        return jmsAssignees(users);
+    }, [users]);
 
     const form = useForm<ReassignFormValues>({
         resolver: zodResolver(reassignSchema),
@@ -47,8 +48,8 @@ export default function ReassignStepDialog({ isOpen, setIsOpen, job, step }: Rea
     });
 
     const onSubmit = (data: ReassignFormValues) => {
-        reassignJobStep(job.id, step.id, data.newAssigneeId, data.comment);
-        toast({ title: "Step Reassigned", description: `The step has been reassigned.` });
+        if (!reassignJobStep(job.id, step.id, data.newAssigneeId, data.comment)) return;
+
         setIsOpen(false);
     };
 

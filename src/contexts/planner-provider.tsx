@@ -1,5 +1,6 @@
 
 'use client';
+import { isJmsAssignee, canReassignJms } from '@/components/job-progress/jms-users';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo, Dispatch, SetStateAction } from 'react';
 import { PlannerEvent, DailyPlannerComment, Comment, JobSchedule, JobScheduleItem, JobRecord, JobRecordPlant, VehicleUsageRecord, User, Role, JobStep, JobProgress, JobStepStatus, Timesheet, TimesheetStatus, DocumentMovement, DocumentMovementStatus } from '@/lib/types';
@@ -64,7 +65,7 @@ type PlannerContextType = {
   updateJobStepStatus: (jobId: string, stepId: string, newStatus: JobStepStatus, comment?: string, completionDetails?: { attachmentUrl?: string; customFields?: Record<string, any> }) => void;
   addAndCompleteStep: (jobId: string, currentStepId: string, completionComment: string | undefined, completionAttachment: { name: string; url: string; } | undefined, completionCustomFields: Record<string, any> | undefined, nextStepData: Omit<JobStep, 'id'|'status'>) => void;
   addJobStepComment: (jobId: string, stepId: string, commentText: string) => void;
-  reassignJobStep: (jobId: string, stepId: string, newAssigneeId: string, comment: string) => void;
+  reassignJobStep: (jobId: string, stepId: string, newAssigneeId: string, comment: string) => boolean;
   assignJobStep: (jobId: string, stepId: string, assigneeId: string) => void;
   finalizeJob: (jobId: string, stepId: string, comment: string) => void;
   returnJobStep: (jobId: string, stepId: string, reason: string) => void;
@@ -708,24 +709,27 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     }, [user, jobProgressById, users, addJobStepComment, notificationSettings, toast, can.manage_job_progress, finalizeJob]);
 
     const reassignJobStep = useCallback((jobId: string, stepId: string, newAssigneeId: string, comment: string) => {
-        if (!user) return;
+        if (!user) return false;
         const job = jobProgressById[jobId];
-        if (!job) return;
+        if (!job) return false;
 
         const stepIndex = job.steps.findIndex(s => s.id === stepId);
-        if (stepIndex === -1) return;
+        if (stepIndex === -1) return false;
 
         const currentStep = job.steps[stepIndex];
 
         const canReassignRoles: Role[] = ['Admin', 'Project Coordinator', 'Document Controller'];
-        if (!canReassignRoles.includes(user.role)) {
+        if (!canReassignJms(user, can.manage_job_progress)) {
             toast({ title: 'Permission Denied', description: 'Unauthorized for reassignment.', variant: 'destructive' });
-            return;
+            return false;
         }
 
         const oldAssignee = users.find(u => u.id === currentStep.assigneeId);
         const newAssignee = users.find(u => u.id === newAssigneeId);
-        if (!newAssignee) return;
+        if (!isJmsAssignee(newAssignee)) {
+            toast({ title: "Assignee unavailable", description: "Choose an active non-manager account.", variant: "destructive" });
+            return false;
+        }
         
         const isSelfReassign = newAssigneeId === user.id;
         
@@ -770,9 +774,14 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
                 creatorUser: user,
             });
         }
-    }, [user, jobProgressById, users, toast, notificationSettings]);
+        return true;
+    }, [user, jobProgressById, users, toast, notificationSettings, can.manage_job_progress]);
 
     const assignJobStep = useCallback((jobId: string, stepId: string, assigneeId: string) => {
+        if (!isJmsAssignee(users.find(u => u.id === assigneeId))) {
+            toast({ title: "Assignee unavailable", description: "Choose an active non-manager account.", variant: "destructive" });
+            return;
+        }
         if (!user) return;
         const job = jobProgressById[jobId];
         if (!job) return;

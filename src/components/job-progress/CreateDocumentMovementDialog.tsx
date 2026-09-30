@@ -1,4 +1,5 @@
 'use client';
+import { jmsAssignees } from '@/components/job-progress/jms-users';
 
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -37,7 +38,7 @@ export default function CreateDocumentMovementDialog({ isOpen, setIsOpen }: Prop
   });
 
   const assignableUsers = useMemo(() => {
-    return users.filter(u => u.role !== 'Manager');
+    return jmsAssignees(users);
   }, [users]);
 
   const onSubmit = (data: FormValues) => {

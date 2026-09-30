@@ -1,4 +1,5 @@
 'use client';
+import { jmsAssignees } from '@/components/job-progress/jms-users';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -86,7 +87,7 @@ export default function EditTimesheetDialog({ isOpen, setIsOpen, timesheet, onSu
       setIsOpen(open);
   };
 
-  const assignableUsers = users.filter(u => u.role !== 'Manager' && u.id !== user?.id && u.status !== 'deactivated');
+  const assignableUsers = jmsAssignees(users).filter(u => u.id !== user?.id);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>

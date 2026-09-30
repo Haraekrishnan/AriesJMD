@@ -1,4 +1,6 @@
 'use client';
+import RequestSearch from './RequestSearch';
+import { matchesRequestSearch } from './request-search';
 import styles from './my-requests.module.css';
 import RequestPagination, { useRequestPages } from './RequestPagination';
 import { summarizeRequests } from './request-summary';
@@ -428,13 +430,32 @@ const RequestCard = ({ req, onEditRequest }: { req: PpeRequest; onEditRequest: (
 
 export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
   const { user, markPpeRequestAsViewed } = useInventory();
+  const { users } = useAuth();
+  const { manpowerProfiles } = useManpower();
+  const [search, setSearch] = useState('');
+  const matchingRequests = useMemo(() => {
+    const people = new Map(users.map(person => [person.id, person]));
+    const profiles = new Map(manpowerProfiles.map(person => [person.id, person]));
+    return requests.filter(req => {
+      const requester = people.get(req.requesterId);
+      const person = profiles.get(req.manpowerId);
+      return matchesRequestSearch(search, [req.id, requester?.name, requester?.email, person?.name, person?.employeeCode, person?.epNumber, person?.hardCopyFileNo]);
+    });
+  }, [requests, search, users, manpowerProfiles]);
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
   const [editingRequest, setEditingRequest] = useState<PpeRequest | null>(null);
 
-  const { activeRequests, completedRequests } = useMemo(() => summarizeRequests(requests), [requests]);
+  const { activeRequests, completedRequests } = useMemo(() => summarizeRequests(matchingRequests), [matchingRequests]);
 
   const activePages = useRequestPages(activeRequests);
   const completedPages = useRequestPages(completedRequests);
+  const changeSearch = (value: string) => {
+    setSearch(value);
+    activePages.setPage(1);
+    completedPages.setPage(1);
+    if (value.trim()) setIsCompletedOpen(true);
+  };
+
 
   useEffect(() => {
     if (isCompletedOpen && user) {
@@ -455,6 +476,7 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
 
   return (
     <div className="space-y-4">
+      <RequestSearch value={search} onChange={changeSearch} active={activeRequests.length} completed={completedRequests.length} />
       <div className="space-y-2">
         <h3 className={styles.activeHeading}>Active Requests ({activeRequests.length})</h3>
         {activeRequests.length > 0 ? (
@@ -462,12 +484,12 @@ export default function PpeRequestTable({ requests }: PpeRequestTableProps) {
             {activePages.items.map((req, index) => <RequestCard key={req.id || index} req={req} onEditRequest={setEditingRequest} />)}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">No active requests.</p>
+          <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">{search.trim() ? 'No matching active requests.' : 'No active requests.'}</p>
         )}
         <RequestPagination {...activePages} label="Active requests" />
       </div>
        {completedRequests.length > 0 && (
-        <Accordion type="single" collapsible className="w-full" onValueChange={(value) => setIsCompletedOpen(!!value)}>
+        <Accordion type="single" collapsible value={isCompletedOpen ? "completed-requests" : ""} className="w-full" onValueChange={(value) => setIsCompletedOpen(!!value)}>
           <AccordionItem value="completed-requests" className="border rounded-md">
             <AccordionTrigger className={styles.completedHeading}>
                Completed & Acknowledged Requests ({completedRequests.length})
