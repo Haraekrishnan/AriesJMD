@@ -308,7 +308,7 @@ export type ManpowerTrade = {
 
 export type Trade = 'RA Level 1' | 'RA Level 2' | 'RA Level 3' | 'RA + Supervisor' | 'Supervisor' | 'Senior Safety Supervisor' | 'Safety Supervisor' | 'Document Controller' | 'Cook' | 'Others' | string;
 
-export type DocumentStatus = 'Pending' | 'Collected' | 'Submitted' | 'Received';
+export type DocumentStatus = 'Pending' | 'Collected' | 'Submitted' | 'Received' | 'Not Applicable';
 
 export type ManpowerDocument = {
     name: string;

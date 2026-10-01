@@ -1,5 +1,6 @@
 
 'use client';
+import { manpowerDocumentProgress } from './document-progress';
 import { useMemo, useState, useEffect } from 'react';
 import ManpowerPagination from './ManpowerPagination';
 import type { ManpowerProfile, EpNumberRecord } from '@/lib/types';
@@ -115,44 +116,9 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
         setExpandedRows(newExpandedRows);
     };
 
-    const getDocumentProgress = (profile: ManpowerProfile) => {
-        const requiredDocs = ['Aadhar Card', 'CV', 'Pan Card', 'Personal Details', 'Form A', 'Induction', 'Signed Contract', 'Medical Report', 'First Aid Certificate'];
-        if (['RA Level 1', 'RA Level 2', 'RA Level 3', 'RA + Supervisor'].includes(profile.trade)) {
-            requiredDocs.push('IRATA Certificate');
-        }
-
-        if (requiredDocs.length === 0) return 100;
-
-        const collectedCount = requiredDocs.filter(docName => {
-            const doc = (profile.documents || []).find(d => d.name === docName);
-            return doc && doc.status !== 'Pending';
-        }).length;
-        
-        return (collectedCount / requiredDocs.length) * 100;
-    };
-    
-     const getProgressTooltip = (profile: ManpowerProfile) => {
-        const requiredDocs = ['Aadhar Card', 'CV', 'Pan Card', 'Personal Details', 'Form A', 'Induction', 'Signed Contract', 'Medical Report', 'First Aid Certificate'];
-        if (['RA Level 1', 'RA Level 2', 'RA Level 3', 'RA + Supervisor'].includes(profile.trade)) {
-            requiredDocs.push('IRATA Certificate');
-        }
-
-        if (requiredDocs.length === 0) {
-            return <div>No documents required for this trade.</div>
-        }
-        
-        const collected: string[] = [];
-        const pending: string[] = [];
-
-        requiredDocs.forEach(docName => {
-            const doc = (profile.documents || []).find(d => d.name === docName);
-            if(doc && doc.status !== 'Pending') {
-                collected.push(docName);
-            } else {
-                pending.push(docName);
-            }
-        });
-
+    const getDocumentProgress = (profile: ManpowerProfile) => manpowerDocumentProgress(profile).percent;
+    const getProgressTooltip = (profile: ManpowerProfile) => {
+        const {collected, pending} = manpowerDocumentProgress(profile);
         return (
             <div>
                 {collected.length > 0 && <p><strong>Collected:</strong> {collected.join(', ')}</p>}

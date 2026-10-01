@@ -67,7 +67,7 @@ const profileSchema = z.object({
   cardType: z.string().optional(),
   epNumber: z.string().optional(),
   newEpNumber: z.string().optional(),
-  documents: z.array(z.object({ name: z.string(), details: z.string().optional(), status: z.enum(['Pending', 'Collected', 'Submitted', 'Received']) })).optional(),
+  documents: z.array(z.object({ name: z.string(), details: z.string().optional(), status: z.enum(['Pending', 'Collected', 'Submitted', 'Received', 'Not Applicable']) })).optional(),
   skills: z.array(z.object({ name: z.string().min(1, "Skill name is required"), details: z.string().optional(), link: z.string().url().optional().or(z.literal('')), validity: z.date().optional().nullable() })).optional(),
   resignationDate: z.date().optional().nullable(),
   terminationDate: z.date().optional().nullable(),
@@ -144,7 +144,7 @@ const DatePickerController = ({ name, control, disabled = false }: { name: any, 
 };
 
 const getInitialDocs = (profileData?: ManpowerProfile) => {
-    const baseDocs = ['Aadhar Card', 'CV', 'Pan Card', 'Personal Details', 'Form A', 'Induction', 'Signed Contract', 'Medical Report'];
+    const baseDocs = ['Aadhar Card', 'CV', 'Pan Card', 'Personal Details', 'Form A', 'Induction', 'Signed Contract', 'Medical Report', 'NDT Certificate'];
     if (profileData?.trade && RA_TRADES.includes(profileData.trade)) {
         baseDocs.push('IRATA Certificate');
     }
@@ -154,7 +154,7 @@ const getInitialDocs = (profileData?: ManpowerProfile) => {
     
     const profileDocsMap = new Map((Array.isArray(profileData?.documents) ? profileData.documents : []).map(doc => [doc.name, doc]));
     const initialDocs: ManpowerDocument[] = baseDocs.map(docName => 
-      profileDocsMap.get(docName) || { name: docName, status: 'Pending', details: '' }
+      profileDocsMap.get(docName) || { name: docName, status: docName === 'NDT Certificate' && profileData ? 'Not Applicable' : 'Pending', details: '' }
     );
     (Array.isArray(profileData?.documents) ? profileData.documents : []).forEach(doc => {
       if (!initialDocs.some(d => d.name === doc.name)) {
@@ -626,7 +626,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                       <Select onValueChange={selectField.onChange} value={selectField.value}>
                                       <SelectTrigger><SelectValue /></SelectTrigger>
                                       <SelectContent>
-                                          {documentStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                          {(field.name === 'NDT Certificate' ? ['Pending', 'Received', 'Not Applicable'] : documentStatusOptions).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                                       </SelectContent>
                                       </Select>
                                   )}
