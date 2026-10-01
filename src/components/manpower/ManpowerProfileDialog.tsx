@@ -144,7 +144,7 @@ const DatePickerController = ({ name, control, disabled = false }: { name: any, 
 };
 
 const getInitialDocs = (profileData?: ManpowerProfile) => {
-    const baseDocs = ['Aadhar Card', 'CV', 'Pan Card', 'Personal Details', 'Form A', 'Induction', 'Signed Contract', 'Medical Report', 'NDT Certificate'];
+    const baseDocs = ['Aadhar Card', 'CV', 'Pan Card', 'Personal Details', 'Form A', 'Induction', 'Signed Contract', 'Medical Report', 'NDT Certificate', 'Trade Validation', 'Appointment Letter'];
     if (profileData?.trade && RA_TRADES.includes(profileData.trade)) {
         baseDocs.push('IRATA Certificate');
     }
@@ -153,9 +153,17 @@ const getInitialDocs = (profileData?: ManpowerProfile) => {
     }
     
     const profileDocsMap = new Map((Array.isArray(profileData?.documents) ? profileData.documents : []).map(doc => [doc.name, doc]));
-    const initialDocs: ManpowerDocument[] = baseDocs.map(docName => 
-      profileDocsMap.get(docName) || { name: docName, status: docName === 'NDT Certificate' && profileData ? 'Not Applicable' : 'Pending', details: '' }
-    );
+    const optionalDocs = ['Pan Card', 'NDT Certificate', 'Trade Validation', 'Appointment Letter'];
+    const initialDocs: ManpowerDocument[] = baseDocs.map(docName => {
+      const saved = profileDocsMap.get(docName);
+      if (saved) {
+        // These older completed statuses now use the single Received option.
+        return optionalDocs.includes(docName) && ['Collected', 'Submitted'].includes(saved.status)
+          ? { ...saved, status: 'Received' as const } : saved;
+      }
+      const optionalByDefault = ['Pan Card', 'Trade Validation', 'Appointment Letter'].includes(docName) || (docName === 'NDT Certificate' && !!profileData);
+      return { name: docName, status: optionalByDefault ? 'Not Applicable' : 'Pending', details: '' };
+    });
     (Array.isArray(profileData?.documents) ? profileData.documents : []).forEach(doc => {
       if (!initialDocs.some(d => d.name === doc.name)) {
         initialDocs.push(doc);
@@ -626,7 +634,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                       <Select onValueChange={selectField.onChange} value={selectField.value}>
                                       <SelectTrigger><SelectValue /></SelectTrigger>
                                       <SelectContent>
-                                          {(field.name === 'NDT Certificate' ? ['Pending', 'Received', 'Not Applicable'] : documentStatusOptions).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                          {(['Pan Card', 'NDT Certificate', 'Trade Validation', 'Appointment Letter'].includes(field.name) ? ['Not Applicable', 'Pending', 'Received'] : documentStatusOptions).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                                       </SelectContent>
                                       </Select>
                                   )}
