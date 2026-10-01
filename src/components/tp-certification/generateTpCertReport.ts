@@ -1,4 +1,5 @@
 'use client';
+import { tpItemCondition } from './item-condition';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
@@ -48,6 +49,7 @@ type FullItem =
   | CordlessReciprocatingSaw;
 
 interface CertItem {
+  condition: 'New' | 'Old';
   itemId: string;
   itemType: string;
   materialName: string;
@@ -87,6 +89,7 @@ const buildCertItems = (items: TpCertListItem[], allItems: FullItem[]): CertItem
       null;
 
     return {
+      condition: tpItemCondition(it),
       itemId: it.itemId,
       itemType: it.itemType,
       materialName,
@@ -201,7 +204,7 @@ export async function generateTpCertPdf(
               isHarness ? (item.chestCrollNo || '') : '',
               getCapacity(item.materialName),
               index === 0 ? groupSize : '', 
-              'OLD',
+              item.condition.toUpperCase(),
               '', 
               ''  
           ]);
@@ -362,7 +365,7 @@ export async function generateTpCertExcel(
             isHarness ? (item.chestCrollNo || '') : '',
             getCapacity(item.materialName),
             index === 0 ? group.length : '', 
-            'OLD',
+            item.condition.toUpperCase(),
             '', 
             ''  
         ]);

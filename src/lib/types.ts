@@ -854,6 +854,7 @@ export type PpeInwardRecord = {
 };
 
 export type TpCertListItem = {
+  condition?: 'New' | 'Old';
   itemId: string;
   itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'Anemometer' | 'DigitalCamera' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim' | 'WeldingMachine' | 'WalkieTalkie' | 'PneumaticDrillingMachine' | 'PneumaticAngleGrinder' | 'WiredDrillingMachine' | 'CordlessDrillingMachine' | 'WiredAngleGrinder' | 'CordlessAngleGrinder' | 'CordlessReciprocatingSaw';
   materialName: string;

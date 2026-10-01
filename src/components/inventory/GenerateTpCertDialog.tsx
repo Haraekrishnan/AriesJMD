@@ -1,5 +1,6 @@
 'use client';
-import { useMemo, useState, useEffect } from 'react';
+import { tpItemKey, tpItemCondition, setTpItemConditions } from '@/components/tp-certification/item-condition';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
 import {
@@ -63,6 +64,8 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
   } = useInventory();
       const { toast } = useToast();
       const [selectedItems, setSelectedItems] = useState<TpCertListItem[]>([]);
+      const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+      const initialized = useRef<string | null>(null);
       const [selectedItemName, setSelectedItemName] = useState<string | null>(null);
       const [searchTerm, setSearchTerm] = useState('');
       const [listName, setListName] = useState('');
@@ -94,6 +97,11 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
       ]);
 
       useEffect(() => {
+        if (!isOpen) { initialized.current = null; return; }
+        const session = existingList?.id || 'new';
+        if (initialized.current === session) return;
+        initialized.current = session;
+        setCheckedItems(new Set());
         if (existingList) {
           setListName(existingList.name);
           const enrichedItems = existingList.items.map(listItem => {
@@ -155,6 +163,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
         const serialNumber = (item as any).serialNumber || (item as any).model || (item as any).makeModel || (item as any).number || 'N/A';
 
         const newItem: TpCertListItem = {
+          condition: 'Old',
           itemId: item.id,
           itemType: item.itemType,
           materialName,
@@ -275,14 +284,14 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
 
             <div className="flex-1 mt-4 border rounded-md overflow-hidden">
               <ScrollArea className="h-full">
-                <Table>
+                <div className="flex flex-wrap items-center gap-2 p-3 border-b"><span className="text-sm font-medium">Set item condition:</span>{(['New','Old'] as const).map(condition => <Button key={condition} type="button" size="sm" variant="outline" disabled={!selectedItems.some(item => checkedItems.has(tpItemKey(item)))} onClick={() => setSelectedItems(previous => setTpItemConditions(previous, checkedItems, condition))}>Selected → {condition}</Button>)}{(['New','Old'] as const).map(condition => <Button key={condition} type="button" size="sm" variant="outline" disabled={!selectedItems.length} onClick={() => setSelectedItems(previous => setTpItemConditions(previous, new Set(previous.map(tpItemKey)), condition))}>All → {condition}</Button>)}</div><Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Sr. No.</TableHead>
+                      <TableHead><input type="checkbox" aria-label="Select all items" checked={selectedItems.length > 0 && selectedItems.every(item => checkedItems.has(tpItemKey(item)))} onChange={e => setCheckedItems(e.target.checked ? new Set(selectedItems.map(tpItemKey)) : new Set())}/></TableHead><TableHead>Sr. No.</TableHead>
                       <TableHead>Material Name</TableHead>
                       <TableHead>Manufacturer Sr. No.</TableHead>
                       <TableHead>Chest Croll No.</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>New / Old</TableHead><TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -290,11 +299,11 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                       sortedSelectedItems.map((item, index) => {
                         return (
                             <TableRow key={`${item.itemId}-${item.itemType}`}>
-                              <TableCell>{index + 1}</TableCell>
+                              <TableCell><input type="checkbox" aria-label={'Select ' + item.materialName + ' ' + item.manufacturerSrNo} checked={checkedItems.has(tpItemKey(item))} onChange={e => setCheckedItems(previous => { const next = new Set(previous); e.target.checked ? next.add(tpItemKey(item)) : next.delete(tpItemKey(item)); return next; })}/></TableCell><TableCell>{index + 1}</TableCell>
                               <TableCell>{item.materialName}</TableCell>
                               <TableCell>{item.manufacturerSrNo || '-'}</TableCell>
                               <TableCell>{item.chestCrollNo || '-'}</TableCell>
-                              <TableCell className="text-right">
+                              <TableCell><select aria-label={'New or Old for ' + item.materialName + ' ' + item.manufacturerSrNo} className="rounded-md border bg-background p-2 text-sm" value={tpItemCondition(item)} onChange={e => setSelectedItems(previous => setTpItemConditions(previous, new Set([tpItemKey(item)]), e.target.value as 'New' | 'Old'))}><option value="New">New</option><option value="Old">Old</option></select></TableCell><TableCell className="text-right">
                                 <Button variant="ghost" size="icon" onClick={() => handleRemove(item.itemId, item.itemType)}>
                                   <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>
@@ -304,7 +313,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                       })
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center">
+                        <TableCell colSpan={7} className="h-24 text-center">
                           No items added to the list.
                         </TableCell>
                       </TableRow>
