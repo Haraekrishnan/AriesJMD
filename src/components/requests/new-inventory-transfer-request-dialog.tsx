@@ -1,4 +1,6 @@
 'use client';
+import { transferItemLabel } from './transfer-item-label';
+import { useEquipmentOrganization } from '@/components/equipment/use-equipment-organization';
 
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -50,6 +52,13 @@ import type {
   InventoryTransferRequest,
   WeldingMachine,
   WalkieTalkie,
+  PneumaticDrillingMachine,
+  PneumaticAngleGrinder,
+  WiredDrillingMachine,
+  CordlessDrillingMachine,
+  WiredAngleGrinder,
+  CordlessAngleGrinder,
+  CordlessReciprocatingSaw,
 } from "@/lib/types";
 
 import { TRANSFER_REASONS } from "@/lib/types";
@@ -68,7 +77,14 @@ type SearchableItem =
   | (LaptopDesktop & { itemType: 'LaptopDesktop' })
   | (MobileSim & { itemType: 'MobileSim' })
   | (WeldingMachine & { itemType: 'WeldingMachine' })
-  | (WalkieTalkie & { itemType: 'WalkieTalkie' });
+  | (WalkieTalkie & { itemType: 'WalkieTalkie' })
+  | (PneumaticDrillingMachine & { itemType: 'PneumaticDrillingMachine' })
+  | (PneumaticAngleGrinder & { itemType: 'PneumaticAngleGrinder' })
+  | (WiredDrillingMachine & { itemType: 'WiredDrillingMachine' })
+  | (CordlessDrillingMachine & { itemType: 'CordlessDrillingMachine' })
+  | (WiredAngleGrinder & { itemType: 'WiredAngleGrinder' })
+  | (CordlessAngleGrinder & { itemType: 'CordlessAngleGrinder' })
+  | (CordlessReciprocatingSaw & { itemType: 'CordlessReciprocatingSaw' });
 
 const transferRequestSchema = z
   .object({
@@ -92,6 +108,13 @@ const transferRequestSchema = z
             "MobileSim",
             "WeldingMachine",
             "WalkieTalkie",
+            "PneumaticDrillingMachine",
+            "PneumaticAngleGrinder",
+            "WiredDrillingMachine",
+            "CordlessDrillingMachine",
+            "WiredAngleGrinder",
+            "CordlessAngleGrinder",
+            "CordlessReciprocatingSaw",
           ]),
           name: z.string(),
           serialNumber: z.string(),
@@ -142,10 +165,18 @@ export default function NewInventoryTransferRequestDialog({
     mobileSims,
     weldingMachines,
     walkieTalkies,
+    pneumaticDrillingMachines,
+    pneumaticAngleGrinders,
+    wiredDrillingMachines,
+    cordlessDrillingMachines,
+    wiredAngleGrinders,
+    cordlessAngleGrinders,
+    cordlessReciprocatingSaws,
     addInventoryTransferRequest,
     updateInventoryTransferRequest,
   } = useInventory();
   const { toast } = useToast();
+  const { state: equipmentOrganization } = useEquipmentOrganization();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -223,6 +254,13 @@ export default function NewInventoryTransferRequestDialog({
     );
     laptopsDesktops?.forEach((i) => arr.push({ ...i, itemType: "LaptopDesktop" }));
     mobileSims?.forEach((i) => arr.push({ ...i, itemType: "MobileSim" }));
+    pneumaticDrillingMachines?.forEach(i => arr.push({...i, itemType: 'PneumaticDrillingMachine'}));
+    pneumaticAngleGrinders?.forEach(i => arr.push({...i, itemType: 'PneumaticAngleGrinder'}));
+    wiredDrillingMachines?.forEach(i => arr.push({...i, itemType: 'WiredDrillingMachine'}));
+    cordlessDrillingMachines?.forEach(i => arr.push({...i, itemType: 'CordlessDrillingMachine'}));
+    wiredAngleGrinders?.forEach(i => arr.push({...i, itemType: 'WiredAngleGrinder'}));
+    cordlessAngleGrinders?.forEach(i => arr.push({...i, itemType: 'CordlessAngleGrinder'}));
+    cordlessReciprocatingSaws?.forEach(i => arr.push({...i, itemType: 'CordlessReciprocatingSaw'}));
     return arr;
   }, [
     inventoryItems,
@@ -235,12 +273,19 @@ export default function NewInventoryTransferRequestDialog({
     mobileSims,
     weldingMachines,
     walkieTalkies,
+    pneumaticDrillingMachines,
+    pneumaticAngleGrinders,
+    wiredDrillingMachines,
+    cordlessDrillingMachines,
+    wiredAngleGrinders,
+    cordlessAngleGrinders,
+    cordlessReciprocatingSaws,
   ]);
 
   const availableItems = useMemo(() => {
-    if (!fromProjectId || !searchTerm) return []; // Don't filter if no search term
+    if (!fromProjectId) return [];
 
-    const term = searchTerm.toLowerCase();
+    const term = searchTerm.trim().toLowerCase();
 
     const sourceItems = (fromProjectId === 'all' && canTransferFromAll)
       ? allItems
@@ -257,18 +302,14 @@ export default function NewInventoryTransferRequestDialog({
             String((it as any).name || '').toLowerCase().includes(term) ||
             String((it as any).machineName || '').toLowerCase().includes(term) ||
             String((it as any).equipmentName || '').toLowerCase().includes(term) ||
-            `${(it as any).make} ${(it as any).model}`.toLowerCase().includes(term)
+            transferItemLabel(it, equipmentOrganization).toLowerCase().includes(term)
         )
     );
-  }, [allItems, fromProjectId, selectedItems, searchTerm, canTransferFromAll]);
+  }, [allItems, fromProjectId, selectedItems, searchTerm, canTransferFromAll, equipmentOrganization]);
 
   const handleAdd = (item: SearchableItem) => {
-    let name = (item as any).name || (item as any).machineName || (item as any).equipmentName;
-    if (!name && (item as any).make && (item as any).model) {
-      name = `${(item as any).make} ${(item as any).model}`;
-    }
-    if (!name) name = 'Unknown';
-    
+    const name = transferItemLabel(item, equipmentOrganization);
+
     form.setValue("items", [
       ...selectedItems,
       {
@@ -463,7 +504,7 @@ export default function NewInventoryTransferRequestDialog({
             {/* ------------------- Search Items ------------------- */}
             <div>
               <Label>Search & Add Items</Label>
-              <Command className="border rounded-md">
+              <Command shouldFilter={false} className="border rounded-md">
                 <CommandInput
                   placeholder="Search name, serial, Aries ID..."
                   value={searchTerm}
@@ -471,17 +512,15 @@ export default function NewInventoryTransferRequestDialog({
                 />
                 <ScrollArea className="h-40">
                   <CommandList>
-                    <CommandEmpty>No items match your search.</CommandEmpty>
+                    <CommandEmpty>{!fromProjectId ? 'Select an origin project to see inventory and equipment.' : 'No available items match this project and search.'}</CommandEmpty>
                     <CommandGroup>
                       {availableItems.map((item) => (
                         <CommandItem
+                          value={item.itemType + ':' + item.id}
                           key={item.id + item.itemType}
                           onSelect={() => handleAdd(item)}
                         >
-                          {(item as any).name ||
-                            (item as any).machineName ||
-                            (item as any).equipmentName ||
-                             `${(item as any).make} ${(item as any).model}`}{" "}
+                          {transferItemLabel(item, equipmentOrganization)}{" "}
                           (SN: {item.serialNumber})
                           {item.ariesId && (
                             <span className="ml-2 text-xs text-muted-foreground">

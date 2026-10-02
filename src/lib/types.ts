@@ -710,7 +710,7 @@ export type InventoryTransferRequest = {
   toProjectId: string;
   items: {
     itemId: string;
-    itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim' | 'WeldingMachine' | 'WalkieTalkie';
+    itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'DigitalCamera' | 'Anemometer' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim' | 'WeldingMachine' | 'WalkieTalkie' | 'PneumaticDrillingMachine' | 'PneumaticAngleGrinder' | 'WiredDrillingMachine' | 'CordlessDrillingMachine' | 'WiredAngleGrinder' | 'CordlessAngleGrinder' | 'CordlessReciprocatingSaw';
     serialNumber: string;
     name: string;
     ariesId?: string | null;

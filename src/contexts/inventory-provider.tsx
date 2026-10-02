@@ -1,4 +1,5 @@
 'use client';
+import { transferItemProjectUpdates } from '@/components/requests/transfer-item-types';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
 import { InventoryItem, UTMachine, DftMachine, MobileSim, LaptopDesktop, DigitalCamera, Anemometer, OtherEquipment, MachineLog, CertificateRequest, InventoryTransferRequest, PpeRequest, PpeStock, PpeHistoryRecord, PpeInwardRecord, TpCertList, InspectionChecklist, Comment, InternalRequest, InternalRequestStatus, InternalRequestItemStatus, IgpOgpRecord, PpeRequestStatus, Role, ConsumableInwardRecord, DamageReport, User, NotificationSettings, DamageReportStatus, WeldingMachine, WalkieTalkie, PneumaticDrillingMachine, PneumaticAngleGrinder, WiredDrillingMachine, CordlessDrillingMachine, WiredAngleGrinder, CordlessAngleGrinder, CordlessReciprocatingSaw, DeliveryNote, InventoryTransferRequestStatus } from '@/lib/types';
@@ -876,23 +877,12 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         updates[`inventoryTransferRequests/${request.id}/approvalDate`] = new Date().toISOString();
         updates[`inventoryTransferRequests/${request.id}/acknowledgedByRequester`] = false;
 
-        request.items.forEach(item => {
-            let itemPath: string;
-            switch (item.itemType) {
-                case 'Inventory': itemPath = 'inventoryItems'; break;
-                case 'UTMachine': itemPath = 'utMachines'; break;
-                case 'DftMachine': itemPath = 'dftMachines'; break;
-                case 'DigitalCamera': itemPath = 'digitalCameras'; break;
-                case 'Anemometer': itemPath = 'anemometers'; break;
-                case 'OtherEquipment': itemPath = 'otherEquipments'; break;
-                case 'LaptopDesktop': itemPath = 'laptopsDesktops'; break;
-                case 'MobileSim': itemPath = 'mobileSims'; break;
-                case 'WeldingMachine': itemPath = 'weldingMachines'; break;
-                case 'WalkieTalkie': itemPath = 'walkieTalkies'; break;
-                default: return;
-            }
-            updates[`${itemPath}/${item.itemId}/projectId`] = request.toProjectId;
-        });
+        try {
+            Object.assign(updates, transferItemProjectUpdates(request.items, request.toProjectId));
+        } catch (error) {
+            toast({ title: 'Transfer not approved', description: 'An unsupported item type was found. No items were moved.', variant: 'destructive' });
+            return;
+        }
 
         if (createTpList && (request.reason === 'For TP certification' || request.reason === 'Expired materials')) {
             const listData = {
