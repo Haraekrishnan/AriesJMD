@@ -76,7 +76,13 @@ export default function RecentPlannerActivity() {
     <section className={styles.review} aria-label="Delegated Event Review">
       <details className={styles.accordion}>
         <summary className={styles.accordionTrigger}>
-          <span className={styles.compactHeading}><MessageSquare size={20} aria-hidden="true"/><span>Delegated Event Review <small>{cards.length} notifications · Expand to view</small></span></span>
+          <span className={styles.compactHeading}>
+            <span className={styles.reviewBell}><Bell size={22} aria-hidden="true"/></span>
+            <span className={styles.headingCopy}>
+              <span className={styles.reviewTitleRow}><span>Delegated Event Review</span><span className={styles.reviewTotal}><strong>{cards.length}</strong><span>{cards.length === 1 ? 'notification' : 'notifications'} to review</span></span></span>
+              <small><span className={styles.expandHint}>Expand to review notifications</span><span className={styles.collapseHint}>Collapse notifications</span></small>
+            </span>
+          </span>
           <span className={styles.compactCounts}>
             <span data-tone="amber">{counts('needs-update')} Needs update</span>
             <span data-tone="slate">{counts('awaiting-reply')} Awaiting reply</span>

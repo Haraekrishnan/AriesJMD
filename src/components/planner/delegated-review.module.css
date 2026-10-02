@@ -19,3 +19,13 @@
 .expandedHint { display:flex; align-items:center; gap:7px; font-size:11px; color:#7185a5; }
 .expandedHint svg { flex-shrink:0; }
 @media(max-width:700px) { .accordionTrigger { gap:10px; flex-wrap:wrap; padding:13px; } .compactHeading { flex-basis:80%; } .compactCounts { order:3; width:100%; } .accordionChevron { margin-left:auto; } .expandedActions { align-items:flex-start; } }
+.reviewBell { display:grid; place-items:center; width:42px; height:42px; border-radius:10px; background:#fff1e5; color:#b45309; flex-shrink:0; }
+.headingCopy { min-width:0; }
+.reviewTitleRow { display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:16px; font-weight:700; }
+.reviewTotal { display:inline-flex; align-items:center; gap:8px; padding:5px 10px 5px 5px; border:1px solid #fdba74; border-radius:999px; background:#fff7ed; color:#9a3412; font-size:12px; font-weight:650; }
+.reviewTotal strong { display:grid; place-items:center; min-width:29px; height:29px; padding:0 7px; border-radius:999px; background:#c2410c; color:white; font-size:18px; font-weight:750; line-height:1; }
+.compactHeading small { color:#526587; font-size:12px; margin-top:5px; }
+.collapseHint { display:none; }
+.accordion[open] .expandHint { display:none; }
+.accordion[open] .collapseHint { display:inline; }
+@media(max-width:700px) { .reviewTitleRow { gap:7px; font-size:15px; } .compactHeading { flex-basis:calc(100% - 32px); } .reviewBell { width:36px; height:36px; } .reviewTotal { font-size:12px; } }
