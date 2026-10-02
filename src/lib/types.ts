@@ -18,6 +18,7 @@ export type User = {
   signatureUrl?: string;
   signatureBase64?: string;
   viewedBy?: { [key: string]: boolean };
+  delegatedReviewDismissals?: Record<string, string>;
   dismissedPendingUpdates?: { [key: string]: boolean };
   viewedFeatures?: { [key: string]: boolean };
   canApproveTransfers?: boolean;
@@ -81,6 +82,11 @@ export type Task = {
 export type Frequency = 'once' | 'daily' | 'weekly' | 'weekends' | 'monthly' | 'daily-except-sundays';
 
 export type PlannerEvent = {
+  time?: string;
+  category?: string;
+  equipmentRef?: string;
+  location?: string;
+  instanceStatuses?: Record<string, 'Not Started' | 'In Progress' | 'Pending' | 'Completed'>;
   id: string;
   title: string;
   description?: string;

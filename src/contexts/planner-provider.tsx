@@ -41,7 +41,7 @@ type PlannerContextType = {
   updatePlannerEvent: (event: PlannerEvent) => void;
   deletePlannerEvent: (eventId: string) => void;
   getExpandedPlannerEvents: (start: Date, end: Date, userId: string) => { eventDate: Date, event: PlannerEvent }[];
-  addPlannerEventComment: (plannerUserId: string, day: string, eventId: string, text: string) => void;
+  addPlannerEventComment: (plannerUserId: string, day: string, eventId: string, text: string) => Promise<void>;
   deletePlannerDailyNote: (plannerUserId: string, day: string, commentId: string) => void;
   lockDailyPlanning: (plannerUserId: string, day: string) => void;
   unlockDailyPlanning: (plannerUserId: string, day: string) => void;
@@ -160,8 +160,8 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       return count;
     }, [user, timesheets, jobProgress, documentMovements]);
     
-    const addPlannerEventComment = useCallback((plannerUserId: string, day: string, eventId: string, text: string) => {
-        if (!user) return;
+    const addPlannerEventComment = useCallback(async (plannerUserId: string, day: string, eventId: string, text: string) => {
+        if (!user) throw new Error('Please sign in to reply.');
         const dayCommentId = `${day}_${plannerUserId}`;
         const newCommentRef = push(ref(rtdb, `dailyPlannerComments/${dayCommentId}/comments`));
         const newComment: Comment = {
@@ -172,9 +172,10 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
           eventId,
           viewedBy: { [user.id]: true }
         };
-        set(newCommentRef, newComment);
+
 
         const updates: { [key: string]: any } = {};
+        updates[`dailyPlannerComments/${dayCommentId}/comments/${newComment.id}`] = newComment;
         updates[`dailyPlannerComments/${dayCommentId}/id`] = dayCommentId;
         updates[`dailyPlannerComments/${dayCommentId}/plannerUserId`] = plannerUserId;
         updates[`dailyPlannerComments/${dayCommentId}/day`] = day;
@@ -186,12 +187,12 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             participants.forEach(pId => {
                 if (pId !== user.id) {
                     updates[`plannerEvents/${eventId}/viewedBy/${pId}`] = false;
-                    updates[`dailyPlannerComments/${dayCommentId}/comments/${newComment.id}/viewedBy/${pId}`] = false;
+                    newComment.viewedBy![pId] = false;
                 }
             });
         }
     
-        update(ref(rtdb), updates);
+        await update(ref(rtdb), updates);
 
     }, [user, plannerEvents]);
 

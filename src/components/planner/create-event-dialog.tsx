@@ -21,6 +21,10 @@ import { Label } from '../ui/label';
 const eventSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
+  time: z.string().default(''),
+  category: z.string().default(''),
+  equipmentRef: z.string().default(''),
+  location: z.string().default(''),
   date: z.date({ required_error: 'Date is required' }).refine(date => startOfDay(date) >= startOfDay(new Date()), {
     message: "Cannot create an event in the past."
   }),
@@ -62,6 +66,7 @@ export default function CreateEventDialog({ isDelegating = false, isPlanning = f
         userId: isDelegating ? '' : user?.id,
         title: '',
         description: '',
+        time: '', category: '', equipmentRef: '', location: '',
       });
     }
   }, [isOpen, isDelegating, user, form]);
@@ -71,6 +76,8 @@ export default function CreateEventDialog({ isDelegating = false, isPlanning = f
       ...data,
       date: data.date.toISOString(),
       creatorId: user!.id,
+      comments: [],
+      viewedBy: { [user!.id]: true },
     });
     const toastMessage = isDelegating ? 'Event Delegated' : 'Event Created';
     toast({
@@ -98,7 +105,7 @@ export default function CreateEventDialog({ isDelegating = false, isPlanning = f
           {buttonText}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{dialogTitle}</DialogTitle>
           <DialogDescription>{dialogDescription}</DialogDescription>
@@ -138,6 +145,12 @@ export default function CreateEventDialog({ isDelegating = false, isPlanning = f
             <Textarea {...form.register('description')} placeholder="Event description (optional)" />
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Time</Label><Input type="time" {...form.register('time')} /></div>
+            <div><Label>Category</Label><Input placeholder="e.g. Maintenance" {...form.register('category')} /></div>
+            <div><Label>Equipment / Reference</Label><Input placeholder="e.g. UT-01" {...form.register('equipmentRef')} /></div>
+            <div><Label>Location</Label><Input placeholder="Project or site" {...form.register('location')} /></div>
+          </div>
           <div>
             <Label>Date</Label>
             <Controller

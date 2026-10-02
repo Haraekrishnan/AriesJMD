@@ -22,9 +22,11 @@ import { Label } from '../ui/label';
 const eventSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
-  date: z.date({ required_error: 'Date is required' }).refine(date => startOfDay(date) >= startOfDay(new Date()), {
-    message: "Cannot edit an event to a past date."
-  }),
+  time: z.string().default(''),
+  category: z.string().default(''),
+  equipmentRef: z.string().default(''),
+  location: z.string().default(''),
+  date: z.date({ required_error: 'Date is required' }),
   frequency: z.enum(['once', 'daily', 'weekly', 'weekends', 'monthly', 'daily-except-sundays']),
   userId: z.string().min(1, 'Please select an employee for this event'),
 });
@@ -57,14 +59,16 @@ export default function EditEventDialog({ isOpen, setIsOpen, event }: EditEventD
         form.reset({
             ...event,
             description: event.description || '',
+            time: event.time || '', category: event.category || '', equipmentRef: event.equipmentRef || '', location: event.location || '',
             date: event.date ? new Date(event.date) : new Date(),
         });
     }
   }, [event, form]);
 
   const onSubmit = (data: EventFormValues) => {
+    const { instanceStatuses, ...editableEvent } = event;
     updatePlannerEvent({
-      ...event,
+      ...editableEvent,
       ...data,
       date: data.date.toISOString(),
     });
@@ -77,7 +81,7 @@ export default function EditEventDialog({ isOpen, setIsOpen, event }: EditEventD
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Event</DialogTitle>
         </DialogHeader>
@@ -114,6 +118,12 @@ export default function EditEventDialog({ isOpen, setIsOpen, event }: EditEventD
             <Textarea {...form.register('description')} placeholder="Event description (optional)" />
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Time</Label><Input type="time" {...form.register('time')} /></div>
+            <div><Label>Category</Label><Input placeholder="e.g. Maintenance" {...form.register('category')} /></div>
+            <div><Label>Equipment / Reference</Label><Input placeholder="e.g. UT-01" {...form.register('equipmentRef')} /></div>
+            <div><Label>Location</Label><Input placeholder="Project or site" {...form.register('location')} /></div>
+          </div>
           <div>
             <Label>Date</Label>
             <Controller

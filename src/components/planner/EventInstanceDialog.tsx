@@ -41,9 +41,10 @@ export default function EventInstanceDialog({
   onEdit,
 }: EventInstanceDialogProps) {
   const { user, users } = useAuth();
-  const { dailyPlannerComments, addPlannerEventComment, deletePlannerEvent } = usePlanner();
+  const { dailyPlannerComments, addPlannerEventComment, deletePlannerEvent, markSinglePlannerCommentAsRead } = usePlanner();
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
+  const [sending, setSending] = useState(false);
 
   const dayStr = format(date, 'yyyy-MM-dd');
   const dayCommentId = `${dayStr}_${plannerUserId}`;
@@ -60,11 +61,16 @@ export default function EventInstanceDialog({
   const creator = users.find((u) => u.id === event.creatorId);
   const isOwner = user?.id === event.creatorId || user?.role === 'Admin';
 
-  const handleSendComment = () => {
-    if (!newComment.trim()) return;
-    addPlannerEventComment(plannerUserId, dayStr, event.id, newComment);
-    setNewComment('');
-    toast({ title: "Comment Sent" });
+  const handleSendComment = async () => {
+    if (!newComment.trim() || sending) return;
+    setSending(true);
+    try {
+      await addPlannerEventComment(plannerUserId, dayStr, event.id, newComment.trim());
+      setNewComment('');
+      toast({ title: 'Reply saved' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Reply could not be saved', description: 'Your draft is still here. Please try again.' });
+    } finally { setSending(false); }
   };
 
   const handleDelete = () => {
@@ -75,7 +81,7 @@ export default function EventInstanceDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md flex flex-col max-h-[85vh]">
+      <DialogContent className="sm:max-w-xl flex flex-col max-h-[90vh]">
         <DialogHeader className="border-b pb-4">
           <div className="flex justify-between items-start">
             <div>
@@ -117,8 +123,9 @@ export default function EventInstanceDialog({
             <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2 flex items-center gap-2">
               <MessageSquare className="h-3 w-3" /> Event Conversation
             </h4>
+            <Button variant="ghost" size="sm" className="self-end mb-2" onClick={() => comments.filter(c => c.userId !== user?.id && !c.viewedBy?.[user?.id || '']).forEach(c => markSinglePlannerCommentAsRead(plannerUserId, dayStr, c.id))}>Mark conversation as read</Button>
             
-            <ScrollArea className="flex-1 border rounded-lg bg-slate-50/50 p-3">
+            <ScrollArea className="h-[280px] border rounded-lg bg-slate-50/50 p-3">
               <div className="space-y-3">
                 {comments.length > 0 ? (
                   comments.map((comment) => {
@@ -131,12 +138,12 @@ export default function EventInstanceDialog({
                         </Avatar>
                         <div className="flex-1 bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-200">
                           <div className="flex justify-between items-baseline mb-0.5">
-                            <span className="text-[9px] font-black uppercase text-slate-500">{author?.name}</span>
+                            <span className="text-[9px] font-black uppercase text-slate-500">{author?.name || 'Former user'}{comment.userId === event.creatorId ? ' · Delegator' : ''}</span>
                             <span className="text-[8px] font-bold text-slate-400">
                               {formatDistanceToNow(parseISO(comment.date), { addSuffix: true })}
                             </span>
                           </div>
-                          <p className="text-xs font-bold text-black dark:text-white leading-tight">
+                          <p className="text-sm whitespace-pre-wrap break-words text-foreground leading-relaxed">
                             {comment.text}
                           </p>
                         </div>
@@ -159,6 +166,7 @@ export default function EventInstanceDialog({
               placeholder="Add a reply or update..."
               className="min-h-[60px] pr-12 text-xs font-bold border-2 focus-visible:ring-primary/20"
               value={newComment}
+              disabled={sending}
               onChange={(e) => setNewComment(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -170,7 +178,8 @@ export default function EventInstanceDialog({
             <Button
               size="icon"
               className="absolute right-2 bottom-2 h-8 w-8 bg-primary hover:bg-primary/90 shadow-sm"
-              disabled={!newComment.trim()}
+              aria-label="Send reply"
+              disabled={sending || !newComment.trim()}
               onClick={handleSendComment}
             >
               <Send className="h-4 w-4" />

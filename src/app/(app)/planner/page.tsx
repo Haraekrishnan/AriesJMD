@@ -2,7 +2,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
 import CreateEventDialog from '@/components/planner/create-event-dialog';
-import PlannerCalendar from '@/components/planner/planner-calendar';
+import PlannerDashboard from '@/components/planner/planner-dashboard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { startOfMonth, parseISO } from 'date-fns';
@@ -15,7 +15,7 @@ export default function PlannerPage() {
 
     const [selectedUserId, setSelectedUserId] = useState<string>(() => {
         const urlUserId = searchParams.get('userId');
-        return urlUserId || user!.id;
+        return (can.manage_planner && urlUserId) || user?.id || '';
     });
 
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => {
@@ -37,10 +37,10 @@ export default function PlannerPage() {
 
     useEffect(() => {
         const urlUserId = searchParams.get('userId');
-        if (urlUserId && urlUserId !== selectedUserId) {
+        if (can.manage_planner && urlUserId && visibleUsers.some(u => u.id === urlUserId) && urlUserId !== selectedUserId) {
             setSelectedUserId(urlUserId);
         }
-    }, [searchParams, selectedUserId]);
+    }, [searchParams, selectedUserId, can.manage_planner, visibleUsers]);
 
     const handleUserChange = (userId: string) => {
         setSelectedUserId(userId);
@@ -50,12 +50,12 @@ export default function PlannerPage() {
     return (
         <div 
           className="flex flex-col gap-6"
-          style={{ height: "calc(100vh - 165px)" }}
+          
         >
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Monthly Planning</h1>
-                    <p className="text-muted-foreground font-medium">Coordinate schedules, notes, and delegated events in a worksheet format.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">Planner</h1>
+                    <p className="text-muted-foreground font-medium">Plan, assign, and track daily tasks, schedules, and updates.</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-4">
                     {canViewOthers && (
@@ -80,8 +80,8 @@ export default function PlannerPage() {
                 </div>
             </div>
             
-            <PlannerCalendar 
-              selectedUserId={selectedUserId} 
+            <PlannerDashboard 
+              selectedUserId={canViewOthers && visibleUsers.some(u => u.id === selectedUserId) ? selectedUserId : user?.id || ''} 
               selectedDate={selectedDate} 
               setSelectedDate={setSelectedDate}
               currentMonth={currentMonth}
