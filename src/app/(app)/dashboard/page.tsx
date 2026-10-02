@@ -223,6 +223,7 @@ export default function DashboardPage() {
         <div><h1>Welcome back, {user?.name || 'team'}!</h1><p>Here's what's happening across your workspace today.</p></div>
         <div className={styles.date}><CalendarDays aria-hidden="true" /><div>{format(new Date(), 'EEEE, d MMM yyyy')}<small>Your workspace at a glance</small></div></div>
       </header>
+      <RecentPlannerActivity />
       <section aria-label="Workspace summary" className={styles.metrics}>
         <StatCard tone="blue" title="Team Completed" value={completedTeamTasks} icon={CheckCircle} description="Tasks finalized by your team" />
         <StatCard tone="green" title="Team Open" value={openTeamTasks} icon={ListTodo} description="In progress or to do" />
@@ -283,7 +284,7 @@ export default function DashboardPage() {
       </div>
       <section className={styles.charts} aria-label="Task performance charts"><TasksCompletedChart tasks={teamTasks} /><TeamTaskDistributionChart tasks={teamTasks} /></section>
       {showEhsNotice && <Alert><ShieldAlert className="h-4 w-4"/><AlertTitle>Explore your EHS Portal</AlertTitle><AlertDescription className="flex flex-wrap items-center justify-between gap-3">Manage safety observations, audits and risk assessments.<div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => markFeatureAsViewed('ehs')}>Dismiss</Button><Button size="sm" asChild><Link href="/ehs?entry=notifications">Open EHS Portal</Link></Button></div></AlertDescription></Alert>}
-      <div className="space-y-4"><DelegatedEventFeed /><AnnouncementFeed /><RecentPlannerActivity /></div>
+      <div className="space-y-4"><DelegatedEventFeed /><AnnouncementFeed /></div>
     </div>
   );
 }

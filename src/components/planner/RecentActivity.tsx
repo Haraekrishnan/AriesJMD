@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import styles from './delegated-review.module.css';
 import { useRouter } from 'next/navigation';
 import {
   format,
@@ -225,34 +226,26 @@ export default function RecentPlannerActivity() {
   /* ------------------------------------------------------------------ */
 
   return (
-    <Card className="bg-white dark:bg-card border border-border rounded-xl shadow-sm">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-orange-500" />
-            <CardTitle className="text-base font-semibold">
-              Delegated Event Review
-            </CardTitle>
+    <Card className={styles.review}>
+      <CardHeader className={styles.header}>
+        <div className={styles.heading}>
+          <span className={styles.headingIcon}><MessageSquare aria-hidden="true" /></span>
+          <div>
+            <CardTitle className={styles.title}>Delegated Event Review</CardTitle>
+            <p className={styles.subtitle}>Follow up on pending updates and respond to your team's comments.</p>
           </div>
-
-          {visiblePending.length > 0 && (
-            <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
-              {visiblePending.length} Pending
-            </span>
-          )}
         </div>
-
-        <p className="text-xs text-muted-foreground mt-1">
-          Comments and pending updates on delegated tasks
-        </p>
+        <div className={styles.counts} aria-label="Review summary">
+          <span className={styles.pendingCount}><strong>{visiblePending.length}</strong> Pending updates</span>
+          <span className={styles.unreadCount}><strong>{visibleUnread.length}</strong> Unread comments</span>
+        </div>
       </CardHeader>
-
-      <CardContent className="space-y-6">
+      <CardContent className={styles.content}>
 
         {/* ================= UNREAD COMMENTS ================= */}
         {visibleUnread.length > 0 && (
-          <section className="space-y-3">
-            <h3 className="text-sm font-medium">
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>
               Unread Comments ({visibleUnread.length})
             </h3>
 
@@ -263,7 +256,7 @@ export default function RecentPlannerActivity() {
               return (
                 <div
                   key={comment.id}
-                  className="rounded-lg border bg-muted/30 p-3 space-y-2"
+                  className={styles.item}
                 >
                   <p className="text-sm font-medium">
                     {event.title}
@@ -289,7 +282,7 @@ export default function RecentPlannerActivity() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-end gap-2 pt-1">
+                  <div className={styles.replyActions}>
                     <Button
                       size="sm"
                       variant="outline"
@@ -301,7 +294,8 @@ export default function RecentPlannerActivity() {
 
                     <Textarea
                       rows={1}
-                      className="max-w-xs text-xs"
+                      className={styles.replyInput}
+                      aria-label={"Reply to " + event.title}
                       placeholder="Reply…"
                       value={newComments[key] || ''}
                       onChange={(e) =>
@@ -314,6 +308,7 @@ export default function RecentPlannerActivity() {
 
                     {/* SEND */}
                     <Button
+                      aria-label="Send reply"
                       size="icon"
                       className="bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800"
                       disabled={!newComments[key]?.trim()}
@@ -327,6 +322,7 @@ export default function RecentPlannerActivity() {
 
                     {/* MARK READ */}
                     <Button
+                      aria-label="Mark comment as read"
                       size="icon"
                       variant="ghost"
                       className="text-muted-foreground hover:text-foreground"
@@ -345,8 +341,8 @@ export default function RecentPlannerActivity() {
 
         {/* ================= PENDING UPDATES ================= */}
         {visiblePending.length > 0 && (
-          <section className="space-y-3">
-            <h3 className="text-sm font-medium">
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>
               Pending Updates ({visiblePending.length})
             </h3>
 
@@ -356,17 +352,18 @@ export default function RecentPlannerActivity() {
               return (
                 <div
                   key={key}
-                  className="rounded-lg border bg-muted/30 p-3 space-y-2"
+                  className={styles.item}
                 >
-                  <div className="flex items-start justify-between">
+                  <div className={styles.itemHeader}>
                     <div>
-                      <p className="text-sm font-medium">{event.title}</p>
+                      <p className={styles.eventTitle}>{event.title}</p>
                       <p className="text-xs text-muted-foreground">
                         Awaiting update for <span className="font-semibold text-foreground">{format(parseISO(day), 'PPP')}</span> from {delegatedTo?.name}
                       </p>
                     </div>
 
                     <div className="flex items-center gap-2">
+                      <Button size="sm" variant="outline" onClick={() => goToEvent(day, event.userId)}><Calendar className="mr-1 h-4 w-4" />View event</Button>
                       {/* DISMISS */}
                       <Button
                         size="sm"
@@ -383,6 +380,7 @@ export default function RecentPlannerActivity() {
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button
+                              aria-label={"Delete " + event.title}
                               size="icon"
                               variant="ghost"
                               className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-900/30"
@@ -416,10 +414,11 @@ export default function RecentPlannerActivity() {
                     </div>
                   </div>
 
-                  <div className="relative">
+                  <div className={styles.composer}>
                     <Textarea
                       rows={1}
-                      className="text-xs pr-10"
+                      className={styles.updateInput}
+                      aria-label={"Request an update on " + event.title}
                       placeholder="Request an update…"
                       value={newComments[key] || ''}
                       onChange={(e) =>
@@ -432,14 +431,14 @@ export default function RecentPlannerActivity() {
 
                     {/* SEND */}
                     <Button
-                      size="icon"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800"
+                      size="sm"
+                      className={styles.sendButton}
                       disabled={!newComments[key]?.trim()}
                       onClick={() =>
                         sendComment(event.id, day, event.userId)
                       }
                     >
-                      <Send className="h-4 w-4" />
+                      <Send className="h-4 w-4" /> Request update
                     </Button>
 
                   </div>
