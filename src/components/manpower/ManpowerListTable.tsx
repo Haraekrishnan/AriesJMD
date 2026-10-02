@@ -5,7 +5,7 @@ import { useMemo, useState, useEffect } from 'react';
 import ManpowerPagination from './ManpowerPagination';
 import type { ManpowerProfile, EpNumberRecord } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
+import progressStyles from './document-progress.module.css';
 import { Edit, MoreHorizontal, Trash2, Link as LinkIcon, ChevronDown, ChevronRight, AlertCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Badge } from '../ui/badge';
@@ -162,6 +162,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                 <TableBody>
                     {visibleProfiles.map((profile) => {
                         const isExpanded = expandedRows.has(profile.id);
+                        const documentProgress = getDocumentProgress(profile);
                         const nextExpiry = getNextExpiry(profile);
                         const daysToExpiry = nextExpiry ? differenceInDays(nextExpiry.date, new Date()) : null;
                         
@@ -185,7 +186,10 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                     <TableCell>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
-                                                <Progress value={getDocumentProgress(profile)} className="w-full" />
+                                                <div className={progressStyles.progress} tabIndex={0}>
+                                                    <progress max={100} value={documentProgress} aria-label={profile.name + ': ' + Math.round(documentProgress) + '% documents complete'} />
+                                                    <span aria-hidden="true">{Math.round(documentProgress)}%</span>
+                                                </div>
                                             </TooltipTrigger>
                                             <TooltipContent className="max-w-xs">{getProgressTooltip(profile)}</TooltipContent>
                                         </Tooltip>

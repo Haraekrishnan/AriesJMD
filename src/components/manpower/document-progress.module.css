@@ -1,0 +1,10 @@
+.progress { display:flex; align-items:center; gap:8px; min-width:132px; }
+.progress progress { appearance:none; width:95px; height:8px; flex-shrink:0; border-radius:10px; overflow:hidden; border:0; background:#e1e8f1; accent-color:#2563eb; }
+.progress progress::-webkit-progress-bar { background:#e1e8f1; border-radius:10px; }
+.progress progress::-webkit-progress-value { background:#2563eb; border-radius:10px; }
+.progress progress::-moz-progress-bar { background:#2563eb; border-radius:10px; }
+.progress progress[value="100"] { accent-color:#16bd5c; }
+.progress progress[value="100"]::-webkit-progress-value { background:#16bd5c; }
+.progress progress[value="100"]::-moz-progress-bar { background:#16bd5c; }
+.progress span { font-size:12px; line-height:1; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.progress:focus-visible { outline:2px solid #2563eb; outline-offset:4px; border-radius:4px; }

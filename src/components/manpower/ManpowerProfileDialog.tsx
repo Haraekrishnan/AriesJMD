@@ -300,6 +300,9 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     const documents = form.getValues('documents') || [];
     const hasIrata = documents.some(doc => doc.name === 'IRATA Certificate');
     const isRaTrade = RA_TRADES.includes(watchTrade);
+    if (watchTrade === 'RA Level 3' && !documents.some(doc => doc.name === 'First Aid Certificate')) {
+      appendDocument({ name: 'First Aid Certificate', status: 'Pending', details: '' });
+    }
 
     if (isRaTrade && !hasIrata) {
       appendDocument({ name: 'IRATA Certificate', status: 'Pending', details: '' });
