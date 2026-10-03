@@ -18,10 +18,18 @@ export function reviewItem(event: PlannerEvent, day: string, comments: Comment[]
   const unread=thread.filter(c=>c.userId!==viewerId&&!c.viewedBy?.[viewerId]);
   const followUp=delegatedFollowUp(event,day,thread);
   const changed=!!dismissedVersion && dismissedVersion!==version;
+  const status=event.instanceStatuses?.[day] || 'Not Started';
+  const overdueIncomplete=past && (status==='Not Started' || status==='In Progress');
   let state: ReviewState | undefined;
-  if(unread.length || changed || (viewerId===event.userId && !event.viewedBy?.[viewerId] && !thread.length)) state='new-reply';
-  else if(viewerId===event.creatorId && followUp.state==='awaiting-reply') state='awaiting-reply';
-  else if(viewerId===event.creatorId && past && followUp.state==='needs-update' && !legacyDismissed) state='needs-update';
+  // Conversations remain accessible independently of automatic overdue reminders.
+  if(unread.length) state='new-reply';
+  else if(viewerId===event.creatorId) {
+    // Missing comments, an old unanswered request, or a changed version must not
+    // resurrect reminders for completed, pending, current-day or future tasks.
+    if(overdueIncomplete && (!legacyDismissed || changed)) {
+      state=followUp.state==='awaiting-reply' ? 'awaiting-reply' : 'needs-update';
+    }
+  } else if(changed || (!event.viewedBy?.[viewerId] && !thread.length)) state='new-reply';
   return state ? {key:event.id+'_'+day,day,event,comments:thread,unread,state,version} : null;
 }
 
