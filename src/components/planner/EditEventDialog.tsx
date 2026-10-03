@@ -18,12 +18,13 @@ import { format, startOfDay } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
 import type { PlannerEvent } from '@/lib/types';
 import { Label } from '../ui/label';
+import { PLANNER_CATEGORIES } from './planner-categories';
 
 const eventSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
   time: z.string().default(''),
-  category: z.string().default(''),
+  category: z.string().default('General'),
   equipmentRef: z.string().default(''),
   location: z.string().default(''),
   date: z.date({ required_error: 'Date is required' }),
@@ -59,7 +60,7 @@ export default function EditEventDialog({ isOpen, setIsOpen, event }: EditEventD
         form.reset({
             ...event,
             description: event.description || '',
-            time: event.time || '', category: event.category || '', equipmentRef: event.equipmentRef || '', location: event.location || '',
+            time: event.time || '', category: event.category || 'General', equipmentRef: event.equipmentRef || '', location: event.location || '',
             date: event.date ? new Date(event.date) : new Date(),
         });
     }
@@ -120,7 +121,18 @@ export default function EditEventDialog({ isOpen, setIsOpen, event }: EditEventD
 
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Time</Label><Input type="time" {...form.register('time')} /></div>
-            <div><Label>Category</Label><Input placeholder="e.g. Maintenance" {...form.register('category')} /></div>
+            <div>
+              <Label htmlFor="edit-planner-category">Category</Label>
+              <Controller control={form.control} name="category" render={({ field }) => (
+                <Select value={field.value || 'General'} onValueChange={field.onChange}>
+                  <SelectTrigger id="edit-planner-category"><SelectValue placeholder="Select category" /></SelectTrigger>
+                  <SelectContent>
+                    {field.value && !PLANNER_CATEGORIES.some(category => category === field.value) && <SelectItem value={field.value} disabled>{field.value} (existing)</SelectItem>}
+                    {PLANNER_CATEGORIES.map(category => <SelectItem key={category} value={category}>{category}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )} />
+            </div>
             <div><Label>Equipment / Reference</Label><Input placeholder="e.g. UT-01" {...form.register('equipmentRef')} /></div>
             <div><Label>Location</Label><Input placeholder="Project or site" {...form.register('location')} /></div>
           </div>

@@ -17,12 +17,13 @@ import { cn } from '@/lib/utils';
 import { format, startOfDay } from 'date-fns';
 import { PlusCircle, CalendarIcon, Users } from 'lucide-react';
 import { Label } from '../ui/label';
+import { PLANNER_CATEGORIES } from './planner-categories';
 
 const eventSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
   time: z.string().default(''),
-  category: z.string().default(''),
+  category: z.enum(PLANNER_CATEGORIES).default('General'),
   equipmentRef: z.string().default(''),
   location: z.string().default(''),
   date: z.date({ required_error: 'Date is required' }).refine(date => startOfDay(date) >= startOfDay(new Date()), {
@@ -66,7 +67,7 @@ export default function CreateEventDialog({ isDelegating = false, isPlanning = f
         userId: isDelegating ? '' : user?.id,
         title: '',
         description: '',
-        time: '', category: '', equipmentRef: '', location: '',
+        time: '', category: 'General', equipmentRef: '', location: '',
       });
     }
   }, [isOpen, isDelegating, user, form]);
@@ -147,7 +148,18 @@ export default function CreateEventDialog({ isDelegating = false, isPlanning = f
 
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Time</Label><Input type="time" {...form.register('time')} /></div>
-            <div><Label>Category</Label><Input placeholder="e.g. Maintenance" {...form.register('category')} /></div>
+            <div>
+              <Label htmlFor="new-planner-category">Category</Label>
+              <Controller control={form.control} name="category" render={({ field }) => (
+                <Select value={field.value || 'General'} onValueChange={field.onChange}>
+                  <SelectTrigger id="new-planner-category"><SelectValue placeholder="Select category" /></SelectTrigger>
+                  <SelectContent>
+                    
+                    {PLANNER_CATEGORIES.map(category => <SelectItem key={category} value={category}>{category}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )} />
+            </div>
             <div><Label>Equipment / Reference</Label><Input placeholder="e.g. UT-01" {...form.register('equipmentRef')} /></div>
             <div><Label>Location</Label><Input placeholder="Project or site" {...form.register('location')} /></div>
           </div>
