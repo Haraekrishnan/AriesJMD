@@ -21,6 +21,7 @@ import {
   getDate 
 } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { plannerDelegationEmail } from '@/components/planner/planner-notifications';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { useGeneral } from './general-provider';
 import { JOB_PROGRESS_STEPS, REOPEN_JOB_STEPS } from '@/lib/types';
@@ -37,7 +38,7 @@ type PlannerContextType = {
   jobProgress: JobProgress[];
   documentMovements: DocumentMovement[];
   trackerNotificationCount: number;
-  addPlannerEvent: (eventData: Omit<PlannerEvent, 'id'>) => void;
+  addPlannerEvent: (eventData: Omit<PlannerEvent, 'id'>) => Promise<{ emailWarning?: string }>;
   updatePlannerEvent: (event: PlannerEvent) => void;
   deletePlannerEvent: (eventId: string, day: string) => Promise<void>;
   getExpandedPlannerEvents: (start: Date, end: Date, userId: string) => { eventDate: Date, event: PlannerEvent }[];
@@ -241,19 +242,39 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         set(newCommentRef, newComment);
     }, [user, jobProgressById]);
 
-    const addPlannerEvent = useCallback((eventData: Omit<PlannerEvent, 'id'>) => {
+    const addPlannerEvent = useCallback(async (eventData: Omit<PlannerEvent, 'id'>): Promise<{ emailWarning?: string }> => {
+        if (!user || user.id !== eventData.creatorId) throw new Error('Please sign in before creating planning.');
+        const delegated = eventData.creatorId !== eventData.userId;
+        const assignee = users.find(u => u.id === eventData.userId);
         const newRef = push(ref(rtdb, 'plannerEvents'));
-        const eventWithId = { ...eventData, id: newRef.key! };
-        set(newRef, eventWithId);
-        
-        update(ref(rtdb, `plannerEvents/${newRef.key}/viewedBy`), { [eventData.creatorId]: true });
-
-        if (eventData.creatorId !== eventData.userId) {
-            const dayStr = format(new Date(eventData.date), 'yyyy-MM-dd');
-            const commentText = `Event "${eventData.title}" delegated by ${users.find(u => u.id === eventData.creatorId)?.name || 'Unknown'}`;
-            addPlannerEventComment(eventData.userId, dayStr, newRef.key!, commentText);
+        if (!newRef.key) throw new Error('Could not create planning.');
+        const day = format(parseISO(eventData.date), 'yyyy-MM-dd');
+        const viewedBy = { [user.id]: true, ...(delegated ? { [eventData.userId]: false } : {}) };
+        const updates: Record<string, unknown> = {
+            ['plannerEvents/' + newRef.key]: { ...eventData, id: newRef.key, viewedBy }
+        };
+        if (delegated) {
+            const block = 'dailyPlannerComments/' + day + '_' + eventData.userId;
+            const comment = push(ref(rtdb, block + '/comments'));
+            if (!comment.key) throw new Error('Could not create delegation notification.');
+            updates[block + '/day'] = day;
+            updates[block + '/plannerUserId'] = eventData.userId;
+            updates[block + '/comments/' + comment.key] = { id: comment.key, eventId: newRef.key, userId: user.id, date: new Date().toISOString(), text: 'Event "' + eventData.title + '" delegated by ' + user.name, viewedBy };
         }
-    }, [users, addPlannerEventComment]);
+        // Save the assignment and unread notification together before sending mail.
+        await update(ref(rtdb), JSON.parse(JSON.stringify(updates)));
+        if (!delegated) return {};
+        if (!assignee?.email) return { emailWarning: 'Planning saved, but the assigned employee has no email address.' };
+        try {
+            const result = await sendNotificationEmail({
+                to: [assignee.email], subject: 'New Planning Delegated: ' + eventData.title,
+                htmlBody: plannerDelegationEmail(eventData, user.name, process.env.NEXT_PUBLIC_APP_URL || window.location.origin),
+                notificationSettings, event: 'onNewTask', involvedUser: assignee, creatorUser: user
+            });
+            if (!result.success) return { emailWarning: 'Planning and sidebar notification saved, but email could not be sent. Check the existing mail configuration.' };
+        } catch { return { emailWarning: 'Planning and sidebar notification saved, but email could not be sent.' }; }
+        return {};
+    }, [user, users, notificationSettings]);
 
     const updatePlannerEvent = useCallback((event: PlannerEvent) => {
         const { id, ...data } = event;

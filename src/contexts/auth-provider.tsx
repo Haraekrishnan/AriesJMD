@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { rtdb } from '@/lib/rtdb';
 import { ref, onValue, get, query, orderByChild, equalTo, update, push, set, remove } from 'firebase/database';
 import useLocalStorage from '@/hooks/use-local-storage';
+import { plannerNotificationTotal } from '@/components/planner/planner-notifications';
 import { sendNotificationEmail } from '@/app/actions/sendNotificationEmail';
 import { useToast } from '@/hooks/use-toast';
 import { fileToBase64 } from '@/lib/fileToBase64';
@@ -115,33 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return canObject;
   }, [user, roles]);
 
-  const plannerNotificationCount = useMemo(() => {
-    if (!user) return 0;
-
-    const newDelegatedEvents = plannerEvents.filter(e =>
-      e.userId === user.id &&
-      e.creatorId !== user.id &&
-      !e.viewedBy?.[user.id]
-    );
-
-    const unreadComments = dailyPlannerComments.filter(dayComment => {
-      if (!dayComment.day || !dayComment.comments) return false;
-      
-      const comments = Array.isArray(dayComment.comments)
-        ? dayComment.comments
-        : Object.values(dayComment.comments || {});
-      
-      return comments.some(c => {
-        if (!c) return false;
-        const event = plannerEvents.find(e => e.id === c.eventId);
-        if (!event) return false;
-        const isParticipant = event.userId === user.id || event.creatorId === user.id;
-        return isParticipant && c.userId !== user.id && !c.viewedBy?.[user.id];
-      });
-    });
-
-    return newDelegatedEvents.length + unreadComments.length;
-  }, [user, plannerEvents, dailyPlannerComments]);
+  const plannerNotificationCount = useMemo(() => user ? plannerNotificationTotal(user.id, plannerEvents, dailyPlannerComments) : 0, [user, plannerEvents, dailyPlannerComments]);
 
   const addActivityLog = useCallback((userId: string, action: string, details?: string) => {
     if (!userId) return;

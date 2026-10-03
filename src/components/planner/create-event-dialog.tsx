@@ -72,8 +72,9 @@ export default function CreateEventDialog({ isDelegating = false, isPlanning = f
     }
   }, [isOpen, isDelegating, user, form]);
 
-  const onSubmit = (data: EventFormValues) => {
-    addPlannerEvent({
+  const onSubmit = async (data: EventFormValues) => {
+    try {
+    const result = await addPlannerEvent({
       ...data,
       date: data.date.toISOString(),
       creatorId: user!.id,
@@ -86,10 +87,12 @@ export default function CreateEventDialog({ isDelegating = false, isPlanning = f
       description: `"${data.title}" has been added to the schedule.`,
     });
     setIsOpen(false);
+    if (result.emailWarning) toast({ variant: 'destructive', title: 'Email notification not sent', description: result.emailWarning });
+    } catch { toast({ variant: 'destructive', title: 'Planning could not be saved', description: 'Your entries have been kept. Please try again.' }); }
   };
   
   const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
+    if (!form.formState.isSubmitting) setIsOpen(open);
   };
   
   const dialogTitle = isDelegating ? "Delegate Event" : "Add Personal Planning";
@@ -216,7 +219,7 @@ export default function CreateEventDialog({ isDelegating = false, isPlanning = f
           
           <DialogFooter>
              <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit">{buttonText}</Button>
+            <Button type="submit" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? 'Saving…' : buttonText}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

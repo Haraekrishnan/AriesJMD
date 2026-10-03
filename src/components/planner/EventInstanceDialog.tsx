@@ -20,6 +20,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { Send, MessageSquare, Clock, User, Edit } from 'lucide-react';
 import type { PlannerEvent, Comment } from '@/lib/types';
+import { ref, update } from 'firebase/database';
+import { rtdb } from '@/lib/rtdb';
 import { useToast } from '@/hooks/use-toast';
 
 interface EventInstanceDialogProps {
@@ -60,6 +62,16 @@ export default function EventInstanceDialog({
   const creator = users.find((u) => u.id === event.creatorId);
   const isOwner = user?.id === event.creatorId || user?.role === 'Admin';
 
+  const markConversationRead = async () => {
+    if (!user) return;
+    const updates: Record<string, boolean> = {};
+    comments.filter(c => c.userId !== user.id && !c.viewedBy?.[user.id]).forEach(c => {
+      updates['dailyPlannerComments/' + dayCommentId + '/comments/' + c.id + '/viewedBy/' + user.id] = true;
+    });
+    if (dayStr === format(parseISO(event.date), 'yyyy-MM-dd')) updates['plannerEvents/' + event.id + '/viewedBy/' + user.id] = true;
+    try { if (Object.keys(updates).length) await update(ref(rtdb), updates); }
+    catch { toast({variant:'destructive',title:'Could not mark notification as read. Please try again.'}); }
+  };
   const handleSendComment = async () => {
     if (!newComment.trim() || sending) return;
     setSending(true);
@@ -118,7 +130,7 @@ export default function EventInstanceDialog({
             <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2 flex items-center gap-2">
               <MessageSquare className="h-3 w-3" /> Event Conversation
             </h4>
-            <Button variant="ghost" size="sm" className="self-end mb-2" onClick={() => comments.filter(c => c.userId !== user?.id && !c.viewedBy?.[user?.id || '']).forEach(c => markSinglePlannerCommentAsRead(plannerUserId, dayStr, c.id))}>Mark conversation as read</Button>
+            <Button variant="ghost" size="sm" className="self-end mb-2" onClick={markConversationRead}>Mark conversation as read</Button>
             
             <ScrollArea className="h-[280px] border rounded-lg bg-slate-50/50 p-3">
               <div className="space-y-3">

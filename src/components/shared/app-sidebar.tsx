@@ -1,5 +1,6 @@
 'use client';
 
+import { plannerNotificationTotal } from '@/components/planner/planner-notifications';
 import { myRequestLists } from '@/components/requests/request-summary';
 import { useEhs } from '@/contexts/ehs-provider';
 import { usePathname } from 'next/navigation';
@@ -77,30 +78,7 @@ export function AppSidebar() {
     const pendingStoreCertRequestCount = isStoreManager ? (certificateRequests || []).filter(r => r.status === 'Pending' && r.itemId).length : 0;
     const pendingEquipmentCertRequestCount = isStoreManager ? (certificateRequests || []).filter(r => r.status === 'Pending' && (r.utMachineId || r.dftMachineId)).length : 0;
     
-    const newDelegatedEventsCount = (plannerEvents || []).filter(e =>
-      e.userId === user.id &&
-      e.creatorId !== user.id &&
-      !e.viewedBy?.[user.id]
-    ).length;
-
-    const unreadCommentsForUser = (dailyPlannerComments || []).filter(dayComment => {
-        if (!dayComment.day || !dayComment.comments) return false;
-        const eventsOnDay = (plannerEvents || []).filter(e => e.date && isSameDay(parseISO(e.date), parseISO(dayComment.day)));
-        if (eventsOnDay.length === 0) return false;
-
-        const comments = Array.isArray(dayComment.comments) ? dayComment.comments : Object.values(dayComment.comments);
-        return comments.some(c => {
-            if (!c) return false;
-            const event = eventsOnDay.find(e => e.id === c.eventId);
-            if (!event) return false;
-            const isParticipant = event.userId === user.id || event.creatorId === user.id;
-            return isParticipant && c.userId !== user.id && !c.viewedBy?.[user.id];
-        });
-    });
-
-    const plannerNotificationCount =
-      unreadCommentsForUser.length + newDelegatedEventsCount;
-
+    const plannerNotificationCount = plannerNotificationTotal(user.id, plannerEvents || [], dailyPlannerComments || []);
 
     const unreadDirectivesCount = (managementRequests || []).filter(d => {
         const isRecipient = d.toUserId === user.id || (d.ccUserIds || []).includes(user.id);
@@ -178,7 +156,7 @@ export function AppSidebar() {
   ], [can, notificationCounts, observationActionCount]);
 
   return (
-    <aside className="hidden md:fixed md:flex flex-col h-full w-64 border-r bg-sidebar text-sidebar-foreground">
+    <aside className="portal-navigation hidden md:fixed md:flex flex-col h-full w-64 border-r bg-sidebar text-sidebar-foreground">
       <div className="flex items-center justify-between p-4 border-b">
         <Link href="/dashboard" className="flex items-center gap-3">
             <div className="flex items-center justify-center h-8 w-8">
@@ -199,9 +177,9 @@ export function AppSidebar() {
                     <Button
                     asChild
                     variant={pathname.startsWith(item.href) ? 'secondary' : 'ghost'}
-                    className="w-full justify-start"
+                    className="portal-nav-link w-full justify-start"
                     >
-                    <Link href={item.href === '/ehs' ? '/ehs?entry=notifications' : item.href} className="flex items-center justify-between w-full">
+                    <Link aria-current={pathname.startsWith(item.href) ? 'page' : undefined} href={item.href === '/ehs' ? '/ehs?entry=notifications' : item.href} className="flex items-center justify-between w-full">
                         <div className="flex items-center gap-3">
                         <item.icon className="h-5 w-5" />
                         <span>{item.label}</span>
