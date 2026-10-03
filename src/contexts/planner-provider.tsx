@@ -39,7 +39,7 @@ type PlannerContextType = {
   trackerNotificationCount: number;
   addPlannerEvent: (eventData: Omit<PlannerEvent, 'id'>) => void;
   updatePlannerEvent: (event: PlannerEvent) => void;
-  deletePlannerEvent: (eventId: string) => void;
+  deletePlannerEvent: (eventId: string, day: string) => Promise<void>;
   getExpandedPlannerEvents: (start: Date, end: Date, userId: string) => { eventDate: Date, event: PlannerEvent }[];
   addPlannerEventComment: (plannerUserId: string, day: string, eventId: string, text: string) => Promise<void>;
   deletePlannerDailyNote: (plannerUserId: string, day: string, commentId: string) => void;
@@ -260,9 +260,14 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         update(ref(rtdb, `plannerEvents/${id}`), data);
     }, []);
     
-    const deletePlannerEvent = useCallback((eventId: string) => {
-        remove(ref(rtdb, `plannerEvents/${eventId}`));
-    }, []);
+    const deletePlannerEvent = useCallback(async (eventId: string, day: string) => {
+        const event = plannerEvents.find(e => e.id === eventId);
+        if (!user || !event || (event.creatorId !== user.id && user.role !== 'Admin')) throw new Error('Only the creator or an admin can remove this occurrence.');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || Number.isNaN(parseISO(day).getTime())) throw new Error('A valid occurrence date is required.');
+        await update(ref(rtdb, 'plannerEvents/' + eventId + '/removedOccurrences'), {
+            [day]: { removedBy: user.id, removedAt: new Date().toISOString() }
+        });
+    }, [user, plannerEvents]);
 
     const getExpandedPlannerEvents = useCallback((startDate: Date, endDate: Date, userId: string): { eventDate: Date, event: PlannerEvent }[] => {
         const userEvents = plannerEvents.filter(e => e.userId === userId);
@@ -274,7 +279,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             userEvents.forEach(event => {
                 const eventStartDate = startOfDay(parseISO(event.date));
                 
-                if (isBefore(day, eventStartDate)) return;
+                if (isBefore(day, eventStartDate) || event.removedOccurrences?.[format(day, 'yyyy-MM-dd')]) return;
 
                 let match = false;
                 switch(event.frequency) {

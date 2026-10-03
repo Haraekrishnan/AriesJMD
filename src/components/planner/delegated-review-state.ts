@@ -11,6 +11,7 @@ export function reviewVersion(event: PlannerEvent, day: string, comments: Commen
   return (a>>>0).toString(36)+'-'+(b>>>0).toString(36);
 }
 export function reviewItem(event: PlannerEvent, day: string, comments: Comment[], viewerId: string, past: boolean, dismissedVersion?: string, legacyDismissed=false): ReviewItem | null {
+  if(event.removedOccurrences?.[day] || event.instanceStatuses?.[day] === 'Not Applicable') return null;
   if(event.creatorId===event.userId || ![event.creatorId,event.userId].includes(viewerId)) return null;
   const thread=comments.filter(c=>c.eventId===event.id).sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
   const version=reviewVersion(event,day,thread);

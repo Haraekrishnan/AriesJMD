@@ -86,7 +86,8 @@ export type PlannerEvent = {
   category?: string;
   equipmentRef?: string;
   location?: string;
-  instanceStatuses?: Record<string, 'Not Started' | 'In Progress' | 'Pending' | 'Completed'>;
+  instanceStatuses?: Record<string, 'Not Started' | 'In Progress' | 'Pending' | 'Completed' | 'Not Applicable'>;
+  removedOccurrences?: Record<string, { removedBy: string; removedAt: string }>;
   id: string;
   title: string;
   description?: string;

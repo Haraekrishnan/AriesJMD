@@ -47,9 +47,9 @@ export default function ScheduleView({ selectedUserId }: ScheduleViewProps) {
         setCommentDay(null);
     }, [dailyComment, selectedUserId, addDailyPlannerComment]);
     
-    const handleDeleteEvent = (event: PlannerEvent) => {
-        deletePlannerEvent(event.id);
-        toast({ variant: 'destructive', title: 'Event Deleted' });
+    const handleDeleteEvent = async (event: PlannerEvent, day: Date) => {
+        try { await deletePlannerEvent(event.id, format(day, 'yyyy-MM-dd')); toast({ title: 'Event removed for this day only' }); }
+        catch { toast({ variant: 'destructive', title: 'Could not remove this occurrence' }); }
     };
 
     return (
@@ -80,8 +80,8 @@ export default function ScheduleView({ selectedUserId }: ScheduleViewProps) {
                                         <AlertDialog>
                                             <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"><Trash2 className="h-4 w-4"/></Button></AlertDialogTrigger>
                                             <AlertDialogContent>
-                                                <AlertDialogHeader><AlertDialogTitle>Delete Event?</AlertDialogTitle><AlertDialogDescription>Are you sure you want to delete the event "{event.title}"?</AlertDialogDescription></AlertDialogHeader>
-                                                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteEvent(event)}>Delete</AlertDialogAction></AlertDialogFooter>
+                                                <AlertDialogHeader><AlertDialogTitle>Delete Event?</AlertDialogTitle><AlertDialogDescription>Remove "{event.title}" only from {format(day, 'dd MMM yyyy')}? All history stays with the same user. Other dates will not be removed.</AlertDialogDescription></AlertDialogHeader>
+                                                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteEvent(event, day)}>Delete</AlertDialogAction></AlertDialogFooter>
                                             </AlertDialogContent>
                                         </AlertDialog>
                                     )}

@@ -67,7 +67,7 @@ export default function EditEventDialog({ isOpen, setIsOpen, event }: EditEventD
   }, [event, form]);
 
   const onSubmit = (data: EventFormValues) => {
-    const { instanceStatuses, ...editableEvent } = event;
+    const { instanceStatuses, removedOccurrences, ...editableEvent } = event;
     updatePlannerEvent({
       ...editableEvent,
       ...data,

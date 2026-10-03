@@ -18,10 +18,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import { Send, MessageSquare, Clock, User, Trash2, Edit } from 'lucide-react';
+import { Send, MessageSquare, Clock, User, Edit } from 'lucide-react';
 import type { PlannerEvent, Comment } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface EventInstanceDialogProps {
   isOpen: boolean;
@@ -41,7 +40,7 @@ export default function EventInstanceDialog({
   onEdit,
 }: EventInstanceDialogProps) {
   const { user, users } = useAuth();
-  const { dailyPlannerComments, addPlannerEventComment, deletePlannerEvent, markSinglePlannerCommentAsRead } = usePlanner();
+  const { dailyPlannerComments, addPlannerEventComment, markSinglePlannerCommentAsRead } = usePlanner();
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
   const [sending, setSending] = useState(false);
@@ -73,11 +72,6 @@ export default function EventInstanceDialog({
     } finally { setSending(false); }
   };
 
-  const handleDelete = () => {
-    deletePlannerEvent(event.id);
-    setIsOpen(false);
-    toast({ variant: 'destructive', title: 'Event Deleted' });
-  };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -98,7 +92,8 @@ export default function EventInstanceDialog({
               </DialogTitle>
             </div>
           </div>
-          <DialogDescription className="text-xs font-medium text-slate-500 mt-2">
+          <DialogDescription className="text-sm text-foreground mt-3 whitespace-pre-wrap break-words max-h-40 overflow-y-auto rounded-md border bg-muted/30 p-3">
+            <span className="block text-xs font-semibold text-muted-foreground mb-1">Planning description</span>
             {event.description || "No description provided for this event."}
           </DialogDescription>
         </DialogHeader>
@@ -194,28 +189,6 @@ export default function EventInstanceDialog({
                 <Button variant="outline" size="sm" className="h-8 px-3 font-bold text-xs" onClick={() => { onEdit(event); setIsOpen(false); }}>
                   <Edit className="mr-2 h-3.5 w-3.5" /> Edit Master
                 </Button>
-                
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 px-3 font-bold text-xs text-destructive hover:bg-destructive/10">
-                      <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete this event?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently remove the event and all its recurring instances from the planner.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDelete} className="bg-destructive text-white hover:bg-destructive/90">
-                        Delete Event
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
               </>
             )}
           </div>
