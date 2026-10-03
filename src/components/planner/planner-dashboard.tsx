@@ -12,14 +12,15 @@ import EventInstanceDialog from './EventInstanceDialog';
 import EditEventDialog from './EditEventDialog';
 import PlannerCalendar from './planner-calendar';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
+import { ALL_PLANNERS, plannerEventVisible } from './planner-visibility';
 import styles from './planner-dashboard.module.css';
 
 type Instance = { event: PlannerEvent; eventDate: Date };
-type Props = { selectedUserId: string; selectedDate: Date | undefined; setSelectedDate: (date: Date | undefined) => void; currentMonth: Date; setCurrentMonth: (date: Date) => void };
+type Props = { selectedUserId: string; visibleUserIds: string[]; selectedDate: Date | undefined; setSelectedDate: (date: Date | undefined) => void; currentMonth: Date; setCurrentMonth: (date: Date) => void };
 const tabs = ['All Tasks', 'My Tasks', 'Delegated Tasks', 'Completed', 'Upcoming', 'Overdue'];
 const statuses = ['Not Started', 'In Progress', 'Pending', 'Completed', 'Not Applicable'] as const;
 export default function PlannerDashboard(props: Props) {
-  const { selectedUserId, selectedDate, setSelectedDate, currentMonth, setCurrentMonth } = props;
+  const { selectedUserId, visibleUserIds, selectedDate, setSelectedDate, currentMonth, setCurrentMonth } = props;
   const { user, users } = useAuth();
   const { getExpandedPlannerEvents, dailyPlannerComments, plannerEvents, deletePlannerEvent } = usePlanner();
   const { toast } = useToast();
@@ -38,6 +39,7 @@ export default function PlannerDashboard(props: Props) {
   const [deleting, setDeleting] = useState<Instance | null>(null);
   const [removing, setRemoving] = useState(false);
   const [worksheet, setWorksheet] = useState(false);
+  useEffect(() => { setView(null); setEditing(null); setDeleting(null); }, [selectedUserId, visibleUserIds]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const rowKey = (r: Instance) => `${r.event.id}:${format(r.eventDate, 'yyyy-MM-dd')}`;
   const [saving, setSaving] = useState<string | null>(null);
@@ -48,13 +50,14 @@ export default function PlannerDashboard(props: Props) {
   const assignedBy = (event: PlannerEvent) => event.creatorId && event.creatorId === event.userId ? 'Own task' : event.creatorId ? name(event.creatorId) : 'Unknown';
   const rows = useMemo(() => {
     const start = startOfMonth(currentMonth), end = endOfMonth(currentMonth);
-    const ids = new Set([selectedUserId, ...plannerEvents.filter(e => e.creatorId === selectedUserId).map(e => e.userId)]);
-    return [...ids].flatMap(id => getExpandedPlannerEvents(start, end, id)).filter(r => r.event.userId === selectedUserId || r.event.creatorId === selectedUserId)
+    const ids = new Set(visibleUserIds);
+    return [...ids].flatMap(id => getExpandedPlannerEvents(start, end, id)).filter(r => plannerEventVisible(r.event, selectedUserId, visibleUserIds))
       .sort((a,b) => a.eventDate.getTime() - b.eventDate.getTime() || (a.event.time || '').localeCompare(b.event.time || '') || a.event.title.localeCompare(b.event.title));
-  }, [currentMonth, selectedUserId, plannerEvents, getExpandedPlannerEvents]);
+  }, [currentMonth, selectedUserId, visibleUserIds, plannerEvents, getExpandedPlannerEvents]);
+  const taskOwnerId = selectedUserId === ALL_PLANNERS ? user?.id : selectedUserId;
   const matchesTab = (r: Instance, selected: string) => selected === 'All Tasks' ||
-    (selected === 'My Tasks' && r.event.userId === selectedUserId) ||
-    (selected === 'Delegated Tasks' && r.event.creatorId === selectedUserId && r.event.userId !== selectedUserId) ||
+    (selected === 'My Tasks' && r.event.userId === taskOwnerId) ||
+    (selected === 'Delegated Tasks' && r.event.creatorId !== r.event.userId && (selectedUserId === ALL_PLANNERS || r.event.creatorId === selectedUserId)) ||
     (selected === 'Completed' && state(r) === 'Completed') ||
     (selected === 'Upcoming' && day(r) > today && !['Completed', 'Not Applicable'].includes(state(r))) ||
     (selected === 'Overdue' && day(r) < today && !['Completed', 'Not Applicable'].includes(state(r)));
@@ -100,10 +103,10 @@ export default function PlannerDashboard(props: Props) {
   const person = (r: Instance) => <span className={styles.person}><i>{name(r.event.userId).split(' ').map(n=>n[0]).slice(0,2).join('')}</i>{name(r.event.userId)}</span>;
   const completed = rows.filter(r => state(r) === 'Completed').length;
   const upcoming = useMemo(() => {
-    const ids = new Set([selectedUserId, ...plannerEvents.filter(e => e.creatorId === selectedUserId).map(e => e.userId)]);
+    const ids = new Set(visibleUserIds);
     return [...ids].flatMap(id => getExpandedPlannerEvents(addDays(new Date(today + 'T00:00:00'),1), addDays(new Date(today + 'T00:00:00'),7), id))
-      .filter(r => (r.event.userId === selectedUserId || r.event.creatorId === selectedUserId) && !['Completed', 'Not Applicable'].includes(r.event.instanceStatuses?.[format(r.eventDate,'yyyy-MM-dd')] || 'Not Started')).length;
-  }, [selectedUserId, plannerEvents, getExpandedPlannerEvents, today]);
+      .filter(r => plannerEventVisible(r.event, selectedUserId, visibleUserIds) && !['Completed', 'Not Applicable'].includes(r.event.instanceStatuses?.[format(r.eventDate,'yyyy-MM-dd')] || 'Not Started')).length;
+  }, [selectedUserId, visibleUserIds, plannerEvents, getExpandedPlannerEvents, today]);
   const cards = [
     {title:'Total Tasks',value:rows.length,detail:format(currentMonth,'MMMM yyyy'),icon:ClipboardList,tone:'blue'},
     {title:'Completed',value:completed,detail:`${rows.length ? Math.round(completed/rows.length*100) : 0}% completion`,icon:CheckCircle,tone:'green'},
@@ -126,7 +129,7 @@ export default function PlannerDashboard(props: Props) {
       <div className={styles.tableScroll}><table><thead><tr><th><input type="checkbox" aria-label="Select this page for export" checked={visible.length > 0 && visible.every(r=>selected.has(rowKey(r)))} onChange={e=>setSelected(previous=>{const next=new Set(previous);visible.forEach(r=>e.target.checked?next.add(rowKey(r)):next.delete(rowKey(r)));return next;})}/></th>{['#','Date','Time','Task / Activity','Category','Assigned / Delegated By','Location','Assigned To','Status','Remarks / Update','Actions'].map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{visible.map((r,i)=><tr key={`${r.event.id}-${day(r)}`}><td><input type="checkbox" aria-label={`Select ${r.event.title} for export`} checked={selected.has(rowKey(r))} onChange={e=>setSelected(previous=>{const next=new Set(previous);e.target.checked?next.add(rowKey(r)):next.delete(rowKey(r));return next;})}/></td><td>{(currentPage-1)*size+i+1}</td><td>{format(r.eventDate,'dd-MM-yyyy')}</td><td>{r.event.time || '—'}</td><td><button className={styles.taskTitle} onClick={()=>setView(r)}>{r.event.title}</button></td><td><span className={styles.category}>{r.event.category || 'General'}</span></td><td>{assignedBy(r.event)}</td><td>{r.event.location || '—'}</td><td>{person(r)}</td><td>{canUpdate(r) ? <select className={styles.badge} data-status={state(r)} aria-label={`Status for ${r.event.title} on ${day(r)}`} value={state(r)} disabled={saving===`${r.event.id}/${day(r)}`} onChange={e=>updateStatus(r,e.target.value)}>{statuses.map(s=><option key={s}>{s}</option>)}</select> : badge(r)}</td><td><button className={styles.remark} onClick={()=>setView(r)}>{comments(r).at(-1)?.text || 'View conversation'}<small><MessageSquare size={12}/> {comments(r).length} replies{comments(r).some(c=>c.userId!==user?.id && !c.viewedBy?.[user?.id || '']) ? ' · Unread' : ''}</small></button></td><td><div className={styles.controls}>{canEdit(r)&&<button aria-label={`Edit ${r.event.title}`} onClick={()=>setEditing(r.event)}><Pencil size={14}/></button>}<button aria-label={`View and reply to ${r.event.title}`} onClick={()=>setView(r)}><Eye size={15}/></button>{canEdit(r)&&<button aria-label={`Delete ${r.event.title} on ${day(r)} only`} onClick={()=>setDeleting(r)}><Trash2 size={14} className="text-destructive"/></button>}</div></td></tr>)}{!visible.length&&<tr><td colSpan={12} className={styles.empty}>No tasks match these filters.</td></tr>}</tbody></table></div>
       <footer className={styles.pagination}><span>Showing {filtered.length ? (currentPage-1)*size+1 : 0} to {Math.min(currentPage*size,filtered.length)} of {filtered.length} entries</span><div><label>Rows per page: <select value={size} onChange={e=>setSize(Number(e.target.value))}>{[10,25,50,100].map(n=><option key={n}>{n}</option>)}</select></label><button disabled={currentPage===1} onClick={()=>setPage(1)} aria-label="First page">«</button><button disabled={currentPage===1} onClick={()=>setPage(currentPage-1)} aria-label="Previous page">‹</button>{Array.from({length:pages},(_,i)=>i+1).filter(n=>n===1||n===pages||Math.abs(n-currentPage)<=1).map((n,i,ns)=><span key={n}>{i>0&&n-ns[i-1]>1&&' … '}<button aria-current={n===currentPage?'page':undefined} onClick={()=>setPage(n)}>{n}</button></span>)}<button disabled={currentPage===pages} onClick={()=>setPage(currentPage+1)} aria-label="Next page">›</button><button disabled={currentPage===pages} onClick={()=>setPage(pages)} aria-label="Last page">»</button></div></footer>
     </section>
-    {worksheet&&<section className={styles.worksheet}><h2>Daily worksheet · notes, history and locks</h2><PlannerCalendar {...props}/></section>}
+    {worksheet&&<section className={styles.worksheet}><h2>Daily worksheet · notes, history and locks</h2>{selectedUserId === ALL_PLANNERS ? visibleUserIds.map(id => <details key={id} className="border rounded-md p-3 mb-3"><summary className="cursor-pointer font-semibold">{name(id)}</summary><PlannerCalendar {...props} selectedUserId={id}/></details>) : <PlannerCalendar {...props}/>} </section>}
     {view&&<EventInstanceDialog key={`${view.event.id}-${day(view)}`} isOpen setIsOpen={()=>setView(null)} event={plannerEvents.find(e=>e.id===view.event.id)||view.event} date={view.eventDate} plannerUserId={view.event.userId} onEdit={setEditing}/>}
     <AlertDialog open={!!deleting} onOpenChange={open=>{if(!open&&!removing)setDeleting(null);}}>
       <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Remove this event for this day only?</AlertDialogTitle><AlertDialogDescription>
