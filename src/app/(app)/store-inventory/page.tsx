@@ -381,6 +381,7 @@ export default function StoreInventoryPage() {
                 </CardHeader>
                 <CardContent className={styles.tableContent}>
                     <div className={styles.listHeading}><h2><FileText aria-hidden="true"/>{view === 'list' ? 'Inventory List' : 'Inventory Summary'}</h2><span>{filteredItems.length.toLocaleString()} items · Current filters</span></div>
+                    {view === 'list' && <p className={styles.mobileHint}>Tap an item category below to expand it. Swipe its table sideways to view all details and actions.</p>}
                     {view === 'list' ? <InventoryTable items={filteredItems} selectedItems={selectedItemsForTransfer} onSelectionChange={setSelectedItemsForTransfer} /> : <InventorySummary items={filteredItems} />}
                 </CardContent>
             </Card>

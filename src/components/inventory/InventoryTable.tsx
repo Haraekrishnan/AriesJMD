@@ -21,7 +21,7 @@ import RenameItemGroupDialog from './RenameItemGroupDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Checkbox } from '../ui/checkbox';
 import React from 'react';
-import { ScrollArea } from '../ui/scroll-area';
+import styles from './inventory-table.module.css';
 import Link from 'next/link';
 import type { Role } from '@/lib/types';
 
@@ -191,10 +191,10 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
 
     return (
         <TooltipProvider>
-            {/* Desktop View */}
-            <div className="hidden md:block">
-            <ScrollArea className="h-96">
-                <div className="overflow-x-auto">
+            {/* Shared responsive list: the same controls and permissions on every screen. */}
+            <div className={styles.list}>
+            <div className={styles.groups}>
+                <div className={styles.groupContainer}>
                     <Accordion type="multiple" className="w-full space-y-2">
                         {Object.entries(groupedItems).map(([itemName, itemList]) => {
                             const allInGroupSelected = itemList.every(item => selectedItems?.some(sel => sel.id === item.id));
@@ -202,12 +202,12 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
 
                             return (
                             <AccordionItem key={itemName} value={itemName} className="border rounded-lg bg-card">
-                                <div className="flex justify-between items-center p-4">
-                                    <div className="flex items-center gap-4 flex-1">
+                                <div className={styles.groupHeader}>
+                                    <div className={styles.groupTitle}>
                                         {onSelectionChange && <Checkbox checked={allInGroupSelected ? true : (someInGroupSelected ? 'indeterminate' : false)} onCheckedChange={(checked) => handleItemGroupSelection(itemName, checked === true)} />}
-                                        <AccordionTrigger className="p-0 hover:no-underline flex-1 text-left">
+                                        <AccordionTrigger className={styles.groupTrigger}>
                                             <div className="flex items-center gap-4">
-                                                <h3 className="font-semibold text-lg">{itemName}</h3>
+                                                <span className={styles.groupName}>{itemName}<span className={styles.count}>{itemList.length.toLocaleString()} items</span></span>
                                             </div>
                                         </AccordionTrigger>
                                     </div>
@@ -250,9 +250,9 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
                                 </div>
                                 <AccordionContent>
                                     <div className="border-t">
-                                      <ScrollArea className="h-72">
+                                      <div className={styles.itemScroll} tabIndex={0} role="region" aria-label={`${itemName} inventory items. Scroll sideways for more columns.`}>
                                         <div className="overflow-x-auto">
-                                            <Table>
+                                            <Table className={styles.itemTable}>
                                                 <TableHeader className="sticky top-0 z-10 bg-card">
                                                     <TableRow>
                                                         <TableHead></TableHead>
@@ -371,14 +371,14 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
                                                 </TableBody>
                                             </Table>
                                         </div>
-                                      </ScrollArea>
+                                      </div>
                                     </div>
                                 </AccordionContent>
                             </AccordionItem>
                         )})}
                     </Accordion>
                 </div>
-            </ScrollArea>
+            </div>
             </div>
 
             {selectedItem && canManage && <EditItemDialog isOpen={isEditDialogOpen} setIsOpen={setIsEditDialogOpen} item={selectedItem} />}
