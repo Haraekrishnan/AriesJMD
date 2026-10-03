@@ -319,6 +319,13 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
                     case 'weekends':
                         match = isWeekend(day);
                         break;
+                    case 'month-end': {
+                        // Planner working week is Monday-Saturday, matching daily-except-sundays.
+                        const lastWorkingDay = new Date(day.getFullYear(), day.getMonth() + 1, 0);
+                        if (lastWorkingDay.getDay() === 0) lastWorkingDay.setDate(lastWorkingDay.getDate() - 1);
+                        match = isSameDay(day, lastWorkingDay);
+                        break;
+                    }
                     case 'monthly':
                         match = getDate(day) === getDate(eventStartDate);
                         break;

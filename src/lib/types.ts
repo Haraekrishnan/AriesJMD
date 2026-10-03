@@ -79,7 +79,7 @@ export type Task = {
   archivedAt?: string;
 };
 
-export type Frequency = 'once' | 'daily' | 'weekly' | 'weekends' | 'monthly' | 'daily-except-sundays';
+export type Frequency = 'once' | 'daily' | 'weekly' | 'weekends' | 'monthly' | 'daily-except-sundays' | 'month-end';
 
 export type PlannerEvent = {
   time?: string;

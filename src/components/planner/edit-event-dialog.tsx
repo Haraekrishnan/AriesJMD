@@ -25,7 +25,7 @@ const eventSchema = z.object({
   date: z.date({ required_error: 'Date is required' }).refine(date => startOfDay(date) >= startOfDay(new Date()), {
     message: "Cannot edit an event to a past date."
   }),
-  frequency: z.enum(['once', 'daily', 'weekly', 'weekends', 'monthly', 'daily-except-sundays']),
+  frequency: z.enum(['once', 'daily', 'weekly', 'weekends', 'monthly', 'daily-except-sundays', 'month-end']),
   userId: z.string().min(1, 'Please select an employee for this event'),
 });
 
@@ -159,6 +159,7 @@ export default function EditEventDialog({ isOpen, setIsOpen, event }: EditEventD
                     <SelectItem value="weekly">Weekly</SelectItem>
                     <SelectItem value="weekends">Weekends</SelectItem>
                     <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="month-end">Month end (Last working day)</SelectItem>
                   </SelectContent>
                 </Select>
               )}
